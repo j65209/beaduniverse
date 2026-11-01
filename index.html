@@ -11321,7 +11321,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="wr-actions">
         <span class="wr-hint" id="wrHint">작성한 뒤 <b>대표에게 알림</b>을 누르면 전승훈 대표에게 크롬 알림이 갑니다.</span>
         <button type="button" class="wr-btn wr-btn-add" onclick="wrAddRow()">＋ 행 추가</button>
-        <button type="button" class="wr-btn wr-btn-reset" onclick="wrResetForm()">초기화</button>
+        <button type="button" class="wr-btn wr-btn-reset" onclick="wrClearForm()">초기화</button>
         <button type="button" class="wr-btn wr-btn-notify" onclick="wrSendNotify()">🔔 대표에게 알림 보내기</button>
       </div>
 
@@ -16016,11 +16016,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     ]},
   ];
   const LEAVE_KEY='brightbeed_leave_v1';
-  function loadLeaveData(){try{return JSON.parse(localStorage.getItem(LEAVE_KEY)||'{}')}catch(e){return {}}}
+  let _leaveMem = null;   // 저장공간이 꽉 차 못 쓴 내용 — 있으면 이게 최신
+  function loadLeaveData(){
+    if(_leaveMem) return JSON.parse(JSON.stringify(_leaveMem));
+    try{return JSON.parse(localStorage.getItem(LEAVE_KEY)||'{}')}catch(e){return {}}
+  }
+  // 로컬은 캐시 — 못 써도 throw 하지 않는다 (신청은 서버에 들어갔는데 실패처럼 보여 재신청 → 이중 차감되던 경로)
+  function _leaveSetLocal(j){
+    try{ localStorage.setItem(LEAVE_KEY,j); _leaveMem=null; return; }catch(e){}
+    try{ if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace(); localStorage.setItem(LEAVE_KEY,j); _leaveMem=null; return; }catch(e){}
+    _leaveMem=JSON.parse(j);
+  }
   /* 로컬 캐시 저장 — 실제 영속화는 Supabase로 (submit/inline-edit 핸들러가 직접 호출) */
   function saveLeaveData(data){
     const j=JSON.stringify(data);
-    localStorage.setItem(LEAVE_KEY,j);
+    _leaveSetLocal(j);
     _leave_lastHash=j;
   }
 
@@ -22659,12 +22669,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let archived;
     try{ archived = await sbFetchLeaveCycles(); }catch(e){ archived = null; }
     if(!archived){ _cycleArchiveDone = false; return; }
+    // 영구 기록이라 캐시가 아니라 서버 값으로 만든다 (새 브라우저 · 오래 안 쓴 PC 에선 캐시에 신청이 빠져 있다)
+    const data = await sbFetchLeave();
+    if(data===null){ _cycleArchiveDone = false; return; }
     const byStaff = {};
     for(const a of archived){
       if(!byStaff[a.staff_name]) byStaff[a.staff_name] = new Set();
       byStaff[a.staff_name].add(a.cycle_index);
     }
-    const data = loadLeaveData();
     let archiveCount = 0;
     const resetNames = [];
     const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -22675,7 +22687,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const current = cycleInfo(hire);
       if(!current || current.cycleIndex <= 0) continue;
       const archivedSet = byStaff[s.name] || new Set();
-      let lastArchivedIdx = -1;
+      let lastArchivedIdx = -1, archivedNow = 0;
       for(let idx = 0; idx < current.cycleIndex; idx++){
         if(archivedSet.has(idx)){ lastArchivedIdx = idx; continue; }
         const ci = cycleInfoForIndex(hire, idx);
@@ -22692,11 +22704,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           used_total: used,
           history_snapshot: snapshot
         });
-        if(r.ok){ archiveCount++; lastArchivedIdx = idx; }
+        if(r.ok){ archiveCount++; archivedNow++; lastArchivedIdx = idx; }
         else { console.warn(`leave_cycle archive 실패: ${s.name} #${idx}`, r.reason); break; }
       }
       // 모든 이전 cycle archive 완료 → override.used 0 리셋 (cycle 1+ 합산 정확화)
-      if(lastArchivedIdx === current.cycleIndex - 1 && Number.isFinite(v.used)){
+      // 이번에 새로 archive 한 경우에만 — 안 그러면 인사팀에 들어올 때마다 사장님이 넣어 둔 사용 일수가 0 이 된다
+      if(archivedNow > 0 && lastArchivedIdx === current.cycleIndex - 1 && Number.isFinite(v.used)){
         const rs = await sbUpsertLeaveOverride(s.name, {used: 0});
         if(rs.ok){
           v.used = 0;
@@ -22757,6 +22770,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       let extra = 0;
       for(const h of newEntries){
         if(!h || !h.submittedAt) continue;
+        if(!inCycle(h.date)) continue;   // 주년 뒤 신청이 지난 cycle 기록에 들어가지 않게
         extra += _itemUsedDays(h);
       }
       if(!hasBaseline && newEntries.length === 0) return null;
@@ -23323,7 +23337,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.onTitleChange=onTitleChange;
   // 인라인 편집 — blur 시 저장 (master + leave-edit-mode일 때만)
   document.addEventListener('focusout',async e=>{
-    const span=e.target.closest?.('.leave-card .leave-used, .leave-card .leave-total, .leave-card .leave-hire');
+    // 2026-09 재디자인 때 클래스가 빠져 사용 · 총 일수 · 입사일 수정이 저장되지 않고 있었다
+    const span=e.target.closest?.('.leave-card [data-field="used"], .leave-card [data-field="total"], .leave-card [data-field="hire"]');
     if(!span) return;
     if(!document.body.classList.contains('leave-edit-mode')) return;
     if(!isMaster()) return;
@@ -23332,6 +23347,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const field=span.dataset.field;
     const data=loadLeaveData();
     data[name]=data[name]||{};
+    const staffRow=STAFF.find(x=>x.name===name)||{};
+    const cyc=cycleInfo(data[name].hire||staffRow.hire||'');
+    const usedBefore=_computeCycleUsed(staffRow,data[name],cyc);
+    // 안 바꿨으면 저장하지 않는다 (포커스만 지나가도 표시값이 override 로 굳어 다른 신청의 차감이 틀어진다)
+    const typed=span.textContent.trim();
+    const shownBefore=field==='hire'?(data[name].hire||staffRow.hire||'')
+      :field==='used'?(usedBefore??''):(Number.isFinite(data[name].total)?data[name].total:(Number.isFinite(staffRow.total)?staffRow.total:(cyc&&cyc.total)??''));
+    if(typed===String(shownBefore)) return;
     let nextVal; // Supabase에 보낼 값 (null = 컬럼 비움)
     if(field==='hire'){
       const val=span.textContent.trim();
@@ -23346,11 +23369,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         return;
       }
       if(val===null){delete data[name][field]; nextVal=null}
+      else if(field==='used'){
+        // 화면의 사용 일수 = override + 신청 합계 → 입력한 값이 그대로 보이도록 신청분을 뺀 값을 override 로
+        const baseNow=Number.isFinite(data[name].used)?data[name].used:((cyc&&cyc.cycleIndex>0)?0:(Number.isFinite(staffRow.used)?staffRow.used:0));   // 1년차 이상은 기본값을 안 쓴다 (_computeCycleUsed)
+        const stored=Number(usedBefore)===usedBefore ? baseNow+(val-usedBefore) : val;
+        data[name].used=stored; nextVal=stored;
+      }
       else{data[name][field]=val; nextVal=val}
       span.textContent=val!==null?val:'';
     }
     saveLeaveData(data);
-    updateLeaveCard(card,data[name]||{});
 
     // Supabase upsert — used/total/hire 중 변경된 필드만 갱신
     const fields={};
@@ -23364,7 +23392,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     if(!r.ok){
       toast(`동기화 실패 (${r.reason||'fetch'}) — 다시 시도해주세요`,'err');
-    }
+    }else toast(`${name} — 저장했습니다`,'ok');
     if(allEmpty){
       delete data[name];
       saveLeaveData(data);
@@ -23377,7 +23405,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const LEAVE_DRAFT_KEY='brightbeed_leave_draft';
   let _leaveDraftSyncTimer=null;
   function _readLeaveDraft(){try{return JSON.parse(localStorage.getItem(LEAVE_DRAFT_KEY)||'null')}catch(e){return null}}
-  function clearLeaveDraft(){localStorage.removeItem(LEAVE_DRAFT_KEY)}
+  function clearLeaveDraft(){try{localStorage.removeItem(LEAVE_DRAFT_KEY)}catch(e){}}
   function _writeLeaveDraftLocal(staff,start,end,type,savedAt){
     try{localStorage.setItem(LEAVE_DRAFT_KEY,JSON.stringify({staff,start,end,type,savedAt:savedAt||Date.now()}))}catch(e){}
   }
@@ -23671,6 +23699,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       toast(`저장 실패 (${ins.reason}) — 네트워크 확인 후 다시 시도해주세요`,'err');
       return;
     }
+    clearTimeout(_leaveDraftSyncTimer);   // 대기 중인 임시저장이 신청 뒤에 되살아나지 않게
     clearLeaveDraft();
     if(typeof sbDeleteLeaveDraft==='function') sbDeleteLeaveDraft(name).catch(()=>{});
 
@@ -26017,10 +26046,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   async function sbDeleteLeaveEntry(id){
     try{
+      // 0행이면 실패로 본다 (안 지워졌는데 '취소됨'이 뜨지 않게)
       const r=await fetch(`${SUPABASE_URL}/rest/v1/leave_entries?id=eq.${encodeURIComponent(id)}`,{
-        method:'DELETE', headers:_sbHeaders()
+        method:'DELETE', headers:_sbHeaders({'Prefer':'return=representation'})
       });
-      return {ok:r.ok, status:r.status};
+      if(!r.ok) return {ok:false, status:r.status};
+      const rows=await r.json();
+      return {ok:Array.isArray(rows)&&rows.length>0, status:r.status};
     }catch(e){return {ok:false}}
   }
 
@@ -26749,15 +26781,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.closeAddStaffForm=closeAddStaffForm;
   window.submitAddStaff=submitAddStaff;
 
+  let _leavePullGen=0;
   async function syncLeaveFromRemote(){
+    const gen=++_leavePullGen;
     const fresh=await sbFetchLeave();
     if(fresh===null) return; // 네트워크 실패 — 조용히 패스
+    if(gen!==_leavePullGen) return;   // 겹쳐 돌면 먼저 출발한 옛 응답이 방금 신청을 지운다
+    // 인사 카드에 입력 중이면 다시 그리지 않는다 (치던 글자가 사라진다). 다음 회차에 반영
+    const grid0=document.getElementById('leaveGrid');
+    if(grid0 && document.activeElement && grid0.contains(document.activeElement)) return;
     // hidden 목록 변경도 hash에 반영 (직원 삭제/복원 시 재렌더 트리거)
     const hiddenKey=[..._hiddenStaff].sort().join('|');
     const json=JSON.stringify(fresh)+'#'+hiddenKey;
     if(json===_leave_lastHash) return;
     _leave_lastHash=json;
-    localStorage.setItem(LEAVE_KEY, JSON.stringify(fresh));
+    _leaveSetLocal(JSON.stringify(fresh));
     if(document.getElementById('leaveGrid')) renderLeaveStatus();
     else applyHiddenToOrgChart(); // 뷰 밖에서도 조직도만은 반영
     // 다른 기기에서 퇴사 처리한 경우, 이 기기 업무일지에서도 즉시 카드 사라지게
@@ -31588,11 +31626,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function _cecSbFetchAll(){
     if(_cecState.sbLoading) return _cecState.events;
     _cecState.sbLoading = true;
+    const fetchStartedAt = Date.now();
     try{
       const r = await fetch(`${CEC_SB_URL}?select=*&deleted_at=is.null&order=event_date.asc`, {headers:_sbHeaders(), cache:'no-cache'});
       if(!r.ok) throw new Error('http '+r.status);
       const rows = await r.json();
-      _cecState.events = (Array.isArray(rows) ? rows : []).map(_cecFromSb).filter(Boolean);
+      if(_cecState.lastWriteAt >= fetchStartedAt){ setTimeout(()=>{ _cecSbFetchAll().then(_cecRerender); }, 800); return _cecState.events; }   // 읽는 사이 고침 → 옛 응답 버림
+      // 못 보낸 변경은 내 것이 우선 (전체 조회로 저장 실패한 일정이 사라지고, 삭제 실패한 일정이 되살아나던 문제)
+      const q = _cecQ();
+      const events = (Array.isArray(rows) ? rows : []).map(_cecFromSb).filter(Boolean).filter(ev=>!q[ev.id]);
+      Object.values(q).forEach(e=>{ if(e && e.op==='upsert') events.push(e.ev); });
+      _cecState.events = events;
       _cecState.sbLoaded = true;
       cecSave();
       return _cecState.events;
@@ -31622,11 +31666,64 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     try{
       const r = await fetch(`${CEC_SB_URL}?id=eq.${encodeURIComponent(id)}`, {
         method: 'PATCH',
+        keepalive: true,
         headers: _sbHeaders({'Prefer':'return=minimal'}),
         body: JSON.stringify({deleted_at: new Date().toISOString()}),
       });
       return r.ok;
     }catch(e){ return false; }
+  }
+  /* 못 보낸 변경 대기열 — 저장 실패해도 일정이 사라지지 않고 자동 재전송 (고정비용 캘린더와 같은 방식) */
+  const CEC_QUEUE_KEY = 'brightbeed_ceo_calendar_queue_v1';
+  let _cecQueue = null, _cecFlushP = null, _cecFail = 0, _cecRetry = null;
+  function _cecQ(){
+    if(!_cecQueue){
+      try{ const q = JSON.parse(localStorage.getItem(CEC_QUEUE_KEY)||'{}'); _cecQueue = q && typeof q==='object' ? q : {}; }
+      catch(e){ _cecQueue = {}; }
+    }
+    return _cecQueue;
+  }
+  function _cecSaveQ(){ try{ localStorage.setItem(CEC_QUEUE_KEY, JSON.stringify(_cecQ())); }catch(e){} }
+  function _cecFlush(){
+    if(_cecFlushP) return _cecFlushP;
+    if(!Object.keys(_cecQ()).length) return Promise.resolve();
+    clearTimeout(_cecRetry);
+    _cecFlushP = (async()=>{
+      let failed;
+      do{
+        failed = false;
+        const q = _cecQ();
+        for(const id of Object.keys(q)){
+          const ent = q[id];
+          const ok = ent.op==='delete' ? await _cecSbDelete(id) : !!(await _cecSbUpsert(ent.ev));
+          if(ok){ if(q[id]===ent){ delete q[id]; _cecSaveQ(); } }
+          else failed = true;
+        }
+      }while(!failed && Object.keys(_cecQ()).length);
+      return failed;
+    })().then(failed=>{
+      _cecFlushP = null;
+      if(failed){
+        _cecFail = Math.min(_cecFail+1, 6);
+        _cecRetry = setTimeout(_cecFlush, Math.min(1000*2**(_cecFail-1), 30000));
+      }else _cecFail = 0;
+    });
+    return _cecFlushP;
+  }
+  async function _cecCommit(op, ev, okMsg){
+    _cecQ()[ev.id] = {op, ev:{...ev}, ts:Date.now()};
+    _cecSaveQ();
+    _cecState.lastWriteAt = Date.now();
+    await _cecFlush();
+    if(typeof toast!=='function') return;
+    if(_cecQ()[ev.id]) toast('서버 저장 실패 — 자동으로 다시 보내요. 창을 닫아도 남아 있어요','err');
+    else toast(okMsg,'ok');
+  }
+  function _cecRerender(){
+    if(typeof cecRenderCalendar === 'function' && document.getElementById('cecCalGrid')) cecRenderCalendar();
+    if(typeof cecRenderSummary === 'function' && document.getElementById('cecSummaryMonth')) cecRenderSummary();
+    if(typeof cecRenderList === 'function' && document.getElementById('cecEventList')) cecRenderList();
+    if(typeof cecRenderHomeCard === 'function') cecRenderHomeCard();
   }
   /* Realtime — 다른 기기 변경 감지 시 전체 재fetch + 리렌더 */
   async function _cecInitRealtime(){
@@ -31666,8 +31763,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       cecSave();
       await Promise.all(migrated.map(m => _cecSbUpsert(m).catch(()=>null)));
     }
+    _cecFlush();   // 지난번에 못 보낸 변경
     await _cecSbFetchAll();
     _cecInitRealtime();
+    window.addEventListener('online', ()=>{ _cecFlush(); });
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) _cecFlush(); });
+    window.addEventListener('beforeunload', e=>{ if(Object.keys(_cecQ()).length){ e.preventDefault(); e.returnValue=''; } });
   }
   window.cecBootSync = cecBootSync;
   function _cecEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
@@ -31929,6 +32030,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(idx>=0){
         events[idx] = {...events[idx], title, date, time: time||'', category: cat, memo, updatedAt: Date.now()};
         target = events[idx];
+      }else{
+        if(typeof toast==='function') toast('다른 곳에서 이미 삭제된 일정입니다','err');
+        return;
       }
     } else {
       target = {id:_cecUid(), title, date, time: time||'', category: cat, memo, createdBy: me, createdAt: Date.now()};
@@ -31939,19 +32043,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     cecCloseModal();
     cecRenderView();
     if(typeof toast==='function') toast('저장 중…', 'info');
-    /* Supabase 동기화 (백그라운드) — 성공 시 서버 진실로 재fetch */
-    if(target){
-      _cecSbUpsert(target).then(saved=>{
-        if(saved){
-          const idx = _cecState.events.findIndex(x=>x.id===saved.id);
-          if(idx>=0) _cecState.events[idx] = saved;
-          cecSave();
-          if(typeof toast==='function') toast('저장됨 (동기화 완료)', 'ok');
-        }else{
-          if(typeof toast==='function') toast('로컬 저장됨 (서버 동기화 실패 — 나중에 재시도)', 'err');
-        }
-      });
-    }
+    /* 서버 응답 뒤에만 '저장됨'. 실패하면 대기열에 남아 자동 재전송 */
+    if(target) _cecCommit('upsert', target, '저장됨 (동기화 완료)');
   }
   window.cecSaveFromModal = cecSaveFromModal;
 
@@ -31963,8 +32056,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     cecSave();
     cecCloseModal();
     cecRenderView();
-    if(typeof toast==='function') toast('삭제되었습니다');
-    _cecSbDelete(id);
+    _cecCommit('delete', {id}, '삭제되었습니다');
   }
   function cecDeleteEvent(id){
     if(!id) return;
@@ -31972,8 +32064,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _cecState.events = cecLoad().filter(x => x.id !== id);
     cecSave();
     cecRenderView();
-    if(typeof toast==='function') toast('삭제되었습니다');
-    _cecSbDelete(id);
+    _cecCommit('delete', {id}, '삭제되었습니다');
   }
   window.cecDeleteFromModal = cecDeleteFromModal;
   window.cecDeleteEvent = cecDeleteEvent;
@@ -32807,8 +32898,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const j=localStorage.getItem(WR_STORAGE_DRAFT);
       if(!j) return null;
       const p=JSON.parse(j);
-      if(!p || p.date !== _wrTodayStr()) return null; // 하루 지나면 초기화
-      return Array.isArray(p.rows) ? p.rows : null;
+      // 저녁에 써 두고 퇴근해도 다음 날 사라지지 않게 날짜와 상관없이 복원 (보낸 뒤엔 wrResetForm 이 비운다)
+      return p && Array.isArray(p.rows) ? p.rows : null;
     }catch(e){ return null }
   }
   function _wrSaveDraft(){
@@ -32816,6 +32907,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       localStorage.setItem(WR_STORAGE_DRAFT, JSON.stringify({date:_wrTodayStr(), rows:_wrRows}));
     }catch(e){}
   }
+  function wrClearForm(){
+    if(_wrCollectFilledRows().length && !confirm('입력한 내용을 모두 지울까요?')) return;
+    wrResetForm();
+  }
+  window.wrClearForm = wrClearForm;
   function wrResetForm(){
     _wrRows = Array.from({length: WR_ROWS_INITIAL}, _wrEmptyRow);
     _wrSaveDraft();
@@ -32904,7 +33000,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       .filter(r=> r.bank || r.account || r.amount || r.holder || r.memo);
   }
 
+  let _wrSending = false;   // 더블클릭하면 같은 요청이 두 건 들어가 대표 PC 에 알림이 두 번 온다 (이중 송금 위험)
   async function wrSendNotify(){
+    if(_wrSending) return;
     const filled = _wrCollectFilledRows();
     if(!filled.length){
       toast('한 줄 이상 입력해주세요', 'err');
@@ -32922,6 +33020,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       status: 'notified',
       notified_at: new Date().toISOString(),
     };
+    _wrSending = true;
     try{
       const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests`, {
         method:'POST',
@@ -32938,6 +33037,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _wrFetchBatches();
     }catch(e){
       toast('알림 실패 — 네트워크 확인', 'err');
+    }finally{
+      _wrSending = false;
     }
   }
   window.wrSendNotify = wrSendNotify;
