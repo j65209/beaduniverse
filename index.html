@@ -4178,6 +4178,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 관리자 전용: 고정비용 캘린더 (viewFixedCosts) ===== */
+  #fxSaveTag[hidden]{display:none}
   .fx-add-btn{
     display:inline-flex;align-items:center;gap:6px;
     padding:6px 12px;border-radius:6px;
@@ -12318,6 +12319,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         홈
       </button>
       <h1 class="view-title">고정비용 캘린더<span class="view-title-sub">/ 관리자 전용 · 월세 · 정기결제</span></h1>
+      <span class="diary-save-tag" id="fxSaveTag" hidden></span>
       <button type="button" class="fx-add-btn" onclick="fxOpenAddModal()" aria-label="항목 추가">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         항목 추가
@@ -14833,6 +14835,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof _wrInitRealtime==='function') _wrInitRealtime();
     // 대표 캘린더 Supabase 동기화 — 앱 진입 시 즉시 fetch + realtime subscribe
     if(typeof cecBootSync==='function') cecBootSync().catch(()=>{});
+    // 고정비용 캘린더 Supabase 동기화 — 브라우저에 남은 항목 올리기 + 못 보낸 변경 재전송 (화면에 안 들어와도)
+    if(typeof fxBootSync==='function') fxBootSync().catch(()=>{});
     // 에이전트 오피스 실시간 인원 표시 (홈 카드)
     if(typeof loadAgentsMini==='function'){ loadAgentsMini(); setInterval(loadAgentsMini, 30000); }
   }
@@ -15240,6 +15244,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         return;
       }
       if(typeof fxRenderView==='function') fxRenderView();
+      if(typeof _fxRefresh==='function') _fxRefresh();
     }
     if(id==='viewCeoCal'){
       // 뷰어 접근 방어
@@ -30517,14 +30522,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window._refreshModuleCounts=_refreshModuleCounts;
   _refreshModuleCounts();
 
-  /* ===== 관리자 전용 · 고정비용 캘린더 (localStorage 저장) ===== */
+  /* ===== 관리자 전용 · 고정비용 캘린더 =====
+     진실 = Supabase fixed_costs (삭제는 deleted_at, 모든 변경은 fixed_costs_history 에 남음).
+     localStorage 는 화면 캐시 + 아직 못 보낸 변경 대기열일 뿐이다.
+     2026-11 전까지 localStorage 에만 저장해서 다른 브라우저 · 기기에선 비어 보이고 저장공간이 비면 통째로 사라졌다
+     → 브라우저에 남은 항목은 첫 실행 때 서버로 올린다 (_fxMigrateLocal). */
   const FX_KEY = 'brightbeed_fixed_costs_v1';
+  const FX_QUEUE_KEY = 'brightbeed_fixed_costs_queue_v1';      // 못 보낸 변경 { id: {op:'upsert'|'delete', item, ts} }
+  const FX_MIGRATED_KEY = 'brightbeed_fixed_costs_migrated_v1';
+  const FX_SB_URL = `${SUPABASE_URL}/rest/v1/fixed_costs`;
   const FX_CATS = {
     rent: {label:'월세·임대', color:'#e11d48', short:'RENT'},
     subs: {label:'정기결제', color:'#f59e0b', short:'SUBS'},
     etc:  {label:'인건비·기타', color:'#0ea5e9', short:'ETC'},
   };
-  const _fxState = (()=>{const n=new Date();return{year:n.getFullYear(),month:n.getMonth(),items:null};})();
+  const _fxState = (()=>{const n=new Date();return{year:n.getFullYear(),month:n.getMonth(),items:null,queue:null,flushP:null,failStreak:0,retryTimer:null,lastWriteAt:0,rtChan:null,booted:false};})();
 
   function fxLoad(){
     if(_fxState.items) return _fxState.items;
@@ -30538,11 +30550,188 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!_fxState.items) _fxState.items = [];
     return _fxState.items;
   }
-  function fxSave(){
-    try{
-      localStorage.setItem(FX_KEY, JSON.stringify({items:_fxState.items||[], updatedAt:Date.now()}));
-    }catch(e){ if(typeof toast==='function') toast('저장 실패 (스토리지)','err'); }
+  // 로컬은 캐시 — 꽉 차서 못 써도 서버 저장은 막지 않는다
+  function _fxPutLocal(key, body){
+    try{ localStorage.setItem(key, body); }
+    catch(e){ try{ if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace(); localStorage.setItem(key, body); }catch(e2){} }
   }
+  function fxSave(){
+    _fxPutLocal(FX_KEY, JSON.stringify({items:_fxState.items||[], updatedAt:Date.now()}));
+  }
+  function _fxQueue(){
+    if(!_fxState.queue){
+      try{
+        const q = JSON.parse(localStorage.getItem(FX_QUEUE_KEY)||'{}');
+        _fxState.queue = q && typeof q==='object' ? q : {};
+      }catch(e){ _fxState.queue = {}; }
+    }
+    return _fxState.queue;
+  }
+  function _fxSaveQueue(){ _fxPutLocal(FX_QUEUE_KEY, JSON.stringify(_fxQueue())); }
+  function _fxHasPending(){ return Object.keys(_fxQueue()).length>0; }
+
+  // 서버 응답 뒤에만 '저장됨' — 못 올라간 걸 올라간 줄 알고 창을 닫지 않게
+  function _fxSetSaveState(state){
+    const tag = document.getElementById('fxSaveTag');
+    if(!tag) return;
+    clearTimeout(tag._t);
+    tag.dataset.state = state;
+    tag.hidden = false;
+    if(state==='saving') tag.textContent = '저장 중…';
+    else if(state==='pending') tag.textContent = '저장 대기 중 · 창을 닫아도 남아 있어요';
+    else{
+      const t = new Date();
+      tag.textContent = `저장됨 · ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+      tag._t = setTimeout(()=>{ tag.hidden = true; }, 2200);
+    }
+  }
+
+  function _fxFromSb(r){
+    return {
+      id: r.id, name: r.name||'', amount: Number(r.amount)||0, day: r.day,
+      account: r.account||'', memo: r.memo||'', category: r.category||'rent',
+      active: r.active!==false, createdAt: r.created_at ? Date.parse(r.created_at) : Date.now(),
+    };
+  }
+  function _fxToSb(it){
+    return {
+      id: it.id, name: it.name||'', amount: Math.round(Number(it.amount)||0), day: parseInt(it.day,10)||1,
+      account: it.account||null, memo: it.memo||null, category: it.category||'rent', active: it.active!==false,
+      created_at: it.createdAt ? new Date(it.createdAt).toISOString() : undefined,
+      updated_by: (typeof _diaryGetMe==='function' && _diaryGetMe()) || null,
+    };
+  }
+  async function _fxSendOne(id, ent){
+    try{
+      // keepalive: 저장 직후 창을 닫아도 요청이 끝까지 간다
+      const r = ent.op==='delete'
+        ? await fetch(`${FX_SB_URL}?id=eq.${encodeURIComponent(id)}`, {
+            method:'PATCH', keepalive:true, headers:_sbHeaders({'Prefer':'return=minimal'}),
+            body:JSON.stringify({deleted_at:new Date().toISOString(), updated_by:(typeof _diaryGetMe==='function' && _diaryGetMe()) || null}),
+          })
+        : await fetch(`${FX_SB_URL}?on_conflict=id`, {
+            method:'POST', keepalive:true, headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+            body:JSON.stringify(_fxToSb(ent.item)),
+          });
+      if(!r.ok) console.warn('[fx] 저장 실패', r.status);
+      return r.ok;
+    }catch(e){ return false; }
+  }
+  function _fxFlush(){
+    if(_fxState.flushP) return _fxState.flushP;
+    if(!_fxHasPending()) return Promise.resolve();
+    clearTimeout(_fxState.retryTimer);
+    _fxSetSaveState('saving');
+    _fxState.flushP = (async()=>{
+      let failed;
+      do{
+        failed = false;
+        const q = _fxQueue();
+        for(const id of Object.keys(q)){
+          const ent = q[id];
+          if(await _fxSendOne(id, ent)){
+            // 보내는 사이 또 고쳤으면 남겨서 다음 회차에 최신 값을 보낸다
+            if(q[id]===ent){ delete q[id]; _fxSaveQueue(); }
+          }else failed = true;
+        }
+      }while(!failed && _fxHasPending());
+      return failed;
+    })().then(failed=>{
+      _fxState.flushP = null;
+      if(failed){
+        _fxState.failStreak = Math.min(_fxState.failStreak+1, 6);
+        _fxSetSaveState('pending');
+        _fxState.retryTimer = setTimeout(_fxFlush, Math.min(1000*2**(_fxState.failStreak-1), 30000));
+      }else{
+        _fxState.failStreak = 0;
+        _fxSetSaveState('saved');
+      }
+    });
+    return _fxState.flushP;
+  }
+  function _fxEnqueue(op, item){
+    _fxQueue()[item.id] = {op, item:{...item}, ts:Date.now()};
+    _fxSaveQueue();
+    _fxState.lastWriteAt = Date.now();
+  }
+  async function _fxCommit(op, item, okMsg){
+    _fxEnqueue(op, item);
+    await _fxFlush();
+    if(typeof toast!=='function') return;
+    if(_fxQueue()[item.id]) toast('서버 저장 실패 — 자동으로 다시 보내요. 창을 닫아도 남아 있어요','err');
+    else toast(okMsg);
+  }
+  // 서버 진실로 교체 — 못 읽으면 지금 값을 그대로 둔다 (빈 값으로 덮지 않음). 못 보낸 변경은 내 것이 우선.
+  async function _fxFetchAll(){
+    const startedAt = Date.now();
+    try{
+      const r = await fetch(`${FX_SB_URL}?select=*&deleted_at=is.null&order=day.asc`, {headers:_sbHeaders(), cache:'no-cache'});
+      if(!r.ok) return false;
+      const rows = await r.json();
+      if(!Array.isArray(rows)) return false;
+      if(_fxState.lastWriteAt>=startedAt){ setTimeout(_fxRefresh, 800); return false; }  // 읽는 사이 고침 → 옛 응답 버림
+      const q = _fxQueue();
+      const items = rows.map(_fxFromSb).filter(x=>!q[x.id]);
+      Object.values(q).forEach(e=>{ if(e && e.op==='upsert') items.push(e.item); });
+      _fxState.items = items;
+      fxSave();
+      return true;
+    }catch(e){ return false; }
+  }
+  function _fxRefresh(){
+    return _fxFetchAll().then(ok=>{
+      const v = document.getElementById('viewFixedCosts');
+      if(ok && v && !v.hidden) fxRenderView();
+      return ok;
+    });
+  }
+  window._fxRefresh = _fxRefresh;
+  // 이 브라우저에만 있던 항목을 서버로 — 서버에 이미 있는 id(지운 것 포함)는 올리지 않아 다른 기기에서 지운 걸 되살리지 않는다.
+  // 같은 항목을 기기마다 따로 다시 입력해 둔 경우가 있어 이름 · 금액 · 이체일이 같으면 중복으로 치고 건너뛴다.
+  async function _fxMigrateLocal(){
+    try{ if(localStorage.getItem(FX_MIGRATED_KEY)) return; }catch(e){}
+    const local = fxLoad().filter(x=>x && x.id);
+    if(local.length){
+      const r = await fetch(`${FX_SB_URL}?select=id,name,amount,day,deleted_at`, {headers:_sbHeaders(), cache:'no-cache'});
+      if(!r.ok) return;
+      const rows = await r.json();
+      const sig = x=>`${x.name}|${Number(x.amount)||0}|${parseInt(x.day,10)||1}`;
+      const known = new Set(rows.map(x=>x.id));
+      const alive = new Set(rows.filter(x=>!x.deleted_at).map(sig));
+      local.forEach(x=>{
+        if(known.has(x.id) || alive.has(sig(x))) return;
+        alive.add(sig(x));
+        _fxEnqueue('upsert', x);
+      });
+      await _fxFlush();
+      if(_fxHasPending()) return;
+    }
+    _fxPutLocal(FX_MIGRATED_KEY, '1');
+  }
+  async function _fxInitRealtime(){
+    if(_fxState.rtChan) return;
+    if(typeof supabase==='undefined' || !supabase || !supabase.channel){
+      if(typeof _diaryLoadSupabaseClient==='function') await _diaryLoadSupabaseClient();
+      if(typeof supabase==='undefined' || !supabase) return;
+    }
+    _fxState.rtChan = supabase.channel('fx_all')
+      .on('postgres_changes', {event:'*', schema:'public', table:'fixed_costs'}, ()=>{ _fxRefresh(); })
+      .subscribe();
+  }
+  /* 앱 진입 시 (관리자만): 브라우저에 남은 항목 올리기 → 못 보낸 변경 재전송 → 서버 진실로 교체 → 실시간 구독 */
+  async function fxBootSync(){
+    if(_fxState.booted || !isMaster()) return;
+    _fxState.booted = true;
+    fxLoad();
+    await _fxMigrateLocal().catch(()=>{});
+    _fxFlush();
+    await _fxRefresh();
+    _fxInitRealtime();
+    window.addEventListener('online', ()=>{ _fxFlush(); _fxRefresh(); });
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ _fxFlush(); _fxRefresh(); } });
+    window.addEventListener('beforeunload', e=>{ if(_fxHasPending()){ e.preventDefault(); e.returnValue=''; } });
+  }
+  window.fxBootSync = fxBootSync;
   function fxKrw(n){
     const v = Math.round(Number(n)||0);
     return '₩' + v.toLocaleString('ko-KR');
@@ -30839,15 +31028,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
     const items = fxLoad();
     const existing = items.find(x=>x.id===id);
-    if(existing){
-      Object.assign(existing, {name, amount, day, account, memo, category});
-    }else{
-      items.push({id, name, amount, day, account, memo, category, active:true, createdAt:Date.now()});
-    }
+    const item = existing || {id, active:true, createdAt:Date.now()};
+    Object.assign(item, {name, amount, day, account, memo, category});
+    if(!existing) items.push(item);
     fxSave();
     fxCloseModal();
     fxRenderView();
-    if(typeof toast==='function') toast(existing ? '수정되었습니다' : '추가되었습니다');
+    _fxCommit('upsert', item, existing ? '수정되었습니다' : '추가되었습니다');
   }
   window.fxSubmit = fxSubmit;
 
@@ -30863,7 +31050,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     fxSave();
     fxCloseModal();
     fxRenderView();
-    if(typeof toast==='function') toast('삭제되었습니다');
+    _fxCommit('delete', it, '삭제되었습니다');
   }
   window.fxDeleteFromModal = fxDeleteFromModal;
 
