@@ -31004,18 +31004,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 관리자 전용 · 고정비용 캘린더 =====
      진실 = Supabase fixed_costs (삭제는 deleted_at, 모든 변경은 fixed_costs_history 에 남음).
      localStorage 는 화면 캐시 + 아직 못 보낸 변경 대기열일 뿐이다.
-     2026-11 전까지 localStorage 에만 저장해서 다른 브라우저 · 기기에선 비어 보이고 저장공간이 비면 통째로 사라졌다
-     → 브라우저에 남은 항목은 첫 실행 때 서버로 올린다 (_fxMigrateLocal). */
+     2026-11 전까지 localStorage 에만 저장해서 다른 브라우저 · 기기에선 비어 보이고, 저장공간이 꽉 찬 브라우저에선 새로고침하면 사라졌다
+     → 브라우저에 남은 항목은 앱을 열 때마다 서버와 대조해 올린다 (_fxMigrateLocal). 다 올리기 전에는 로컬을 덮지 않는다. */
   const FX_KEY = 'brightbeed_fixed_costs_v1';
   const FX_QUEUE_KEY = 'brightbeed_fixed_costs_queue_v1';      // 못 보낸 변경 { id: {op:'upsert'|'delete', item, ts} }
-  const FX_MIGRATED_KEY = 'brightbeed_fixed_costs_migrated_v1';
+  const FX_BACKUP_KEY = 'brightbeed_fixed_costs_backup_v1';    // 서버로 옮기기 전 브라우저 원본 — 수동 복구용, 한 번 쓰면 덮지 않는다
   const FX_SB_URL = `${SUPABASE_URL}/rest/v1/fixed_costs`;
   const FX_CATS = {
     rent: {label:'월세·임대', color:'#e11d48', short:'RENT'},
     subs: {label:'정기결제', color:'#f59e0b', short:'SUBS'},
     etc:  {label:'인건비·기타', color:'#0ea5e9', short:'ETC'},
   };
-  const _fxState = (()=>{const n=new Date();return{year:n.getFullYear(),month:n.getMonth(),items:null,queue:null,flushP:null,failStreak:0,retryTimer:null,lastWriteAt:0,rtChan:null,booted:false};})();
+  const _fxState = (()=>{const n=new Date();return{year:n.getFullYear(),month:n.getMonth(),items:null,queue:null,flushP:null,failStreak:0,retryTimer:null,lastWriteAt:0,rtChan:null,booted:false,localSynced:false,migrateP:null,uploaded:0};})();
 
   function fxLoad(){
     if(_fxState.items) return _fxState.items;
@@ -31037,6 +31037,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function fxSave(){
     _fxPutLocal(FX_KEY, JSON.stringify({items:_fxState.items||[], updatedAt:Date.now()}));
   }
+  (function _fxBackupLocal(){
+    try{
+      const raw = localStorage.getItem(FX_KEY);
+      if(raw && !localStorage.getItem(FX_BACKUP_KEY) && JSON.parse(raw)?.items?.length) _fxPutLocal(FX_BACKUP_KEY, raw);
+    }catch(e){}
+  })();
   function _fxQueue(){
     if(!_fxState.queue){
       try{
@@ -31152,8 +31158,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const q = _fxQueue();
       const items = rows.map(_fxFromSb).filter(x=>!q[x.id]);
       Object.values(q).forEach(e=>{ if(e && e.op==='upsert') items.push(e.item); });
+      // 브라우저에 남은 항목을 아직 다 못 올렸다 — 서버가 비어 보여도 로컬을 덮으면 유일한 원본이 사라진다
+      if(!_fxState.localSynced){
+        const have = new Set(items.map(x=>x.id));
+        fxLoad().forEach(x=>{ if(x && x.id && !have.has(x.id) && !q[x.id]) items.push(x); });
+      }
       _fxState.items = items;
-      fxSave();
+      if(_fxState.localSynced) fxSave();
       return true;
     }catch(e){ return false; }
   }
@@ -31167,25 +31178,34 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window._fxRefresh = _fxRefresh;
   // 이 브라우저에만 있던 항목을 서버로 — 서버에 이미 있는 id(지운 것 포함)는 올리지 않아 다른 기기에서 지운 걸 되살리지 않는다.
   // 같은 항목을 기기마다 따로 다시 입력해 둔 경우가 있어 이름 · 금액 · 이체일이 같으면 중복으로 치고 건너뛴다.
-  async function _fxMigrateLocal(){
-    try{ if(localStorage.getItem(FX_MIGRATED_KEY)) return; }catch(e){}
-    const local = fxLoad().filter(x=>x && x.id);
-    if(local.length){
-      const r = await fetch(`${FX_SB_URL}?select=id,name,amount,day,deleted_at`, {headers:_sbHeaders(), cache:'no-cache'});
-      if(!r.ok) return;
-      const rows = await r.json();
-      const sig = x=>`${x.name}|${Number(x.amount)||0}|${parseInt(x.day,10)||1}`;
-      const known = new Set(rows.map(x=>x.id));
-      const alive = new Set(rows.filter(x=>!x.deleted_at).map(sig));
-      local.forEach(x=>{
-        if(known.has(x.id) || alive.has(sig(x))) return;
-        alive.add(sig(x));
-        _fxEnqueue('upsert', x);
-      });
-      await _fxFlush();
-      if(_fxHasPending()) return;
-    }
-    _fxPutLocal(FX_MIGRATED_KEY, '1');
+  // 조회나 전송이 실패하면 localSynced 를 켜지 않고 끝낸다 — 로컬은 그대로 두고 다음 복귀 · 온라인 · 새로고침 때 다시 시도한다.
+  function _fxMigrateLocal(){
+    if(_fxState.localSynced) return Promise.resolve();
+    if(_fxState.migrateP) return _fxState.migrateP;
+    _fxState.migrateP = (async()=>{
+      const local = fxLoad().filter(x=>x && x.id);
+      if(local.length){
+        const r = await fetch(`${FX_SB_URL}?select=id,name,amount,day,deleted_at`, {headers:_sbHeaders(), cache:'no-cache'});
+        if(!r.ok) return;
+        const rows = await r.json();
+        if(!Array.isArray(rows)) return;
+        const sig = x=>`${x.name}|${Number(x.amount)||0}|${parseInt(x.day,10)||1}`;
+        const known = new Set(rows.map(x=>x.id));
+        const alive = new Set(rows.filter(x=>!x.deleted_at).map(sig));
+        const q = _fxQueue();
+        local.forEach(x=>{
+          if(q[x.id] || known.has(x.id) || alive.has(sig(x))) return;
+          alive.add(sig(x));
+          _fxEnqueue('upsert', x);
+          _fxState.uploaded++;
+        });
+        await _fxFlush();
+        if(_fxHasPending()) return;
+      }
+      _fxState.localSynced = true;
+      if(_fxState.uploaded && typeof toast==='function') toast(`이 브라우저에 남아 있던 고정비 ${_fxState.uploaded}건을 서버에 올렸습니다`);
+    })().finally(()=>{ _fxState.migrateP = null; });
+    return _fxState.migrateP;
   }
   async function _fxInitRealtime(){
     if(_fxState.rtChan) return;
@@ -31197,17 +31217,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       .on('postgres_changes', {event:'*', schema:'public', table:'fixed_costs'}, ()=>{ _fxRefresh(); })
       .subscribe();
   }
-  /* 앱 진입 시 (관리자만): 브라우저에 남은 항목 올리기 → 못 보낸 변경 재전송 → 서버 진실로 교체 → 실시간 구독 */
+  // 브라우저에 남은 항목 올리기 → 못 보낸 변경 재전송 → 서버 진실로 교체
+  function _fxResync(){
+    return _fxMigrateLocal().catch(()=>{}).then(()=>{ _fxFlush(); return _fxRefresh(); });
+  }
+  /* 앱 진입 시 (관리자만): 동기화 후 실시간 구독 */
   async function fxBootSync(){
     if(_fxState.booted || !isMaster()) return;
     _fxState.booted = true;
     fxLoad();
-    await _fxMigrateLocal().catch(()=>{});
-    _fxFlush();
-    await _fxRefresh();
+    await _fxResync();
     _fxInitRealtime();
-    window.addEventListener('online', ()=>{ _fxFlush(); _fxRefresh(); });
-    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ _fxFlush(); _fxRefresh(); } });
+    window.addEventListener('online', _fxResync);
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) _fxResync(); });
     window.addEventListener('beforeunload', e=>{ if(_fxHasPending()){ e.preventDefault(); e.returnValue=''; } });
   }
   window.fxBootSync = fxBootSync;
