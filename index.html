@@ -28676,31 +28676,40 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     try{
       const v=JSON.parse(localStorage.getItem(CS_KEY)||'null');
       if(!v) return csDefault();
-      // 레거시 templates 필드는 의도적으로 드롭 (UI 제거됨, 다음 save 때 사라짐)
-      return {
-        faqs:Array.isArray(v.faqs)?v.faqs:[],
-        memo:typeof v.memo==='string'?v.memo:'',
-        updatedAt:v.updatedAt||''
-      };
+      return _csNorm(v);
     }catch(e){return csDefault()}
+  }
+  function _csCanon(r){ return JSON.stringify(Object.keys(r||{}).sort().map(k=>[k,r[k]])); }
+  // FAQ 행마다 _id — 옛 행은 내용으로 번호를 만들어 어느 PC 에서 읽어도 같은 행으로 본다. 레거시 templates 필드는 드롭
+  function _csNorm(v){
+    const seen={};
+    return {
+      faqs:(Array.isArray(v&&v.faqs)?v.faqs:[]).filter(Boolean).map(it=>{
+        if(it._id) return it;
+        const h=_whtHash(_csCanon({q:it.q||'',a:it.a||''}));
+        seen[h]=(seen[h]||0)+1;
+        return Object.assign({_id:`o${h}_${seen[h]}`},it);
+      }),
+      memo:v&&typeof v.memo==='string'?v.memo:'',
+      updatedAt:(v&&v.updatedAt)||''
+    };
   }
   function saveCsLocal(d){
     const j=JSON.stringify(d);
-    localStorage.setItem(CS_KEY,j);
     _cs_lastHash=j;
+    // 로컬은 캐시 — 꽉 차서 못 써도 서버 저장을 막지 않는다
+    try{ localStorage.setItem(CS_KEY,j); }
+    catch(e){
+      if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace();
+      try{ localStorage.setItem(CS_KEY,j); }catch(e2){}
+    }
   }
 
   async function fetchCsFromRemote(){
     try{
       const r=await fetch(`${CS_RAW}?cb=${Date.now()}`,{cache:'no-cache'});
-      if(r.status===404) return csDefault();
       if(!r.ok) return null;
-      const data=await r.json();
-      return {
-        faqs:Array.isArray(data.faqs)?data.faqs:[],
-        memo:typeof data.memo==='string'?data.memo:'',
-        updatedAt:data.updatedAt||''
-      };
+      return _csNorm(await r.json());
     }catch(e){return null}
   }
 
@@ -28709,26 +28718,71 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(_csDataPushing || _csDataPending) return; // 푸시 진행/대기 중이면 폴링 보류 (race condition 방지)
     const remote=await fetchCsFromRemote();
     if(remote===null) return;
+    if(_cs_editingItem || _cs_memoEditing || _csDataPushing || _csDataPending) return;   // 받는 사이 시작한 편집 · 저장
     const json=JSON.stringify(remote);
+    // 방금 올린 내용이 CDN(5분 캐시)에 아직 없으면 옛 파일을 받아들이지 않는다 — 저장 직후 내용이 되돌아가고, 거기서 고치면 영구 소실
+    const snap=_csPushedGet();
+    if(snap){
+      if(_whtHash(json)!==snap.hash) return;
+      _csPushedClear();
+    }
+    _csSaveBase(remote);
     if(json===_cs_lastHash) return;
-    _cs_lastHash=json;
-    localStorage.setItem(CS_KEY,json);
+    saveCsLocal(remote);
     renderCs();
   }
   window.syncCsFromRemote=syncCsFromRemote;
 
-  /* cs-data push — 업무일지-급 실용 방어
-       · dirty persist  : 미푸시 데이터를 localStorage 에 보관 → 새로고침 후 자동 재전송
-       · sha 기반 PUT   : 409 conflict 시 remote 다시 읽어 재전송
-       · 지수 백오프    : 네트워크/서버 오류 시 최대 30초 간격 자동 재시도
-       · throw catch    : 예외 흡수 후 dirty 유지
+  /* cs-data push — 파일 통째로 올리면 아직 못 받은 남의 FAQ · 메모가 사라진다 → 서버 최신본과 합쳐서 올린다.
+       · FAQ 는 행 _id 로, 메모는 "내가 base 에서 바꿨을 때만" 내 값 (3-way)
+       · 미전송 내용은 base 와 함께 localStorage 에 보관 → 새로고침 후 자동 재전송
+       · 409 면 최신본을 다시 읽어 다시 합침 · 지수 백오프
+       · 뷰어 계정도 저장 (화면이 "누구나 편집 가능") — 예전엔 프록시가 403 으로 거부해 그 브라우저에만 남았다
      참조 스킬: ~/.claude/skills/robust-storage-sync/SKILL.md */
   const CS_DATA_DIRTY_KEY = 'brightbeed_cs_data_dirty_v1';
-  let _csDataPending = null;
+  const CS_BASE_KEY = 'brightbeed_cs_base_v1';
+  const CS_PUSHED_KEY = 'brightbeed_cs_pushed_v1';
+  const CS_CONFIRM_MS = 6*60*1000;   // raw 는 max-age=300
+  const CS_STALE_PENDING_MS = 24*60*60*1000;
+  let _csDataPending = null;   // {mine, base, seq, ts}
   let _csDataPushing = false;
   let _csDataPushAgain = false;
   let _csDataPushTimer = null;
   let _csDataPushFailStreak = 0;
+  function _csLoadBase(){ try{ return JSON.parse(localStorage.getItem(CS_BASE_KEY)||'null'); }catch(e){ return null; } }
+  function _csSaveBase(b){ try{ localStorage.setItem(CS_BASE_KEY, JSON.stringify(b)); }catch(e){} }
+  function _csPushedGet(){
+    try{
+      const s=JSON.parse(localStorage.getItem(CS_PUSHED_KEY)||'null');
+      return (s && Date.now()-s.ts<=CS_CONFIRM_MS) ? s : null;
+    }catch(e){ return null; }
+  }
+  function _csPushedSet(json){ try{ localStorage.setItem(CS_PUSHED_KEY, JSON.stringify({hash:_whtHash(json), ts:Date.now()})); }catch(e){} }
+  function _csPushedClear(){ try{ localStorage.removeItem(CS_PUSHED_KEY); }catch(e){} }
+  function _csMerge(mine,theirs,base,stale){
+    const bFaqs=(base&&base.faqs)||[];
+    const mBy=new Map(mine.faqs.map(x=>[x._id,x])), tBy=new Map(theirs.faqs.map(x=>[x._id,x])), bBy=new Map(bFaqs.map(x=>[x._id,x]));
+    const fresh=[], rest=[], kept=[];
+    mine.faqs.forEach(m=>{
+      if(tBy.has(m._id)) return;
+      const b=bBy.get(m._id);
+      if(!b) fresh.push(m);                                    // 내 새 항목
+      else if(_csCanon(m)!==_csCanon(b)) kept.push(m);          // 남이 지웠어도 내가 고쳤으면 살림
+    });
+    theirs.faqs.forEach(t=>{
+      const m=mBy.get(t._id), b=bBy.get(t._id);
+      if(m){ rest.push(b && _csCanon(m)===_csCanon(b) ? t : m); return; }
+      if(b && _csCanon(t)===_csCanon(b)) return;                // 내가 지웠고 남이 안 고침
+      rest.push(t);
+    });
+    let memo=theirs.memo;
+    if(base){ if(mine.memo!==base.memo) memo=mine.memo; }
+    else if(mine.memo && mine.memo!==theirs.memo){
+      // 기준이 없는 옛 대기열 — 며칠 전 메모로 덮지 않고 뒤에 붙인다
+      memo = stale && theirs.memo ? `${theirs.memo}\n\n[이전에 못 보낸 메모]\n${mine.memo}` : mine.memo;
+    }
+    return {faqs:fresh.concat(rest,kept), memo, updatedAt:new Date().toISOString()};
+  }
   function _csDataPersistDirty(){
     try{
       if(_csDataPending) localStorage.setItem(CS_DATA_DIRTY_KEY, JSON.stringify(_csDataPending));
@@ -28738,7 +28792,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _csDataRestoreDirty(){
     try{
       const raw = localStorage.getItem(CS_DATA_DIRTY_KEY);
-      if(raw){ _csDataPending = JSON.parse(raw); _csDataSchedulePush(); }
+      if(!raw) return;
+      const p = JSON.parse(raw);
+      // 옛 방식(전체 사본)은 기준이 없다 — 합칠 때 남의 내용을 지우지 않는다
+      _csDataPending = p && p.mine ? p : {mine:_csNorm(p), base:null, seq:1, ts:Date.parse(p&&p.updatedAt)||0};
+      _csDataSchedulePush();
     }catch(e){}
   }
   function _csDataSchedulePush(){
@@ -28752,26 +28810,55 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(_csDataPushing){ _csDataPushAgain = true; return true; }
     _csDataPushing = true;
     try{
-      const data = _csDataPending;
-      let ok = false, lastReason = null;
+      const p = _csDataPending;
+      const seq = p.seq, mine = JSON.parse(JSON.stringify(p.mine));
+      const stale = Date.now()-(p.ts||0) > CS_STALE_PENDING_MS;
+      let ok = false, lastReason = null, merged = null;
       for(let attempt=0; attempt<3; attempt++){
         try{
           const file = await ghGetFile(CS_API);
           if(file.error){ lastReason = file.error; break; }
-          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-          const r = await ghPut(CS_API, b64, 'chore(cs): CS 데이터 갱신', {noConflictRetry:true, sha:file.sha||null});
+          if(file.sha && !file.text){ lastReason = 'read_empty'; break; }
+          let theirs = csDefault();
+          if(file.text){
+            try{ theirs = _csNorm(JSON.parse(file.text)); }
+            catch(e){ lastReason = 'parse'; break; }   // 깨진 파일로 합치지 않는다
+          }
+          merged = _csMerge(mine, theirs, p.base, stale);
+          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
+          const r = await ghPut(CS_API, b64, 'chore(cs): CS 데이터 갱신', {forceMaster:true, noConflictRetry:true, sha:file.sha||null});
           if(r.ok){ ok = true; break; }
           lastReason = r.reason;
           if(r.reason !== 'conflict') break;
         } catch(e){ lastReason = 'throw'; break; }
       }
       if(ok){
-        _csDataPending = null; _csDataPersistDirty();
         _csDataPushFailStreak = 0;
+        _csPushedSet(JSON.stringify(merged));
+        const cur = _csDataPending;
+        if(cur.seq !== seq){
+          // 보내는 사이 또 고침 — 대기열을 지우면 그 글자가 사라진다. 이번 결과 위에 지금 내용을 얹어 다시 보낸다
+          cur.mine = _csMerge(cur.mine, merged, mine, false);
+          cur.base = merged;
+          _csSaveBase(merged);
+          _csDataPersistDirty();
+          _csDataPushAgain = true;
+          return true;
+        }
+        _csDataPending = null;
+        _csDataPersistDirty();
+        // FAQ 편집은 행 번호로 묶여 있어 입력 중엔 목록을 바꾸지 않는다. 기준도 그대로 둬야 다음 저장 때 남의 행을 "내가 지운 것"으로 안 본다
+        if(!_cs_editingItem && !_cs_memoEditing){
+          _csSaveBase(merged);
+          saveCsLocal(merged);
+          renderCs();
+        }
+        _csMemoSetStatus('saved');
         return true;
       }
       if(lastReason==='auth'){ try{ toast('⚠ CS 동기화 인증 실패 · 재시도 중','err'); }catch(e){} }
       else { try{ toast(`⚠ CS 저장 대기 · 재시도 중 (${lastReason||'network'})`,'warn'); }catch(e){} }
+      _csMemoSetStatus('error');
       _csDataPushFailStreak = Math.min(_csDataPushFailStreak+1, 6);
       clearTimeout(_csDataPushTimer);
       _csDataPushTimer = setTimeout(_csDataPushInner, Math.min(1000 * 2**(_csDataPushFailStreak-1), 30000));
@@ -28784,17 +28871,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function persistCs(d){
     d.updatedAt = new Date().toISOString();
     saveCsLocal(d);
-    _csDataPending = d;
+    const prev = _csDataPending;
+    _csDataPending = {mine:d, base:prev?prev.base:_csLoadBase(), seq:(prev?prev.seq:0)+1, ts:Date.now()};
     _csDataPersistDirty();
     _csDataSchedulePush();
-    // 하위 호환용 chain (기존 호출부에서 await 함)
-    return Promise.resolve();
-  }
-  // 하위 호환 — 외부에서 직접 호출하는 경우 pending 큐로 흘림
-  async function pushCsToRemote(d){
-    _csDataPending = d;
-    _csDataPersistDirty();
-    return await _csDataPushInner().then(ok => ({ok, reason: ok ? null : 'network'}));
   }
   _csDataRestoreDirty();
   window.addEventListener('beforeunload', (e)=>{
@@ -28803,6 +28883,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     e.returnValue = '';
   });
   window.addEventListener('pagehide', ()=>{
+    // 메모를 치고 곧바로 창을 닫는 경우 — 대기 중인 입력부터 저장
+    if(_cs_memoDebounce){ clearTimeout(_cs_memoDebounce); _cs_memoDebounce=null; _csMemoPushCurrent(); }
     if(_csDataPending){ clearTimeout(_csDataPushTimer); _csDataPushInner(); }
   });
 
@@ -28811,6 +28893,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function renderCsFaqs(){
     const root=document.getElementById('csFaqList');
     if(!root) return;
+    // 편집 중 다시 그려도(화면 재진입) 입력 중인 글자를 유지
+    const keepQ=_cs_editingItem?document.getElementById('csEditQ')?.value:undefined;
+    const keepA=_cs_editingItem?document.getElementById('csEditA')?.value:undefined;
     const d=loadCs();
     if(d.faqs.length===0){
       root.innerHTML='<div class="cs-empty">아직 등록된 질문이 없습니다</div>';
@@ -28838,6 +28923,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
       </div>`;
     }).join('');
+    if(keepQ!==undefined){ const q=document.getElementById('csEditQ'); if(q) q.value=keepQ; }
+    if(keepA!==undefined){ const a=document.getElementById('csEditA'); if(a) a.value=keepA; }
   }
 
   function renderCsMemo(){
@@ -28854,14 +28941,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!s) return;
     s.dataset.state=state;
     if(state==='saving')     s.textContent='● 저장 중…';
-    else if(state==='error') s.textContent='⚠ 저장 실패 · 재시도';
+    else if(state==='error') s.textContent='⚠ 저장 대기 · 자동으로 다시 보내요';
     else                     s.textContent='✓ 저장됨';
   }
 
   function addCsItem(){
     if(_cs_editingItem){toast('편집 중인 항목을 먼저 저장/취소해주세요','err');return}
     const d=loadCs();
-    d.faqs.unshift({q:'',a:''});
+    d.faqs.unshift({_id:'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),q:'',a:''});
     saveCsLocal(d);
     _cs_editingItem={idx:0,isNew:true};
     renderCsFaqs();
@@ -28887,7 +28974,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       renderCsFaqs();
       return;
     }
-    d.faqs[idx]={q,a};
+    d.faqs[idx]=Object.assign({},d.faqs[idx],{q,a});
     _cs_editingItem=null;
     await persistCs(d);
     renderCsFaqs();
@@ -28945,8 +29032,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const d=loadCs();
     if((d.memo||'')===newMemo){ _csMemoSetStatus('saved'); return; }
     d.memo=newMemo;
-    _csMemoSetStatus('saving');
-    try{ await persistCs(d); _csMemoSetStatus('saved'); }
+    _csMemoSetStatus('saving');   // '저장됨'은 서버 응답 뒤에 (_csDataPushInner)
+    try{ await persistCs(d); }
     catch(e){ _csMemoSetStatus('error'); }
   }
   function csMemoOnFocus(){
@@ -29117,27 +29204,35 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _mdeSaveBase(events){
     try{ localStorage.setItem(MD_EVENTS_BASE_KEY, JSON.stringify({events:events||[], ts:Date.now()})); }catch(e){}
   }
+  /* 3-way — 한쪽만 고쳤으면 고친 쪽, 양쪽 다 고쳤으면 updatedAt 큰 쪽.
+     서버에 없고 내가 안 고친 일정은 남이 지운 것 → 되살리지 않는다 (옛 사본 · 옛 대기열이 지운 일정을 되살리던 문제) */
   function _mdMergeEvents(mine, theirs, base, tombIds){
     const out = new Map();
-    const baseIds = new Set((Array.isArray(base)?base:[]).map(e=>e && e.id).filter(Boolean));
+    const baseById = new Map((Array.isArray(base)?base:[]).filter(e=>e&&e.id).map(e=>[e.id,e]));
+    const canon = e=>JSON.stringify(Object.keys(e||{}).sort().map(k=>[k,e[k]]));
+    const theirIds = new Set((Array.isArray(theirs)?theirs:[]).map(e=>e&&e.id).filter(Boolean));
     (Array.isArray(mine)?mine:[]).forEach(e=>{
       if(!e || !e.id) return;
       if(tombIds && tombIds.has(e.id)) return;
+      const be = baseById.get(e.id);
+      if(!theirIds.has(e.id) && be && canon(be)===canon(e)) return;   // 남이 지웠고 내가 안 고침
       out.set(e.id, e);
     });
     (Array.isArray(theirs)?theirs:[]).forEach(e=>{
       if(!e || !e.id) return;
       if(tombIds && tombIds.has(e.id)) return;
+      const be = baseById.get(e.id);
       const existing = out.get(e.id);
       if(existing){
-        // 같은 id 양쪽에 → updatedAt 큰 쪽 (없으면 mine 유지)
+        if(be && canon(be)===canon(existing)){ out.set(e.id, e); return; }   // 내가 안 고침 → 서버 것
+        if(be && canon(be)===canon(e)) return;                                // 서버가 안 바뀜 → 내 것
+        // 양쪽 다 고침 → updatedAt 큰 쪽 (없으면 mine 유지)
         const mt = Number(existing.updatedAt||0), tt = Number(e.updatedAt||0);
         if(tt > mt) out.set(e.id, e);
         return;
       }
-      // base 에 있었는데 mine 에 없음 → mine 이 지운 것 → 부활 X
-      if(baseIds.has(e.id)) return;
-      // base 에도 없고 mine 에도 없음 → 다른 사람 신규 → 살림
+      // base 에 있었는데 mine 에 없음 → 내가 지운 것 (그 뒤 남이 고쳤으면 살림)
+      if(be && canon(be)===canon(e)) return;
       out.set(e.id, e);
     });
     return Array.from(out.values());
@@ -29153,9 +29248,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function saveMdEventsLocal(events){
     const meta={events, updatedAt:Date.now()};
     const j=JSON.stringify(meta);
-    localStorage.setItem(MD_EVENTS_KEY, j);
+    _mdSetLocal(j);
     _mdCal_lastHash=j;
     _mdCal.events=events;
+  }
+  // 로컬은 캐시 — 꽉 차서 못 써도 서버 저장을 막지 않는다
+  function _mdSetLocal(j){
+    try{ localStorage.setItem(MD_EVENTS_KEY, j); }
+    catch(e){
+      if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace();
+      try{ localStorage.setItem(MD_EVENTS_KEY, j); }catch(e2){}
+    }
   }
 
   async function fetchMdEventsFromRemote(){
@@ -29203,7 +29306,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const j=JSON.stringify(nextMeta);
     if(j===_mdCal_lastHash) return;
     _mdCal_lastHash=j;
-    localStorage.setItem(MD_EVENTS_KEY, j);
+    _mdSetLocal(j);
     _mdCal.events=mergedEvents;
     renderMdCal();
   }
@@ -29679,7 +29782,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
   }
 
+  let _mdCalModalSeq = 0;   // 모달을 열 때마다 증가 — 저장 성공이 그 뒤에 연 모달을 닫지 않게
   function mdCalOpenAdd(presetIso){
+    _mdCalModalSeq++;
     _mdCal_editingId=null;
     const today=_mdIso(new Date());
     const date=presetIso || today;
@@ -29699,6 +29804,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   function mdCalOpenEdit(id){
+    _mdCalModalSeq++;
     const ev=(_mdCal.events||[]).find(e=>e.id===id);
     if(!ev) return;
     _mdCal_editingId=id;
@@ -29747,7 +29853,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         createdAt:Date.now(), updatedAt:Date.now()
       });
     }
-    await _mdPersist(events, _mdCal_editingId?'chore: MD 기획전 수정':'chore: MD 기획전 추가');
+    await _mdPersist(events, _mdCal_editingId?'chore: MD 기획전 수정':'chore: MD 기획전 추가', _mdCalModalSeq);
   }
 
   async function mdCalDeleteEvent(){
@@ -29756,7 +29862,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!(await ensureGhToken())){toast('서버 프록시 연결 실패','err');return}
     _mdeAddTomb(_mdCal_editingId);  // CDN lag/동시편집 상황에서도 부활 안 되도록 24h tombstone
     const events=(_mdCal.events||[]).filter(e=>e.id!==_mdCal_editingId);
-    await _mdPersist(events, 'chore: MD 기획전 삭제');
+    await _mdPersist(events, 'chore: MD 기획전 삭제', _mdCalModalSeq);
   }
 
   /* md-events push — 업무일지-급 5중 방어
@@ -29795,20 +29901,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(_mdePushing){ _mdePushAgain = true; return true; }
     _mdePushing = true;
     try{
-      const { msg } = _mdePending;
-      const mine = Array.isArray(_mdePending.events) ? _mdePending.events : [];
+      const p = _mdePending, { msg } = p, seq = p.seq;
+      const mine = JSON.parse(JSON.stringify(Array.isArray(p.events) ? p.events : []));   // 보낼 때의 사본 — 전송 중 체크가 같은 객체를 바꾼다
       let ok = false, lastReason = null, finalEvents = mine;
       for(let attempt=0; attempt<3; attempt++){
         try{
           const file = await ghGetFile(MD_EVENTS_API);
           if(file.error){ lastReason = file.error; break; }
           // remote 파싱 (contents API 의 base64 디코드 결과가 file.text)
+          if(file.sha && !file.text){ lastReason = 'read_empty'; break; }
           let remoteEvents = [];
           if(file.text){
             try{
               const parsed = JSON.parse(file.text);
               if(parsed && Array.isArray(parsed.events)) remoteEvents = parsed.events;
-            }catch(e){ /* 깨진 응답 → 빈 remote 로 취급 (남 데이터 통째 덮지 않도록 아래 merge 에 맡김) */ }
+            }catch(e){ lastReason = 'parse'; break; }   // 못 읽은 걸 빈 파일로 보면 일정이 지워진다
           }
           const tombs = _mdePurgeTombs();
           const tombIds = new Set(Object.keys(tombs));
@@ -29824,16 +29931,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         } catch(e){ lastReason = 'throw'; break; }
       }
       if(ok){
-        _mdePending = null; _mdePersistDirty();
         _mdePushFailStreak = 0;
-        saveMdEventsLocal(finalEvents);
         _mdeSaveBase(finalEvents);   // 방금 올린 상태 = 다음 병합의 base
         _mdLastPutAt = Date.now();
-        try{ mdCalCloseModal(); renderMdCal(); toast('✓ 저장 완료','ok'); }catch(e){}
+        const cur = _mdePending;
+        if(cur.seq !== seq){
+          // 보내는 사이 또 고침 (체크를 연달아 누른 경우 등) — 대기열을 지우면 그 편집이 안 올라간다
+          cur.events = _mdMergeEvents(cur.events, finalEvents, mine, new Set(Object.keys(_mdePurgeTombs())));
+          _mdePersistDirty();
+          saveMdEventsLocal(cur.events);
+          _mdePushAgain = true;
+          try{ renderMdCal(); }catch(e){}
+          return true;
+        }
+        _mdePending = null; _mdePersistDirty();
+        saveMdEventsLocal(finalEvents);
+        // 이 모달의 저장으로 시작한 전송일 때만 닫는다 — 체크를 누르고 다른 일정을 쓰는 중이면 입력이 사라진다
+        try{ if(p.modalSeq && p.modalSeq===_mdCalModalSeq) mdCalCloseModal(); renderMdCal(); toast('✓ 저장 완료','ok'); }catch(e){}
         return true;
       }
       if(lastReason==='auth'){ try{ toast('⚠ GitHub 토큰 인증 실패 · 재시도 중','err'); }catch(e){} }
-      else if(lastReason==='too_large'){ try{ toast('⚠ 일정 데이터가 너무 큽니다','err'); }catch(e){} _mdePending=null; _mdePersistDirty(); return false; }
       else { try{ toast(`⚠ 저장 대기 · 재시도 중 (${lastReason||'network'})`,'warn'); }catch(e){} }
       _mdePushFailStreak = Math.min(_mdePushFailStreak+1, 6);
       clearTimeout(_mdePushTimer);
@@ -29844,8 +29961,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(_mdePushAgain){ _mdePushAgain = false; _mdeSchedulePush(); }
     }
   }
-  async function _mdPersist(events, msg){
-    _mdePending = { events, msg: msg || 'chore: MD 기획전 갱신' };
+  async function _mdPersist(events, msg, modalSeq){
+    _mdePending = { events, msg: msg || 'chore: MD 기획전 갱신', seq:(_mdePending&&_mdePending.seq||0)+1, modalSeq:modalSeq||0 };
     _mdePersistDirty();
     try{ toast('일정 저장 중…','ok'); }catch(e){}
     // 로컬은 즉시 반영 (뷰 반응성)
@@ -29865,19 +29982,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== 기획전 정상확인 체크 (단일 토글) =====
      ev.checked (boolean) — 좌측 버튼 클릭 시 토글, remote 자동 저장. */
-  let _mdChk_saveTimer=null;
   async function mdCalToggleCheck(id){
     const events=_mdCal.events||[];
     const ev=events.find(e=>e.id===id);
     if(!ev) return;
     ev.checked = !ev.checked;
-    if(_mdChk_saveTimer) clearTimeout(_mdChk_saveTimer);
-    _mdChk_saveTimer=setTimeout(async ()=>{
-      _mdChk_saveTimer=null;
-      // 별도 경로 없이 _mdPersist 재사용 → dirty persist + sha + 재시도 + throw catch 통일
-      if(!(await ensureGhToken())) return;
-      await _mdPersist(events, 'chore: MD 기획전 정상확인 토글');
-    }, 800);
+    ev.updatedAt = Date.now();   // 안 올리면 옛 사본을 가진 PC 의 저장에 체크가 풀린다
+    // 바로 대기열에 남긴다 — 체크하고 창을 닫아도 다음 접속 때 재전송 (연달아 누르면 묶어서 전송)
+    _mdePending = {events, msg:'chore: MD 기획전 정상확인 토글', seq:(_mdePending&&_mdePending.seq||0)+1, modalSeq:(_mdePending&&_mdePending.modalSeq)||0};
+    _mdePersistDirty();
+    saveMdEventsLocal(events);
+    _mdeSchedulePush();
   }
   window.mdCalToggleCheck=mdCalToggleCheck;
 
