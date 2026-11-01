@@ -9707,6 +9707,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .wht-archive-chip-count,.wht-pane-title-sub,.brand-plat-pill,.pill-camps,.kd-section-sub,.kd-ord-meta,.kd-status,
     .dcs-restore-btn,.dcs-hide-diary,.dcs-prev-date,.dcs-sec-title,.dcs-sec-title-count,.dcs-team,
     .leave-cal-weekdays span,.leave-cal-bar,.fx-summary-label,.fx-label,.fx-hint,.cec-cal-ev,.nt-badge,.lsb-ph-n,
+    .sixstock-badge,.sixa-parent-tag,.brep-chip,.brep-kpi-label,.brep-kpi-delta,.brep-card-note,.brep-stamp,.brep-feedback-head,.brep-optline,.brep-hint,.pc-product-table thead th,
     #ctEditCount,#diaryNotifBtn,#leaveRecentMeta,#signageUpdated,#bdgImgReset,#igImgReset,#igSelSizeVal,#ngDbCount{font-size:11px}
   }
   @media (max-width:420px){
@@ -9723,7 +9724,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .ng-action-btn,.ng-builder-copy,.pc-btn,.pc-color-reset,.kd-refresh-btn,#stratRefreshBtn,#sixStockRefreshAllBtn,
     #ctRefreshBtn,#ctEditBtn,.cs-add-btn,.cs-act-copy,.leave-cal-today,.leave-toggle,#leaveEditBtn,#leaveRecentMoreBtn,
     .dcs-hide-diary,.dcs-archive-btn,.dcs-restore-btn,.dcs-prev-carry,.ar-link,.bdg-corner,#bdgWordEdit,#bdgImgReset,
-    #diaryTodayBtn,#diaryNotifBtn,.signage-brand-pill{min-height:36px}
+    #diaryTodayBtn,#diaryNotifBtn,.signage-brand-pill,.po-section-meta .btn,.sixa-link,.sixstock-sec-refresh{min-height:36px}
+    .diary-hidden-chip button{min-height:30px;padding:4px 8px}
     .wr-input,#diaryDate,#credSearch,#qtSearch,#arSearch,#arSort,#stratDate,#ctSortSel,#sixStockSearch,
     #bestRangeStart,#bestRangeEnd,.pc-tier-input{min-height:36px}
     /* 아이콘 버튼 */
@@ -12784,7 +12786,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         opts=Object.assign({},init,{keepalive:true});
       }
       const done=ok=>{ inflight--; keepaliveChars-=held; if(inflight===0) show(ok?'saved':'fail'); };
-      return realFetch(input,opts).then(r=>{ done(r.ok||r.status===409); return r; },e=>{ done(false); throw e; });
+      // keepalive 를 못 받는 브라우저 대비 — 실패하면 일반 요청으로 한 번 더
+      const send=held?realFetch(input,opts).catch(()=>realFetch(input,init)):realFetch(input,opts);
+      return send.then(r=>{ done(r.ok||r.status===409); return r; },e=>{ done(false); throw e; });
     };
     window.addEventListener('beforeunload',e=>{ if(inflight>0){ e.preventDefault(); e.returnValue=''; } });
   })();
@@ -39657,6 +39661,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const row=x.d.values[x.r]||[];
     for(let c=0;c<row.length;c++){
       if(c===x.c||String(row[c]??'')==='') continue;
+      if(x.d.f&&x.d.f[x.r+','+c]) continue;   // 수식 칸은 값이 저절로 바뀐다
       if(_mdsQueue().some(e=>e.tk===x.tk&&e.r===x.r&&e.c===c)) continue;
       return {c,v:String(row[c])};
     }
