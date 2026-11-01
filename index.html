@@ -3298,6 +3298,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== 원천세 신고 · 정산 (벤더팀 최하단, 조혜인+대표 전용) ===== */
   .wht-section{margin-top:18px}
+  .wht-locked .wht-pane{pointer-events:none;opacity:.45}
   .wht-body{padding:14px 18px 18px}
   .wht-head-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .wht-month-nav{
@@ -14837,6 +14838,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof cecBootSync==='function') cecBootSync().catch(()=>{});
     // 고정비용 캘린더 Supabase 동기화 — 브라우저에 남은 항목 올리기 + 못 보낸 변경 재전송 (화면에 안 들어와도)
     if(typeof fxBootSync==='function') fxBootSync().catch(()=>{});
+    // 원천세 — 지난번에 못 보낸 내용 재전송 (벤더 탭에 안 들어와도)
+    if(typeof whtBootFlush==='function') whtBootFlush();
     // 에이전트 오피스 실시간 인원 표시 (홈 카드)
     if(typeof loadAgentsMini==='function'){ loadAgentsMini(); setInterval(loadAgentsMini, 30000); }
   }
@@ -21077,11 +21080,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      · 요청/주간/월간 = 전부   · 한 일 = 최근 DIARY_SCOPE_DAYS 일 (그보다 옛 날짜는 열 때 따로) */
   async function _diaryFetchAllRows(){
     const [plans, tasks] = await Promise.all([
-      _diarySbGet(`select=*&deleted_at=is.null&kind=neq.task&order=updated_at.asc&limit=5000`),
-      _diarySbGet(`select=*&deleted_at=is.null&kind=eq.task&day=gte.${_diaryScopeStart()}&order=updated_at.asc&limit=5000`),
+      _diarySbGetAll(`select=*&deleted_at=is.null&kind=neq.task`),
+      _diarySbGetAll(`select=*&deleted_at=is.null&kind=eq.task&day=gte.${_diaryScopeStart()}`),
     ]);
     if(!plans || !tasks) return null;      // 하나라도 실패하면 반영하지 않는다 (반쪽 데이터로 덮어쓰기 방지)
-    return plans.concat(tasks);
+    return plans.concat(tasks).sort((a,b)=>String(a.updated_at||'').localeCompare(String(b.updated_at||'')));
+  }
+  /* 서버는 limit 을 얼마로 줘도 한 번에 1000줄까지만 준다 (Supabase Max rows). 한 일이 1000줄을 넘기자(2026-10-30)
+     updated_at 오름차순으로 받던 조회가 최신 줄부터 잘려서, 새로고침하면 방금 쓴 줄이 화면에서 사라졌다.
+     → 끝까지 이어서 받는다. 순서는 수정해도 안 바뀌는 id 로 (updated_at 순이면 받는 사이 고친 줄이 뒤로 가며 다른 줄을 건너뛴다). */
+  const DIARY_SB_PAGE = 1000;
+  async function _diarySbGetAll(query){
+    const byId = new Map();
+    for(let offset = 0; ; offset += DIARY_SB_PAGE){
+      const page = await _diarySbGet(`${query}&order=id.asc&limit=${DIARY_SB_PAGE}&offset=${offset}`);
+      if(!page) return null;
+      page.forEach(r=>byId.set(r.id, r));
+      if(page.length < DIARY_SB_PAGE) return Array.from(byId.values());
+    }
   }
   async function _diaryPollRows(){
     if(!_diaryRowsLoaded){          // 첫 조회가 실패했던 경우 — 될 때까지 계속 시도
@@ -32888,7 +32904,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const _whtState = {
     ym:'', data:{withdrawal:[],freelancer:[],invoice:[]},
     loaded:false, loading:false, saving:false, saveTimer:null,
-    bound:false,
+    bound:false, loadGen:0, base:null, baseAt:null, failStreak:0, okToasts:[], stale:false, watching:false,
     archive:null, archiveLoading:false,
     vendors:{withdrawal:[],freelancer:[],invoice:[]},
     vendorsLoaded:false, vendorsLoading:false, vendorUpsertQueue:null,
@@ -32931,6 +32947,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!_whtState.ym) _whtState.ym=_whtToday();
     _whtRenderMonthLabel();
     _whtBindInputs();
+    _whtWatchStart();
     if(!_whtState.loaded && !_whtState.loading) whtLoad();
     if(!_whtState.archive && !_whtState.archiveLoading) _whtLoadArchive();
     if(!_whtState.vendorsLoaded && !_whtState.vendorsLoading) _whtLoadVendors();
@@ -32996,11 +33013,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function whtJumpMonth(ym){
     if(!ym||ym===_whtState.ym){_whtRenderArchive(); return;}
-    _whtState.ym=ym;
-    _whtState.loaded=false;
-    _whtRenderMonthLabel();
-    _whtRenderArchive();
-    whtLoad(true);
+    _whtGoMonth(ym);
   }
   function _whtBumpArchiveCurrent(){
     const cur=_whtState.ym;
@@ -33079,19 +33092,30 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!_whtState.vendorUpsertQueue||!_whtState.vendorUpsertQueue.size) return;
     const me=_whtGetMe();
     const nowIso=new Date().toISOString();
-    const rows=Array.from(_whtState.vendorUpsertQueue.values()).map(v=>{
-      const r=Object.assign({}, v, {last_used_at:nowIso, updated_at:nowIso, updated_by:me});
-      return r;
-    });
+    const entries=Array.from(_whtState.vendorUpsertQueue.entries());
     _whtState.vendorUpsertQueue=new Map();
+    // 필드 구성이 다른 행을 한 번에 보내면 통째로 거절된다 — 한 건씩 보내고, 실패한 건 큐로 되돌려 다시 시도
+    const saved=[];
+    for(const [key,v] of entries){
+      try{
+        const r=await fetch(`${SUPABASE_URL}/rest/v1/wht_vendors?on_conflict=section,name`,{
+          method:'POST', keepalive:true,
+          headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),
+          body:JSON.stringify(Object.assign({}, v, {last_used_at:nowIso, updated_at:nowIso, updated_by:me})),
+        });
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        saved.push(...await r.json());
+      }catch(e){
+        console.warn('vendor upsert failed', e);
+        const q=_whtState.vendorUpsertQueue;
+        q.set(key, Object.assign({}, v, q.get(key)||{}));
+      }
+    }
+    if(_whtState.vendorUpsertQueue.size){
+      if(_whtState.vendorUpsertTimer) clearTimeout(_whtState.vendorUpsertTimer);
+      _whtState.vendorUpsertTimer=setTimeout(_whtVendorFlushUpsert, 15000);
+    }
     try{
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/wht_vendors?on_conflict=section,name`,{
-        method:'POST',
-        headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),
-        body:JSON.stringify(rows),
-      });
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const saved=await r.json();
       // 로컬 상태에 반영 (기존 vendor upsert)
       (saved||[]).forEach(v=>{
         const sec=v.section||'withdrawal';
@@ -33229,6 +33253,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     items[idx].classList.add('is-active');
     items[idx].scrollIntoView({block:'nearest'});
     s.activeIdx=idx;
+    s.navigated=true;
+  }
+  // 화살표로 고르지 않았는데 Tab · Enter 로 첫 후보를 넣으면 비슷한 이름의 다른 업체 계좌가 들어간다 — 이름이 똑같을 때만
+  function _whtSuggestPicked(el,s){
+    const it=s&&s.items[s.activeIdx];
+    if(!it) return null;
+    return (s.navigated || _whtVendorKey(it.name)===_whtVendorKey(el.value)) ? it : null;
   }
   function _whtOnKeyEvt(e){
     const el=e.target;
@@ -33243,20 +33274,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       e.preventDefault(); _whtSuggestNav(-1); return;
     }
     if(e.key==='Enter'){
-      if(s && s.items[s.activeIdx]){
+      const it=_whtSuggestPicked(el,s);
+      if(it){
         e.preventDefault();
-        _whtApplyVendor(el, s.items[s.activeIdx]);
-      }
+        _whtApplyVendor(el, it);
+      }else if(s) _whtCloseSuggest();
       return;
     }
     if(e.key==='Escape'){
       if(s){_whtCloseSuggest();}
       return;
     }
-    if(e.key==='Tab' && s && s.items[s.activeIdx]){
+    if(e.key==='Tab' && s){
       // 탭으로 자동완성 픽 (금액으로 자연스럽게 이동)
-      e.preventDefault();
-      _whtApplyVendor(el, s.items[s.activeIdx]);
+      const it=_whtSuggestPicked(el,s);
+      if(it){
+        e.preventDefault();
+        _whtApplyVendor(el, it);
+      }else _whtCloseSuggest();
     }
   }
   function _whtOnFocusEvt(e){
@@ -33424,42 +33459,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof toast==='function') toast('이름은 비울 수 없습니다','err');
       return;
     }
-    // 이름이 바뀌었으면: 기존 삭제 → 새로 upsert (unique 충돌 방지)
-    const nameChanged=_whtVendorKey(updates.name)!==_whtVendorKey(v.name);
+    // 이름을 바꿔도 PATCH 한 번 — 삭제부터 하면 뒤의 저장이 실패할 때 업체가 통째로 사라진다
     try{
       const nowIso=new Date().toISOString();
       const me=_whtGetMe();
-      if(nameChanged){
-        const delUrl=`${SUPABASE_URL}/rest/v1/wht_vendors?id=eq.${encodeURIComponent(v.id)}`;
-        await fetch(delUrl,{method:'DELETE', headers:_sbHeaders({'Prefer':'return=minimal'})});
-        // 로컬 제거
-        const arr=_whtState.vendors[v.section]||[];
-        const idx=arr.findIndex(x=>x.id===v.id);
-        if(idx>=0) arr.splice(idx,1);
-        // 새로 upsert
-        const body=Object.assign({section:v.section, updated_at:nowIso, updated_by:me}, updates);
-        const r=await fetch(`${SUPABASE_URL}/rest/v1/wht_vendors?on_conflict=section,name`,{
-          method:'POST',
-          headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),
-          body:JSON.stringify(body),
-        });
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        const saved=(await r.json())[0];
-        arr.unshift(saved);
-      } else {
-        const patchUrl=`${SUPABASE_URL}/rest/v1/wht_vendors?id=eq.${encodeURIComponent(v.id)}`;
-        const body=Object.assign({}, updates, {updated_at:nowIso, updated_by:me});
-        const r=await fetch(patchUrl,{
-          method:'PATCH',
-          headers:_sbHeaders({'Prefer':'return=representation'}),
-          body:JSON.stringify(body),
-        });
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        const saved=(await r.json())[0];
-        const arr=_whtState.vendors[v.section]||[];
-        const idx=arr.findIndex(x=>x.id===v.id);
-        if(idx>=0) arr[idx]=saved;
+      const patchUrl=`${SUPABASE_URL}/rest/v1/wht_vendors?id=eq.${encodeURIComponent(v.id)}`;
+      const body=Object.assign({}, updates, {updated_at:nowIso, updated_by:me});
+      const r=await fetch(patchUrl,{
+        method:'PATCH',
+        headers:_sbHeaders({'Prefer':'return=representation'}),
+        body:JSON.stringify(body),
+      });
+      if(r.status===409){
+        if(typeof toast==='function') toast('같은 이름의 업체가 이미 있습니다','err');
+        return;
       }
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const saved=(await r.json())[0];
+      const arr=_whtState.vendors[v.section]||[];
+      const idx=arr.findIndex(x=>x.id===v.id);
+      if(idx>=0) arr[idx]=saved;
       whtVendorRenderList();
       if(typeof toast==='function') toast('✓ 업체 정보 저장','ok');
     }catch(e){
@@ -33714,72 +33733,270 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
   }
 
-  async function whtLoad(force){
-    if(!_whtHasAccess()) return;
-    if(_whtState.loading) return;
-    if(_whtState.loaded && !force) return;
-    _whtState.loading=true;
-    _whtSetStatus('불러오는 중…');
+  /* 원천세 저장 — 달마다 한 행(payload 통째)이라 그냥 쓰면 오래 열어 둔 화면이 남의 입력을 지운다.
+     ① 행마다 _id ② 저장 직전 서버 최신본을 읽어, 불러온 시점(base)과 비교해 행 · 칸 단위로 합침 ③ updated_at 이 그대로일 때만 씀 (경합이면 다시)
+     ④ 못 보낸 내용은 달별로 localStorage 에 남겨 자동 재시도 · 다음 접속 때 재전송 ⑤ 못 읽은 달은 입력을 막음 (빈 표로 덮지 않게).
+     바뀌기 전 내용은 서버 wht_forms_history 에 남는다. */
+  const WHT_PENDING_KEY='brightbeed_wht_pending_v1';
+  const WHT_SECTIONS=['withdrawal','freelancer','invoice'];
+  const _whtEmpty=()=>({withdrawal:[],freelancer:[],invoice:[]});
+  const _whtClone=o=>JSON.parse(JSON.stringify(o));
+  const _whtCanon=r=>JSON.stringify(Object.keys(r||{}).sort().map(k=>[k,r[k]]));
+  const _whtCanonForm=f=>JSON.stringify(WHT_SECTIONS.map(sec=>(f[sec]||[]).map(_whtCanon)));
+  function _whtHash(str){
+    let h=0;
+    for(let i=0;i<str.length;i++) h=(h*31+str.charCodeAt(i))|0;
+    return (h>>>0).toString(36);
+  }
+  function _whtNewRowId(){ return 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function _whtNorm(p){
+    p=p||{};
+    const out={};
+    WHT_SECTIONS.forEach(sec=>{
+      const seen={};
+      out[sec]=(Array.isArray(p[sec])?p[sec]:[]).filter(Boolean).map(r=>{
+        if(r._id) return r;
+        // 옛 행은 내용으로 번호를 만든다 — 어느 PC 에서 읽어도 같은 번호라 합칠 때 같은 행으로 본다
+        const h=_whtHash(_whtCanon(r));
+        seen[h]=(seen[h]||0)+1;
+        return Object.assign({_id:`o${h}_${seen[h]}`}, r);
+      });
+    });
+    return out;
+  }
+  function _whtMergeRow(mine,theirs,base){
+    if(!base) return mine;
+    const out=Object.assign({},theirs);
+    Object.keys(Object.assign({},mine,base)).forEach(k=>{
+      if(JSON.stringify(mine[k])!==JSON.stringify(base[k])) out[k]=mine[k];   // 내가 고친 칸만 내 값
+    });
+    return out;
+  }
+  function _whtMergeForm(mine,theirs,base){
+    const out={};
+    WHT_SECTIONS.forEach(sec=>{
+      const m=mine[sec]||[], t=theirs[sec]||[], b=(base&&base[sec])||[];
+      const mBy=new Map(m.map(r=>[r._id,r])), tBy=new Map(t.map(r=>[r._id,r])), bBy=new Map(b.map(r=>[r._id,r]));
+      const list=[];
+      t.forEach(r=>{
+        const mr=mBy.get(r._id), br=bBy.get(r._id);
+        if(mr){ list.push(_whtMergeRow(mr,r,br)); return; }
+        if(br && _whtCanon(r)===_whtCanon(br)) return;   // 내가 지웠고 남이 안 고침
+        list.push(r);                                     // 남이 새로 넣음 (또는 내가 지웠어도 남이 고침)
+      });
+      m.forEach(r=>{
+        if(tBy.has(r._id)) return;
+        const br=bBy.get(r._id);
+        if(br && _whtCanon(r)===_whtCanon(br)) return;   // 남이 지웠고 내가 안 고침
+        list.push(r);                                     // 내 새 행 (또는 남이 지웠어도 내가 고침)
+      });
+      out[sec]=list;
+    });
+    return out;
+  }
+  let _whtPend=null;   // ym → {mine, base, baseAt, seq}
+  function _whtPendAll(){
+    if(!_whtPend){
+      try{ _whtPend=JSON.parse(localStorage.getItem(WHT_PENDING_KEY)||'{}')||{}; }catch(e){ _whtPend={}; }
+    }
+    return _whtPend;
+  }
+  function _whtPendSave(){
     try{
-      const ym=_whtState.ym||_whtToday();
+      const all=_whtPendAll();
+      if(Object.keys(all).length) localStorage.setItem(WHT_PENDING_KEY, JSON.stringify(all));
+      else localStorage.removeItem(WHT_PENDING_KEY);
+    }catch(e){ /* 저장공간이 꽉 차도 메모리 대기열 · 전송은 계속 */ }
+  }
+  const _whtPendCount=()=>Object.keys(_whtPendAll()).length;
+  function _whtReady(){
+    if(_whtState.loaded) return true;
+    if(typeof toast==='function') toast('아직 이 달을 불러오지 못했습니다. ↻ 로 다시 불러와 주세요','err');
+    return false;
+  }
+  function _whtLock(on){
+    const sec=document.getElementById('whtSection');
+    if(sec) sec.classList.toggle('wht-locked',!!on);
+  }
+  function _whtIsEditing(){
+    const el=document.activeElement;
+    return !!(el && el.closest && el.closest('#whtSection') && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName));
+  }
+  async function whtLoad(force,silent){
+    if(!_whtHasAccess()) return;
+    if(_whtState.loaded && !force) return;
+    const gen=++_whtState.loadGen;
+    const ym=_whtState.ym||_whtToday();
+    _whtState.loading=true;
+    if(!silent) _whtSetStatus('불러오는 중…');
+    try{
       const url=`${SUPABASE_URL}/rest/v1/wht_forms?select=*&period_ym=eq.${encodeURIComponent(ym)}`;
-      const r=await fetch(url,{headers:_sbHeaders(),cache:'no-cache'});
+      const r=await fetch(url,{headers:_sbHeaders(),cache:'no-store'});
       if(!r.ok) throw new Error('HTTP '+r.status);
       const rows=await r.json();
+      if(gen!==_whtState.loadGen) return;   // 그사이 다른 달로 옮겼으면 옛 응답을 버린다
       const row=rows&&rows[0];
-      const p=(row&&row.payload)||{};
-      _whtState.data={
-        withdrawal:Array.isArray(p.withdrawal)?p.withdrawal:[],
-        freelancer:Array.isArray(p.freelancer)?p.freelancer:[],
-        invoice:Array.isArray(p.invoice)?p.invoice:[],
-      };
+      const remote=_whtNorm(row&&row.payload);
+      const pend=_whtPendAll()[ym];
+      // 못 보낸 내용이 있으면 서버 최신본 위에 얹는다
+      _whtState.data=pend?_whtMergeForm(pend.mine,remote,pend.base):_whtClone(remote);
+      _whtState.base=remote;
+      _whtState.baseAt=row?row.updated_at:null;
       _whtState.loaded=true;
+      _whtState.stale=false;
+      _whtLock(false);
       _whtSortPaidLast('withdrawal');
       _whtSortPaidLast('freelancer');
       _whtRenderAll();
       const stamp=row?_whtFmtStamp(row.updated_at):'';
       _whtSetStatus(stamp?`${_whtYmLabel(ym)} · ${stamp} 저장됨`:`${_whtYmLabel(ym)} · 새 폼`);
+      if(pend){
+        _whtState.okToasts=[];
+        _whtQueueSave();
+      }
     }catch(e){
+      if(gen!==_whtState.loadGen) return;
       console.error('whtLoad failed',e);
-      _whtSetStatus('⚠ 로드 실패','err');
+      if(silent) return;
+      _whtState.loaded=false;
+      _whtLock(true);
+      _whtSetStatus('⚠ 불러오기 실패 · 빈 표로 덮지 않게 입력을 막아 뒀습니다. ↻ 로 다시 시도하세요',true);
     }finally{
-      _whtState.loading=false;
+      if(gen===_whtState.loadGen) _whtState.loading=false;
     }
   }
-  function _whtQueueSave(){
-    if(!_whtHasAccess()) return;
+  function _whtQueueSave(okToast){
+    if(!_whtHasAccess()||!_whtState.loaded) return;
+    const ym=_whtState.ym||_whtToday();
+    const all=_whtPendAll();
+    const prev=all[ym];
+    all[ym]={mine:_whtState.data, base:_whtState.base, baseAt:_whtState.baseAt, seq:(prev?prev.seq:0)+1};
+    _whtPendSave();
+    if(okToast) _whtState.okToasts.push(okToast);
     if(_whtState.saveTimer) clearTimeout(_whtState.saveTimer);
     _whtSetStatus('저장 중…');
     _whtState.saveTimer=setTimeout(_whtSave,700);
   }
+  async function _whtPushOne(ym){
+    const all=_whtPendAll();
+    const p=all[ym];
+    if(!p) return;
+    const seq=p.seq, oldBase=p.base, mine=_whtClone(p.mine);
+    const me=_whtGetMe();
+    const api=`${SUPABASE_URL}/rest/v1/wht_forms`;
+    for(let attempt=0; attempt<4; attempt++){
+      const r0=await fetch(`${api}?select=payload,updated_at&period_ym=eq.${encodeURIComponent(ym)}`,{headers:_sbHeaders(),cache:'no-store'});
+      if(!r0.ok) throw new Error('HTTP '+r0.status);
+      const row=(await r0.json())[0]||null;
+      const at=row?row.updated_at:null;
+      const merged=at===p.baseAt?mine:_whtMergeForm(mine,_whtNorm(row&&row.payload),oldBase);
+      const body=JSON.stringify({period_ym:ym, payload:merged, updated_at:new Date().toISOString(), updated_by:me});
+      const w=row
+        ? await fetch(`${api}?period_ym=eq.${encodeURIComponent(ym)}&updated_at=${at?'eq.'+encodeURIComponent(at):'is.null'}`,{method:'PATCH',headers:_sbHeaders({'Prefer':'return=representation'}),body})
+        : await fetch(api,{method:'POST',headers:_sbHeaders({'Prefer':'return=representation'}),body});
+      if(!row && w.status===409) continue;   // 그사이 누가 먼저 만듦
+      if(!w.ok) throw new Error('HTTP '+w.status);
+      const saved=(await w.json())[0];
+      if(!saved) continue;                   // 그사이 누가 먼저 저장함 — 최신본으로 다시 합침
+      const cur=all[ym];
+      const edited=cur&&cur.seq!==seq;
+      const isCur=ym===_whtState.ym&&_whtState.loaded;
+      const foreign=_whtCanonForm(merged)!==_whtCanonForm(mine);
+      if(edited){
+        // 보내는 사이 또 고침 — 대기열은 남기고, 이번에 합친 남의 내용을 잃지 않게 기준을 옛 값으로 둔 채 다시 보낸다
+        cur.baseAt=foreign?p.baseAt:saved.updated_at;
+        if(!foreign) cur.base=merged;
+        if(isCur && !foreign){ _whtState.base=merged; _whtState.baseAt=saved.updated_at; }
+        _whtPendSave();
+        return;
+      }
+      delete all[ym];
+      _whtPendSave();
+      if(isCur){
+        if(foreign && _whtIsEditing()){
+          // 입력 중엔 표를 다시 그리지 않는다 (행 번호가 밀리면 다른 행에 입력됨). 기준을 옛 값으로 두면 다음 저장 때 다시 합쳐지고, 입력이 끝나면 새로 불러온다
+          _whtState.stale=true;
+        }else{
+          _whtState.base=merged;
+          _whtState.baseAt=saved.updated_at;
+          if(foreign){
+            _whtState.data=_whtClone(merged);
+            _whtSortPaidLast('withdrawal');
+            _whtSortPaidLast('freelancer');
+            _whtRenderAll();
+          }
+        }
+      }
+      return;
+    }
+    throw new Error('다른 저장과 계속 겹침');
+  }
   async function _whtSave(){
     if(!_whtHasAccess()) return;
-    if(_whtState.saving){_whtState.saveTimer=setTimeout(_whtSave,500); return;}
+    if(_whtState.saveTimer){ clearTimeout(_whtState.saveTimer); _whtState.saveTimer=null; }
+    if(_whtState.saving){ _whtState.saveTimer=setTimeout(_whtSave,500); return; }
+    const yms=Object.keys(_whtPendAll());
+    if(!yms.length) return;
     _whtState.saving=true;
-    const ym=_whtState.ym||_whtToday();
-    const me=_whtGetMe();
-    try{
-      const body={period_ym:ym, payload:_whtState.data, updated_at:new Date().toISOString(), updated_by:me};
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/wht_forms?on_conflict=period_ym`,{
-        method:'POST',
-        headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
-        body:JSON.stringify(body),
-      });
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      _whtSetStatus(`${_whtYmLabel(ym)} · 방금 저장됨`);
-      _whtBumpArchiveCurrent();
-    }catch(e){
-      console.error('whtSave failed',e);
-      _whtSetStatus('⚠ 저장 실패','err');
-    }finally{
-      _whtState.saving=false;
+    let failed=false;
+    for(const ym of yms){
+      try{ await _whtPushOne(ym); }
+      catch(e){ failed=true; console.error('whtSave failed',ym,e); }
     }
+    _whtState.saving=false;
+    if(failed){
+      _whtState.failStreak=Math.min(_whtState.failStreak+1,6);
+      _whtSetStatus('⚠ 저장 실패 · 자동으로 다시 보내요. 창을 닫아도 이 PC 에 남아 있어요',true);
+      if(_whtState.okToasts.length && typeof toast==='function') toast('서버에 아직 저장되지 않았습니다 — 자동으로 다시 보내는 중','err');
+      _whtState.okToasts=[];
+      _whtState.saveTimer=setTimeout(_whtSave,Math.min(1000*2**(_whtState.failStreak-1),30000));
+      return;
+    }
+    _whtState.failStreak=0;
+    if(_whtPendCount()){ _whtState.saveTimer=setTimeout(_whtSave,300); return; }
+    const ym=_whtState.ym||_whtToday();
+    _whtSetStatus(`${_whtYmLabel(ym)} · 방금 저장됨`);
+    _whtBumpArchiveCurrent();
+    const msgs=_whtState.okToasts; _whtState.okToasts=[];
+    if(typeof toast==='function') msgs.forEach(m=>toast(m,'ok'));
   }
+  // 다른 사람이 저장한 내용 반영 — 입력 중이 아니고 못 보낸 게 없을 때만 새로 읽는다
+  async function _whtCheckRemote(){
+    const sec=document.getElementById('whtSection');
+    if(document.hidden||!sec||sec.hidden||!sec.offsetParent) return;
+    if(!_whtState.loaded||_whtState.loading||_whtState.saving||_whtPendCount()) return;
+    if(_whtIsEditing()) return;
+    const ym=_whtState.ym;
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/wht_forms?select=updated_at&period_ym=eq.${encodeURIComponent(ym)}`,{headers:_sbHeaders(),cache:'no-store'});
+      if(!r.ok) return;
+      const at=((await r.json())[0]||{}).updated_at||null;
+      if(at!==_whtState.baseAt && ym===_whtState.ym && !_whtPendCount() && !_whtIsEditing()) whtLoad(true,true);
+    }catch(e){}
+  }
+  function _whtWatchStart(){
+    if(_whtState.watching) return;
+    _whtState.watching=true;
+    setInterval(_whtCheckRemote,30000);
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ _whtSave(); _whtCheckRemote(); } });
+    window.addEventListener('online',()=>{ _whtSave(); });
+    window.addEventListener('beforeunload',e=>{ if(_whtPendCount()||_whtState.saving){ e.preventDefault(); e.returnValue=''; } });
+    const sec=document.getElementById('whtSection');
+    if(sec) sec.addEventListener('focusout',()=>setTimeout(()=>{ if(_whtState.stale) _whtCheckRemote(); },0));
+  }
+  // 앱 진입 때 — 벤더 탭을 안 열어도 지난번에 못 보낸 내용을 보낸다
+  function whtBootFlush(){
+    if(!_whtHasAccess()||!_whtPendCount()) return;
+    _whtWatchStart();
+    _whtSave();
+  }
+  window.whtBootFlush=whtBootFlush;
   async function whtDeleteMonth(){
     if(!_whtHasAccess()){
       if(typeof toast==='function') toast('접근 권한이 없습니다','err');
       return;
     }
+    if(!_whtReady()) return;
     const ym=_whtState.ym||_whtToday();
     const cnt=_whtCountEntries(_whtState.data);
     if(!confirm(`${_whtYmLabel(ym)} 원천세 데이터를 통째로 삭제할까요?\n\n· 3개 표 합계 ${cnt}건이 사라집니다.\n· 업체 정보(📇)·셀러 정보는 그대로 남습니다.`)) return;
@@ -33792,7 +34009,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const url=`${SUPABASE_URL}/rest/v1/wht_forms?period_ym=eq.${encodeURIComponent(ym)}`;
       const r=await fetch(url,{method:'DELETE', headers:_sbHeaders({'Prefer':'return=minimal'})});
       if(!r.ok) throw new Error('HTTP '+r.status);
-      _whtState.data={withdrawal:[],freelancer:[],invoice:[]};
+      delete _whtPendAll()[ym];
+      _whtPendSave();
+      _whtState.data=_whtEmpty();
+      _whtState.base=_whtEmpty();
+      _whtState.baseAt=null;
       _whtState.archive=(_whtState.archive||[]).filter(a=>a.ym!==ym);
       _whtRenderAll();
       _whtRenderArchive();
@@ -33806,13 +34027,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function whtMonthPrev(){_whtShiftMonth(-1)}
   function whtMonthNext(){_whtShiftMonth(1)}
-  function whtMonthToday(){_whtState.ym=_whtToday(); _whtState.loaded=false; _whtRenderMonthLabel(); whtLoad(true)}
+  function whtMonthToday(){_whtGoMonth(_whtToday())}
   function _whtShiftMonth(delta){
     const {y,m}=_whtParseYm(_whtState.ym||_whtToday());
     const d=new Date(y,(m-1)+delta,1);
-    _whtState.ym=_whtFmtYm(d.getFullYear(),d.getMonth()+1);
+    _whtGoMonth(_whtFmtYm(d.getFullYear(),d.getMonth()+1));
+  }
+  // 못 보낸 내용은 달별 대기열에 있으니 바로 옮겨도 안전. 새 달을 읽을 때까지 표를 비우고 입력을 막아 다른 달 내용이 섞이지 않게 한다
+  function _whtGoMonth(ym){
+    if(_whtPendCount()) _whtSave();
+    _whtState.ym=ym;
     _whtState.loaded=false;
-    _whtRenderMonthLabel();
+    _whtState.data=_whtEmpty();
+    _whtState.base=_whtEmpty();
+    _whtState.baseAt=null;
+    _whtLock(true);
+    _whtRenderAll();
+    _whtRenderArchive();
     whtLoad(true);
   }
   function _whtRenderMonthLabel(){
@@ -33820,8 +34051,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(el) el.textContent=_whtYmLabel(_whtState.ym);
   }
   function whtAddRow(section){
-    if(!WHT_SCHEMA[section]) return;
-    const row={};
+    if(!WHT_SCHEMA[section]||!_whtReady()) return;
+    const row={_id:_whtNewRowId()};
     WHT_SCHEMA[section].fields.forEach(f=>row[f]='');
     const arr=_whtState.data[section]=_whtState.data[section]||[];
     // 송금완료된 행이 아래에 깔려 있으면 그 위(= 미송금 묶음 끝)에 끼워 넣는다
@@ -33837,8 +34068,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     },20);
   }
   function whtDelRow(section,idx){
+    if(!_whtReady()) return;
     const arr=_whtState.data[section]||[];
     if(idx<0||idx>=arr.length) return;
+    const r=arr[idx];
+    const filled=WHT_SCHEMA[section].fields.some(f=>r&&r[f]!=null&&r[f]!==''&&r[f]!==0);
+    if(filled && !confirm(`[${(r&&r.name)||(idx+1)+'행'}] 행을 삭제할까요?`)) return;
     arr.splice(idx,1);
     _whtRenderPane(section);
     _whtQueueSave();
@@ -33984,7 +34219,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   /* 송금완료 토글 — 사업자·개인 출금 / 프리랜서 원천징수. 행마다 따로 누른다. */
   function whtTogglePaid(section,i){
-    if(!_whtHasAccess()) return;
+    if(!_whtHasAccess()||!_whtReady()) return;
     const arr=_whtState.data[section]||[];
     if(i<0||i>=arr.length||!arr[i]) return;
     const r=arr[i];
@@ -33995,12 +34230,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     r.paid_at=on?new Date().toISOString():'';
     _whtSortPaidLast(section);
     _whtRenderPane(section);
-    _whtQueueSave();
-    if(typeof toast==='function') toast(on?'✅ 송금완료로 표시했습니다':'송금완료를 취소했습니다','ok');
+    _whtQueueSave(on?'✅ 송금완료로 표시했습니다':'송금완료를 취소했습니다');
   }
   /* 남은 건 전부 송금완료 — 출금요청서의 [전부 송금완료]와 동일 동작 */
   function whtMarkAllPaid(section){
-    if(!_whtHasAccess()) return;
+    if(!_whtHasAccess()||!_whtReady()) return;
     const remain=_whtSectionRows(section).filter(r=>!r.paid);
     if(!remain.length){
       if(typeof toast==='function') toast('남은 건이 없습니다','err');
@@ -34012,14 +34246,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     remain.forEach(r=>{ r.paid=true; r.paid_by=me; r.paid_at=now; });
     _whtSortPaidLast(section);
     _whtRenderPane(section);
-    _whtQueueSave();
-    if(typeof toast==='function') toast(`✅ ${remain.length}건 송금완료 처리되었습니다`,'ok');
+    _whtQueueSave(`✅ ${remain.length}건 송금완료 처리되었습니다`);
   }
   function _whtOnInputEvt(e){
     const el=e.target;
     if(!el||!el.dataset) return;
     const sec=el.dataset.sec;
     if(!sec||!WHT_SCHEMA[sec]) return;
+    if(!_whtState.loaded) return;
     const i=parseInt(el.dataset.i,10);
     const f=el.dataset.f;
     if(!Number.isFinite(i)||!f) return;
@@ -34093,16 +34327,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _whtState.bound=true;
   }
   async function _whtFlushSave(){
-    if(_whtState.saveTimer){
-      clearTimeout(_whtState.saveTimer);
-      _whtState.saveTimer=null;
-      await _whtSave();
-    }
     let guard=0;
     while(_whtState.saving && guard<60){
       await new Promise(r=>setTimeout(r,100));
       guard++;
     }
+    if(_whtPendCount()) await _whtSave();
   }
   function _whtSectionRows(section){
     const sc=WHT_SCHEMA[section];
