@@ -562,15 +562,15 @@ const CHARACTERS = [
 ];
 const charById = id => CHARACTERS.find(c => c.id === id);
 
-/* sixshop admin 인벤토리 페이지 자동화로 저장 (proxy /sx/update-brand-stock).
-   코페리는 hyein2020 계정 관리 shop 목록에 없어 별도 자격증명 필요 — 우선 조회만 열어둠.
-   아페티는 대시보드가 구글시트를 진실로 보여드리지만 실 판매 재고는 여전히 식스샵 admin 에 있음. */
+/* sixshop admin 인벤토리 페이지 자동화로 저장 (proxy /sx/update-brand-stock) — 옛 식스샵 상점만 된다.
+   클리어타입 · 코페리 · 아페티는 식스샵 프로로 옮겨서 옛 상점에 저장해 봐야 판매 재고가 안 바뀐다 → 저장을 막는다. */
+const PRO_STORE_NOTE = '식스샵 프로로 옮긴 상점이라 옛 식스샵에 저장해도 판매 재고가 바뀌지 않습니다. 식스샵 프로 관리자에서 직접 수정해 주세요.';
 const BRANDS = {
   '6a':{key:'6a', label:'식스에이', writable:true},
-  'ct':{key:'ct', label:'클리어타입', writable:true},
+  'ct':{key:'ct', label:'클리어타입', note:PRO_STORE_NOTE},
   'yar':{key:'yar', label:'야르', writable:true},
-  'kop':{key:'kop', label:'코페리', note:'현재 로그인 계정(hyein2020)에 코페리 관리 권한이 없어 자동 저장은 준비 중입니다. 식스샵 관리자 초대가 완료되면 열립니다.'},
-  'apt':{key:'apt', label:'아페티', writable:true, note:'대시보드 재고는 구글시트가 진실입니다. 식스샵에 저장한 값은 사장님 시트와 어긋날 수 있으니 시트도 함께 확인해 주세요.'},
+  'kop':{key:'kop', label:'코페리', note:PRO_STORE_NOTE},
+  'apt':{key:'apt', label:'아페티', note:PRO_STORE_NOTE},
 };
 const BRAND_WORDS = [
   ['6a', ['식스에이','6a','6thanother','식스어나더','sixa']],
@@ -587,7 +587,7 @@ function loadOverrides(){ try{ return JSON.parse(localStorage.getItem(OVERRIDES_
 function saveOverride(id, changes){
   const o = loadOverrides();
   o[id] = Object.assign(o[id]||{}, changes);
-  localStorage.setItem(OVERRIDES_KEY, JSON.stringify(o));
+  try{ localStorage.setItem(OVERRIDES_KEY, JSON.stringify(o)); }catch(e){}
 }
 (function(){
   const FLAG = 'agents_overrides_md_split_v1';
@@ -1038,11 +1038,14 @@ function renderQuick(c){
   });
 }
 
+// 오래 걸리는 저장 중에 창을 닫거나 다른 직원 창을 열어도 결과가 그 직원 대화에 남게 고정 (submit 이 busy 로 한 번에 하나만 돌림)
+let sayTargetId = null;
 function say(who, text, opts){
-  if(!openCharId) return;
+  const id = sayTargetId || openCharId;
+  if(!id) return;
   const msg = Object.assign({who, text, ts: Date.now()}, opts||{});
-  pushChat(openCharId, msg);
-  appendMsg(msg);
+  pushChat(id, msg);
+  if(id === openCharId) appendMsg(msg);
 }
 function appendMsg(m){
   const body = $('chat-body');
@@ -1112,7 +1115,8 @@ async function doubleCheck(label, verify){
   return true;
 }
 function abort(text, opts){
-  if(sess[openCharId]) sess[openCharId].stage = null;
+  const sid = sayTargetId || openCharId;
+  if(sess[sid]) sess[sid].stage = null;
   say('agent', text, Object.assign({kind:'err'}, opts||{}));
   say('agent', DONE_MSG, {kind:'done'});
 }
@@ -1356,6 +1360,11 @@ async function getCatalog(brand, force){
   if(hit && !force && Date.now() - hit.at < 5*60*1000) return hit.data;
   const j = await api(`/sx/catalog?brand=${brand}`);
   if(j.ok === false) throw new Error(j.error || '카탈로그를 불러오지 못했습니다');
+  // 아페티(구글시트)는 번호가 없다 — 칩 선택이 첫 상품으로 틀어지지 않게 이름을 번호로
+  (j.products||[]).forEach(p => {
+    if(p.productNo == null) p.productNo = p.id ?? p.name;
+    (p.options||[]).forEach(o => { if(o.optionNo == null) o.optionNo = o.label; });
+  });
   catalogCache[brand] = {at: Date.now(), data: j};
   return j;
 }
@@ -1967,6 +1976,8 @@ async function proposeStock(S, amt, cur){
   }
   const label = S.option ? `${S.product.name} / ${S.option.label}` : S.product.name;
   S.stage = 'confirm';
+  S.amt = amt;
+  S.shown = cur;
   const note = BRANDS[S.brand]?.note ? `\n\n※ ${BRANDS[S.brand].note}` : '';
   say('agent', `그럼 이렇게 바꾸겠습니다. 맞나요?\n\n상품: ${label}\n지금: ${stockText(cur)}\n바꿀 값: ${num(target)}개${note}\n\n"응" 이라고만 하셔도 바로 진행합니다.`, {
     chips:[
@@ -1976,37 +1987,62 @@ async function proposeStock(S, amt, cur){
   });
 }
 
+function stockIn(cat, p, o){
+  const p2 = (cat.products||[]).find(x => String(x.productNo) === String(p.productNo));
+  if(!p2) return undefined;
+  return o ? (p2.options||[]).find(x => String(x.optionNo) === String(o.optionNo))?.stock : p2.stock;
+}
 async function commitStock(S){
   if(!S.product || S.target == null){ abort('수정할 내용이 없습니다. 상품과 수량을 다시 알려 주세요.'); return; }
-  const p = S.product, o = S.option, target = S.target;
-  const label = o ? `${p.name} / ${o.label}` : p.name;
-  S.stage = null;
-  say('agent', `알겠습니다. ${BRANDS[S.brand].label} 식스샵에 접속해 "${label}" 재고를 ${num(target)}개로 저장하겠습니다. 30~60초 걸립니다…`);
+  sayTargetId = charById('stock').id;
+  try{
+    const p = S.product, o = S.option;
+    const label = o ? `${p.name} / ${o.label}` : p.name;
+    S.stage = null;
+    // "+50" 은 지금 재고 기준 — 조회 뒤(최대 5분) · 확인을 기다리는 사이 팔린 수량을 옛 값으로 덮지 않게 저장 직전에 다시 본다
+    if(S.amt && S.amt.op !== 'set'){
+      const now = stockIn(await getCatalog(S.brand, true), p, o);
+      if(now === undefined){ abort(`"${label}" 을 다시 찾지 못했습니다. 아무것도 변경하지 않았습니다.`); delete sess[sayTargetId]; return; }
+      if(now !== S.shown){
+        say('agent', `그사이 재고가 ${stockText(S.shown)} → ${stockText(now)} 로 바뀌어서 다시 계산했습니다.`);
+        await proposeStock(S, S.amt, now);
+        return;
+      }
+    }
+    const target = S.target;
+    say('agent', `알겠습니다. ${BRANDS[S.brand].label} 식스샵에 접속해 "${label}" 재고를 ${num(target)}개로 저장하겠습니다. 30~60초 걸립니다…`);
 
-  const upd = {id: String(p.productNo), name: p.name, setStock: target};
-  if(o){ upd.optionNo = String(o.optionNo); upd.optionLabel = o.label; }
+    const upd = {id: String(p.productNo), name: p.name, setStock: target};
+    if(o){ upd.optionNo = String(o.optionNo); upd.optionLabel = o.label; }
 
-  const res = await api('/sx/update-brand-stock', {method:'POST', body:{brand: S.brand, updates:[upd]}});
-  const rows = Array.isArray(res) ? res : (res.results || []);
-  const row = rows[0] || {};
-  if(res.ok === false || row.status === 'error' || row.status === 'skip'){
-    abort(`저장하지 못했습니다: ${row.message || res.error || '알 수 없는 오류'}`);
-    delete sess[charById('stock').id];
-    return;
+    let res = null;
+    try{
+      res = await api('/sx/update-brand-stock', {method:'POST', body:{brand: S.brand, updates:[upd]}});
+    }catch(e){
+      // 응답만 끊긴 것일 수 있다 (서버 스크립트는 계속 돎) — "실패"라고 하면 다시 지시해서 이중 반영되니 실제 값부터 본다
+      say('agent', `⚠️ 응답을 받지 못했습니다 (${e.message}). 저장됐을 수 있어 잠시 뒤 실제 재고를 확인합니다. 그 전에 다시 지시하지 마세요.`, {kind:'err'});
+      await wait(45000);
+    }
+    if(res){
+      const row = (Array.isArray(res) ? res : (res.results || []))[0] || {};
+      if(res.ok === false || row.status === 'error' || row.status === 'skip'){
+        abort(`저장하지 못했습니다: ${row.message || res.error || '알 수 없는 오류'}`);
+        delete sess[sayTargetId];
+        return;
+      }
+      say('agent', `저장 응답: ${row.message || '저장 완료'}`);
+    }
+
+    await doubleCheck(`${label} 재고 재조회`, async () => {
+      const actual = stockIn(await getCatalog(S.brand, true), p, o);
+      if(actual === undefined) return `⚠️ 재조회에서 상품을 찾지 못했습니다. 식스샵에서 직접 확인해 주세요.`;
+      if(actual === target) return `재조회 결과 ${stockText(actual)} — 지시하신 ${num(target)}개와 일치합니다. ✓`;
+      return `⚠️ 재조회 결과 ${stockText(actual)} 로 지시값 ${num(target)}개와 다릅니다. 식스샵에서 직접 확인이 필요합니다.`;
+    });
+    delete sess[sayTargetId];
+  }finally{
+    sayTargetId = null;
   }
-  say('agent', `저장 응답: ${row.message || '저장 완료'}`);
-
-  await doubleCheck(`${label} 재고 재조회`, async () => {
-    const fresh = await getCatalog(S.brand, true);
-    const p2 = (fresh.products||[]).find(x => String(x.productNo) === String(p.productNo));
-    if(!p2) return `⚠️ 재조회에서 상품을 찾지 못했습니다. 식스샵에서 직접 확인해 주세요.`;
-    const actual = o
-      ? ((p2.options||[]).find(x => String(x.optionNo) === String(o.optionNo))?.stock)
-      : p2.stock;
-    if(actual === target) return `재조회 결과 ${stockText(actual)} — 지시하신 ${num(target)}개와 일치합니다. ✓`;
-    return `⚠️ 재조회 결과 ${stockText(actual)} 로 지시값 ${num(target)}개와 다릅니다. 식스샵에서 직접 확인이 필요합니다.`;
-  });
-  delete sess[charById('stock').id];
 }
 
 async function listLowStock(brand){
