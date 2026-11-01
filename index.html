@@ -14840,6 +14840,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof fxBootSync==='function') fxBootSync().catch(()=>{});
     // 원천세 — 지난번에 못 보낸 내용 재전송 (벤더 탭에 안 들어와도)
     if(typeof whtBootFlush==='function') whtBootFlush();
+    // 기획전 계산기 · 배지 문구 — 지난번에 못 보낸 설정 재전송
+    if(typeof kvBootFlush==='function') kvBootFlush();
     // 에이전트 오피스 실시간 인원 표시 (홈 카드)
     if(typeof loadAgentsMini==='function'){ loadAgentsMini(); setInterval(loadAgentsMini, 30000); }
   }
@@ -14857,15 +14859,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   document.getElementById('unlock').onclick=()=>{
     const v=pin.value;
+    // 저장공간이 꽉 차면 setItem 이 throw 해 입장 버튼이 아무 반응도 없었다 → 비우고 다시 쓴다
+    const lsSet=(k,val)=>{
+      try{ localStorage.setItem(k,val); }
+      catch(e){ try{ if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace(); localStorage.setItem(k,val); }catch(e2){} }
+    };
     if(v===PIN_MASTER){
-      localStorage.setItem(KEY,'1');
-      localStorage.setItem(ROLE_KEY,'master');
-      localStorage.setItem(VER_KEY,AUTH_VERSION);
+      lsSet(KEY,'1');
+      lsSet(ROLE_KEY,'master');
+      lsSet(VER_KEY,AUTH_VERSION);
       err.textContent='';show();
     }else if(v===PIN_VIEWER){
-      localStorage.setItem(KEY,'1');
-      localStorage.setItem(ROLE_KEY,'viewer');
-      localStorage.setItem(VER_KEY,AUTH_VERSION);
+      lsSet(KEY,'1');
+      lsSet(ROLE_KEY,'viewer');
+      lsSet(VER_KEY,AUTH_VERSION);
       err.textContent='';show();
     }else{
       err.textContent='접속 코드가 올바르지 않습니다.';
@@ -15213,6 +15220,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     if(id==='viewBadge'){
       if(typeof initBadgeView==='function') initBadgeView();
+      if(typeof bdgPullWords==='function') bdgPullWords();
     }
     if(id==='viewInsta'){
       if(typeof initInstaView==='function') initInstaView();
@@ -15659,12 +15667,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _ctPendingKey(id, optionNo){ return optionNo ? `${id}::${optionNo}` : id; }
   function onCleartypeSortChange(mode){ _ctSortMode = mode || 'default'; renderCleartype(); }
   function toggleCleartypeEdit(){
-    if(_ctEditMode && Object.keys(_ctPending).length>0){
-      sendCleartypeChanges();
-      return;
-    }
-    _ctEditMode = !_ctEditMode;
-    renderCleartype();
+    // 식스샵프로 재고 수정 API 미구현 (조회 전용). 입력을 받아 놓고 저장 때 버리던 편집 모드를 열지 않는다
+    toast('식스샵프로 재고 수정은 아직 준비 중입니다 — 현재는 조회 전용','err');
   }
   async function refreshCleartype(){
     // 식스샵프로 API 직접 재수집 (Playwright 없음, ~1초).
@@ -15700,13 +15704,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(tag) tag.textContent = _ctData.lastUpdated ? '최신화 '+_fmtDateShort(_ctData.lastUpdated) : '⚠ 첫 최신화 필요';
       renderCleartype();
     }catch(e){ if(body) body.innerHTML='<div class="po-empty"><div class="po-empty-text">오류: '+_esc(e.message)+'</div></div>'; }
-  }
-  async function sendCleartypeChanges(){
-    // 식스샵프로 재고 수정 API 미구현 (조회 전용). 사장님 요청 오면 추가.
-    toast('식스샵프로 재고 수정은 아직 준비 중입니다 — 현재는 조회 전용','err');
-    _ctPending = {};
-    _ctEditMode = false;
-    renderCleartype();
   }
   function renderCleartype(){
     if(!_ctData) return;
@@ -35068,6 +35065,150 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     A:{name:'기본', bg:'#ff2e93', fg:'#ffffff', border:null, shadow:true, radius:.16},
   };
   // 배지 문구 프리셋 A~F (앱에서 편집·저장). 기본값은 아래, 사용자 편집분은 localStorage에 저장.
+  /* ===== 도구 설정 서버 보관 (Supabase app_kv) =====
+     localStorage 에만 있으면 다른 PC 에선 기본값으로 계산되고(이익 숫자가 달라지는데 경고도 없다), 브라우저 데이터를 지우면 사라진다.
+     화면은 localStorage 로 바로 동작하고 서버에는 0.6초 뒤 올린다. 서버가 그사이 바뀌었으면 객체의 키 단위로 합친다 (3-way).
+     못 보낸 키는 localStorage 에 남아 자동 재전송 · 다음 접속 때 재전송. 바뀌기 전 값은 서버 row_history 에 남는다. */
+  const KV_URL=`${SUPABASE_URL}/rest/v1/app_kv`;
+  const KV_DIRTY_KEY='brightbeed_kv_dirty_v1';
+  const KV_BASE_PREFIX='brightbeed_kv_base_';
+  const _kv={mem:{}, seq:{}, dirty:null, timer:null, busy:false, fail:0, onChange:{}, bound:false};
+  const _kvIsObj=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+  function _kvDirty(){
+    if(!_kv.dirty){
+      try{ _kv.dirty=JSON.parse(localStorage.getItem(KV_DIRTY_KEY)||'{}')||{}; }catch(e){ _kv.dirty={}; }
+    }
+    return _kv.dirty;
+  }
+  function _kvSaveDirty(){ try{ localStorage.setItem(KV_DIRTY_KEY,JSON.stringify(_kvDirty())); }catch(e){} }
+  function _kvPutLocal(lsKey,value){
+    const j=JSON.stringify(value);
+    try{ localStorage.setItem(lsKey,j); }
+    catch(e){ try{ if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace(); localStorage.setItem(lsKey,j); }catch(e2){} }
+  }
+  function _kvValue(key,lsKey){
+    if(key in _kv.mem) return _kv.mem[key];
+    try{ return JSON.parse(localStorage.getItem(lsKey)||'null'); }catch(e){ return null; }
+  }
+  function _kvLoadBase(key){ try{ return JSON.parse(localStorage.getItem(KV_BASE_PREFIX+key)||'null'); }catch(e){ return null; } }
+  function _kvSaveBase(key,v){ try{ localStorage.setItem(KV_BASE_PREFIX+key,JSON.stringify(v)); }catch(e){} }
+  function _kvBind(){
+    if(_kv.bound) return;
+    _kv.bound=true;
+    window.addEventListener('online',()=>{ _kvFlush(); });
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden) _kvFlush(); });
+    window.addEventListener('beforeunload',e=>{ if(Object.keys(_kvDirty()).length){ e.preventDefault(); e.returnValue=''; } });
+  }
+  function kvSet(key,lsKey,value){
+    _kvBind();
+    _kv.mem[key]=value;
+    _kv.seq[key]=(_kv.seq[key]||0)+1;
+    _kvPutLocal(lsKey,value);
+    _kvDirty()[key]=lsKey;
+    _kvSaveDirty();
+    clearTimeout(_kv.timer);
+    _kv.timer=setTimeout(_kvFlush,600);
+  }
+  function _kvMerge(mine,theirs,base){
+    if(!_kvIsObj(mine)||!_kvIsObj(theirs)) return mine;
+    const out={...theirs}, b=_kvIsObj(base)?base:{};
+    new Set([...Object.keys(mine),...Object.keys(b)]).forEach(k=>{
+      if(JSON.stringify(mine[k])===JSON.stringify(b[k])) return;   // 내가 안 바꾼 칸은 서버 값
+      if(k in mine) out[k]=mine[k]; else delete out[k];
+    });
+    return out;
+  }
+  async function _kvPushOne(key,lsKey){
+    const seq=_kv.seq[key]||0;
+    const mine=JSON.parse(JSON.stringify(_kvValue(key,lsKey)));
+    if(mine==null){ delete _kvDirty()[key]; _kvSaveDirty(); return; }
+    const me=(typeof _diaryGetMe==='function'&&_diaryGetMe())||null;
+    for(let attempt=0; attempt<4; attempt++){
+      const r0=await fetch(`${KV_URL}?select=value,updated_at&key=eq.${encodeURIComponent(key)}`,{headers:_sbHeaders(),cache:'no-store'});
+      if(!r0.ok) throw new Error('HTTP '+r0.status);
+      const row=(await r0.json())[0]||null;
+      const merged=row?_kvMerge(mine,row.value,_kvLoadBase(key)):mine;
+      const body=JSON.stringify({key,value:merged,updated_at:new Date().toISOString(),updated_by:me});
+      const w=row
+        ? await fetch(`${KV_URL}?key=eq.${encodeURIComponent(key)}&updated_at=eq.${encodeURIComponent(row.updated_at)}`,{method:'PATCH',headers:_sbHeaders({'Prefer':'return=representation'}),body})
+        : await fetch(KV_URL,{method:'POST',headers:_sbHeaders({'Prefer':'return=representation'}),body});
+      if(!row&&w.status===409) continue;   // 그사이 누가 먼저 만듦
+      if(!w.ok) throw new Error('HTTP '+w.status);
+      const saved=(await w.json())[0];
+      if(!saved) continue;                  // 그사이 누가 먼저 저장함 — 다시 합침
+      _kvSaveBase(key,merged);
+      if((_kv.seq[key]||0)===seq){
+        delete _kvDirty()[key];
+        _kvSaveDirty();
+        if(JSON.stringify(merged)!==JSON.stringify(mine)){   // 남이 고친 값이 합쳐짐
+          _kv.mem[key]=merged;
+          _kvPutLocal(lsKey,merged);
+          if(_kv.onChange[key]) _kv.onChange[key](merged);
+        }
+      }
+      return;
+    }
+    throw new Error('다른 저장과 계속 겹침');
+  }
+  async function _kvFlush(){
+    clearTimeout(_kv.timer);
+    if(_kv.busy){ _kv.timer=setTimeout(_kvFlush,500); return; }
+    const keys=Object.keys(_kvDirty());
+    if(!keys.length) return;
+    _kv.busy=true;
+    let failed=false;
+    for(const key of keys){
+      try{ await _kvPushOne(key,_kvDirty()[key]); }
+      catch(e){ failed=true; console.warn('[설정 저장 실패]',key,e); }
+    }
+    _kv.busy=false;
+    if(failed){
+      _kv.fail=Math.min(_kv.fail+1,6);
+      if(_kv.fail===3 && typeof toast==='function') toast('설정이 서버에 저장되지 않고 있습니다. 이 PC 에는 남아 있고 자동으로 다시 보내요','err');
+      _kv.timer=setTimeout(_kvFlush,Math.min(1000*2**(_kv.fail-1),30000));
+    }else{
+      _kv.fail=0;
+      if(Object.keys(_kvDirty()).length) _kv.timer=setTimeout(_kvFlush,300);
+    }
+  }
+  // 화면을 열 때 — 서버 값으로 맞춘다. 서버에 없으면 이 브라우저 값을 올린다 (첫 실행 이관)
+  async function kvPull(key,lsKey,onChange){
+    _kvBind();
+    _kv.onChange[key]=onChange;
+    if(_kvDirty()[key]){ _kvFlush(); return; }
+    let row;
+    try{
+      const r=await fetch(`${KV_URL}?select=value&key=eq.${encodeURIComponent(key)}`,{headers:_sbHeaders(),cache:'no-store'});
+      if(!r.ok) return;                     // 못 읽으면 지금 값을 그대로 둔다
+      row=(await r.json())[0]||null;
+    }catch(e){ return; }
+    if(_kvDirty()[key]) return;             // 받는 사이 고침
+    const local=_kvValue(key,lsKey);
+    if(!row){
+      if(local!=null){ _kvDirty()[key]=lsKey; _kvSaveDirty(); _kvFlush(); }
+      return;
+    }
+    // 서버 저장 전부터 이 PC 에만 있던 값 — 서버 값을 우선하되 이 PC 에만 있는 칸은 살려서 올린다
+    const firstTime=_kvLoadBase(key)===null;
+    _kvSaveBase(key,row.value);
+    let next=row.value;
+    if(firstTime && _kvIsObj(local) && _kvIsObj(row.value)){
+      next={...local,...row.value};
+      if(JSON.stringify(next)!==JSON.stringify(row.value)){ _kvDirty()[key]=lsKey; _kvSaveDirty(); }
+    }
+    _kv.mem[key]=next;
+    if(JSON.stringify(local)!==JSON.stringify(next)){
+      _kvPutLocal(lsKey,next);
+      if(onChange) onChange(next);
+    }
+    if(_kvDirty()[key]) _kvFlush();
+  }
+  // 앱 진입 때 — 지난번에 못 보낸 설정 재전송 (그 화면에 안 들어와도)
+  function kvBootFlush(){
+    if(Object.keys(_kvDirty()).length){ _kvBind(); _kvFlush(); }
+  }
+  window.kvBootFlush=kvBootFlush;
+
   const BADGE_WORD_KEYS=['A','B','C','D','E','F'];
   const BADGE_WORDS_DEFAULT={A:'A Style',B:'B Style',C:'C Style',D:'D Style',E:'E Style',F:'F Style'};
   const BADGE_WORDS_LS='bdgPresetWords_v2';
@@ -35084,7 +35225,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     try{ const o=JSON.parse(localStorage.getItem(BADGE_WORDS_LS)||'null'); if(o&&typeof o==='object') return Object.assign({},BADGE_WORDS_DEFAULT,o); }catch(e){}
     return Object.assign({},BADGE_WORDS_DEFAULT);
   }
-  function _bdgSaveWords(){ try{ localStorage.setItem(BADGE_WORDS_LS,JSON.stringify(_bdgWords)); }catch(e){} }
+  function _bdgSaveWords(){ kvSet('badge_words',BADGE_WORDS_LS,_bdgWords); }
   const _bdgWords=_bdgLoadWords();
   // badges: [{id, wordKey, style, size, corner:'tr'|'tl'|'br'|'bl'|'custom', custom:{xr,yr}|null, _rect:{x,y,w,h}}]
   const _bdg={img:null, name:'image', style:'A', badges:[], selectedId:null, ratio:'original', imgOffsetX:50, imgOffsetY:50};
@@ -35422,6 +35563,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
   }
 
+  function bdgPullWords(){
+    kvPull('badge_words',BADGE_WORDS_LS,v=>{
+      if(!_kvIsObj(v)) return;
+      Object.assign(_bdgWords,v);
+      if(document.activeElement?.classList?.contains('bdg-word-input')) return;   // 입력 중엔 다시 그리지 않는다
+      _bdgRenderWords();
+      if(typeof _bdgRenderStylePicker==='function') _bdgRenderStylePicker();
+      if(typeof _bdgRenderBadgeList==='function') _bdgRenderBadgeList();
+    });
+  }
   function _bdgRenderWords(){
     const wrap=document.getElementById('bdgWords');
     if(!wrap) return;
@@ -36548,20 +36699,32 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const obj=JSON.parse(raw); if(obj && typeof obj==='object') window._pcv2.settings=obj;
       }
     }catch(e){}
+    // 세팅가 · 쿠폰 조건은 서버에도 — 다른 PC 에서 같은 숫자로 계산되게
+    const typing=()=>!!document.activeElement?.closest?.('#viewPromoCalc') && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    kvPull('pc_settings',PC_LS.settings,v=>{
+      if(!_kvIsObj(v)) return;
+      window._pcv2.settings=v;
+      if(!typing()) pcCompute();
+    });
+    kvPull('pc_cond',PC_LS.cond,()=>{
+      if(typing()) return;
+      pcRestoreConditions();
+      pcRenderTiers();
+      pcRenderDupTiers();
+      pcApplyDupUI();
+      pcCompute();
+    });
   }
 
   function pcSaveConditions(){
-    try{
-      const s=window._pcv2;
-      const cond={
-        condText: document.getElementById('pcCondText')?.value||'',
-        aiNote: document.getElementById('pcAiNote')?.value||'',
-        primaryTiers: s.primaryTiers,
-        dupEnabled: s.dupEnabled,
-        dupTiers: s.dupTiers,
-      };
-      localStorage.setItem(PC_LS.cond, JSON.stringify(cond));
-    }catch(e){}
+    const s=window._pcv2;
+    kvSet('pc_cond',PC_LS.cond,{
+      condText: document.getElementById('pcCondText')?.value||'',
+      aiNote: document.getElementById('pcAiNote')?.value||'',
+      primaryTiers: s.primaryTiers,
+      dupEnabled: s.dupEnabled,
+      dupTiers: s.dupTiers,
+    });
   }
 
   function pcRestoreConditions(){
@@ -36683,7 +36846,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!name||!req||req<=0) return;
     const s=window._pcv2;
     s.settings[name]=req;
-    try{ localStorage.setItem(PC_LS.settings, JSON.stringify(s.settings)); }catch(e){}
+    kvSet('pc_settings',PC_LS.settings,s.settings);
     pcCompute();
   }
 
@@ -36803,7 +36966,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     } else {
       s.settings[name]=parseInt(raw,10);
     }
-    try{ localStorage.setItem(PC_LS.settings, JSON.stringify(s.settings)); }catch(e){}
+    kvSet('pc_settings',PC_LS.settings,s.settings);
     // 전체 재렌더링 대신 이 행만 갱신 → input 포커스/커서 유지
     _pcRecalcRow(name);
     _pcRefreshBanner();
@@ -36877,7 +37040,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!confirm('선택한 상품의 세팅가를 모두 기본값(플랫폼 최저가)으로 되돌립니다.\n계속할까요?')) return;
     const s=window._pcv2;
     for(const name of s.selected) delete s.settings[name];
-    try{ localStorage.setItem(PC_LS.settings, JSON.stringify(s.settings)); }catch(e){}
+    kvSet('pc_settings',PC_LS.settings,s.settings);
     pcCompute();
   }
 
@@ -38785,10 +38948,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     td.innerHTML='';
     td.appendChild(el);
     _mds.editing={td,old};
+    td._mdsOld=old;
     el.focus();
     if(el.select) el.select();
   }
   function _mdsCancel(td){
+    delete td._mdsOld;
     td.classList.remove('mds-editing');
     td.innerHTML=td.dataset.html||'';
     if(_mds.editing&&_mds.editing.td===td) _mds.editing=null;
@@ -38812,7 +38977,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!td.classList.contains('mds-editing')) return;
     const el=td.querySelector('input,select');
     const val=el?el.value:'';
-    const old=_mds.editing&&_mds.editing.td===td?_mds.editing.old:null;
+    // 터치로 다음 칸을 누르면 그쪽 편집이 먼저 시작돼 _mds.editing 이 바뀐다 — 칸에 적어 둔 원래 값을 쓴다 (입력이 조용히 버려지던 문제)
+    const old=td._mdsOld!==undefined?td._mdsOld:(_mds.editing&&_mds.editing.td===td?_mds.editing.old:null);
+    delete td._mdsOld;
     if(_mds.editing&&_mds.editing.td===td) _mds.editing=null;
     td.classList.remove('mds-editing');
     const next=move?_mdsNeighbor(td,move):null;
@@ -38831,12 +38998,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     td.classList.add('mds-saving');
     await _mdsWrite(td,cb.checked?spec.on:spec.off,old);
   }
+  let _mdsWriting=0;
+  window.addEventListener('beforeunload',e=>{ if(_mdsWriting>0){ e.preventDefault(); e.returnValue=''; } });
   async function _mdsWrite(td,val,old){
     const x=_mdsCtx(td);
     const i=x.tk.indexOf('|'), book=x.tk.slice(0,i), sheet=x.tk.slice(i+1);
     const cell=_mdsColName(x.c)+(x.r+1);
     let res=null, err=null;
-    try{ res=await _mdsCall('write',{book,sheet,edits:[{r:x.r+1,c:x.c+1,v:val,old}]}) }catch(e){ err=_mdsErrText(e) }
+    _mdsWriting++;
+    try{
+      // 네트워크 · 브리지 일시 오류는 몇 번 더 시도 (긴 글을 다시 치지 않게). 충돌은 응답으로 오므로 재시도 안 함 — old 비교로 겹쳐 쓰지 않는다
+      for(let attempt=0; attempt<3; attempt++){
+        try{ res=await _mdsCall('write',{book,sheet,edits:[{r:x.r+1,c:x.c+1,v:val,old}]}); err=null; break; }
+        catch(e){ err=_mdsErrText(e); if(attempt<2) await new Promise(r=>setTimeout(r,1000*(attempt+1))); }
+      }
+    }finally{ _mdsWriting--; }
     const rr=res&&res.results&&res.results[0];
     if(!err&&rr&&!rr.ok){
       err=rr.error==='conflict'?`그 사이 다른 곳에서 "${rr.current}"(으)로 바뀌었어요`
@@ -38844,7 +39020,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     _mdsLog(book,sheet,cell,old,val,!err,err);
     if(err){
-      toast(`저장 못 했어요 (${sheet} ${cell}) — ${err}`,'err');
+      // 칸은 원래 값으로 돌아가니 입력한 내용을 알림에 남겨 다시 칠 수 있게
+      toast(`저장 못 했어요 (${sheet} ${cell}) — ${err}${val?` · 입력한 값: ${String(val).slice(0,80)}`:''}`,'err');
       td.classList.remove('mds-saving');
       _mdsPatchRow(x.tk,x.r);
       _mdsLoadTab(x.tk,true);
