@@ -9740,6 +9740,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     /* 위 · 아래 이동 버튼은 서로 맞닿아 있어 옆으로만 넓힌다 */
     .dcs-move-btn::after,.dsg-blk-move-btn::after{content:"";position:absolute;inset:0 -7px}
   }
+  /* 저장 상태 표시 · MD 시트 저장 못 한 입력 */
+  .bb-save-pill{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:9000;padding:7px 14px;border-radius:999px;background:#1c1917;color:#fff;font-size:12.5px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.22);pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap}
+  .bb-save-pill.show{opacity:1}
+  .bb-save-pill[data-state="saved"]{background:#166534}
+  .bb-save-pill[data-state="fail"]{background:#b91c1c}
+  .mds-failbox{border:1px solid #fecaca;background:#fef2f2;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:13px;color:#7f1d1d}
+  .mds-failbox-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:6px}
+  .mds-failbox-head button{margin-left:auto;min-height:32px;padding:4px 12px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:#7f1d1d;font-weight:600}
+  .mds-failbox-row{padding:3px 0;border-top:1px dashed #fecaca;overflow-wrap:anywhere}
+  .mds-failbox-row span{color:#991b1b;font-size:12px}
 </style>
 </head>
 <body>
@@ -11690,7 +11700,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   <!-- ============ 자격증명 편집 모달 ============ -->
   <div class="cred-modal" id="credModal" hidden>
-    <div class="cred-modal-backdrop" onclick="closeCredEditor()"></div>
+    <div class="cred-modal-backdrop" onclick="if(_bbModalCanClose(document.getElementById('credModal')))closeCredEditor()"></div>
     <div class="cred-modal-panel">
       <div class="cred-modal-head">
         <h3 id="credModalTitle">항목 추가</h3>
@@ -12486,7 +12496,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   
     <!-- 편집 모달 -->
     <div class="fx-modal" id="fxModal" hidden>
-      <div class="fx-modal-backdrop" onclick="fxCloseModal()"></div>
+      <div class="fx-modal-backdrop" onclick="if(_bbModalCanClose(document.getElementById('fxModal')))fxCloseModal()"></div>
       <div class="fx-modal-panel" role="dialog" aria-modal="true">
         <div class="fx-modal-head">
           <div class="fx-modal-title" id="fxModalTitle">고정비 항목 추가</div>
@@ -12613,7 +12623,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   <!-- 대표 캘린더 모달 — 홈 위젯에서도 열려야 하므로 viewCeoCal 밖(main 자식) 으로 -->
   <div class="cec-modal" id="cecModal" hidden>
-    <div class="cec-modal-backdrop" onclick="cecCloseModal()"></div>
+    <div class="cec-modal-backdrop" onclick="if(_bbModalCanClose(document.getElementById('cecModal')))cecCloseModal()"></div>
     <div class="cec-modal-panel" role="dialog" aria-modal="true">
       <form onsubmit="cecSaveFromModal(event)">
         <div class="cec-modal-head">
@@ -12735,6 +12745,50 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 <div class="toast-area" id="toastArea"></div>
 
 <script>
+  /* ===== 저장 상태 표시 (전 화면 공통) =====
+     화면마다 표시가 달라 어떤 화면은 저장됐는지 알 수 없었다 → 서버로 가는 쓰기 요청을 여기서 세어 아래쪽에 띄운다.
+     · 서버 응답 뒤에만 "저장됨" · 방금 조작한 화면의 쓰기만 (자동 갱신 · 로그 제외) · 자체 표시가 보이는 화면에선 안 띄움
+     · 전송 중 창을 닫으려 하면 경고하고, 작은 요청은 창을 닫아도 끝까지 가게 keepalive */
+  (function(){
+    const realFetch=window.fetch.bind(window);
+    let inflight=0, keepaliveChars=0, lastInput=0, hideT=null, el=null;
+    ['input','change','click','keydown','paste','drop'].forEach(ev=>document.addEventListener(ev,()=>{ lastInput=Date.now(); },true));
+    const SKIP=/md_sheet_edit_log|leave_drafts|diary_requests/;
+    const isSave=(url,method,body)=>{
+      if(method==='GET'||method==='HEAD'||method==='OPTIONS') return false;
+      if(Date.now()-lastInput>30000) return false;
+      if(/script\.google\.com/.test(url)) return typeof body==='string'&&body.indexOf('"action":"write"')>=0;
+      if(SKIP.test(url)) return false;
+      return /\/rest\/v1\//.test(url)||(method==='PUT'&&/\/contents\/data\//.test(url));
+    };
+    const ownTagVisible=()=>['diarySaveTag','csSaveTag','dsgSaveTag','adshSaveTag','fxSaveTag'].some(id=>{ const n=document.getElementById(id); return n&&n.offsetParent; });
+    function show(state){
+      if(state!=='fail'&&ownTagVisible()){ if(el) el.classList.remove('show'); return; }
+      if(!el){ el=document.createElement('div'); el.className='bb-save-pill'; el.setAttribute('aria-live','polite'); document.body.appendChild(el); }
+      clearTimeout(hideT);
+      el.dataset.state=state;
+      const d=new Date();
+      el.textContent=state==='saving'?'저장 중…':state==='saved'?`✓ 저장됨 · ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:'⚠ 서버 저장 실패';
+      el.classList.add('show');
+      if(state!=='saving') hideT=setTimeout(()=>el.classList.remove('show'),state==='saved'?1800:8000);
+    }
+    window.fetch=function(input,init){
+      const isReq=typeof Request!=='undefined'&&input instanceof Request;
+      const url=isReq?input.url:String(input), method=String((init&&init.method)||(isReq&&input.method)||'GET').toUpperCase(), body=init&&init.body;
+      if(!isSave(url,method,body)) return realFetch(input,init);
+      inflight++;
+      show('saving');
+      let held=0, opts=init;
+      if(!isReq&&typeof body==='string'&&body.length<50000&&keepaliveChars+body.length<50000&&!(init&&init.keepalive)){
+        held=body.length; keepaliveChars+=held;
+        opts=Object.assign({},init,{keepalive:true});
+      }
+      const done=ok=>{ inflight--; keepaliveChars-=held; if(inflight===0) show(ok?'saved':'fail'); };
+      return realFetch(input,opts).then(r=>{ done(r.ok||r.status===409); return r; },e=>{ done(false); throw e; });
+    };
+    window.addEventListener('beforeunload',e=>{ if(inflight>0){ e.preventDefault(); e.returnValue=''; } });
+  })();
+
   const PIN_VIEWER='2580';     // 보기 전용
   const PIN_MASTER='0000';     // 수정 권한
   const AUTH_VERSION='4';      // PIN 회전 시 bump → 모든 기기 강제 재로그인
@@ -14938,6 +14992,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof whtBootFlush==='function') whtBootFlush();
     // 기획전 계산기 · 배지 문구 — 지난번에 못 보낸 설정 재전송
     if(typeof kvBootFlush==='function') kvBootFlush();
+    // 작업 보드 · 디자인 보드 · MD 시트 · 인사팀 — 지난번에 못 보낸 내용 재전송 (그 화면에 안 들어와도)
+    if(typeof dsgBootFlush==='function') dsgBootFlush();
+    if(typeof mdsBootFlush==='function') mdsBootFlush();
+    if(typeof hrBootFlush==='function') hrBootFlush();
     // 에이전트 오피스 실시간 인원 표시 (홈 카드)
     if(typeof loadAgentsMini==='function'){ loadAgentsMini(); setInterval(loadAgentsMini, 30000); }
   }
@@ -16498,6 +16556,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           if(!seen.has(p.id) && dirtyIds.has(p.id)) merged.unshift(p);
         }
         _dsgPosts = merged;
+        _dsgPostBaseUpdate(remote, dirtyIds);
         _dsgPersistPostsDirty();
         _dsgSavePosts();
         if(_dsgPostsDirty.size > 0 || _dsgPostsForce) _dsgSchedPush();
@@ -16533,6 +16592,51 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     return {merged, dirtyIds:Array.from(dirtyIds)};
   }
+  /* 글 칸 단위 3-way — 글 통째로 올리면 아직 못 받은 남의 사진 · 본문이 사라진다.
+     사진이 data URL 이라 글 전체를 기준본으로 둘 수 없어 칸별 해시만 보관한다 (본문은 줄 병합용으로 글자도 함께) */
+  const DSG_POSTS_BASE_KEY='brightbeed_design_posts_base_v1';
+  let _dsgPostBase=null;
+  function _dsgPostBaseMap(){
+    if(!_dsgPostBase){ try{ _dsgPostBase=JSON.parse(_bbBaseGet(DSG_POSTS_BASE_KEY)||'{}')||{}; }catch(e){ _dsgPostBase={}; } }
+    return _dsgPostBase;
+  }
+  function _dsgPostHash(v){ return _whtHash(JSON.stringify(v===undefined?null:v)); }
+  function _dsgPostBaseOf(p){
+    const h={};
+    Object.keys(p||{}).forEach(k=>{ h[k]=_dsgPostHash(p[k]); });
+    return {h, body:typeof p.body==='string'&&p.body.length<20000?p.body:null};
+  }
+  // 받은 글 목록을 새 기준본으로 — 아직 못 보낸 글은 옛 기준을 유지해야 다음 합치기에 쓸 수 있다
+  function _dsgPostBaseUpdate(posts,dirtyIds){
+    const old=_dsgPostBaseMap(), next={};
+    (posts||[]).forEach(p=>{
+      if(!p||!p.id) return;
+      next[p.id]=(dirtyIds&&dirtyIds.has(p.id)&&old[p.id])?old[p.id]:_dsgPostBaseOf(p);
+    });
+    _dsgPostBase=next;
+    _bbBaseSet(DSG_POSTS_BASE_KEY,JSON.stringify(next));
+  }
+  function _dsgMergePost(mine,theirs,base){
+    const out={...theirs};
+    const key=x=>x&&(x.id||x.url||x.name||JSON.stringify(x));
+    new Set([...Object.keys(mine),...Object.keys(theirs)]).forEach(k=>{
+      if(k==='updated_at') return;
+      const hm=_dsgPostHash(mine[k]), ht=_dsgPostHash(theirs[k]);
+      if(hm===ht) return;
+      const hb=base&&base.h[k];
+      if(base&&hm===hb) return;                   // 내가 안 고친 칸은 서버 값
+      if(base&&ht===hb){ if(k in mine) out[k]=mine[k]; else delete out[k]; return; }   // 서버가 안 바뀐 칸은 내 값
+      // 둘 다 고쳤거나 기준이 없다 — 사진 · 파일은 합치고, 본문은 줄 단위로, 나머지는 내 값
+      if(Array.isArray(mine[k])&&Array.isArray(theirs[k])){
+        const ids=new Set(mine[k].map(key));
+        out[k]=mine[k].concat(theirs[k].filter(x=>!ids.has(key(x))));
+      }else if(k==='body'&&base&&base.body!==null&&typeof mine[k]==='string'&&typeof theirs[k]==='string'){
+        out[k]=_bbMergeText(base.body,mine[k],theirs[k]);
+      }else if(k in mine) out[k]=mine[k];
+    });
+    out.updated_at=String(mine.updated_at||'')>String(theirs.updated_at||'')?mine.updated_at:theirs.updated_at;
+    return out;
+  }
   function _dsgBuildPostsPayload(remote){
     const tombs = _dsgPurgePostTombs();
     const dirtyIds = new Set(_dsgPostsDirty);
@@ -16542,7 +16646,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     for(const p of remote){
       if(!p || !p.id) continue;
       if(tombs[p.id]) continue;  // tombstoned → remote 부활 X
-      if(dirtyIds.has(p.id) && localById.has(p.id)) merged.push(localById.get(p.id));
+      if(dirtyIds.has(p.id) && localById.has(p.id)) merged.push(_dsgMergePost(localById.get(p.id), p, _dsgPostBaseMap()[p.id]));
       else merged.push(p);
       seen.add(p.id);
     }
@@ -16584,6 +16688,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         try {
           const file = await ghGetFile(api);
           if(file.error){ res = null; break; }
+          if(file.sha && !file.text){ res = null; break; }   // 파일은 있는데 본문을 못 받음 — 빈 문서로 합치면 안 고친 블록이 전부 지워진다
           let theirsTree = {version:1, blocks:[]};
           if(file.text){
             try {
@@ -16685,6 +16790,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         _dsgPostsDirty.delete(id);
       });
       if(postsForced) _dsgPostsForce = false;
+      _dsgPostBaseUpdate(postsPayload.merged, _dsgPostsDirty);
       _dsgPersistPostsDirty();
       // 전송 중 새로 만든 글 · 고친 글은 지금 내용을 유지 (병합본으로 바꾸면 사라진다)
       const curById = new Map(_dsgPosts.map(p=>[p.id, p]));
@@ -16834,14 +16940,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* doc base snapshot (per board) — 마지막 확인된 원격 트리, 3-way merge 기준본 */
   function _dsgLoadDocBase(board){
     try{
-      const raw = localStorage.getItem(DSG_DOC_BASE_KEY_PREFIX+board);
+      const raw = _bbBaseGet(DSG_DOC_BASE_KEY_PREFIX+board);
       if(!raw) return null;
       const j = JSON.parse(raw);
       return (j && Array.isArray(j.blocks)) ? j : null;
     }catch(e){ return null; }
   }
   function _dsgSaveDocBase(board, tree){
-    try{ localStorage.setItem(DSG_DOC_BASE_KEY_PREFIX+board, JSON.stringify(tree||{version:1,blocks:[]})); }catch(e){}
+    _bbBaseSet(DSG_DOC_BASE_KEY_PREFIX+board, JSON.stringify(tree||{version:1,blocks:[]}));
   }
   /* doc tombstone — 삭제한 블록 id 24h 보관. push 실패 후 CDN 지연으로 remote 가
      옛 파일을 주더라도 tombstone id 는 자동 제외 → 사용자가 지운 항목이 되살아나지 않음. */
@@ -17005,6 +17111,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(i>=0) _dsgPosts[i] = unsent[id]; else _dsgPosts.unshift(unsent[id]);
       });
     }catch(e){}
+    _bbIdbGet('design_posts_unsent').then(unsent=>{
+      if(!unsent||!Object.keys(unsent).length) return;
+      Object.keys(unsent).forEach(id=>{
+        if(!_dsgPostsDirty.has(id)) return;
+        const i = _dsgPosts.findIndex(p=>p&&p.id===id);
+        if(i>=0) _dsgPosts[i] = unsent[id]; else _dsgPosts.unshift(unsent[id]);
+      });
+      if(!_dsgIsEditing()) dsgPostsRender();
+      _dsgSchedPush();
+    });
   }
   function _dsgSavePosts(){
     // 못 쓰면 옛 캐시를 남기지 않는다 (다음 접속 때 옛 내용이 잠깐 보이고 못 보낸 글을 덮는다)
@@ -17020,14 +17136,49 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     clearTimeout(_dsgUnsentTimer);
     _dsgUnsentTimer = setTimeout(_dsgSaveUnsentPosts, 400);
   }
-  function _dsgSaveUnsentPosts(){
-    try{
-      const o = {};
-      _dsgPostsDirty.forEach(id=>{ const p=_dsgPosts.find(x=>x&&x.id===id); if(p) o[id]=p; });
-      if(Object.keys(o).length) localStorage.setItem(DSG_POSTS_UNSENT_KEY, JSON.stringify(o));
-      else localStorage.removeItem(DSG_POSTS_UNSENT_KEY);
-    }catch(e){ try{ localStorage.removeItem(DSG_POSTS_UNSENT_KEY); }catch(e2){} }
+  /* 사진 · PDF 가 많은 글은 브라우저 저장공간을 넘는다 → 그때는 IndexedDB 에 보관 (용량 여유가 훨씬 크다) */
+  function _bbIdb(){
+    return new Promise((res,rej)=>{
+      const r=indexedDB.open('brightbeed_store',1);
+      r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+      r.onsuccess=()=>res(r.result);
+      r.onerror=()=>rej(r.error);
+    });
   }
+  async function _bbIdbSet(key,val){
+    try{
+      const db=await _bbIdb();
+      await new Promise((res,rej)=>{
+        const tx=db.transaction('kv','readwrite');
+        if(val===undefined) tx.objectStore('kv').delete(key); else tx.objectStore('kv').put(val,key);
+        tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+      });
+      db.close();
+    }catch(e){ console.warn('[복구본 보관 실패]',e); }
+  }
+  async function _bbIdbGet(key){
+    try{
+      const db=await _bbIdb();
+      const v=await new Promise((res,rej)=>{ const q=db.transaction('kv').objectStore('kv').get(key); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+      db.close();
+      return v;
+    }catch(e){ return undefined; }
+  }
+  function _dsgSaveUnsentPosts(){
+    clearTimeout(_dsgUnsentTimer); _dsgUnsentTimer=null;
+    const o = {};
+    _dsgPostsDirty.forEach(id=>{ const p=_dsgPosts.find(x=>x&&x.id===id); if(p) o[id]=p; });
+    const has = Object.keys(o).length>0;
+    try{
+      if(has) localStorage.setItem(DSG_POSTS_UNSENT_KEY, JSON.stringify(o));
+      else localStorage.removeItem(DSG_POSTS_UNSENT_KEY);
+      _bbIdbSet('design_posts_unsent',undefined);
+    }catch(e){
+      try{ localStorage.removeItem(DSG_POSTS_UNSENT_KEY); }catch(e2){}
+      _bbIdbSet('design_posts_unsent',o);
+    }
+  }
+  window.addEventListener('pagehide',()=>{ if(_dsgUnsentTimer) _dsgSaveUnsentPosts(); });
   function _dsgRestorePostsDirty(){
     try{
       const arr = JSON.parse(localStorage.getItem(DSG_POSTS_DIRTY_KEY)||'[]');
@@ -17107,6 +17258,68 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window._bbFreeLocalSpace = _bbFreeLocalSpace;
   _bbFreeLocalSpace();   // 이미 꽉 찬 기기 — 부팅 시 1회 정리
+
+  /* ===== 공용 저장 도우미 ===== */
+  function _bbLcsPairs(a,b){
+    const n=a.length, m=b.length;
+    if(n*m>4000000) return null;
+    const dp=[];
+    for(let i=0;i<=n;i++) dp.push(new Uint32Array(m+1));
+    for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--) dp[i][j]= a[i]===b[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j],dp[i][j+1]);
+    const out=[]; let i=0, j=0;
+    while(i<n&&j<m){
+      if(a[i]===b[j]){ out.push([i,j]); i++; j++; }
+      else if(dp[i+1][j]>=dp[i][j+1]) i++;
+      else j++;
+    }
+    return out;
+  }
+  // 줄 단위 3-way — 같은 글을 두 사람이 고쳐도 서로의 줄을 지우지 않는다. 같은 자리를 다르게 고치면 둘 다 남긴다
+  function _bbMergeText(base,mine,theirs){
+    base=base||''; mine=mine||''; theirs=theirs||'';
+    if(mine===theirs||theirs===base) return mine;
+    if(mine===base) return theirs;
+    const B=base.split('\n'), M=mine.split('\n'), T=theirs.split('\n');
+    const pm=_bbLcsPairs(B,M), pt=_bbLcsPairs(B,T);
+    if(!pm||!pt) return mine+'\n\n'+theirs;
+    const mapM=new Map(pm), mapT=new Map(pt);
+    const out=[]; let bi=0, mi=0, ti=0;
+    const chunk=(be,me,te)=>{
+      const bs=B.slice(bi,be).join('\n'), ms=M.slice(mi,me), ts=T.slice(ti,te), mj=ms.join('\n'), tj=ts.join('\n');
+      if(mj===tj||tj===bs) out.push(...ms);
+      else if(mj===bs) out.push(...ts);
+      else out.push(...ms,...ts);
+    };
+    for(let b=0;b<B.length;b++){
+      if(mapM.has(b)&&mapT.has(b)){
+        chunk(b,mapM.get(b),mapT.get(b));
+        out.push(B[b]);
+        bi=b+1; mi=mapM.get(b)+1; ti=mapT.get(b)+1;
+      }
+    }
+    chunk(B.length,M.length,T.length);
+    return out.join('\n');
+  }
+  // 기준본(base)은 창마다 따로 — 같은 브라우저의 다른 창이 올린 줄을 "내가 지운 것"으로 보지 않게. 새 창은 브라우저 저장본에서 시작한다
+  function _bbBaseGet(key){
+    try{ const s=sessionStorage.getItem(key); if(s!==null) return s; }catch(e){}
+    try{ return localStorage.getItem(key); }catch(e){ return null; }
+  }
+  function _bbBaseSet(key,json){
+    try{ sessionStorage.setItem(key,json); }catch(e){ try{ sessionStorage.removeItem(key); }catch(e2){} }
+    try{ localStorage.setItem(key,json); }catch(e){}
+  }
+  // 모달 — 배경에서 시작한 클릭만 닫고 (입력칸에서 드래그하다 밖에서 떼도 닫히지 않게), 고친 내용이 있으면 버릴지 묻는다
+  function _bbModalValues(box){ return JSON.stringify([...box.querySelectorAll('input,select,textarea')].map(el=>(el.type==='checkbox'||el.type==='radio')?el.checked:el.value)); }
+  function _bbModalSnap(box){ if(box) box._bbSnap=_bbModalValues(box); }
+  function _bbModalCanClose(box){ return !box||box._bbSnap===undefined||box._bbSnap===_bbModalValues(box)||confirm('입력한 내용이 저장되지 않았습니다. 닫을까요?'); }
+  function _bbBackdrop(el,close){
+    if(!el) return;
+    let fromBackdrop=false;
+    el.addEventListener('mousedown',e=>{ fromBackdrop=e.target===el; });
+    el.addEventListener('click',e=>{ if(e.target===el&&fromBackdrop) close(); });
+  }
+  window._bbModalCanClose=_bbModalCanClose;
   let _dsgLastHistoryJson = null;
   function _dsgPushHistorySnap(){
     let json;
@@ -17204,6 +17417,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _dsgStartSync();
     // CS 화면에서 먼저 시작했으면 글은 아직 안 받았다 — 디자인 탭에 들어오면 바로 받는다
     if(!_dsg_postsPulledAt) _dsgSyncFromRemote(true);
+  }
+
+  function dsgBootFlush(){
+    if(dsgInit._done) return;
+    try{
+      const posts=JSON.parse(localStorage.getItem(DSG_POSTS_DIRTY_KEY)||'[]');
+      const docs=JSON.parse(localStorage.getItem(DSG_DOC_DIRTY_KEY)||'{}')||{};
+      if(!posts.length && !Object.values(docs).some(Boolean)) return;
+    }catch(e){ return; }
+    dsgInit();
   }
 
   /* 폰트 크기 (px) — 툴바 −/+ 또는 숫자 직접 입력, localStorage 저장 */
@@ -23398,7 +23621,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(key==='_orig'){
       const r=await sbDeleteDeptOverride(name);
       sel.disabled=false;
-      if(!r.ok){ toast('부서 되돌리기 실패 — 다시 시도해주세요','err'); return; }
+      if(!r.ok){ toast('부서 되돌리기 실패 — 다시 시도해주세요','err'); renderLeaveStatus(); return; }
       _deptOverrides.delete(name);
       applyDeptOverrides();
       toast(`${name} — 원래 부서로 되돌렸습니다`,'ok');
@@ -23407,7 +23630,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!slot){ sel.disabled=false; toast('알 수 없는 부서','err'); return; }
       const r=await sbUpsertDeptOverride(name, slot);
       sel.disabled=false;
-      if(!r.ok){ toast('부서 변경 저장 실패 — 다시 시도해주세요','err'); return; }
+      if(!r.ok){ toast('부서 변경 저장 실패 — 다시 시도해주세요','err'); renderLeaveStatus(); return; }   // 고른 값으로 남아 저장된 듯 보이지 않게
       _deptOverrides.set(name, {dept:slot.dept, team:slot.team, color:slot.color});
       applyDeptOverrides();
       toast(`${name} — 부서를 ${slot.dept}${slot.team?' · '+slot.team:''}(으)로 변경했습니다`,'ok');
@@ -23481,20 +23704,77 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const fields={};
     fields[field]=nextVal;
     const allEmpty=!Number.isFinite(data[name].used)&&!Number.isFinite(data[name].total)&&!data[name].hire;
-    let r;
-    if(allEmpty){
-      r=await sbDeleteLeaveOverride(name);
-    }else{
-      r=await sbUpsertLeaveOverride(name, fields);
-    }
-    if(!r.ok){
-      toast(`동기화 실패 (${r.reason||'fetch'}) — 다시 시도해주세요`,'err');
-    }else toast(`${name} — 저장했습니다`,'ok');
+    _hrOvEnqueue(name,fields,allEmpty);
+    await _hrOvFlush();
+    const r={ok:!_hrOvQueue()[name]};
+    if(!r.ok) toast('서버 저장 실패 — 입력은 보관 중이고 자동으로 다시 보내요','warn');
+    else toast(`${name} — 저장했습니다`,'ok');
     if(allEmpty){
       delete data[name];
       saveLeaveData(data);
     }
   });
+  /* 사용 · 총 일수 · 입사일 — 보내기 전에 대기열에 적어 둔다. 실패해도 입력이 안 사라지고 자동 재전송 (예전엔 토스트만 뜨고 60초 뒤 폴링에 되돌아갔다) */
+  const HR_OV_QUEUE_KEY='brightbeed_hr_override_queue_v1';
+  let _hrOvQ=null, _hrOvFlushP=null, _hrOvFail=0, _hrOvRetry=null;
+  function _hrOvQueue(){
+    if(!_hrOvQ){ try{ _hrOvQ=JSON.parse(localStorage.getItem(HR_OV_QUEUE_KEY)||'{}')||{}; }catch(e){ _hrOvQ={}; } }
+    return _hrOvQ;
+  }
+  function _hrOvSave(){ try{ localStorage.setItem(HR_OV_QUEUE_KEY,JSON.stringify(_hrOvQueue())); }catch(e){} }
+  function _hrOvEnqueue(name,fields,del){
+    const q=_hrOvQueue(), e=q[name]||{fields:{},seq:0};
+    if(del){ e.del=true; e.fields={}; }
+    else{ e.del=false; Object.assign(e.fields,fields); }
+    e.seq++; e.ts=Date.now();
+    q[name]=e;
+    _hrOvSave();
+  }
+  function _hrOvFlush(){
+    if(_hrOvFlushP) return _hrOvFlushP;
+    if(!Object.keys(_hrOvQueue()).length) return Promise.resolve();
+    clearTimeout(_hrOvRetry);
+    _hrOvFlushP=(async()=>{
+      let failed=false;
+      const q=_hrOvQueue();
+      for(const name of Object.keys(q)){
+        const e=q[name], seq=e.seq;
+        const r=e.del?await sbDeleteLeaveOverride(name):await sbUpsertLeaveOverride(name,e.fields);
+        if(r&&r.ok){ if(q[name]&&q[name].seq===seq){ delete q[name]; _hrOvSave(); } }
+        else failed=true;
+      }
+      return failed;
+    })().then(failed=>{
+      _hrOvFlushP=null;
+      if(failed){
+        _hrOvFail=Math.min(_hrOvFail+1,6);
+        _hrOvRetry=setTimeout(_hrOvFlush,Math.min(1000*2**(_hrOvFail-1),30000));
+      }else{
+        _hrOvFail=0;
+        if(Object.keys(_hrOvQueue()).length) _hrOvFlush();
+      }
+    });
+    return _hrOvFlushP;
+  }
+  // 서버 값을 받은 뒤 못 보낸 값을 다시 얹는다 — 안 그러면 화면이 옛 값으로 돌아간다
+  function _hrOvOverlay(data){
+    Object.entries(_hrOvQueue()).forEach(([name,e])=>{
+      const row=data[name]||(data[name]={});
+      if(e.del){ delete row.used; delete row.total; delete row.hire; return; }
+      Object.entries(e.fields).forEach(([k,v])=>{ if(v===null) delete row[k]; else row[k]=v; });
+    });
+  }
+  function hrBootFlush(){
+    if(!hrBootFlush._bound){
+      hrBootFlush._bound=true;
+      window.addEventListener('online',_hrOvFlush);
+      document.addEventListener('visibilitychange',()=>{ if(!document.hidden) _hrOvFlush(); });
+      window.addEventListener('beforeunload',e=>{ if(Object.keys(_hrOvQueue()).length){ e.preventDefault(); e.returnValue=''; } });
+      // 칸을 나가기 전에 창을 닫아도 저장되게
+      window.addEventListener('pagehide',()=>{ const el=document.activeElement; if(el&&el.closest&&el.closest('.leave-card [data-field]')) el.blur(); });
+    }
+    _hrOvFlush();
+  }
   /* 연차 신청서 임시저장(draft) — 입력 도중 자동 저장 + 기기/브라우저 간 동기화(Supabase)
      - localStorage: 즉시 저장/복원 (오프라인·빠른 UX)
      - Supabase leave_drafts: 성함을 키로 cross-device 동기화 (debounced upsert)
@@ -23504,14 +23784,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _readLeaveDraft(){try{return JSON.parse(localStorage.getItem(LEAVE_DRAFT_KEY)||'null')}catch(e){return null}}
   function clearLeaveDraft(){try{localStorage.removeItem(LEAVE_DRAFT_KEY)}catch(e){}}
   function _writeLeaveDraftLocal(staff,start,end,type,savedAt){
-    try{localStorage.setItem(LEAVE_DRAFT_KEY,JSON.stringify({staff,start,end,type,savedAt:savedAt||Date.now()}))}catch(e){}
+    // 사유 · 대체휴무 단위도 함께 — 새로고침하면 사라지던 칸
+    const reason=document.getElementById('lfReason')?.value||'', unit=document.getElementById('lfCompUnit')?.value||'';
+    try{localStorage.setItem(LEAVE_DRAFT_KEY,JSON.stringify({staff,start,end,type,reason,unit,savedAt:savedAt||Date.now()}))}catch(e){}
   }
   function saveLeaveDraft(){
     const staff=document.getElementById('lfStaff')?.value||'';
     const start=document.getElementById('lfDate')?.value||'';
     const end=document.getElementById('lfDateEnd')?.value||'';
     const type=document.querySelector('input[name="lfType"]:checked')?.value||'';
-    if(!staff && !type){clearLeaveDraft();return}
+    const hasReason=!!document.getElementById('lfReason')?.value;
+    if(!staff && !type && !hasReason){clearLeaveDraft();return}
     _lastUserEditTs=Date.now(); // polling이 사용자 입력을 덮어쓰지 않도록 마킹
     _writeLeaveDraftLocal(staff,start,end,type);
     // 성함이 있을 때만 리모트 동기화 — 800ms debounce로 네트워크 부하 완화
@@ -23590,16 +23873,28 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         staffSel.value=d.staff;
         restoredStaff=d.staff;
       }
-      if(d.start && dateInput) dateInput.value=d.start;
-      if(d.end && dateEndInput) dateEndInput.value=d.end;
+      // 지난 날짜는 복원하지 않는다 — 며칠 전 초안이 오늘 날짜를 덮어 옛 날짜로 신청될 수 있다
+      const today=dateInput?dateInput.value:'';
+      if(d.start && dateInput){
+        if(d.start>=today){
+          dateInput.value=d.start;
+          if(d.end && dateEndInput) dateEndInput.value=d.end;
+        }else{
+          toast(`임시저장의 지난 날짜(${d.start})는 오늘로 바꿨습니다. 날짜를 확인해 주세요`,'warn');
+        }
+      }
       if(d.type){
         const radio=document.querySelector(`input[name="lfType"][value="${d.type}"]`);
         if(radio) radio.checked=true;
       }
+      const reasonEl=document.getElementById('lfReason');
+      if(d.reason && reasonEl) reasonEl.value=d.reason;
+      const unitEl=document.getElementById('lfCompUnit');
+      if(d.unit && unitEl) unitEl.value=d.unit;
     }
     // 백그라운드로 리모트(다른 기기) 머지
     if(restoredStaff) applyRemoteLeaveDraftFor(restoredStaff).catch(()=>{});
-    return !!(d && (d.staff || d.type));
+    return !!(d && (d.staff || d.type || d.reason));
   }
   /* 성함 select 변경 시: 다른 필드가 비어있으면 리모트 draft 복원 시도 */
   function onLeaveStaffPicked(e){
@@ -25299,8 +25594,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         try{
           const f=await ghGetFile(ADSH_PLATS_API);
           if(f.error){ reason=f.error; break }
+          if(f.sha&&!f.text){ reason='read_empty'; break }   // 못 읽은 걸 빈 목록으로 합치지 않는다
           let remote={items:[]};
-          try{ if(f.text) remote=JSON.parse(f.text) }catch(e){}
+          if(f.text){ try{ remote=JSON.parse(f.text) }catch(e){ reason='parse'; break } }
           const items=_adshPlatApply(Array.isArray(remote.items)?remote.items:[], ops);
           const body={items, updatedAt:Math.max(Date.now(),(remote.updatedAt||0)+1)};
           const b64=btoa(unescape(encodeURIComponent(JSON.stringify(body))));
@@ -25845,8 +26141,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           try{
             const f=await ghGetFile(ADSH_API(id));
             if(f.error){ reason=f.error; break }
+            if(f.sha&&!f.text){ reason='read_empty'; break }   // 못 읽은 걸 빈 시트로 합치면 방금 고친 칸만 남는다
             let remote={days:{}};
-            try{ if(f.text) remote=JSON.parse(f.text) }catch(e){}
+            if(f.text){ try{ remote=JSON.parse(f.text) }catch(e){ reason='parse'; break } }
             remote.days=remote.days||{};
             _adshApplyDirty(remote.days,dirty);
             remote.updatedAt=Math.max(Date.now(), (remote.updatedAt||0)+1);
@@ -26582,6 +26879,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         body: JSON.stringify({ deleted_at: null, client_ts: guardTs, updated_by: me }),
       });
       if(!resp.ok) return false;
+      // 삭제 표시를 바로 지운다 — 실시간 채널이 끊겨 있으면 카드를 한 글자 고치는 순간 되살린 줄이 다시 삭제된다
+      const tombs = _diaryLoadTombstones();
+      if(tombs[id]){ delete tombs[id]; _diarySaveTombstones(tombs); }
       // 로컬 캐시에도 즉시 반영 (realtime 도착 전에 UI 부드럽게)
       const arr = await resp.json();
       const restored = Array.isArray(arr) && arr[0];
@@ -26892,6 +27192,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const json=JSON.stringify(fresh)+'#'+hiddenKey;
     if(json===_leave_lastHash) return;
     _leave_lastHash=json;
+    if(typeof _hrOvOverlay==='function') _hrOvOverlay(fresh);
     _leaveSetLocal(JSON.stringify(fresh));
     if(document.getElementById('leaveGrid')) renderLeaveStatus();
     else applyHiddenToOrgChart(); // 뷰 밖에서도 조직도만은 반영
@@ -28039,6 +28340,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _cred_editorState.fields.push({label:'토큰', value:'', secret:true});
     }
     renderCredFieldsEditor();
+    _bbModalSnap(document.getElementById('credModal'));
     document.getElementById('credModal').hidden=false;
     setTimeout(()=>document.getElementById('credEditName').focus(),50);
   }
@@ -28059,6 +28361,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     setCredEditorTab(entry.type);
     renderCredFieldsEditor();
+    _bbModalSnap(document.getElementById('credModal'));
     document.getElementById('credModal').hidden=false;
     setTimeout(()=>document.getElementById('credEditName').focus(),50);
   }
@@ -28257,6 +28560,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     ops.forEach(o=>{
       if(o.op==='put'){
         const i=out.entries.findIndex(e=>e.id===o.entry.id);
+        // 며칠 묵은 대기분이 그 뒤 다른 PC 에서 고친 값을 옛 값으로 되돌리지 않게
+        if(i>=0&&Number(out.entries[i].updatedAt||0)>Number(o.entry.updatedAt||0)) return;
         if(i>=0) out.entries[i]=o.entry; else out.entries.push(o.entry);
       }
       else if(o.op==='del') out.entries=out.entries.filter(e=>e.id!==o.id);
@@ -28387,7 +28692,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // ESC로 모달 닫기
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape' && _cred_modalOpen){
-      closeCredEditor();
+      if(_bbModalCanClose(document.getElementById('credModal'))) closeCredEditor();
     }
   });
 
@@ -28505,10 +28810,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return d;
     }catch(e){return null}
   }
-  async function _execPushSupabase(blob){
+  async function _execPushSupabase(blob,ifUpdatedAt){
     const body=JSON.stringify({id:1, blob:blob,
       updated_at:new Date(blob.updatedAt||Date.now()).toISOString(),
       updated_by:(typeof execGetMe==='function'?execGetMe():'')||''});
+    // 읽은 뒤 다른 PC 가 저장했으면 0행 — 다시 합쳐서 보낸다 (두 PC 가 동시에 저장하면 한쪽이 빠지던 것)
+    if(ifUpdatedAt!=null){
+      const u=await fetch(`${EXEC_SB}?id=eq.1&blob->>updatedAt=eq.${encodeURIComponent(ifUpdatedAt)}`,{
+        method:'PATCH', headers:_sbHeaders({'Prefer':'return=representation'}), body
+      });
+      if(!u.ok) return false;
+      return (await u.json()).length ? true : 'conflict';
+    }
     const r=await fetch(`${EXEC_SB}?on_conflict=id`,{
       method:'POST',
       headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
@@ -28643,6 +28956,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         _execKey=key;
         _execEntries=Array.isArray(obj.entries)?obj.entries.map(normalizeEntry).filter(Boolean):[];
         _execBase=_whtClone(_execEntries);
+        await _execRestorePending();
       }
       _execSetMsg('');
       if(passEl) passEl.value='';
@@ -28687,8 +29001,42 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window.addEventListener('beforeunload',e=>{ if(_execDirty){ e.preventDefault(); e.returnValue=''; } });
   window.addEventListener('online',()=>{ if(_execDirty) execSave(); });
-  async function execSave(){
-    if(!_execKey||!_execBlob) return false;
+  /* 못 보낸 변경은 암호문으로 브라우저에 보관 — 전송 중 창을 닫아도 다음에 금고를 열 때 이어서 보낸다 */
+  const EXEC_PENDING_KEY='brightbeed_exec_pending_v1';
+  async function _execSavePending(){
+    try{
+      const iv=crypto.getRandomValues(new Uint8Array(12));
+      const plain=_execEnc.encode(JSON.stringify({entries:_execEntries||[], base:_execBase||[]}));
+      const ct=await crypto.subtle.encrypt({name:'AES-GCM', iv}, _execKey, plain);
+      localStorage.setItem(EXEC_PENDING_KEY, JSON.stringify({iv:_execB64e(iv), ct:_execB64e(ct), ts:Date.now()}));
+    }catch(e){}
+  }
+  async function _execRestorePending(){
+    let p=null;
+    try{ p=JSON.parse(localStorage.getItem(EXEC_PENDING_KEY)||'null'); }catch(e){}
+    if(!p||!p.ct) return;
+    try{
+      const plain=await crypto.subtle.decrypt({name:'AES-GCM', iv:_execB64d(p.iv)}, _execKey, _execB64d(p.ct));
+      const o=JSON.parse(_execTd.decode(plain));
+      const norm=a=>(Array.isArray(a)?a:[]).map(normalizeEntry).filter(Boolean);
+      _execEntries=_execMergeEntries(norm(o.entries),_execEntries||[],norm(o.base));
+      try{toast('지난번에 저장되지 못한 금고 변경을 이어서 보냅니다','warn')}catch(e){}
+      execSave();
+    }catch(e){}   // 다른 암호로 만든 대기분 — 건드리지 않는다
+  }
+  let _execSaving=null, _execSaveAgain=false;
+  function execSave(){
+    if(!_execKey||!_execBlob) return Promise.resolve(false);
+    if(_execSaving){ _execSaveAgain=true; return _execSaving; }
+    _execDirty=true;
+    _execSaving=_execSaveOnce().finally(()=>{
+      _execSaving=null;
+      if(_execSaveAgain){ _execSaveAgain=false; execSave(); }
+    });
+    return _execSaving;
+  }
+  async function _execSaveOnce(){
+    await _execSavePending();
     const remote=await _execFetchSupabase();
     if(remote===null){
       _execRetryLater('⚠ 금고가 아직 저장되지 않았습니다 — 자동으로 다시 보내는 중이니 창을 닫지 마세요');
@@ -28718,17 +29066,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     try{toast('금고 저장 중…','ok')}catch(e){}
     /* Supabase 즉시 저장 — 다른 대표 PC 는 realtime 으로 몇 초 내 반영.
        모든 저장 버전은 exec_vault_history 트리거로 append-only 보관(복구 가능). */
-    let ok=false;
-    for(let attempt=0; attempt<3 && !ok; attempt++){
-      try{ ok=await _execPushSupabase(blob); }catch(e){ ok=false; }
-      if(!ok) await new Promise(r=>setTimeout(r, 400*(attempt+1)));
+    let ok=false, conflict=false;
+    for(let attempt=0; attempt<3 && !ok && !conflict; attempt++){
+      try{
+        const res=await _execPushSupabase(blob, remote.missing?null:remote.updatedAt);
+        if(res==='conflict') conflict=true; else ok=res;
+      }catch(e){ ok=false; }
+      if(!ok&&!conflict) await new Promise(r=>setTimeout(r, 400*(attempt+1)));
     }
+    if(conflict) return _execSaveOnce();
     if(ok){
       _execBlob=blob;
       _execCacheSet(blob);
       _execSuppressRealtimeTs=blob.updatedAt;   // 내 저장 echo 무시
       _execBase=_whtClone(_execEntries||[]);
       _execDirty=false; _execFail=0; clearTimeout(_execRetryTimer);
+      if(!_execSaveAgain) try{ localStorage.removeItem(EXEC_PENDING_KEY); }catch(e){}
       renderExecVault();
       try{toast('✓ 금고 저장됨','ok')}catch(e){}
       return true;
@@ -28884,8 +29237,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   let _csDataPushAgain = false;
   let _csDataPushTimer = null;
   let _csDataPushFailStreak = 0;
-  function _csLoadBase(){ try{ return JSON.parse(localStorage.getItem(CS_BASE_KEY)||'null'); }catch(e){ return null; } }
-  function _csSaveBase(b){ try{ localStorage.setItem(CS_BASE_KEY, JSON.stringify(b)); }catch(e){} }
+  function _csLoadBase(){ try{ return JSON.parse(_bbBaseGet(CS_BASE_KEY)||'null'); }catch(e){ return null; } }
+  function _csSaveBase(b){ _bbBaseSet(CS_BASE_KEY, JSON.stringify(b)); }
   function _csPushedGet(){
     try{
       const s=JSON.parse(localStorage.getItem(CS_PUSHED_KEY)||'null');
@@ -28910,11 +29263,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(b && _csCanon(t)===_csCanon(b)) return;                // 내가 지웠고 남이 안 고침
       rest.push(t);
     });
+    // 메모는 줄 단위로 합친다 — 통째로 올리면 아직 못 받은 남의 글이 경고 없이 사라진다
     let memo=theirs.memo;
-    if(base){ if(mine.memo!==base.memo) memo=mine.memo; }
+    if(base) memo=_bbMergeText(base.memo,mine.memo,theirs.memo);
     else if(mine.memo && mine.memo!==theirs.memo){
-      // 기준이 없는 옛 대기열 — 며칠 전 메모로 덮지 않고 뒤에 붙인다
-      memo = stale && theirs.memo ? `${theirs.memo}\n\n[이전에 못 보낸 메모]\n${mine.memo}` : mine.memo;
+      // 기준이 없다 (첫 조회 전 · 옛 대기열) — 서버 글을 지우지 않고 둘 다 남긴다
+      memo = stale && theirs.memo ? `${theirs.memo}\n\n[이전에 못 보낸 메모]\n${mine.memo}` : _bbMergeText('',mine.memo,theirs.memo);
     }
     return {faqs:fresh.concat(rest,kept), memo, updatedAt:new Date().toISOString()};
   }
@@ -29007,7 +29361,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     d.updatedAt = new Date().toISOString();
     saveCsLocal(d);
     const prev = _csDataPending;
-    _csDataPending = {mine:d, base:prev?prev.base:_csLoadBase(), seq:(prev?prev.seq:0)+1, ts:Date.now()};
+    // 작성 중인 빈 FAQ 행은 올리지 않는다 ("추가" 직후 메모를 고치면 빈 행이 서버에 남던 것)
+    const mine = {...d, faqs:d.faqs.filter(f=>f&&(f.q||f.a))};
+    _csDataPending = {mine, base:prev?prev.base:_csLoadBase(), seq:(prev?prev.seq:0)+1, ts:Date.now()};
     _csDataPersistDirty();
     _csDataSchedulePush();
   }
@@ -29023,14 +29379,39 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(_csDataPending){ clearTimeout(_csDataPushTimer); _csDataPushInner(); }
   });
 
+  /* FAQ 입력 초안 — "저장"을 누르기 전 글자도 브라우저에 남겨 새로고침 · 창 닫기에 사라지지 않게 */
+  const CS_FAQ_DRAFT_KEY='brightbeed_cs_faq_draft_v1';
+  let _csFaqDraftPending=null;
+  function csFaqDraftSave(){
+    if(!_cs_editingItem) return;
+    const it=loadCs().faqs[_cs_editingItem.idx];
+    try{ localStorage.setItem(CS_FAQ_DRAFT_KEY, JSON.stringify({id:it&&it._id, isNew:_cs_editingItem.isNew, q:document.getElementById('csEditQ')?.value||'', a:document.getElementById('csEditA')?.value||'', ts:Date.now()})); }catch(e){}
+  }
+  window.csFaqDraftSave=csFaqDraftSave;
+  function _csFaqDraftClear(){ _csFaqDraftPending=null; try{ localStorage.removeItem(CS_FAQ_DRAFT_KEY); }catch(e){} }
+  function _csFaqDraftRestore(){
+    let dr=null;
+    try{ dr=JSON.parse(localStorage.getItem(CS_FAQ_DRAFT_KEY)||'null'); }catch(e){}
+    if(!dr||!(dr.q||dr.a)) return;
+    const d=loadCs();
+    let idx=d.faqs.findIndex(x=>x._id===dr.id);
+    if(idx<0){
+      d.faqs.unshift({_id:dr.id||('n'+Date.now().toString(36)),q:'',a:''});
+      saveCsLocal(d);
+      idx=0; dr.isNew=true;
+    }
+    _cs_editingItem={idx,isNew:!!dr.isNew};
+    _csFaqDraftPending=dr;
+  }
+
   function renderCs(){renderCsFaqs();renderCsMemo()}
 
   function renderCsFaqs(){
     const root=document.getElementById('csFaqList');
     if(!root) return;
     // 편집 중 다시 그려도(화면 재진입) 입력 중인 글자를 유지
-    const keepQ=_cs_editingItem?document.getElementById('csEditQ')?.value:undefined;
-    const keepA=_cs_editingItem?document.getElementById('csEditA')?.value:undefined;
+    const keepQ=_cs_editingItem?(document.getElementById('csEditQ')?.value??_csFaqDraftPending?.q):undefined;
+    const keepA=_cs_editingItem?(document.getElementById('csEditA')?.value??_csFaqDraftPending?.a):undefined;
     const d=loadCs();
     if(d.faqs.length===0){
       root.innerHTML='<div class="cs-empty">아직 등록된 질문이 없습니다</div>';
@@ -29040,8 +29421,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const editing=_cs_editingItem && _cs_editingItem.idx===i;
       if(editing){
         return `<div class="cs-item cs-item-editing">
-          <input class="cs-edit-q" id="csEditQ" placeholder="질문" value="${escapeHTML(it.q||'')}">
-          <textarea class="cs-edit-a" id="csEditA" placeholder="답변">${escapeHTML(it.a||'')}</textarea>
+          <input class="cs-edit-q" id="csEditQ" placeholder="질문" oninput="csFaqDraftSave()" value="${escapeHTML(it.q||'')}">
+          <textarea class="cs-edit-a" id="csEditA" placeholder="답변" oninput="csFaqDraftSave()">${escapeHTML(it.a||'')}</textarea>
           <div class="cs-item-actions">
             <button class="cs-act-copy" onclick="saveCsItemEdit()">저장</button>
             <button onclick="cancelCsItemEdit()">취소</button>
@@ -29105,12 +29486,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       // 빈 내용으로 저장 → 새 항목이면 자동 제거
       if(_cs_editingItem.isNew) d.faqs.splice(idx,1);
       _cs_editingItem=null;
+      _csFaqDraftClear();
       saveCsLocal(d);
       renderCsFaqs();
       return;
     }
     d.faqs[idx]=Object.assign({},d.faqs[idx],{q,a});
     _cs_editingItem=null;
+    _csFaqDraftClear();
     await persistCs(d);
     renderCsFaqs();
   }
@@ -29123,6 +29506,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       saveCsLocal(d);
     }
     _cs_editingItem=null;
+    _csFaqDraftClear();
     renderCsFaqs();
   }
   async function deleteCsItem(i){
@@ -29165,7 +29549,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!el) return;
     const newMemo=_csMemoCurrent();
     const d=loadCs();
-    if((d.memo||'')===newMemo){ _csMemoSetStatus('saved'); return; }
+    if((d.memo||'')===newMemo){ _csMemoSetStatus(_csDataPending||_csDataPushing?'saving':'saved'); return; }   // 아직 전송 중이면 '저장됨'이 아니다
     d.memo=newMemo;
     _csMemoSetStatus('saving');   // '저장됨'은 서버 응답 뒤에 (_csDataPushInner)
     try{ await persistCs(d); }
@@ -29198,6 +29582,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.csMemoOnBlur=csMemoOnBlur;
   window.renderCs=renderCs;
 
+  _csFaqDraftRestore();
   renderCs();
   syncCsFromRemote().catch(()=>{});
 
@@ -29253,7 +29638,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   let _mdCal_lastHash=null;
   let _mdCal_editingId=null;
   let _mdCal_pickedColor='rose';
-  let _mdLastPutAt=0; // 마지막 ghPut 성공 시각 — CDN race window 가드용
+  const MD_EVENTS_PUSHED_KEY='brightbeed_md_events_pushed_v1';   // 방금 올린 내용의 해시 — 새로고침해도 옛 CDN 파일을 받아들이지 않게
+  function _mdePushedGet(){
+    try{
+      const s=JSON.parse(localStorage.getItem(MD_EVENTS_PUSHED_KEY)||'null');
+      return (s && Date.now()-s.ts<=6*60*1000) ? s : null;   // raw 는 max-age=300
+    }catch(e){ return null; }
+  }
+  function _mdePushedSet(json){ try{ localStorage.setItem(MD_EVENTS_PUSHED_KEY, JSON.stringify({hash:_whtHash(json), ts:Date.now()})); }catch(e){} }
+  function _mdePushedClear(){ try{ localStorage.removeItem(MD_EVENTS_PUSHED_KEY); }catch(e){} }
 
   function _mdIso(d){
     const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
@@ -29332,14 +29725,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function _mdeLoadBase(){
     try{
-      const j = JSON.parse(localStorage.getItem(MD_EVENTS_BASE_KEY)||'null');
+      const j = JSON.parse(_bbBaseGet(MD_EVENTS_BASE_KEY)||'null');
       return (j && Array.isArray(j.events)) ? j.events : [];
     }catch(e){ return []; }
   }
   function _mdeSaveBase(events){
-    try{ localStorage.setItem(MD_EVENTS_BASE_KEY, JSON.stringify({events:events||[], ts:Date.now()})); }catch(e){}
+    _bbBaseSet(MD_EVENTS_BASE_KEY, JSON.stringify({events:events||[], ts:Date.now()}));
   }
-  /* 3-way — 한쪽만 고쳤으면 고친 쪽, 양쪽 다 고쳤으면 updatedAt 큰 쪽.
+  // 칸 단위 합치기 — 체크와 메모를 두 사람이 따로 고쳤으면 둘 다 남는다. 같은 칸을 고쳤으면 updatedAt 큰 쪽
+  function _mdeMergeFields(mine,theirs,base){
+    const out={...theirs}, s=v=>JSON.stringify(v===undefined?null:v);
+    new Set([...Object.keys(mine),...Object.keys(theirs),...Object.keys(base)]).forEach(k=>{
+      if(k==='updatedAt'||s(mine[k])===s(base[k])) return;
+      if(s(theirs[k])===s(base[k])||Number(mine.updatedAt||0)>=Number(theirs.updatedAt||0)){
+        if(k in mine) out[k]=mine[k]; else delete out[k];
+      }
+    });
+    out.updatedAt=Math.max(Number(mine.updatedAt||0),Number(theirs.updatedAt||0));
+    return out;
+  }
+  /* 3-way — 한쪽만 고쳤으면 고친 쪽, 양쪽 다 고쳤으면 칸 단위로 합침.
      서버에 없고 내가 안 고친 일정은 남이 지운 것 → 되살리지 않는다 (옛 사본 · 옛 대기열이 지운 일정을 되살리던 문제) */
   function _mdMergeEvents(mine, theirs, base, tombIds){
     const out = new Map();
@@ -29361,7 +29766,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(existing){
         if(be && canon(be)===canon(existing)){ out.set(e.id, e); return; }   // 내가 안 고침 → 서버 것
         if(be && canon(be)===canon(e)) return;                                // 서버가 안 바뀜 → 내 것
-        // 양쪽 다 고침 → updatedAt 큰 쪽 (없으면 mine 유지)
+        if(be){ out.set(e.id, _mdeMergeFields(existing, e, be)); return; }
+        // 기준이 없으면 updatedAt 큰 쪽 (없으면 mine 유지)
         const mt = Number(existing.updatedAt||0), tt = Number(e.updatedAt||0);
         if(tt > mt) out.set(e.id, e);
         return;
@@ -29408,10 +29814,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   async function syncMdEventsFromRemote(){
-    // ghPut 직후 5분 안이면 sync skip — GitHub raw CDN 캐시가 옛 데이터로 덮어쓰는 race 방지
-    if(_mdLastPutAt && (Date.now()-_mdLastPutAt) < 5*60*1000) return;
+    if(_mdePushing) return;
     const remote=await fetchMdEventsFromRemote();
-    if(remote===null) return;
+    if(remote===null || _mdePushing) return;
+    // 방금 올린 내용이 CDN(5분 캐시)에 아직 없으면 옛 파일을 받아들이지 않는다 — 저장 후 새로고침하면 일정이 사라지고, 거기서 다시 저장하면 영구히 덮인다
+    const pushedSnap=_mdePushedGet();
+    if(pushedSnap){
+      if(remote.empty || _whtHash(JSON.stringify(remote))!==pushedSnap.hash) return;
+      _mdePushedClear();
+    }
     let localMeta=null;
     try{ localMeta=JSON.parse(localStorage.getItem(MD_EVENTS_KEY)||'null'); }catch(e){}
     const localUpdatedAt = localMeta && Number.isFinite(localMeta.updatedAt) ? localMeta.updatedAt : 0;
@@ -29934,6 +30345,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _mdModalPlats.clear();
     _mdRenderModalPills();
     document.getElementById('mdEventDeleteBtn').style.display='none';
+    _bbModalSnap(document.getElementById('mdEventModal'));
     document.getElementById('mdEventModal').classList.add('show');
     setTimeout(()=>document.getElementById('mdEventTitle').focus(), 60);
   }
@@ -29956,6 +30368,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     (Array.isArray(ev.platforms)?ev.platforms:[]).forEach(p=>{ if(_mdPlatMap[p]) _mdModalPlats.add(p); });
     _mdRenderModalPills();
     document.getElementById('mdEventDeleteBtn').style.display='';
+    _bbModalSnap(document.getElementById('mdEventModal'));
     document.getElementById('mdEventModal').classList.add('show');
     setTimeout(()=>document.getElementById('mdEventTitle').focus(), 60);
   }
@@ -29980,7 +30393,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const events=(_mdCal.events||[]).slice();
     if(_mdCal_editingId){
       const i=events.findIndex(e=>e.id===_mdCal_editingId);
-      if(i>=0) events[i]={...events[i], title, start, end, memo, color:_mdCal_pickedColor, brands, platforms, updatedAt:Date.now()};
+      if(i<0){ toast('그 사이 다른 곳에서 삭제된 일정입니다. 내용을 복사해 새로 추가해 주세요','err'); return; }   // 입력이 버려지는데 "저장 완료"가 뜨던 것
+      events[i]={...events[i], title, start, end, memo, color:_mdCal_pickedColor, brands, platforms, updatedAt:Date.now()};
     }else{
       events.push({
         id:`${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
@@ -30038,7 +30452,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     try{
       const p = _mdePending, { msg } = p, seq = p.seq;
       const mine = JSON.parse(JSON.stringify(Array.isArray(p.events) ? p.events : []));   // 보낼 때의 사본 — 전송 중 체크가 같은 객체를 바꾼다
-      let ok = false, lastReason = null, finalEvents = mine;
+      let ok = false, lastReason = null, finalEvents = mine, pushedJson = '';
       for(let attempt=0; attempt<3; attempt++){
         try{
           const file = await ghGetFile(MD_EVENTS_API);
@@ -30060,7 +30474,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           const meta = {events:finalEvents, updatedAt:Date.now()};
           const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(meta, null, 2))));
           const r = await ghPut(MD_EVENTS_API, b64, msg, {noConflictRetry:true, sha:file.sha||null});
-          if(r.ok){ ok = true; break; }
+          if(r.ok){ ok = true; pushedJson = JSON.stringify(meta); break; }
           lastReason = r.reason;
           if(r.reason !== 'conflict') break;
         } catch(e){ lastReason = 'throw'; break; }
@@ -30068,7 +30482,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(ok){
         _mdePushFailStreak = 0;
         _mdeSaveBase(finalEvents);   // 방금 올린 상태 = 다음 병합의 base
-        _mdLastPutAt = Date.now();
+        _mdePushedSet(pushedJson);
         const cur = _mdePending;
         if(cur.seq !== seq){
           // 보내는 사이 또 고침 (체크를 연달아 누른 경우 등) — 대기열을 지우면 그 편집이 안 올라간다
@@ -30127,6 +30541,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _mdePending = {events, msg:'chore: MD 기획전 정상확인 토글', seq:(_mdePending&&_mdePending.seq||0)+1, modalSeq:(_mdePending&&_mdePending.modalSeq)||0};
     _mdePersistDirty();
     saveMdEventsLocal(events);
+    try{ renderMdCal(); }catch(e){}   // 전송을 기다리지 않고 바로 표시 — 안 바뀐 줄 알고 다시 누르면 취소된다
     _mdeSchedulePush();
   }
   window.mdCalToggleCheck=mdCalToggleCheck;
@@ -30134,9 +30549,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   document.getElementById('mdEventCancelBtn')?.addEventListener('click', mdCalCloseModal);
   document.getElementById('mdEventSaveBtn')?.addEventListener('click', mdCalSaveEvent);
   document.getElementById('mdEventDeleteBtn')?.addEventListener('click', mdCalDeleteEvent);
-  document.getElementById('mdEventModal')?.addEventListener('click', (e)=>{
-    if(e.target.id==='mdEventModal') mdCalCloseModal();
-  });
+  _bbBackdrop(document.getElementById('mdEventModal'), ()=>{ if(_bbModalCanClose(document.getElementById('mdEventModal'))) mdCalCloseModal(); });
 
   window.mdCalNavPrev=mdCalNavPrev;
   window.mdCalNavNext=mdCalNavNext;
@@ -31184,7 +31597,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       updated_by: (typeof _diaryGetMe==='function' && _diaryGetMe()) || null,
     };
   }
+  // 오래 묵은 대기분은 서버가 그 뒤로 바뀌지 않았을 때만 보낸다 — 며칠 뒤 재전송이 다른 PC 에서 고친 값을 옛 값으로 되돌리지 않게
+  async function _bbStaleSkip(tableUrl,id,ts){
+    if(Date.now()-(ts||0)<10*60*1000) return false;
+    try{
+      const r=await fetch(`${tableUrl}?select=updated_at&id=eq.${encodeURIComponent(id)}`,{headers:_sbHeaders(),cache:'no-store'});
+      if(!r.ok) return false;
+      const row=(await r.json())[0];
+      if(!row||!row.updated_at||Date.parse(row.updated_at)<=ts) return false;
+      if(typeof toast==='function') toast('다른 곳에서 더 최근에 고친 항목은 옛 값으로 덮지 않았습니다','warn');
+      return true;
+    }catch(e){ return false; }
+  }
   async function _fxSendOne(id, ent){
+    if(await _bbStaleSkip(FX_SB_URL,id,ent.ts)) return true;
     try{
       // keepalive: 저장 직후 창을 닫아도 요청이 끝까지 간다
       const r = ent.op==='delete'
@@ -31578,6 +32004,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const rentRadio = document.querySelector('input[name="fxCat"][value="rent"]');
     if(rentRadio) rentRadio.checked = true;
     document.getElementById('fxDeleteBtn').style.display = 'none';
+    _bbModalSnap(document.getElementById('fxModal'));
     document.getElementById('fxModal').hidden = false;
     setTimeout(()=>document.getElementById('fxFieldName').focus(), 50);
   }
@@ -31599,6 +32026,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const catRadio = document.querySelector(`input[name="fxCat"][value="${it.category||'rent'}"]`);
     if(catRadio) catRadio.checked = true;
     document.getElementById('fxDeleteBtn').style.display = '';
+    _bbModalSnap(document.getElementById('fxModal'));
     document.getElementById('fxModal').hidden = false;
   }
   window.fxOpenEditModal = fxOpenEditModal;
@@ -31657,7 +32085,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape'){
       const m = document.getElementById('fxModal');
-      if(m && !m.hidden) fxCloseModal();
+      if(m && !m.hidden && _bbModalCanClose(m)) fxCloseModal();
     }
   });
 
@@ -31814,7 +32242,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const q = _cecQ();
         for(const id of Object.keys(q)){
           const ent = q[id];
-          const ok = ent.op==='delete' ? await _cecSbDelete(id) : !!(await _cecSbUpsert(ent.ev));
+          const ok = (await _bbStaleSkip(CEC_SB_URL,id,ent.ts)) || (ent.op==='delete' ? await _cecSbDelete(id) : !!(await _cecSbUpsert(ent.ev)));
           if(ok){ if(q[id]===ent){ delete q[id]; _cecSaveQ(); } }
           else failed = true;
         }
@@ -32104,6 +32532,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('cecEvCat').value = 'meet';
     document.getElementById('cecEvMemo').value = '';
     document.getElementById('cecDeleteBtn').style.display = 'none';
+    _bbModalSnap(modal);
     modal.hidden = false;
     setTimeout(()=>document.getElementById('cecEvTitle')?.focus(), 40);
   }
@@ -32120,6 +32549,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('cecEvCat').value = ev.category || 'meet';
     document.getElementById('cecEvMemo').value = ev.memo || '';
     document.getElementById('cecDeleteBtn').style.display = '';
+    _bbModalSnap(modal);
     modal.hidden = false;
     setTimeout(()=>document.getElementById('cecEvTitle')?.focus(), 40);
   }
@@ -32192,7 +32622,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   document.addEventListener('keydown', e=>{
     if(e.key==='Escape'){
       const m = document.getElementById('cecModal');
-      if(m && !m.hidden) cecCloseModal();
+      if(m && !m.hidden && _bbModalCanClose(m)) cecCloseModal();
     }
   });
 
@@ -33699,7 +34129,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _whtState.vendors=grouped;
       _whtState.vendorsLoaded=true;
       // 모달 열려있으면 재렌더
-      if(_whtState.vendorModal.open) whtVendorRenderList();
+      if(_whtState.vendorModal.open&&!document.querySelector('.wht-vendor-item.is-editing')) whtVendorRenderList();   // 수정 폼을 다시 그리면 치던 글자가 사라진다
     }catch(e){
       console.warn('wht vendors load failed',e);
     }finally{
@@ -33773,7 +34203,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       Object.keys(_whtState.vendors).forEach(sec=>{
         _whtState.vendors[sec].sort((a,b)=>String(b.last_used_at||'').localeCompare(String(a.last_used_at||'')));
       });
-      if(_whtState.vendorModal.open) whtVendorRenderList();
+      if(_whtState.vendorModal.open&&!document.querySelector('.wht-vendor-item.is-editing')) whtVendorRenderList();   // 수정 폼을 다시 그리면 치던 글자가 사라진다
     }catch(e){
       console.warn('vendor upsert failed', e);
     }
@@ -34481,6 +34911,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!r.ok) throw new Error('HTTP '+r.status);
       const rows=await r.json();
       if(gen!==_whtState.loadGen) return;   // 그사이 다른 달로 옮겼으면 옛 응답을 버린다
+      if(silent&&(_whtIsEditing()||document.querySelector('.wht-vendor-item.is-editing'))) return;   // 조용한 재조회가 입력 중인 표 · 수정 폼을 다시 그리면 치던 글자가 사라진다 (다음 회차에)
       const row=rows&&rows[0];
       const remote=_whtNorm(row&&row.payload);
       const pend=_whtPendAll()[ym];
@@ -35212,8 +35643,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(key in _kv.mem) return _kv.mem[key];
     try{ return JSON.parse(localStorage.getItem(lsKey)||'null'); }catch(e){ return null; }
   }
-  function _kvLoadBase(key){ try{ return JSON.parse(localStorage.getItem(KV_BASE_PREFIX+key)||'null'); }catch(e){ return null; } }
-  function _kvSaveBase(key,v){ try{ localStorage.setItem(KV_BASE_PREFIX+key,JSON.stringify(v)); }catch(e){} }
+  function _kvLoadBase(key){ try{ return JSON.parse(_bbBaseGet(KV_BASE_PREFIX+key)||'null'); }catch(e){ return null; } }
+  function _kvSaveBase(key,v){ _bbBaseSet(KV_BASE_PREFIX+key,JSON.stringify(v)); }
+  // 고친 칸 기록 — 기준본이 없을 때(첫 조회 전 · 조회 실패) 안 고친 칸으로 서버를 덮지 않게
+  const KV_TOUCHED_KEY='brightbeed_kv_touched_v1';
+  function _kvTouched(){
+    if(!_kv.touched){ try{ _kv.touched=JSON.parse(localStorage.getItem(KV_TOUCHED_KEY)||'{}')||{}; }catch(e){ _kv.touched={}; } }
+    return _kv.touched;
+  }
+  function _kvSaveTouched(){ try{ localStorage.setItem(KV_TOUCHED_KEY,JSON.stringify(_kvTouched())); }catch(e){} }
+  function _kvMergeTouched(mine,theirs,keys){
+    if(!_kvIsObj(mine)||!_kvIsObj(theirs)) return theirs;
+    const out={...theirs};
+    (keys||[]).forEach(k=>{ if(k in mine) out[k]=mine[k]; else delete out[k]; });
+    return out;
+  }
   function _kvBind(){
     if(_kv.bound) return;
     _kv.bound=true;
@@ -35223,6 +35667,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function kvSet(key,lsKey,value){
     _kvBind();
+    if(_kvIsObj(value)){
+      const before=_kvValue(key,lsKey), prev=_kvIsObj(before)?before:{};
+      const set=new Set(_kvTouched()[key]||[]);
+      new Set([...Object.keys(value),...Object.keys(prev)]).forEach(k=>{ if(JSON.stringify(value[k])!==JSON.stringify(prev[k])) set.add(k); });
+      _kvTouched()[key]=[...set];
+      _kvSaveTouched();
+    }
     _kv.mem[key]=value;
     _kv.seq[key]=(_kv.seq[key]||0)+1;
     _kvPutLocal(lsKey,value);
@@ -35249,7 +35700,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const r0=await fetch(`${KV_URL}?select=value,updated_at&key=eq.${encodeURIComponent(key)}`,{headers:_sbHeaders(),cache:'no-store'});
       if(!r0.ok) throw new Error('HTTP '+r0.status);
       const row=(await r0.json())[0]||null;
-      const merged=row?_kvMerge(mine,row.value,_kvLoadBase(key)):mine;
+      const base=_kvLoadBase(key);
+      const merged=!row?mine:(base===null?_kvMergeTouched(mine,row.value,_kvTouched()[key]):_kvMerge(mine,row.value,base));
       const body=JSON.stringify({key,value:merged,updated_at:new Date().toISOString(),updated_by:me});
       const w=row
         ? await fetch(`${KV_URL}?key=eq.${encodeURIComponent(key)}&updated_at=eq.${encodeURIComponent(row.updated_at)}`,{method:'PATCH',headers:_sbHeaders({'Prefer':'return=representation'}),body})
@@ -35258,15 +35710,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!w.ok) throw new Error('HTTP '+w.status);
       const saved=(await w.json())[0];
       if(!saved) continue;                  // 그사이 누가 먼저 저장함 — 다시 합침
-      _kvSaveBase(key,merged);
+      // 보내는 사이 또 고쳤거나 합친 값을 화면에 못 넣었으면 기준본을 옛 값으로 둔다 — 다음 저장 때 남의 값이 "내가 되돌린 값"이 되어 사라지지 않게
       if((_kv.seq[key]||0)===seq){
         delete _kvDirty()[key];
         _kvSaveDirty();
+        delete _kvTouched()[key];
+        _kvSaveTouched();
+        let applied=true;
         if(JSON.stringify(merged)!==JSON.stringify(mine)){   // 남이 고친 값이 합쳐짐
           _kv.mem[key]=merged;
           _kvPutLocal(lsKey,merged);
-          if(_kv.onChange[key]) _kv.onChange[key](merged);
+          if(_kv.onChange[key]&&_kv.onChange[key](merged)===false) applied=false;
         }
+        if(applied) _kvSaveBase(key,merged);
       }
       return;
     }
@@ -35311,7 +35767,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
     // 서버 저장 전부터 이 PC 에만 있던 값 — 서버 값을 우선하되 이 PC 에만 있는 칸은 살려서 올린다
-    const firstTime=_kvLoadBase(key)===null;
+    const prevBase=_kvLoadBase(key), firstTime=prevBase===null;
     _kvSaveBase(key,row.value);
     let next=row.value;
     if(firstTime && _kvIsObj(local) && _kvIsObj(row.value)){
@@ -35321,7 +35777,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _kv.mem[key]=next;
     if(JSON.stringify(local)!==JSON.stringify(next)){
       _kvPutLocal(lsKey,next);
-      if(onChange) onChange(next);
+      if(onChange&&onChange(next)===false&&prevBase!==null) _kvSaveBase(key,prevBase);   // 입력 중이라 화면에 못 넣음 — 기준본도 옛 값으로
     }
     if(_kvDirty()[key]) _kvFlush();
   }
@@ -36829,7 +37285,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!typing()) pcCompute();
     });
     kvPull('pc_cond',PC_LS.cond,()=>{
-      if(typing()) return;
+      if(typing()) return false;
       pcRestoreConditions();
       pcRenderTiers();
       pcRenderDupTiers();
@@ -38295,18 +38751,27 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _mds.orderBy=(rows[0]&&rows[0].updated_by)||'';
   }
   let _mdsPrioSaveT=null;
+  let _mdsPrefsDirty=false, _mdsPrefsFail=0;
+  async function _mdsPushPrefs(){
+    clearTimeout(_mdsPrioSaveT);
+    const tag=document.getElementById('mdsPrioSave'), who=_mdsWho();
+    const ok=await _mdsSbUpsert('md_sheet_prefs',{id:'order',data:_mds.order,updated_by:who,updated_at:new Date().toISOString()},'id');
+    if(ok){ _mds.orderBy=who; _mdsPrefsDirty=false; _mdsPrefsFail=0; }
+    else{
+      _mdsPrefsFail=Math.min(_mdsPrefsFail+1,6);
+      _mdsPrioSaveT=setTimeout(_mdsPushPrefs,Math.min(1000*2**(_mdsPrefsFail-1),30000));
+    }
+    if(tag) tag.textContent=ok?'✓ 저장됨 '+_mdsHm():'저장 대기 · 자동으로 다시 보내요';
+    _mdsApplyPrioUi();
+  }
   function _mdsSavePrefs(){
     clearTimeout(_mdsPrioSaveT);
+    _mdsPrefsDirty=true;
     const tag=document.getElementById('mdsPrioSave');
     if(tag) tag.textContent='저장 중…';
-    _mdsPrioSaveT=setTimeout(async ()=>{
-      const who=_mdsWho();
-      const ok=await _mdsSbUpsert('md_sheet_prefs',{id:'order',data:_mds.order,updated_by:who,updated_at:new Date().toISOString()},'id');
-      if(ok) _mds.orderBy=who;
-      if(tag) tag.textContent=ok?'✓ 저장됨 '+_mdsHm():'저장 실패 — 다시 시도해 주세요';
-      _mdsApplyPrioUi();
-    },500);
+    _mdsPrioSaveT=setTimeout(_mdsPushPrefs,500);
   }
+  window.addEventListener('pagehide',()=>{ if(_mdsPrefsDirty) _mdsPushPrefs(); });
   function _mdsLog(book,sheet,cell,oldv,newv,ok,error){
     fetch(`${SUPABASE_URL}/rest/v1/md_sheet_edit_log`,{method:'POST',headers:_sbHeaders({'Prefer':'return=minimal'}),
       body:JSON.stringify({who:_mdsWho(),book,sheet,cell,old_value:oldv,new_value:newv,ok,error:error||null})}).catch(()=>{});
@@ -38343,6 +38808,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
     document.getElementById('mdsSetup').hidden=true;
+    _mdsFlush();
+    _mdsRenderFailed();
     const loadOpen=()=>_mdsOpenTabKeys().forEach(tk=>{ if(!_mds.data[tk]||_mds.data[tk].stale) _mdsLoadTab(tk,false) });
     if(_mds.meta) loadOpen();
     await _mdsLoadMeta(false);
@@ -38355,7 +38822,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _mds.meta=j;
       try{ localStorage.setItem(MDS_LS_META,JSON.stringify(j)) }catch(e){}
       _mdsStatus('ok','구글시트 연결됨 · '+_mdsHm()+' 기준');
-      mdsRender();
+      // 칸을 고치는 중에 목록을 다시 그리면 포커스를 잃어 치던 글자가 사라진다 — 입력이 끝난 뒤에
+      if(_mds.editing) _mds.renderLater=true; else mdsRender();
     }catch(e){
       _mdsStatus('err',_mdsErrText(e));
     }
@@ -38464,8 +38932,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return (ia<0?999:ia)-(ib<0?999:ib);
     });
   }
+  // 저장된 순서를 못 읽은 채 옮기면 기존 탭 순서 없이 저장돼 사라진다
+  function _mdsOrderReady(){
+    if(_mds.order!==null) return true;
+    toast('저장된 우선순위를 아직 못 불러왔어요. 잠시 후 다시 시도해 주세요','err');
+    _mdsLoadPrefs().then(()=>{ if(_mds.order!==null) mdsRender(); });
+    return false;
+  }
   function mdsMoveBook(btn,dir){
-    if(!_mdsCanPrio()) return;
+    if(!_mdsCanPrio()||!_mdsOrderReady()) return;
     const key=btn.closest('.mds-book').dataset.b;
     const list=_mdsOrderedBooks().map(b=>b.key);
     const i=list.indexOf(key), j=i+dir;
@@ -38475,7 +38950,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     mdsRender(); _mdsSavePrefs();
   }
   function mdsMoveTab(btn,dir){
-    if(!_mdsCanPrio()) return;
+    if(!_mdsCanPrio()||!_mdsOrderReady()) return;
     const tab=btn.closest('.mds-tab'), bkey=tab.dataset.b;
     const book=((_mds.meta&&_mds.meta.books)||[]).find(b=>b.key===bkey);
     if(!book) return;
@@ -38662,6 +39137,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(saved&&saved.v===3&&saved.values){
           cur=_mds.data[tk]=_mdsPrepare(saved);
           cur.stale=true;
+          _mdsOverlayPending(tk,cur);
           _mdsRenderTabBody(tk);
         }
       }
@@ -38683,7 +39159,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(c.fxList){ raw.fx={sig:c.sig,fxList:c.fxList,fxRuns:c.fxRuns,ro:c.ro}; raw.fxAt=Date.now() }
       }
       _mdsStatus('ok','구글시트 연결됨 · '+_mdsHm()+' 기준');
-      if(!cur||cur.stale||prevSig!==raw.valSig){ _mds.data[tk]=_mdsPrepare(raw); _mdsRenderTabBody(tk) }
+      if(!cur||cur.stale||prevSig!==raw.valSig){ _mds.data[tk]=_mdsPrepare(raw); _mdsOverlayPending(tk,_mds.data[tk]); _mdsRenderTabBody(tk) }
       else{ cur.at=raw.meta.at; const at=_mdsBodyEl(tk)?.querySelector('.mds-note-at'); if(at) at.textContent=_mdsHm(cur.at)+' 기준' }
       _mdsIdbPut(tk,raw);
       // 수식·서식 — 처음, 5분마다, 행 수가 바뀌었을 때만 브리지에 묻는다 (바뀐 것만 돌아온다)
@@ -38900,6 +39376,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _mdsSticky(body);
     const nsc=body.querySelector('.mds-scroll');
     if(pos&&nsc){ nsc.scrollTop=pos[0]; nsc.scrollLeft=pos[1] }
+    _mdsMarkPending(tk);
   }
   // 줄바꿈 때문에 행 높이가 달라지므로, 그린 뒤 실제 높이로 머리글 행의 고정 위치를 잡는다
   function _mdsSticky(body){
@@ -39079,6 +39556,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     td.classList.remove('mds-editing');
     td.innerHTML=td.dataset.html||'';
     if(_mds.editing&&_mds.editing.td===td) _mds.editing=null;
+    _mdsRunDeferredRender();
+  }
+  function _mdsRunDeferredRender(){
+    if(_mds.renderLater&&!_mds.editing){ _mds.renderLater=false; mdsRender(); }
   }
   function _mdsNeighbor(td,move){
     const row=td.closest('[data-r]');
@@ -39105,11 +39586,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(_mds.editing&&_mds.editing.td===td) _mds.editing=null;
     td.classList.remove('mds-editing');
     const next=move?_mdsNeighbor(td,move):null;
-    if(old===null||val===old){ td.innerHTML=td.dataset.html||''; if(next) _mdsBeginEdit(next); return }
+    if(old===null||val===old){ td.innerHTML=td.dataset.html||''; if(next) _mdsBeginEdit(next); _mdsRunDeferredRender(); return }
     td.textContent=val;
     td.classList.add('mds-saving');
+    const writing=_mdsWrite(td,val,old);   // 대기열에 먼저 적는다 (여기까지 동기) — 창을 닫는 순간에도 입력이 남는다
     if(next) _mdsBeginEdit(next);
-    await _mdsWrite(td,val,old);
+    _mdsRunDeferredRender();
+    await writing;
   }
   async function mdsCheck(ev,cb){
     ev.stopPropagation();
@@ -39120,42 +39603,146 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     td.classList.add('mds-saving');
     await _mdsWrite(td,cb.checked?spec.on:spec.off,old);
   }
-  let _mdsWriting=0;
-  window.addEventListener('beforeunload',e=>{ if(_mdsWriting>0){ e.preventDefault(); e.returnValue=''; } });
+  /* 칸 저장 대기열 — 입력값을 먼저 브라우저에 적어 두고 보낸다. 실패해도 입력이 안 사라지고 자동 재전송, 창을 닫아도 다음 접속 때 이어서 보낸다.
+     충돌처럼 그대로 넣을 수 없는 입력은 지우지 않고 "저장 못 한 입력"에 남긴다 */
+  const MDS_QUEUE_KEY='brightbeed_mds_queue_v1', MDS_FAILED_KEY='brightbeed_mds_failed_v1';
+  let _mdsQ=null, _mdsFlushing=false, _mdsRetryT=null, _mdsFail=0;
+  const _mdsRowTouched={};
+  function _mdsQueue(){
+    if(!_mdsQ){
+      try{ _mdsQ=JSON.parse(localStorage.getItem(MDS_QUEUE_KEY)||'[]'); }catch(e){ _mdsQ=[]; }
+      if(!Array.isArray(_mdsQ)) _mdsQ=[];
+    }
+    return _mdsQ;
+  }
+  function _mdsQueueSave(){ try{ localStorage.setItem(MDS_QUEUE_KEY,JSON.stringify(_mdsQueue())); }catch(e){} }
+  function _mdsFailedList(){ try{ const a=JSON.parse(localStorage.getItem(MDS_FAILED_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function _mdsRenderFailed(){
+    const list=document.getElementById('mdsList');
+    if(!list) return;
+    let box=document.getElementById('mdsFailBox');
+    const a=_mdsFailedList();
+    if(!a.length){ if(box) box.remove(); return; }
+    if(!box){ box=document.createElement('div'); box.id='mdsFailBox'; box.className='mds-failbox'; list.parentNode.insertBefore(box,list); }
+    box.innerHTML=`<div class="mds-failbox-head"><b>저장 못 한 입력 ${a.length}건</b> 확인해서 다시 넣어 주세요 <button type="button" onclick="mdsFailedClear()">지우기</button></div>`
+      +a.map(x=>`<div class="mds-failbox-row">${escapeHTML(x.sheet)} ${escapeHTML(x.cell)} · <b>${escapeHTML(x.v)}</b> <span>${escapeHTML(x.why)}</span></div>`).join('');
+  }
+  function _mdsFailedAdd(item){
+    const a=_mdsFailedList(); a.unshift(item);
+    try{ localStorage.setItem(MDS_FAILED_KEY,JSON.stringify(a.slice(0,50))); }catch(e){}
+    _mdsRenderFailed();
+  }
+  function mdsFailedClear(){ try{ localStorage.removeItem(MDS_FAILED_KEY); }catch(e){} _mdsRenderFailed(); }
+  window.mdsFailedClear=mdsFailedClear;
+  // 재조회 · 다시 그리기에도 못 보낸 입력이 보이게
+  function _mdsOverlayPending(tk,d){
+    _mdsQueue().forEach(e=>{
+      if(e.tk!==tk) return;
+      if(!d.values[e.r]) d.values[e.r]=[];
+      d.values[e.r][e.c]=e.v;
+    });
+  }
+  function _mdsMarkPending(tk){
+    const body=_mdsBodyEl(tk);
+    if(!body) return;
+    _mdsQueue().forEach(e=>{
+      if(e.tk!==tk) return;
+      const td=body.querySelector('[data-r="'+e.r+'"] [data-c="'+e.c+'"]');
+      if(td) td.classList.add('mds-saving');
+    });
+  }
+  // 행을 알아볼 칸 — 빈 칸에 쓸 때는 old 비교로 행 밀림을 못 잡는다
+  function _mdsRowGuard(x){
+    if(Date.now()-(_mdsRowTouched[x.tk+':'+x.r]||0)<120000) return null;   // 방금 고친 행은 CSV 가 아직 옛 값일 수 있다
+    const row=x.d.values[x.r]||[];
+    for(let c=0;c<row.length;c++){
+      if(c===x.c||String(row[c]??'')==='') continue;
+      if(_mdsQueue().some(e=>e.tk===x.tk&&e.r===x.r&&e.c===c)) continue;
+      return {c,v:String(row[c])};
+    }
+    return null;
+  }
   async function _mdsWrite(td,val,old){
     const x=_mdsCtx(td);
-    const i=x.tk.indexOf('|'), book=x.tk.slice(0,i), sheet=x.tk.slice(i+1);
-    const cell=_mdsColName(x.c)+(x.r+1);
-    let res=null, err=null;
-    _mdsWriting++;
-    try{
-      // 네트워크 · 브리지 일시 오류는 몇 번 더 시도 (긴 글을 다시 치지 않게). 충돌은 응답으로 오므로 재시도 안 함 — old 비교로 겹쳐 쓰지 않는다
-      for(let attempt=0; attempt<3; attempt++){
-        try{ res=await _mdsCall('write',{book,sheet,edits:[{r:x.r+1,c:x.c+1,v:val,old}]}); err=null; break; }
-        catch(e){ err=_mdsErrText(e); if(attempt<2) await new Promise(r=>setTimeout(r,1000*(attempt+1))); }
-      }
-    }finally{ _mdsWriting--; }
-    const rr=res&&res.results&&res.results[0];
-    if(!err&&rr&&!rr.ok){
-      err=rr.error==='conflict'?`그 사이 다른 곳에서 "${rr.current}"(으)로 바뀌었어요`
-        :rr.error==='formula_cell'?'수식 칸이라 고칠 수 없어요':rr.error;
-    }
-    _mdsLog(book,sheet,cell,old,val,!err,err);
-    if(err){
-      // 칸은 원래 값으로 돌아가니 입력한 내용을 알림에 남겨 다시 칠 수 있게
-      toast(`저장 못 했어요 (${sheet} ${cell}) — ${err}${val?` · 입력한 값: ${String(val).slice(0,80)}`:''}`,'err');
-      td.classList.remove('mds-saving');
-      _mdsPatchRow(x.tk,x.r);
-      _mdsLoadTab(x.tk,true);
-      return;
-    }
-    Object.entries(res.rows||{}).forEach(([r,vals])=>{ x.d.values[+r-1]=vals });
-    x.d.at=res.at;
-    _mdsPatchRow(x.tk,x.r);
-    // 다른 행·탭에 걸린 수식(VLOOKUP 등)도 따라오도록 잠시 뒤 탭 전체를 조용히 다시 읽는다
-    clearTimeout(x.d._reT);
-    x.d._reT=setTimeout(()=>_mdsLoadTab(x.tk,true),2500);
+    const guard=old===''?_mdsRowGuard(x):null;
+    _mdsQueue().push({tk:x.tk,r:x.r,c:x.c,v:val,old,guard,ts:Date.now()});
+    _mdsQueueSave();
+    _mdsRowTouched[x.tk+':'+x.r]=Date.now();
+    if(!x.d.values[x.r]) x.d.values[x.r]=[];
+    x.d.values[x.r][x.c]=val;
+    return _mdsFlush();
   }
+  // true = 끝남 (성공 또는 다시 보내도 소용없음), false = 일시 오류 → 나중에 다시
+  async function _mdsSendCell(e){
+    const i=e.tk.indexOf('|'), book=e.tk.slice(0,i), sheet=e.tk.slice(i+1);
+    const cell=_mdsColName(e.c)+(e.r+1), d=_mds.data[e.tk];
+    const giveUp=why=>{
+      _mdsLog(book,sheet,cell,e.old,e.v,false,why);
+      toast(`저장 못 했어요 (${sheet} ${cell}) — ${why}`,'err');
+      _mdsFailedAdd({sheet,cell,v:String(e.v),why,ts:Date.now()});
+      if(d){
+        if(d.values[e.r]) d.values[e.r][e.c]=e.old;
+        d.stale=true;
+      }
+      e._reload='now';
+      return true;
+    };
+    if(e.guard){
+      try{
+        const fresh=await _mdsCsv(e.tk);
+        if(String((fresh[e.r]||[])[e.guard.c]??'')!==e.guard.v) return giveUp('시트에 행이 추가 · 삭제돼 위치가 바뀌었어요');
+      }catch(err){}   // 확인을 못 하면 그대로 보낸다
+    }
+    let res;
+    try{ res=await _mdsCall('write',{book,sheet,edits:[{r:e.r+1,c:e.c+1,v:e.v,old:e.old}]}); }
+    catch(err){ _mdsStatus('err',_mdsErrText(err)); return false; }
+    const rr=res&&res.results&&res.results[0];
+    if(rr&&!rr.ok){
+      return giveUp(rr.error==='conflict'?`그 사이 다른 곳에서 "${rr.current}"(으)로 바뀌었어요`:rr.error==='formula_cell'?'수식 칸이라 고칠 수 없어요':rr.error);
+    }
+    _mdsLog(book,sheet,cell,e.old,e.v,true,null);
+    if(d){
+      Object.entries(res.rows||{}).forEach(([r,vals])=>{ d.values[+r-1]=vals });
+      d.at=res.at;
+    }
+    e._reload='later';
+    return true;
+  }
+  async function _mdsFlush(){
+    if(_mdsFlushing||!_mds.cfg||!_mds.cfg.token) return;
+    _mdsFlushing=true;
+    clearTimeout(_mdsRetryT);
+    try{
+      while(_mdsQueue().length){
+        const e=_mdsQueue()[0];
+        if(!(await _mdsSendCell(e))){
+          _mdsFail=Math.min(_mdsFail+1,6);
+          if(_mdsFail===1) toast('시트 저장이 잠시 안 되고 있어요 — 입력은 보관 중이고 자동으로 다시 보내요','warn');
+          _mdsRetryT=setTimeout(_mdsFlush,Math.min(2000*2**(_mdsFail-1),30000));
+          return;
+        }
+        _mdsFail=0;
+        _mdsQueue().shift();
+        _mdsQueueSave();
+        const body=_mdsBodyEl(e.tk);
+        const td=body&&body.querySelector('[data-r="'+e.r+'"] [data-c="'+e.c+'"]');
+        if(td) td.classList.remove('mds-saving');
+        _mdsPatchRow(e.tk,e.r);
+        const d=_mds.data[e.tk];
+        if(e._reload==='now') _mdsLoadTab(e.tk,true);
+        // 다른 행·탭에 걸린 수식(VLOOKUP 등)도 따라오도록 잠시 뒤 탭 전체를 조용히 다시 읽는다
+        else if(d){ clearTimeout(d._reT); d._reT=setTimeout(()=>_mdsLoadTab(e.tk,true),2500); }
+      }
+    }finally{ _mdsFlushing=false; }
+  }
+  function mdsBootFlush(){
+    if(_mdsQueue().length) mdsInit();
+  }
+  window.addEventListener('online',()=>_mdsFlush());
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) _mdsFlush(); });
+  window.addEventListener('beforeunload',e=>{ if(_mdsQueue().length){ e.preventDefault(); e.returnValue=''; } });
+  // 칸을 나가기 전에 창을 닫아도 입력이 남게
+  window.addEventListener('pagehide',()=>{ if(_mds.editing&&_mds.editing.td) _mdsCommit(_mds.editing.td); });
   // 저장된 행만 다시 그린다 — 같은 행의 다른 칸을 고치는 중이면 그 칸은 그대로 둔다
   function _mdsPatchRow(tk,r){
     const body=_mdsBodyEl(tk), d=_mds.data[tk];
@@ -39174,6 +39761,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
     tr.replaceWith(ntr);
     if(ntr.classList.contains('mds-hdr')) _mdsSticky(body);
+    _mdsMarkPending(tk);
   }
 
   /* ── 검색 ── */

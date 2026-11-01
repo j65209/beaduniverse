@@ -588,7 +588,66 @@ function saveOverride(id, changes){
   const o = loadOverrides();
   o[id] = Object.assign(o[id]||{}, changes);
   try{ localStorage.setItem(OVERRIDES_KEY, JSON.stringify(o)); }catch(e){}
+  _ovMarkDirty(id);
+  clearTimeout(_ovTimer);
+  _ovTimer = setTimeout(_ovPush, 500);
 }
+/* 이름 · 부서 편집은 서버에도 — 이 브라우저에만 있으면 다른 PC 에선 안 보이고 저장공간이 비면 사라진다 */
+const OV_SB = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/app_kv';
+const OV_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+const OV_SB_HEADERS = {'apikey':OV_SB_KEY,'Authorization':`Bearer ${OV_SB_KEY}`,'Content-Type':'application/json'};
+const OV_DIRTY_KEY = 'agents_overrides_dirty_v1';
+let _ovTimer = null, _ovFail = 0;
+function _ovDirty(){ try{ return JSON.parse(localStorage.getItem(OV_DIRTY_KEY)||'[]'); }catch(e){ return []; } }
+function _ovMarkDirty(id){ const d=_ovDirty(); if(!d.includes(id)) d.push(id); try{ localStorage.setItem(OV_DIRTY_KEY, JSON.stringify(d)); }catch(e){} }
+async function _ovFetch(){
+  const r = await fetch(`${OV_SB}?key=eq.agents_overrides&select=value`, {headers:OV_SB_HEADERS, cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const row = (await r.json())[0];
+  return row ? (row.value||{}) : null;
+}
+// 서버 값 + 내가 고친 직원만 내 값
+function _ovMerged(theirs){
+  const mine = loadOverrides(), out = {...(theirs||{})};
+  _ovDirty().forEach(id=>{ if(mine[id]) out[id]=mine[id]; else delete out[id]; });
+  return out;
+}
+async function _ovPush(){
+  clearTimeout(_ovTimer);
+  const sent = _ovDirty();
+  if(!sent.length) return;
+  try{
+    const merged = _ovMerged(await _ovFetch());
+    const r = await fetch(`${OV_SB}?on_conflict=key`, {method:'POST', headers:{...OV_SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({key:'agents_overrides', value:merged, updated_at:new Date().toISOString()})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    _ovFail = 0;
+    try{
+      localStorage.setItem(OV_DIRTY_KEY, JSON.stringify(_ovDirty().filter(id=>!sent.includes(id)||loadOverrides()[id]!==undefined&&JSON.stringify(loadOverrides()[id])!==JSON.stringify(merged[id]))));
+    }catch(e){}
+  }catch(e){
+    _ovFail = Math.min(_ovFail+1, 6);
+    _ovTimer = setTimeout(_ovPush, Math.min(1000*2**(_ovFail-1), 30000));
+  }
+}
+async function _ovPull(){
+  let theirs;
+  try{ theirs = await _ovFetch(); }catch(e){ return; }
+  const local = loadOverrides();
+  // 서버에 아직 없으면 이 브라우저 값을 올린다 (첫 실행 이관)
+  if(theirs===null){
+    if(Object.keys(local).length){ Object.keys(local).forEach(_ovMarkDirty); _ovPush(); }
+    return;
+  }
+  const next = _ovMerged(theirs);
+  if(JSON.stringify(next)===JSON.stringify(local)){ if(_ovDirty().length) _ovPush(); return; }
+  try{ localStorage.setItem(OVERRIDES_KEY, JSON.stringify(next)); }catch(e){}
+  const el = document.activeElement;
+  if(!(el&&el.isContentEditable)&&typeof renderDesks==='function'){ renderDesks(); if(typeof updateCells==='function') updateCells(); }
+  if(_ovDirty().length) _ovPush();
+}
+setTimeout(_ovPull, 800);
+window.addEventListener('online', ()=>{ if(_ovDirty().length) _ovPush(); });
 (function(){
   const FLAG = 'agents_overrides_md_split_v1';
   try{
