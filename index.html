@@ -16050,7 +16050,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const DSG_POSTS_TOMB_KEY    = 'brightbeed_design_posts_tomb_v1';
   const DSG_POSTS_PUSHED_KEY  = 'brightbeed_design_posts_pushed_v1';
   const DSG_POSTS_HISTORY_KEY = 'brightbeed_design_posts_history_v1';
-  const DSG_POSTS_PUSH_CONFIRM_MS = 3*60*1000;
+  const DSG_POSTS_PUSH_CONFIRM_MS = 6*60*1000;   // raw 는 max-age=300 — 5분보다 짧으면 옛 파일을 받아들여 화면이 되돌아간다
   const DSG_POSTS_TOMB_TTL_MS     = 24*3600*1000;
   const DSG_POSTS_HISTORY_MAX     = 20;
   /* doc 트리 5중 방어 (업무일지 diary 와 동일 급, 2026-09-22 통일)
@@ -16064,7 +16064,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const DSG_DOC_PUSHED_KEY_PREFIX = 'brightbeed_dsg_doc_pushed_';  // + board
   const DSG_DOC_BASE_KEY_PREFIX   = 'brightbeed_dsg_doc_base_';    // + board
   const DSG_DOC_TOMB_KEY          = 'brightbeed_dsg_doc_tombs_v1'; // {id: {board, ts}}
-  const DSG_DOC_PUSH_CONFIRM_MS   = 3*60*1000;
+  const DSG_DOC_PUSH_CONFIRM_MS   = 6*60*1000;
   const DSG_DOC_TOMB_TTL_MS       = 24*3600*1000;
   const DSG_UI_KEY    = 'brightbeed_design_ui_v1';
   const DSG_FS_KEY    = 'brightbeed_design_fs_v1';    // 문서 폰트 크기 (px, 숫자)
@@ -19742,7 +19742,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
        그 오래된 remote 로 로컬을 덮으면 역시 방금 쓴 게 사라진다 → 반영이 확인될 때까지 로컬을 지킨다. */
   const DIARY_DIRTY_KEY  = 'brightbeed_diary_dirty_v1';
   const DIARY_PUSHED_KEY = 'brightbeed_diary_pushed_v1';
-  const DIARY_CONFIRM_MS = 3*60*1000;   // 원격 반영 확인 대기 상한
+  const DIARY_CONFIRM_MS = 6*60*1000;   // 원격 반영 확인 대기 상한
   function _diaryPersistDirty(){
     try{ localStorage.setItem(DIARY_DIRTY_KEY, JSON.stringify(Array.from(_diaryDirty))) }catch(e){}
   }
@@ -24177,37 +24177,55 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const api=_arCurOverridesApi();
     try{
       const r=await ghFetch(api,{cache:'no-cache'});
+      if(brand!==_arCurBrand()) return;   // 받는 사이 브랜드를 바꿨으면 다른 브랜드 상태에 넣지 않는다
       if(!r.ok){
-        arState.overrides={}; arState.autoOverrides={}; arState.imgOverrides={}; arState.deletedIds={};
-        _arOverridesShaMap[brand]=null; _arOverridesSha=null;
+        // 못 읽은 건 "없음"이 아니다 — 파일이 정말 없을 때(404)만 비운다
+        if(r.status===404){
+          arState.overrides={}; arState.autoOverrides={}; arState.imgOverrides={}; arState.deletedIds={};
+          _arOverridesShaMap[brand]=null; _arOverridesSha=null;
+        }
         return;
       }
       const j=await r.json();
       const raw=decodeURIComponent(escape(atob(j.content||'')));
       const d=JSON.parse(raw||'{}');
-      arState.overrides=d.overrides||{};
-      arState.autoOverrides=d.auto_overrides||{};
-      arState.imgOverrides=d.img_overrides||{};
-      arState.deletedIds=d.deleted_ids||{};
+      if(brand!==_arCurBrand()) return;
+      _arOvApplyToState(d, brand);
       _arOverridesShaMap[brand]=j.sha||null;
       _arOverridesSha=_arOverridesShaMap[brand]; // 하위호환
     }catch(e){
-      arState.overrides={}; arState.autoOverrides={}; arState.imgOverrides={}; arState.deletedIds={};
+      console.warn('상품 이름 불러오기 실패',e);   // 지금 값을 그대로 둔다
     }
   }
 
-  /* product-name-overrides push — 업무일지-급 실용 방어 (브랜드별 파일 2개, 뷰어 편집 가능)
-       · dirty persist  : 미푸시 payload 를 localStorage 에 브랜드별로 보관 → 자동 재전송
-       · sha 기반 PUT   : 409 conflict 시 remote 다시 읽어 재전송
-       · 지수 백오프    : 최대 30초 간격 재시도
-       · throw catch    : 예외 흡수 후 dirty 유지 (기존엔 throw → 상위 UI toast 는 뜨지만 미저장은 유실)
-     참조 스킬: ~/.claude/skills/robust-storage-sync/SKILL.md */
+  /* product-name-overrides push — "이 상품 이름 바꾸기 / 숨기기" 작업만 남겨 서버 최신본 위에 적용한다 (브랜드별 파일 2개, 뷰어 편집 가능).
+     전체 사본을 올리면 오래 열어 둔 화면이 남이 고친 이름을 되돌리고, 조회 실패 뒤 1개만 고쳐도 파일 전체가 1건으로 바뀐다.
+       · 작업 목록은 localStorage 에 보관 → 자동 재전송
+       · 409 면 최신본을 다시 읽어 다시 적용 · 지수 백오프 */
   const AR_OV_DIRTY_KEY_PREFIX = 'brightbeed_ar_overrides_dirty_';   // + brand
-  const _arOvPending = {};             // brand -> {payload, msg}
+  const AR_OV_FILE_KEY = {overrides:'overrides', autoOverrides:'auto_overrides', imgOverrides:'img_overrides', deletedIds:'deleted_ids'};
+  const _arOvPending = {};             // brand -> {ops:[{k,id,v}], msg}
   const _arOvPushing = {};             // brand -> bool
   const _arOvPushAgain = {};
   const _arOvPushTimer = {};
   const _arOvPushFailStreak = {};
+  function _arOvApplyOps(d, ops){
+    Object.values(AR_OV_FILE_KEY).forEach(f=>{ d[f]=Object.assign({}, d[f]||{}); });
+    ops.forEach(o=>{
+      const f=AR_OV_FILE_KEY[o.k];
+      if(o.v==null) delete d[f][o.id]; else d[f][o.id]=o.v;
+    });
+    return d;
+  }
+  // 파일 내용 + 아직 안 보낸 작업 → 화면 상태
+  function _arOvApplyToState(d, brand){
+    const p=_arOvPending[brand];
+    const m=_arOvApplyOps(Object.assign({}, d), p?p.ops:[]);
+    arState.overrides=m.overrides;
+    arState.autoOverrides=m.auto_overrides;
+    arState.imgOverrides=m.img_overrides;
+    arState.deletedIds=m.deleted_ids;
+  }
   function _arOvPersistDirty(brand){
     try{
       if(_arOvPending[brand]) localStorage.setItem(AR_OV_DIRTY_KEY_PREFIX+brand, JSON.stringify(_arOvPending[brand]));
@@ -24218,7 +24236,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     ['brightbeed','shinebeed'].forEach(brand=>{
       try{
         const raw = localStorage.getItem(AR_OV_DIRTY_KEY_PREFIX+brand);
-        if(raw){ _arOvPending[brand] = JSON.parse(raw); _arOvSchedulePush(brand); }
+        if(!raw) return;
+        const p = JSON.parse(raw);
+        if(p && Array.isArray(p.ops)) _arOvPending[brand] = p;
+        else if(p && p.payload){
+          // 옛 방식의 전체 사본 — 언제 것인지 몰라 지우는 쪽으로는 쓰지 않고 있는 값만 넣는다
+          const ops=[];
+          Object.keys(AR_OV_FILE_KEY).forEach(k=>{
+            const m=p.payload[AR_OV_FILE_KEY[k]]||{};
+            Object.keys(m).forEach(id=>ops.push({k,id,v:m[id]}));
+          });
+          _arOvPending[brand] = ops.length ? {ops, msg:p.msg||'product-name-overrides: 재전송'} : null;
+          _arOvPersistDirty(brand);
+        }
+        _arOvSchedulePush(brand);
       }catch(e){}
     });
   }
@@ -24237,14 +24268,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(_arOvPushing[brand]){ _arOvPushAgain[brand] = true; return true; }
     _arOvPushing[brand] = true;
     try{
-      const { payload, msg } = _arOvPending[brand];
+      const { ops, msg } = _arOvPending[brand];
+      const sent = ops.slice();
       const api = _AR_OV_APIS[brand];
-      let ok = false, lastReason = null, newSha = null;
+      let ok = false, lastReason = null, newSha = null, merged = null;
       for(let attempt=0; attempt<3; attempt++){
         try{
           const file = await ghGetFile(api);
           if(file.error){ lastReason = file.error; break; }
-          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+          if(file.sha && !file.text){ lastReason = 'read_empty'; break; }
+          let d = {version:1, description: brand==='shinebeed'
+            ? '샤인비드 발주 상품 카탈로그 수동 오버라이드. product.id (콰이디에어 offer URL 기준) 를 key 로 사용.'
+            : '대시보드에서 사장님이 직접 수정한 상품명·이미지·숨김. product.id 를 key 로 사용.'};
+          if(file.text){
+            try{ d = JSON.parse(file.text)||d; }
+            catch(e){ lastReason = 'parse'; break; }
+          }
+          merged = _arOvApplyOps(d, sent);
+          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
           const r = await ghPut(api, b64, msg, {noConflictRetry:true, sha:file.sha||null});
           if(r.ok){ ok = true; newSha = r.sha || null; break; }
           lastReason = r.reason;
@@ -24252,9 +24293,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         } catch(e){ lastReason = 'throw'; break; }
       }
       if(ok){
-        _arOvPending[brand] = null; _arOvPersistDirty(brand);
+        const left = _arOvPending[brand].ops.slice(sent.length);   // 전송 중 새로 생긴 작업은 남김
+        _arOvPending[brand] = left.length ? {ops:left, msg:_arOvPending[brand].msg} : null;
+        _arOvPersistDirty(brand);
         _arOvPushFailStreak[brand] = 0;
         if(newSha){ _arOvOverridesShaMap[brand] = newSha; if(brand===_arCurBrand()) _arOverridesSha = newSha; }
+        if(brand===_arCurBrand()) _arOvApplyToState(merged, brand);   // 남이 바꾼 이름도 반영
+        if(left.length) _arOvPushAgain[brand] = true;
         return true;
       }
       if(lastReason==='auth'){ try{ toast('⚠ 상품명 저장 인증 실패 · 재시도 중','err'); }catch(e){} }
@@ -24274,17 +24319,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(nextImg===undefined) nextImg=arState.imgOverrides||{};
     if(nextDeleted===undefined) nextDeleted=arState.deletedIds||{};
     const brand=_arCurBrand();
-    const desc = brand==='shinebeed'
-      ? '샤인비드 발주 상품 카탈로그 수동 오버라이드. product.id (콰이디에어 offer URL 기준) 를 key 로 사용.'
-      : '대시보드에서 사장님이 직접 수정한 상품명·이미지·숨김. product.id 를 key 로 사용.';
-    const payload={version:1, description:desc, overrides:nextOverrides, auto_overrides:nextAuto, img_overrides:nextImg, deleted_ids:nextDeleted};
+    // 지금 상태와 달라진 칸만 작업으로
+    const ops=[];
+    const diff=(k,cur,next)=>{
+      cur=cur||{}; next=next||{};
+      Object.keys(next).forEach(id=>{ if(JSON.stringify(cur[id])!==JSON.stringify(next[id])) ops.push({k,id,v:next[id]}); });
+      Object.keys(cur).forEach(id=>{ if(!(id in next)) ops.push({k,id,v:null}); });
+    };
+    diff('overrides',arState.overrides,nextOverrides);
+    diff('autoOverrides',arState.autoOverrides,nextAuto);
+    diff('imgOverrides',arState.imgOverrides,nextImg);
+    diff('deletedIds',arState.deletedIds,nextDeleted);
     // 로컬 상태는 즉시 반영 (UI 반응성)
     arState.overrides=nextOverrides;
     arState.autoOverrides=nextAuto;
     arState.imgOverrides=nextImg;
     arState.deletedIds=nextDeleted;
-    // 미푸시 payload 를 localStorage 에 저장 → 새로고침 후 자동 재전송
-    _arOvPending[brand] = { payload, msg };
+    if(!ops.length) return;
+    // 미푸시 작업을 localStorage 에 저장 → 새로고침 후 자동 재전송
+    const prev=_arOvPending[brand];
+    _arOvPending[brand] = {ops:(prev?prev.ops:[]).concat(ops), msg};
     _arOvPersistDirty(brand);
     const ok = await _arOvPushInner(brand);
     if(!ok) throw new Error('저장 대기 — 재시도 중');   // 호출부 catch 유지 (기존 UI toast 호환)
@@ -25110,7 +25164,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.adshPlatFormToggle=adshPlatFormToggle;
   window.adshPlatAdd=adshPlatAdd;
   window.adshPlatDel=adshPlatDel;
-  const ADSH_DIRTY_KEY=ADSH_LS+'dirty_v1', ADSH_PUSHED_KEY=ADSH_LS+'pushed_v1', ADSH_CONFIRM_MS=3*60*1000;
+  const ADSH_DIRTY_KEY=ADSH_LS+'dirty_v1', ADSH_PUSHED_KEY=ADSH_LS+'pushed_v1', ADSH_CONFIRM_MS=6*60*1000;
   // 미저장 셀(전송 중 포함)을 localStorage 에 — 새로고침·창닫기 후에도 남아서 다시 보낸다
   function _adshPersistDirty(){
     const all={};
@@ -27336,7 +27390,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* pushed-snap — raw.githubusercontent 는 커밋 후 수십초간 옛 파일을 반환한다.
      그 사이 pull 이 돌면 방금 저장한 항목이 로컬에서 지워진다. */
   const NOTICE_PUSHED_KEY='brightbeed_notice_pushed_v1';
-  const NOTICE_CONFIRM_MS=3*60*1000;
+  const NOTICE_CONFIRM_MS=6*60*1000;
   let _noticePushedSnap=null; // {json, ts}
   function _noticeLoadPushedSnap(){
     try{
@@ -27577,7 +27631,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   async function syncNoticeFromRemote(){
     if(_cred_modalOpen) return; // 편집 중이면 덮어쓰기 방지
-    if(_noticePendingPayload) return; // 미전송 편집 보유 — 옛 remote 로 덮지 않음
+    if(_noticeOps.length) return; // 미전송 편집 보유 — 옛 remote 로 덮지 않음
     const remote=await fetchNoticeFromRemote();
     if(remote===null) return;
     const snap=_noticeLoadPushedSnap();
@@ -27912,14 +27966,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const n=loadNotice();
     const now=Date.now();
     const who=(typeof _diaryGetMe==='function'?_diaryGetMe():'')||(isMaster()?'관리자':'');
+    let saved;
     if(_cred_editorState.mode==='edit'){
       const idx=n.entries.findIndex(e=>e.id===_cred_editorState.id);
       if(idx<0){toast('원본을 찾을 수 없어 신규 추가로 저장합니다','err')}
-      const updated={id: _cred_editorState.id || credUid(), type, name, fields, memo, updatedAt:now, updatedBy:who};
-      if(idx>=0) n.entries[idx]=updated;
-      else n.entries.push(updated);
+      saved={id: _cred_editorState.id || credUid(), type, name, fields, memo, updatedAt:now, updatedBy:who};
+      if(idx>=0) n.entries[idx]=saved;
+      else n.entries.push(saved);
     } else {
-      n.entries.push({id:credUid(), type, name, fields, memo, updatedAt:now, updatedBy:who});
+      saved={id:credUid(), type, name, fields, memo, updatedAt:now, updatedBy:who};
+      n.entries.push(saved);
     }
     n.updatedAt=now;
 
@@ -27929,7 +27985,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     closeCredEditor();
     renderCredentials();
     renderNoticeUpdatedTag();
-    await pushNoticeToRemote(n);
+    await _noticeEnqueue({op:'put', entry:saved});
   }
   window.saveCredEntry=saveCredEntry;
 
@@ -27944,7 +28000,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     saveNoticeLocal(n);
     renderCredentials();
     renderNoticeUpdatedTag();
-    await pushNoticeToRemote(n);
+    await _noticeEnqueue({op:'del', id});
   }
   window.deleteCredEntry=deleteCredEntry;
 
@@ -27957,74 +28013,109 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     saveNoticeLocal(n);
     renderCredentials();
     renderNoticeUpdatedTag();
-    await pushNoticeToRemote(n);
+    await _noticeEnqueue({op:'legacy'});
   }
   window.deleteCredLegacy=deleteCredLegacy;
 
-  /* notice push — 업무일지-급 실용 방어 (마스터 편집 · 다중 편집자 가능성 낮음)
-       · dirty persist : 미저장 payload 를 localStorage 에 보관, 새로고침 후 자동 재시도
-       · sha 기반 PUT : 409 conflict 시 remote 다시 읽어 재전송 (남의 저장 안 지움)
-       · 지수 백오프 재시도 : 네트워크/서버 오류 시 최대 30초 간격 자동 재시도
-       · pending 표시 : toast 로 저장 상태 명확화
-     참조 스킬: ~/.claude/skills/robust-storage-sync/SKILL.md */
-  const NOTICE_DIRTY_KEY = 'brightbeed_notice_dirty_v1';
-  let _noticePendingPayload = null;      // 재시도용 (mem)
+  /* notice push — "이 항목 넣기 / 지우기" 작업만 남겨 서버 최신본 위에 적용한다.
+     전체 사본을 올리면 아직 못 받은 남의 항목이 사라지고, 빈 로컬(조회 실패 · 저장공간 꽉 참)에서 1개 추가하면
+     파일 전체가 1개로 바뀐다 (직원 누구나 저장할 수 있는 화면이다). 광고 시트 플랫폼 목록(_adshPlatSave)과 같은 방식.
+       · 작업 목록은 localStorage 에 보관, 새로고침 후 자동 재전송
+       · 409 면 최신본을 다시 읽어 다시 적용 (sha 만 바꿔 재전송 안 함)
+       · 지수 백오프 재시도 */
+  const NOTICE_OPS_KEY = 'brightbeed_notice_ops_v1';
+  const NOTICE_DIRTY_KEY = 'brightbeed_notice_dirty_v1';   // 옛 전체 사본 — 읽을 때 작업으로 바꾼다
+  let _noticeOps = [];
   let _noticePushing = false;
   let _noticePushAgain = false;
   let _noticePushTimer = null;
   let _noticePushFailStreak = 0;
 
+  function _noticeApplyOps(n, ops){
+    const out={entries:(n.entries||[]).slice(), legacyHtml:n.legacyHtml||'', updatedAt:n.updatedAt||0};
+    ops.forEach(o=>{
+      if(o.op==='put'){
+        const i=out.entries.findIndex(e=>e.id===o.entry.id);
+        if(i>=0) out.entries[i]=o.entry; else out.entries.push(o.entry);
+      }
+      else if(o.op==='del') out.entries=out.entries.filter(e=>e.id!==o.id);
+      else if(o.op==='legacy') out.legacyHtml='';
+    });
+    out.updatedAt=Math.max(Date.now(),(n.updatedAt||0)+1);
+    return out;
+  }
   function _noticePersistDirty(){
     try{
-      if(_noticePendingPayload) localStorage.setItem(NOTICE_DIRTY_KEY, JSON.stringify(_noticePendingPayload));
-      else localStorage.removeItem(NOTICE_DIRTY_KEY);
+      if(_noticeOps.length) localStorage.setItem(NOTICE_OPS_KEY, JSON.stringify(_noticeOps));
+      else localStorage.removeItem(NOTICE_OPS_KEY);
     }catch(e){}
   }
   function _noticeRestoreDirty(){
     try{
-      const raw = localStorage.getItem(NOTICE_DIRTY_KEY);
-      if(raw){ _noticePendingPayload = JSON.parse(raw); _noticeSchedulePush(); }
+      const raw = localStorage.getItem(NOTICE_OPS_KEY);
+      if(raw){ const ops=JSON.parse(raw); if(Array.isArray(ops)) _noticeOps=ops; }
+      // 옛 방식으로 남은 전체 사본 — 며칠 전 것일 수 있어 통째로 올리지 않고 마지막으로 고친 항목만 살린다
+      const old = localStorage.getItem(NOTICE_DIRTY_KEY);
+      if(old){
+        const p=JSON.parse(old);
+        (p&&Array.isArray(p.entries)?p.entries:[]).forEach(e=>{
+          if(e && e.id && e.updatedAt && e.updatedAt===p.updatedAt) _noticeOps.push({op:'put', entry:e});
+        });
+        localStorage.removeItem(NOTICE_DIRTY_KEY);
+        _noticePersistDirty();
+      }
+      if(_noticeOps.length) _noticeSchedulePush();
     }catch(e){}
   }
   function _noticeSchedulePush(){
-    if(!_noticePendingPayload) return;
+    if(!_noticeOps.length) return;
     if(_noticePushing){ _noticePushAgain = true; return; }
     clearTimeout(_noticePushTimer);
     _noticePushTimer = setTimeout(()=>{ pushNoticeToRemoteInner(); }, 300);
   }
   async function pushNoticeToRemoteInner(){
-    if(!_noticePendingPayload) return true;
+    if(!_noticeOps.length) return true;
     if(_noticePushing){ _noticePushAgain = true; return true; }
     _noticePushing = true;
     try{
-      const payload = _noticePendingPayload;
-      let ok = false, lastReason = null;
+      const ops = _noticeOps.slice();
+      let ok = false, lastReason = null, next = null;
       for(let attempt=0; attempt<3; attempt++){
         try {
           const file = await ghGetFile(NOTICE_API);
           if(file.error){ lastReason = file.error; break; }
-          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+          if(file.sha && !file.text){ lastReason = 'read_empty'; break; }   // 내용을 못 읽었는데 빈 파일로 보면 전체가 지워진다
+          let remote = credEmptyState();
+          if(file.text){
+            try{ remote = normalizeNotice(JSON.parse(file.text)); }
+            catch(e){ lastReason = 'parse'; break; }
+          }
+          next = _noticeApplyOps(remote, ops);
+          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(next, null, 2))));
           const r = await ghPut(NOTICE_API, b64, 'chore: 자격증명 갱신', {forceMaster:true, noConflictRetry:true, sha:file.sha||null});
           if(r.ok){ ok = true; break; }
           lastReason = r.reason;
           if(r.reason !== 'conflict') break;
-          // conflict → 루프 재진입해 remote 다시 읽고 재전송
+          // conflict → 루프 재진입해 remote 다시 읽고 다시 적용
         } catch(e){
           lastReason = 'throw';
           break;
         }
       }
       if(ok){
-        _noticeSetPushedSnap(JSON.stringify(normalizeNotice(payload)));
-        _noticePendingPayload = null;
+        _noticeOps = _noticeOps.slice(ops.length);   // 저장 중 새로 생긴 작업은 남김
         _noticePersistDirty();
         _noticePushFailStreak = 0;
+        _noticeSetPushedSnap(JSON.stringify(normalizeNotice(next)));
+        // 서버 최신본 + 아직 안 보낸 작업으로 화면을 맞춘다 (남이 넣은 항목도 바로 보인다)
+        saveNoticeLocal(normalizeNotice(_noticeOps.length ? _noticeApplyOps(next, _noticeOps) : next));
+        renderCredentials();
+        renderNoticeUpdatedTag();
         try{ toast('✓ 저장됨','ok'); }catch(e){}
         return true;
       }
-      // 실패 — pending 유지, 재시도 스케줄
+      // 실패 — 작업 목록 유지, 재시도 스케줄
       if(lastReason==='auth'){ try{ toast('⚠ GitHub 토큰 인증 실패 · 재시도 중','err'); }catch(e){} }
-      else if(lastReason==='too_large'){ try{ toast('⚠ 데이터가 너무 큽니다','err'); }catch(e){} _noticePendingPayload=null; _noticePersistDirty(); return false; }
       else { try{ toast(`⚠ 저장 대기 · 재시도 중 (${lastReason||'network'})`,'warn'); }catch(e){} }
       _noticePushFailStreak = Math.min(_noticePushFailStreak+1, 6);
       clearTimeout(_noticePushTimer);
@@ -28032,23 +28123,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return false;
     } finally {
       _noticePushing = false;
-      if(_noticePushAgain){ _noticePushAgain = false; _noticeSchedulePush(); }
+      if(_noticePushAgain || _noticeOps.length){ _noticePushAgain = false; if(!_noticePushFailStreak) _noticeSchedulePush(); }
     }
   }
-  async function pushNoticeToRemote(n){
-    _noticePendingPayload = {entries:n.entries, legacyHtml:n.legacyHtml||'', updatedAt:n.updatedAt||Date.now()};
+  async function _noticeEnqueue(op){
+    _noticeOps.push(op);
     _noticePersistDirty();
     try{ toast('저장 중…','ok'); }catch(e){}
     return await pushNoticeToRemoteInner();
   }
   _noticeRestoreDirty();
   window.addEventListener('beforeunload', (e)=>{
-    if(!_noticePendingPayload) return;
+    if(!_noticeOps.length) return;
     e.preventDefault();
     e.returnValue = '';
   });
   window.addEventListener('pagehide', ()=>{
-    if(_noticePendingPayload){ clearTimeout(_noticePushTimer); pushNoticeToRemoteInner(); }
+    if(_noticeOps.length){ clearTimeout(_noticePushTimer); pushNoticeToRemoteInner(); }
   });
 
   /* ============ 툴바 이벤트 (검색, 필터, 탭) ============ */
@@ -28138,7 +28229,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function _execTouchIdle(){
     clearTimeout(_execIdleTimer);
-    _execIdleTimer=setTimeout(()=>{execLock();try{toast('금고가 자동 잠금되었습니다','warn')}catch(e){}}, EXEC_IDLE_MS);
+    _execIdleTimer=setTimeout(()=>{
+      if(_execDirty || _cred_modalOpen){ _execTouchIdle(); return; }   // 못 올린 변경이 있거나 입력 중이면 잠그지 않는다 (잠그면 메모리의 내용이 사라진다)
+      execLock();try{toast('금고가 자동 잠금되었습니다','warn')}catch(e){}}, EXEC_IDLE_MS);
   }
   function execLock(){
     _execKey=null; _execEntries=null; _execLockPrepared=false;
@@ -28204,13 +28297,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   async function _execFetchRemote(){
     const sb=await _execFetchSupabase();
-    if(sb && !sb.missing) return sb;
-    // Supabase 에 아직 없음(또는 네트워크 실패) → 과거 GitHub 금고에서 끌어와 Supabase 로 자동 이관
+    // 조회 실패는 "없음"이 아니다 — 여기서 옛 GitHub 금고를 올리면 그 뒤에 넣은 항목이 전부 사라진다
+    if(sb===null) return null;
+    if(!sb.missing) return sb;
+    // Supabase 에 정말 없을 때만 → 과거 GitHub 금고에서 끌어와 Supabase 로 자동 이관
     const gh=await _execFetchGithub();
     if(gh && gh.ct){ _execPushSupabase(gh).catch(()=>{}); return gh; }
-    if(sb && sb.missing) return {missing:true};
     if(gh && gh.missing) return {missing:true};
-    return null;
+    return gh===null ? null : {missing:true};
   }
 
   /* remote 우선 · 네트워크 실패나 CDN 지연으로 404 가 와도 캐시 암호문이 있으면 그걸 쓴다
@@ -28327,6 +28421,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         try{obj=JSON.parse(_execTd.decode(plain))}catch(e){_execSetMsg('금고 데이터가 손상되었습니다',true); return}
         _execKey=key;
         _execEntries=Array.isArray(obj.entries)?obj.entries.map(normalizeEntry).filter(Boolean):[];
+        _execBase=_whtClone(_execEntries);
       }
       _execSetMsg('');
       if(passEl) passEl.value='';
@@ -28340,8 +28435,56 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window.execUnlock=execUnlock;
 
+  /* 항목 단위로 합침 — 저장 직전 서버 금고가 내가 연 뒤로 바뀌었으면 (다른 대표 PC · 조회 실패 때 쓴 옛 캐시) 내가 고친 항목만 그 위에 얹는다 */
+  let _execBase=[];         // 내가 마지막으로 서버와 맞춘 항목들
+  let _execDirty=false;     // 서버에 못 올린 변경 있음 — 자동 재시도, 창 닫기 경고, 자동 잠금 미룸
+  let _execRetryTimer=null, _execFail=0;
+  function _execMergeEntries(mine,theirs,base){
+    const canon=e=>JSON.stringify(Object.keys(e||{}).sort().map(k=>[k,e[k]]));
+    const mBy=new Map(mine.map(e=>[e.id,e])), tBy=new Map(theirs.map(e=>[e.id,e])), bBy=new Map(base.map(e=>[e.id,e]));
+    const out=[];
+    theirs.forEach(t=>{
+      const m=mBy.get(t.id), b=bBy.get(t.id);
+      if(m){ out.push(b && canon(m)===canon(b) ? t : m); return; }
+      if(b && canon(t)===canon(b)) return;   // 내가 지움
+      out.push(t);
+    });
+    mine.forEach(m=>{
+      if(tBy.has(m.id)) return;
+      const b=bBy.get(m.id);
+      if(b && canon(m)===canon(b)) return;   // 그쪽에서 지움
+      out.push(m);
+    });
+    return out;
+  }
+  function _execRetryLater(msg){
+    _execDirty=true;
+    _execFail=Math.min(_execFail+1,6);
+    clearTimeout(_execRetryTimer);
+    _execRetryTimer=setTimeout(execSave, Math.min(1000*2**(_execFail-1),30000));
+    if(_execFail===1) try{toast(msg,'err')}catch(e){}
+  }
+  window.addEventListener('beforeunload',e=>{ if(_execDirty){ e.preventDefault(); e.returnValue=''; } });
+  window.addEventListener('online',()=>{ if(_execDirty) execSave(); });
   async function execSave(){
     if(!_execKey||!_execBlob) return false;
+    const remote=await _execFetchSupabase();
+    if(remote===null){
+      _execRetryLater('⚠ 금고가 아직 저장되지 않았습니다 — 자동으로 다시 보내는 중이니 창을 닫지 마세요');
+      return false;
+    }
+    if(!remote.missing && remote.updatedAt!==_execBlob.updatedAt){
+      try{
+        const plain0=await crypto.subtle.decrypt({name:'AES-GCM', iv:_execB64d(remote.iv)}, _execKey, _execB64d(remote.ct));
+        const obj0=JSON.parse(_execTd.decode(plain0));
+        const theirs=Array.isArray(obj0.entries)?obj0.entries.map(normalizeEntry).filter(Boolean):[];
+        _execEntries=_execMergeEntries(_execEntries||[],theirs,_execBase);
+        _execBlob=remote;
+      }catch(e){
+        try{toast('⚠ 서버 금고를 이 암호로 열 수 없어 저장을 멈췄습니다. 금고를 다시 열어 주세요','err')}catch(e2){}
+        return false;
+      }
+    }
     let blob;
     try{
       const iv=crypto.getRandomValues(new Uint8Array(12));
@@ -28362,12 +28505,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(ok){
       _execBlob=blob;
       _execCacheSet(blob);
-      _execSuppressRealtimeTs=now;   // 내 저장 echo 무시
+      _execSuppressRealtimeTs=blob.updatedAt;   // 내 저장 echo 무시
+      _execBase=_whtClone(_execEntries||[]);
+      _execDirty=false; _execFail=0; clearTimeout(_execRetryTimer);
       renderExecVault();
       try{toast('✓ 금고 저장됨','ok')}catch(e){}
       return true;
     }
-    try{toast('⚠ 금고 저장 실패 — 네트워크를 확인해주세요','err')}catch(e){}
+    _execRetryLater('⚠ 금고가 아직 저장되지 않았습니다 — 자동으로 다시 보내는 중이니 창을 닫지 마세요');
     return false;
   }
 
@@ -28389,7 +28534,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           try{
             const plain=await crypto.subtle.decrypt({name:'AES-GCM', iv:_execB64d(blob.iv)}, _execKey, _execB64d(blob.ct));
             const obj=JSON.parse(_execTd.decode(plain));
-            _execEntries=Array.isArray(obj.entries)?obj.entries.map(normalizeEntry).filter(Boolean):[];
+            const live=Array.isArray(obj.entries)?obj.entries.map(normalizeEntry).filter(Boolean):[];
+            _execEntries=_execDirty?_execMergeEntries(_execEntries||[],live,_execBase):live;
+            _execBase=_whtClone(live);
             try{toast('🔄 금고가 업데이트되었습니다','info')}catch(e){}
           }catch(e){ /* 키 불일치(암호 변경 등) — blob 만 갱신 */ }
         }
