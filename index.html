@@ -20070,7 +20070,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!m) return '';
     return `${+m[2]}/${+m[3]}`;
   }
+  let _diaryAllMem = null;   // 저장공간이 꽉 차 localStorage 에 못 쓴 내용 — 있으면 이게 최신
   function loadDiaryAll(){
+    if(_diaryAllMem) return JSON.parse(JSON.stringify(_diaryAllMem));
     let raw;
     try { raw = JSON.parse(localStorage.getItem(DIARY_KEY) || '{}') } catch(e){ raw = {} }
     const migrated = _diaryMigrate(raw);
@@ -20080,7 +20082,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return migrated;
   }
   function saveDiaryAll(data){
-    try { localStorage.setItem(DIARY_KEY, JSON.stringify(data)) } catch(e){}
+    const body = JSON.stringify(data);
+    try { localStorage.setItem(DIARY_KEY, body); _diaryAllMem = null; return; } catch(e){}
+    try {
+      if(typeof _bbFreeLocalSpace === 'function') _bbFreeLocalSpace();
+      localStorage.setItem(DIARY_KEY, body); _diaryAllMem = null; return;
+    } catch(e){}
+    // 못 쓰면 옛 내용을 다시 읽어 "바뀐 것 없음"이 되어 전송도 안 되고 글자가 사라진다 → 메모리에 들고 계속 저장한다
+    _diaryAllMem = JSON.parse(body);
   }
 
   /* ===== 원격 동기화 ===== */
@@ -20873,7 +20882,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _diaryApplyRows(render){
     const editing = _diaryIsEditing();
     const prev = loadDiaryAll();
-    const next = _diaryRowsToLocal(_diaryMergedRows());
+    const mergedNow = _diaryMergedRows();
+    const next = _diaryRowsToLocal(mergedNow);
     // 새 요청 알림은 편집 중이라도 놓치지 않게 우선 감지
     try{ _diaryDetectIncomingReqs(prev, next) }catch(e){}
     if(editing){
@@ -20881,6 +20891,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
     saveDiaryAll(next);
+    _diaryShown = mergedNow;
     _diarySaveRows();
     if(render === false) return;
     clearTimeout(_diaryRenderTimer);
@@ -20894,10 +20905,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ── 쓰기: 바뀐 줄만 대기열에 넣는다 ──────────────────────────────────── */
+  /* 사용자가 마지막으로 본 행 — 입력 중엔 화면 반영이 밀려 로컬 사본이 서버보다 옛것일 수 있다.
+     로컬과 서버가 다른 걸 "고쳤다"로 보면 남이 고친 글자를 옛 글자로 되돌리고, 아직 못 본 줄을 지운다.
+     그래서 "본 값" 대비 실제로 바뀐 칸만 최신 행 위에 얹어 보내고, 본 적 없는 줄은 지우지 않는다. */
+  let _diaryShown = null;
+  const DIARY_DIFF_FIELDS = ['text','done','from_name','priority','pos','day','kind','created_on'];
+  function _diaryMarkShownFromLocal(){
+    const all = loadDiaryAll(), m = {};
+    Object.keys(all).forEach(n=>Object.assign(m, _diaryRowsForStaff(n, all)));
+    _diaryShown = m;
+  }
   function _diaryEnqueueChanges(name){
     if(!name) return;
     const fresh = _diaryRowsForStaff(name, loadDiaryAll());
     const merged = _diaryMergedRows();
+    if(!_diaryShown) _diaryShown = merged;
+    const shown = _diaryShown;
     const ts = Date.now();
     const me = (typeof _diaryGetMe === 'function' ? _diaryGetMe() : '') || '';
     let n = 0;
@@ -20911,8 +20934,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       //  → 저쪽은 tombstone 때문에 다음 사이클에 또 지우고, 이쪽은 또 되살리고 (flip-flop).
       //  2026-09-22 시호님 10개 사라진 사고 재현. 서버 삭제가 정답.
       if(cur && cur.deleted_at) return;
-      if(cur && _diaryRowSame(cur, fresh[id])) return;   // 바뀐 게 없으면 보내지 않는다
-      _diaryQueue[id] = Object.assign({}, fresh[id], {client_ts: ts, updated_by: me});
+      const seen = shown[id];
+      if(seen && _diaryRowSame(seen, fresh[id])) return;   // 사용자가 안 건드린 줄 (서버가 앞서 있어도 옛 값으로 되돌리지 않는다)
+      if(cur && _diaryRowSame(cur, fresh[id])){ shown[id] = cur; return; }   // 바뀐 게 없으면 보내지 않는다
+      let row = fresh[id];
+      if(seen && cur){   // 건드린 칸만 최신 행 위에
+        row = Object.assign({}, cur);
+        DIARY_DIFF_FIELDS.forEach(f=>{
+          if(String(seen[f]==null?'':seen[f]) !== String(fresh[id][f]==null?'':fresh[id][f])) row[f] = fresh[id][f];
+        });
+      }
+      _diaryQueue[id] = Object.assign({}, row, {client_ts: ts, updated_by: me});
+      shown[id] = _diaryQueue[id];
       n++;
     });
     // 삭제 감지 — 두 갈래로 나눈다. 서버 내용을 한 번도 못 받아왔으면 절대 지우지 않는다.
@@ -20940,6 +20973,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           const r = merged[id];
           if(!r || r.staff_name !== name || r.deleted_at) return;
           if(fresh[id]) return;
+          if(!shown[id]) return;   // 아직 화면에 반영 안 된 줄 (남이 방금 넣음) — 본 적 없는 줄을 지우지 않는다
           if(!_diaryRowInScope(r)) return;
           goneSet.add(id);
         });
@@ -20965,6 +20999,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 200ms 는 빠른 타이핑도 배칭할 만큼 짧고, "저장됨" 뱃지가 눈에 띄게 뜨는 감각적 지점.
     _diaryFlushTimer = setTimeout(_diaryFlushQueue, delay === undefined ? 200 : delay);
   }
+  const DIARY_REJECT_RETRY_MS = 5*60*1000;   // 이보다 많이 앞선 서버 값은 진짜 더 최근 편집으로 본다 (오래 끊겼던 PC 의 옛 편집이 덮지 못하게)
   async function _diaryFlushQueue(){
     if(_diaryFlushing) return;
     const ids = Object.keys(_diaryQueue);
@@ -20985,14 +21020,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       let saved = null;
       try{ saved = await r.json() }catch(e){}
+      let rejected = 0;
       (Array.isArray(saved) && saved.length ? saved : batch).forEach(row=>{
         if(!row || !row.id) return;
         _diaryRows[row.id] = row;
-        if(row.updated_at && row.updated_at > _diarySbSince) _diarySbSince = row.updated_at;
         const q = _diaryQueue[row.id];
+        const sent = sentTs[row.id] || 0;
         // 전송하는 사이에 또 고쳤으면 대기열에 그대로 둔다 (그 편집이 유실되면 안 되므로)
-        if(q && (q.client_ts || 0) <= (sentTs[row.id] || 0)) delete _diaryQueue[row.id];
+        if(!q || (q.client_ts || 0) > sent) return;
+        // 서버가 더 큰 client_ts 를 돌려줌 = 내 편집이 옛것으로 거절됨 (되살린 직후 · PC 시계 차이). '저장됨'으로 지우면 글자가 사라진다
+        const ahead = Number(row.client_ts || 0) - sent;
+        if(ahead > 0 && ahead < DIARY_REJECT_RETRY_MS){ q.client_ts = Number(row.client_ts) + 1; return; }
+        if(ahead > 0) rejected++;
+        delete _diaryQueue[row.id];
       });
+      if(rejected && typeof toast === 'function') toast(`다른 곳에서 더 최근에 고친 줄이 있어 ${rejected}줄의 편집은 반영되지 않았습니다`, 'err');
       _diaryFlushFail = 0;
       _diaryFlushWarned = false;
       _diaryBackupDirty = true;
@@ -21017,7 +21059,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ── 읽기: 최초 전체 + 이후 변경분만 ──────────────────────────────────── */
   const _diaryFlashPending = new Set();  // 남이 방금 고친 row id → 다음 render 후 flash
-  function _diaryIngestRows(rows, replace){
+  // live: 실시간 · 일부 조회 — 그 사이에 못 받은 줄이 있을 수 있어 폴링 커서를 올리지 않는다
+  function _diaryIngestRows(rows, replace, live){
     if(!Array.isArray(rows)) return 0;
     if(replace) _diaryRows = {};
     let n = 0, tombsChanged = false;
@@ -21025,6 +21068,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const me = (typeof _diaryGetMe === 'function' ? _diaryGetMe() : '') || '';
     rows.forEach(row=>{
       if(!row || !row.id) return;
+      const had = _diaryRows[row.id];
+      if(!replace && had && Number(row.client_ts || 0) < Number(had.client_ts || 0)) return;   // 늦게 도착한 옛 응답
       const q = _diaryQueue[row.id];
       if(q){
         if((q.client_ts || 0) > (row.client_ts || 0)) return;   // 내 최신 편집이 아직 안 올라감 → 서버 것 무시
@@ -21048,7 +21093,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(changed) _diaryFlashPending.add(row.id);
       }
       _diaryRows[row.id] = row;
-      if(row.updated_at && row.updated_at > _diarySbSince) _diarySbSince = row.updated_at;
+      if(!live && row.updated_at && row.updated_at > _diarySbSince) _diarySbSince = row.updated_at;
       n++;
     });
     if(tombsChanged) _diarySaveTombstones(tombs);
@@ -21111,10 +21156,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       return;
     }
+    _diaryCheckDayRoll();
+    // 30초 겹쳐 조회 — 같은 시각에 커밋된 줄을 건너뛰지 않게. 이미 가진 줄은 걸러서 재렌더를 만들지 않는다
+    const sinceIso = _diarySbSince ? new Date(Date.parse(_diarySbSince) - 30000).toISOString() : '';
     const rows = _diarySbSince
-      ? await _diarySbGet(`select=*&updated_at=gt.${encodeURIComponent(_diarySbSince)}&order=updated_at.asc&limit=2000`)
+      ? await _diarySbGet(`select=*&updated_at=gt.${encodeURIComponent(sinceIso)}&order=updated_at.asc&limit=${DIARY_SB_PAGE}`)
       : await _diaryFetchAllRows();
-    if(rows && _diaryIngestRows(rows)) _diaryApplyRows();
+    const news = rows && rows.filter(r=>{ const c = _diaryRows[r.id]; return !c || c.updated_at !== r.updated_at });
+    if(news && news.length && _diaryIngestRows(news)) _diaryApplyRows();
   }
   /* 기본 조회 범위보다 옛 날짜를 열면 그 날짜만 추가로 불러온다 */
   async function _diaryEnsureDay(date){
@@ -21123,7 +21172,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _diaryLoadedDays[date] = true;
     const rows = await _diarySbGet(`select=*&kind=eq.task&day=eq.${date}&deleted_at=is.null&limit=2000`);
     if(!rows){ delete _diaryLoadedDays[date]; return; }   // 실패하면 다음에 다시 시도
-    if(_diaryIngestRows(rows)) _diaryApplyRows();
+    if(_diaryIngestRows(rows, false, true)) _diaryApplyRows();
   }
   /* 안전장치 ⑨ — 예전 파일 방식으로 이 PC 에만 남아 있던 줄을 서버로 한 번 끌어올린다.
      이 단계가 없으면 이관 시점 이후 이 PC 에서만 쓴 줄이 화면에서 사라진다. 기기당 딱 한 번. */
@@ -21158,7 +21207,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         .on('postgres_changes', {event:'*', schema:'public', table:'diary_items'}, payload=>{
           const row = (payload && payload.new && payload.new.id) ? payload.new : (payload && payload.old);
           if(!row || !row.id) return;
-          if(_diaryIngestRows([row])) _diaryApplyRows();
+          if(_diaryIngestRows([row], false, true)) _diaryApplyRows();
         })
         .subscribe();
       return true;
@@ -21197,6 +21246,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){}
   }
 
+  // 탭을 숨기면 재시도 타이머가 지워지므로 돌아오면 다시 건다. keepalive 로 이미 올라갔으면 '저장 중'에 멈춘 표시도 정리
+  function _diaryResumeFlush(){
+    const tag = document.getElementById('diarySaveTag');
+    if(Object.keys(_diaryQueue).length || (tag && !tag.hidden && tag.dataset.state !== 'saved')) _diaryScheduleFlush(0);
+  }
+  /* 창을 켜 둔 채 자정을 넘기면 '오늘 한 일' 제목 그대로 어제 날짜에 저장됐다 → 오늘을 보던 창은 오늘로 옮긴다 (입력 중이면 끝난 뒤에) */
+  let _diaryLastToday = '';
+  function _diaryCheckDayRoll(){
+    const today = _diaryTodayStr();
+    if(!_diaryLastToday){ _diaryLastToday = today; return; }
+    if(_diaryLastToday === today || _diaryIsEditing()) return;
+    const wasToday = _diaryState.date === _diaryLastToday;
+    _diaryLastToday = today;
+    if(!wasToday) return;
+    _diaryState.date = today;
+    const dateInput = document.getElementById('diaryDate');
+    if(dateInput) dateInput.value = today;
+    if(!document.getElementById('viewDiary')?.hidden) _diaryRenderBoard();
+  }
+
   let _diarySyncStarted = false;
   function startDiarySync(){
     if(_diarySyncStarted) return;
@@ -21215,7 +21284,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(Object.keys(_diaryQueue).length) _diaryScheduleFlush(0);
       } else {
         // Supabase 가 안 될 때: GitHub 백업 파일로라도 화면을 채운다
-        syncDiaryFromRemote(true);
+        // (이 화면이 "본 값" — 안 그러면 한 글자 치는 순간 백업과 다른 줄 전부가 서버로 올라가 그 뒤의 수정을 되돌린다)
+        syncDiaryFromRemote(true).finally(_diaryMarkShownFromLocal);
       }
       _diaryStartItemsRealtime();
     })();
@@ -21225,8 +21295,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _diaryBackupTimer = setInterval(_diaryBackupToGithub, 10*60*1000); // 사람이 읽을 수 있는 백업
     document.addEventListener('visibilitychange', ()=>{
       if(document.hidden){ _diaryExitFlush(); _diaryBackupToGithub(); }
-      else { _diaryPollRows(); }
+      else { _diaryPollRows().finally(_diaryResumeFlush); }
     });
+    window.addEventListener('online', _diaryResumeFlush);
     window.addEventListener('pagehide', _diaryExitFlush);
   }
   window.startDiarySync=startDiarySync;
@@ -21424,7 +21495,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     // 화면에도 반영
     toast(`${from} → ${text.slice(0,40)}`, 'info');
-    if(document.getElementById('diaryBoard')) _diaryRenderBoard();
+    if(document.getElementById('diaryBoard')){
+      if(_diaryIsEditing()) _diarySyncDeferred = true;   // 입력 중 재렌더는 캐럿을 없애 뒤에 친 글자를 잃는다
+      else _diaryRenderBoard();
+    }
   }
 
   /* supabase-js v2를 CDN에서 lazy 로드 (기존 대시보드에는 없음) */
@@ -26390,7 +26464,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       //  신규 입사자 카드가 계속 안 보인다 — 2026-09-22 박시호 사례.)
       if(typeof _diaryRenderBoard === 'function'
         && document.getElementById('viewDiary')
-        && !document.getElementById('viewDiary').hidden) _diaryRenderBoard();
+        && !document.getElementById('viewDiary').hidden){
+      if(_diaryIsEditing()) _diarySyncDeferred = true;
+      else _diaryRenderBoard();
+    }
     }else{
       // 첫 로드에서 changed=false여도 조직도에 이미 append된 상태를 유지하려면 강제 render 한 번
       renderOrgChartExtra();
@@ -26545,7 +26622,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else applyHiddenToOrgChart(); // 뷰 밖에서도 조직도만은 반영
     // 다른 기기에서 퇴사 처리한 경우, 이 기기 업무일지에서도 즉시 카드 사라지게
     if(!document.getElementById('viewDiary')?.hidden && typeof _diaryRenderBoard==='function'){
-      _diaryRenderBoard();
+      if(_diaryIsEditing()) _diarySyncDeferred = true;
+      else _diaryRenderBoard();
     }
   }
   window.syncLeaveFromRemote=syncLeaveFromRemote;
