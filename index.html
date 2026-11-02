@@ -4894,6 +4894,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-fx-memo{font-size:11px;color:var(--text-3)}
   .sb-fx-del{width:26px;height:26px;border:0;border-radius:5px;background:transparent;color:var(--text-3);font-size:15px;cursor:pointer}
   .sb-fx-del:hover{background:var(--bg-2);color:var(--danger)}
+  .sb-unit{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 10px;font-size:12px;color:var(--text-2)}
+  .sb-unit b{font-weight:600}
+  .sb-unit .sb-in{width:84px;min-width:0;border-color:var(--line);text-align:right}
+  .sb-unit span{font-size:11.5px;color:var(--text-3)}
+  .sb-basis-tag{font-size:12px;font-weight:500;color:var(--text-3);margin-left:4px}
   .sb-fx-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--text-3)}
   .sb-fx-add{padding:6px 12px;border:1px solid var(--line-2);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer}
   .strat-daily-fold{padding:0;border:0;background:none}
@@ -12270,7 +12275,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sb-kpis" id="sbKpis"></div>
           <div class="ably-formula" id="sbBasis"></div>
           <section class="ably-sec">
-            <h2>채널별 순수익</h2>
+            <h2>채널별 순수익 <span class="sb-basis-tag" id="sbChBasis"></span></h2>
+            <div class="sb-unit">플랫폼 택배비 <b>주문 1건당 ₩</b><input class="sb-in" id="sbShipUnit" data-unit="1" inputmode="numeric" autocomplete="off" aria-label="주문 1건당 택배비"><span>보고 있는 달부터 적용 · 에이블리 · 지그재그 · 29CM · W컨셉 (공홈은 고정비)</span></div>
             <div class="ably-tbl-wrap"><table class="ably-tbl sb-tbl" id="sbChannels"></table></div>
           </section>
           <details class="ably-sec ably-fold" id="sbFixedFold">
@@ -38789,19 +38795,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const SB_API=STRAT_REPO_API+'strategy/month-board.json';
   const SB_FIRST_MONTH='2026-10';   // 사장님 시트의 첫 달
   const SB_QUEUE_KEY='brightbeed_strat_board_queue_v1';
-  const SB_SHIP_PER_ORDER=2200;     // 보고서와 같은 택배비 가정
-  const SB_FIELDS=[['sales','매출'],['ad','광고비'],['fee','수수료'],['ship','택배비'],['direct','직배 이용료'],['cost','원가'],['material','부자재']];
-  // 공홈 택배비는 시트처럼 고정비의 "택배비" 한 줄로 계산 — 플랫폼만 주문당 택배비를 채널에서 뺀다
+  const SB_SHIP_DEFAULT=2200;       // 단가를 한 번도 안 넣었을 때 (일일 보고서와 같은 가정)
+  // 주문수는 택배비 계산용 — 돈이 아니라 순수익에서 빼지 않는다
+  const SB_FIELDS=[['sales','매출'],['orders','주문수'],['ad','광고비'],['fee','수수료'],['ship','택배비'],['direct','직배 이용료'],['cost','원가'],['material','부자재']];
+  const SB_COST_FIELDS=SB_FIELDS.filter(([f])=>f!=='sales'&&f!=='orders');
+  // 공홈 택배비는 시트처럼 고정비의 "택배비" 한 줄로 계산 — 플랫폼은 우리가 직접 보내니 전부 주문수 × 단가를 채널에서 뺀다
   const SB_CHANNELS=[
     {id:'kop-home',     brand:'kop', label:'공홈',     report:'home-kop'},
     {id:'kop-ably',     brand:'kop', label:'에이블리', report:'ably-kop', perOrderShip:true},
     {id:'kop-zigzag',   brand:'kop', label:'지그재그', zigzag:'kop', perOrderShip:true},
-    {id:'kop-29cm',     brand:'kop', label:'29CM'},
-    {id:'kop-wconcept', brand:'kop', label:'W컨셉'},
+    {id:'kop-29cm',     brand:'kop', label:'29CM', perOrderShip:true},
+    {id:'kop-wconcept', brand:'kop', label:'W컨셉', perOrderShip:true},
     {id:'apt-home',     brand:'apt', label:'공홈',     report:'home-apt'},
     {id:'apt-ably',     brand:'apt', label:'에이블리', report:'ably-apt', perOrderShip:true},
     {id:'apt-zigzag',   brand:'apt', label:'지그재그', zigzag:'apt', perOrderShip:true},
-    {id:'apt-wconcept', brand:'apt', label:'W컨셉'},
+    {id:'apt-wconcept', brand:'apt', label:'W컨셉', perOrderShip:true},
   ];
   const _sb={month:'', doc:null, view:null, ready:false, loadError:'', loadedAt:0, seq:0, saveGen:0,
              ops:null, inflight:0, saving:false, fail:0, timer:null, zigzag:{}, built:false, fixedSig:'', bound:false, paintQueued:false};
@@ -38813,18 +38821,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _sbMonthLabel(m){ const [y,mo]=m.split('-'); return `${y}년 ${Number(mo)}월`; }
   function _sbNum(s){ const t=String(s??'').replace(/[^\d.\-]/g,''); if(t===''||t==='-') return null; const n=Math.round(Number(t)); return Number.isFinite(n)?n:null; }
   const _sbBrand=b=>BRAND_SECTIONS.find(x=>x.id===b)||{display:b,dot:'#94a3b8'};
+  // 택배 단가 — 고정비처럼 "그 달부터" 적용. 넣은 적 없으면 기본값
+  function _sbShipUnit(month){
+    const u=((_sb.view||{}).shipUnit)||{};
+    const keys=Object.keys(u).filter(k=>k<=month&&Number(u[k])>0).sort();
+    return keys.length?Number(u[keys[keys.length-1]]):SB_SHIP_DEFAULT;
+  }
 
   // 채널의 일별 자동 데이터. 못 읽었으면 null — 빈 값으로 치지 않는다.
   function _sbSeries(c){
     if(c.report){
       const idx=_strat.index[c.report];
       if(!idx||idx.error) return null;
-      return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, ship:(Number(d.orders)||0)*SB_SHIP_PER_ORDER}));
+      return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.orders)||0}));
     }
     if(c.zigzag){
       const z=_sb.zigzag[c.zigzag];
       if(!z||!z.ok) return null;
-      return (z.daily||[]).map(d=>({date:d.date, sales:Number(d.revenue)||0, ship:(Number(d.orders)||0)*SB_SHIP_PER_ORDER}));
+      return (z.daily||[]).map(d=>({date:d.date, sales:Number(d.revenue)||0, orders:Number(d.orders)||0}));
     }
     return null;
   }
@@ -38832,7 +38846,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _sbAuto(c,month){
     const s=_sbSeries(c);
     if(!s) return null;
-    const fields=(c.report?['sales','ad','cost']:['sales']).concat(c.perOrderShip?['ship']:[]);
+    const fields=c.report?['sales','orders','ad','cost']:['sales','orders'];
     const today=_stratToday(), days=_sbDaysIn(month);
     const sum=(rows,f)=>rows.reduce((a,d)=>a+(Number(d[f])||0),0);
     const rows=s.filter(d=>d.date.startsWith(month));
@@ -38854,12 +38868,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(memo[month]) return memo[month];
     const typed=(((_sb.view||{}).months||{})[month]||{}).cells||{};
     const prev=month>SB_FIRST_MONTH?_sbResolve(_sbPrevMonth(month),memo):null;
-    const res={rows:[], byId:{}, sales:0, net:0, actual:0, left:0, est:0, unread:[]};
+    const unit=_sbShipUnit(month);
+    const res={rows:[], byId:{}, sales:0, net:0, actual:0, left:0, est:0, unread:[], unit};
     SB_CHANNELS.forEach(c=>{
       const auto=_sbAuto(c,month), t=typed[c.id]||{}, before=prev&&prev.byId[c.id];
       const vals={};
       const pick=f=>{
         if(typeof t[f]==='number') return {v:t[f], src:'typed'};
+        if(f==='ship'&&c.perOrderShip) return {v:vals.orders.v*unit, src:'calc'};
         if(auto&&auto.fields[f]!=null) return {v:auto.fields[f], src:'auto'};
         if(!before) return {v:0, src:'none'};
         const pv=before.vals[f].v, ps=before.vals.sales.v;
@@ -38868,7 +38884,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         return {v:pv, src:'prev'};
       };
       SB_FIELDS.forEach(([f])=>{ vals[f]=pick(f); });
-      const net=vals.sales.v-SB_FIELDS.slice(1).reduce((a,[f])=>a+vals[f].v,0);
+      const net=vals.sales.v-SB_COST_FIELDS.reduce((a,[f])=>a+vals[f].v,0);
       const row={c, vals, net, auto};
       res.rows.push(row); res.byId[c.id]=row;
       res.sales+=vals.sales.v; res.net+=net;
@@ -38899,6 +38915,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const cells=month.cells=month.cells||{};
         const row=cells[o.c]=cells[o.c]||{};
         if(o.v==null) delete row[o.f]; else row[o.f]=o.v;
+      }else if(o.k==='shipUnit'){
+        d.shipUnit=d.shipUnit||{};
+        if(o.v==null) delete d.shipUnit[o.m]; else d.shipUnit[o.m]=o.v;
       }else if(o.k==='fixAdd'){
         if(!d.fixed.some(x=>x.id===o.id)) d.fixed.push({id:o.id, name:o.name||'', amounts:{[o.m]:o.v}});
       }else{
@@ -39096,13 +39115,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       kpi('부가세 예상', '₩'+w(vat), '매출 ÷ 11 · 매입 공제 전'),
     ].join('');
     const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 월 고정비 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
-    if(cur) lines.push(`월말 예상: 공홈 · 에이블리 · 지그재그는 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 29CM · W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요.`);
+    if(cur) lines.push(`월말 예상: 공홈 · 에이블리 · 지그재그는 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 29CM · W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요 — 주문수를 넣으면 택배비가 바로 계산돼요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
+    lines.push(`플랫폼 택배비 = 주문수 × ₩${w(res.unit)} (우리가 직접 보내 정산 때 나가는 비용)`);
     document.getElementById('sbBasis').innerHTML=lines.join('<br>');
+    document.getElementById('sbChBasis').textContent=cur?`· ${_sbMonthLabel(m)} 월말 예상`:`· ${_sbMonthLabel(m)} 한 달 합계`;
+    const unitEl=document.getElementById('sbShipUnit');
+    if(unitEl&&unitEl!==active){ unitEl.value=w(res.unit); unitEl.placeholder=w(SB_SHIP_DEFAULT); }
 
-    const TITLE={auto:cur?'어제까지 실적 + 남은 날 예상':'자동 수집 합계', ratio:'지난달 비율 × 이번 달 매출', prev:'지난달 값', none:''};
+    const TITLE={auto:cur?'어제까지 실적 + 남은 날 예상':'자동 수집 합계', ratio:'지난달 비율 × 이번 달 매출', prev:'지난달 값', none:'', calc:`주문수 × ₩${w(res.unit)}`};
     res.rows.forEach(({c,vals,net,auto})=>{
       SB_FIELDS.forEach(([f])=>{
         const el=document.getElementById(`sb-${c.id}-${f}`), x=vals[f];
@@ -39110,7 +39133,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const typed=x.src==='typed';
         if(el!==active) el.value=typed?w(x.v):'';
         el.placeholder=x.v?w(x.v):'–';
-        el.classList.toggle('is-est',x.src==='ratio'||x.src==='prev');
+        el.classList.toggle('is-est',x.src==='ratio'||x.src==='prev'||(x.src==='calc'&&vals.orders.src!=='typed'&&vals.orders.src!=='auto'));
         const a=auto&&auto.fields[f];
         el.title=typed?`직접 입력${a!=null?` · 자동 계산 ₩${w(a)}`:''} · 지우면 자동으로 돌아가요`:TITLE[x.src];
       });
@@ -39156,7 +39179,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     box.addEventListener('input',e=>{
       const el=e.target;
       if(!el.classList.contains('sb-in')) return;
-      if(el.dataset.fx==='name') _sbOp({k:'fixName', id:el.dataset.id, name:el.value});
+      if(el.dataset.unit) _sbOp({k:'shipUnit', m:_sb.month, v:_sbNum(el.value)||null});
+      else if(el.dataset.fx==='name') _sbOp({k:'fixName', id:el.dataset.id, name:el.value});
       else if(el.dataset.fx==='amt') _sbOp({k:'fixAmt', id:el.dataset.id, m:_sb.month, v:_sbNum(el.value)||0});
       else _sbOp({k:'cell', m:_sb.month, c:el.dataset.c, f:el.dataset.f, v:_sbNum(el.value)});
     });
