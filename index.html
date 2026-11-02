@@ -38782,6 +38782,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가 − 부자재) − 월 고정비. 부가세 예상 = 매출 ÷ 11.
      칸 값 우선순위: 직접 입력 → 자동(일일 보고서 · 지그재그 실시간 매출) → 지난달 비율 × 이번 달 매출 → 지난달 값.
      진행 중인 달의 자동 값 = 어제까지 실적 + 남은 날 × 최근 14일 평균.
+     공홈 · 에이블리 수수료는 자동으로 빼지 않는다 — 사장님 시트 기준 (2026-11-02 결정). 칸에 직접 넣으면 그 값만 뺀다.
      저장: 비공개 레포 strategy/month-board.json — 금액이라 공개 레포나 앱 키로 읽히는 표에 두지 않는다.
        months[달].cells[채널][칸] = 직접 입력값 (없으면 자동) · fixed[].amounts[달] = 그 달부터 적용할 금액 (null = 그 달부터 없음)
      작업 목록 방식: 입력 즉시 대기열(localStorage)에 적고, 서버 최신본 위에 적용해서 올린다 (robust-storage-sync). */
@@ -38818,12 +38819,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(c.report){
       const idx=_strat.index[c.report];
       if(!idx||idx.error) return null;
-      return (idx.days||[]).map(d=>{
-        const paid=Number(d.paid)||0, ad=Number(d.ad_spend)||0, cost=Number(d.cost)||0, orders=Number(d.orders)||0;
-        const ship=orders*SB_SHIP_PER_ORDER;
-        // index 에 수수료 칸이 없어 순이익식(실결제 − 수수료 − 배송비 − 광고비 − 원가)에서 되짚는다
-        return {date:d.date, sales:paid, ad, cost, ship, fee:Math.max(paid-ad-cost-ship-(Number(d.net)||0),0)};
-      });
+      return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, ship:(Number(d.orders)||0)*SB_SHIP_PER_ORDER}));
     }
     if(c.zigzag){
       const z=_sb.zigzag[c.zigzag];
@@ -38836,7 +38832,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _sbAuto(c,month){
     const s=_sbSeries(c);
     if(!s) return null;
-    const fields=(c.report?['sales','ad','fee','cost']:['sales']).concat(c.perOrderShip?['ship']:[]);
+    const fields=(c.report?['sales','ad','cost']:['sales']).concat(c.perOrderShip?['ship']:[]);
     const today=_stratToday(), days=_sbDaysIn(month);
     const sum=(rows,f)=>rows.reduce((a,d)=>a+(Number(d[f])||0),0);
     const rows=s.filter(d=>d.date.startsWith(month));
@@ -39102,7 +39098,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 월 고정비 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
     if(cur) lines.push(`월말 예상: 공홈 · 에이블리 · 지그재그는 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 29CM · W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
-    lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있어요.');
+    lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
     document.getElementById('sbBasis').innerHTML=lines.join('<br>');
 
