@@ -4871,7 +4871,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-kpis .ably-kpi-v{font-size:17px}
   .sb-kpis .is-net .ably-kpi-v{font-size:26px}
   .sb-warn{font-size:12px;font-weight:600;color:var(--warn)}
-  .sb-tbl{min-width:880px}
+  .sb-tbl{min-width:1040px}
+  .sb-tbl .sb-in[data-f="orders"]{min-width:58px}
   .sb-tbl td{padding:3px 2px;vertical-align:middle}
   .sb-tbl td.n,.sb-tbl th.n{padding-right:8px}
   .sb-tbl .sb-ch{position:sticky;left:0;z-index:1;background:var(--bg-1);padding-left:8px;white-space:nowrap;color:var(--text-1);font-weight:600}
@@ -4881,7 +4882,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-tbl tr.is-total td{padding-top:7px;padding-bottom:7px}
   .sb-tbl tr.is-total .sb-ch{background:var(--bg-2)}
   .sb-net{font-weight:700;color:var(--text-1)}
-  .sb-in{width:100%;min-width:78px;box-sizing:border-box;padding:4px 6px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text-1);font:inherit;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .sb-in{width:100%;min-width:92px;box-sizing:border-box;padding:4px 6px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text-1);font:inherit;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
   .sb-in::placeholder{color:var(--text-3);font-weight:400;opacity:1}
   .sb-in.is-est::placeholder{color:var(--warn)}
   .sb-in:hover{border-color:var(--line)}
@@ -38730,7 +38731,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     ].join('');
     const hasCost=s.cost!=null;
     document.getElementById('stratFormula').innerHTML=
-      `<b>순이익</b> = 실결제 ₩${_stratW(s.paid)} − 수수료 ₩${_stratW(s.fees_est)} − 배송비 ₩${_stratW(s.shipping)} − 광고비 ₩${_stratW(s.ad_spend)}${hasCost?` − 원가 ₩${_stratW(s.cost)}`:''} = <b>₩${_stratW(net)}</b>`
+      `<b>순이익</b> = 실결제 ₩${_stratW(s.paid)} − 수수료 ₩${_stratW(s.fees_est)}${s.direct_fee?` − 직배 이용료 ₩${_stratW(s.direct_fee)}`:''} − 배송비 ₩${_stratW(s.shipping)} − 광고비 ₩${_stratW(s.ad_spend)}${hasCost?` − 원가 ₩${_stratW(s.cost)}`:''} = <b>₩${_stratW(net)}</b>`
       +'<br>'+(a.fee_note?_stratEsc(a.fee_note)+' ':`수수료는 ${_stratEsc(a.fee_basis||'최근 정산 내역')}의 평균 수수료율로 추정한 값이에요. `)
       +(s.shipping_income?`실결제에는 고객이 낸 배송비(₩${_stratW(s.shipping_income)})${s.naverpay_paid?`와 네이버페이 주문형 ${_stratW(s.naverpay_orders)}건(₩${_stratW(s.naverpay_paid)})이 `:'가 '}들어 있어요. `:'')
       +(hasCost?'원가는 원가 시트에서 상품명·옵션으로 찾았고, 시트에 없는 색상은 같은 상품의 기본 원가(기본값)를 썼어요.':'이 보고서에는 원가가 포함되지 않았어요.')
@@ -38787,7 +38788,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== 전략팀 월간 손익 메인보드 — 한 달 실제 남는 돈 =====
      남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가 − 부자재) − 월 고정비. 부가세 예상 = 매출 ÷ 11.
-     칸 값 우선순위: 직접 입력 → 자동(일일 보고서 · 지그재그 실시간 매출) → 지난달 비율 × 이번 달 매출 → 지난달 값.
+     칸 값 우선순위: 직접 입력 → 자동(일일 보고서 — 지그재그는 수수료 · 직배 이용료까지) → 지난달 비율 × 이번 달 매출 → 지난달 값.
      진행 중인 달의 자동 값 = 어제까지 실적 + 남은 날 × 최근 14일 평균.
      공홈 · 에이블리 수수료는 자동으로 빼지 않는다 — 사장님 시트 기준 (2026-11-02 결정). 칸에 직접 넣으면 그 값만 뺀다.
      저장: 비공개 레포 strategy/month-board.json — 금액이라 공개 레포나 앱 키로 읽히는 표에 두지 않는다.
@@ -38804,16 +38805,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const SB_CHANNELS=[
     {id:'kop-home',     brand:'kop', label:'공홈',     report:'home-kop'},
     {id:'kop-ably',     brand:'kop', label:'에이블리', report:'ably-kop', perOrderShip:true},
-    {id:'kop-zigzag',   brand:'kop', label:'지그재그', zigzag:'kop', perOrderShip:true},
+    {id:'kop-zigzag',   brand:'kop', label:'지그재그', report:'zigzag-kop', perOrderShip:true, feeAuto:true},
     {id:'kop-29cm',     brand:'kop', label:'29CM', perOrderShip:true},
     {id:'kop-wconcept', brand:'kop', label:'W컨셉', perOrderShip:true},
     {id:'apt-home',     brand:'apt', label:'공홈',     report:'home-apt'},
     {id:'apt-ably',     brand:'apt', label:'에이블리', report:'ably-apt', perOrderShip:true},
-    {id:'apt-zigzag',   brand:'apt', label:'지그재그', zigzag:'apt', perOrderShip:true},
+    {id:'apt-zigzag',   brand:'apt', label:'지그재그', report:'zigzag-apt', perOrderShip:true, feeAuto:true},
     {id:'apt-wconcept', brand:'apt', label:'W컨셉', perOrderShip:true},
   ];
   const _sb={month:'', doc:null, view:null, ready:false, loadError:'', loadedAt:0, seq:0, saveGen:0,
-             ops:null, inflight:0, saving:false, fail:0, timer:null, zigzag:{}, built:false, fixedSig:'', bound:false, paintQueued:false};
+             ops:null, inflight:0, saving:false, fail:0, timer:null, built:false, fixedSig:'', bound:false, paintQueued:false};
 
   const _sbCurMonth=()=>_stratToday().slice(0,7);
   function _sbPrevMonth(m){ const [y,mo]=m.split('-').map(Number); return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`; }
@@ -38831,23 +38832,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   // 채널의 일별 자동 데이터. 못 읽었으면 null — 빈 값으로 치지 않는다.
   function _sbSeries(c){
-    if(c.report){
-      const idx=_strat.index[c.report];
-      if(!idx||idx.error) return null;
-      return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.orders)||0}));
-    }
-    if(c.zigzag){
-      const z=_sb.zigzag[c.zigzag];
-      if(!z||!z.ok) return null;
-      return (z.daily||[]).map(d=>({date:d.date, sales:Number(d.revenue)||0, orders:Number(d.orders)||0}));
-    }
-    return null;
+    const idx=c.report&&_strat.index[c.report];
+    if(!idx||idx.error) return null;
+    return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.orders)||0, fee:Number(d.fees_est)||0, direct:Number(d.direct_fee)||0}));
   }
   // 채널 · 달의 자동 값 {fields, actual(실적 매출), left(예상으로 채운 날 수)}. 쓸 데이터가 없으면 null.
   function _sbAuto(c,month){
     const s=_sbSeries(c);
     if(!s) return null;
-    const fields=c.report?['sales','orders','ad','cost']:['sales','orders'];
+    const fields=['sales','orders','ad','cost'].concat(c.feeAuto?['fee','direct']:[]);
     const today=_stratToday(), days=_sbDaysIn(month);
     const sum=(rows,f)=>rows.reduce((a,d)=>a+(Number(d[f])||0),0);
     const rows=s.filter(d=>d.date.startsWith(month));
@@ -38860,7 +38853,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       fields.forEach(f=>{ out.fields[f]=Math.round(sum(done,f)+sum(recent,f)/recent.length*out.left); });
       return out;
     }
-    if(rows.length<20) return null;  // 달의 2/3 도 안 남은 데이터 (지그재그는 최근 30일만 온다)
+    if(rows.length<20) return null;  // 달의 2/3 도 안 남은 데이터
     fields.forEach(f=>{ out.fields[f]=Math.round(sum(rows,f)*days/rows.length); });
     return out;
   }
@@ -38891,7 +38884,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       res.sales+=vals.sales.v; res.net+=net;
       if(auto){ res.actual+=auto.actual; res.left=Math.max(res.left,auto.left); }
       res.est+=SB_FIELDS.filter(([f])=>vals[f].src==='ratio'||vals[f].src==='prev').length;
-      if((c.report||c.zigzag)&&!_sbSeries(c)&&typeof t.sales!=='number') res.unread.push(`${_sbBrand(c.brand).display} ${c.label}`);
+      if(c.report&&!_sbSeries(c)&&typeof t.sales!=='number') res.unread.push(`${_sbBrand(c.brand).display} ${c.label}`);
     });
     memo[month]=res;
     return res;
@@ -39019,12 +39012,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _sb.doc=doc;
     _sb.view=_sbApply(doc,_sb.ops);
   }
-  async function _sbLoadZigzag(b){
-    try{
-      const r=await sxFetch('/zigzag-sales?brand='+b,{method:'GET'});
-      _sb.zigzag[b]=r.ok?await r.json():{ok:false};
-    }catch(e){ _sb.zigzag[b]={ok:false} }
-  }
   async function sbInit(){
     _sbBind();
     _sbOpsLoad();
@@ -39036,7 +39023,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const ch=c.report&&_stratCh(c.report);
       if(ch) jobs.push(_stratLoadIndex(ch));
     });
-    new Set(SB_CHANNELS.map(c=>c.zigzag).filter(Boolean)).forEach(b=>jobs.push(_sbLoadZigzag(b)));
     await Promise.all(jobs);
     if(seq!==_sb.seq) return;
     _sb.ready=!!_sb.doc;
