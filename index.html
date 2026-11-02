@@ -38723,7 +38723,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         ? kpi('네이버페이 주문형', _stratW(s.naverpay_orders||0)+'건', s.paid?`₩${_stratW(s.naverpay_paid||0)} · 실결제의 ${_stratPct((s.naverpay_paid||0)/s.paid)}`:'')
         : kpi('쿠폰 사용', _stratW(s.coupon_orders)+'건', '할인 ₩'+_stratW(s.coupon_discount)+(cpPlat?` (${_stratEsc(c.chLabel)} 부담 ₩${_stratW(cpPlat)})`:'')),
       kpi(_stratEsc(a.fee_label||k.fee), '₩'+_stratW(s.fees_est), '수수료율 '+_stratPct(a.fee_rate)),
-      kpi('배송비', '₩'+_stratW(s.shipping), _stratW(s.orders)+'건 × ₩'+_stratW(a.shipping_cost_per_order||2200)),
+      kpi('배송비', '₩'+_stratW(s.shipping), _stratW(s.ship_orders??s.orders)+'건 × ₩'+_stratW(a.shipping_cost_per_order||2200)),
       // 공홈 광고비는 마케팅팀이 다음 날 광고 시트에 넣는다 — 아직이면 0원 대신 미입력 표시 (저녁 재수집 때 채워짐)
       kpi('광고비', '₩'+_stratW(s.ad_spend), a.ad_estimated?'<span class="warn">메타 기준 추정 · 광고 시트 입력 전</span>'
         :/미입력|못 읽음|시트 없음/.test(a.ad_basis||'')?'<span class="neg">광고 시트 미입력</span>':'광고 기여 매출 ₩'+_stratW(s.ad_order_price)),
@@ -38834,7 +38834,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _sbSeries(c){
     const idx=c.report&&_strat.index[c.report];
     if(!idx||idx.error) return null;
-    return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.orders)||0, fee:Number(d.fees_est)||0, direct:Number(d.direct_fee)||0}));
+    // 주문수는 택배비 계산용 — 지그재그는 ship_orders (직진배송은 창고에서 나가고 출고비가 직배 이용료에 있어 뺌, 사장님 결정 2026-11-02)
+    return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.ship_orders??d.orders)||0, fee:Number(d.fees_est)||0, direct:Number(d.direct_fee)||0}));
   }
   // 채널 · 달의 자동 값 {fields, actual(실적 매출), left(예상으로 채운 날 수)}. 쓸 데이터가 없으면 null.
   function _sbAuto(c,month){
@@ -39107,7 +39108,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
-    lines.push(`플랫폼 택배비 = 주문수 × ₩${w(res.unit)} (우리가 직접 보내 정산 때 나가는 비용)`);
+    lines.push(`플랫폼 택배비 = 주문수 × ₩${w(res.unit)} (우리가 직접 보내 정산 때 나가는 비용). 지그재그 주문수는 스토어배송만 — 직진배송은 창고에서 나가고 출고비가 직배 이용료에 들어 있어요.`);
     document.getElementById('sbBasis').innerHTML=lines.join('<br>');
     document.getElementById('sbChBasis').textContent=cur?`· ${_sbMonthLabel(m)} 월말 예상`:`· ${_sbMonthLabel(m)} 한 달 합계`;
     const unitEl=document.getElementById('sbShipUnit');
