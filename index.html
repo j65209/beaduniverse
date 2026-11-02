@@ -4857,6 +4857,63 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .ably-datebar select{max-width:130px}
   }
 
+  /* ===== 전략팀 월간 손익 메인보드 (.sb-*) — 시트처럼 칸마다 자동 값(흐리게) 위에 직접 입력 ===== */
+  .sb{display:flex;flex-direction:column;gap:12px}
+  .sb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .sb-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;font-size:16px;font-weight:700;color:var(--text-1)}
+  .sb-title small{font-size:12px;font-weight:500;color:var(--text-3)}
+  .sb-title .strat-live{color:var(--ok);font-weight:700}
+  .sb-save{font-size:11.5px;color:var(--text-3)}
+  .sb-save.is-warn{color:var(--warn);font-weight:600}
+  .sb-body{display:flex;flex-direction:column;gap:12px}
+  .sb-body[hidden]{display:none}
+  .sb-kpis{display:grid;grid-template-columns:minmax(0,1.5fr) repeat(4,minmax(0,1fr));gap:10px}
+  .sb-kpis .ably-kpi-v{font-size:17px}
+  .sb-kpis .is-net .ably-kpi-v{font-size:26px}
+  .sb-warn{font-size:12px;font-weight:600;color:var(--warn)}
+  .sb-tbl{min-width:880px}
+  .sb-tbl td{padding:3px 2px;vertical-align:middle}
+  .sb-tbl td.n,.sb-tbl th.n{padding-right:8px}
+  .sb-tbl .sb-ch{position:sticky;left:0;z-index:1;background:var(--bg-1);padding-left:8px;white-space:nowrap;color:var(--text-1);font-weight:600}
+  .sb-tbl th.sb-ch{background:var(--bg-2);color:var(--text-3);font-weight:600}
+  .sb-ch .brand-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+  .sb-tbl tr.sb-sub td{background:var(--bg-2);font-weight:600;color:var(--text-1)}
+  .sb-tbl tr.is-total td{padding-top:7px;padding-bottom:7px}
+  .sb-tbl tr.is-total .sb-ch{background:var(--bg-2)}
+  .sb-net{font-weight:700;color:var(--text-1)}
+  .sb-in{width:100%;min-width:78px;box-sizing:border-box;padding:4px 6px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text-1);font:inherit;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .sb-in::placeholder{color:var(--text-3);font-weight:400;opacity:1}
+  .sb-in.is-est::placeholder{color:var(--warn)}
+  .sb-in:hover{border-color:var(--line)}
+  .sb-in:focus{outline:none;border-color:var(--accent);background:var(--bg-0)}
+  .sb-fx{max-width:720px}
+  .sb-fx td{padding:3px 4px;vertical-align:middle}
+  .sb-fx .sb-fx-name{text-align:left;font-weight:500;min-width:170px}
+  .sb-fx .sb-fx-amt{min-width:120px}
+  .sb-fx .sb-fx-amt.is-todo::placeholder{color:var(--warn);font-weight:600}
+  .sb-fx-memo{font-size:11px;color:var(--text-3)}
+  .sb-fx-del{width:26px;height:26px;border:0;border-radius:5px;background:transparent;color:var(--text-3);font-size:15px;cursor:pointer}
+  .sb-fx-del:hover{background:var(--bg-2);color:var(--danger)}
+  .sb-fx-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--text-3)}
+  .sb-fx-add{padding:6px 12px;border:1px solid var(--line-2);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer}
+  .strat-daily-fold{padding:0;border:0;background:none}
+  .strat-daily-fold>summary{padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-1)}
+  .strat-daily-fold>summary h2{font-size:14px;font-weight:700;color:var(--text-1)}
+  .strat-daily-fold>summary h2 span{margin-left:6px;font-size:12px;font-weight:500;color:var(--text-3)}
+  .strat-daily-fold[open]>summary{margin-bottom:12px}
+  .strat-daily-body{display:flex;flex-direction:column;gap:16px}
+  @media (max-width:900px){
+    .sb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .sb-kpis .is-net{grid-column:1/-1}
+  }
+  @media (max-width:600px){
+    /* 폰: 칸을 누를 때 화면이 확대되지 않게 16px · 표는 가로로 넘기고 채널 이름은 고정 */
+    .sb-in{min-height:36px;min-width:112px;font-size:16px}
+    .sb-tbl .sb-ch{font-size:11.5px;padding-left:4px}
+    .sb-kpis .is-net .ably-kpi-v{font-size:22px}
+    .sb-head .ably-datebar{margin-left:0}
+  }
+
   /* ===== 전략팀 (viewStrategy) — 공홈/플랫폼 탭 + 채널 카드(광고 시트 브랜드 카드 .adsh-brands 모양) + 보고서 ===== */
   .lg-tabs.strat-tabs{padding:0;max-width:none;margin:0}
   .sub-modules.strat-chs{margin:0}
@@ -12189,7 +12246,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
         홈
       </button>
-      <h1 class="view-title">전략팀<span class="view-title-sub">/ 채널별 일일 손익 보고서</span></h1>
+      <h1 class="view-title">전략팀<span class="view-title-sub">/ 월간 손익 메인보드 · 일일 보고서</span></h1>
       <button class="btn po-import akoi-refresh-btn" type="button" id="stratRefreshBtn" onclick="stratRefresh()" title="보고서 다시 불러오기" style="margin-left:auto">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         새로고침
@@ -12197,6 +12254,40 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </div>
 
     <div class="ably-wrap">
+      <!-- 월간 손익 메인보드 — 한 달 실제 남는 돈. 직접 입력값: 비공개 레포 strategy/month-board.json -->
+      <section class="sb" id="stratBoard">
+        <div class="sb-head">
+          <h2 class="sb-title" id="sbTitle">월간 손익 메인보드</h2>
+          <span class="sb-save" id="sbSave"></span>
+          <div class="ably-datebar">
+            <button type="button" class="ably-nav" onclick="sbShift(-1)" aria-label="이전 달">‹</button>
+            <select id="sbMonth" onchange="sbSetMonth(this.value)" aria-label="달 선택"></select>
+            <button type="button" class="ably-nav" onclick="sbShift(1)" aria-label="다음 달">›</button>
+          </div>
+        </div>
+        <div class="ably-status" id="sbStatus">불러오는 중…</div>
+        <div class="sb-body" id="sbBody" hidden>
+          <div class="sb-kpis" id="sbKpis"></div>
+          <div class="ably-formula" id="sbBasis"></div>
+          <section class="ably-sec">
+            <h2>채널별 순수익</h2>
+            <div class="ably-tbl-wrap"><table class="ably-tbl sb-tbl" id="sbChannels"></table></div>
+          </section>
+          <details class="ably-sec ably-fold" id="sbFixedFold">
+            <summary><h2>월 고정비 <span id="sbFixedSum"></span></h2></summary>
+            <div class="ably-tbl-wrap"><table class="ably-tbl sb-fx" id="sbFixed"></table></div>
+            <div class="sb-fx-foot">
+              <button type="button" class="sb-fx-add" onclick="sbFixedAdd()">＋ 항목 추가</button>
+              <span>금액을 고치면 보고 있는 달부터 적용되고, 그 전 달 계산은 그대로예요.</span>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 일일 보고서는 항상 접힌 채로 시작 (stratInit) — 펼칠 때 불러온다 -->
+      <details class="ably-fold strat-daily-fold" id="stratDailyFold" ontoggle="stratDailyToggle(this)">
+        <summary><h2>공홈 · 플랫폼 일일 보고서 <span>눌러서 펼치기</span></h2></summary>
+        <div class="strat-daily-body">
       <div class="lg-tabs strat-tabs" role="tablist">
         <button class="lg-tab active" data-strat="home" onclick="stratSwitchTab('home')" role="tab" aria-selected="true">공홈 <span class="lg-tab-badge" id="stratCountHome">–</span></button>
         <button class="lg-tab" data-strat="platform" onclick="stratSwitchTab('platform')" role="tab" aria-selected="false">플랫폼 <span class="lg-tab-badge" id="stratCountPlatform">–</span></button>
@@ -12252,6 +12343,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </section>
         <div class="ably-foot" id="stratFoot"></div>
       </div>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -38298,7 +38391,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!/#ably$/.test(e.newURL||'')) return;
     _stratLegacyAbly();
     const v=document.getElementById('viewStrategy');
-    if(v && !v.hidden) stratSwitchTab('platform');
+    if(v && !v.hidden){
+      document.getElementById('stratDailyFold').open=true;
+      stratSwitchTab('platform');
+    }
   });
 
   function stratHasAccess(){ return STRAT_ALLOWED.has(String(_diaryGetMe()||'').trim()); }
@@ -38367,6 +38463,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         _strat.index[c.id]=v;
         if(_strat.loading[c.id]===p) delete _strat.loading[c.id];
         _stratRenderChips();
+        _sbQueuePaint();
         return v;
       });
     _strat.loading[c.id]=p;
@@ -38393,8 +38490,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const stale=Date.now()-_strat.loadedAt>10*60*1000;
     if(stale) _strat.loadedAt=Date.now();
     _stratAll().forEach(c=>_stratLoadIndex(c, stale));
-    stratSwitchTab(_strat.tab);
+    sbInit();
+    // 일일 보고서는 들어올 때마다 접어 둔다 (옛 #ably 주소로 들어오면 바로 펼침). 펼치면 stratDailyToggle 이 불러옴.
+    const fold=document.getElementById('stratDailyFold');
+    fold.open=_strat.fromHash;
+    _strat.fromHash=false;
+    if(fold.open) stratSwitchTab(_strat.tab);
   }
+  function stratDailyToggle(el){ if(el.open) stratSwitchTab(_strat.tab); }
 
   function stratSwitchTab(tab){
     _strat.tab=tab==='platform'?'platform':'home';
@@ -38531,7 +38634,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _strat.loadedAt=Date.now();
     Promise.all(_stratAll().map(c=>_stratLoadIndex(c,true))).finally(()=>{
       if(btn){btn.disabled=false;btn.classList.remove('spin')}
-      stratSelect(_strat.ch[_strat.tab]||STRAT_DEFAULT_CH[_strat.tab]);
+      if(document.getElementById('stratDailyFold').open) stratSelect(_strat.ch[_strat.tab]||STRAT_DEFAULT_CH[_strat.tab]);
+      sbInit();
     });
   }
 
@@ -38541,6 +38645,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _strat.loadedAt=Date.now();
     await Promise.all(_stratAll().map(c=>_stratGet(c.path+'/index.json').then(j=>{ _strat.index[c.id]=j; }, ()=>{})));
     _stratRenderChips();
+    _sbQueuePaint();
     const c=_stratCh(_strat.ch[_strat.tab]);
     const idx=c&&_strat.index[c.id];
     if(!idx||idx.error) return;
@@ -38673,6 +38778,426 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       : '<tr><td class="ably-empty">해당하는 주문이 없어요.</td></tr>';
   }
 
+  /* ===== 전략팀 월간 손익 메인보드 — 한 달 실제 남는 돈 =====
+     남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가 − 부자재) − 월 고정비. 부가세 예상 = 매출 ÷ 11.
+     칸 값 우선순위: 직접 입력 → 자동(일일 보고서 · 지그재그 실시간 매출) → 지난달 비율 × 이번 달 매출 → 지난달 값.
+     진행 중인 달의 자동 값 = 어제까지 실적 + 남은 날 × 최근 14일 평균.
+     저장: 비공개 레포 strategy/month-board.json — 금액이라 공개 레포나 앱 키로 읽히는 표에 두지 않는다.
+       months[달].cells[채널][칸] = 직접 입력값 (없으면 자동) · fixed[].amounts[달] = 그 달부터 적용할 금액 (null = 그 달부터 없음)
+     작업 목록 방식: 입력 즉시 대기열(localStorage)에 적고, 서버 최신본 위에 적용해서 올린다 (robust-storage-sync). */
+  const SB_API=STRAT_REPO_API+'strategy/month-board.json';
+  const SB_FIRST_MONTH='2026-10';   // 사장님 시트의 첫 달
+  const SB_QUEUE_KEY='brightbeed_strat_board_queue_v1';
+  const SB_SHIP_PER_ORDER=2200;     // 보고서와 같은 택배비 가정
+  const SB_FIELDS=[['sales','매출'],['ad','광고비'],['fee','수수료'],['ship','택배비'],['direct','직배 이용료'],['cost','원가'],['material','부자재']];
+  // 공홈 택배비는 시트처럼 고정비의 "택배비" 한 줄로 계산 — 플랫폼만 주문당 택배비를 채널에서 뺀다
+  const SB_CHANNELS=[
+    {id:'kop-home',     brand:'kop', label:'공홈',     report:'home-kop'},
+    {id:'kop-ably',     brand:'kop', label:'에이블리', report:'ably-kop', perOrderShip:true},
+    {id:'kop-zigzag',   brand:'kop', label:'지그재그', zigzag:'kop', perOrderShip:true},
+    {id:'kop-29cm',     brand:'kop', label:'29CM'},
+    {id:'kop-wconcept', brand:'kop', label:'W컨셉'},
+    {id:'apt-home',     brand:'apt', label:'공홈',     report:'home-apt'},
+    {id:'apt-ably',     brand:'apt', label:'에이블리', report:'ably-apt', perOrderShip:true},
+    {id:'apt-zigzag',   brand:'apt', label:'지그재그', zigzag:'apt', perOrderShip:true},
+    {id:'apt-wconcept', brand:'apt', label:'W컨셉'},
+  ];
+  const _sb={month:'', doc:null, view:null, ready:false, loadError:'', loadedAt:0, seq:0, saveGen:0,
+             ops:null, inflight:0, saving:false, fail:0, timer:null, zigzag:{}, built:false, fixedSig:'', bound:false, paintQueued:false};
+
+  const _sbCurMonth=()=>_stratToday().slice(0,7);
+  function _sbPrevMonth(m){ const [y,mo]=m.split('-').map(Number); return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`; }
+  function _sbDaysIn(m){ const [y,mo]=m.split('-').map(Number); return new Date(y,mo,0).getDate(); }
+  function _sbMonths(){ const out=[]; for(let m=_sbCurMonth(); m>=SB_FIRST_MONTH; m=_sbPrevMonth(m)) out.push(m); return out; }  // 최신 달 먼저
+  function _sbMonthLabel(m){ const [y,mo]=m.split('-'); return `${y}년 ${Number(mo)}월`; }
+  function _sbNum(s){ const t=String(s??'').replace(/[^\d.\-]/g,''); if(t===''||t==='-') return null; const n=Math.round(Number(t)); return Number.isFinite(n)?n:null; }
+  const _sbBrand=b=>BRAND_SECTIONS.find(x=>x.id===b)||{display:b,dot:'#94a3b8'};
+
+  // 채널의 일별 자동 데이터. 못 읽었으면 null — 빈 값으로 치지 않는다.
+  function _sbSeries(c){
+    if(c.report){
+      const idx=_strat.index[c.report];
+      if(!idx||idx.error) return null;
+      return (idx.days||[]).map(d=>{
+        const paid=Number(d.paid)||0, ad=Number(d.ad_spend)||0, cost=Number(d.cost)||0, orders=Number(d.orders)||0;
+        const ship=orders*SB_SHIP_PER_ORDER;
+        // index 에 수수료 칸이 없어 순이익식(실결제 − 수수료 − 배송비 − 광고비 − 원가)에서 되짚는다
+        return {date:d.date, sales:paid, ad, cost, ship, fee:Math.max(paid-ad-cost-ship-(Number(d.net)||0),0)};
+      });
+    }
+    if(c.zigzag){
+      const z=_sb.zigzag[c.zigzag];
+      if(!z||!z.ok) return null;
+      return (z.daily||[]).map(d=>({date:d.date, sales:Number(d.revenue)||0, ship:(Number(d.orders)||0)*SB_SHIP_PER_ORDER}));
+    }
+    return null;
+  }
+  // 채널 · 달의 자동 값 {fields, actual(실적 매출), left(예상으로 채운 날 수)}. 쓸 데이터가 없으면 null.
+  function _sbAuto(c,month){
+    const s=_sbSeries(c);
+    if(!s) return null;
+    const fields=(c.report?['sales','ad','fee','cost']:['sales']).concat(c.perOrderShip?['ship']:[]);
+    const today=_stratToday(), days=_sbDaysIn(month);
+    const sum=(rows,f)=>rows.reduce((a,d)=>a+(Number(d[f])||0),0);
+    const rows=s.filter(d=>d.date.startsWith(month));
+    const out={fields:{}, actual:sum(rows,'sales'), left:0};
+    if(month===today.slice(0,7)){
+      const done=rows.filter(d=>d.date<today);
+      const recent=s.filter(d=>d.date<today).sort((a,b)=>a.date<b.date?1:-1).slice(0,14);
+      if(!recent.length) return null;
+      out.left=days-done.length;
+      fields.forEach(f=>{ out.fields[f]=Math.round(sum(done,f)+sum(recent,f)/recent.length*out.left); });
+      return out;
+    }
+    if(rows.length<20) return null;  // 달의 2/3 도 안 남은 데이터 (지그재그는 최근 30일만 온다)
+    fields.forEach(f=>{ out.fields[f]=Math.round(sum(rows,f)*days/rows.length); });
+    return out;
+  }
+  function _sbResolve(month,memo){
+    memo=memo||{};
+    if(memo[month]) return memo[month];
+    const typed=(((_sb.view||{}).months||{})[month]||{}).cells||{};
+    const prev=month>SB_FIRST_MONTH?_sbResolve(_sbPrevMonth(month),memo):null;
+    const res={rows:[], byId:{}, sales:0, net:0, actual:0, left:0, est:0, unread:[]};
+    SB_CHANNELS.forEach(c=>{
+      const auto=_sbAuto(c,month), t=typed[c.id]||{}, before=prev&&prev.byId[c.id];
+      const vals={};
+      const pick=f=>{
+        if(typeof t[f]==='number') return {v:t[f], src:'typed'};
+        if(auto&&auto.fields[f]!=null) return {v:auto.fields[f], src:'auto'};
+        if(!before) return {v:0, src:'none'};
+        const pv=before.vals[f].v, ps=before.vals.sales.v;
+        if(!pv) return {v:0, src:'none'};
+        if(f!=='sales'&&ps>0) return {v:Math.round(pv/ps*vals.sales.v), src:'ratio'};
+        return {v:pv, src:'prev'};
+      };
+      SB_FIELDS.forEach(([f])=>{ vals[f]=pick(f); });
+      const net=vals.sales.v-SB_FIELDS.slice(1).reduce((a,[f])=>a+vals[f].v,0);
+      const row={c, vals, net, auto};
+      res.rows.push(row); res.byId[c.id]=row;
+      res.sales+=vals.sales.v; res.net+=net;
+      if(auto){ res.actual+=auto.actual; res.left=Math.max(res.left,auto.left); }
+      res.est+=SB_FIELDS.filter(([f])=>vals[f].src==='ratio'||vals[f].src==='prev').length;
+      if((c.report||c.zigzag)&&!_sbSeries(c)&&typeof t.sales!=='number') res.unread.push(`${_sbBrand(c.brand).display} ${c.label}`);
+    });
+    memo[month]=res;
+    return res;
+  }
+  function _sbFixed(month){
+    return (((_sb.view||{}).fixed)||[]).map(it=>{
+      const keys=Object.keys(it.amounts||{}).filter(k=>k<=month).sort();
+      if(!keys.length) return null;
+      const a=it.amounts[keys[keys.length-1]];
+      if(a===null) return null;
+      return {id:it.id, name:it.name||'', memo:it.memo||'', amount:Number(a)||0, todo:!!it.todo&&!Number(a)};
+    }).filter(Boolean);
+  }
+  // 작업을 저장본에 적용 — 칸 · 항목이 독립적이라 서버 최신본 위에 그대로 얹는다
+  function _sbApply(doc,ops){
+    const d=JSON.parse(JSON.stringify(doc||{}));
+    d.months=d.months||{};
+    d.fixed=Array.isArray(d.fixed)?d.fixed:[];
+    (ops||[]).forEach(o=>{
+      if(o.k==='cell'){
+        const month=d.months[o.m]=d.months[o.m]||{};
+        const cells=month.cells=month.cells||{};
+        const row=cells[o.c]=cells[o.c]||{};
+        if(o.v==null) delete row[o.f]; else row[o.f]=o.v;
+      }else if(o.k==='fixAdd'){
+        if(!d.fixed.some(x=>x.id===o.id)) d.fixed.push({id:o.id, name:o.name||'', amounts:{[o.m]:o.v}});
+      }else{
+        const it=d.fixed.find(x=>x.id===o.id);
+        if(!it) return;
+        if(o.k==='fixName') it.name=o.name;
+        if(o.k==='fixAmt') (it.amounts=it.amounts||{})[o.m]=o.v;
+      }
+    });
+    return d;
+  }
+
+  function _sbSaveTag(text,warn){
+    const el=document.getElementById('sbSave');
+    if(!el) return;
+    el.textContent=text;
+    el.classList.toggle('is-warn',!!warn);
+  }
+  function _sbOpsLoad(){
+    if(_sb.ops) return;
+    _sb.ops=[];
+    try{ const a=JSON.parse(localStorage.getItem(SB_QUEUE_KEY)||'[]'); if(Array.isArray(a)) _sb.ops=a; }catch(e){}
+  }
+  function _sbOpsPersist(){
+    try{
+      if(_sb.ops.length) localStorage.setItem(SB_QUEUE_KEY,JSON.stringify(_sb.ops));
+      else localStorage.removeItem(SB_QUEUE_KEY);
+    }catch(e){}  // 저장공간이 꽉 차도 전송은 막지 않는다
+  }
+  function _sbOp(op){
+    _sbOpsLoad();
+    const key=o=>[o.k,o.m,o.c,o.f,o.id].join('|');
+    const last=_sb.ops[_sb.ops.length-1];
+    // 같은 칸 연속 타이핑은 한 작업으로 — 전송 중인 작업은 건드리지 않는다
+    if(last&&key(last)===key(op)&&_sb.ops.length>_sb.inflight) _sb.ops[_sb.ops.length-1]=op;
+    else _sb.ops.push(op);
+    _sbOpsPersist();
+    _sb.view=_sbApply(_sb.doc,_sb.ops);
+    _sbSaveTag('저장 중…');
+    clearTimeout(_sb.timer);
+    _sb.timer=setTimeout(_sbFlush,700);
+    _sbPaint();
+  }
+  async function _sbFlush(){
+    _sbOpsLoad();
+    if(_sb.saving||!_sb.ops.length) return;
+    _sb.saving=true;
+    const ops=JSON.parse(JSON.stringify(_sb.ops));  // 전송 중 입력이 보낼 값을 바꾸지 않게 복제
+    _sb.inflight=ops.length;
+    let ok=false, reason='';
+    try{
+      for(let i=0;i<3&&!ok;i++){
+        try{
+          const f=await ghGetFile(SB_API);
+          if(f.error){ reason=f.error; break }
+          if(f.sha&&!f.text){ reason='read_empty'; break }   // 못 읽은 걸 빈 값으로 합치지 않는다
+          let remote={};
+          if(f.text){ try{ remote=JSON.parse(f.text) }catch(e){ reason='parse'; break } }
+          const body=_sbApply(remote,ops);
+          body.updatedAt=Date.now();
+          body.updatedBy=String(_diaryGetMe()||'');
+          const b64=btoa(unescape(encodeURIComponent(JSON.stringify(body))));
+          const r=await ghPut(SB_API,b64,'전략팀 메인보드 입력',{forceMaster:true, noConflictRetry:true, sha:f.sha||null});
+          if(r.ok){
+            ok=true;
+            _sb.doc=body;
+            _sb.saveGen++;
+            _sb.ops=_sb.ops.slice(ops.length);   // 저장 중 새로 생긴 작업은 남김
+          }else{ reason=r.reason; if(r.reason!=='conflict') break }
+        }catch(e){ reason='fetch'; break }
+      }
+    }finally{ _sb.saving=false; _sb.inflight=0 }
+    _sbOpsPersist();
+    if(!ok){
+      _sb.fail=Math.min(_sb.fail+1,6);
+      const wait=Math.min(1000*2**(_sb.fail-1),30000);
+      _sbSaveTag(`⚠ 저장 대기 (${reason||'error'}) — ${Math.round(wait/1000)}초 뒤 다시 시도`,true);
+      clearTimeout(_sb.timer);
+      _sb.timer=setTimeout(_sbFlush,wait);
+      return;
+    }
+    _sb.fail=0;
+    _sb.view=_sbApply(_sb.doc,_sb.ops);
+    if(_sb.ops.length){ clearTimeout(_sb.timer); _sb.timer=setTimeout(_sbFlush,300); return; }
+    const d=new Date();
+    _sbSaveTag(`✓ 저장됨 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);
+  }
+  async function _sbLoadDoc(){
+    const gen=_sb.saveGen;
+    const f=await ghGetFile(SB_API);
+    if(f.error||(f.sha&&!f.text)){ _sb.loadError=f.error||'read_empty'; return }
+    let doc={};
+    if(f.text){ try{ doc=JSON.parse(f.text) }catch(e){ _sb.loadError='parse'; return } }
+    _sb.loadError='';
+    _sb.loadedAt=Date.now();
+    if(_sb.saving||gen!==_sb.saveGen) return;  // 그사이 저장했으면 이 응답은 옛것
+    _sb.doc=doc;
+    _sb.view=_sbApply(doc,_sb.ops);
+  }
+  async function _sbLoadZigzag(b){
+    try{
+      const r=await sxFetch('/zigzag-sales?brand='+b,{method:'GET'});
+      _sb.zigzag[b]=r.ok?await r.json():{ok:false};
+    }catch(e){ _sb.zigzag[b]={ok:false} }
+  }
+  async function sbInit(){
+    _sbBind();
+    _sbOpsLoad();
+    if(!_sb.month) _sb.month=_sbCurMonth();
+    _sbFillMonths();
+    const seq=++_sb.seq;
+    const jobs=[_sbLoadDoc()];
+    SB_CHANNELS.forEach(c=>{
+      const ch=c.report&&_stratCh(c.report);
+      if(ch) jobs.push(_stratLoadIndex(ch));
+    });
+    new Set(SB_CHANNELS.map(c=>c.zigzag).filter(Boolean)).forEach(b=>jobs.push(_sbLoadZigzag(b)));
+    await Promise.all(jobs);
+    if(seq!==_sb.seq) return;
+    _sb.ready=!!_sb.doc;
+    const st=document.getElementById('sbStatus');
+    if(!_sb.ready){
+      st.innerHTML=`메인보드 저장본을 불러오지 못했어요.<br>서버 PC 프록시가 꺼져 있거나 비공개 저장소에 접근할 수 없을 수 있어요. (${_stratEsc(_sb.loadError||'error')})`;
+      st.hidden=false;
+      document.getElementById('sbBody').hidden=true;
+      return;
+    }
+    st.hidden=true;
+    document.getElementById('sbBody').hidden=false;
+    _sbRender();
+    if(_sb.ops.length) _sbFlush();
+  }
+  function _sbFillMonths(){
+    const sel=document.getElementById('sbMonth');
+    sel.innerHTML=_sbMonths().map(m=>`<option value="${m}">${_sbMonthLabel(m)}</option>`).join('');
+    sel.value=_sb.month;
+  }
+  function sbSetMonth(m){
+    _sb.month=m;
+    _sbFillMonths();
+    _sbRender();
+  }
+  function sbShift(step){
+    const list=_sbMonths().slice().reverse(), i=list.indexOf(_sb.month), n=list[i+step];
+    if(n) sbSetMonth(n);
+  }
+  const _sbEditing=()=>{ const a=document.activeElement; return !!(a&&a.classList&&a.classList.contains('sb-in')); };
+  function _sbRender(){
+    _sbBuildChannels();
+    if(!_sbEditing()) _sbBuildFixed();
+    _sbPaint();
+  }
+  function _sbBuildChannels(){
+    if(_sb.built) return;   // 표 뼈대는 달이 바뀌어도 같다 — 값은 _sbPaint 가 칸별로 넣어 입력 중 캐럿을 지킨다
+    _sb.built=true;
+    const totalCells=p=>SB_FIELDS.map(([f])=>`<td class="n" id="sb-${p}-${f}"></td>`).join('')+`<td class="n sb-net" id="sb-${p}-net"></td><td class="n" id="sb-${p}-rate"></td>`;
+    let html='<thead><tr><th class="sb-ch">채널</th>'+SB_FIELDS.map(([,l])=>`<th class="n">${l}</th>`).join('')+'<th class="n">순수익</th><th class="n">이익률</th></tr></thead><tbody>';
+    new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>{
+      const meta=_sbBrand(b);
+      SB_CHANNELS.filter(c=>c.brand===b).forEach(c=>{
+        html+=`<tr><td class="sb-ch"><span class="brand-dot" style="background:${meta.dot}"></span>${_stratEsc(meta.display)} ${_stratEsc(c.label)}</td>`
+          +SB_FIELDS.map(([f,l])=>`<td><input class="sb-in" id="sb-${c.id}-${f}" data-c="${c.id}" data-f="${f}" inputmode="numeric" autocomplete="off" aria-label="${_stratEsc(meta.display)} ${_stratEsc(c.label)} ${l}"></td>`).join('')
+          +`<td class="n sb-net" id="sb-${c.id}-net"></td><td class="n" id="sb-${c.id}-rate"></td></tr>`;
+      });
+      html+=`<tr class="sb-sub"><td class="sb-ch">${_stratEsc(meta.display)} 합계</td>${totalCells(b)}</tr>`;
+    });
+    html+=`<tr class="is-total"><td class="sb-ch">전체 합계</td>${totalCells('all')}</tr></tbody>`;
+    document.getElementById('sbChannels').innerHTML=html;
+  }
+  function _sbBuildFixed(){
+    const rows=_sbFixed(_sb.month);
+    const sig=_sb.month+'|'+rows.map(r=>r.id).join(',');
+    if(sig===_sb.fixedSig) return;
+    _sb.fixedSig=sig;
+    document.getElementById('sbFixed').innerHTML='<thead><tr><th>항목</th><th class="n">월 금액</th><th>메모</th><th></th></tr></thead><tbody>'
+      +rows.map(r=>`<tr><td><input class="sb-in sb-fx-name" data-fx="name" data-id="${_stratEsc(r.id)}" autocomplete="off" placeholder="항목 이름" aria-label="고정비 항목 이름"></td>`
+        +`<td><input class="sb-in sb-fx-amt" data-fx="amt" data-id="${_stratEsc(r.id)}" inputmode="numeric" autocomplete="off" aria-label="${_stratEsc(r.name)} 월 금액"></td>`
+        +`<td class="sb-fx-memo">${_stratEsc(r.memo)}</td><td><button type="button" class="sb-fx-del" data-del="${_stratEsc(r.id)}" aria-label="${_stratEsc(r.name)} 빼기" title="이 달부터 빼기">×</button></td></tr>`).join('')
+      +'<tr class="is-total"><td>합계</td><td class="n" id="sbFixedTotal"></td><td></td><td></td></tr></tbody>';
+  }
+  function _sbPaint(){
+    if(!_sb.ready||!_sb.view) return;
+    const w=_stratW, m=_sb.month, cur=m===_sbCurMonth(), res=_sbResolve(m);
+    const fixed=_sbFixed(m), fixedSum=fixed.reduce((a,r)=>a+r.amount,0), todo=fixed.filter(r=>r.todo).length;
+    const left=res.net-fixedSum, vat=Math.round(res.sales/11), active=document.activeElement;
+    const money=v=>`<span class="${v<0?'neg':''}">₩${w(v)}</span>`;
+    const rate=(net,sales)=>sales?_stratPct(net/sales):'-';
+    document.getElementById('sbTitle').innerHTML='월간 손익 메인보드 '+(cur?'<small class="strat-live">● 진행 중 · 월말 예상</small>':'<small>마감된 달</small>');
+    const kpi=(l,v,sub,cls)=>`<div class="ably-kpi ${cls||''}"><div class="ably-kpi-l">${l}</div><div class="ably-kpi-v">${v}</div><div class="ably-kpi-s">${sub||''}</div></div>`;
+    document.getElementById('sbKpis').innerHTML=[
+      kpi(cur?`${_sbMonthLabel(m)} 예상 남는 돈`:`${_sbMonthLabel(m)} 남는 돈`, money(left), `부가세 떼면 ${money(left-vat)}`, 'is-net'),
+      kpi(cur?'예상 매출':'매출', '₩'+w(res.sales), cur?`오늘까지 자동 수집 ₩${w(res.actual)}`:'전 채널 합계'),
+      kpi('채널 순수익', money(res.net), '매출의 '+rate(res.net,res.sales)),
+      kpi('월 고정비', '₩'+w(fixedSum), `${fixed.length}개 항목`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'')),
+      kpi('부가세 예상', '₩'+w(vat), '매출 ÷ 11 · 매입 공제 전'),
+    ].join('');
+    const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 월 고정비 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
+    if(cur) lines.push(`월말 예상: 공홈 · 에이블리 · 지그재그는 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 29CM · W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요.`);
+    else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
+    lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있어요.');
+    if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
+    document.getElementById('sbBasis').innerHTML=lines.join('<br>');
+
+    const TITLE={auto:cur?'어제까지 실적 + 남은 날 예상':'자동 수집 합계', ratio:'지난달 비율 × 이번 달 매출', prev:'지난달 값', none:''};
+    res.rows.forEach(({c,vals,net,auto})=>{
+      SB_FIELDS.forEach(([f])=>{
+        const el=document.getElementById(`sb-${c.id}-${f}`), x=vals[f];
+        if(!el) return;
+        const typed=x.src==='typed';
+        if(el!==active) el.value=typed?w(x.v):'';
+        el.placeholder=x.v?w(x.v):'–';
+        el.classList.toggle('is-est',x.src==='ratio'||x.src==='prev');
+        const a=auto&&auto.fields[f];
+        el.title=typed?`직접 입력${a!=null?` · 자동 계산 ₩${w(a)}`:''} · 지우면 자동으로 돌아가요`:TITLE[x.src];
+      });
+      document.getElementById(`sb-${c.id}-net`).innerHTML=money(net);
+      document.getElementById(`sb-${c.id}-rate`).textContent=rate(net,vals.sales.v);
+    });
+    const paintTotal=(p,rows)=>{
+      const net=rows.reduce((a,r)=>a+r.net,0), sales=rows.reduce((a,r)=>a+r.vals.sales.v,0);
+      SB_FIELDS.forEach(([f])=>{ document.getElementById(`sb-${p}-${f}`).textContent=w(rows.reduce((a,r)=>a+r.vals[f].v,0)); });
+      document.getElementById(`sb-${p}-net`).innerHTML=money(net);
+      document.getElementById(`sb-${p}-rate`).textContent=rate(net,sales);
+    };
+    new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>paintTotal(b,res.rows.filter(r=>r.c.brand===b)));
+    paintTotal('all',res.rows);
+
+    document.getElementById('sbFixedSum').innerHTML=`₩${w(fixedSum)} · ${fixed.length}개`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'');
+    const total=document.getElementById('sbFixedTotal');
+    if(total) total.textContent='₩'+w(fixedSum);
+    document.querySelectorAll('#sbFixed .sb-in').forEach(el=>{
+      const r=fixed.find(x=>x.id===el.dataset.id);
+      if(!r||el===active) return;
+      if(el.dataset.fx==='name') el.value=r.name;
+      else{ el.value=r.amount?w(r.amount):''; el.placeholder=r.todo?'금액 입력':'0'; el.classList.toggle('is-todo',r.todo); }
+    });
+  }
+  function _sbQueuePaint(){
+    if(!_sb.ready||_sb.paintQueued) return;
+    _sb.paintQueued=true;
+    setTimeout(()=>{ _sb.paintQueued=false; _sbPaint(); },60);
+  }
+  function _sbBind(){
+    if(_sb.bound) return;
+    _sb.bound=true;
+    const box=document.getElementById('stratBoard');
+    box.addEventListener('focusin',e=>{
+      const el=e.target;
+      if(!el.classList.contains('sb-in')||el.dataset.fx==='name') return;
+      // 입력 중에는 쉼표 없이
+      const n=_sbNum(el.value);
+      if(n!=null) el.value=String(n);
+      el.select();
+    });
+    box.addEventListener('input',e=>{
+      const el=e.target;
+      if(!el.classList.contains('sb-in')) return;
+      if(el.dataset.fx==='name') _sbOp({k:'fixName', id:el.dataset.id, name:el.value});
+      else if(el.dataset.fx==='amt') _sbOp({k:'fixAmt', id:el.dataset.id, m:_sb.month, v:_sbNum(el.value)||0});
+      else _sbOp({k:'cell', m:_sb.month, c:el.dataset.c, f:el.dataset.f, v:_sbNum(el.value)});
+    });
+    box.addEventListener('focusout',()=>setTimeout(()=>{ if(!_sbEditing()) _sbRender(); },0));
+    box.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.classList.contains('sb-in')) e.target.blur(); });
+    box.addEventListener('click',e=>{
+      const id=e.target.dataset&&e.target.dataset.del;
+      if(!id) return;
+      const r=_sbFixed(_sb.month).find(x=>x.id===id);
+      if(!r||!confirm(`"${r.name||'이 항목'}" 을(를) ${_sbMonthLabel(_sb.month)}부터 고정비에서 뺄까요? 그 전 달 계산은 그대로예요.`)) return;
+      _sbOp({k:'fixAmt', id, m:_sb.month, v:null});
+      _sbRender();
+    });
+  }
+  function sbFixedAdd(){
+    const id='f'+Date.now().toString(36);
+    document.getElementById('sbFixedFold').open=true;
+    _sbOp({k:'fixAdd', id, m:_sb.month, name:'', v:0});
+    _sbRender();
+    const el=document.querySelector(`#sbFixed .sb-fx-name[data-id="${id}"]`);
+    if(el) el.focus();
+  }
+  // 켜 둔 화면 — 3분마다 저장본을 다시 읽어 다른 사람 입력을 반영 (입력 중에는 건너뜀)
+  setInterval(()=>{
+    const v=document.getElementById('viewStrategy');
+    if(!v||v.hidden||document.hidden||!_sb.ready||_sbEditing()||Date.now()-_sb.loadedAt<3*60*1000) return;
+    _sbLoadDoc().then(()=>{ if(!_sbEditing()) _sbRender(); });
+  },30*1000);
+  // 못 보낸 입력이 대기열에 남아 있으면 앱을 열 때 이어서 보냄
+  setTimeout(()=>{
+    try{ if(localStorage.getItem(SB_QUEUE_KEY)&&stratHasAccess()) _sbFlush(); }catch(e){}
+  },4000);
+
+  window.sbShift=sbShift;
+  window.sbSetMonth=sbSetMonth;
+  window.sbFixedAdd=sbFixedAdd;
+  window.stratDailyToggle=stratDailyToggle;
   window.triggerStrategy=triggerStrategy;
   window.stratHasAccess=stratHasAccess;
   window.stratRefreshAccess=stratRefreshAccess;
