@@ -4889,6 +4889,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-fx{max-width:720px}
   .sb-fx td{padding:3px 4px;vertical-align:middle}
   .sb-fx .sb-fx-name{text-align:left;font-weight:500;min-width:170px}
+  .sb-fx .sb-fx-memo-in{text-align:left;font-weight:400;color:var(--text-2);min-width:160px}
   .sb-fx .sb-fx-amt{min-width:120px}
   .sb-fx .sb-fx-amt.is-todo::placeholder{color:var(--warn);font-weight:600}
   .sb-fx-memo{font-size:11px;color:var(--text-3)}
@@ -38924,6 +38925,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const it=d.fixed.find(x=>x.id===o.id);
         if(!it) return;
         if(o.k==='fixName') it.name=o.name;
+        if(o.k==='fixMemo') it.memo=o.memo;
         if(o.k==='fixAmt') (it.amounts=it.amounts||{})[o.m]=o.v;
       }
     });
@@ -39095,7 +39097,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('sbFixed').innerHTML='<thead><tr><th>항목</th><th class="n">월 금액</th><th>메모</th><th></th></tr></thead><tbody>'
       +rows.map(r=>`<tr><td><input class="sb-in sb-fx-name" data-fx="name" data-id="${_stratEsc(r.id)}" autocomplete="off" placeholder="항목 이름" aria-label="고정비 항목 이름"></td>`
         +`<td><input class="sb-in sb-fx-amt" data-fx="amt" data-id="${_stratEsc(r.id)}" inputmode="numeric" autocomplete="off" aria-label="${_stratEsc(r.name)} 월 금액"></td>`
-        +`<td class="sb-fx-memo">${_stratEsc(r.memo)}</td><td><button type="button" class="sb-fx-del" data-del="${_stratEsc(r.id)}" aria-label="${_stratEsc(r.name)} 빼기" title="이 달부터 빼기">×</button></td></tr>`).join('')
+        +`<td class="sb-fx-memo"><input class="sb-in sb-fx-memo-in" data-fx="memo" data-id="${_stratEsc(r.id)}" autocomplete="off" placeholder="메모" aria-label="${_stratEsc(r.name)} 메모"></td><td><button type="button" class="sb-fx-del" data-del="${_stratEsc(r.id)}" aria-label="${_stratEsc(r.name)} 빼기" title="이 달부터 빼기">×</button></td></tr>`).join('')
       +'<tr class="is-total"><td>합계</td><td class="n" id="sbFixedTotal"></td><td></td><td></td></tr></tbody>';
   }
   function _sbPaint(){
@@ -39156,6 +39158,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const r=fixed.find(x=>x.id===el.dataset.id);
       if(!r||el===active) return;
       if(el.dataset.fx==='name') el.value=r.name;
+      else if(el.dataset.fx==='memo') el.value=r.memo;
       else{ el.value=r.amount?w(r.amount):''; el.placeholder=r.todo?'금액 입력':'0'; el.classList.toggle('is-todo',r.todo); }
     });
   }
@@ -39170,7 +39173,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const box=document.getElementById('stratBoard');
     box.addEventListener('focusin',e=>{
       const el=e.target;
-      if(!el.classList.contains('sb-in')||el.dataset.fx==='name') return;
+      if(!el.classList.contains('sb-in')||el.dataset.fx==='name'||el.dataset.fx==='memo') return;
       // 입력 중에는 쉼표 없이
       const n=_sbNum(el.value);
       if(n!=null) el.value=String(n);
@@ -39181,6 +39184,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!el.classList.contains('sb-in')) return;
       if(el.dataset.unit) _sbOp({k:'shipUnit', m:_sb.month, v:_sbNum(el.value)||null});
       else if(el.dataset.fx==='name') _sbOp({k:'fixName', id:el.dataset.id, name:el.value});
+      else if(el.dataset.fx==='memo') _sbOp({k:'fixMemo', id:el.dataset.id, memo:el.value});
       else if(el.dataset.fx==='amt') _sbOp({k:'fixAmt', id:el.dataset.id, m:_sb.month, v:_sbNum(el.value)||0});
       else _sbOp({k:'cell', m:_sb.month, c:el.dataset.c, f:el.dataset.f, v:_sbNum(el.value)});
     });
