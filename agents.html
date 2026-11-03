@@ -386,6 +386,8 @@ const PIN_VIEWER = '2580';
 const PIN_MASTER = '0000';
 const ROLE_KEY = 'brightbeed_role';
 const TUNNEL_URL = 'https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json';
+// 서버 재부팅으로 터널 주소가 바뀌어도 열어 둔 탭이 새로고침 없이 새 주소로 넘어가도록 주기적으로 다시 읽는다.
+const PROXY_BASE_TTL_MS = 5 * 60 * 1000;
 
 const $ = id => document.getElementById(id);
 const OVERRIDES_KEY = 'agents_overrides_v1';
@@ -393,6 +395,7 @@ const CHAT_KEY = 'agents_chat_v1';
 
 let statusMap = {};
 let _proxyBase = null;
+let _proxyBaseAt = 0;
 let openCharId = null;
 let busy = false;
 const sess = {};          // charId -> 진행 중인 업무 컨텍스트 (비영속)
@@ -696,14 +699,15 @@ function isMaster(){ return localStorage.getItem(ROLE_KEY) === 'master'; }
 function bbPin(){ return isMaster() ? PIN_MASTER : PIN_VIEWER; }
 
 async function loadProxyBase(force){
-  if(_proxyBase && !force) return _proxyBase;
+  if(_proxyBase && !force && Date.now() - _proxyBaseAt < PROXY_BASE_TTL_MS) return _proxyBase;
   try{
     const r = await fetch(`${TUNNEL_URL}?cb=${Date.now()}`, {cache:'no-cache'});
-    if(!r.ok) return null;
+    if(!r.ok) return _proxyBase;
     const j = await r.json();
-    _proxyBase = (j && typeof j.url === 'string') ? j.url.replace(/\/$/,'') : null;
+    const next = (j && typeof j.url === 'string') ? j.url.replace(/\/$/,'') : null;
+    if(next){ _proxyBase = next; _proxyBaseAt = Date.now(); }
     return _proxyBase;
-  }catch(e){ return null; }
+  }catch(e){ return _proxyBase; }
 }
 
 async function api(path, opts){

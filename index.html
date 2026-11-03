@@ -12910,16 +12910,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      - 대시보드는 tunnel.json을 읽어 base URL을 확보, /gh/* 로 호출 → 프록시가 PAT 주입 후 api.github.com 으로 포워딩.
      - 인증은 X-Brightbeed-PIN 헤더. viewer PIN은 GET만, master PIN은 모든 메서드. */
   const PROXY_TUNNEL_URL='https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json';
+  // 서버 재부팅으로 터널 주소가 바뀌어도 열어 둔 탭이 새로고침 없이 새 주소로 넘어가도록 주기적으로 다시 읽는다.
+  const PROXY_BASE_TTL_MS=5*60*1000;
   let _proxyBase=null;
+  let _proxyBaseAt=0;
   async function loadProxyBase(force){
-    if(_proxyBase && !force) return _proxyBase;
+    if(_proxyBase && !force && Date.now()-_proxyBaseAt<PROXY_BASE_TTL_MS) return _proxyBase;
     try{
       const r=await fetch(`${PROXY_TUNNEL_URL}?cb=${Date.now()}`,{cache:'no-cache'});
-      if(!r.ok) return null;
+      if(!r.ok) return _proxyBase;
       const j=await r.json();
-      _proxyBase=(j && typeof j.url==='string') ? j.url.replace(/\/$/,'') : null;
+      const next=(j && typeof j.url==='string') ? j.url.replace(/\/$/,'') : null;
+      if(next){ _proxyBase=next; _proxyBaseAt=Date.now(); }
       return _proxyBase;
-    }catch(e){ return null }
+    }catch(e){ return _proxyBase }
   }
   function ghPin(){ return localStorage.getItem(ROLE_KEY)==='master' ? PIN_MASTER : PIN_VIEWER }
   async function ghFetch(url,opts){
@@ -24254,13 +24258,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   async function fetchKDOrders(opts){
     opts=opts||{};
-    const base=await loadProxyBase();
-    if(!base) throw new Error('proxy unavailable');
     const brand = window._kdBrand || 'brightbeed';
-    const parts = ['brand='+encodeURIComponent(brand), 'cb='+Date.now()];
-    if(opts.refresh) parts.push('refresh=1');
-    const url = base+'/kd/orders?'+parts.join('&');
-    const r=await fetch(url, {headers:{'X-Brightbeed-PIN':ghPin()},cache:'no-cache'});
+    const request=async()=>{
+      const base=await loadProxyBase();
+      if(!base) throw new Error('proxy unavailable');
+      const parts = ['brand='+encodeURIComponent(brand), 'cb='+Date.now()];
+      if(opts.refresh) parts.push('refresh=1');
+      const url = base+'/kd/orders?'+parts.join('&');
+      return fetch(url, {headers:{'X-Brightbeed-PIN':ghPin()},cache:'no-cache'});
+    };
+    let r;
+    try{
+      r=await request();
+      if(r.status>=502 && r.status<=504) throw new Error('tunnel '+r.status);
+    }catch(e){
+      // 터널 재시작 등으로 base가 바뀌었을 수 있음 — ghFetch 처럼 한 번 갱신 후 재시도
+      _proxyBase=null;
+      r=await request();
+    }
     if(!r.ok) return null;
     return await r.json();
   }
