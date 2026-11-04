@@ -26023,10 +26023,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const readonly = !!arState.readonly;
     const overrideName=arState.overrides[p.id];
     const autoName=arState.autoOverrides?.[p.id]?.name;
-    const displayName=overrideName || autoName || p.kor || p.cn || '—';
-    const isAuto = !overrideName && !!autoName;
-    const origName=p.kor||p.cn||'';
-    const sub=((overrideName||autoName) && origName && (overrideName||autoName)!==origName) ? origName
+    // 🤖 제안은 이미 붙은 이름(사진 보고 붙인 이름 등)이 있어도 보여줌 — 취소하면 그 이름으로 돌아감
+    const isAuto = !!autoName && autoName!==overrideName;
+    const shownName = isAuto ? autoName : overrideName;
+    const displayName=shownName || p.kor || p.cn || '—';
+    const origName=(isAuto && overrideName) ? overrideName : (p.kor||p.cn||'');
+    const sub=(shownName && origName && shownName!==origName) ? origName
              : (p.kor && p.cn && p.kor!==p.cn) ? p.cn : '';
     const overrideImg=arState.imgOverrides?.[p.id];
     const displayImg=overrideImg || p.img || '';
@@ -26072,7 +26074,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="ar-prod-img">${img}</div>
         <div class="ar-prod-body">
           <div class="ar-prod-name">
-            <span class="ar-name-text${overrideName?' ar-name-edited':''}${isAuto?' ar-name-auto':''}">${arEscape(displayName)}${isAuto?' <span class="ar-auto-badge" title="자동 매칭 – 확인 후 승인/취소">🤖</span>':''}</span>
+            <span class="ar-name-text${overrideName&&!isAuto?' ar-name-edited':''}${isAuto?' ar-name-auto':''}">${arEscape(displayName)}${isAuto?' <span class="ar-auto-badge" title="자동 매칭 – 확인 후 승인/취소">🤖</span>':''}</span>
             ${nameEditBlock}
           </div>
           ${sub?`<div class="ar-prod-sub">${arEscape(sub)}</div>`:''}
