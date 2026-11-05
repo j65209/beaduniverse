@@ -428,6 +428,8 @@ function errText_(e) {
  * 실행하면 기록 시트와 첨부 폴더를 미리 만들어 둔다.
  */
 function setup() {
+  // 권한 창에서 체크박스를 하나라도 빼면 여기서 멈추고 구글이 다시 물어본다 (지메일 읽기 권한이 없으면 기록을 못 가져옴)
+  if (typeof ScriptApp.requireAllScopes === 'function') ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
   upgradeLog_(logSheet_());
   folder_();
   ensureTrigger_(); // 지메일에서 직접 보낸 메일 1시간마다 기록 시트로
