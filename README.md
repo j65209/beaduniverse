@@ -258,6 +258,8 @@ studio/
 - 저장소가 Public 이라 **웹 앱 URL·발송 키는 절대 커밋하지 않는다.** `mailer/server.gs` 는 키 자리(`__MAIL_KEY__`)만 있는 원본이고, 키는 화면이 브라우저에서 만들어 코드에 넣어 준다.
 - 서버 코드를 고치면 Apps Script 에서 `setup` 한 번 실행(권한 허용) → **배포 관리 → 수정 → 새 버전**으로 다시 배포해야 반영된다 (URL 은 그대로). 화면은 서버 버전(`SERVER_VERSION`)이 낮으면 「서버 업데이트 필요」 안내와 새 코드 복사 버튼을 띄운다.
 - 서버 버전: v1 발송 · v2 기록/중복 방지 · **v3 지메일 보낸편지함 → 기록 시트 가져오기**(`importSent`, `syncSent` 1시간 트리거 — v3 은 트리거 권한이 추가돼서 업데이트할 때 `setup` 실행이 꼭 필요).
+- 실제 발송 서버(brightbeed@gmail.com 「제목 없는 프로젝트」)는 `appsscript.json` 에 `oauthScopes` 를 직접 적어서 지메일은 **읽기 전용**(`gmail.readonly`)만 받는다 — 나머지: `script.send_mail`, `spreadsheets`, `drive`, `script.scriptapp`, `userinfo.email`.
+- 권한 창에서 「현재 파일을 열 수 없습니다」가 뜨면 크롬에 구글 계정이 여러 개 로그인돼 있어서다(기본 계정 ≠ 스크립트 주인). 시크릿 창에서 보내는 계정만 로그인해서 승인하고, 권한 목록은 **모두 선택**.
 
 ---
 
