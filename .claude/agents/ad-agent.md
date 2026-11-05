@@ -200,3 +200,11 @@ python3 insights.py --since 2026-08-01 --until 2026-08-17 --level ad
 - **사장님 시간 절약이 최우선**. 여러 스텝 필요한 작업은 원샷 스크립트로 감쌈.
 - **UI 데이터랑 안 맞으면 우리 코드부터 의심** (식스샵·자동화 6원칙).
 - **한글 소통**, 코드는 영어. 커밋 메시지는 한글 OK.
+
+## 10분 주기 (2026-11-05 사장님 지정)
+
+- launchd `com.brightbeed.fb-ads-refresh` 가 매시 0·10·20·30·40·50분에 `refresh_all_brands.sh` 실행. 앞 주기가 안 끝났으면 그 칸은 건너뛴다.
+- 오늘·어제는 매 주기(`FB_ADS_FAST=1`), 7일·30일·전체는 브랜드마다 1시간에 한 번 돌아가며. 전 브랜드 전 기간을 지금 받으려면 `FB_ADS_FULL=1 bash refresh_all_brands.sh last_7d`.
+- `insights.py` 는 `reports/insights_{계정}_{레벨}_{기간}_latest.json` 을 덮어쓴다 (쌓지 않음). 계정 메타는 같은 실행 안에서 재사용 (`FB_ADS_META_TTL`, 300초).
+- 숫자가 그대로면 `build_dashboard_report.py` 가 1시간 안에는 브랜드 파일을 다시 쓰지 않는다 (`_same_report`) — 커밋 · 사이트 배포를 줄이려고.
+- 로그에 `한도 사용량` (`x-fb-ads-insights-throttle`) 이 브랜드마다 찍힌다. 높아지면 주기를 늘릴 것.
