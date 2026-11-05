@@ -437,9 +437,10 @@
     $('setupBanner').hidden = !!state.conn;
     $('updateBanner').hidden = !(s && state.version < SERVER_VERSION);
     $('logLink').hidden = !(s && s.logUrl);
-    if (s && s.logUrl) $('logLink').href = s.logUrl;
+    const sheetUrl = s && s.logUrl ? s.logUrl + (s.sender ? (s.logUrl.includes('?') ? '&' : '?') + 'authuser=' + encodeURIComponent(s.sender) : '') : '';  // 여러 계정 로그인돼 있어도 보내는 계정으로 열기
+    if (sheetUrl) $('logLink').href = sheetUrl;
     $('sheetTop').hidden = !(s && s.logUrl);
-    if (s && s.logUrl) $('sheetTop').href = s.logUrl;
+    if (sheetUrl) $('sheetTop').href = sheetUrl;
     $('connInfo').hidden = !s;
     $('connSetup').hidden = !!s;
     if (s) { $('kvSender').textContent = s.sender || '—'; $('kvQuota').textContent = s.remaining + '건'; }
