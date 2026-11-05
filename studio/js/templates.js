@@ -7,10 +7,12 @@ import { W, H, newPage } from './core.js';
 import { T, IMG, SH, SOFT_SHADOW, PINK } from './tpl-kit.js';
 import { FASHION, LIVING } from './tpl-fashion-living.js';
 import { SALE, REVIEW, INFO, MOOD } from './tpl-more.js';
+import { JEWELRY } from './tpl-jewelry.js';
 
 /** 갤러리 분류 */
 export const TEMPLATE_CATS = [
   { id: 'all', name: '전체' },
+  { id: 'jewelry', name: '주얼리·밈' },
   { id: 'fashion', name: '패션' },
   { id: 'living', name: '리빙' },
   { id: 'sale', name: '할인·이벤트' },
@@ -98,6 +100,7 @@ const BASE = [
 const base = (id) => BASE.find((t) => t.id === id);
 /** 갤러리 순서: 패션 → 리빙 → 할인·이벤트 → 후기·UGC → 정보·비교 → 무드·감성 */
 export const TEMPLATES = [
+  ...JEWELRY,
   ...FASHION,
   base('launch'), ...LIVING,
   base('hook-top'), base('sale'), ...SALE,
@@ -136,6 +139,12 @@ export const SHAPE_PRESETS = [
   { id: 'ticket', label: '쿠폰', props: { name: '쿠폰', shape: 'ticket', w: 680, h: 260, radius: 24, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
   { id: 'bubble', label: '말풍선', props: { name: '말풍선', shape: 'bubble', w: 600, h: 170, radius: 48, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
   { id: 'arch', label: '아치', props: { name: '아치', shape: 'arch', w: 560, h: 760, fill: { type: 'solid', color: '#efe8dd', alpha: 1 } } },
+  { id: 'sparkle', label: '반짝이', props: { name: '반짝이', shape: 'sparkle', inner: 0.14, w: 160, h: 200, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
+  { id: 'flower', label: '데이지', props: { name: '데이지', shape: 'flower', points: 8, inner: 0.26, w: 240, h: 240, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
+  { id: 'arrow', label: '손 화살표', props: { name: '손그림 화살표', shape: 'arrow', thick: 9, w: 260, h: 180, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
+  { id: 'scribble', label: '손 동그라미', props: { name: '손그림 동그라미', shape: 'scribble', thick: 8, w: 420, h: 260, fill: { type: 'solid', color: '#ff2e93', alpha: 1 } } },
+  { id: 'squiggle', label: '물결 밑줄', props: { name: '물결 밑줄', shape: 'squiggle', thick: 7, w: 420, h: 40, fill: { type: 'solid', color: '#ff2e93', alpha: 1 } } },
+  { id: 'grain', label: '필름 그레인', back: false, props: { name: '필름 그레인', shape: 'grain', x: 0, y: 0, w: W, h: H, opacity: 0.35, fill: { type: 'solid', color: '#000000', alpha: 1 } } },
 ];
 
 export const SWATCHES = ['#ffffff', '#111111', '#6b7280', '#ff2e93', '#ff6b35', '#ffe14d', '#fbbf24', '#22c55e', '#22d3ee', '#3b82f6', '#a78bfa', '#f472b6', '#14b8a6', '#ef4444'];

@@ -99,9 +99,91 @@ export function shapePath(ctx, kind, w, h, o = {}) {
       ctx.closePath();
       return;
     }
+    case 'sparkle': { // ✦ 반짝이 — 오목한 4갈래 별
+      const k = clamp(o.inner == null ? 0.14 : o.inner, 0.02, 0.45);
+      const cx = w / 2, cy = h / 2, ix = w * k, iy = h * k;
+      ctx.moveTo(cx, 0);
+      ctx.quadraticCurveTo(cx + ix, cy - iy, w, cy);
+      ctx.quadraticCurveTo(cx + ix, cy + iy, cx, h);
+      ctx.quadraticCurveTo(cx - ix, cy + iy, 0, cy);
+      ctx.quadraticCurveTo(cx - ix, cy - iy, cx, 0);
+      ctx.closePath();
+      return;
+    }
+    case 'flower': { // 데이지 꽃잎 (가운데는 따로 원을 올려서 색 다르게)
+      const n = clamp(Math.round(o.points || 8), 4, 16);
+      const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2;
+      const pl = R * 0.52, pw = R * clamp(o.inner == null ? 0.26 : o.inner, 0.1, 0.5);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+        const px = cx + Math.cos(a) * (R - pl), py = cy + Math.sin(a) * (R - pl);
+        ctx.moveTo(px + Math.cos(a) * pl, py + Math.sin(a) * pl);
+        ctx.ellipse(px, py, pl, pw, a, 0, Math.PI * 2);
+      }
+      ctx.moveTo(cx + R * 0.34, cy);
+      ctx.arc(cx, cy, R * 0.34, 0, Math.PI * 2);
+      return;
+    }
+    case 'grain':
+      ctx.rect(0, 0, w, h);
+      return;
     default:
       roundRectPath(ctx, 0, 0, w, h, r);
   }
+}
+/** 손그림 선 도형 (채우기 없이 선만) */
+const LINE_KINDS = new Set(['arrow', 'scribble', 'squiggle']);
+export const isLineShape = (L) => LINE_KINDS.has(L.shape);
+function linePath(ctx, kind, w, h) {
+  if (kind === 'arrow') { // 손으로 그은 휘어진 화살표 (왼쪽 아래 → 오른쪽 위)
+    const sx = w * 0.06, sy = h * 0.88, ex = w * 0.93, ey = h * 0.16;
+    ctx.moveTo(sx, sy);
+    ctx.bezierCurveTo(w * 0.22, h * 0.2, w * 0.62, h * 0.08, ex, ey);
+    const ang = Math.atan2(ey - h * 0.08, ex - w * 0.62);
+    const hl = Math.max(14, Math.min(w, h) * 0.28);
+    ctx.moveTo(ex - Math.cos(ang - 0.55) * hl, ey - Math.sin(ang - 0.55) * hl);
+    ctx.lineTo(ex, ey);
+    ctx.lineTo(ex - Math.cos(ang + 0.55) * hl, ey - Math.sin(ang + 0.55) * hl);
+    return;
+  }
+  if (kind === 'scribble') { // 손으로 두른 동그라미 (한 바퀴 조금 넘게)
+    const cx = w / 2, cy = h / 2, rx = w / 2 * 0.94, ry = h / 2 * 0.9;
+    const turns = 1.12, steps = 90;
+    for (let i = 0; i <= steps; i++) {
+      const t = (i / steps) * turns * Math.PI * 2 - 2.3;
+      const wob = 1 + 0.035 * Math.sin(t * 3.1) - 0.05 * (i / steps);
+      const x = cx + Math.cos(t) * rx * wob, y = cy + Math.sin(t) * ry * wob;
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    return;
+  }
+  // squiggle — 물결 밑줄
+  const n = Math.max(2, Math.round(w / Math.max(20, h * 1.4)));
+  const amp = h * 0.32, cy = h / 2, seg = w / n;
+  ctx.moveTo(0, cy);
+  for (let i = 0; i < n; i++) {
+    const x0 = i * seg;
+    ctx.bezierCurveTo(x0 + seg * 0.25, cy - amp * 2, x0 + seg * 0.25, cy - amp * 2, x0 + seg * 0.5, cy);
+    ctx.bezierCurveTo(x0 + seg * 0.75, cy + amp * 2, x0 + seg * 0.75, cy + amp * 2, x0 + seg, cy);
+  }
+}
+/* 필름 그레인 무늬 (한 번 만들어 재사용) */
+let grainPat = null;
+function grainPattern(ctx) {
+  if (!grainPat) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 180;
+    const g = c.getContext('2d');
+    const im = g.createImageData(180, 180);
+    for (let i = 0; i < im.data.length; i += 4) {
+      const v = Math.random() * 255;
+      im.data[i] = im.data[i + 1] = im.data[i + 2] = v;
+      im.data[i + 3] = 46 + Math.random() * 60;
+    }
+    g.putImageData(im, 0, 0);
+    grainPat = c;
+  }
+  return ctx.createPattern(grainPat, 'repeat');
 }
 /** 이미지 모양(가려내기) 경로 */
 function maskPath(c, L) {
@@ -310,7 +392,7 @@ function clearShadow(ctx) {
 }
 
 // 템플릿 갤러리·페이지 썸네일의 빈 사진 칸 — 실제 사진 느낌의 차분한 톤 (편집 화면은 어두운 안내 칸)
-const SAMPLE_TONES = [['#d9cfc1', '#b9a993'], ['#c9d2c0', '#9fae98'], ['#e2cfc8', '#c3a69c'], ['#c6ced8', '#9aa6b5'], ['#d8c9b4', '#b49d82'], ['#d4ccd9', '#ada2b8'], ['#e6ddd0', '#cbbba5']];
+const SAMPLE_TONES = [['#dcd7d0', '#aaa39a'], ['#d3cfca', '#9b968f'], ['#e4ded5', '#bdb3a6'], ['#cbc8c4', '#8f8b87'], ['#ddd6ce', '#a69c91'], ['#d6d1cd', '#a19b95']];
 function hashStr(s) { let x = 0; for (const ch of String(s)) x = (x * 31 + ch.charCodeAt(0)) | 0; return Math.abs(x); }
 function drawSampleSlot(ctx, L) {
   ctx.save();
@@ -327,11 +409,15 @@ function drawSampleSlot(ctx, L) {
   rg.addColorStop(0, 'rgba(255,255,255,0.45)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = rg;
   ctx.fillRect(0, 0, L.w, L.h);
+  const vg = ctx.createRadialGradient(L.w / 2, L.h / 2, Math.min(L.w, L.h) * 0.35, L.w / 2, L.h / 2, Math.max(L.w, L.h) * 0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.16)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, L.w, L.h);
   if (L.w >= W * 0.95 && L.h >= H * 0.45) { ctx.restore(); return; } // 배경 사진 칸은 아이콘 없이 톤만
-  const s = Math.min(L.w, L.h), ic = clamp(s * 0.18, 24, 160);
+  const s = Math.min(L.w, L.h), ic = clamp(s * 0.14, 22, 110);
   const cx = L.w / 2, cy = L.h / 2;
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.lineWidth = Math.max(3, ic * 0.07);
   ctx.lineJoin = 'round';
   ctx.beginPath(); roundRectPath(ctx, cx - ic / 2, cy - ic * 0.38, ic, ic * 0.76, ic * 0.1); ctx.stroke();
@@ -454,6 +540,29 @@ function fillStyleOf(ctx, L) {
   return rgba(f.color || '#000000', f.alpha ?? 1);
 }
 function drawShapeLayer(ctx, L, o = {}) {
+  if (L.flipX) { ctx.translate(L.w, 0); ctx.scale(-1, 1); }
+  if (isLineShape(L)) { // 손그림 선: 채우기 색으로 선만 긋기
+    ctx.beginPath();
+    linePath(ctx, L.shape, L.w, L.h);
+    ctx.lineWidth = Math.max(1, +L.thick || 8);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const f = L.fill || {};
+    ctx.strokeStyle = rgba(f.color || '#111111', f.alpha ?? 1);
+    if (L.shadow && L.shadow.on) applyShadow(ctx, L.shadow, o.px || 1);
+    ctx.stroke();
+    return;
+  }
+  if (L.shape === 'grain') {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, L.w, L.h); ctx.clip();
+    const s = 1 / Math.max(0.3, Math.min(3, o.px || 1)); // 화면 배율과 상관없이 비슷한 입자 크기
+    ctx.scale(1 / s, 1 / s);
+    ctx.fillStyle = grainPattern(ctx);
+    ctx.fillRect(0, 0, L.w * s, L.h * s);
+    ctx.restore();
+    return;
+  }
   ctx.beginPath();
   shapePath(ctx, L.shape || 'rect', L.w, L.h, L);
   ctx.fillStyle = fillStyleOf(ctx, L);
@@ -468,6 +577,34 @@ function drawShapeLayer(ctx, L, o = {}) {
 }
 
 /* ---------- 텍스트 그리기 ---------- */
+function mixHex(a, b, t) {
+  const p = (h) => { h = String(h || '#000').replace('#', ''); if (h.length === 3) h = h.split('').map((c) => c + c).join(''); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) || 0); };
+  const x = p(a), y = p(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+/** 글자 채우기 — 단색 또는 그라데이션(크롬 광택 포함) */
+function textFill(ctx, L) {
+  const g = L.grad;
+  if (!g || !g.on) return L.color;
+  const ang = (g.angle ?? 180) * Math.PI / 180;
+  const dx = Math.sin(ang), dy = -Math.cos(ang);
+  const len = Math.abs(L.w * dx) + Math.abs(L.h * dy);
+  const cx = L.w / 2, cy = L.h / 2;
+  const gr = ctx.createLinearGradient(cx - dx * len / 2, cy - dy * len / 2, cx + dx * len / 2, cy + dy * len / 2);
+  const c1 = L.color, c2 = g.color2 || '#ffffff';
+  if (g.chrome) {
+    gr.addColorStop(0, c2);
+    gr.addColorStop(0.42, mixHex(c2, c1, 0.35));
+    gr.addColorStop(0.5, c1);
+    gr.addColorStop(0.58, mixHex(c1, c2, 0.75));
+    gr.addColorStop(0.8, c2);
+    gr.addColorStop(1, mixHex(c2, c1, 0.5));
+  } else {
+    gr.addColorStop(0, c1);
+    gr.addColorStop(1, c2);
+  }
+  return gr;
+}
 function runText(ctx, t, x, y, ls, stroke) {
   if (!ls) { if (stroke) ctx.strokeText(t, x, y); else ctx.fillText(t, x, y); return; }
   if (HAS_LS) {
@@ -523,11 +660,11 @@ function drawTextLayer(ctx, L, o) {
     applyShadow(ctx, L.shadow, pxs);
     each(true);
     clearShadow(ctx);
-    ctx.fillStyle = L.color;
+    ctx.fillStyle = textFill(ctx, L);
     each(false);
   } else {
     applyShadow(ctx, L.shadow, pxs);
-    ctx.fillStyle = L.color;
+    ctx.fillStyle = textFill(ctx, L);
     each(false);
   }
   ctx.restore();

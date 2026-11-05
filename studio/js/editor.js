@@ -419,6 +419,7 @@ function topHit(p, { withLocked = false } = {}) {
     const L = pg.layers[i];
     if (L.hidden) continue;
     if (L.locked && !withLocked) continue;
+    if (L.type === 'shape' && L.shape === 'grain') continue; // 필름 그레인은 클릭이 통과 (레이어 목록에서 선택)
     if (hitLayer(L, p.x, p.y, pad)) return L;
   }
   return null;

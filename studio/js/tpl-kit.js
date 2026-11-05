@@ -13,6 +13,21 @@ export function T(props, ax, ay) {
   syncText(L);
   return L;
 }
+/** 고정 너비 글상자 — (x, y) = 왼쪽 위, w 폭 안에서 줄바꿈 */
+export function TB(props, x, y, w) {
+  const L = newLayer('text', Object.assign({}, props, { autoW: false }));
+  L.x = x; L.y = y; L.w = w; L.h = 0;
+  syncText(L);
+  return L;
+}
+/** 반짝이 ✦ — (cx, cy) 가운데, s 크기 */
+export const SPARK = (cx, cy, s, color = '#ffffff', rot = 0, name = '반짝이') => newLayer('shape', { name, shape: 'sparkle', inner: 0.14, x: cx - s * 0.4, y: cy - s / 2, w: s * 0.8, h: s, rot, fill: { type: 'solid', color, alpha: 1 } });
+/** 틱톡 자막 스타일 — 흰 줄 배경 + 검은 글자 (가운데 정렬, (cx, y) = 위 가운데) */
+export const TIKTOK = (name, text, cx, y, size = 50, o = {}) => T(Object.assign({ name, text, weight: 700, size, color: '#111111', align: 'center', lh: 1.42, bg: { mode: 'line', color: '#ffffff', alpha: 1, padX: 18, padY: 7, radius: 12 } }, o), cx, y);
+/** 크롬(실버) 글자 그라데이션 */
+export const CHROME = { on: true, color2: '#ffffff', angle: 180, chrome: true };
+/** 만든 뒤 가운데를 (cx, cy) 로 옮기기 (회전된 글자·도형 정렬용) */
+export function centerAt(L, cx, cy) { L.x = cx - L.w / 2; L.y = cy - L.h / 2; return L; }
 export const IMG = (props) => newLayer('image', props);
 export const SH = (props) => newLayer('shape', props);
 export const SOFT_SHADOW = { on: true, color: '#000000', alpha: 0.35, blur: 24, x: 0, y: 4 };

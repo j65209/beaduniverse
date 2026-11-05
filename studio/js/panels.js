@@ -177,7 +177,7 @@ function structSig() {
   const parts = [state.pageId, state.cropId || '', state.linkEdit ? 1 : 0, Ls.length];
   for (const L of Ls) {
     parts.push(L.id, L.type, L.locked ? 1 : 0);
-    if (L.type === 'text') parts.push(L.autoW ? 1 : 0, L.bg.mode, L.stroke.on ? 1 : 0, L.shadow.on ? 1 : 0, L.fit && L.fit.on ? 1 : 0, L.font);
+    if (L.type === 'text') parts.push(L.autoW ? 1 : 0, L.bg.mode, L.stroke.on ? 1 : 0, L.shadow.on ? 1 : 0, L.fit && L.fit.on ? 1 : 0, L.font, L.grad && L.grad.on ? 1 : 0);
     if (L.type === 'image') parts.push(L.fit, L.mask || 'rect', L.shadow.on ? 1 : 0, L.stroke.on ? 1 : 0, L.asset || '', L.checkSafe ? 1 : 0);
     if (L.type === 'shape') parts.push(L.shape, L.fill.type, L.stroke.on ? 1 : 0, L.shadow && L.shadow.on ? 1 : 0, L.checkSafe ? 1 : 0);
   }
@@ -420,6 +420,14 @@ function textSections(el, Ls) {
   kids.push(field('줄 간격', rangeNum({ get: lget('lh'), set: lset('lh', 'text'), min: 70, max: 250, step: 1, unit: '%', mult: 100 })));
   kids.push(field('자간', rangeNum({ get: lget('tracking'), set: lset('tracking', 'text'), min: -15, max: 60, step: 0.5, unit: '%' })));
   el.append(section('텍스트', kids));
+  if (!L.grad) L.grad = { on: false, color2: '#ffffff', angle: 180, chrome: false };
+  const gKids = L.grad.on ? [
+    field('두 번째 색', colorCtl({ get: lget('grad.color2'), set: lset('grad.color2', 'text'), swatches: true })),
+    field('방향', seg([{ v: 180, label: '↓' }, { v: 90, label: '→' }, { v: 135, label: '↘' }, { v: 45, label: '↗' }], { get: lget('grad.angle'), set: lset('grad.angle', 'text'), small: true })),
+    field('크롬 광택', toggle({ get: lget('grad.chrome'), set: lset('grad.chrome', 'text'), label: '메탈·실버 느낌' })),
+    h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => act.setProps(selLayers().filter((x) => x.type === 'text').map((x) => x.id), { color: '#6f7680', grad: { on: true, color2: '#ffffff', angle: 180, chrome: true } }) }, '실버 크롬 바로 적용'),
+  ] : [];
+  el.append(section('글자 그라데이션', gKids, { key: 'grad', right: toggle({ get: lget('grad.on'), set: lset('grad.on', 'text') }), open: L.grad.on }));
 
   // 박스 너비
   const autoW = L.autoW;
@@ -515,28 +523,43 @@ function rangeOnly({ get, set }) {
 /* ---------- 도형 ---------- */
 const SHAPE_KINDS = [
   { v: 'rect', label: '사각형' }, { v: 'ellipse', label: '원' }, { v: 'arch', label: '아치' }, { v: 'star', label: '별 · 스티커' },
-  { v: 'heart', label: '하트' }, { v: 'ticket', label: '티켓 · 쿠폰' }, { v: 'bubble', label: '말풍선' },
+  { v: 'sparkle', label: '반짝이 ✦' }, { v: 'heart', label: '하트' }, { v: 'flower', label: '꽃 (데이지)' }, { v: 'ticket', label: '티켓 · 쿠폰' },
+  { v: 'bubble', label: '말풍선' }, { v: 'arrow', label: '손그림 화살표' }, { v: 'scribble', label: '손그림 동그라미' }, { v: 'squiggle', label: '물결 밑줄' },
+  { v: 'grain', label: '필름 그레인' },
 ];
+const LINE_KINDS = new Set(['arrow', 'scribble', 'squiggle']);
 const IMAGE_MASKS = [{ v: 'rect', label: '사각형' }, { v: 'ellipse', label: '원' }, { v: 'arch', label: '아치' }, { v: 'heart', label: '하트' }, { v: 'star', label: '별' }];
 function shapeSections(el, L) {
   const kind = L.shape || 'rect';
-  const kids = [
-    field('모양', selectCtl(SHAPE_KINDS, { get: () => lget('shape')() || 'rect', set: lset('shape', 'shape') })),
-    field('채우기', seg([{ v: 'solid', label: '단색' }, { v: 'linear', label: '그라데이션' }], { get: lget('fill.type'), set: lset('fill.type', 'shape'), small: true })),
-    field(L.fill.type === 'linear' ? '시작 색' : '색', colorCtl({ get: lget('fill.color'), set: lset('fill.color', 'shape'), swatches: true })),
-    field(L.fill.type === 'linear' ? '시작 진하기' : '불투명도', rangeNum({ get: lget('fill.alpha'), set: lset('fill.alpha', 'shape'), min: 0, max: 100, unit: '%', mult: 100 })),
-  ];
-  if (L.fill.type === 'linear') {
-    kids.push(field('끝 색', colorCtl({ get: lget('fill.color2'), set: lset('fill.color2', 'shape') })));
-    kids.push(field('끝 진하기', rangeNum({ get: lget('fill.alpha2'), set: lset('fill.alpha2', 'shape'), min: 0, max: 100, unit: '%', mult: 100 })));
-    kids.push(field('방향', seg([{ v: 180, label: '↓' }, { v: 0, label: '↑' }, { v: 90, label: '→' }, { v: 270, label: '←' }, { v: 135, label: '↘' }], { get: lget('fill.angle'), set: lset('fill.angle', 'shape'), small: true })));
+  const line = LINE_KINDS.has(kind), grain = kind === 'grain';
+  const kids = [field('모양', selectCtl(SHAPE_KINDS, { get: () => lget('shape')() || 'rect', set: lset('shape', 'shape') }))];
+  if (line) {
+    kids.push(field('색', colorCtl({ get: lget('fill.color'), set: lset('fill.color', 'shape'), swatches: true })));
+    kids.push(field('선 두께', rangeNum({ get: () => lget('thick')() || 8, set: lset('thick', 'shape'), min: 2, max: 60, unit: 'px' })));
+  } else if (grain) {
+    kids.push(h('p', { class: 'hint' }, '사진 위에 얹으면 필름 사진처럼 거친 입자가 생겨요. 진하기는 아래 「투명도」로 조절하세요.'));
+  } else {
+    kids.push(field('채우기', seg([{ v: 'solid', label: '단색' }, { v: 'linear', label: '그라데이션' }], { get: lget('fill.type'), set: lset('fill.type', 'shape'), small: true })));
+    kids.push(field(L.fill.type === 'linear' ? '시작 색' : '색', colorCtl({ get: lget('fill.color'), set: lset('fill.color', 'shape'), swatches: true })));
+    kids.push(field(L.fill.type === 'linear' ? '시작 진하기' : '불투명도', rangeNum({ get: lget('fill.alpha'), set: lset('fill.alpha', 'shape'), min: 0, max: 100, unit: '%', mult: 100 })));
+    if (L.fill.type === 'linear') {
+      kids.push(field('끝 색', colorCtl({ get: lget('fill.color2'), set: lset('fill.color2', 'shape') })));
+      kids.push(field('끝 진하기', rangeNum({ get: lget('fill.alpha2'), set: lset('fill.alpha2', 'shape'), min: 0, max: 100, unit: '%', mult: 100 })));
+      kids.push(field('방향', seg([{ v: 180, label: '↓' }, { v: 0, label: '↑' }, { v: 90, label: '→' }, { v: 270, label: '←' }, { v: 135, label: '↘' }], { get: lget('fill.angle'), set: lset('fill.angle', 'shape'), small: true })));
+    }
   }
   if (kind === 'star') {
     kids.push(field('꼭짓점', rangeNum({ get: lget('points'), set: lset('points', 'shape'), min: 3, max: 32, step: 1 })));
     kids.push(field('안쪽 깊이', rangeNum({ get: lget('inner'), set: lset('inner', 'shape'), min: 10, max: 95, unit: '%', mult: 100 })));
   }
+  if (kind === 'flower') {
+    kids.push(field('꽃잎 수', rangeNum({ get: lget('points'), set: lset('points', 'shape'), min: 4, max: 16, step: 1 })));
+    kids.push(field('꽃잎 굵기', rangeNum({ get: lget('inner'), set: lset('inner', 'shape'), min: 10, max: 50, unit: '%', mult: 100 })));
+  }
+  if (kind === 'sparkle') kids.push(field('통통함', rangeNum({ get: lget('inner'), set: lset('inner', 'shape'), min: 2, max: 45, unit: '%', mult: 100 })));
   if (kind === 'bubble') kids.push(field('꼬리', seg([{ v: 'left', label: '왼쪽' }, { v: 'right', label: '오른쪽' }], { get: () => lget('tail')() || 'left', set: lset('tail', 'shape'), small: true })));
   if (kind === 'rect' || kind === 'ticket' || kind === 'bubble') kids.push(field('모서리', rangeNum({ get: () => Math.min(500, lget('radius')() || 0), set: lset('radius', 'shape'), min: 0, max: 500, unit: 'px' })));
+  if (!grain) kids.push(field('좌우 반전', toggle({ get: () => !!lget('flipX')(), set: lset('flipX', 'shape') })));
   el.append(section('도형', kids));
   const stKids = L.stroke.on ? [field('색', colorCtl({ get: lget('stroke.color'), set: lset('stroke.color', 'shape') })), field('두께', rangeNum({ get: lget('stroke.width'), set: lset('stroke.width', 'shape'), min: 1, max: 60, unit: 'px' }))] : [];
   el.append(section('테두리', stKids, { key: 'stroke', right: toggle({ get: lget('stroke.on'), set: lset('stroke.on', 'shape') }), open: L.stroke.on }));
