@@ -6,6 +6,9 @@
  * - 개인 지메일은 하루 100명(받는 사람 기준)까지 보낼 수 있다.
  * - 제목·본문·첨부 설정은 이 계정에 저장돼서 어느 PC에서 열어도 같다.
  * - 보낸 기록은 구글 시트 「브라이트비드 메일 발송 기록」에 전부 쌓인다 (발송완료 · 실패).
+ *   지메일에서 직접 보낸 메일(보낸편지함)도 이 시트로 가져와서 지금까지 보낸 기록을 한곳에서 본다
+ *   — 처음엔 전체를 가져오고, 그 뒤로는 1시간마다 새로 보낸 것만 자동으로 이어 붙인다
+ *     (메일 발송 화면에 연결하거나 setup 을 실행하면 1시간 트리거가 만들어진다).
  * - 중복 발송 방지: 기록에 있는 주소 + 지메일 보낸편지함에 예전에 메일을 보낸 적 있는 주소는 다시 보내지 않는다
  *   (이 툴을 쓰기 전에 직접 보낸 메일도 걸러짐).
  * - 첨부파일은 구글 드라이브 「브라이트비드 메일 첨부」 폴더에 올라간다.
@@ -15,11 +18,15 @@
  */
 const MAIL_KEY = '__MAIL_KEY__';
 
-const SERVER_VERSION = 2;
+const SERVER_VERSION = 3;
 const LOG_TITLE = '브라이트비드 메일 발송 기록';
 const FOLDER_TITLE = '브라이트비드 메일 첨부';
 const STATUS_SENT = '발송완료';
 const STATUS_FAIL = '실패';
+const KIND_TOOL = '툴';
+const KIND_GMAIL = '지메일 직접';
+const LOG_HEADER = ['발송 시각', '이메일', '제목', '결과', '메모', '구분', '메일 ID'];
+const EMAIL_RE_G = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 
 function doGet() {
   return json_({ ok: true, app: 'brightbeed-mailer', version: SERVER_VERSION });
@@ -43,6 +50,7 @@ function doPost(e) {
       case 'sent': return json_(sentList_());
       case 'check': return json_(check_(req.emails));
       case 'history': return json_(history_(req.limit));
+      case 'importSent': return json_(withLock_(function () { ensureTrigger_(); return syncSent_(25 * 1000); }));
       case 'send': return json_(withLock_(function () { return send_(req); }));
       default: return json_({ ok: false, error: '알 수 없는 요청이에요: ' + req.action });
     }
@@ -61,7 +69,9 @@ function ping_() {
     sender: Session.getEffectiveUser().getEmail(),
     remaining: MailApp.getRemainingDailyQuota(),
     template: getTemplate_(),
-    logUrl: logId ? 'https://docs.google.com/spreadsheets/d/' + logId + '/edit' : '',
+    logUrl: logId ? logUrl_(logId) : '',
+    importDone: props_().getProperty('importDone') === '1',
+    lastSync: Number(props_().getProperty('lastSync') || 0) || null,
   };
 }
 
@@ -153,14 +163,151 @@ function logSheet_() {
   const ss = SpreadsheetApp.create(LOG_TITLE);
   const sh = ss.getSheets()[0];
   sh.setName('발송기록');
-  sh.getRange(1, 1, 1, 5).setValues([['발송 시각', '이메일', '제목', '결과', '메모']]).setFontWeight('bold');
+  sh.getRange(1, 1, 1, LOG_HEADER.length).setValues([LOG_HEADER]).setFontWeight('bold');
   sh.setFrozenRows(1);
+  sh.hideColumns(7);
   p.setProperty('logId', ss.getId());
   return sh;
 }
 
+/** 예전(5칸) 기록 시트에 「구분」「메일 ID」 칸을 붙인다 */
+function upgradeLog_(sh) {
+  if (String(sh.getRange(1, 6, 1, 1).getValues()[0][0]) === '구분') return;
+  sh.getRange(1, 6, 1, 2).setValues([['구분', '메일 ID']]).setFontWeight('bold');
+  const last = sh.getLastRow();
+  if (last >= 2) sh.getRange(2, 6, last - 1, 1).setValues(Array.apply(null, Array(last - 1)).map(function () { return [KIND_TOOL]; }));
+  sh.hideColumns(7);
+}
+
 function log_(to, subject, status, memo) {
-  logSheet_().appendRow([new Date(), to, subject, status, memo]);
+  const sh = logSheet_();
+  upgradeLog_(sh);
+  sh.appendRow([new Date(), to, subject, status, memo, KIND_TOOL, '']);
+}
+
+/* ---------------------------------------------------------------- 지메일 보낸편지함 → 기록 시트 */
+
+/** 트리거(1시간마다) · setup 에서 부르는 공개 함수 */
+function syncSent() {
+  return withLock_(function () { return syncSent_(60 * 1000); }); // 짧게 — 그동안 발송이 기다리지 않게
+}
+
+/**
+ * 지메일 보낸편지함의 메일을 기록 시트로 가져온다.
+ * - 처음: 보낸편지함 전체를 오래 걸리면 나눠서 (어디까지 했는지 저장) → 다 끝나면 importDone
+ * - 그 뒤: 마지막으로 가져온 날 이후 것만
+ * - 툴로 보낸 메일(같은 주소·제목·10분 안)은 이미 기록돼 있으니 건너뛴다. 메일 ID 로 중복도 막는다.
+ * - 받은 메일·임시보관 메일·나에게 보낸 메일은 뺀다. 「다른 주소로 보내기」 별칭으로 보낸 메일도 내 메일로 본다.
+ */
+function syncSent_(budgetMs) {
+  const started = Date.now();
+  const p = props_();
+  const mine = myAddresses_();
+  const sh = logSheet_();
+  upgradeLog_(sh);
+  const full = p.getProperty('importDone') !== '1';
+  let start = full ? Number(p.getProperty('importStart') || 0) : 0;
+  if (full && !start) p.setProperty('importBegan', String(started));
+  const began = Number(p.getProperty('importBegan') || started);
+  const since = Number(p.getProperty('lastSync') || started) - 2 * 86400000;
+  const query = full ? 'in:sent' : 'in:sent after:' + Utilities.formatDate(new Date(since), 'Asia/Seoul', 'yyyy/MM/dd');
+
+  // 이미 있는 메일 ID · 툴로 보낸 줄(주소|제목 → 시각·행)
+  const last = sh.getLastRow();
+  const known = {};
+  const tool = {};
+  if (last >= 2) {
+    sh.getRange(2, 1, last - 1, 7).getValues().forEach(function (r, i) {
+      if (r[6]) known[String(r[6])] = true;
+      if (r[5] !== KIND_GMAIL && r[3] === STATUS_SENT) {
+        const k = String(r[1]).toLowerCase() + '|' + String(r[2]);
+        (tool[k] = tool[k] || []).push({ t: r[0] instanceof Date ? r[0].getTime() : Date.parse(r[0]), row: i + 2, id: r[6] });
+      }
+    });
+  }
+
+  const added = [];
+  function take(threads) {
+    if (!threads.length) return;
+    GmailApp.getMessagesForThreads(threads).forEach(function (msgs) {
+      msgs.forEach(function (m) {
+        const id = m.getId();
+        if (known[id] || m.isDraft() || mine.indexOf(addrOf_(m.getFrom())) === -1) return; // 이미 있음 · 임시보관 · 받은 메일
+        known[id] = true;
+        const when = m.getDate();
+        const subj = m.getSubject();
+        const seen = {};
+        (String(m.getTo()) + ',' + String(m.getCc()) + ',' + String(m.getBcc())).replace(EMAIL_RE_G, function (raw) {
+          const e = raw.toLowerCase();
+          if (seen[e] || mine.indexOf(e) !== -1) return raw;
+          seen[e] = true;
+          const hit = (tool[e + '|' + subj] || []).filter(function (x) { return Math.abs(x.t - when.getTime()) < 10 * 60 * 1000; })[0];
+          if (hit) { // 툴로 보낸 메일 — 이미 기록돼 있으니 메일 ID 만 적어 둔다
+            if (!hit.id) { sh.getRange(hit.row, 7, 1, 1).setValues([[id]]); hit.id = id; }
+          } else {
+            added.push([when, e, subj, STATUS_SENT, '지메일에서 직접 보낸 메일', KIND_GMAIL, id]);
+          }
+          return raw;
+        });
+      });
+    });
+  }
+
+  let scanned = 0, done = false;
+  if (full && start > 0) {
+    // 나눠서 가져오는 사이에 맨 위로 올라온 스레드(새로 보냈거나 답장한 메일)를 먼저 — 순서가 밀려서 빠지는 메일이 없게
+    for (let s = 0; s < 1000; s += 50) {
+      const top = GmailApp.search('in:sent', s, 50);
+      const fresh = top.filter(function (t) { return t.getLastMessageDate().getTime() > began - 5 * 60 * 1000; });
+      take(fresh);
+      if (fresh.length < top.length || top.length < 50) break;
+    }
+  }
+  do {
+    const threads = GmailApp.search(query, start, 50);
+    take(threads);
+    start += threads.length;
+    scanned += threads.length;
+    if (threads.length < 50) { done = true; break; }
+  } while (Date.now() - started < budgetMs);
+
+  if (added.length) {
+    sh.getRange(sh.getLastRow() + 1, 1, added.length, 7).setValues(added);
+    const n = sh.getLastRow() - 1;
+    if (n > 1) sh.getRange(2, 1, n, 7).sort({ column: 1, ascending: true });
+  }
+  if (full) {
+    p.setProperty('importStart', String(start));
+    if (done) p.setProperty('importDone', '1');
+  }
+  if (done) p.setProperty('lastSync', String(started));
+  return { ok: true, full: full, done: done, added: added.length, scanned: scanned, total: full ? start : scanned };
+}
+
+/** 1시간마다 보낸편지함을 기록 시트로 가져오는 트리거 (없으면 만든다) */
+function ensureTrigger_() {
+  try {
+    if (!ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'syncSent'; })) {
+      ScriptApp.newTrigger('syncSent').timeBased().everyHours(1).create();
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** 이 계정 주소 + 「다른 주소로 보내기」 별칭 (소문자) */
+function myAddresses_() {
+  const list = [String(Session.getEffectiveUser().getEmail() || '').toLowerCase()];
+  try { GmailApp.getAliases().forEach(function (a) { list.push(String(a).toLowerCase()); }); } catch (e) { /* 별칭 없음 */ }
+  return list.filter(function (a, i) { return a && list.indexOf(a) === i; });
+}
+
+/** "이름" <a@b.com> → a@b.com */
+function addrOf_(v) {
+  const s = String(v || '');
+  const m = s.match(/<([^>]+)>/);
+  return extractEmail_(m ? m[1] : s).toLowerCase();
 }
 
 /** 기록 시트에서 「발송완료」인 주소 → 마지막으로 보낸 시각(ISO) */
@@ -210,16 +357,28 @@ function check_(emails) {
   return { ok: true, found: found };
 }
 
-/** 발송 기록 (최근 것부터) */
+/** 발송 기록 (최근 것부터) + 전체 건수 */
 function history_(limit) {
   const sh = logSheet_();
   const last = sh.getLastRow();
-  if (last < 2) return { ok: true, total: 0, rows: [] };
-  const n = Math.min(last - 1, Math.max(1, Math.min(Number(limit) || 500, 2000)));
-  const rows = sh.getRange(last - n + 1, 1, n, 5).getValues().reverse().map(function (r) {
-    return { t: r[0] instanceof Date ? r[0].toISOString() : String(r[0]), email: String(r[1]), subject: String(r[2]), result: String(r[3]), memo: String(r[4]) };
+  const counts = { sent: 0, fail: 0, tool: 0, gmail: 0 };
+  const url = logUrl_(props_().getProperty('logId'));
+  if (last < 2) return { ok: true, total: 0, rows: [], counts: counts, logUrl: url };
+  const all = sh.getRange(2, 1, last - 1, 6).getValues();
+  all.forEach(function (r) {
+    if (r[3] !== STATUS_SENT) { counts.fail++; return; }
+    counts.sent++;
+    if (r[5] === KIND_GMAIL) counts.gmail++; else counts.tool++;
   });
-  return { ok: true, total: last - 1, rows: rows };
+  const n = Math.min(all.length, Math.max(1, Math.min(Number(limit) || 500, 2000)));
+  const rows = all.slice(all.length - n).reverse().map(function (r) {
+    return { t: r[0] instanceof Date ? r[0].toISOString() : String(r[0]), email: String(r[1]), subject: String(r[2]), result: String(r[3]), memo: String(r[4]), kind: String(r[5] || KIND_TOOL) };
+  });
+  return { ok: true, total: all.length, rows: rows, counts: counts, logUrl: url };
+}
+
+function logUrl_(id) {
+  return 'https://docs.google.com/spreadsheets/d/' + id + '/edit';
 }
 
 function folder_() {
@@ -237,7 +396,7 @@ function folder_() {
 
 function withLock_(fn) {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) return { ok: false, status: 'fail', error: '다른 발송이 진행 중이에요. 잠시 뒤 다시 시도해 주세요.' };
+  if (!lock.tryLock(75000)) return { ok: false, status: 'fail', busy: true, error: '다른 작업이 진행 중이에요. 잠시 뒤 다시 시도해 주세요.' };
   try { return fn(); } finally { lock.releaseLock(); }
 }
 
@@ -269,8 +428,10 @@ function errText_(e) {
  * 실행하면 기록 시트와 첨부 폴더를 미리 만들어 둔다.
  */
 function setup() {
-  logSheet_();
+  upgradeLog_(logSheet_());
   folder_();
-  GmailApp.search('in:sent', 0, 1); // 보낸편지함 확인 권한 미리 허용
+  ensureTrigger_(); // 지메일에서 직접 보낸 메일 1시간마다 기록 시트로
+  const r = withLock_(function () { return syncSent_(4.5 * 60 * 1000); }); // 지금까지 보낸 메일 가져오기 (많으면 나머지는 이어서)
+  Logger.log(r.ok ? '보낸편지함 가져오기: ' + r.added + '건 추가' + (r.done ? ' · 전부 가져옴' : ' · 남은 건 1시간마다 이어서 가져옴') : r.error);
   Logger.log('준비 완료 · 보내는 계정: ' + Session.getEffectiveUser().getEmail() + ' · 오늘 남은 한도: ' + MailApp.getRemainingDailyQuota());
 }

@@ -121,6 +121,7 @@
   .hist{max-height:460px}
   td.t{width:150px;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
   td.j{color:var(--text-2)}
+  td.k{width:86px;color:var(--text-3);font-size:12px;white-space:nowrap}
 
   /* 모달 */
   .modal{position:fixed;inset:0;background:rgba(10,11,13,.38);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:50}
@@ -152,6 +153,7 @@
     <a class="back" href="../">← 오피스</a>
     <h1 class="title">📨 메일 발송 <small>TOOL</small></h1>
     <div class="spacer"></div>
+    <a class="btn sm" id="sheetTop" target="_blank" rel="noopener" hidden>📒 기록 시트</a>
     <div class="conn" id="conn"><span class="dot"></span><span id="connText">연결 안 됨</span>
       <button class="btn sm" id="openConn">연결 설정</button></div>
   </div>
@@ -162,7 +164,7 @@
     <button class="btn primary" id="bannerConn">연결하기</button>
   </div>
   <div class="banner upd" id="updateBanner" hidden>
-    <div>🛠️ <b>발송 서버 업데이트가 필요해요</b> — 예전에 직접 보낸 메일(지메일 보낸편지함)까지 확인해서 중복 발송을 막으려면 서버 코드를 새 버전으로 바꿔 주세요. (2분이면 돼요)</div>
+    <div>🛠️ <b>발송 서버 업데이트가 필요해요</b> — 지메일에서 직접 보낸 예전 메일까지 기록 시트에 모으고 중복 발송을 막으려면 서버 코드를 새 버전으로 바꿔 주세요. (2분이면 돼요)</div>
     <div class="spacer"></div>
     <button class="btn primary" id="updateBtn">업데이트 방법</button>
   </div>
@@ -236,8 +238,8 @@
       <input class="in sm" id="histSearch" placeholder="이메일 · 제목 검색">
       <button class="btn sm" id="histReload">새로고침</button>
       <a class="btn sm" id="logLink" target="_blank" rel="noopener" hidden>구글 시트 ↗</a></h2>
-    <div class="list hist"><table><thead><tr><th>보낸 시각</th><th>이메일</th><th>제목</th><th>결과</th></tr></thead>
-      <tbody id="histBody"><tr><td class="empty" colspan="4">아직 기록이 없어요</td></tr></tbody></table></div>
+    <div class="list hist"><table><thead><tr><th>보낸 시각</th><th>이메일</th><th>제목</th><th>구분</th><th>결과</th></tr></thead>
+      <tbody id="histBody"><tr><td class="empty" colspan="5">아직 기록이 없어요</td></tr></tbody></table></div>
   </div>
 </div>
 
@@ -257,7 +259,8 @@
       <ol>
         <li><a href="https://script.google.com/home" target="_blank" rel="noopener"><b>script.google.com</b></a> → 처음에 만든 메일 발송 프로젝트 열기</li>
         <li>코드 전부 지우고 붙여넣기 → 저장 (<code>Ctrl+S</code>)</li>
-        <li>위쪽 함수 선택에서 <b>setup</b> 고르고 <b>▶ 실행</b> → 권한 허용 (지메일 보낸편지함 확인 권한이 추가돼요)</li>
+        <li>위쪽 함수 선택에서 <b>setup</b> 고르고 <b>▶ 실행</b> → 권한 요청이 뜨면 <b>고급 → (안전하지 않음)으로 이동 → 허용</b>
+          (자동 실행 권한이 추가돼요). 실행하면 지금까지 지메일로 보낸 메일을 기록 시트로 가져오고, 앞으로도 1시간마다 자동으로 모아요</li>
         <li><b>배포 → 배포 관리 → ✏️ 수정 → 버전: 새 버전 → 배포</b></li>
         <li>이 화면 새로고침</li>
       </ol>
@@ -302,6 +305,7 @@
           <li>권한 요청이 뜨면 계정 선택 → <b>고급 → (안전하지 않음)으로 이동 → 허용</b> (내 계정 스크립트라 뜨는 경고예요)</li>
           <li>나온 <b>웹 앱 URL</b> 복사</li>
         </ol>
+        <div class="muted" style="margin-top:8px">연결하면 지금까지 지메일로 보낸 메일도 기록 시트로 자동으로 모으고, 그 뒤로는 1시간마다 새로 보낸 메일을 이어 붙여요.</div>
       </div>
       <div class="step">
         <h4><span>3</span>웹 앱 URL 붙여넣고 연결</h4>
@@ -333,7 +337,7 @@
   const LS = { conn: 'bb_mailer_conn_v1', pendingKey: 'bb_mailer_pending_key_v1', draft: 'bb_mailer_draft_v1', rcpt: 'bb_mailer_recipients_v1' };
   const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
   const LINK_PREFIX = 'BBMAIL1.';
-  const SERVER_VERSION = 2;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
+  const SERVER_VERSION = 3;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
   const DEFAULT_SUBJECT = '[협업 제안] 브라이트비드 인플루언서 공동구매 | 단일 공구 최고 매출 3억';
   const DEFAULT_BODY = [
     '안녕하세요, 대표님.',
@@ -375,7 +379,8 @@
     checked: new Set(),                  // 이번 화면에서 서버에 확인한 주소
     checking: null,                      // 확인 중 진행 { done, total }
     version: 0,                          // 발송 서버 코드 버전
-    history: [], histTotal: 0,
+    history: [], histTotal: 0, histCounts: null,
+    importDone: false, importing: null,
     running: false,
     stop: false,
     rows: [],                            // 발송 결과 표
@@ -406,6 +411,7 @@
     const text = await res.text();
     let data;
     try { data = JSON.parse(text); } catch (e) {
+      if (/authoriz|권한/i.test(text)) throw new Error('구글 권한 허용이 필요해요. Apps Script 편집기에서 setup ▶ 실행 → 권한 허용을 한 번 해 주세요.');
       throw new Error('서버 응답을 읽을 수 없어요. 배포할 때 액세스 권한을 「모든 사용자」로 했는지 확인해 주세요.');
     }
     if (data && data.code === 'auth') throw new Error(data.error || '발송 키가 맞지 않아요.');
@@ -430,6 +436,8 @@
     $('updateBanner').hidden = !(s && state.version < SERVER_VERSION);
     $('logLink').hidden = !(s && s.logUrl);
     if (s && s.logUrl) $('logLink').href = s.logUrl;
+    $('sheetTop').hidden = !(s && s.logUrl);
+    if (s && s.logUrl) $('sheetTop').href = s.logUrl;
     $('connInfo').hidden = !s;
     $('connSetup').hidden = !!s;
     if (s) { $('kvSender').textContent = s.sender || '—'; $('kvQuota').textContent = s.remaining + '건'; }
@@ -444,6 +452,7 @@
     lsDel(LS.pendingKey);
     state.server = { sender: r.sender, remaining: r.remaining, logUrl: r.logUrl };
     state.version = r.version || 1;
+    state.importDone = !!r.importDone;
     // 서버에 저장된 내용 불러오기 (이 PC에서 저장 안 한 수정이 있으면 그걸 유지)
     if (r.template && !state.draft.dirty) {
       state.draft = Object.assign({}, state.draft, r.template, { dirty: false });
@@ -453,7 +462,7 @@
     }
     renderConn();
     refreshSent().then(() => autoCheck());
-    loadHistory();
+    loadHistory().then(() => runImport());
     if (!quiet) toast('연결됐어요 · ' + (r.sender || '') + ' · 오늘 남은 한도 ' + r.remaining + '건');
   }
 
@@ -703,30 +712,65 @@
   }
 
   /* 발송 기록 (전체) */
-  async function loadHistory() {
+  /* 지메일 보낸편지함 → 기록 시트 (처음엔 전체, 그 뒤로는 새로 보낸 것만) */
+  async function runImport() {
+    if (!state.server || state.version < 3 || state.importing) return;
+    state.importing = { added: 0, scanned: 0 };
+    let busyTries = 0;
+    try {
+      for (let i = 0; i < 120; i++) {
+        while (state.running) await sleep(1500);   // 발송하는 동안은 쉬었다가 이어서
+        renderHistory();
+        let r;
+        try { r = await api('importSent'); } catch (e) { break; }
+        if (!r.ok) { if (r.busy && busyTries++ < 3) { await sleep(15000); continue; } break; }
+        state.importing.added += r.added || 0;
+        state.importing.scanned = r.full ? (r.total || 0) : state.importing.scanned + (r.scanned || 0);
+        if (r.added) await loadHistory(true);
+        if (r.done) { state.importDone = true; break; }
+      }
+    } finally {
+      const added = state.importing.added;
+      state.importing = null;
+      await loadHistory(true);
+      if (added) { await refreshSent(); toast(`지메일에서 직접 보낸 메일 ${added}건을 기록 시트로 가져왔어요.`); }
+    }
+  }
+
+  async function loadHistory(quiet) {
     if (!state.server) return;
     if (state.version < 2) { $('histHint').textContent = '서버를 업데이트하면 여기서 바로 볼 수 있어요 (지금은 구글 시트에서 확인)'; return; }
     try {
       const r = await api('history', { limit: 1000 });
       if (!r.ok) throw new Error(r.error);
-      state.history = r.rows || []; state.histTotal = r.total || 0;
+      state.history = r.rows || []; state.histTotal = r.total || 0; state.histCounts = r.counts || null;
+      if (r.logUrl && state.server && state.server.logUrl !== r.logUrl) { state.server.logUrl = r.logUrl; renderConn(); }
       renderHistory();
     } catch (e) { $('histHint').textContent = '기록을 불러오지 못했어요 — 새로고침을 눌러 주세요'; }
   }
   function renderHistory() {
     const q = $('histSearch').value.trim().toLowerCase();
     const rows = state.history.filter((r) => !q || r.email.toLowerCase().includes(q) || r.subject.toLowerCase().includes(q));
-    const sent = state.history.filter((r) => r.result === '발송완료').length;
-    $('histHint').textContent = `총 ${state.histTotal}건 · 최근 ${state.history.length}건 중 발송완료 ${sent}`;
+    const c = state.histCounts || (() => {
+      const sent = state.history.filter((r) => r.result === '발송완료');
+      const gmail = sent.filter((r) => r.kind === '지메일 직접').length;
+      return { sent: sent.length, gmail, tool: sent.length - gmail, fail: state.history.length - sent.length };
+    })();
+    const shown = Math.min(500, rows.length);
+    $('histHint').textContent = state.importing
+      ? `지메일 보낸편지함 가져오는 중… 스레드 ${state.importing.scanned}개 확인 · ${state.importing.added}건 추가`
+      : `총 ${state.histTotal}건 · 발송완료 ${c.sent} (툴 ${c.tool} · 지메일 직접 ${c.gmail})` + (c.fail ? ` · 실패 ${c.fail}` : '') +
+        (!q && state.histTotal > shown ? ` · 최근 ${shown}건 표시 (전체는 기록 시트)` : '');
     const tb = $('histBody');
     tb.textContent = '';
-    if (!rows.length) { tb.innerHTML = '<tr><td class="empty" colspan="4"></td></tr>'; tb.querySelector('td').textContent = q ? '검색 결과가 없어요' : '아직 기록이 없어요'; return; }
+    if (!rows.length) { tb.innerHTML = '<tr><td class="empty" colspan="5"></td></tr>'; tb.querySelector('td').textContent = q ? '검색 결과가 없어요' : (state.importing ? '지메일 보낸편지함에서 가져오는 중…' : '아직 기록이 없어요'); return; }
     rows.slice(0, 500).forEach((r) => {
       const tr = document.createElement('tr');
       const d = new Date(r.t);
       const cells = [['t', isNaN(d) ? r.t : d.toLocaleString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })],
         ['e', r.email], ['j', r.subject]];
       cells.forEach(([c, v]) => { const td = document.createElement('td'); td.className = c; td.textContent = v; tr.append(td); });
+      const tk = document.createElement('td'); tk.className = 'k'; tk.textContent = r.kind === '지메일 직접' ? '지메일 직접' : '툴'; tr.append(tk);
       const td = document.createElement('td'); td.className = 's';
       const b = document.createElement('span');
       b.className = 'badge ' + (r.result === '발송완료' ? 'sent' : 'fail');
@@ -896,7 +940,7 @@
   });
   $('cleanList').onclick = () => { const n = cleanRecipients(); toast(n ? `예전에 보낸 주소·중복·이메일 아닌 줄 ${n}개를 목록에서 지웠어요.` : '지울 주소가 없어요.'); };
   $('histSearch').addEventListener('input', renderHistory);
-  $('histReload').onclick = () => { if (!state.server) { openConn(); return; } loadHistory(); };
+  $('histReload').onclick = () => { if (!state.server) { openConn(); return; } loadHistory().then(() => runImport()); };
   $('updateBtn').onclick = () => { $('serverCode2').style.display = 'none'; $('copyServer2State').textContent = '지금 연결에 쓰는 발송 키가 그대로 들어가요'; openModal('updateModal'); };
   document.querySelectorAll('#updateModal [data-close]').forEach((b) => { b.onclick = () => closeModal('updateModal'); });
   $('copyServer2').onclick = async () => {
@@ -956,7 +1000,7 @@
   };
   $('disconnect').onclick = () => {
     if (!confirm('이 PC에서 메일 발송 연결을 해제할까요? (발송 서버와 기록은 그대로 남아요)')) return;
-    lsDel(LS.conn); state.conn = null; state.server = null; state.prev = new Map(); state.checked = new Set(); state.history = [];
+    lsDel(LS.conn); state.conn = null; state.server = null; state.prev = new Map(); state.checked = new Set(); state.history = []; state.histCounts = null;
     renderConn(); renderStats(); closeModal('connModal');
   };
   window.addEventListener('beforeunload', (e) => { if (state.running) { e.preventDefault(); e.returnValue = ''; } });
