@@ -1,0 +1,101 @@
+name: 사이트 배포 (GitHub Pages)
+
+# GitHub 기본 'pages build and deployment'(브랜치 자동 배포)를 대신한다.
+# 기본 배포는 커밋마다(하루 100번 넘게) 290MB 사이트를 따로따로 올려서
+#   ① 배포끼리 겹치면 "in progress deployment" 로 실패하고
+#   ② GitHub 쪽 일시 오류(502, updating_pages 멈춤 → 10분 타임아웃)에도 재시도 없이 실패해
+# 실패 메일이 계속 왔다. 여기서는
+#   - 배포를 한 줄로 세운다: 진행 중인 배포는 끝까지 두고, 그사이 쌓인 커밋은 최신 것 하나만 배포한다
+#     (밀려난 대기 배포는 '취소'로 끝나서 실패 메일이 안 간다)
+#   - 일시 오류면 기다렸다가 최대 3번까지 다시 시도한다
+#   - 사이트가 raw.githubusercontent / GitHub API 로 직접 읽는 파일만 바뀐 커밋은 배포하지 않는다
+# 저장소 Settings → Pages → Source 가 'GitHub Actions' 일 때만 배포한다 (아니면 건너뜀 — 기본 배포와 겹치지 않게).
+
+on:
+  push:
+    branches: [main]
+    # 아래 파일만 바뀐 커밋은 배포 안 함 — 사이트가 raw.githubusercontent 로 바로 읽어서 배포 없이도 반영된다.
+    # 사이트 주소로 읽는 파일(index.html, data/meta-ads/**, data/orders.json, linesheet/** 등)은 절대 넣지 말 것.
+    paths-ignore:
+      - 'data/diary.json'       # 업무일지 백업 (10분마다)
+      - 'data/ad-sheets/**'     # 광고 시트 자동 갱신
+      - 'data/md-events.json'   # MD 기획전
+      - 'data/fx-usd.json'      # USD 환율
+  workflow_dispatch:            # 수동 실행 + 라인시트 워크플로가 사진 갱신 뒤 호출
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: 배포 방식 확인
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.mode.outputs.enabled }}
+    steps:
+      - id: mode
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          t=""
+          for i in 1 2 3; do
+            t=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type 2>/dev/null) && break
+            t=""
+            sleep 5
+          done
+          if [ "$t" = "legacy" ]; then
+            echo "::notice::Pages 소스가 아직 'Deploy from a branch' 라서 이 워크플로는 배포를 건너뜀 (Settings → Pages → Source → GitHub Actions 로 바꾸면 여기서 배포)"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            # workflow 이거나, 조회가 일시적으로 안 될 때는 배포를 진행한다
+            echo "Pages 배포 방식: ${t:-조회 실패 → 배포 진행}"
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: 배포
+    needs: check
+    if: needs.check.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.try1.outputs.page_url || steps.try2.outputs.page_url || steps.try3.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # 기본 배포와 같은 방식으로 저장소 전체(.git·.github 제외)를 올린다
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      # 평소 배포는 30초~2분. 5분 넘게 멈추면 끊고 다시 시도한다.
+      - id: try1
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+        with:
+          timeout: 300000
+
+      - if: steps.try1.outcome == 'failure'
+        run: sleep 30
+      - id: try2
+        if: steps.try1.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+        with:
+          timeout: 300000
+
+      - if: steps.try2.outcome == 'failure'
+        run: sleep 90
+      - id: try3
+        if: steps.try2.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        with:
+          timeout: 600000

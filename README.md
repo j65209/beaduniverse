@@ -12,7 +12,8 @@
 
 - **이름** · 브라이트비드 오피스 (Brightbeed Office)
 - **목적** · 중국 발주 + 사내 운영 데이터를 한 화면에서 보고/관리
-- **호스팅** · GitHub Pages (main 브랜치 / root)
+- **호스팅** · GitHub Pages — `.github/workflows/pages.yml` 이 main 푸시마다 배포 (Settings → Pages → Source: GitHub Actions).
+  배포는 한 줄로 세우고 일시 오류는 재시도한다. raw.githubusercontent 로 읽는 파일(업무일지 백업·광고 시트·기획전·환율)만 바뀐 커밋은 배포하지 않는다 — 목록은 워크플로 `paths-ignore`.
 - **보안** · 6자리 PIN + IP 화이트리스트 (브라우저 localStorage 기억)
 
 ## 2. 접속

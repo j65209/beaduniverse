@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write   # 사진이 바뀌면 사이트 배포(pages.yml)를 직접 부르기 위해
 
 concurrency:
   group: linesheet-images
@@ -27,6 +28,7 @@ jobs:
       - name: 사진 받기
         run: node scripts/linesheet-images.mjs
       - name: 커밋
+        id: commit
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
@@ -34,7 +36,23 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "linesheet: 라인시트 사진 갱신 $(TZ=Asia/Seoul date '+%F %H:%M')"
           for i in 1 2 3; do
-            git pull --rebase origin main && git push origin main && exit 0
+            if git pull --rebase origin main && git push origin main; then
+              echo "pushed=1" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             sleep 5
           done
           exit 1
+      # 봇(GITHUB_TOKEN) 커밋은 GitHub 규칙상 push 로 도는 배포를 깨우지 못한다.
+      # linesheet/ 는 사이트 주소로 읽으니, 사진이 바뀐 경우에만 배포를 직접 부른다.
+      # 요청이 안 돼도 이 작업은 실패로 치지 않는다 (다음 커밋 배포 때 같이 올라감).
+      - name: 사이트 배포 요청
+        if: steps.commit.outputs.pushed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in 1 2 3; do
+            gh workflow run pages.yml --ref main -R "$GITHUB_REPOSITORY" && exit 0
+            sleep 5
+          done
+          echo "::warning::사이트 배포 요청 실패 — 다음 커밋 배포 때 같이 반영됨"
