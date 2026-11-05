@@ -107,17 +107,20 @@ export const bus = {
 };
 
 /* ---------- 앱 상태 ---------- */
-export const DEFAULT_SETTINGS = {
+/** 릴스·스토리 UI 시뮬레이션에 보이는 광고 계정 정보 — beaduniverse 로 고정 (편집 화면에서 못 바꿈) */
+export const AD_PREVIEW = Object.freeze({
+  account: 'beaduniverse',
+  avatar: null,             // 프로필 사진 없음 → 첫 글자 동그라미
+  avatarColor: '#ff2e93',
+  cta: '더 알아보기',
+  caption: '지금 바로 확인해 보세요 ✨',
+});
+export const DEFAULT_SETTINGS = Object.assign({
   placement: 'common',      // 지면 (overlay.js PLACEMENTS)
   showUI: true,             // 릴스·스토리 UI 시뮬레이션
   uiOpacity: 0.6,
   showSafe: true,           // 안전영역 표시
-  account: 'brightbeed',    // 시뮬레이션용 계정 이름
-  avatar: null,             // 시뮬레이션용 프로필 이미지 (asset id)
-  avatarColor: '#ff2e93',
-  cta: '더 알아보기',
-  caption: '지금 바로 확인해 보세요 ✨',
-};
+}, AD_PREVIEW);
 
 export const state = {
   project: null,

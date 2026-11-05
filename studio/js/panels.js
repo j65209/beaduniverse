@@ -8,8 +8,8 @@ import {
 } from './core.js';
 import { FONT_CATS, allFonts, fontEntry, fontName, weightsOf, nearestWeight, WEIGHT_NAMES, previewFont, addFontFiles, removeCustomFont } from './fonts.js';
 import { layoutText } from './render.js';
-import { PLACEMENTS, CTA_OPTIONS } from './overlay.js';
-import { SWATCHES, BRANDS } from './templates.js';
+import { PLACEMENTS } from './overlay.js';
+import { SWATCHES } from './templates.js';
 import * as act from './actions.js';
 import { enterCrop, exitCrop } from './editor.js';
 
@@ -181,7 +181,7 @@ function structSig() {
     if (L.type === 'image') parts.push(L.fit, L.shadow.on ? 1 : 0, L.stroke.on ? 1 : 0, L.asset || '', L.checkSafe ? 1 : 0);
     if (L.type === 'shape') parts.push(L.shape, L.fill.type, L.stroke.on ? 1 : 0, L.checkSafe ? 1 : 0);
   }
-  if (!Ls.length) { const s = state.project.settings; parts.push(s.showUI ? 1 : 0, s.avatar || '', state.project.pages.length); }
+  if (!Ls.length) { const s = state.project.settings; parts.push(s.showUI ? 1 : 0, state.project.pages.length); }
   return parts.join('|');
 }
 
@@ -233,24 +233,7 @@ function buildPagePanel(el) {
     field('안전영역', toggle({ get: () => st.showSafe, set: (v) => setSetting('showSafe', v), label: '가림 영역 빗금 표시' })),
     h('p', { class: 'hint' }, '시뮬레이션은 편집 화면에만 보이고, 저장하는 이미지에는 들어가지 않아요.'),
   ]));
-  const brandChips = h('div', { class: 'chips' }, BRANDS.map((b) => h('button', {
-    type: 'button', class: 'chip', style: { '--c': b.color },
-    onclick: () => { st.account = b.account; st.avatarColor = b.color; changed(); renderProps(); },
-  }, h('i', { class: 'dot', style: { background: b.color } }), b.name)));
-  const avatarCtl = h('div', { class: 'avatar-ctl' },
-    h('div', { class: 'avatar-prev', style: st.avatar && assets.get(st.avatar) ? { backgroundImage: `url(${assets.get(st.avatar).url})` } : { background: st.avatarColor } }),
-    h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => pickFile('image/*', false, async (files) => {
-      const ids = await act.importFiles(files);
-      if (ids[0]) { st.avatar = ids[0]; changed(); renderProps(); }
-    }) }, '프로필 사진'),
-    st.avatar ? h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => { st.avatar = null; changed(); renderProps(); } }, '지우기') : null);
-  el.append(section('광고 미리보기 정보', [
-    h('div', { class: 'f-l' }, '브랜드 빠른 선택'), brandChips,
-    field('계정 이름', textInput({ get: () => st.account, set: (v, live) => setSetting('account', v, live), placeholder: 'brightbeed' })),
-    field('프로필', avatarCtl),
-    field('CTA 버튼', selectCtl(CTA_OPTIONS.map((c) => ({ v: c, label: c })), { get: () => st.cta, set: (v) => setSetting('cta', v) })),
-    field('캡션', textInput({ get: () => st.caption, set: (v, live) => setSetting('caption', v, live), placeholder: '광고 문구 미리보기', maxlength: 120 })),
-  ]));
+  // 광고 미리보기 정보(계정·프로필·CTA·캡션)는 beaduniverse 로 고정 — 편집 패널에 안 보임 (core.js AD_PREVIEW)
   el.append(section('빠른 팁', [h('ul', { class: 'tips' },
     h('li', null, '사진을 캔버스에 끌어다 놓으면 바로 들어가요. 여러 장이면 페이지로 나눠 줘요.'),
     h('li', null, `여러 요소 선택: Shift+클릭 또는 빈 곳 드래그 → 오른쪽 정렬 버튼`),

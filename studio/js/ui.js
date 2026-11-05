@@ -6,6 +6,7 @@ import {
   state, bus, curPage, selLayers, setSel, h, $, $$, toast, history, changed, db, setMeta, savePrefs,
   newProject, newPage, deepClone, uid, assets, collectAssetIds, fmtTime, debounce, modKey, MOD, ALT,
   layerLabel, DEFAULT_SETTINGS, TEXT_DEFAULTS, IMAGE_DEFAULTS, SHAPE_DEFAULTS, isPlainObj,
+  AD_PREVIEW,
 } from './core.js';
 import { drawThumb } from './render.js';
 import { PLACEMENTS } from './overlay.js';
@@ -63,7 +64,7 @@ function fillDefaults(L) {
   if (L.opacity == null) L.opacity = 1;
 }
 function migrate(p) {
-  p.settings = Object.assign(deepClone(DEFAULT_SETTINGS), p.settings || {});
+  p.settings = Object.assign(deepClone(DEFAULT_SETTINGS), p.settings || {}, AD_PREVIEW); // 광고 계정 정보는 늘 고정값
   if (!Array.isArray(p.pages) || !p.pages.length) p.pages = [newPage('페이지 1')];
   p.library = p.library || [];
   if (p.bulk && p.bulk.rows) p.bulk = {};

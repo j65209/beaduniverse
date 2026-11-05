@@ -119,16 +119,4 @@ export const SHAPE_PRESETS = [
   { id: 'divider', label: '구분선', props: { name: '구분선', w: 520, h: 6, radius: 3, fill: { type: 'solid', color: '#ffffff', alpha: 0.9 } } },
 ];
 
-export const BRANDS = [
-  { id: 'bb', name: '브라이트비드', account: 'brightbeed', color: '#ff2e93' },
-  { id: '6a', name: '식스에이', account: '식스에이', color: '#22d3ee' },
-  { id: 'ct', name: '클리어타입', account: '클리어타입', color: '#22c55e' },
-  { id: 'yar', name: '야르', account: '야르', color: '#a78bfa' },
-  { id: 'pp', name: '프로덕트피알', account: '프로덕트피알', color: '#f59e0b' },
-  { id: 'akoi', name: '아코이하우스', account: '아코이하우스', color: '#f472b6' },
-  { id: 'kop', name: '코페리', account: '코페리', color: '#818cf8' },
-  { id: 'apt', name: '아페티', account: '아페티', color: '#fb7185' },
-  { id: 'koz', name: '코즈미', account: '코즈미', color: '#14b8a6' },
-];
-
 export const SWATCHES = ['#ffffff', '#111111', '#6b7280', '#ff2e93', '#ff6b35', '#ffe14d', '#fbbf24', '#22c55e', '#22d3ee', '#3b82f6', '#a78bfa', '#f472b6', '#14b8a6', '#ef4444'];

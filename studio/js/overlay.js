@@ -15,7 +15,6 @@ export const PLACEMENTS = [
   { id: 'fb-reels', name: '페이스북 릴스', short: 'FB 릴스', safe: { t: 269, b: 672, l: 65, r: 65 }, rail: true, ui: 'reels-fb' },
   { id: 'fb-story', name: '페이스북 스토리', short: 'FB 스토리', safe: { t: 269, b: 250, l: 0, r: 0 }, rail: false, ui: 'story-fb' },
 ];
-export const CTA_OPTIONS = ['더 알아보기', '자세히 보기', '지금 구매하기', '쇼핑하기', '구매하기', '가입하기', '신청하기', '지금 예약하기', '문의하기', '다운로드', '혜택 받기'];
 
 const RAIL = { x: 900, y: 1120 }; // 릴스 우측 아이콘 줄(좋아요·댓글·공유) 시작점
 
@@ -377,7 +376,7 @@ function storyTop(ctx, env) {
   ctx.fillStyle = WHITE;
   ctx.fillRect(20, 30, 380, 7);
   avatar(ctx, 80, 114, 38, env);
-  const nw = txt(ctx, env.settings.account || 'brightbeed', 134, 106, { size: 34, weight: 700, maxW: 640 });
+  const nw = txt(ctx, env.settings.account || 'beaduniverse', 134, 106, { size: 34, weight: 700, maxW: 640 });
   txt(ctx, '광고', 134, 146, { size: 28, weight: 500, color: 'rgba(255,255,255,0.92)' });
   void nw;
   iconDots(ctx, 942, 110, 56);
@@ -386,7 +385,7 @@ function storyTop(ctx, env) {
 function reelsBottom(ctx, env, fb) {
   const st = env.settings;
   avatar(ctx, 86, 1486, 40, env);
-  const name = st.account || 'brightbeed';
+  const name = st.account || 'beaduniverse';
   const nw = txt(ctx, name, 142, 1476, { size: 36, weight: 700, maxW: 480 });
   if (fb) {
     txt(ctx, '· 팔로우', 142 + nw + 12, 1476, { size: 34, weight: 600 });
@@ -452,7 +451,7 @@ export function drawMockUI(ctx, id, env) {
     }
     reelsBottom(ctx, env, fb);
     if (!fb) {
-      txt(ctx, `♫ ${st.account || 'brightbeed'} · 원본 오디오`, 48, 1628, { size: 28, weight: 500, maxW: 700 });
+      txt(ctx, `♫ ${st.account || 'beaduniverse'} · 원본 오디오`, 48, 1628, { size: 28, weight: 500, maxW: 700 });
       ctaBar(ctx, 1660, 88, st.cta || '더 알아보기');
       ctx.save(); ctx.shadowColor = 'transparent'; igNav(ctx); ctx.restore();
     } else {

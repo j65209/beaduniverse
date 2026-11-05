@@ -2,7 +2,7 @@
    캔버스 편집기 — 화면 맞춤/확대 · 선택 · 이동 · 크기 · 회전 · 스냅 가이드
    · 인라인 텍스트 편집 · 이미지 위치(크롭) 조정 · 파일 드롭
    ========================================================================= */
-import { W, H, state, bus, curPage, findLayer, selLayers, setSel, clamp, modKey, assets, deepClone, uid, history, debounce } from './core.js';
+import { W, H, state, bus, curPage, findLayer, selLayers, setSel, clamp, modKey, assets, deepClone, uid, history, debounce, AD_PREVIEW } from './core.js';
 import { drawPage, aabb, unionBox, hitLayer, layoutText, resizeKeepAnchor, imgDrawRect, isBackdrop, isPassive, syncPageText } from './render.js';
 import { drawMockUI, drawSafeZones, safeRect, findViolations } from './overlay.js';
 import { familyOf, nearestWeight, FALLBACK } from './fonts.js';
@@ -138,13 +138,6 @@ const toScreen = (x, y) => [view.left + x * state.zoom, view.top + y * state.zoo
 /* ---------- 그리기 ---------- */
 export function requestRender() {
   if (!raf) raf = requestAnimationFrame(renderNow);
-}
-function avatarImg(st) {
-  if (!st.avatar) return null;
-  const a = assets.get(st.avatar);
-  if (a && a.img) return a.img;
-  assets.load(st.avatar);
-  return null;
 }
 function renderNow() {
   raf = 0;
@@ -318,7 +311,7 @@ function renderOverlay(pg, st) {
   octx.rect(0, 0, W, H);
   octx.clip();
   if (state.preview || st.showUI) {
-    drawMockUI(octx, st.placement, { settings: st, avatarImg: avatarImg(st), alpha: state.preview ? 1 : st.uiOpacity, px: z * dpr });
+    drawMockUI(octx, st.placement, { settings: Object.assign({}, st, AD_PREVIEW), avatarImg: null, alpha: state.preview ? 1 : st.uiOpacity, px: z * dpr });
   }
   if (!state.preview && st.showSafe) drawSafeZones(octx, st.placement, z);
   octx.restore();
