@@ -5,7 +5,9 @@
  * - 메일은 이 스크립트를 배포한 구글 계정(예: brightbeed@gmail.com) 이름으로 나간다.
  * - 개인 지메일은 하루 100명(받는 사람 기준)까지 보낼 수 있다.
  * - 제목·본문·첨부 설정은 이 계정에 저장돼서 어느 PC에서 열어도 같다.
- * - 보낸 기록은 구글 시트 「브라이트비드 메일 발송 기록」에 쌓이고, 이미 보낸 주소는 다시 보내지 않는다.
+ * - 보낸 기록은 구글 시트 「브라이트비드 메일 발송 기록」에 전부 쌓인다 (발송완료 · 실패).
+ * - 중복 발송 방지: 기록에 있는 주소 + 지메일 보낸편지함에 예전에 메일을 보낸 적 있는 주소는 다시 보내지 않는다
+ *   (이 툴을 쓰기 전에 직접 보낸 메일도 걸러짐).
  * - 첨부파일은 구글 드라이브 「브라이트비드 메일 첨부」 폴더에 올라간다.
  *
  * 아래 MAIL_KEY 는 오피스 메일 발송 화면의 「서버 코드 복사」 버튼이 자동으로 채운다.
@@ -13,13 +15,14 @@
  */
 const MAIL_KEY = '__MAIL_KEY__';
 
+const SERVER_VERSION = 2;
 const LOG_TITLE = '브라이트비드 메일 발송 기록';
 const FOLDER_TITLE = '브라이트비드 메일 첨부';
 const STATUS_SENT = '발송완료';
 const STATUS_FAIL = '실패';
 
 function doGet() {
-  return json_({ ok: true, app: 'brightbeed-mailer', version: 1 });
+  return json_({ ok: true, app: 'brightbeed-mailer', version: SERVER_VERSION });
 }
 
 function doPost(e) {
@@ -37,7 +40,9 @@ function doPost(e) {
       case 'ping': return json_(ping_());
       case 'saveTemplate': return json_(saveTemplate_(req.template));
       case 'upload': return json_(upload_(req.file));
-      case 'sent': return json_({ ok: true, emails: sentEmails_() });
+      case 'sent': return json_(sentList_());
+      case 'check': return json_(check_(req.emails));
+      case 'history': return json_(history_(req.limit));
       case 'send': return json_(withLock_(function () { return send_(req); }));
       default: return json_({ ok: false, error: '알 수 없는 요청이에요: ' + req.action });
     }
@@ -52,6 +57,7 @@ function ping_() {
   const logId = props_().getProperty('logId');
   return {
     ok: true,
+    version: SERVER_VERSION,
     sender: Session.getEffectiveUser().getEmail(),
     remaining: MailApp.getRemainingDailyQuota(),
     template: getTemplate_(),
@@ -102,8 +108,11 @@ function send_(req) {
   if (!subject) return { ok: false, status: 'fail', error: '제목이 비어 있어요' };
   if (!body.trim()) return { ok: false, status: 'fail', error: '본문이 비어 있어요' };
 
-  if (!test && !req.force && sentEmails_().indexOf(to.toLowerCase()) !== -1) {
-    return { ok: true, status: 'skip', to: to, reason: '이미 보낸 주소', remaining: MailApp.getRemainingDailyQuota() };
+  if (!test && !req.force) {
+    const prev = previous_(to, sentMap_());
+    if (prev) {
+      return { ok: true, status: 'skip', to: to, reason: prevText_(prev), prev: prev, remaining: MailApp.getRemainingDailyQuota() };
+    }
   }
   if (MailApp.getRemainingDailyQuota() < 1) {
     return { ok: false, status: 'quota', error: '오늘 발송 한도를 다 썼어요. 24시간 뒤 다시 보내 주세요.', remaining: 0 };
@@ -154,18 +163,63 @@ function log_(to, subject, status, memo) {
   logSheet_().appendRow([new Date(), to, subject, status, memo]);
 }
 
-function sentEmails_() {
+/** 기록 시트에서 「발송완료」인 주소 → 마지막으로 보낸 시각(ISO) */
+function sentMap_() {
   const sh = logSheet_();
   const last = sh.getLastRow();
-  if (last < 2) return [];
-  const rows = sh.getRange(2, 2, last - 1, 3).getValues(); // 이메일 · 제목 · 결과
-  const seen = {};
-  const out = [];
-  rows.forEach(function (r) {
-    const e = String(r[0]).trim().toLowerCase();
-    if (e && r[2] === STATUS_SENT && !seen[e]) { seen[e] = true; out.push(e); }
+  const map = {};
+  if (last < 2) return map;
+  sh.getRange(2, 1, last - 1, 4).getValues().forEach(function (r) { // 시각 · 이메일 · 제목 · 결과
+    const e = String(r[1]).trim().toLowerCase();
+    if (e && r[3] === STATUS_SENT) map[e] = r[0] instanceof Date ? r[0].toISOString() : String(r[0]);
   });
-  return out;
+  return map;
+}
+
+function sentList_() {
+  const map = sentMap_();
+  return { ok: true, emails: Object.keys(map), dates: map };
+}
+
+/** 예전에 보낸 적 있는지: 발송 기록 → 지메일 보낸편지함 순서로 확인 */
+function previous_(email, map) {
+  const k = String(email).toLowerCase();
+  if (map[k]) return { source: 'log', when: map[k] };
+  const threads = GmailApp.search('in:sent to:' + k, 0, 1);
+  if (threads.length) return { source: 'gmail', when: threads[0].getLastMessageDate().toISOString() };
+  return null;
+}
+
+function prevText_(prev) {
+  const d = String(prev.when || '').slice(0, 10);
+  return prev.source === 'log'
+    ? '이미 보낸 주소 (발송 기록' + (d ? ' ' + d : '') + ')'
+    : '예전에 메일 보낸 적 있음 (지메일 보낸편지함' + (d ? ' ' + d : '') + ')';
+}
+
+/** 보내기 전에 여러 주소를 한 번에 확인 (한 번에 최대 40개) */
+function check_(emails) {
+  const map = sentMap_();
+  const found = {};
+  (emails || []).slice(0, 40).forEach(function (raw) {
+    const e = extractEmail_(raw);
+    if (!e) return;
+    const prev = previous_(e, map);
+    if (prev) found[e.toLowerCase()] = prev;
+  });
+  return { ok: true, found: found };
+}
+
+/** 발송 기록 (최근 것부터) */
+function history_(limit) {
+  const sh = logSheet_();
+  const last = sh.getLastRow();
+  if (last < 2) return { ok: true, total: 0, rows: [] };
+  const n = Math.min(last - 1, Math.max(1, Math.min(Number(limit) || 500, 2000)));
+  const rows = sh.getRange(last - n + 1, 1, n, 5).getValues().reverse().map(function (r) {
+    return { t: r[0] instanceof Date ? r[0].toISOString() : String(r[0]), email: String(r[1]), subject: String(r[2]), result: String(r[3]), memo: String(r[4]) };
+  });
+  return { ok: true, total: last - 1, rows: rows };
 }
 
 function folder_() {
@@ -211,11 +265,12 @@ function errText_(e) {
 }
 
 /**
- * 처음 한 번 편집기에서 실행해서 권한을 허용하는 용도 (배포 화면에서 허용했다면 안 해도 됨).
+ * 편집기에서 한 번 실행(▶)해서 권한을 허용하는 용도. 서버 코드를 새 버전으로 바꿨을 때도 한 번 실행해 주세요.
  * 실행하면 기록 시트와 첨부 폴더를 미리 만들어 둔다.
  */
 function setup() {
   logSheet_();
   folder_();
+  GmailApp.search('in:sent', 0, 1); // 보낸편지함 확인 권한 미리 허용
   Logger.log('준비 완료 · 보내는 계정: ' + Session.getEffectiveUser().getEmail() + ' · 오늘 남은 한도: ' + MailApp.getRemainingDailyQuota());
 }
