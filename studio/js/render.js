@@ -124,7 +124,38 @@ export function shapePath(ctx, kind, w, h, o = {}) {
       ctx.arc(cx, cy, R * 0.34, 0, Math.PI * 2);
       return;
     }
+    case 'film': { // 필름 스트립 — 긴 변 양쪽에 구멍 (evenodd 로 뚫림)
+      roundRectPath(ctx, 0, 0, w, h, r);
+      const vert = h >= w, S = vert ? w : h, len = vert ? h : w;
+      const across = S * 0.08, along = S * 0.058, pitch = S * 0.136, edge = S * 0.045;
+      const n = Math.max(1, Math.floor((len - edge * 2) / pitch));
+      const start = (len - (n - 1) * pitch - along) / 2, hr = Math.min(across, along) * 0.28;
+      for (let i = 0; i < n; i++) {
+        const t = start + i * pitch;
+        if (vert) { roundRectPath(ctx, edge, t, across, along, hr); roundRectPath(ctx, w - edge - across, t, across, along, hr); }
+        else { roundRectPath(ctx, t, edge, along, across, hr); roundRectPath(ctx, t, h - edge - across, along, across, hr); }
+      }
+      return;
+    }
+    case 'checker': { // 체크무늬 — 가로 칸 수 = points
+      const cols = clamp(Math.round(o.points || 8), 2, 60), sz = w / cols, rows = Math.ceil(h / sz - 1e-6);
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) if (!((i + j) % 2)) ctx.rect(i * sz, j * sz, sz, Math.min(sz, h - j * sz));
+      return;
+    }
+    case 'barcode': { // 바코드 — 늘 같은 무늬
+      let seed = 11;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const unit = Math.max(0.5, w / 96);
+      let x = 0, bar = true;
+      while (x < w - 0.01) {
+        const bw = Math.min((1 + Math.floor(rnd() * 3.3)) * unit, w - x);
+        if (bar) ctx.rect(x, 0, bw, h);
+        x += bw; bar = !bar;
+      }
+      return;
+    }
     case 'grain':
+    case 'stripes':
       ctx.rect(0, 0, w, h);
       return;
     default:
@@ -132,9 +163,17 @@ export function shapePath(ctx, kind, w, h, o = {}) {
   }
 }
 /** 손그림 선 도형 (채우기 없이 선만) */
-const LINE_KINDS = new Set(['arrow', 'scribble', 'squiggle']);
+const LINE_KINDS = new Set(['arrow', 'scribble', 'squiggle', 'corners']);
 export const isLineShape = (L) => LINE_KINDS.has(L.shape);
-function linePath(ctx, kind, w, h) {
+function linePath(ctx, kind, w, h, t = 0) {
+  if (kind === 'corners') { // 뷰파인더 모서리 ⌜ ⌝ ⌞ ⌟ — 선 두께만큼 안쪽으로
+    const i = t / 2, l = Math.min(w, h) * 0.16, x0 = i, y0 = i, x1 = w - i, y1 = h - i;
+    ctx.moveTo(x0, y0 + l); ctx.lineTo(x0, y0); ctx.lineTo(x0 + l, y0);
+    ctx.moveTo(x1 - l, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1, y0 + l);
+    ctx.moveTo(x1, y1 - l); ctx.lineTo(x1, y1); ctx.lineTo(x1 - l, y1);
+    ctx.moveTo(x0 + l, y1); ctx.lineTo(x0, y1); ctx.lineTo(x0, y1 - l);
+    return;
+  }
   if (kind === 'arrow') { // 손으로 그은 휘어진 화살표 (왼쪽 아래 → 오른쪽 위)
     const sx = w * 0.06, sy = h * 0.88, ex = w * 0.93, ey = h * 0.16;
     ctx.moveTo(sx, sy);
@@ -539,14 +578,54 @@ function fillStyleOf(ctx, L) {
   }
   return rgba(f.color || '#000000', f.alpha ?? 1);
 }
+function stripesPath(ctx, L) {
+  const w = L.w, h = L.h;
+  const sw = Math.max(2, Math.min(w, h) * clamp(L.inner == null ? 0.5 : L.inner, 0.02, 1));
+  for (let x = -h; x < w + sw; x += sw * 2) {
+    ctx.moveTo(x, h); ctx.lineTo(x + h, 0); ctx.lineTo(x + h + sw, 0); ctx.lineTo(x + sw, h); ctx.closePath();
+  }
+}
+/* 흐림(블러) 도형 — 오라·빛번짐·글로우용.
+   단색은 그림자만 그리는 방식(도형은 멀리, 흐린 그림자만 제자리) → 어느 브라우저나 같은 결과.
+   그라데이션은 canvas filter 를 지원하면 그걸로. */
+const CAN_FILTER = (() => {
+  try { const c = document.createElement('canvas').getContext('2d'); if (!c || typeof c.filter !== 'string') return false; c.filter = 'blur(2px)'; return c.filter === 'blur(2px)'; } catch (e) { return false; }
+})();
+function drawBlurredShape(ctx, L, blur, pxs) {
+  const f = L.fill || {};
+  const kind = L.shape === 'stripes' ? 'rect' : (L.shape || 'rect');
+  const rule = kind === 'film' ? 'evenodd' : 'nonzero';
+  ctx.save();
+  if (f.type === 'linear' && CAN_FILTER) {
+    ctx.filter = `blur(${blur * pxs}px)`;
+    ctx.beginPath(); shapePath(ctx, kind, L.w, L.h, L);
+    ctx.fillStyle = fillStyleOf(ctx, L);
+    ctx.fill(rule);
+  } else {
+    const m = ctx.getTransform();
+    const D = 4 * (W + H);
+    ctx.translate(D, 0);
+    ctx.beginPath(); shapePath(ctx, kind, L.w, L.h, L);
+    const a = f.type === 'linear' ? Math.max(f.alpha ?? 1, f.alpha2 ?? 0) : (f.alpha ?? 1);
+    ctx.shadowColor = rgba(f.color || '#000000', a);
+    ctx.shadowBlur = blur * 2 * pxs;
+    ctx.shadowOffsetX = -m.a * D;
+    ctx.shadowOffsetY = -m.b * D;
+    ctx.fillStyle = '#000000';
+    ctx.fill(rule);
+  }
+  ctx.restore();
+}
 function drawShapeLayer(ctx, L, o = {}) {
   if (L.flipX) { ctx.translate(L.w, 0); ctx.scale(-1, 1); }
   if (isLineShape(L)) { // 손그림 선: 채우기 색으로 선만 긋기
     ctx.beginPath();
-    linePath(ctx, L.shape, L.w, L.h);
-    ctx.lineWidth = Math.max(1, +L.thick || 8);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    const lw = Math.max(1, +L.thick || 8);
+    linePath(ctx, L.shape, L.w, L.h, lw);
+    ctx.lineWidth = lw;
+    const sq = L.shape === 'corners';
+    ctx.lineCap = sq ? 'butt' : 'round';
+    ctx.lineJoin = sq ? 'miter' : 'round';
     const f = L.fill || {};
     ctx.strokeStyle = rgba(f.color || '#111111', f.alpha ?? 1);
     if (L.shadow && L.shadow.on) applyShadow(ctx, L.shadow, o.px || 1);
@@ -563,11 +642,24 @@ function drawShapeLayer(ctx, L, o = {}) {
     ctx.restore();
     return;
   }
+  const blur = Math.max(0, +L.blur || 0);
+  if (blur > 0) { drawBlurredShape(ctx, L, blur, o.px || 1); return; }
+  if (L.shape === 'stripes') { // 사선 줄무늬 — 상자 안으로 자르기
+    ctx.save();
+    ctx.beginPath(); roundRectPath(ctx, 0, 0, L.w, L.h, L.radius || 0); ctx.clip();
+    ctx.beginPath(); stripesPath(ctx, L);
+    ctx.fillStyle = fillStyleOf(ctx, L);
+    if (L.shadow && L.shadow.on) applyShadow(ctx, L.shadow, o.px || 1);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  const rule = L.shape === 'film' ? 'evenodd' : 'nonzero';
   ctx.beginPath();
   shapePath(ctx, L.shape || 'rect', L.w, L.h, L);
   ctx.fillStyle = fillStyleOf(ctx, L);
-  if (L.shadow && L.shadow.on) { ctx.save(); applyShadow(ctx, L.shadow, o.px || 1); ctx.fill(); ctx.restore(); }
-  else ctx.fill();
+  if (L.shadow && L.shadow.on) { ctx.save(); applyShadow(ctx, L.shadow, o.px || 1); ctx.fill(rule); ctx.restore(); }
+  else ctx.fill(rule);
   if (L.stroke && L.stroke.on && L.stroke.width > 0) {
     ctx.lineWidth = +L.stroke.width;
     ctx.lineJoin = 'round';
@@ -652,7 +744,16 @@ function drawTextLayer(ctx, L, o) {
     if (li.t) runText(ctx, li.t, px + offX(li.w), py + i * lineH + base, lay.ls, stroke);
   });
   const st = L.stroke;
-  if (st && st.on && st.width > 0) {
+  const hol = L.hollow && L.hollow.on;
+  if (hol) { // 속 비우기 — 글자색으로 외곽선만
+    ctx.lineJoin = 'round';
+    ctx.miterLimit = 2;
+    ctx.lineWidth = Math.max(0.5, +L.hollow.width || 3);
+    ctx.strokeStyle = textFill(ctx, L);
+    applyShadow(ctx, L.shadow, pxs);
+    each(true);
+    clearShadow(ctx);
+  } else if (st && st.on && st.width > 0) {
     ctx.lineJoin = 'round';
     ctx.miterLimit = 2;
     ctx.lineWidth = st.width * 2;
@@ -666,6 +767,16 @@ function drawTextLayer(ctx, L, o) {
     applyShadow(ctx, L.shadow, pxs);
     ctx.fillStyle = textFill(ctx, L);
     each(false);
+  }
+  if (L.strike) { // 취소선 (정가 표시)
+    clearShadow(ctx);
+    ctx.fillStyle = textFill(ctx, L);
+    const th = Math.max(1.5, lay.size * 0.075);
+    lines.forEach((li, i) => {
+      if (!li.t || !li.t.trim()) return;
+      const y = py + i * lineH + base - lay.size * 0.31;
+      ctx.fillRect(px + offX(li.w) - th * 0.6, y - th / 2, li.w + th * 1.2, th);
+    });
   }
   ctx.restore();
 }

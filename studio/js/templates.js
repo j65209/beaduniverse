@@ -8,14 +8,17 @@ import { T, IMG, SH, SOFT_SHADOW, PINK } from './tpl-kit.js';
 import { FASHION, LIVING } from './tpl-fashion-living.js';
 import { SALE, REVIEW, INFO, MOOD } from './tpl-more.js';
 import { JEWELRY } from './tpl-jewelry.js';
+import { SNS } from './tpl-sns.js';
+import { SALE2 } from './tpl-sale.js';
 
 /** 갤러리 분류 */
 export const TEMPLATE_CATS = [
   { id: 'all', name: '전체' },
   { id: 'jewelry', name: '주얼리·밈' },
+  { id: 'sns', name: '릴스·틱톡 감성' },
+  { id: 'sale', name: '할인·이벤트' },
   { id: 'fashion', name: '패션' },
   { id: 'living', name: '리빙' },
-  { id: 'sale', name: '할인·이벤트' },
   { id: 'review', name: '후기·UGC' },
   { id: 'info', name: '정보·비교' },
   { id: 'mood', name: '무드·감성' },
@@ -101,9 +104,10 @@ const base = (id) => BASE.find((t) => t.id === id);
 /** 갤러리 순서: 패션 → 리빙 → 할인·이벤트 → 후기·UGC → 정보·비교 → 무드·감성 */
 export const TEMPLATES = [
   ...JEWELRY,
+  ...SNS,
+  base('hook-top'), base('sale'), ...SALE2, ...SALE,
   ...FASHION,
   base('launch'), ...LIVING,
-  base('hook-top'), base('sale'), ...SALE,
   base('review'), base('ugc'), ...REVIEW,
   base('compare'), ...INFO,
   ...MOOD,
@@ -122,6 +126,12 @@ export const TEXT_PRESETS = [
   { id: 'hand', label: '손글씨', props: { text: '진짜 좋아요!', font: 'Nanum Pen Script', weight: 400, size: 88, color: '#ffffff', align: 'center' } },
   { id: 'stars', label: '별점', props: { text: '★★★★★ 4.9', weight: 700, size: 46, color: '#fbbf24', align: 'center' } },
   { id: 'outline', label: '외곽선 제목', props: { text: '완판 임박', font: 'Black Han Sans', weight: 400, size: 110, color: '#ffffff', align: 'center', stroke: { on: true, color: '#000000', width: 10 } } },
+  { id: 'tiktok', label: '틱톡 자막', props: { text: '자막처럼 쓰는 문구\n두 줄도 예쁘게', weight: 700, size: 50, color: '#111111', align: 'center', lh: 1.42, bg: { mode: 'line', color: '#ffffff', alpha: 1, padX: 18, padY: 7, radius: 12 } } },
+  { id: 'capcut', label: '캡컷 자막', props: { text: '이거 진짜 실화임?', font: 'Jalnan', weight: 400, size: 86, color: '#ffffff', align: 'center', lh: 1.15, stroke: { on: true, color: '#111111', width: 9 } } },
+  { id: 'neon', label: '네온 글로우', props: { text: 'tonight ✦', font: 'Montserrat', weight: 700, size: 96, color: '#fff2fb', align: 'center', shadow: { on: true, color: '#ff4fd8', alpha: 1, blur: 30, x: 0, y: 0 } } },
+  { id: 'hollow', label: '아웃라인', props: { text: 'SILVER', font: 'Anton', weight: 400, size: 160, color: '#ffffff', align: 'center', hollow: { on: true, width: 3 } } },
+  { id: 'chrome', label: '크롬 글자', props: { text: 'CHROME', font: 'Unbounded', weight: 900, size: 120, color: '#6f7680', align: 'center', tracking: -3, grad: { on: true, color2: '#ffffff', angle: 180, chrome: true } } },
+  { id: 'strike', label: '정가 취소선', props: { text: '39,000원', weight: 500, size: 46, color: '#9ca3af', align: 'center', strike: true } },
 ];
 
 export const SHAPE_PRESETS = [
@@ -145,6 +155,13 @@ export const SHAPE_PRESETS = [
   { id: 'scribble', label: '손 동그라미', props: { name: '손그림 동그라미', shape: 'scribble', thick: 8, w: 420, h: 260, fill: { type: 'solid', color: '#ff2e93', alpha: 1 } } },
   { id: 'squiggle', label: '물결 밑줄', props: { name: '물결 밑줄', shape: 'squiggle', thick: 7, w: 420, h: 40, fill: { type: 'solid', color: '#ff2e93', alpha: 1 } } },
   { id: 'grain', label: '필름 그레인', back: false, props: { name: '필름 그레인', shape: 'grain', x: 0, y: 0, w: W, h: H, opacity: 0.35, fill: { type: 'solid', color: '#000000', alpha: 1 } } },
+  { id: 'aura', label: '오라 블러', back: true, props: { name: '오라', shape: 'ellipse', w: 720, h: 720, blur: 150, fill: { type: 'solid', color: '#c084fc', alpha: 0.9 } } },
+  { id: 'leak', label: '빛번짐', props: { name: '빛번짐', shape: 'ellipse', x: -260, y: -200, w: 820, h: 760, blur: 170, opacity: 0.8, fill: { type: 'solid', color: '#ff8a3d', alpha: 0.85 } } },
+  { id: 'corners', label: '뷰파인더', props: { name: '뷰파인더 모서리', shape: 'corners', thick: 6, w: 820, h: 920, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
+  { id: 'film', label: '필름', props: { name: '필름 스트립', shape: 'film', w: 520, h: 1400, fill: { type: 'solid', color: '#141414', alpha: 1 } } },
+  { id: 'checker', label: '체크무늬', back: true, props: { name: '체크무늬', shape: 'checker', points: 9, x: 0, y: 0, w: W, h: H, fill: { type: 'solid', color: '#000000', alpha: 0.08 } } },
+  { id: 'stripes', label: '사선 줄무늬', back: true, props: { name: '사선 줄무늬', shape: 'stripes', inner: 0.03, x: 0, y: 0, w: W, h: H, fill: { type: 'solid', color: '#ffffff', alpha: 0.1 } } },
+  { id: 'barcode', label: '바코드', props: { name: '바코드', shape: 'barcode', w: 380, h: 120, fill: { type: 'solid', color: '#111111', alpha: 1 } } },
 ];
 
 export const SWATCHES = ['#ffffff', '#111111', '#6b7280', '#ff2e93', '#ff6b35', '#ffe14d', '#fbbf24', '#22c55e', '#22d3ee', '#3b82f6', '#a78bfa', '#f472b6', '#14b8a6', '#ef4444'];

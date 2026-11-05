@@ -236,8 +236,11 @@ function presetSample(pr) {
     fontFamily: `"${p.font}", Pretendard, sans-serif`, fontWeight: p.weight, color: p.color,
     letterSpacing: (p.tracking || 0) / 100 + 'em',
   };
+  if (p.hollow && p.hollow.on) { st.color = 'transparent'; st.webkitTextStroke = `1px ${p.color}`; }
+  else if (p.grad && p.grad.on) { st.backgroundImage = `linear-gradient(180deg, ${p.grad.color2}, ${p.color} 50%, ${p.grad.color2})`; st.webkitBackgroundClip = 'text'; st.backgroundClip = 'text'; st.color = 'transparent'; }
   if (p.stroke && p.stroke.on) { const c = p.stroke.color; st.textShadow = `-1px -1px 0 ${c}, 1px -1px 0 ${c}, -1px 1px 0 ${c}, 1px 1px 0 ${c}, 0 2px 0 ${c}`; }
-  else if (p.shadow && p.shadow.on) st.textShadow = '0 2px 8px rgba(0,0,0,.4)';
+  else if (p.shadow && p.shadow.on) st.textShadow = (p.shadow.color || '#000000').toLowerCase() !== '#000000' ? `0 0 6px ${p.shadow.color}, 0 0 12px ${p.shadow.color}` : '0 2px 8px rgba(0,0,0,.4)';
+  if (p.strike) st.textDecoration = 'line-through';
   let inner = h('span', { class: 'tp-t', style: st }, pr.label);
   if (p.bg && p.bg.mode !== 'none') {
     const bgs = { background: p.bg.color, borderRadius: Math.min(p.bg.radius, 30) / 3 + 'px', padding: '1px 7px', boxDecorationBreak: 'clone', webkitBoxDecorationBreak: 'clone' };

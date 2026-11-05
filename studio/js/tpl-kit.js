@@ -28,6 +28,16 @@ export const TIKTOK = (name, text, cx, y, size = 50, o = {}) => T(Object.assign(
 export const CHROME = { on: true, color2: '#ffffff', angle: 180, chrome: true };
 /** 만든 뒤 가운데를 (cx, cy) 로 옮기기 (회전된 글자·도형 정렬용) */
 export function centerAt(L, cx, cy) { L.x = cx - L.w / 2; L.y = cy - L.h / 2; return L; }
+/** 흐린 원 (오라·빛번짐) — 가운데 (cx, cy), 지름 d */
+export const BLOB = (cx, cy, d, color, blur = 150, alpha = 0.9, name = '오라') => newLayer('shape', { name, shape: 'ellipse', x: cx - d / 2, y: cy - d / 2, w: d, h: d, blur, fill: { type: 'solid', color, alpha } });
+/** 필름 그레인 (전체 화면) */
+export const GRAIN = (opacity = 0.35) => newLayer('shape', { name: '필름 그레인', shape: 'grain', x: 0, y: 0, w: W, h: H, opacity, fill: { type: 'solid', color: '#000000', alpha: 1 } });
+/** 속 비운 글자 (외곽선만) */
+export const HOLLOW = (width = 3) => ({ on: true, width });
+/** 네온 글로우 (그림자를 같은 색으로 번지게) */
+export const GLOW = (color, blur = 28) => ({ on: true, color, alpha: 1, blur, x: 0, y: 0 });
+/** 딱딱한 그림자 (레트로 스티커) */
+export const HARD = (d = 10, color = '#111111') => ({ on: true, color, alpha: 1, blur: 0, x: d, y: d });
 export const IMG = (props) => newLayer('image', props);
 export const SH = (props) => newLayer('shape', props);
 export const SOFT_SHADOW = { on: true, color: '#000000', alpha: 0.35, blur: 24, x: 0, y: 4 };

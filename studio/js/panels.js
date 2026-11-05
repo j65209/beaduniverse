@@ -177,9 +177,9 @@ function structSig() {
   const parts = [state.pageId, state.cropId || '', state.linkEdit ? 1 : 0, Ls.length];
   for (const L of Ls) {
     parts.push(L.id, L.type, L.locked ? 1 : 0);
-    if (L.type === 'text') parts.push(L.autoW ? 1 : 0, L.bg.mode, L.stroke.on ? 1 : 0, L.shadow.on ? 1 : 0, L.fit && L.fit.on ? 1 : 0, L.font, L.grad && L.grad.on ? 1 : 0);
+    if (L.type === 'text') parts.push(L.autoW ? 1 : 0, L.bg.mode, L.stroke.on ? 1 : 0, L.shadow.on ? 1 : 0, L.fit && L.fit.on ? 1 : 0, L.font, L.grad && L.grad.on ? 1 : 0, L.hollow && L.hollow.on ? 1 : 0);
     if (L.type === 'image') parts.push(L.fit, L.mask || 'rect', L.shadow.on ? 1 : 0, L.stroke.on ? 1 : 0, L.asset || '', L.checkSafe ? 1 : 0);
-    if (L.type === 'shape') parts.push(L.shape, L.fill.type, L.stroke.on ? 1 : 0, L.shadow && L.shadow.on ? 1 : 0, L.checkSafe ? 1 : 0);
+    if (L.type === 'shape') parts.push(L.shape, L.fill.type, L.stroke.on ? 1 : 0, L.shadow && L.shadow.on ? 1 : 0, L.checkSafe ? 1 : 0, L.blur > 0 ? 1 : 0);
   }
   if (!Ls.length) { const s = state.project.settings; parts.push(s.showUI ? 1 : 0, state.project.pages.length); }
   return parts.join('|');
@@ -416,6 +416,7 @@ function textSections(el, Ls) {
     h('span', { class: 'ital', title: '기울임' }, toggle({ get: lget('italic'), set: lset('italic', 'text'), label: '기울임' }))));
   kids.push(field('크기', rangeNum({ get: lget('size'), set: lset('size', 'text'), min: 8, max: 300, step: 1, unit: 'px' })));
   kids.push(field('글자색', colorCtl({ get: lget('color'), set: lset('color', 'text'), swatches: true })));
+  kids.push(field('취소선', toggle({ get: () => !!lget('strike')(), set: lset('strike', 'text'), label: '정가처럼 가운데 줄 긋기' })));
   kids.push(field('줄 정렬', seg([{ v: 'left', icon: 'tL', title: '왼쪽' }, { v: 'center', icon: 'tC', title: '가운데' }, { v: 'right', icon: 'tR', title: '오른쪽' }], { get: lget('align'), set: lset('align', 'text') })));
   kids.push(field('줄 간격', rangeNum({ get: lget('lh'), set: lset('lh', 'text'), min: 70, max: 250, step: 1, unit: '%', mult: 100 })));
   kids.push(field('자간', rangeNum({ get: lget('tracking'), set: lset('tracking', 'text'), min: -15, max: 60, step: 0.5, unit: '%' })));
@@ -468,6 +469,14 @@ function textSections(el, Ls) {
     stKids.push(field('두께', rangeNum({ get: lget('stroke.width'), set: lset('stroke.width', 'text'), min: 1, max: 40, step: 0.5, unit: 'px' })));
   }
   el.append(section('외곽선', stKids, { key: 'stroke', right: toggle({ get: lget('stroke.on'), set: lset('stroke.on', 'text') }), open: L.stroke.on }));
+
+  // 속 비우기 (외곽선만)
+  for (const x of Ls) if (!x.hollow) x.hollow = { on: false, width: 3 };
+  const hoKids = L.hollow.on ? [
+    field('선 두께', rangeNum({ get: lget('hollow.width'), set: lset('hollow.width', 'text'), min: 0.5, max: 20, step: 0.5, unit: 'px' })),
+    h('p', { class: 'hint' }, '글자색으로 테두리만 그려요. 같은 문구를 여러 줄 겹쳐 쓰고 한 줄만 채우면 릴스 커버 느낌이 나요.'),
+  ] : [];
+  el.append(section('속 비우기 (외곽선만)', hoKids, { key: 'hollow', right: toggle({ get: lget('hollow.on'), set: lset('hollow.on', 'text') }), open: L.hollow.on }));
   // 그림자
   el.append(section('그림자', shadowKids(L, 'text'), { key: 'shadow', right: toggle({ get: lget('shadow.on'), set: lset('shadow.on', 'text') }), open: L.shadow.on }));
 }
@@ -525,9 +534,10 @@ const SHAPE_KINDS = [
   { v: 'rect', label: '사각형' }, { v: 'ellipse', label: '원' }, { v: 'arch', label: '아치' }, { v: 'star', label: '별 · 스티커' },
   { v: 'sparkle', label: '반짝이 ✦' }, { v: 'heart', label: '하트' }, { v: 'flower', label: '꽃 (데이지)' }, { v: 'ticket', label: '티켓 · 쿠폰' },
   { v: 'bubble', label: '말풍선' }, { v: 'arrow', label: '손그림 화살표' }, { v: 'scribble', label: '손그림 동그라미' }, { v: 'squiggle', label: '물결 밑줄' },
-  { v: 'grain', label: '필름 그레인' },
+  { v: 'corners', label: '뷰파인더 모서리' }, { v: 'film', label: '필름 스트립' }, { v: 'checker', label: '체크무늬' }, { v: 'stripes', label: '사선 줄무늬' },
+  { v: 'barcode', label: '바코드' }, { v: 'grain', label: '필름 그레인' },
 ];
-const LINE_KINDS = new Set(['arrow', 'scribble', 'squiggle']);
+const LINE_KINDS = new Set(['arrow', 'scribble', 'squiggle', 'corners']);
 const IMAGE_MASKS = [{ v: 'rect', label: '사각형' }, { v: 'ellipse', label: '원' }, { v: 'arch', label: '아치' }, { v: 'heart', label: '하트' }, { v: 'star', label: '별' }];
 function shapeSections(el, L) {
   const kind = L.shape || 'rect';
@@ -557,8 +567,14 @@ function shapeSections(el, L) {
     kids.push(field('꽃잎 굵기', rangeNum({ get: lget('inner'), set: lset('inner', 'shape'), min: 10, max: 50, unit: '%', mult: 100 })));
   }
   if (kind === 'sparkle') kids.push(field('통통함', rangeNum({ get: lget('inner'), set: lset('inner', 'shape'), min: 2, max: 45, unit: '%', mult: 100 })));
+  if (kind === 'checker') kids.push(field('가로 칸 수', rangeNum({ get: lget('points'), set: lset('points', 'shape'), min: 2, max: 40, step: 1 })));
+  if (kind === 'stripes') kids.push(field('줄 굵기', rangeNum({ get: lget('inner'), set: lset('inner', 'shape'), min: 2, max: 100, unit: '%', mult: 100 })));
+  if (!line && !grain) {
+    kids.push(field('흐림', rangeNum({ get: () => lget('blur')() || 0, set: lset('blur', 'shape'), min: 0, max: 300, unit: 'px' })));
+    if (L.blur > 0) kids.push(h('p', { class: 'hint' }, '흐리게 한 원을 여러 개 겹치면 오라·빛번짐 배경이 돼요.'));
+  }
   if (kind === 'bubble') kids.push(field('꼬리', seg([{ v: 'left', label: '왼쪽' }, { v: 'right', label: '오른쪽' }], { get: () => lget('tail')() || 'left', set: lset('tail', 'shape'), small: true })));
-  if (kind === 'rect' || kind === 'ticket' || kind === 'bubble') kids.push(field('모서리', rangeNum({ get: () => Math.min(500, lget('radius')() || 0), set: lset('radius', 'shape'), min: 0, max: 500, unit: 'px' })));
+  if (kind === 'rect' || kind === 'ticket' || kind === 'bubble' || kind === 'film' || kind === 'stripes') kids.push(field('모서리', rangeNum({ get: () => Math.min(500, lget('radius')() || 0), set: lset('radius', 'shape'), min: 0, max: 500, unit: 'px' })));
   if (!grain) kids.push(field('좌우 반전', toggle({ get: () => !!lget('flipX')(), set: lset('flipX', 'shape') })));
   el.append(section('도형', kids));
   const stKids = L.stroke.on ? [field('색', colorCtl({ get: lget('stroke.color'), set: lset('stroke.color', 'shape') })), field('두께', rangeNum({ get: lget('stroke.width'), set: lset('stroke.width', 'shape'), min: 1, max: 60, unit: 'px' }))] : [];

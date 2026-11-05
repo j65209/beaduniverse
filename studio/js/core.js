@@ -201,6 +201,8 @@ export const TEXT_DEFAULTS = {
   shadow: { on: false, color: '#000000', alpha: 0.45, blur: 18, x: 0, y: 4 },
   bg: { mode: 'none', color: '#ffffff', alpha: 1, padX: 24, padY: 12, radius: 12 },
   grad: { on: false, color2: '#ffffff', angle: 180, chrome: false },   // 글자 그라데이션 · 크롬 광택
+  hollow: { on: false, width: 3 },   // 속 비우기 (글자색으로 외곽선만)
+  strike: false,                     // 취소선 (정가 표시)
 };
 export const IMAGE_DEFAULTS = {
   type: 'image', name: '이미지', asset: null,
@@ -211,9 +213,10 @@ export const IMAGE_DEFAULTS = {
   stroke: { on: false, color: '#ffffff', width: 8 },
 };
 export const SHAPE_DEFAULTS = {
-  type: 'shape', name: '사각형', shape: 'rect',   // rect · ellipse · arch · star · heart · ticket · bubble
+  type: 'shape', name: '사각형', shape: 'rect',   // rect · ellipse · arch · star · heart · ticket · bubble · sparkle · flower · film · checker · stripes · barcode · grain · (선) arrow · scribble · squiggle · corners
   points: 5, inner: 0.5, tail: 'left',            // 별 꼭짓점 수·안쪽 깊이, 말풍선 꼬리
   thick: 8, flipX: false,                         // 손그림 선 두께, 좌우 반전
+  blur: 0,                                        // 흐림(px) — 오라·빛번짐·글로우
   shadow: { on: false, color: '#000000', alpha: 0.3, blur: 30, x: 0, y: 10 },
   fill: { type: 'solid', color: '#ff2e93', alpha: 1, color2: '#000000', alpha2: 0, angle: 180 },
   radius: 0,

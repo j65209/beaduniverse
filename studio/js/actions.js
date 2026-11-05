@@ -320,8 +320,8 @@ export function pasteLayers(clip = state.clipboard) {
 
 /* ---------- 스타일 복사 · 붙여넣기 (서식 맞추기) ---------- */
 const STYLE_KEYS = {
-  text: ['font', 'weight', 'italic', 'size', 'color', 'grad', 'align', 'lh', 'tracking', 'stroke', 'shadow', 'bg', 'opacity'],
-  shape: ['fill', 'radius', 'stroke', 'shadow', 'thick', 'opacity'],
+  text: ['font', 'weight', 'italic', 'size', 'color', 'grad', 'hollow', 'strike', 'align', 'lh', 'tracking', 'stroke', 'shadow', 'bg', 'opacity'],
+  shape: ['fill', 'radius', 'stroke', 'shadow', 'thick', 'blur', 'opacity'],
   image: ['radius', 'mask', 'adj', 'shadow', 'stroke', 'opacity'],
 };
 export function copyStyle() {
