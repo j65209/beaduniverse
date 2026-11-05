@@ -178,8 +178,8 @@ function structSig() {
   for (const L of Ls) {
     parts.push(L.id, L.type, L.locked ? 1 : 0);
     if (L.type === 'text') parts.push(L.autoW ? 1 : 0, L.bg.mode, L.stroke.on ? 1 : 0, L.shadow.on ? 1 : 0, L.fit && L.fit.on ? 1 : 0, L.font);
-    if (L.type === 'image') parts.push(L.fit, L.shadow.on ? 1 : 0, L.stroke.on ? 1 : 0, L.asset || '', L.checkSafe ? 1 : 0);
-    if (L.type === 'shape') parts.push(L.shape, L.fill.type, L.stroke.on ? 1 : 0, L.checkSafe ? 1 : 0);
+    if (L.type === 'image') parts.push(L.fit, L.mask || 'rect', L.shadow.on ? 1 : 0, L.stroke.on ? 1 : 0, L.asset || '', L.checkSafe ? 1 : 0);
+    if (L.type === 'shape') parts.push(L.shape, L.fill.type, L.stroke.on ? 1 : 0, L.shadow && L.shadow.on ? 1 : 0, L.checkSafe ? 1 : 0);
   }
   if (!Ls.length) { const s = state.project.settings; parts.push(s.showUI ? 1 : 0, state.project.pages.length); }
   return parts.join('|');
@@ -487,8 +487,9 @@ function imageSections(el, L) {
     row2(
       mini('가로 위치', rangeOnly({ get: lget('px'), set: lset('px', 'image') })),
       mini('세로 위치', rangeOnly({ get: lget('py'), set: lset('py', 'image') }))),
+    field('모양', selectCtl(IMAGE_MASKS, { get: () => lget('mask')() || 'rect', set: lset('mask', 'image') })),
     row2(
-      mini('모서리', numInput({ get: lget('radius'), set: lset('radius', 'image'), min: 0, max: 1000, unit: 'px' })),
+      (!L.mask || L.mask === 'rect') ? mini('모서리', numInput({ get: lget('radius'), set: lset('radius', 'image'), min: 0, max: 1000, unit: 'px' })) : h('div'),
       mini('좌우 반전', toggle({ get: lget('flipX'), set: lset('flipX', 'image') }))),
   ];
   el.append(section('이미지', kids));
@@ -512,9 +513,15 @@ function rangeOnly({ get, set }) {
 }
 
 /* ---------- 도형 ---------- */
+const SHAPE_KINDS = [
+  { v: 'rect', label: '사각형' }, { v: 'ellipse', label: '원' }, { v: 'arch', label: '아치' }, { v: 'star', label: '별 · 스티커' },
+  { v: 'heart', label: '하트' }, { v: 'ticket', label: '티켓 · 쿠폰' }, { v: 'bubble', label: '말풍선' },
+];
+const IMAGE_MASKS = [{ v: 'rect', label: '사각형' }, { v: 'ellipse', label: '원' }, { v: 'arch', label: '아치' }, { v: 'heart', label: '하트' }, { v: 'star', label: '별' }];
 function shapeSections(el, L) {
+  const kind = L.shape || 'rect';
   const kids = [
-    field('모양', seg([{ v: 'rect', label: '사각형' }, { v: 'ellipse', label: '원' }], { get: lget('shape'), set: lset('shape', 'shape'), small: true })),
+    field('모양', selectCtl(SHAPE_KINDS, { get: () => lget('shape')() || 'rect', set: lset('shape', 'shape') })),
     field('채우기', seg([{ v: 'solid', label: '단색' }, { v: 'linear', label: '그라데이션' }], { get: lget('fill.type'), set: lset('fill.type', 'shape'), small: true })),
     field(L.fill.type === 'linear' ? '시작 색' : '색', colorCtl({ get: lget('fill.color'), set: lset('fill.color', 'shape'), swatches: true })),
     field(L.fill.type === 'linear' ? '시작 진하기' : '불투명도', rangeNum({ get: lget('fill.alpha'), set: lset('fill.alpha', 'shape'), min: 0, max: 100, unit: '%', mult: 100 })),
@@ -524,10 +531,17 @@ function shapeSections(el, L) {
     kids.push(field('끝 진하기', rangeNum({ get: lget('fill.alpha2'), set: lset('fill.alpha2', 'shape'), min: 0, max: 100, unit: '%', mult: 100 })));
     kids.push(field('방향', seg([{ v: 180, label: '↓' }, { v: 0, label: '↑' }, { v: 90, label: '→' }, { v: 270, label: '←' }, { v: 135, label: '↘' }], { get: lget('fill.angle'), set: lset('fill.angle', 'shape'), small: true })));
   }
-  if (L.shape !== 'ellipse') kids.push(field('모서리', rangeNum({ get: () => Math.min(500, lget('radius')() || 0), set: lset('radius', 'shape'), min: 0, max: 500, unit: 'px' })));
+  if (kind === 'star') {
+    kids.push(field('꼭짓점', rangeNum({ get: lget('points'), set: lset('points', 'shape'), min: 3, max: 32, step: 1 })));
+    kids.push(field('안쪽 깊이', rangeNum({ get: lget('inner'), set: lset('inner', 'shape'), min: 10, max: 95, unit: '%', mult: 100 })));
+  }
+  if (kind === 'bubble') kids.push(field('꼬리', seg([{ v: 'left', label: '왼쪽' }, { v: 'right', label: '오른쪽' }], { get: () => lget('tail')() || 'left', set: lset('tail', 'shape'), small: true })));
+  if (kind === 'rect' || kind === 'ticket' || kind === 'bubble') kids.push(field('모서리', rangeNum({ get: () => Math.min(500, lget('radius')() || 0), set: lset('radius', 'shape'), min: 0, max: 500, unit: 'px' })));
   el.append(section('도형', kids));
   const stKids = L.stroke.on ? [field('색', colorCtl({ get: lget('stroke.color'), set: lset('stroke.color', 'shape') })), field('두께', rangeNum({ get: lget('stroke.width'), set: lset('stroke.width', 'shape'), min: 1, max: 60, unit: 'px' }))] : [];
   el.append(section('테두리', stKids, { key: 'stroke', right: toggle({ get: lget('stroke.on'), set: lset('stroke.on', 'shape') }), open: L.stroke.on }));
+  if (!L.shadow) L.shadow = { on: false, color: '#000000', alpha: 0.3, blur: 30, x: 0, y: 10 };
+  el.append(section('그림자', shadowKids(L, 'shape'), { key: 'shadow', right: toggle({ get: lget('shadow.on'), set: lset('shadow.on', 'shape') }), open: L.shadow.on }));
   el.append(section('검사', [field('안전영역', toggle({ get: () => !!lget('checkSafe')(), set: lset('checkSafe'), label: '이 도형도 가림 검사' }))]));
 }
 

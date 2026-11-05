@@ -10,7 +10,7 @@ import {
 } from './core.js';
 import { drawThumb } from './render.js';
 import { PLACEMENTS } from './overlay.js';
-import { TEMPLATES, TEXT_PRESETS, SHAPE_PRESETS } from './templates.js';
+import { TEMPLATES, TEMPLATE_CATS, TEXT_PRESETS, SHAPE_PRESETS } from './templates.js';
 import * as act from './actions.js';
 import { fitView, zoomTo, startTextEdit, finishTextEdit, enterCrop, exitCrop, setSpace, currentViolations } from './editor.js';
 import { pickFile } from './panels.js';
@@ -286,23 +286,54 @@ function buildAddPane() {
   renderLib();
 }
 let tplBuilt = false;
+/** 템플릿 갤러리 — 분류 칩 + 보이는 카드만 썸네일 그리기 (템플릿이 많아도 가볍게) */
 function buildTemplates() {
   const pane = $('#pane-templates');
-  if (tplBuilt) { pane.querySelectorAll('canvas[data-tpl]').forEach((c) => { const t = TEMPLATES.find((x) => x.id === c.dataset.tpl); drawThumb(c, t._page, 120); }); return; }
+  if (tplBuilt) { // 글꼴이 늦게 받아지면 이미 그린 썸네일만 다시
+    pane.querySelectorAll('canvas[data-tpl][data-drawn]').forEach((c) => { const t = TEMPLATES.find((x) => x.id === c.dataset.tpl); if (t && t._page) drawThumb(c, t._page, 120); });
+    return;
+  }
   tplBuilt = true;
   pane.innerHTML = '';
-  pane.append(h('p', { class: 'hint pad' }, '고르면 새 페이지로 들어가요. 회색 칸은 사진 자리 — 사진을 그 위로 끌어다 놓으면 바뀌어요. 글자는 모두 안전영역 안에 있어요.'));
+  let cat = TEMPLATE_CATS.some((c) => c.id === state.prefs.tplCat) ? state.prefs.tplCat : 'all';
+  const chips = h('div', { class: 'chips chips-sm tpl-cats' });
   const grid = h('div', { class: 'tpl-grid' });
-  const blank = h('button', { type: 'button', class: 'tpl', onclick: () => act.addPage() }, h('div', { class: 'tpl-th blank' }, '＋'), h('b', null, '빈 페이지'), h('span', null, '처음부터 직접'));
-  grid.append(blank);
-  for (const t of TEMPLATES) {
-    t._page = t.build();
-    const cv = h('canvas', { dataset: { tpl: t.id } });
-    grid.append(h('button', { type: 'button', class: 'tpl', onclick: () => act.insertTemplatePage(t.build()) },
-      h('div', { class: 'tpl-th' }, cv), h('b', null, t.name), h('span', null, t.desc)));
+  const draw = (cv) => {
+    const t = TEMPLATES.find((x) => x.id === cv.dataset.tpl);
+    if (!t) return;
+    if (!t._page) t._page = t.build();
     drawThumb(cv, t._page, 120);
-  }
-  pane.append(grid);
+    cv.dataset.drawn = '1';
+  };
+  const io = 'IntersectionObserver' in window
+    ? new IntersectionObserver((ents) => { for (const en of ents) if (en.isIntersecting) { io.unobserve(en.target); draw(en.target); } }, { root: pane, rootMargin: '400px 0px' })
+    : null;
+  const drawChips = () => {
+    chips.innerHTML = '';
+    for (const c of TEMPLATE_CATS) {
+      const n = c.id === 'all' ? TEMPLATES.length : TEMPLATES.filter((t) => t.cat === c.id).length;
+      chips.append(h('button', {
+        type: 'button', class: 'chip' + (cat === c.id ? ' on' : ''),
+        onclick: () => { cat = c.id; state.prefs.tplCat = cat; savePrefs(); drawChips(); drawGrid(); pane.scrollTop = 0; },
+      }, c.name, h('span', { class: 'chip-n' }, String(n))));
+    }
+  };
+  const drawGrid = () => {
+    grid.innerHTML = '';
+    if (cat === 'all') grid.append(h('button', { type: 'button', class: 'tpl', onclick: () => act.addPage() }, h('div', { class: 'tpl-th blank' }, '＋'), h('b', null, '빈 페이지'), h('span', null, '처음부터 직접')));
+    for (const t of TEMPLATES) {
+      if (cat !== 'all' && t.cat !== cat) continue;
+      const cv = h('canvas', { dataset: { tpl: t.id } });
+      grid.append(h('button', { type: 'button', class: 'tpl', title: `${t.name} — ${t.desc}`, onclick: () => act.insertTemplatePage(t.build()) },
+        h('div', { class: 'tpl-th' }, cv), h('b', null, t.name), h('span', null, t.desc)));
+      if (io) io.observe(cv); else draw(cv);
+    }
+  };
+  pane.append(
+    h('p', { class: 'hint pad' }, `템플릿 ${TEMPLATES.length}개 · 고르면 새 페이지로 들어가요. 사진 칸에 사진을 끌어다 놓으면 바뀌어요. 글자는 모두 안전영역 안에 있어요.`),
+    chips, grid);
+  drawChips();
+  drawGrid();
   bus.on('fonts', debounce(() => { if (state.prefs.leftTab === 'templates') buildTemplates(); }, 300));
 }
 function initLeft() {

@@ -1,25 +1,27 @@
 /* =========================================================================
    템플릿 · 텍스트 스타일 · 도형 프리셋
-   모든 글자는 '릴스+스토리 공통' 안전영역(x 65~1015, y 269~1248) 안에 들어가게 배치.
+   모든 글자는 '릴스+스토리 공통' 안전영역(x 65~1015, y 269~1248, 오른쪽 아래 아이콘 줄 제외) 안에 배치.
+   사진 칸(이미지 레이어)은 비워 두고, 사진을 끌어다 놓으면 채워진다.
    ========================================================================= */
-import { W, H, newPage, newLayer } from './core.js';
-import { syncText } from './render.js';
+import { W, H, newPage } from './core.js';
+import { T, IMG, SH, SOFT_SHADOW, PINK } from './tpl-kit.js';
+import { FASHION, LIVING } from './tpl-fashion-living.js';
+import { SALE, REVIEW, INFO, MOOD } from './tpl-more.js';
 
-const PINK = '#ff2e93';
+/** 갤러리 분류 */
+export const TEMPLATE_CATS = [
+  { id: 'all', name: '전체' },
+  { id: 'fashion', name: '패션' },
+  { id: 'living', name: '리빙' },
+  { id: 'sale', name: '할인·이벤트' },
+  { id: 'review', name: '후기·UGC' },
+  { id: 'info', name: '정보·비교' },
+  { id: 'mood', name: '무드·감성' },
+];
 
-function T(props, ax, ay) {
-  const L = newLayer('text', props);
-  L.x = ax; L.y = ay; L.w = 0; L.h = 0;
-  syncText(L);
-  return L;
-}
-const IMG = (props) => newLayer('image', props);
-const SH = (props) => newLayer('shape', props);
-const SOFT_SHADOW = { on: true, color: '#000000', alpha: 0.35, blur: 24, x: 0, y: 4 };
-
-export const TEMPLATES = [
+const BASE = [
   {
-    id: 'hook-top', name: '상단 훅 + 풀샷', desc: '사진 위 큰 카피 — 기본형',
+    id: 'hook-top', cat: 'sale', name: '상단 훅 + 풀샷', desc: '사진 위 큰 카피 — 기본형',
     build() {
       const pg = newPage(); pg.bg = '#1a1a1a';
       pg.layers.push(IMG({ name: '배경 이미지', x: 0, y: 0, w: W, h: H, fit: 'cover' }));
@@ -31,7 +33,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'review', name: '리뷰 카드', desc: '후기 한 줄로 신뢰 주기',
+    id: 'review', cat: 'review', name: '리뷰 카드', desc: '후기 한 줄로 신뢰 주기',
     build() {
       const pg = newPage(); pg.bg = '#222222';
       pg.layers.push(IMG({ name: '배경 이미지', x: 0, y: 0, w: W, h: H, fit: 'cover' }));
@@ -45,7 +47,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'sale', name: '할인 프로모션', desc: '큰 할인율 + 제품 + 가격',
+    id: 'sale', cat: 'sale', name: '할인 프로모션', desc: '큰 할인율 + 제품 + 가격',
     build() {
       const pg = newPage(); pg.bg = '#111111';
       pg.layers.push(T({ name: '행사명', text: 'BLACK FRIDAY', font: 'Montserrat', weight: 700, size: 40, color: '#ffffff', align: 'center', tracking: 30 }, W / 2, 300));
@@ -56,7 +58,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'launch', name: '신상품 런칭', desc: '제품명 크게 + 한 줄 설명',
+    id: 'launch', cat: 'living', name: '신상품 런칭', desc: '제품명 크게 + 한 줄 설명',
     build() {
       const pg = newPage(); pg.bg = '#1a1a1a';
       pg.layers.push(IMG({ name: '배경 이미지', x: 0, y: 0, w: W, h: H, fit: 'cover' }));
@@ -69,7 +71,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'compare', name: '비포 · 애프터', desc: '두 장을 나란히 비교',
+    id: 'compare', cat: 'info', name: '비포 · 애프터', desc: '두 장을 나란히 비교',
     build() {
       const pg = newPage(); pg.bg = '#f4f1ea';
       pg.layers.push(T({ name: '제목', text: '써보면 달라요', weight: 800, size: 76, color: '#111111', align: 'center', tracking: -2 }, W / 2, 300));
@@ -82,7 +84,7 @@ export const TEMPLATES = [
     },
   },
   {
-    id: 'ugc', name: 'UGC 후기 훅', desc: '인스타 스토리 느낌 줄 배경',
+    id: 'ugc', cat: 'review', name: 'UGC 후기 훅', desc: '인스타 스토리 느낌 줄 배경',
     build() {
       const pg = newPage(); pg.bg = '#1a1a1a';
       pg.layers.push(IMG({ name: '배경 이미지', x: 0, y: 0, w: W, h: H, fit: 'cover' }));
@@ -91,6 +93,17 @@ export const TEMPLATES = [
       return pg;
     },
   },
+];
+
+const base = (id) => BASE.find((t) => t.id === id);
+/** 갤러리 순서: 패션 → 리빙 → 할인·이벤트 → 후기·UGC → 정보·비교 → 무드·감성 */
+export const TEMPLATES = [
+  ...FASHION,
+  base('launch'), ...LIVING,
+  base('hook-top'), base('sale'), ...SALE,
+  base('review'), base('ugc'), ...REVIEW,
+  base('compare'), ...INFO,
+  ...MOOD,
 ];
 
 export const TEXT_PRESETS = [
@@ -117,6 +130,12 @@ export const SHAPE_PRESETS = [
   { id: 'gradT', label: '위 어둡게', back: true, props: { name: '상단 그라데이션', x: 0, y: 0, w: W, h: Math.round(H * 0.5), fill: { type: 'linear', color: '#000000', alpha: 0.65, color2: '#000000', alpha2: 0, angle: 180 } } },
   { id: 'dim', label: '전체 어둡게', back: true, props: { name: '어둡게', x: 0, y: 0, w: W, h: H, fill: { type: 'solid', color: '#000000', alpha: 0.3 } } },
   { id: 'divider', label: '구분선', props: { name: '구분선', w: 520, h: 6, radius: 3, fill: { type: 'solid', color: '#ffffff', alpha: 0.9 } } },
+  { id: 'burst', label: '세일 스티커', props: { name: '세일 스티커', shape: 'star', points: 18, inner: 0.84, w: 340, h: 340, rot: -10, fill: { type: 'solid', color: '#ffe14d', alpha: 1 } } },
+  { id: 'star', label: '별', props: { name: '별', shape: 'star', points: 5, inner: 0.48, w: 260, h: 250, fill: { type: 'solid', color: '#ffe14d', alpha: 1 } } },
+  { id: 'heart', label: '하트', props: { name: '하트', shape: 'heart', w: 240, h: 216, fill: { type: 'solid', color: PINK, alpha: 1 } } },
+  { id: 'ticket', label: '쿠폰', props: { name: '쿠폰', shape: 'ticket', w: 680, h: 260, radius: 24, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
+  { id: 'bubble', label: '말풍선', props: { name: '말풍선', shape: 'bubble', w: 600, h: 170, radius: 48, fill: { type: 'solid', color: '#ffffff', alpha: 1 } } },
+  { id: 'arch', label: '아치', props: { name: '아치', shape: 'arch', w: 560, h: 760, fill: { type: 'solid', color: '#efe8dd', alpha: 1 } } },
 ];
 
 export const SWATCHES = ['#ffffff', '#111111', '#6b7280', '#ff2e93', '#ff6b35', '#ffe14d', '#fbbf24', '#22c55e', '#22d3ee', '#3b82f6', '#a78bfa', '#f472b6', '#14b8a6', '#ef4444'];

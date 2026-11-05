@@ -25,6 +25,91 @@ export function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+/** 도형·이미지 모양 경로 — (0,0)~(w,h) 안에 그린다.
+ *  kind: rect · ellipse · arch(아치 창) · star(별·스티커) · heart · ticket(쿠폰) · bubble(말풍선)
+ *  o: { radius, points, inner, tail } */
+export function shapePath(ctx, kind, w, h, o = {}) {
+  const r = o.radius || 0;
+  switch (kind) {
+    case 'ellipse':
+      ctx.ellipse(w / 2, h / 2, Math.max(0.5, w / 2), Math.max(0.5, h / 2), 0, 0, Math.PI * 2);
+      return;
+    case 'arch': {
+      const rx = w / 2, ry = Math.min(h, w / 2);
+      ctx.moveTo(0, h);
+      ctx.lineTo(0, ry);
+      ctx.ellipse(rx, ry, Math.max(0.5, rx), Math.max(0.5, ry), 0, Math.PI, Math.PI * 2);
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      return;
+    }
+    case 'star': {
+      const n = clamp(Math.round(o.points || 5), 3, 40);
+      const inner = clamp(o.inner == null ? 0.5 : o.inner, 0.1, 0.98);
+      for (let i = 0; i < n * 2; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / n;
+        const k = i % 2 ? inner : 1;
+        const x = w / 2 + Math.cos(a) * (w / 2) * k, y = h / 2 + Math.sin(a) * (h / 2) * k;
+        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.closePath();
+      return;
+    }
+    case 'heart':
+      ctx.moveTo(w * 0.5, h * 0.24);
+      ctx.bezierCurveTo(w * 0.5, h * 0.2, w * 0.44, 0, w * 0.25, 0);
+      ctx.bezierCurveTo(w * 0.02, 0, 0, h * 0.24, 0, h * 0.33);
+      ctx.bezierCurveTo(0, h * 0.58, w * 0.22, h * 0.78, w * 0.5, h);
+      ctx.bezierCurveTo(w * 0.78, h * 0.78, w, h * 0.58, w, h * 0.33);
+      ctx.bezierCurveTo(w, h * 0.24, w * 0.98, 0, w * 0.75, 0);
+      ctx.bezierCurveTo(w * 0.56, 0, w * 0.5, h * 0.2, w * 0.5, h * 0.24);
+      ctx.closePath();
+      return;
+    case 'ticket': {
+      const nr = Math.max(1, Math.min(h * 0.16, w * 0.1, 46));
+      const cr = Math.max(0, Math.min(r, h / 2 - nr, w / 4));
+      const m = h / 2;
+      ctx.moveTo(cr, 0);
+      ctx.lineTo(w - cr, 0);
+      if (cr) ctx.arcTo(w, 0, w, cr, cr);
+      ctx.lineTo(w, m - nr);
+      ctx.arc(w, m, nr, -Math.PI / 2, Math.PI / 2, true);
+      ctx.lineTo(w, h - cr);
+      if (cr) ctx.arcTo(w, h, w - cr, h, cr);
+      ctx.lineTo(cr, h);
+      if (cr) ctx.arcTo(0, h, 0, h - cr, cr);
+      ctx.lineTo(0, m + nr);
+      ctx.arc(0, m, nr, Math.PI / 2, -Math.PI / 2, true);
+      ctx.lineTo(0, cr);
+      if (cr) ctx.arcTo(0, 0, cr, 0, cr);
+      ctx.closePath();
+      return;
+    }
+    case 'bubble': {
+      const th = Math.max(8, Math.min(h * 0.24, 48));
+      const bh = h - th;
+      roundRectPath(ctx, 0, 0, w, bh, Math.min(r || 40, bh / 2));
+      const left = o.tail !== 'right';
+      const base = Math.min(w * 0.16, 84);
+      const tx = left ? base : w - base;
+      const tw = th * 1.1;
+      ctx.moveTo(tx - tw / 2, bh - 2);
+      ctx.lineTo(tx + tw / 2, bh - 2);
+      ctx.lineTo(left ? tx - tw * 0.7 : tx + tw * 0.7, h);
+      ctx.closePath();
+      return;
+    }
+    default:
+      roundRectPath(ctx, 0, 0, w, h, r);
+  }
+}
+/** 이미지 모양(가려내기) 경로 */
+function maskPath(c, L) {
+  const k = L.mask || 'rect';
+  if (k === 'rect') roundRectPath(c, 0, 0, L.w, L.h, L.radius || 0);
+  else shapePath(c, k, L.w, L.h, L);
+}
+
 /* ---------- 텍스트 레이아웃 ---------- */
 export function textPads(L) {
   return L.bg && L.bg.mode && L.bg.mode !== 'none' ? { px: +L.bg.padX || 0, py: +L.bg.padY || 0 } : { px: 0, py: 0 };
@@ -224,10 +309,41 @@ function clearShadow(ctx) {
   ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
 }
 
-function drawPlaceholder(ctx, L, a) {
+// 템플릿 갤러리·페이지 썸네일의 빈 사진 칸 — 실제 사진 느낌의 차분한 톤 (편집 화면은 어두운 안내 칸)
+const SAMPLE_TONES = [['#d9cfc1', '#b9a993'], ['#c9d2c0', '#9fae98'], ['#e2cfc8', '#c3a69c'], ['#c6ced8', '#9aa6b5'], ['#d8c9b4', '#b49d82'], ['#d4ccd9', '#ada2b8'], ['#e6ddd0', '#cbbba5']];
+function hashStr(s) { let x = 0; for (const ch of String(s)) x = (x * 31 + ch.charCodeAt(0)) | 0; return Math.abs(x); }
+function drawSampleSlot(ctx, L) {
   ctx.save();
   ctx.beginPath();
-  roundRectPath(ctx, 0, 0, L.w, L.h, L.radius || 0);
+  maskPath(ctx, L);
+  ctx.clip();
+  const [c1, c2] = SAMPLE_TONES[hashStr(L.key || L.id) % SAMPLE_TONES.length];
+  const g = ctx.createLinearGradient(0, 0, L.w * 0.4, L.h);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, L.w, L.h);
+  // 빛 번짐 한 점 — 사진 같은 깊이
+  const rg = ctx.createRadialGradient(L.w * 0.32, L.h * 0.28, 0, L.w * 0.32, L.h * 0.28, Math.max(L.w, L.h) * 0.7);
+  rg.addColorStop(0, 'rgba(255,255,255,0.45)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = rg;
+  ctx.fillRect(0, 0, L.w, L.h);
+  if (L.w >= W * 0.95 && L.h >= H * 0.45) { ctx.restore(); return; } // 배경 사진 칸은 아이콘 없이 톤만
+  const s = Math.min(L.w, L.h), ic = clamp(s * 0.18, 24, 160);
+  const cx = L.w / 2, cy = L.h / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = Math.max(3, ic * 0.07);
+  ctx.lineJoin = 'round';
+  ctx.beginPath(); roundRectPath(ctx, cx - ic / 2, cy - ic * 0.38, ic, ic * 0.76, ic * 0.1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - ic * 0.38, cy + ic * 0.26); ctx.lineTo(cx - ic * 0.1, cy - ic * 0.04); ctx.lineTo(cx + ic * 0.08, cy + ic * 0.14); ctx.lineTo(cx + ic * 0.2, cy + ic * 0.04); ctx.lineTo(cx + ic * 0.38, cy + ic * 0.26); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + ic * 0.2, cy - ic * 0.16, ic * 0.08, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function drawPlaceholder(ctx, L, a, thumb) {
+  if (thumb && !L.asset) { drawSampleSlot(ctx, L); return; }
+  ctx.save();
+  ctx.beginPath();
+  maskPath(ctx, L);
   ctx.clip();
   const g = ctx.createLinearGradient(0, 0, L.w, L.h);
   g.addColorStop(0, '#3d414c'); g.addColorStop(1, '#25272e');
@@ -258,7 +374,7 @@ function drawPlaceholder(ctx, L, a) {
 function paintImage(c, L, a, r) {
   c.save();
   c.beginPath();
-  roundRectPath(c, 0, 0, L.w, L.h, L.radius || 0);
+  maskPath(c, L);
   c.clip();
   const adj = L.adj;
   if (adj && (adj.b !== 100 || adj.c !== 100 || adj.s !== 100) && 'filter' in c) {
@@ -275,7 +391,7 @@ function drawImageLayer(ctx, L, o) {
   const a = assets.get(L.asset);
   if (!a || !a.img) {
     if (L.asset && (!a || (a.status !== 'missing' && a.status !== 'error'))) assets.load(L.asset);
-    if (!o.export) drawPlaceholder(ctx, L, a); // 내보낼 땐 빈 칸 안내 그림을 넣지 않음
+    if (!o.export) drawPlaceholder(ctx, L, a, o.thumb); // 내보낼 땐 빈 칸 안내 그림을 넣지 않음
     return;
   }
   const iw = a.w || a.img.naturalWidth, ih = a.h || a.img.naturalHeight;
@@ -301,7 +417,20 @@ function drawImageLayer(ctx, L, o) {
     ctx.save();
     ctx.beginPath();
     const sw = +L.stroke.width;
-    roundRectPath(ctx, sw / 2, sw / 2, L.w - sw, L.h - sw, Math.max(0, (L.radius || 0) - sw / 2));
+    if (!L.mask || L.mask === 'rect') {
+      roundRectPath(ctx, sw / 2, sw / 2, L.w - sw, L.h - sw, Math.max(0, (L.radius || 0) - sw / 2));
+    } else { // 모양을 따라 안쪽으로 테두리
+      maskPath(ctx, L);
+      ctx.clip();
+      ctx.beginPath();
+      maskPath(ctx, L);
+      ctx.lineWidth = sw * 2;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = L.stroke.color;
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
     ctx.lineWidth = sw;
     ctx.strokeStyle = L.stroke.color;
     ctx.stroke();
@@ -324,14 +453,15 @@ function fillStyleOf(ctx, L) {
   }
   return rgba(f.color || '#000000', f.alpha ?? 1);
 }
-function drawShapeLayer(ctx, L) {
+function drawShapeLayer(ctx, L, o = {}) {
   ctx.beginPath();
-  if (L.shape === 'ellipse') ctx.ellipse(L.w / 2, L.h / 2, Math.max(0.5, L.w / 2), Math.max(0.5, L.h / 2), 0, 0, Math.PI * 2);
-  else roundRectPath(ctx, 0, 0, L.w, L.h, L.radius || 0);
+  shapePath(ctx, L.shape || 'rect', L.w, L.h, L);
   ctx.fillStyle = fillStyleOf(ctx, L);
-  ctx.fill();
+  if (L.shadow && L.shadow.on) { ctx.save(); applyShadow(ctx, L.shadow, o.px || 1); ctx.fill(); ctx.restore(); }
+  else ctx.fill();
   if (L.stroke && L.stroke.on && L.stroke.width > 0) {
     ctx.lineWidth = +L.stroke.width;
+    ctx.lineJoin = 'round';
     ctx.strokeStyle = L.stroke.color;
     ctx.stroke();
   }
@@ -414,7 +544,7 @@ export function drawLayer(ctx, L, o = {}) {
   ctx.translate(-L.w / 2, -L.h / 2);
   if (L.type === 'text') drawTextLayer(ctx, L, o);
   else if (L.type === 'image') drawImageLayer(ctx, L, o);
-  else drawShapeLayer(ctx, L);
+  else drawShapeLayer(ctx, L, o);
   ctx.restore();
 }
 
@@ -460,5 +590,5 @@ export function drawThumb(canvas, page, cssW) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, w, h);
   ctx.setTransform(s, 0, 0, s, 0, 0);
-  drawPage(ctx, page, { px: s });
+  drawPage(ctx, page, { px: s, thumb: true });
 }

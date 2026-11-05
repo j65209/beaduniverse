@@ -204,12 +204,15 @@ export const TEXT_DEFAULTS = {
 export const IMAGE_DEFAULTS = {
   type: 'image', name: '이미지', asset: null,
   fit: 'cover', zoom: 1, px: 0.5, py: 0.5, radius: 0, flipX: false,
+  mask: 'rect',             // 모양: rect · ellipse · arch · heart · star
   adj: { b: 100, c: 100, s: 100 },
   shadow: { on: false, color: '#000000', alpha: 0.35, blur: 40, x: 0, y: 16 },
   stroke: { on: false, color: '#ffffff', width: 8 },
 };
 export const SHAPE_DEFAULTS = {
-  type: 'shape', name: '사각형', shape: 'rect',
+  type: 'shape', name: '사각형', shape: 'rect',   // rect · ellipse · arch · star · heart · ticket · bubble
+  points: 5, inner: 0.5, tail: 'left',            // 별 꼭짓점 수·안쪽 깊이, 말풍선 꼬리
+  shadow: { on: false, color: '#000000', alpha: 0.3, blur: 30, x: 0, y: 10 },
   fill: { type: 'solid', color: '#ff2e93', alpha: 1, color2: '#000000', alpha2: 0, angle: 180 },
   radius: 0,
   stroke: { on: false, color: '#ffffff', width: 4 },
