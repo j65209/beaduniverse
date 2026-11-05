@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>메일 발송 · 브라이트비드 오피스</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>
+  /* 오피스 잠금 연동 — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음 */
+  (function () {
+    try { if (localStorage.getItem('brightbeed_unlocked') !== '1') location.replace('../?from=mailer'); } catch (e) { /* noop */ }
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  :root{
+    --bg:#fefcf5; --card:#fff; --line:#e8e2d2; --line-2:#d3cbb6;
+    --text:#0a0b0d; --text-2:#3a3e46; --text-3:#7a7e86;
+    --accent:#f97316; --accent-ink:#c2410c; --accent-soft:rgba(249,115,22,.09);
+    --ok:#15803d; --ok-bg:#e8f5e9; --fail:#b42318; --fail-bg:#fdecea; --skip:#6b7280; --skip-bg:#f1f1ef;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:-0.01em}
+  a{color:inherit}
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1240px;margin:0 auto;padding:20px 24px 60px}
+
+  /* 상단바 */
+  .top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .back{font-size:13px;color:var(--text-2);text-decoration:none;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card)}
+  .back:hover{border-color:var(--line-2)}
+  .title{font-size:22px;font-weight:800;margin:0;display:flex;align-items:center;gap:8px}
+  .title small{font-size:12px;font-weight:600;color:var(--accent-ink);border:1px solid rgba(249,115,22,.45);border-radius:4px;padding:1px 6px}
+  .spacer{flex:1}
+  .conn{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#c9c4b5;flex:none}
+  .conn.on .dot{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+  .conn.err .dot{background:#ef4444}
+  .conn b{color:var(--text)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13.5px;font-weight:600;border-radius:10px;padding:9px 14px;border:1px solid var(--line-2);background:var(--card);white-space:nowrap}
+  .btn:hover{border-color:var(--text-3)}
+  .btn.sm{font-size:12.5px;padding:6px 10px;border-radius:999px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-ink);border-color:var(--accent-ink)}
+  .btn.dark{background:var(--text);border-color:var(--text);color:#fff}
+  .btn.big{font-size:15.5px;padding:13px 18px;border-radius:12px;width:100%}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* 레이아웃 */
+  .grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px}
+  .card h2{font-size:15px;font-weight:800;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+  .card h2 .hint{font-size:12px;font-weight:500;color:var(--text-3)}
+  .col{display:flex;flex-direction:column;gap:18px}
+  label.f{display:block;font-size:12.5px;font-weight:700;color:var(--text-2);margin:0 0 6px}
+  .field{margin-bottom:14px}
+  .in{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fffdf8;outline:none;font-size:14px}
+  .in:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:#fff}
+  textarea.in{resize:vertical;line-height:1.65}
+  #body{min-height:380px}
+  #recipients{min-height:180px;font-size:13.5px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .muted{font-size:12px;color:var(--text-3)}
+
+  /* 첨부 */
+  .files{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;background:#faf7ee;border:1px solid var(--line);border-radius:999px;padding:5px 6px 5px 11px}
+  .chip .x{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:var(--text-3)}
+  .chip .x:hover{background:#efeadb;color:var(--text)}
+  .chip.up{opacity:.6}
+
+  /* 받는 사람 요약 */
+  .stats{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+  .stat{font-size:12px;border-radius:999px;padding:4px 10px;background:var(--skip-bg);color:var(--text-2)}
+  .stat b{font-weight:800}
+  .stat.go{background:var(--accent-soft);color:var(--accent-ink)}
+  .stat.warn{background:var(--fail-bg);color:var(--fail)}
+  .send-box{border-top:1px dashed var(--line);margin-top:4px;padding-top:14px}
+  .interval{width:72px;text-align:center}
+
+  /* 결과 */
+  .bar{height:6px;background:#f1ede2;border-radius:999px;overflow:hidden;margin:2px 0 12px}
+  .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+  .list{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td{padding:8px 10px;border-bottom:1px solid #f1ede2;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.n{width:36px;color:var(--text-3);text-align:right;font-variant-numeric:tabular-nums}
+  td.e{word-break:break-all}
+  td.s{width:84px}
+  td.m{color:var(--text-3);font-size:12px}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 7px;background:var(--skip-bg);color:var(--skip)}
+  .badge.sent{background:var(--ok-bg);color:var(--ok)}
+  .badge.fail{background:var(--fail-bg);color:var(--fail)}
+  .badge.sending{background:var(--accent-soft);color:var(--accent-ink);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.45}}
+  .empty{padding:26px 12px;text-align:center;color:var(--text-3);font-size:13px}
+
+  /* 안내 배너 */
+  .banner{display:flex;gap:12px;align-items:center;background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;font-size:13.5px}
+  .banner b{color:var(--accent-ink)}
+  .banner .spacer{flex:1}
+
+  /* 모달 */
+  .modal{position:fixed;inset:0;background:rgba(10,11,13,.38);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:50}
+  .modal.open{display:flex}
+  .sheet{background:var(--card);border-radius:18px;max-width:640px;width:100%;padding:22px 22px 18px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+  .sheet h3{margin:0 0 4px;font-size:18px;font-weight:800}
+  .sheet .sub{margin:0 0 16px;color:var(--text-3);font-size:13px}
+  .step{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  .step h4{margin:0 0 8px;font-size:14px;display:flex;gap:8px;align-items:center}
+  .step h4 span{width:22px;height:22px;border-radius:50%;background:var(--text);color:#fff;font-size:12px;display:grid;place-items:center}
+  .step ol{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.75;color:var(--text-2)}
+  .step code{background:#f4f1e8;border-radius:4px;padding:1px 5px;font-size:12px}
+  .codebox{width:100%;height:120px;font-family:ui-monospace,Menlo,monospace;font-size:11px;margin-top:10px;display:none}
+  .sheet .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+  .kv{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;font-size:13.5px;margin:4px 0 14px}
+  .kv dt{color:var(--text-3)}
+  .kv dd{margin:0;font-weight:600;word-break:break-all}
+
+  /* 토스트 */
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;font-size:13.5px;
+    padding:11px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;max-width:min(560px,calc(100vw - 32px));z-index:80;white-space:pre-line}
+  #toast.show{opacity:1;transform:translateX(-50%)}
+  #toast.bad{background:var(--fail)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="../">← 오피스</a>
+    <h1 class="title">📨 메일 발송 <small>TOOL</small></h1>
+    <div class="spacer"></div>
+    <div class="conn" id="conn"><span class="dot"></span><span id="connText">연결 안 됨</span>
+      <button class="btn sm" id="openConn">연결 설정</button></div>
+  </div>
+
+  <div class="banner" id="setupBanner" hidden>
+    <div>📮 <b>처음 한 번만 연결</b>하면 돼요. 보내는 구글 계정(예: brightbeed@gmail.com)에 발송 서버를 만들고 주소를 넣어 주세요.</div>
+    <div class="spacer"></div>
+    <button class="btn primary" id="bannerConn">연결하기</button>
+  </div>
+
+  <div class="grid">
+    <!-- 왼쪽: 메일 내용 -->
+    <div class="card">
+      <h2>✍️ 메일 내용 <span class="hint" id="saveState"></span></h2>
+      <div class="field">
+        <label class="f" for="subject">제목</label>
+        <input class="in" id="subject" placeholder="예) [협업 제안] 브라이트비드 인플루언서 공동구매">
+      </div>
+      <div class="field">
+        <label class="f" for="name">보내는 사람 이름</label>
+        <input class="in" id="name" placeholder="예) 브라이트비드">
+      </div>
+      <div class="field">
+        <label class="f" for="body">본문</label>
+        <textarea class="in" id="body" placeholder="받는 사람에게 보낼 본문"></textarea>
+      </div>
+      <div class="field">
+        <label class="f">첨부파일</label>
+        <div class="files" id="files"></div>
+        <div class="row">
+          <button class="btn sm" id="addFile">＋ 파일 추가</button>
+          <span class="muted">회사소개서 PDF 등 · 한 번 올리면 계속 붙어요</span>
+          <input type="file" id="fileInput" multiple hidden>
+        </div>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:4px">
+        <button class="btn" id="testBtn">나에게 테스트 발송</button>
+        <button class="btn dark" id="saveBtn">내용 저장</button>
+      </div>
+    </div>
+
+    <!-- 오른쪽: 받는 사람 · 발송 · 결과 -->
+    <div class="col">
+      <div class="card">
+        <h2>👥 받는 사람 <span class="hint">이메일만 붙여넣으면 돼요</span></h2>
+        <textarea class="in" id="recipients" placeholder="이메일을 붙여넣으세요&#10;줄바꿈 · 쉼표 · 공백 어떻게 섞여 있어도 이메일만 골라내요&#10;&#10;a@brand.com&#10;b@brand.co.kr"></textarea>
+        <div class="stats" id="stats"></div>
+        <div class="send-box">
+          <div class="row" style="margin-bottom:12px">
+            <span class="muted">한 통 보내고</span>
+            <input class="in interval" id="interval" type="number" min="1" max="60" value="3">
+            <span class="muted">초 쉬기 · 개인 지메일은 하루 100명까지 (하루 30~50곳 권장)</span>
+          </div>
+          <button class="btn primary big" id="sendBtn" disabled>발송 시작</button>
+          <button class="btn big" id="stopBtn" hidden>멈춤 (지금 보내는 메일까지만)</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📋 발송 결과 <span class="hint" id="resultHint"></span>
+          <span class="spacer"></span>
+          <a class="btn sm" id="logLink" target="_blank" rel="noopener" hidden>기록 시트 ↗</a>
+          <button class="btn sm" id="clearResults">비우기</button></h2>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="list"><table><tbody id="results"><tr><td class="empty" colspan="4">아직 보낸 메일이 없어요</td></tr></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 연결 설정 -->
+<div class="modal" id="connModal">
+  <div class="sheet">
+    <h3>메일 발송 연결 설정</h3>
+    <p class="sub">메일은 아래에서 만드는 발송 서버의 구글 계정으로 나가요. 이 연결 정보는 이 브라우저에만 저장돼요.</p>
+
+    <div id="connInfo" hidden>
+      <dl class="kv">
+        <dt>보내는 계정</dt><dd id="kvSender">—</dd>
+        <dt>오늘 남은 한도</dt><dd id="kvQuota">—</dd>
+      </dl>
+      <div class="step">
+        <h4>💻 다른 PC에서도 쓰려면</h4>
+        <div class="muted" style="margin-bottom:10px">연결 코드를 복사해서 다른 PC의 이 화면 「연결 코드」 칸에 붙여넣으면 바로 연결돼요.</div>
+        <div class="row"><button class="btn sm" id="copyLinkCode">연결 코드 복사</button>
+          <button class="btn sm" id="disconnect">이 PC에서 연결 해제</button></div>
+      </div>
+    </div>
+
+    <div id="connSetup">
+      <div class="step">
+        <h4><span>1</span>발송 서버 코드 복사</h4>
+        <div class="row"><button class="btn primary sm" id="copyServer">서버 코드 복사</button>
+          <span class="muted" id="copyServerState">이 PC 전용 발송 키가 들어간 코드예요</span></div>
+        <textarea class="in codebox" id="serverCode" readonly></textarea>
+      </div>
+      <div class="step">
+        <h4><span>2</span>보내는 구글 계정에 서버 만들기 (처음 한 번)</h4>
+        <ol>
+          <li>보내는 계정(brightbeed@gmail.com)으로 로그인한 상태에서 <a href="https://script.new" target="_blank" rel="noopener"><b>script.new</b></a> 열기</li>
+          <li>원래 있던 코드를 지우고 복사한 코드 붙여넣기 → 저장 (<code>Ctrl+S</code>)</li>
+          <li>오른쪽 위 <b>배포 → 새 배포</b> → 유형 선택 톱니바퀴에서 <b>웹 앱</b></li>
+          <li>다음 사용자 인증 정보로 실행: <b>나</b> · 액세스 권한: <b>모든 사용자</b> → <b>배포</b></li>
+          <li>권한 요청이 뜨면 계정 선택 → <b>고급 → (안전하지 않음)으로 이동 → 허용</b> (내 계정 스크립트라 뜨는 경고예요)</li>
+          <li>나온 <b>웹 앱 URL</b> 복사</li>
+        </ol>
+      </div>
+      <div class="step">
+        <h4><span>3</span>웹 앱 URL 붙여넣고 연결</h4>
+        <input class="in" id="urlInput" placeholder="https://script.google.com/macros/s/…/exec  (또는 다른 PC에서 복사한 연결 코드)">
+        <div class="row" style="margin-top:10px"><button class="btn primary" id="connectBtn">연결</button>
+          <span class="muted" id="connectState"></span></div>
+      </div>
+    </div>
+    <div class="actions"><button class="btn" data-close>닫기</button></div>
+  </div>
+</div>
+
+<!-- 발송 확인 -->
+<div class="modal" id="confirmModal">
+  <div class="sheet" style="max-width:520px">
+    <h3 id="cfTitle">발송할까요?</h3>
+    <p class="sub" id="cfSub"></p>
+    <dl class="kv" id="cfKv"></dl>
+    <div class="actions"><button class="btn" data-close>취소</button><button class="btn primary" id="cfGo">보내기</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const LS = { conn: 'bb_mailer_conn_v1', pendingKey: 'bb_mailer_pending_key_v1', draft: 'bb_mailer_draft_v1', rcpt: 'bb_mailer_recipients_v1' };
+  const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+  const LINK_PREFIX = 'BBMAIL1.';
+  const DEFAULT_SUBJECT = '[협업 제안] 브라이트비드 인플루언서 공동구매 | 단일 공구 최고 매출 3억';
+  const DEFAULT_BODY = [
+    '안녕하세요, 대표님.',
+    '육아·리빙 공동구매 벤더 브라이트비드입니다.',
+    '',
+    '귀사 제품을 저희 인플루언서 공동구매로 선보이고 싶어 연락드렸습니다.',
+    '',
+    '■ 브라이트비드 공동구매',
+    '· 팔로워 1만~25만 인플루언서 셀러 150명 네트워크 (육아 특화)',
+    '· 육아 단일 공구 최고 매출 3억 원 / 리빙 단일 공구 최고 1억 원',
+    '· 셀러 매칭부터 공구 운영·정산까지 직접 진행 (평균 3~7일 집중 판매)',
+    '',
+    '■ 진행 조건 (모두 협의 가능)',
+    '· 배송: 위탁 배송',
+    '· 발주: 일일 발주',
+    '· 정산: 익월 10일',
+    '· 수수료: 25~30% (셀러·플랫폼 수수료 포함)',
+    '',
+    '자세한 내용은 첨부한 회사소개서에 담았습니다.',
+    '제품 리스트만 공유해 주시면 맞는 인플루언서 구성과 진행안을 바로 제안드리겠습니다.',
+    '',
+    '감사합니다.',
+    '',
+    '브라이트비드 드림',
+    'brightbeed@gmail.com',
+    '',
+    '※ 제안 메일을 원치 않으시면 「수신거부」라고 회신해 주세요.',
+  ].join('\n');
+
+  const lsGet = (k, fallback) => { try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); } catch (e) { return fallback; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 저장공간 부족 등 */ } };
+  const lsDel = (k) => { try { localStorage.removeItem(k); } catch (e) { /* noop */ } };
+
+  const state = {
+    conn: lsGet(LS.conn, null),          // { url, key }
+    server: null,                        // { sender, remaining, logUrl }
+    draft: lsGet(LS.draft, { subject: DEFAULT_SUBJECT, name: '브라이트비드', body: DEFAULT_BODY, interval: 3, attachments: [], dirty: false }),
+    sent: new Set(),                     // 이미 보낸 주소 (서버 기록)
+    running: false,
+    stop: false,
+    rows: [],                            // 발송 결과 표
+  };
+
+  /* ---------------------------------------------------------------- 공통 */
+  let toastTimer;
+  function toast(msg, bad) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'show' + (bad ? ' bad' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = bad ? 'bad' : ''; }, bad ? 6000 : 3500);
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const fmtSize = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+  const timeNow = () => new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+  async function api(action, payload, conn) {
+    const c = conn || state.conn;
+    if (!c) throw new Error('먼저 연결 설정을 해 주세요.');
+    let res;
+    try {
+      res = await fetch(c.url, { method: 'POST', body: JSON.stringify(Object.assign({ key: c.key, action }, payload || {})) });
+    } catch (e) {
+      throw new Error('발송 서버에 연결할 수 없어요. 웹 앱 URL과 액세스 권한(모든 사용자)을 확인해 주세요.');
+    }
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch (e) {
+      throw new Error('서버 응답을 읽을 수 없어요. 배포할 때 액세스 권한을 「모든 사용자」로 했는지 확인해 주세요.');
+    }
+    if (data && data.code === 'auth') throw new Error(data.error || '발송 키가 맞지 않아요.');
+    return data;
+  }
+
+  /* ---------------------------------------------------------------- 연결 */
+  function renderConn() {
+    const box = $('conn');
+    const s = state.server;
+    box.classList.toggle('on', !!s);
+    box.classList.toggle('err', !!state.conn && !s);
+    $('connText').innerHTML = s
+      ? '<b></b> · 오늘 남은 한도 <b></b>건'
+      : (state.conn ? '연결 확인 중…' : '연결 안 됨');
+    if (s) {
+      const bs = $('connText').querySelectorAll('b');
+      bs[0].textContent = s.sender || '보내는 계정';
+      bs[1].textContent = s.remaining;
+    }
+    $('setupBanner').hidden = !!state.conn;
+    $('logLink').hidden = !(s && s.logUrl);
+    if (s && s.logUrl) $('logLink').href = s.logUrl;
+    $('connInfo').hidden = !s;
+    $('connSetup').hidden = !!s;
+    if (s) { $('kvSender').textContent = s.sender || '—'; $('kvQuota').textContent = s.remaining + '건'; }
+    updateSendButton();
+  }
+
+  async function connect(conn, quiet) {
+    const r = await api('ping', null, conn);
+    if (!r.ok) throw new Error(r.error || '연결에 실패했어요.');
+    state.conn = conn;
+    lsSet(LS.conn, conn);
+    lsDel(LS.pendingKey);
+    state.server = { sender: r.sender, remaining: r.remaining, logUrl: r.logUrl };
+    // 서버에 저장된 내용 불러오기 (이 PC에서 저장 안 한 수정이 있으면 그걸 유지)
+    if (r.template && !state.draft.dirty) {
+      state.draft = Object.assign({}, state.draft, r.template, { dirty: false });
+      lsSet(LS.draft, state.draft);
+      fillForm();
+      $('saveState').textContent = r.template.savedAt ? '저장된 내용 불러옴' : '';
+    }
+    renderConn();
+    refreshSent();
+    if (!quiet) toast('연결됐어요 · ' + (r.sender || '') + ' · 오늘 남은 한도 ' + r.remaining + '건');
+  }
+
+  async function refreshSent() {
+    try {
+      const r = await api('sent');
+      if (r.ok) { state.sent = new Set(r.emails || []); renderStats(); }
+    } catch (e) { /* 다음에 다시 */ }
+  }
+
+  function newKey() {
+    const a = new Uint8Array(18);
+    crypto.getRandomValues(a);
+    return Array.from(a, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 30);
+  }
+
+  async function serverCode() {
+    let key = (state.conn && state.conn.key) || lsGet(LS.pendingKey, null);
+    if (!key) { key = newKey(); lsSet(LS.pendingKey, key); }
+    const res = await fetch('server.gs?v=' + Date.now());
+    if (!res.ok) throw new Error('서버 코드를 불러오지 못했어요.');
+    const code = (await res.text()).replace('__MAIL_KEY__', key);
+    return code;
+  }
+
+  function parseLinkCode(text) {
+    const t = text.trim();
+    if (!t.startsWith(LINK_PREFIX)) return null;
+    try {
+      const o = JSON.parse(decodeURIComponent(escape(atob(t.slice(LINK_PREFIX.length)))));
+      return o && o.url && o.key ? { url: o.url, key: o.key } : null;
+    } catch (e) { return null; }
+  }
+  function makeLinkCode(conn) {
+    return LINK_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify({ url: conn.url, key: conn.key }))));
+  }
+
+  /* ---------------------------------------------------------------- 메일 내용 */
+  function fillForm() {
+    $('subject').value = state.draft.subject || '';
+    $('name').value = state.draft.name || '';
+    $('body').value = state.draft.body || '';
+    $('interval').value = state.draft.interval || 3;
+    renderFiles();
+  }
+  function readForm() {
+    state.draft.subject = $('subject').value;
+    state.draft.name = $('name').value;
+    state.draft.body = $('body').value;
+    const iv = Number($('interval').value);
+    state.draft.interval = Number.isFinite(iv) ? Math.min(60, Math.max(1, iv)) : 3;
+  }
+  function markDirty() {
+    readForm();
+    state.draft.dirty = true;
+    lsSet(LS.draft, state.draft);
+    $('saveState').textContent = '저장 안 됨';
+    updateSendButton();
+  }
+
+  function renderFiles(uploading) {
+    const box = $('files');
+    box.textContent = '';
+    (state.draft.attachments || []).forEach((f, i) => {
+      const c = document.createElement('span');
+      c.className = 'chip';
+      c.append('📎 ' + f.name + ' · ' + fmtSize(f.size || 0));
+      const x = document.createElement('button');
+      x.className = 'x'; x.title = '첨부 빼기'; x.textContent = '✕';
+      x.onclick = () => { state.draft.attachments.splice(i, 1); markDirty(); renderFiles(); };
+      c.append(x);
+      box.append(c);
+    });
+    (uploading || []).forEach((name) => {
+      const c = document.createElement('span');
+      c.className = 'chip up';
+      c.textContent = '⏳ ' + name + ' 올리는 중…';
+      box.append(c);
+    });
+    if (!box.children.length) {
+      const m = document.createElement('span');
+      m.className = 'muted'; m.textContent = '첨부 없음';
+      box.append(m);
+    }
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1] || '');
+      r.onerror = () => reject(new Error('파일을 읽지 못했어요: ' + file.name));
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function addFiles(files) {
+    if (!state.server) { openConn(); toast('첨부파일은 연결한 다음에 올릴 수 있어요.', true); return; }
+    const list = Array.from(files);
+    renderFiles(list.map((f) => f.name));
+    for (const f of list) {
+      if (f.size > 20 * 1024 * 1024) { toast(f.name + ' — 20MB 이하 파일만 첨부할 수 있어요.', true); continue; }
+      try {
+        const data = await fileToBase64(f);
+        const r = await api('upload', { file: { name: f.name, mimeType: f.type || 'application/octet-stream', data } });
+        if (!r.ok) throw new Error(r.error || '업로드 실패');
+        state.draft.attachments = (state.draft.attachments || []).concat([r.file]);
+        markDirty();
+      } catch (e) { toast(e.message, true); }
+    }
+    renderFiles();
+  }
+
+  async function saveTemplate(quiet) {
+    readForm();
+    const t = { subject: state.draft.subject, name: state.draft.name, body: state.draft.body, interval: state.draft.interval, attachments: state.draft.attachments || [] };
+    const r = await api('saveTemplate', { template: t });
+    if (!r.ok) throw new Error(r.error || '저장 실패');
+    state.draft.dirty = false;
+    lsSet(LS.draft, state.draft);
+    $('saveState').textContent = '저장됨 · ' + timeNow();
+    if (!quiet) toast('저장했어요. 다른 PC에서 열어도 같은 내용이 나와요.');
+  }
+
+  /* ---------------------------------------------------------------- 받는 사람 */
+  function parseRecipients() {
+    const text = $('recipients').value;
+    const seen = new Set();
+    const fresh = [], already = [], badLines = [];
+    let dup = 0;
+    text.split(/\r?\n/).forEach((line) => {
+      const t = line.trim();
+      if (!t) return;
+      const found = t.match(EMAIL_RE);
+      if (!found) {
+        t.split(/[\s,;]+/).filter((w) => w && /@/.test(w)).forEach((w) => badLines.push(w));
+        if (!/@/.test(t)) badLines.push(t);
+        return;
+      }
+      found.forEach((e) => {
+        const k = e.toLowerCase();
+        if (seen.has(k)) { dup++; return; }
+        seen.add(k);
+        (state.sent.has(k) ? already : fresh).push(e);
+      });
+    });
+    return { fresh, already, dup, bad: badLines };
+  }
+
+  function renderStats() {
+    const p = parseRecipients();
+    const box = $('stats');
+    box.textContent = '';
+    const add = (cls, label, n, title) => {
+      if (!n && cls !== 'go') return;
+      const s = document.createElement('span');
+      s.className = 'stat ' + cls;
+      s.innerHTML = label + ' <b></b>';
+      s.querySelector('b').textContent = n;
+      if (title) s.title = title;
+      box.append(s);
+    };
+    add('go', '보낼 주소', p.fresh.length);
+    add('', '이미 보낸 주소 (건너뜀)', p.already.length, p.already.slice(0, 30).join('\n'));
+    add('', '중복 제외', p.dup);
+    add('warn', '이메일 아님', p.bad.length, p.bad.slice(0, 30).join('\n'));
+    updateSendButton(p);
+    return p;
+  }
+
+  function updateSendButton(p) {
+    p = p || parseRecipients();
+    const btn = $('sendBtn');
+    const n = p.fresh.length;
+    const limit = state.server ? Math.min(n, state.server.remaining) : n;
+    btn.disabled = state.running || !state.server || !n || !$('subject').value.trim() || !$('body').value.trim();
+    const any = n + p.already.length > 0;
+    btn.textContent = !state.server ? '연결하면 보낼 수 있어요'
+      : !n ? (any ? '새로 보낼 주소가 없어요 (이미 보낸 주소는 건너뛰어요)' : '보낼 주소를 붙여넣어 주세요')
+      : (limit < n ? `발송 시작 (오늘 한도로 ${limit}건)` : `발송 시작 (${n}건)`);
+  }
+
+  /* ---------------------------------------------------------------- 발송 결과 표 */
+  const LABEL = { wait: '대기', sending: '보내는 중', sent: '발송완료', fail: '실패', skip: '건너뜀' };
+  function renderRows() {
+    const tb = $('results');
+    tb.textContent = '';
+    if (!state.rows.length) {
+      tb.innerHTML = '<tr><td class="empty" colspan="4">아직 보낸 메일이 없어요</td></tr>';
+      $('barFill').style.width = '0';
+      $('resultHint').textContent = '';
+      return;
+    }
+    state.rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      const td = (cls, v) => { const d = document.createElement('td'); d.className = cls; if (v instanceof Node) d.append(v); else d.textContent = v; tr.append(d); };
+      const b = document.createElement('span');
+      b.className = 'badge ' + r.st; b.textContent = LABEL[r.st];
+      td('n', String(i + 1)); td('e', r.email); td('s', b); td('m', r.memo || '');
+      tb.append(tr);
+    });
+    const done = state.rows.filter((r) => r.st !== 'wait' && r.st !== 'sending').length;
+    $('barFill').style.width = Math.round(done / state.rows.length * 100) + '%';
+    const c = (st) => state.rows.filter((r) => r.st === st).length;
+    $('resultHint').textContent = `보냄 ${c('sent')} · 실패 ${c('fail')} · 건너뜀 ${c('skip')}`;
+  }
+  function setRow(i, st, memo) {
+    state.rows[i].st = st;
+    state.rows[i].memo = memo || '';
+    renderRows();
+    const tr = $('results').children[i];
+    if (tr && st === 'sending') tr.scrollIntoView({ block: 'nearest' });
+  }
+
+  /* ---------------------------------------------------------------- 발송 */
+  function openModal(id) { $(id).classList.add('open'); }
+  function closeModal(id) { $(id).classList.remove('open'); }
+  function openConn() {
+    renderConn();
+    $('urlInput').value = '';
+    $('connectState').textContent = '';
+    openModal('connModal');
+  }
+
+  function confirmSend(p, limit) {
+    return new Promise((resolve) => {
+      readForm();
+      $('cfTitle').textContent = `${limit}건 보낼까요?`;
+      $('cfSub').textContent = limit < p.fresh.length
+        ? `오늘 남은 한도가 ${state.server.remaining}건이라 ${limit}건만 보내요. 나머지는 내일 다시 누르면 이어서 보내요.`
+        : '한 통씩 차례로 보내요. 보내는 동안 이 창을 닫지 마세요.';
+      const kv = $('cfKv');
+      kv.textContent = '';
+      const sec = Math.round(limit * (state.draft.interval + 1.5));
+      [['보내는 계정', state.server.sender], ['제목', state.draft.subject],
+        ['첨부', (state.draft.attachments || []).map((f) => f.name).join(', ') || '없음'],
+        ['건너뜀', p.already.length ? `이미 보낸 주소 ${p.already.length}건` : '없음'],
+        ['예상 시간', sec < 90 ? `약 ${sec}초` : `약 ${Math.ceil(sec / 60)}분`]].forEach(([k, v]) => {
+        const dt = document.createElement('dt'); dt.textContent = k;
+        const dd = document.createElement('dd'); dd.textContent = v;
+        kv.append(dt, dd);
+      });
+      const done = (v) => { closeModal('confirmModal'); $('cfGo').onclick = null; resolve(v); };
+      $('cfGo').onclick = () => done(true);
+      $('confirmModal').querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => done(false); });
+      openModal('confirmModal');
+    });
+  }
+
+  async function startSend() {
+    if (state.running) return;
+    if (!state.server) { openConn(); return; }
+    readForm();
+    const p = parseRecipients();
+    if (!p.fresh.length) { toast('보낼 주소가 없어요.', true); return; }
+    if (!state.draft.subject.trim() || !state.draft.body.trim()) { toast('제목과 본문을 채워 주세요.', true); return; }
+    try { const r = await api('ping'); if (r.ok) state.server.remaining = r.remaining; } catch (e) { toast(e.message, true); return; }
+    renderConn();
+    const limit = Math.min(p.fresh.length, state.server.remaining);
+    if (limit < 1) { toast('오늘 발송 한도를 다 썼어요. 24시간 뒤 다시 보내 주세요.', true); return; }
+    if (!(await confirmSend(p, limit))) return;
+
+    try { await saveTemplate(true); } catch (e) { /* 저장 실패해도 발송은 진행 */ }
+
+    const queue = p.fresh.slice(0, limit);
+    state.rows = queue.map((email) => ({ email, st: 'wait', memo: '' }));
+    renderRows();
+    state.running = true; state.stop = false;
+    $('sendBtn').hidden = true; $('stopBtn').hidden = false;
+    updateSendButton();
+
+    const msg = { subject: state.draft.subject, body: state.draft.body, name: state.draft.name,
+      attachmentIds: (state.draft.attachments || []).map((f) => f.id) };
+    let stopNote = '';
+    for (let i = 0; i < queue.length; i++) {
+      if (state.stop) { stopNote = '멈춤을 눌러서 중간에 멈췄어요.'; break; }
+      setRow(i, 'sending');
+      let r;
+      try { r = await api('send', Object.assign({ to: queue[i] }, msg)); }
+      catch (e) { r = { ok: false, status: 'fail', error: e.message }; }
+      if (typeof r.remaining === 'number') state.server.remaining = r.remaining;
+      if (r.status === 'sent') { state.sent.add(queue[i].toLowerCase()); setRow(i, 'sent', timeNow()); }
+      else if (r.status === 'skip') setRow(i, 'skip', r.reason || r.error || '');
+      else setRow(i, 'fail', r.error || '실패');
+      renderConn();
+      if (r.status === 'quota') { stopNote = '오늘 발송 한도를 다 써서 멈췄어요.'; break; }
+      if (i < queue.length - 1 && !state.stop) await sleep(state.draft.interval * 1000);
+    }
+    state.rows.forEach((row, i) => { if (row.st === 'wait') setRow(i, 'skip', '보내지 않음'); });
+
+    state.running = false;
+    $('sendBtn').hidden = false; $('stopBtn').hidden = true;
+    $('stopBtn').disabled = false; $('stopBtn').textContent = '멈춤 (지금 보내는 메일까지만)';
+    renderStats();
+    const c = (st) => state.rows.filter((x) => x.st === st).length;
+    toast(`발송 끝 · 보냄 ${c('sent')} · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n오늘 남은 한도 ${state.server.remaining}건${stopNote ? '\n' + stopNote : ''}`, c('fail') > 0);
+    refreshSent();
+    try { const r = await api('ping'); if (r.ok) { state.server.remaining = r.remaining; state.server.logUrl = r.logUrl; renderConn(); } } catch (e) { /* 다음에 */ }
+  }
+
+  async function testSend() {
+    if (!state.server) { openConn(); return; }
+    readForm();
+    if (!state.draft.subject.trim() || !state.draft.body.trim()) { toast('제목과 본문을 채워 주세요.', true); return; }
+    $('testBtn').disabled = true;
+    try {
+      const r = await api('send', { test: true, subject: state.draft.subject, body: state.draft.body, name: state.draft.name,
+        attachmentIds: (state.draft.attachments || []).map((f) => f.id) });
+      if (typeof r.remaining === 'number') { state.server.remaining = r.remaining; renderConn(); }
+      if (r.status !== 'sent') throw new Error(r.error || '테스트 발송 실패');
+      toast(`테스트 메일을 ${r.to}(으)로 보냈어요. 메일함에서 확인해 보세요.`);
+    } catch (e) { toast(e.message, true); }
+    finally { $('testBtn').disabled = false; }
+  }
+
+  /* ---------------------------------------------------------------- 이벤트 */
+  ['subject', 'name', 'body', 'interval'].forEach((id) => $(id).addEventListener('input', markDirty));
+  let rcptTimer;
+  $('recipients').addEventListener('input', () => {
+    clearTimeout(rcptTimer);
+    rcptTimer = setTimeout(() => { lsSet(LS.rcpt, $('recipients').value); renderStats(); }, 150);
+  });
+  $('addFile').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = (e) => { if (e.target.files.length) addFiles(e.target.files); e.target.value = ''; };
+  $('saveBtn').onclick = async () => {
+    if (!state.server) { openConn(); return; }
+    $('saveBtn').disabled = true;
+    try { await saveTemplate(); } catch (e) { toast(e.message, true); } finally { $('saveBtn').disabled = false; }
+  };
+  $('testBtn').onclick = testSend;
+  $('sendBtn').onclick = startSend;
+  $('stopBtn').onclick = () => { state.stop = true; $('stopBtn').disabled = true; $('stopBtn').textContent = '멈추는 중… (지금 보내는 메일까지만)'; };
+  $('clearResults').onclick = () => { if (!state.running) { state.rows = []; renderRows(); } };
+  $('openConn').onclick = openConn;
+  $('bannerConn').onclick = openConn;
+  document.querySelectorAll('#connModal [data-close]').forEach((b) => { b.onclick = () => closeModal('connModal'); });
+  $('copyServer').onclick = async () => {
+    try {
+      const code = await serverCode();
+      $('serverCode').value = code;
+      $('serverCode').style.display = 'block';
+      try { await navigator.clipboard.writeText(code); $('copyServerState').textContent = '복사됐어요 ✓ (안 되면 아래 칸을 전체 선택해서 복사)'; }
+      catch (e) { $('serverCode').select(); $('copyServerState').textContent = '아래 칸을 전체 선택(Ctrl+A)해서 복사해 주세요'; }
+    } catch (e) { toast(e.message, true); }
+  };
+  $('connectBtn').onclick = async () => {
+    const raw = $('urlInput').value.trim();
+    let conn = parseLinkCode(raw);
+    if (!conn) {
+      if (!/^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[^/]+\/exec\/?$/.test(raw)) {
+        $('connectState').textContent = raw.endsWith('/dev') ? '/dev 주소 말고 배포 후 나온 /exec 주소를 넣어 주세요' : '웹 앱 URL(…/exec) 또는 연결 코드를 넣어 주세요';
+        return;
+      }
+      const key = lsGet(LS.pendingKey, null);
+      if (!key) { $('connectState').textContent = '먼저 1번 「서버 코드 복사」로 이 PC의 발송 키를 만들어 주세요'; return; }
+      conn = { url: raw.replace(/\/$/, ''), key };
+    }
+    $('connectBtn').disabled = true;
+    $('connectState').textContent = '연결 확인 중…';
+    try { await connect(conn); closeModal('connModal'); }
+    catch (e) { $('connectState').textContent = e.message; }
+    finally { $('connectBtn').disabled = false; }
+  };
+  $('copyLinkCode').onclick = async () => {
+    if (!state.conn) return;
+    const code = makeLinkCode(state.conn);
+    try { await navigator.clipboard.writeText(code); toast('연결 코드를 복사했어요. 다른 PC의 연결 설정 3번 칸에 붙여넣으면 돼요.'); }
+    catch (e) { prompt('아래 연결 코드를 복사하세요', code); }
+  };
+  $('disconnect').onclick = () => {
+    if (!confirm('이 PC에서 메일 발송 연결을 해제할까요? (발송 서버와 기록은 그대로 남아요)')) return;
+    lsDel(LS.conn); state.conn = null; state.server = null; state.sent = new Set();
+    renderConn(); renderStats(); closeModal('connModal');
+  };
+  window.addEventListener('beforeunload', (e) => { if (state.running) { e.preventDefault(); e.returnValue = ''; } });
+
+  /* ---------------------------------------------------------------- 시작 */
+  fillForm();
+  $('recipients').value = lsGet(LS.rcpt, '') || '';
+  if (state.draft.dirty) $('saveState').textContent = '저장 안 됨';
+  renderRows();
+  renderStats();
+  renderConn();
+  if (state.conn) connect(state.conn, true).catch((e) => { renderConn(); toast(e.message, true); });
+})();
+</script>
+</body>
+</html>
