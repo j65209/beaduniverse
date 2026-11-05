@@ -1981,6 +1981,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 매출 보고서 — 최신화 태그 */
   .sales-updated-tag{margin-left:10px;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text-3);letter-spacing:0;white-space:nowrap}
   .sales-updated-tag:empty{display:none}
+  .sales-updated-tag.is-stale{color:#b91c1c;font-weight:600}
   @media(max-width:600px){
     .sales-updated-tag{display:block;margin:4px 0 0;font-size:10px}
   }
@@ -3939,6 +3940,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .akoi-body.akoi-body-collapsed{display:none}
   .akoi-empty{padding:32px;text-align:center;color:var(--text-3);font-size:13px}
   .akoi-err{padding:20px;background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.35);border-radius:8px;color:#b91c1c;font-size:12.5px;line-height:1.6}
+  .akoi-notice{margin:0 0 10px;padding:7px 12px;background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.35);border-radius:8px;color:#b91c1c;font-size:12px;line-height:1.5}
   .akoi-toggle-btn{padding:5px 12px !important;font-size:11px !important;min-height:28px !important;display:inline-flex;align-items:center;gap:5px}
   .akoi-toggle-btn .chev{transition:transform .18s}
   .akoi-amount.is-empty{min-width:0;padding:0}
@@ -13937,13 +13939,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 브랜드별 실시간 매출 리포트 (식스샵 + 식스샵프로) =====
      server proxy /sx/admin-sales?brand=6a|yar    (일반 admin)
                   /sx/pro-sales?brand=akoi|pp|ct  (식스샵프로)
-     각 브랜드 카드 자동 생성 → 개별 fetch. 서버 캐시(launchd 30분) → 클라이언트 폴링(30분). */
+     각 브랜드 카드 자동 생성 → 개별 fetch. 서버 캐시(launchd 30분) → 클라이언트 폴링(5분). */
+  // 6a·yar: 주문이 식스샵프로로 넘어갔는데 Access Key 전이라 옛 식스샵만 본다. 키를 연결하면 notice 를 지울 것.
+  const _PRO_KEY_PENDING='식스샵프로로 옮긴 뒤 들어온 주문은 아직 안 잡힙니다 (프로 연결 대기)';
   const BRAND_SECTIONS=[
     // 사장님 지정 순서 (2026-08-13): 6a → ct → yar → pp → akoi → kop → apt → koz
     // platforms: 브랜드가 추가로 판매하는 외부 채널 (카드 타이틀 우측 작은 태그로 표시)
-    {id:'6a',   endpoint:'/admin-sales?brand=6a',   group:'식스샵',    display:'식스에이',   dot:'#22d3ee', hasItemAmount:false, hasOptions:false, platforms:['ably','zigzag']},
+    {id:'6a',   endpoint:'/admin-sales?brand=6a',   group:'식스샵',    display:'식스에이',   dot:'#22d3ee', hasItemAmount:false, hasOptions:false, platforms:['ably','zigzag'], notice:_PRO_KEY_PENDING},
     {id:'ct',   endpoint:'/pro-sales?brand=ct',     group:'식스샵프로',display:'클리어타입',  dot:'#22c55e', hasItemAmount:true,  hasOptions:true},
-    {id:'yar',  endpoint:'/admin-sales?brand=yar',  group:'식스샵',    display:'야르',       dot:'#a78bfa', hasItemAmount:false, hasOptions:false},
+    {id:'yar',  endpoint:'/admin-sales?brand=yar',  group:'식스샵',    display:'야르',       dot:'#a78bfa', hasItemAmount:false, hasOptions:false, notice:_PRO_KEY_PENDING},
     {id:'pp',   endpoint:'/pro-sales?brand=pp',     group:'식스샵프로',display:'프로덕트피알',dot:'#f59e0b', hasItemAmount:true,  hasOptions:true,  platforms:['smartstore']},
     {id:'akoi', endpoint:'/pro-sales?brand=akoi',   group:'식스샵프로',display:'아코이하우스', dot:'#f472b6', hasItemAmount:true,  hasOptions:true},
     {id:'kop',  endpoint:'/pro-sales?brand=kop',    group:'식스샵프로',display:'코페리',     dot:'#818cf8', hasItemAmount:true,  hasOptions:true,  platforms:['ably','smartstore','zigzag']},
@@ -14069,7 +14073,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const el=document.getElementById(`salesUpd_${id}`);
     if(!el) return;
     const t=new Date(ts||Date.now());
-    el.textContent=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')} 갱신`;
+    const hm=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+    // 수집이 멈춘 카드는 시각만 보면 오늘 갱신된 줄 안다 → 오늘이 아니면 날짜까지, 2시간 넘게 멈췄으면 빨갛게
+    const day=t.toDateString()===new Date().toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `;
+    el.textContent=`${day}${hm} 갱신`;
+    el.classList.toggle('is-stale', Date.now()-t.getTime()>2*60*60*1000);
   }
   function _salesBuildCard(cfg, opts){
     const hideBrandName = !!(opts && opts.hideBrandName);
@@ -14111,6 +14119,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </button>
         </div>
       </div>
+      ${cfg.notice?`<div class="akoi-notice">⚠️ ${_akoiEsc(cfg.notice)}</div>`:''}
       <div class="akoi-summary" id="salesSummary_${cfg.id}"></div>
       <div class="akoi-body akoi-body-collapsed" id="salesBody_${cfg.id}"><div class="akoi-empty">불러오는 중…</div></div>
     </div>`;
@@ -14183,18 +14192,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 모든 브랜드 병렬 refetch — 서버가 각각 별도로 처리 (10-15s 각)
     BRAND_SECTIONS.forEach(cfg => salesLoad(cfg.id, true));
   }
+  function _salesLoadAll(){
+    BRAND_SECTIONS.forEach(cfg => salesLoad(cfg.id, false));
+    // 플랫폼 카드는 탭을 처음 열 때 만들어진다 — 그 뒤로는 공홈과 같이 갱신
+    if(document.getElementById('platformReportsWrap')?.dataset.initted) PLATFORM_SECTIONS.forEach(cfg => salesLoad(cfg.id, false));
+  }
   function salesEnsureLoaded(){
     _salesInitCards();
-    BRAND_SECTIONS.forEach(cfg => salesLoad(cfg.id, false));
+    _salesLoadAll();
     salesStartPolling();
   }
   let _salesPollTimer=null;
   function salesStartPolling(){
     if(_salesPollTimer) return;
     _salesPollTimer=setInterval(()=>{
-      if(document.getElementById('viewMd')?.hidden) return;
-      BRAND_SECTIONS.forEach(cfg => salesLoad(cfg.id, false));
-    }, 30*60*1000);
+      if(document.getElementById('viewMarketing')?.hidden) return;
+      _salesLoadAll();
+    }, 5*60*1000);
   }
   window.salesRefresh=salesRefresh;
   window.salesRefreshAll=salesRefreshAll;
