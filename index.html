@@ -3940,7 +3940,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .akoi-body.akoi-body-collapsed{display:none}
   .akoi-empty{padding:32px;text-align:center;color:var(--text-3);font-size:13px}
   .akoi-err{padding:20px;background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.35);border-radius:8px;color:#b91c1c;font-size:12.5px;line-height:1.6}
-  .akoi-notice{margin:0 0 10px;padding:7px 12px;background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.35);border-radius:8px;color:#b91c1c;font-size:12px;line-height:1.5}
   .akoi-toggle-btn{padding:5px 12px !important;font-size:11px !important;min-height:28px !important;display:inline-flex;align-items:center;gap:5px}
   .akoi-toggle-btn .chev{transition:transform .18s}
   .akoi-amount.is-empty{min-width:0;padding:0}
@@ -11235,9 +11234,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
       </div>
       <div class="best-grid" id="bestGrid">
-        <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#22d3ee"></span><span class="best-col-name">식스에이</span><span class="best-col-site">6thanother</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
+        <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#22d3ee"></span><span class="best-col-name">식스에이</span><span class="best-col-site">6ashop</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#22c55e"></span><span class="best-col-name">클리어타입</span><span class="best-col-site">cleartype1</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
-        <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#a78bfa"></span><span class="best-col-name">야르</span><span class="best-col-site">yarseoul</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
+        <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#a78bfa"></span><span class="best-col-name">야르</span><span class="best-col-site">yarshop</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#f59e0b"></span><span class="best-col-name">프로덕트피알</span><span class="best-col-site">produktepr</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#818cf8"></span><span class="best-col-name">코페리</span><span class="best-col-site">coferryworld</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#fb7185"></span><span class="best-col-name">아페티</span><span class="best-col-site">APETI</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
@@ -13945,18 +13944,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   _bestBindHover();
 
-  /* ===== 브랜드별 실시간 매출 리포트 (식스샵 + 식스샵프로) =====
-     server proxy /sx/admin-sales?brand=6a|yar    (일반 admin)
-                  /sx/pro-sales?brand=akoi|pp|ct  (식스샵프로)
+  /* ===== 브랜드별 실시간 매출 리포트 (식스샵프로) =====
+     server proxy /sx/pro-sales?brand=X — 6a·yar 는 옛 식스샵 판매까지 서버에서 합쳐 준다 (2026-11-05 이관)
      각 브랜드 카드 자동 생성 → 개별 fetch. 서버 캐시(launchd 30분) → 클라이언트 폴링(5분). */
-  // 6a·yar: 주문이 식스샵프로로 넘어갔는데 Access Key 전이라 옛 식스샵만 본다. 키를 연결하면 notice 를 지울 것.
-  const _PRO_KEY_PENDING='식스샵프로로 옮긴 뒤 들어온 주문은 아직 안 잡힙니다 (프로 연결 대기)';
   const BRAND_SECTIONS=[
     // 사장님 지정 순서 (2026-08-13): 6a → ct → yar → pp → akoi → kop → apt → koz
     // platforms: 브랜드가 추가로 판매하는 외부 채널 (카드 타이틀 우측 작은 태그로 표시)
-    {id:'6a',   endpoint:'/admin-sales?brand=6a',   group:'식스샵',    display:'식스에이',   dot:'#22d3ee', hasItemAmount:false, hasOptions:false, platforms:['ably','zigzag'], notice:_PRO_KEY_PENDING},
+    {id:'6a',   endpoint:'/pro-sales?brand=6a',     group:'식스샵프로',display:'식스에이',   dot:'#22d3ee', hasItemAmount:true,  hasOptions:true,  platforms:['ably','zigzag']},
     {id:'ct',   endpoint:'/pro-sales?brand=ct',     group:'식스샵프로',display:'클리어타입',  dot:'#22c55e', hasItemAmount:true,  hasOptions:true},
-    {id:'yar',  endpoint:'/admin-sales?brand=yar',  group:'식스샵',    display:'야르',       dot:'#a78bfa', hasItemAmount:false, hasOptions:false, notice:_PRO_KEY_PENDING},
+    {id:'yar',  endpoint:'/pro-sales?brand=yar',    group:'식스샵프로',display:'야르',       dot:'#a78bfa', hasItemAmount:true,  hasOptions:true},
     {id:'pp',   endpoint:'/pro-sales?brand=pp',     group:'식스샵프로',display:'프로덕트피알',dot:'#f59e0b', hasItemAmount:true,  hasOptions:true,  platforms:['smartstore']},
     {id:'akoi', endpoint:'/pro-sales?brand=akoi',   group:'식스샵프로',display:'아코이하우스', dot:'#f472b6', hasItemAmount:true,  hasOptions:true},
     {id:'kop',  endpoint:'/pro-sales?brand=kop',    group:'식스샵프로',display:'코페리',     dot:'#818cf8', hasItemAmount:true,  hasOptions:true,  platforms:['ably','smartstore','zigzag']},
@@ -14128,7 +14124,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </button>
         </div>
       </div>
-      ${cfg.notice?`<div class="akoi-notice">⚠️ ${_akoiEsc(cfg.notice)}</div>`:''}
       <div class="akoi-summary" id="salesSummary_${cfg.id}"></div>
       <div class="akoi-body akoi-body-collapsed" id="salesBody_${cfg.id}"><div class="akoi-empty">불러오는 중…</div></div>
     </div>`;
@@ -15820,9 +15815,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      캐시 JSON 없이 매번 fresh. 진입 시 3 브랜드 병렬 fetch (약 3~5초).
      3 섹션 모두 렌더 — 헤더 클릭으로 접기/펼치기. */
   const SIX_STOCK_BRANDS = [
-    {key:'6a',  display:'식스에이',     host:'6thanother.sixshop.com',        endpoint:'/catalog?brand=6a'},
+    {key:'6a',  display:'식스에이',     host:'store.sixshop.com/6ashop',      endpoint:'/pro-stock?brand=6a',   proShape:true},
     {key:'ct',  display:'클리어타입',   host:'store.sixshop.com/cleartype1',   endpoint:'/pro-stock?brand=ct',   proShape:true},
-    {key:'yar', display:'야르',         host:'yarseoul.sixshop.com',          endpoint:'/catalog?brand=yar'},
+    {key:'yar', display:'야르',         host:'store.sixshop.com/yarshop',     endpoint:'/pro-stock?brand=yar',  proShape:true},
     {key:'pp',  display:'프로덕트피알', host:'store.sixshop.com/produktepr',   endpoint:'/pro-stock?brand=pp',   proShape:true},
     {key:'akoi',display:'아코이하우스', host:'store.sixshop.com/akoihaus1',    endpoint:'/pro-stock?brand=akoi', proShape:true},
     {key:'kop', display:'코페리',       host:'store.sixshop.com/coferry',     endpoint:'/pro-stock?brand=kop',  proShape:true},
