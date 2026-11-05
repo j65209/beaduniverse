@@ -28819,7 +28819,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         }
 
         let roasText;
-        if(todayPart === null && ydayPart === null){
+        if(spend === 0 && ydaySpend === 0){
+          // 지출이 없으면 ROAS 를 낼 수 없다 — "오늘 - · 어제 -" 만 보면 고장처럼 보여 이유를 적는다
+          roasText = '최근 광고 집행 없음';
+          subEl.textContent = roasText;
+          subEl.style.color = 'var(--text-3)';
+        } else if(todayPart === null && ydayPart === null){
           // 완전 미연동
           roasText = '미연동';
           subEl.textContent = roasText;
