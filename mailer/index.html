@@ -165,7 +165,7 @@
     <button class="btn primary" id="bannerConn">연결하기</button>
   </div>
   <div class="banner upd" id="updateBanner" hidden>
-    <div>🛠️ <b>발송 서버 업데이트가 필요해요</b> — 「답장 받을 주소」를 쓰려면 서버 코드를 새 버전으로 바꿔 주세요. 보내는 계정을 새로 옮길 거라면 연결 설정의 「새 계정으로 옮기기」로 하면 돼요. (2분이면 돼요)</div>
+    <div>🛠️ <b>발송 서버 업데이트가 필요해요</b> — 새 버전은 회사(워크스페이스) 계정에서 보낸 메일이 받는 쪽에 안 가던 문제를 고쳤어요. 서버 코드를 새 버전으로 바꿔 주세요. (2분이면 돼요)</div>
     <div class="spacer"></div>
     <button class="btn primary" id="updateBtn">업데이트 방법</button>
   </div>
@@ -381,7 +381,7 @@
     conn2: 'bb_mailer_conn2_v1', pendingKey2: 'bb_mailer_pending_key2_v1' };
   const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
   const LINK_PREFIX = 'BBMAIL1.';
-  const SERVER_VERSION = 4;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
+  const SERVER_VERSION = 5;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
   const DEFAULT_SUBJECT = '[협업 제안] 브라이트비드 인플루언서 공동구매 | 단일 공구 최고 매출 3억';
   const DEFAULT_BODY = [
     '안녕하세요, 대표님.',
@@ -551,7 +551,9 @@
     const res = await fetch('server.gs?v=' + Date.now());
     if (!res.ok) throw new Error('서버 코드를 불러오지 못했어요.');
     let code = (await res.text()).replace('__MAIL_KEY__', key);
-    if (sw && sw.logId) code = code.replace('__LOG_ID__', sw.logId);
+    // 업데이트용 코드에도 지금 쓰는 기록 시트를 박아 둔다 (계정을 옮긴 서버가 새 시트를 만들지 않게)
+    const logId = (sw && sw.logId) || logIdOf(state.server && state.server.logUrl);
+    if (logId) code = code.replace('__LOG_ID__', logId);
     return code;
   }
   function logIdOf(url) {

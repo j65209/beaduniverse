@@ -23,7 +23,7 @@ const MAIL_KEY = '__MAIL_KEY__';
    중복 발송 방지가 끊기지 않게 한다. 그 시트를 이 계정에 「편집자」로 공유해 둬야 한다. */
 const LOG_SHEET_ID = '__LOG_ID__';
 
-const SERVER_VERSION = 4;
+const SERVER_VERSION = 5;
 const QUOTA_TEXT = '발송 한도를 다 썼어요 (첫 발송부터 24시간 기준). 한도가 다시 차면 이어서 보내 주세요.';
 const LOG_TITLE = '브라이트비드 메일 발송 기록';
 const FOLDER_TITLE = '브라이트비드 메일 첨부';
@@ -143,14 +143,16 @@ function send_(req) {
     }
   });
 
-  const msg = { to: to, subject: (test ? '[테스트] ' : '') + subject, body: body, htmlBody: toHtml_(body) };
-  if (req.name) msg.name = String(req.name);
+  const opts = { htmlBody: toHtml_(body) };
+  if (req.name) opts.name = String(req.name);
   const replyTo = extractEmail_(req.replyTo);
-  if (replyTo) msg.replyTo = replyTo;   // 받는 사람이 「답장」을 누르면 이 주소로 간다
-  if (attachments.length) msg.attachments = attachments;
+  if (replyTo) opts.replyTo = replyTo;   // 받는 사람이 「답장」을 누르면 이 주소로 간다
+  if (attachments.length) opts.attachments = attachments;
 
   try {
-    MailApp.sendEmail(msg);
+    // GmailApp = 지메일 화면에서 보내는 것과 같은 길. MailApp 으로 보내면 막 만든 워크스페이스 계정(bead-uni.com)의
+    // 외부 메일을 구글이 「Message rejected」로 내보내지 않음 (2026-11-06 관리 콘솔 이메일 로그로 확인 — 지메일 화면 발송은 정상).
+    GmailApp.sendEmail(to, (test ? '[테스트] ' : '') + subject, body, opts);
   } catch (e) {
     const err = errText_(e);
     if (!test) log_(to, subject, STATUS_FAIL, err);
