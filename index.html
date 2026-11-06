@@ -6647,6 +6647,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .dsm-btn-primary{background:#1c1917;color:#fff}
   .dsm-btn-primary:hover:not(:disabled){background:#292524}
   .dsm-btn-primary:disabled{opacity:.4;cursor:not-allowed}
+  /* 휴대폰 번호 등록 팝업 (#phoneModal) — 로그인 팝업과 같은 카드 */
+  .dsm-input{
+    width:100%;padding:12px 14px;border-radius:10px;
+    border:1.5px solid #d5cfb8;background:#fff;
+    font-size:18px;font-weight:700;color:#1c1917;text-align:center;
+    outline:none;font-family:var(--mono);letter-spacing:.04em;
+    transition:border-color .15s ease;
+  }
+  .dsm-input:focus{border-color:#f59e0b}
+  .dsm-input.is-bad{border-color:#ef4444}
+  .dsm-hint{min-height:18px;margin-top:8px;font-size:12px;font-weight:600;color:#b91c1c;letter-spacing:-.01em}
+  .dsm-note{margin-top:2px;font-size:11.5px;color:#78716c;line-height:1.5;letter-spacing:-.01em}
 
   @media (max-width:480px){
     .dsm-card{padding:28px 22px 22px}
@@ -8766,6 +8778,62 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .add-staff-label{margin-top:10px}
   }
 
+  /* 직원 연락처 (인사팀) — 관리자는 전원 번호, 직원은 본인 번호만 (renderStaffPhonePanel) */
+  .hr-phone{
+    max-width:580px;margin:0 auto 24px;
+    padding:14px 18px;
+    background:var(--bg-1);
+    border:1px solid var(--line);
+    border-radius:8px;
+  }
+  .hr-phone[hidden]{display:none}
+  .hr-phone-head{
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    margin-bottom:6px;padding-bottom:8px;
+    border-bottom:1px dashed var(--line);
+  }
+  .hr-phone-title{font-size:12px;font-weight:600;color:#c2410c}
+  .hr-phone-meta{font-size:10.5px;color:var(--text-3);font-family:var(--mono)}
+  .hr-phone-meta b{color:#b91c1c;font-weight:700}
+  .hr-phone-list{display:flex;flex-direction:column}
+  .hr-phone-row{
+    display:grid;grid-template-columns:minmax(64px,auto) 1fr auto auto;
+    gap:10px;align-items:center;
+    padding:6px 4px;font-size:12.5px;
+    border-bottom:1px solid var(--line);
+  }
+  .hr-phone-row:last-child{border-bottom:none}
+  .hr-phone-name{color:var(--text-0);font-weight:600;white-space:nowrap}
+  .hr-phone-name em{
+    font-style:normal;font-size:10px;font-weight:700;color:#c2410c;
+    background:rgba(255,179,71,.14);padding:1px 5px;border-radius:4px;margin-left:5px;vertical-align:1px;
+  }
+  .hr-phone-dept{color:var(--text-3);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hr-phone-cell{white-space:nowrap}
+  .hr-phone-num{font-family:var(--mono);font-size:12.5px;color:var(--text-0);letter-spacing:.02em;user-select:all}
+  .hr-phone-none{
+    font-size:11px;font-weight:600;color:#b91c1c;
+    background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);
+    padding:1px 7px;border-radius:4px;
+  }
+  .hr-phone-wait{font-size:10px;font-weight:600;color:#a16207;margin-left:6px}
+  .hr-phone-acts{display:flex;gap:4px;justify-content:flex-end}
+  .hr-phone-btn{
+    padding:3px 9px;font-size:11px;font-weight:600;border-radius:5px;
+    border:1px solid var(--line);background:var(--bg-2);color:var(--text-2);
+    cursor:pointer;font-family:var(--sans);
+    transition:background .12s,color .12s,border-color .12s;
+  }
+  .hr-phone-btn:hover{color:var(--text-0);border-color:var(--line-2);background:var(--bg-1)}
+  @media (max-width:600px){
+    .hr-phone{padding:12px 14px}
+    .hr-phone-row{grid-template-columns:1fr auto;gap:3px 10px}
+    .hr-phone-name{grid-column:1;grid-row:1}
+    .hr-phone-dept{grid-column:1;grid-row:2}
+    .hr-phone-cell{grid-column:2;grid-row:1;text-align:right}
+    .hr-phone-acts{grid-column:2;grid-row:2}
+  }
+
   /* 최근 연차 신청 내역 */
   .leave-recent{
     max-width:580px;margin:0 auto 28px;
@@ -10472,6 +10540,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 직원 연락처 — 전 직원이 본다 (번호 있는 사람만). 관리자는 미등록까지 보이고 등록 · 수정 (#phoneModal) -->
+    <div class="hr-phone" id="hrPhonePanel" hidden>
+      <div class="hr-phone-head">
+        <span class="hr-phone-title" id="hrPhoneTitle">📞 직원 연락처</span>
+        <span class="hr-phone-meta" id="hrPhoneMeta"></span>
+      </div>
+      <div class="hr-phone-list" id="hrPhoneList"></div>
     </div>
 
     <!-- 연차 신청하기 (CTA) -->
@@ -15245,6 +15322,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof dsgBootFlush==='function') dsgBootFlush();
     if(typeof mdsBootFlush==='function') mdsBootFlush();
     if(typeof hrBootFlush==='function') hrBootFlush();
+    // 인사팀 직원 연락처 — 지난번에 못 보낸 번호 재전송
+    if(typeof phoneBoot==='function') phoneBoot();
     // 에이전트 오피스 실시간 인원 표시 (홈 카드)
     if(typeof loadAgentsMini==='function'){ loadAgentsMini(); setInterval(loadAgentsMini, 30000); }
   }
@@ -15562,6 +15641,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       renderLeaveStatus();
       if(typeof syncLeaveFromRemote==='function') syncLeaveFromRemote().catch(()=>{});
       if(typeof syncDeptOverridesFromRemote==='function') syncDeptOverridesFromRemote().catch(()=>{});
+      // 직원 연락처 — 들고 있는 값으로 먼저 그리고 최신 번호로 다시
+      if(typeof renderStaffPhonePanel==='function') renderStaffPhonePanel();
+      if(typeof syncStaffPhonesFromRemote==='function') syncStaffPhonesFromRemote().catch(()=>{});
     }
     if(id==='viewLg'){
       /* hash 로 직접 진입 (새로고침) 시에도 마지막 브랜드 복원 */
@@ -28027,6 +28109,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }).join('');
     }
     renderHiddenStaffPanel();
+    // 숨김 · 부서 · 직책이 바뀌면 직원 연락처 순서도 같이 (스크립트 실행 중 이른 호출이면 건너뜀)
+    try{ renderStaffPhonePanel(); }catch(e){}
   }
   window.renderOrgChartExtra=renderOrgChartExtra;
   /* 예전 이름 유지 — 숨김/복원·연차 렌더 등 여러 곳에서 부른다. 이제 전체 재렌더와 같다. */
@@ -28117,6 +28201,265 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return true;
   }
   window.syncDeptOverridesFromRemote=syncDeptOverridesFromRemote;
+
+  /* ===== 인사팀 직원 연락처 — staff_phones 테이블 (staff_name PK, 형식 010-1234-5678 은 DB 에서도 검사)
+     · 전 직원이 본다 (사용자 결정 2026-11-06). 번호는 사장님이 취합해 넣고, 관리자는 인사팀에서 등록 · 수정
+     · 저장 실패 시 번호는 대기열(localStorage)에 두고 자동 재전송 — 대기 중인 번호도 화면에 보인다
+     · anon 은 select/insert/update 만 (delete 권한 없음 — 번호를 지우는 기능은 두지 않았다) */
+  const _staffPhones=new Map();
+  let _staffPhonesLoaded=false;
+  function getStaffPhone(name){return _staffPhones.get(name)||''}
+  window.getStaffPhone=getStaffPhone;
+
+  /* 숫자만 뽑아 휴대폰 번호 형식으로. 휴대폰 번호가 아니면 '' */
+  function normalizeStaffPhone(raw){
+    const d=String(raw||'').replace(/\D/g,'');
+    if(!/^01[016789]\d{7,8}$/.test(d)) return '';
+    if(d.startsWith('010') && d.length!==11) return '';
+    return d.length===11 ? `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}` : `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
+  }
+  /* 입력 중 하이픈 자동 삽입 (010-1234-5678 / 011-123-4567) */
+  function _phoneTypingFormat(raw){
+    const d=String(raw||'').replace(/\D/g,'').slice(0,11);
+    if(d.length<4) return d;
+    if(d.length<8) return `${d.slice(0,3)}-${d.slice(3)}`;
+    if(d.length===10 && !d.startsWith('010')) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
+    return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;
+  }
+
+  async function sbFetchStaffPhones(){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_phones?select=staff_name,phone`,{headers:_sbHeaders(),cache:'no-cache'});
+      if(!r.ok) return null;
+      return await r.json();
+    }catch(e){return null}
+  }
+  async function sbUpsertStaffPhone(staff_name, phone, updated_by){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_phones?on_conflict=staff_name`,{
+        method:'POST',
+        headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+        body:JSON.stringify({staff_name, phone, updated_by:updated_by||null, updated_at:new Date().toISOString()})
+      });
+      return r.ok?{ok:true}:{ok:false,reason:`http_${r.status}`,status:r.status};
+    }catch(e){return {ok:false,reason:'fetch'}}
+  }
+
+  /* 보내기 전에 대기열에 적어 둔다 — 실패해도 번호가 안 사라지고 자동 재전송 (인사팀 _hrOv* 대기열과 같은 방식) */
+  const PHONE_QUEUE_KEY='brightbeed_staff_phone_queue_v1';
+  let _phoneQ=null, _phoneFlushP=null, _phoneFail=0, _phoneRetry=null;
+  function _phoneQueue(){
+    if(!_phoneQ){ try{ _phoneQ=JSON.parse(localStorage.getItem(PHONE_QUEUE_KEY)||'{}')||{}; }catch(e){ _phoneQ={}; } }
+    return _phoneQ;
+  }
+  function _phoneQSave(){ try{ localStorage.setItem(PHONE_QUEUE_KEY,JSON.stringify(_phoneQueue())); }catch(e){} }
+  function _phoneEnqueue(name, phone, by){
+    const q=_phoneQueue(), seq=((q[name]&&q[name].seq)||0)+1;
+    q[name]={phone, by:by||'', seq, ts:Date.now()};
+    _phoneQSave();
+  }
+  function _phoneFlush(){
+    if(_phoneFlushP) return _phoneFlushP;
+    if(!Object.keys(_phoneQueue()).length) return Promise.resolve();
+    clearTimeout(_phoneRetry);
+    _phoneFlushP=(async()=>{
+      let failed=false;
+      const q=_phoneQueue();
+      for(const name of Object.keys(q)){
+        const e=q[name], seq=e.seq;
+        const r=await sbUpsertStaffPhone(name, e.phone, e.by);
+        // 400 = DB 가 형식을 거절 — 다시 보내도 안 들어가니 대기열에서 뺀다
+        if(r.ok || r.status===400){
+          if(!r.ok) console.warn('휴대폰 번호 저장 거절', name, r.reason);
+          if(q[name] && q[name].seq===seq){ delete q[name]; _phoneQSave(); }
+        } else failed=true;
+      }
+      return failed;
+    })().then(failed=>{
+      _phoneFlushP=null;
+      if(failed){
+        _phoneFail=Math.min(_phoneFail+1,6);
+        _phoneRetry=setTimeout(_phoneFlush,Math.min(1000*2**(_phoneFail-1),30000));
+      }else{
+        _phoneFail=0;
+        if(Object.keys(_phoneQueue()).length) _phoneFlush();
+      }
+      renderStaffPhonePanel();
+    });
+    return _phoneFlushP;
+  }
+
+  async function syncStaffPhonesFromRemote(){
+    const rows=await sbFetchStaffPhones();
+    if(!Array.isArray(rows)) return false;
+    _staffPhones.clear();
+    for(const r of rows) if(r && r.staff_name && r.phone) _staffPhones.set(r.staff_name, String(r.phone));
+    // 아직 못 보낸 번호는 위에 얹는다 — 안 그러면 방금 등록한 번호가 사라져 보이고 팝업이 또 뜬다
+    for(const [name,e] of Object.entries(_phoneQueue())) if(e && e.phone) _staffPhones.set(name, e.phone);
+    _staffPhonesLoaded=true;
+    renderStaffPhonePanel();
+    return true;
+  }
+  window.syncStaffPhonesFromRemote=syncStaffPhonesFromRemote;
+
+  /* 대표 → 조직도 팀 순서(직책 · 입사일 순) → 조직도 팀에 안 맞는 부서. 퇴사(숨김) 제외 */
+  function _phonePeople(){
+    const out=STAFF.filter(s=>s.ceo && !isStaffHidden(s.name));
+    const groups=_orgSortedGroups();
+    for(const k of Object.keys(ORG_SLOTS)) out.push(...(groups[k]||[]));
+    for(const s of activeStaff()) if(!out.includes(s)) out.push(s);
+    return out;
+  }
+  /* 인사팀 '직원 연락처' — 직원 화면에는 번호 있는 사람만, 관리자 화면에는 미등록까지 + 등록 · 수정 버튼 */
+  function renderStaffPhonePanel(){
+    const panel=document.getElementById('hrPhonePanel');
+    const list=document.getElementById('hrPhoneList');
+    if(!panel || !list) return;
+    const me=_diaryGetMe();
+    const master=isMaster();
+    const all=_phonePeople();
+    const people=master?all:all.filter(s=>getStaffPhone(s.name));
+    if(!_staffPhonesLoaded || !people.length){ panel.hidden=true; return; }
+    panel.hidden=false;
+    const meta=document.getElementById('hrPhoneMeta');
+    const missing=all.filter(s=>!getStaffPhone(s.name)).length;
+    if(meta) meta.innerHTML=master?`등록 ${all.length-missing}/${all.length}명${missing?` · <b>미등록 ${missing}명</b>`:''}`:`${people.length}명`;
+    const q=_phoneQueue();
+    list.innerHTML=people.map(s=>{
+      const ph=getStaffPhone(s.name);
+      const sub=s.ceo?'대표':(s.team?`${s.dept} · ${s.team}`:s.dept);
+      const nm=escapeHTML(s.name);
+      const wait=q[s.name]?'<span class="hr-phone-wait" title="서버에 아직 못 보냈어요 — 자동으로 다시 보내요">전송 대기</span>':'';
+      return `<div class="hr-phone-row${ph?'':' is-missing'}">
+        <span class="hr-phone-name">${nm}${s.name===me?'<em>나</em>':''}</span>
+        <span class="hr-phone-dept">${escapeHTML(sub)}</span>
+        <span class="hr-phone-cell">${ph?`<span class="hr-phone-num">${escapeHTML(ph)}</span>`:'<span class="hr-phone-none">미등록</span>'}${wait}</span>
+        <span class="hr-phone-acts">${ph?`<button type="button" class="hr-phone-btn" data-phone-act="copy" data-phone-staff="${nm}">복사</button>`:''}${master?`<button type="button" class="hr-phone-btn" data-phone-act="edit" data-phone-staff="${nm}">${ph?'수정':'등록'}</button>`:''}</span>
+      </div>`;
+    }).join('');
+  }
+  window.renderStaffPhonePanel=renderStaffPhonePanel;
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest?.('#hrPhoneList [data-phone-act]');
+    if(!btn) return;
+    const name=btn.getAttribute('data-phone-staff')||'';
+    if(btn.getAttribute('data-phone-act')==='copy') copyStaffPhone(name);
+    else openPhoneModal(name);
+  });
+  async function copyStaffPhone(name){
+    const ph=getStaffPhone(name);
+    if(!ph) return;
+    let ok=false;
+    try{ await navigator.clipboard.writeText(ph); ok=true; }catch(e){}
+    if(!ok){
+      // 클립보드 권한이 없는 브라우저 — 숨긴 입력칸으로 한 번 더
+      try{
+        const ta=document.createElement('textarea');
+        ta.value=ph; ta.setAttribute('readonly',''); ta.style.cssText='position:fixed;top:-1000px;opacity:0';
+        document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); ta.remove();
+      }catch(e){}
+    }
+    toast(ok?`${name} 번호를 복사했어요`:ph, ok?'ok':'');
+  }
+
+  /* 등록 · 수정 팝업 (#phoneModal, 관리자 전용 — 이 스크립트 뒤의 HTML 이라 처음 열 때 이벤트를 단다) */
+  let _phoneTarget='';
+  function _phoneBind(){
+    if(_phoneBind._done) return true;
+    const form=document.getElementById('phoneForm');
+    const input=document.getElementById('phoneInput');
+    const saveBtn=document.getElementById('phoneSave');
+    const hint=document.getElementById('phoneHint');
+    if(!form || !input || !saveBtn) return false;
+    _phoneBind._done=true;
+    input.addEventListener('input',()=>{
+      // 끝에서 입력할 때만 하이픈을 다시 맞춘다 (가운데를 고칠 때 커서가 튀지 않게)
+      if(input.selectionStart===input.value.length){
+        const f=_phoneTypingFormat(input.value);
+        if(f!==input.value) input.value=f;
+      }
+      saveBtn.disabled=!normalizeStaffPhone(input.value);
+      input.classList.remove('is-bad');
+      hint.textContent='';
+    });
+    input.addEventListener('keydown',e=>{
+      if(e.key==='Enter' && saveBtn.disabled){
+        e.preventDefault();
+        input.classList.add('is-bad');
+        hint.textContent='010-1234-5678 형식의 휴대폰 번호를 입력해주세요';
+      }
+    });
+    form.addEventListener('submit',e=>{ e.preventDefault(); phoneModalSave(); });
+    document.getElementById('phoneCancel').addEventListener('click',closePhoneModal);
+    document.getElementById('phoneModal').addEventListener('keydown',e=>{
+      if(e.key==='Escape') closePhoneModal();
+    });
+    return true;
+  }
+  function openPhoneModal(name){
+    const modal=document.getElementById('phoneModal');
+    if(!modal || !name || !_phoneBind()) return;
+    if(!requireMaster('직원 번호 등록')) return;
+    _phoneTarget=name;
+    const cur=getStaffPhone(name);
+    const input=document.getElementById('phoneInput');
+    const saveBtn=document.getElementById('phoneSave');
+    document.getElementById('phoneTitle').textContent=cur?'휴대폰 번호 수정':'휴대폰 번호 등록';
+    document.getElementById('phoneDesc').innerHTML=`<b>${escapeHTML(name)}</b>님의 휴대폰 번호를 입력해주세요.`;
+    document.getElementById('phoneHint').textContent='';
+    input.classList.remove('is-bad');
+    input.value=cur;
+    saveBtn.textContent=cur?'저장':'등록';
+    saveBtn.disabled=!normalizeStaffPhone(cur);
+    modal.hidden=false;
+    setTimeout(()=>{ try{ input.focus(); input.select(); }catch(e){} },60);
+  }
+  window.openPhoneModal=openPhoneModal;
+  function closePhoneModal(){
+    const modal=document.getElementById('phoneModal');
+    if(modal) modal.hidden=true;
+    _phoneTarget='';
+  }
+  async function phoneModalSave(){
+    const name=_phoneTarget;
+    if(!name) return;
+    const input=document.getElementById('phoneInput');
+    const hint=document.getElementById('phoneHint');
+    const saveBtn=document.getElementById('phoneSave');
+    const phone=normalizeStaffPhone(input.value);
+    if(!phone){
+      input.classList.add('is-bad');
+      hint.textContent='010-1234-5678 형식의 휴대폰 번호를 입력해주세요';
+      input.focus();
+      return;
+    }
+    if(!requireMaster('직원 번호 등록')) return;
+    if(phone===getStaffPhone(name) && !_phoneQueue()[name]){ closePhoneModal(); return; }
+    const label=saveBtn.textContent;
+    saveBtn.disabled=true;
+    saveBtn.textContent='저장 중…';
+    _phoneEnqueue(name, phone, _diaryGetMe());
+    _staffPhones.set(name, phone);
+    // 앱 진입 때 돌던 재전송과 겹치면 그 회차가 끝난 뒤 한 번 더 보낸다
+    for(let i=0;i<2 && _phoneQueue()[name];i++) await _phoneFlush();
+    saveBtn.textContent=label;
+    saveBtn.disabled=false;
+    closePhoneModal();
+    renderStaffPhonePanel();
+    if(!_phoneQueue()[name]) toast(`${name} — 휴대폰 번호를 인사팀 연락처에 저장했어요`,'ok');
+    else toast('서버 저장 실패 — 번호는 보관 중이고 자동으로 다시 보내요','warn');
+  }
+
+  /* 앱 진입(show) — 지난번에 못 보낸 번호 재전송 (인사팀 화면에 안 들어와도) */
+  function phoneBoot(){
+    if(!phoneBoot._bound){
+      phoneBoot._bound=true;
+      window.addEventListener('online',()=>_phoneFlush());
+      document.addEventListener('visibilitychange',()=>{ if(!document.hidden) _phoneFlush(); });
+    }
+    _phoneFlush();
+  }
+  window.phoneBoot=phoneBoot;
 
   /* 신규 입사자 등록 폼 — 마스터 전용 (뷰어는 .master-only CSS로 자동 숨김, JS도 이중 방어) */
   const _ADD_STAFF_SLOTS={
@@ -41269,6 +41612,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <button id="dsmSave" class="dsm-btn dsm-btn-primary" type="button" disabled>로그인</button>
     </div>
   </div>
+</div>
+
+<!-- 직원 휴대폰 번호 등록 · 수정 팝업 (관리자 전용) — 인사팀 직원 연락처의 등록/수정 버튼으로 열림 · staff_phones 에 저장 -->
+<div id="phoneModal" class="dsm-overlay" hidden>
+  <form class="dsm-card" id="phoneForm" novalidate autocomplete="off">
+    <div class="dsm-icon">📱</div>
+    <h2 class="dsm-title" id="phoneTitle">휴대폰 번호 등록</h2>
+    <p class="dsm-desc" id="phoneDesc"></p>
+    <input id="phoneInput" class="dsm-input" type="tel" inputmode="numeric" maxlength="13" placeholder="010-1234-5678" aria-label="휴대폰 번호">
+    <div class="dsm-hint" id="phoneHint" aria-live="polite"></div>
+    <div class="dsm-note">인사팀 직원 연락처에 저장되고, 전 직원이 볼 수 있어요.</div>
+    <div class="dsm-actions">
+      <button type="button" class="dsm-btn dsm-btn-ghost" id="phoneCancel">취소</button>
+      <button type="submit" class="dsm-btn dsm-btn-primary" id="phoneSave" disabled>등록</button>
+    </div>
+  </form>
 </div>
 
 <!-- 지난 주간/월 목표 아카이브 조회 모달 -->
