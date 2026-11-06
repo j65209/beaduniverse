@@ -293,8 +293,8 @@
         <div class="row"><button class="btn sm" id="switchAccount">새 계정으로 옮기기</button></div>
       </div>
       <div class="step" id="backupBox">
-        <h4>➕ 보조 계정 — 한도가 다 차면 이어서 보내기</h4>
-        <div class="muted" style="margin-bottom:10px">메인 계정 한도를 다 쓰면 같은 발송 안에서 보조 계정으로 넘어가 이어 보내요. 발송 기록 시트를 같이 써서 이미 보낸 곳에 다시 보내지 않아요.</div>
+        <h4>➕ 보조 계정 — 메인과 한 통씩 번갈아 보내기</h4>
+        <div class="muted" style="margin-bottom:10px">메인·보조 계정이 한 통씩 번갈아 보내요. 한쪽 한도가 다 차면 남은 쪽으로 이어 보내요. 발송 기록 시트를 같이 써서 이미 보낸 곳에 다시 보내지 않아요.</div>
         <div id="backupOn" hidden>
           <dl class="kv"><dt>보조 계정</dt><dd id="kvSender2">—</dd><dt>보조 남은 한도</dt><dd id="kvQuota2">—</dd></dl>
           <div class="row"><button class="btn sm" id="backupOff">보조 연결 해제</button></div>
@@ -418,7 +418,7 @@
   const state = {
     conn: lsGet(LS.conn, null),          // { url, key }
     server: null,                        // { sender, remaining, logUrl }
-    conn2: lsGet(LS.conn2, null),        // 보조 서버 { url, key } — 메인 한도가 다 차면 이어서 보냄
+    conn2: lsGet(LS.conn2, null),        // 보조 서버 { url, key } — 메인과 한 통씩 번갈아 보냄
     server2: null,                       // { sender, remaining, logUrl }
     draft: lsGet(LS.draft, { subject: DEFAULT_SUBJECT, name: '브라이트비드', body: DEFAULT_BODY, interval: 3, attachments: [], dirty: false }),
     prev: new Map(),                     // 예전에 보낸 주소 → { source: 'log'|'gmail', when }
@@ -959,7 +959,7 @@
       const kv = $('cfKv');
       kv.textContent = '';
       const sec = Math.round(limit * (state.draft.interval + 1.5));
-      [['보내는 계정', state.server2 ? `${state.server.sender} (${state.server.remaining}건) → 다 차면 ${state.server2.sender} (${state.server2.remaining}건)` : state.server.sender],
+      [['보내는 계정', state.server2 ? `${state.server.sender} (${state.server.remaining}건) · ${state.server2.sender} (${state.server2.remaining}건) 한 통씩 번갈아` : state.server.sender],
         ['답장 받을 주소', state.draft.replyTo || state.server.sender], ['제목', state.draft.subject],
         ['첨부', (state.draft.attachments || []).map((f) => f.name).join(', ') || '없음'],
         ['자동 제외', p.already.length ? `예전에 보낸 주소 ${p.already.length}건 (다시 안 보내요)` : '없음'],
@@ -1005,28 +1005,30 @@
 
     const msg = { subject: state.draft.subject, body: state.draft.body, name: state.draft.name, replyTo: state.draft.replyTo,
       attachmentIds: (state.draft.attachments || []).map((f) => f.id) };
-    let stopNote = '', viaBackup = 0, switchNote = '';
-    // 메인 한도가 이미 0이면 처음부터 보조로
-    let useBackup = state.server.remaining < 1 && !!state.server2 && state.server2.remaining > 0;
+    let stopNote = '', viaBackup = 0;
+    // 보조 계정이 붙어 있으면 한 통씩 번갈아 (첫 통은 메인). 한쪽 한도가 다 차면 남은 쪽으로 계속.
+    const hasRoom = (bak) => (bak ? !!state.server2 && state.server2.remaining > 0 : state.server.remaining > 0);
+    let lastBackup = true;
     for (let i = 0; i < queue.length; i++) {
       if (state.stop) { stopNote = '멈춤을 눌러서 중간에 멈췄어요.'; break; }
-      if (!useBackup && state.server.remaining < 1 && state.server2 && state.server2.remaining > 0) {
-        useBackup = true; switchNote = '메인 계정 한도가 다 차서 보조 계정(' + state.server2.sender + ')으로 이어 보냈어요.';
-      }
+      const pref = !lastBackup;
+      const useBackup = hasRoom(pref) ? pref : hasRoom(!pref) ? !pref : false;
       const target = useBackup ? state.server2 : state.server;
       setRow(i, 'sending');
       let r;
       try { r = await api('send', Object.assign({ to: queue[i] }, msg), useBackup ? state.conn2 : state.conn); }
       catch (e) { r = { ok: false, status: 'fail', error: e.message }; }
       if (typeof r.remaining === 'number') target.remaining = r.remaining;
-      if (r.status === 'quota' && !useBackup && state.server2 && state.server2.remaining > 0) {
-        // 메인 한도 끝 → 같은 주소를 보조 계정으로 다시
-        state.server.remaining = 0;
-        useBackup = true; switchNote = '메인 계정 한도가 다 차서 보조 계정(' + state.server2.sender + ')으로 이어 보냈어요.';
-        setRow(i, 'wait', '보조 계정으로 다시 보냄');
-        renderConn();
-        i--;
-        continue;
+      lastBackup = useBackup;
+      if (r.status === 'quota') {
+        target.remaining = 0;
+        if (hasRoom(!useBackup)) {
+          // 이 계정 한도 끝 → 같은 주소를 다른 계정으로 다시
+          setRow(i, 'wait', (useBackup ? '메인' : '보조') + ' 계정으로 다시 보냄');
+          renderConn();
+          i--;
+          continue;
+        }
       }
       if (r.status === 'sent' && useBackup) viaBackup++;
       if (r.status === 'sent') { state.prev.set(queue[i].toLowerCase(), { source: 'log', when: new Date().toISOString() }); setRow(i, 'sent', timeNow() + (useBackup ? ' · 보조 계정' : '')); dropRecipient(queue[i]); renderStats(); }
@@ -1047,7 +1049,6 @@
     renderStats();
     const left = parseRecipients().fresh.length;
     toast(`발송 끝 · 보냄 ${c('sent')}` + (viaBackup ? ` (보조 계정 ${viaBackup})` : '') + ` · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n남은 한도 ${capacity()}건` +
-      (switchNote ? '\n' + switchNote : '') +
       (left ? `\n받는 사람 칸에는 못 보낸 주소 ${left}개만 남겨 뒀어요` : '\n받는 사람 칸을 비웠어요 · 다음 메일 주소를 바로 붙여넣으면 돼요') +
       (stopNote ? '\n' + stopNote : ''), c('fail') > 0);
     loadHistory();
