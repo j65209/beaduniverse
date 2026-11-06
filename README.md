@@ -21,12 +21,13 @@
 | 항목 | 값 |
 |---|---|
 | URL | https://j65209.github.io/beaduniverse/ |
-| PIN | `6702` (뷰어) · `0000` (마스터) |
+| PIN | 뷰어 4자리 · 관리자 6자리 (`index.html` 의 `PIN_VIEWER` · `PIN_MASTER`, 서버 프록시용 값은 `PROXY_PIN_MASTER` 로 따로) |
 | 자동 통과 IP | `110.11.178.25` |
 | 저장 키 | `brightbeed_unlocked` (localStorage) |
 
 PIN을 한 번 입력하면 해당 브라우저는 다음부터 자동 통과한다.
-다른 컴퓨터에서 작업할 때는 뷰어 PIN `6702` (또는 마스터 PIN `0000`)를 한 번만 넣으면 된다.
+다른 컴퓨터에서 작업할 때는 뷰어 PIN (또는 관리자 PIN)을 한 번만 넣으면 된다.
+관리자 PIN 을 바꿀 때는 `PIN_MASTER` 와 `MASTER_PIN_VER` 만 올리면 된다 (관리자로 들어와 있던 기기만 다시 입력, 직원 기기는 그대로).
 
 ## 3. 폴더 구조
 

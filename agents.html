@@ -383,7 +383,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
 const DONE_MSG = '더블체크 완료.';
 const PIN_VIEWER = '2580';
-const PIN_MASTER = '0000';
+// 서버 Mac 프록시의 수정 권한 값 — 오피스 관리자 로그인 PIN 과 별개 (index.html PROXY_PIN_MASTER 와 같은 값)
+const PROXY_PIN_MASTER = '0000';
 const ROLE_KEY = 'brightbeed_role';
 const TUNNEL_URL = 'https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json';
 // 서버 재부팅으로 터널 주소가 바뀌어도 열어 둔 탭이 새로고침 없이 새 주소로 넘어가도록 주기적으로 다시 읽는다.
@@ -696,7 +697,7 @@ function pushChat(id, msg){
    프록시
    ------------------------------------------------------------------------- */
 function isMaster(){ return localStorage.getItem(ROLE_KEY) === 'master'; }
-function bbPin(){ return isMaster() ? PIN_MASTER : PIN_VIEWER; }
+function bbPin(){ return isMaster() ? PROXY_PIN_MASTER : PIN_VIEWER; }
 
 async function loadProxyBase(force){
   if(_proxyBase && !force && Date.now() - _proxyBaseAt < PROXY_BASE_TTL_MS) return _proxyBase;
