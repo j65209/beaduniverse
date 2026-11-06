@@ -2726,7 +2726,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .vm-pill-cnt .vm-pill-value{font-size:15px}
   .vm-pill-sales{color:#4338ca;background:rgba(79,70,229,.10)}
   .vm-pill-margin{color:#b45309;background:rgba(245,158,11,.10)}
-  /* 진행 중인 월(시트에 총매출금액 행이 아직 없음) — 강조 */
+  /* 진행 중인 월(시트에 총매출금액 행이 아직 없거나, 이번 달) — 강조 */
   .vm-month.vm-month-pending{
     border-color:rgba(236,72,153,.5);
     background:linear-gradient(135deg,rgba(236,72,153,.04),rgba(168,85,247,.04))
@@ -2949,6 +2949,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .vm-table tbody tr:first-child td{border-top:none}
   .vm-dash{color:var(--text-3);font-weight:400;opacity:.6}
   .vm-empty{padding:24px;text-align:center;color:var(--text-3);font-size:12px}
+  /* 시트 "총매출금액" 행 ≠ 항목 합 (합계 수식 범위 누락 · 숨긴 행) — 2026-11-06 */
+  .vm-month-pill.has-warn{box-shadow:inset 0 0 0 1px rgba(220,38,38,.45)}
+  .vm-pill-warn{font-size:12px;font-weight:700;color:#dc2626;cursor:help}
+  .vm-pill-sub{font-size:11px;font-weight:500;opacity:.7;font-variant-numeric:tabular-nums}
+  .vm-month-notes{margin:2px 0 10px;padding:8px 12px;border-radius:8px;background:rgba(220,38,38,.06);color:#b91c1c;font-size:12px;line-height:1.55}
+  .vm-month-notes div+div{margin-top:2px}
   @media(max-width:600px){
     .vm-list{padding:10px 10px 12px}
     .vm-month-head{padding:10px 12px;flex-wrap:wrap}
@@ -34708,7 +34714,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
     // 매출/마진 합계 계산 (시트에 총매출금액 행이 없는 진행 월용)
     const _krwParse=s=>{const n=Number(String(s||'').replace(/[^\d.-]/g,'')); return isFinite(n)?n:0;};
-    const _krwFmt=n=>n?`₩${n.toLocaleString('ko-KR')}`:'—';
+    const _krwFmt=n=>n?`₩${Math.round(n).toLocaleString('ko-KR')}`:'—';
+
+    /* 표시 합계 고르기 (2026-11-06) — 시트 "총매출금액" 행과 항목 합을 대조한다.
+       · 시트 합계 수식 범위가 마지막 몇 행을 빠뜨리면 항목 합이 더 크다 (2026.07·2026.10 마진).
+       · 시트에서 숨긴 행은 프록시 CSV(gviz)에 안 실려 항목 합이 더 작다 (2026.06 전체).
+       둘 다 실제 합보다 작거나 같으니 큰 쪽을 보이고, 반올림(행당 1원 미만)보다 크게 다르면 ⚠ 로 알린다.
+       금액은 숫자로 바꿔 다시 쓴다 — 시트 셀 서식이 소수 둘째 자리여도("₩13,752,000.00") 다른 달과 같은 모양. */
+    const _vmPickTotal=(sheetTxt, calc, nItems)=>{
+      if(String(sheetTxt||'').trim()==='') return {txt:_krwFmt(calc), warn:''};
+      const sheet=_krwParse(sheetTxt);
+      if(!nItems || Math.abs(sheet-calc)<=Math.max(2,nItems)) return {txt:_krwFmt(sheet), warn:''};
+      const warn = calc>sheet
+        ? `시트 합계행 ${_krwFmt(sheet)}보다 항목 합 ${_krwFmt(calc)}이 큽니다 — 시트 합계 수식 범위가 아래쪽 행을 빠뜨린 것 같아요. 항목 합으로 표시합니다.`
+        : `시트 합계행 ${_krwFmt(sheet)}보다 항목 합 ${_krwFmt(calc)}이 작습니다 — 시트에서 숨긴 행은 여기 안 보입니다. 시트 합계로 표시합니다.`;
+      return {txt:_krwFmt(Math.max(sheet,calc)), warn};
+    };
 
     // 셀러 누적 순위 렌더 (모든 월 합산)
     renderVendorSellerRank(_vMargin.months, _krwParse, _krwFmt);
@@ -34722,41 +34743,55 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
     wrap.innerHTML='';
     sorted.forEach(m=>{
+      // 이번 달(과 그 뒤)은 시트에 총매출금액 행을 미리 만들어 둬도 아직 진행 중 → 잠정으로 표시
+      const live = m.pending || ((m.year||_fallbackYear)*12+m.monthNum) >= curAbs;
       const det=document.createElement('details');
-      det.className='vm-month'+(m.pending?' vm-month-pending':'');
-      // pending(진행 중) 월은 항상 펼침. 그 외엔 이번달과 1개월 이내일 때만 펼침.
-      if(m.pending || monthGap(m) <= 1) det.open=true;
+      det.className='vm-month'+(live?' vm-month-pending':'');
+      // 진행 중 월은 항상 펼침. 그 외엔 이번달과 1개월 이내일 때만 펼침.
+      if(live || monthGap(m) <= 1) det.open=true;
 
-      // 진행 월은 총매출/총마진이 시트에 없을 수 있어 클라이언트에서 합산 보조
+      // 진행 월은 총매출/총마진이 시트에 없을 수 있어 클라이언트에서 합산 보조 + 시트 합계행 대조
       const calcMargin = m.items.reduce((s,it)=>s+_krwParse(it.margin),0);
       const calcSales  = m.items.reduce((s,it)=>s+_krwParse(it.sales),0);
-      const showSales  = m.totalSales || _krwFmt(calcSales);
-      const showMargin = m.totalMargin || _krwFmt(calcMargin);
+      const sales  = _vmPickTotal(m.totalSales,  calcSales,  m.items.length);
+      const margin = _vmPickTotal(m.totalMargin, calcMargin, m.items.length);
+      // 합계는 시트에 있는데 항목이 하나도 안 보임 = 시트에서 그 달 행을 숨김 (gviz CSV 는 숨긴 행을 뺀다)
+      const hiddenRows = !m.items.length && !!(m.totalSales||m.totalMargin);
+      const cntWarn = hiddenRows ? '시트 합계는 있는데 항목이 안 보입니다 — 시트에서 이 달 행을 숨기면 여기 나오지 않아요.' : '';
+      // 진행 중 월은 수량이 들어간 건수를 같이 보여 준다 (잠정 매출이 작은 이유)
+      const withQty = m.items.filter(it=>_krwParse(it.qty)>0).length;
+      const cntSub = live && m.items.length && withQty<m.items.length
+        ? `<span class="vm-pill-sub">수량 입력 ${withQty}</span>` : '';
+      const warnMark = w => w ? `<span class="vm-pill-warn" aria-hidden="true">⚠</span>` : '';
+      const pillAttr = (cls, w) => `class="vm-month-pill ${cls}${w?' has-warn':''}"${w?` title="${_vmEsc(w)}"`:''}`;
 
       const sum=document.createElement('summary');
       sum.className='vm-month-head';
       sum.innerHTML=`
-        <span class="vm-month-name">${_vmEsc(m.month)}${m.pending?'<span class="vm-pending-badge">진행 중</span>':''}</span>
+        <span class="vm-month-name">${_vmEsc(m.month)}${live?'<span class="vm-pending-badge">진행 중</span>':''}</span>
         <span class="vm-month-meta">
-          <span class="vm-month-pill vm-pill-cnt">
+          <span ${pillAttr('vm-pill-cnt', cntWarn)}>
             <span class="vm-pill-label">건수</span>
-            <span class="vm-pill-value">${m.items.length}</span>
+            <span class="vm-pill-value">${hiddenRows?'—':m.items.length}</span>${cntSub}${warnMark(cntWarn)}
           </span>
-          <span class="vm-month-pill vm-pill-sales">
-            <span class="vm-pill-label">${m.pending?'매출(잠정)':'매출'}</span>
-            <span class="vm-pill-value">${_vmEsc(showSales)}</span>
+          <span ${pillAttr('vm-pill-sales', sales.warn)}>
+            <span class="vm-pill-label">${live?'매출(잠정)':'매출'}</span>
+            <span class="vm-pill-value">${_vmEsc(sales.txt)}</span>${warnMark(sales.warn)}
           </span>
-          <span class="vm-month-pill vm-pill-margin">
-            <span class="vm-pill-label">${m.pending?'마진(잠정)':'마진'}</span>
-            <span class="vm-pill-value">${_vmEsc(showMargin)}</span>
+          <span ${pillAttr('vm-pill-margin', margin.warn)}>
+            <span class="vm-pill-label">${live?'마진(잠정)':'마진'}</span>
+            <span class="vm-pill-value">${_vmEsc(margin.txt)}</span>${warnMark(margin.warn)}
           </span>
         </span>`;
       det.appendChild(sum);
 
       const body=document.createElement('div');
       body.className='vm-month-body';
+      // ⚠ 내용은 휴대폰에서도 보이게 펼친 본문 위에 글로도 적는다 (title 툴팁은 PC 마우스에서만 보임)
+      const notes=[sales.warn&&`매출: ${sales.warn}`, margin.warn&&`마진: ${margin.warn}`, cntWarn].filter(Boolean);
+      const notesHTML=notes.length?`<div class="vm-month-notes">${notes.map(t=>`<div>⚠ ${_vmEsc(t)}</div>`).join('')}</div>`:'';
       if(m.items.length===0){
-        body.innerHTML='<div class="vm-empty">진행 내역 없음</div>';
+        body.innerHTML=notesHTML+(hiddenRows?'':'<div class="vm-empty">진행 내역 없음</div>');
       } else {
         // 같은 제품+셀러 옵션 변형은 시트처럼 첫 행에만 표시하고 이후 행은 비워서 시각적 그룹화
         let lastKey='';
@@ -34780,7 +34815,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <td>${(it.settle||'').trim()?_vmEsc(it.settle):dash}</td>
             </tr>`;
         }).join('');
-        body.innerHTML=`
+        body.innerHTML=notesHTML+`
           <table class="vm-table">
             <thead><tr>
               <th>제품</th><th>셀러</th>
