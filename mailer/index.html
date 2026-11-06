@@ -65,6 +65,7 @@
   textarea.in{resize:vertical;line-height:1.65}
   #body{min-height:380px}
   #recipients{min-height:180px;font-size:13.5px}
+  #recipients[readonly]{opacity:.65;cursor:default}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .muted{font-size:12px;color:var(--text-3)}
 
@@ -682,6 +683,21 @@
     renderStats();
     return removed;
   }
+  /* 발송 중 한 통이 끝날 때마다(보냄·건너뜀) 그 주소를 받는 사람 칸에서 바로 지운다.
+     창을 중간에 닫거나 멈춰도 칸에는 아직 안 보낸 주소만 남아서, 다음 발송을 바로 이어 붙일 수 있다. */
+  function dropRecipient(email) {
+    const k = String(email).toLowerCase();
+    const ta = $('recipients');
+    const out = [];
+    ta.value.split(/\r?\n/).forEach((line) => {
+      const found = line.match(EMAIL_RE) || [];
+      if (!found.some((e) => e.toLowerCase() === k)) { out.push(line); return; }
+      const rest = found.filter((e) => e.toLowerCase() !== k);
+      if (rest.length) out.push(rest.join(', '));
+    });
+    ta.value = out.join('\n');
+    lsSet(LS.rcpt, ta.value);
+  }
 
   /* 예전에 보낸 적 있는지 서버에 확인 (발송 기록 + 지메일 보낸편지함) */
   async function precheck(list) {
@@ -884,6 +900,7 @@
     state.rows = queue.map((email) => ({ email, st: 'wait', memo: '' }));
     renderRows();
     state.running = true; state.stop = false;
+    $('recipients').readOnly = true;   // 보내는 동안엔 칸을 고치지 못하게 (한 통씩 지워 나가는 중)
     $('sendBtn').hidden = true; $('stopBtn').hidden = false;
     updateSendButton();
 
@@ -897,8 +914,8 @@
       try { r = await api('send', Object.assign({ to: queue[i] }, msg)); }
       catch (e) { r = { ok: false, status: 'fail', error: e.message }; }
       if (typeof r.remaining === 'number') state.server.remaining = r.remaining;
-      if (r.status === 'sent') { state.prev.set(queue[i].toLowerCase(), { source: 'log', when: new Date().toISOString() }); setRow(i, 'sent', timeNow()); }
-      else if (r.status === 'skip') { if (r.prev) state.prev.set(queue[i].toLowerCase(), r.prev); setRow(i, 'skip', r.reason || r.error || ''); }
+      if (r.status === 'sent') { state.prev.set(queue[i].toLowerCase(), { source: 'log', when: new Date().toISOString() }); setRow(i, 'sent', timeNow()); dropRecipient(queue[i]); renderStats(); }
+      else if (r.status === 'skip') { if (r.prev) state.prev.set(queue[i].toLowerCase(), r.prev); setRow(i, 'skip', r.reason || r.error || ''); dropRecipient(queue[i]); renderStats(); }
       else setRow(i, 'fail', r.error || '실패');
       renderConn();
       if (r.status === 'quota') { stopNote = '오늘 발송 한도를 다 써서 멈췄어요.'; break; }
@@ -907,13 +924,16 @@
     state.rows.forEach((row, i) => { if (row.st === 'wait') setRow(i, 'skip', '보내지 않음'); });
 
     state.running = false;
+    $('recipients').readOnly = false;
     $('sendBtn').hidden = false; $('stopBtn').hidden = true;
     $('stopBtn').disabled = false; $('stopBtn').textContent = '멈춤 (지금 보내는 메일까지만)';
     const c = (st) => state.rows.filter((x) => x.st === st).length;
-    if (c('sent') + c('skip') > 0) cleanRecipients();   // 보낸 주소는 받는 사람 목록에서 자동으로 지움 (못 보낸 주소만 남김)
+    if (c('sent') + c('skip') > 0) cleanRecipients();   // 마무리: 예전에 보낸 주소·중복·이메일 아닌 줄도 정리 (못 보낸 주소만 남김)
     renderStats();
+    const left = parseRecipients().fresh.length;
     toast(`발송 끝 · 보냄 ${c('sent')} · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n오늘 남은 한도 ${state.server.remaining}건` +
-      (c('sent') ? '\n보낸 주소는 받는 사람 목록에서 지웠어요 (기록은 아래 발송 기록에 남아요)' : '') + (stopNote ? '\n' + stopNote : ''), c('fail') > 0);
+      (left ? `\n받는 사람 칸에는 못 보낸 주소 ${left}개만 남겨 뒀어요` : '\n받는 사람 칸을 비웠어요 · 다음 메일 주소를 바로 붙여넣으면 돼요') +
+      (stopNote ? '\n' + stopNote : ''), c('fail') > 0);
     loadHistory();
     refreshSent();
     try { const r = await api('ping'); if (r.ok) { state.server.remaining = r.remaining; state.server.logUrl = r.logUrl; renderConn(); } } catch (e) { /* 다음에 */ }
