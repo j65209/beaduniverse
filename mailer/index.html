@@ -314,7 +314,7 @@
       </div>
       <div class="step">
         <h4>💻 다른 PC에서도 쓰려면</h4>
-        <div class="muted" style="margin-bottom:10px">연결 코드를 복사해서 다른 PC의 이 화면 「연결 코드」 칸에 붙여넣으면 바로 연결돼요.</div>
+        <div class="muted" style="margin-bottom:10px">연결 코드를 복사해서 다른 PC의 이 화면 「연결 코드」 칸에 붙여넣으면 바로 연결돼요. 보조 계정이 붙어 있으면 그것도 같이 연결돼요.</div>
         <div class="row"><button class="btn sm" id="copyLinkCode">연결 코드 복사</button>
           <button class="btn sm" id="disconnect">이 PC에서 연결 해제</button></div>
       </div>
@@ -583,16 +583,24 @@
     renderConn();
   }
 
-  function parseLinkCode(text) {
-    const t = text.trim();
+  function linkObj(text) {
+    const t = String(text || '').trim();
     if (!t.startsWith(LINK_PREFIX)) return null;
-    try {
-      const o = JSON.parse(decodeURIComponent(escape(atob(t.slice(LINK_PREFIX.length)))));
-      return o && o.url && o.key ? { url: o.url, key: o.key } : null;
-    } catch (e) { return null; }
+    try { return JSON.parse(decodeURIComponent(escape(atob(t.slice(LINK_PREFIX.length))))); }
+    catch (e) { return null; }
   }
-  function makeLinkCode(conn) {
-    return LINK_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify({ url: conn.url, key: conn.key }))));
+  function parseLinkCode(text) {
+    const o = linkObj(text);
+    return o && o.url && o.key ? { url: o.url, key: o.key } : null;
+  }
+  function parseLinkBackup(text) {        // 연결 코드에 같이 담긴 보조 서버
+    const o = linkObj(text);
+    return o && o.url2 && o.key2 ? { url: o.url2, key: o.key2 } : null;
+  }
+  function makeLinkCode(conn, conn2) {
+    const o = { url: conn.url, key: conn.key };
+    if (conn2) { o.url2 = conn2.url; o.key2 = conn2.key; }
+    return LINK_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify(o))));
   }
 
   /* ---------------------------------------------------------------- 메일 내용 */
@@ -1121,7 +1129,15 @@
     }
     $('connectBtn').disabled = true;
     $('connectState').textContent = '연결 확인 중…';
-    try { await connect(conn); closeModal('connModal'); }
+    try {
+      await connect(conn);
+      const b = parseLinkBackup(raw);
+      if (b) {
+        try { await connect2(b, true); toast('연결됐어요 · ' + state.server.sender + ' + 보조 ' + state.server2.sender + ' · 합계 ' + capacity() + '건'); }
+        catch (e) { toast('메인은 연결됐지만 보조 계정은 못 붙였어요: ' + e.message, true); }
+      }
+      closeModal('connModal');
+    }
     catch (e) { $('connectState').textContent = e.message; }
     finally { $('connectBtn').disabled = false; }
   };
@@ -1152,7 +1168,7 @@
   };
   $('connectBtn2').onclick = async () => {
     const raw = $('urlInput2').value.trim();
-    let conn = parseLinkCode(raw);
+    let conn = parseLinkBackup(raw) || parseLinkCode(raw);
     if (!conn) {
       if (!/^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[^/]+\/exec\/?$/.test(raw)) { $('connectState2').textContent = '웹 앱 URL(…/exec)을 넣어 주세요'; return; }
       const key = lsGet(LS.pendingKey2, null);
@@ -1171,8 +1187,8 @@
   };
   $('copyLinkCode').onclick = async () => {
     if (!state.conn) return;
-    const code = makeLinkCode(state.conn);
-    try { await navigator.clipboard.writeText(code); toast('연결 코드를 복사했어요. 다른 PC의 연결 설정 3번 칸에 붙여넣으면 돼요.'); }
+    const code = makeLinkCode(state.conn, state.conn2);
+    try { await navigator.clipboard.writeText(code); toast('연결 코드를 복사했어요' + (state.conn2 ? ' (보조 계정 포함)' : '') + '. 다른 PC의 연결 설정 3번 칸에 붙여넣으면 돼요.'); }
     catch (e) { prompt('아래 연결 코드를 복사하세요', code); }
   };
   $('disconnect').onclick = () => {
