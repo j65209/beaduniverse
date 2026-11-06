@@ -3014,6 +3014,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .wr-btn-cancel{background:#fff7ed;border-color:#fdba74;color:#9a3412}
   .wr-btn-cancel:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
   .wr-btn-reset{color:#78716c}
+  /* 송금완료 이력 더보기 · 접기 (2026-11-06) */
+  .wr-more-row{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+  .wr-more-row[hidden]{display:none}
+  .wr-btn-more{color:#44403c}
+  .wr-btn-more:disabled{opacity:.6;cursor:default}
+  .wr-more-left{font-weight:600;color:#a8a29e}
   .wr-hint{font-size:11.5px;color:#78716c;margin-right:auto;letter-spacing:-.01em}
   .wr-batch{
     margin-top:14px;padding:14px 16px;border:1px solid #e7e2ce;border-radius:12px;background:#fefbf3;
@@ -34848,6 +34854,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   let _wrBatchesLastHash = '';
   let _wrRealtimeChan = null;
   let _wrPollTimer = null;
+  // 송금완료 이력 — 처음엔 최근 WR_DONE_FIRST 개, [더보기] 한 번에 WR_DONE_MORE 개씩 더 (2026-11-06)
+  const WR_DONE_FIRST = 5;
+  const WR_DONE_MORE = 10;
+  let _wrDoneLimit = WR_DONE_FIRST;   // 지금 보여 줄 송금완료 개수 — 30초 폴링·realtime 새로고침에도 유지
+  let _wrDoneTotal = null;            // 송금완료 전체 개수 (Content-Range, 못 읽으면 null)
+  let _wrDoneHasMore = false;         // 더 오래된 송금완료가 남았는지 (limit+1 개 받아 판단)
+  let _wrDoneLoading = false;         // [더보기] 불러오는 중
+  let _wrFetchSeq = 0;                // 늦게 끝난 옛 요청이 더보기 결과를 덮어쓰지 않게
 
   function _wrTodayStr(){
     const d=new Date();
@@ -35141,22 +35155,66 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   });
 
   async function _wrFetchBatches(){
+    const seq = ++_wrFetchSeq;
     try{
-      // 미완료 전부 + 최근 완료 5건
+      // 미완료 전부 + 송금완료 최근 _wrDoneLimit 개 (하나 더 받아 남은 게 있는지 보고, 전체 개수는 Content-Range 로)
       const [pR, dR] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.notified&select=*&order=requested_at.desc`, {headers:_sbHeaders(),cache:'no-cache'}),
-        fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.done&select=*&order=done_at.desc&limit=5`, {headers:_sbHeaders(),cache:'no-cache'}),
+        fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.done&select=*&order=done_at.desc&limit=${_wrDoneLimit+1}`, {headers:_sbHeaders({Prefer:'count=exact'}),cache:'no-cache'}),
       ]);
       if(!pR.ok || !dR.ok) return;
       const pending = await pR.json();
-      const done = await dR.json();
-      _wrBatches = [...(Array.isArray(pending)?pending:[]), ...(Array.isArray(done)?done:[])];
-      const h = JSON.stringify(_wrBatches.map(b=>[b.id,b.status,b.done_at,b.notified_at,
-        (Array.isArray(b.rows)?b.rows:[]).map(x=> x&&x.done ?'1':'0').join('')]));
+      const doneRaw = await dR.json();
+      if(seq !== _wrFetchSeq) return; // 그 사이 더 새로 보낸 요청(더보기·폴링)이 있다 — 그쪽 결과를 쓴다
+      const done = Array.isArray(doneRaw) ? doneRaw : [];
+      const total = String(dR.headers.get('content-range')||'').match(/\/(\d+)$/);
+      _wrDoneTotal = total ? Number(total[1]) : null;
+      _wrDoneHasMore = done.length > _wrDoneLimit;
+      _wrBatches = [...(Array.isArray(pending)?pending:[]), ...done.slice(0, _wrDoneLimit)];
+      const h = JSON.stringify([_wrDoneLimit, _wrDoneTotal, _wrDoneHasMore, _wrBatches.map(b=>[b.id,b.status,b.done_at,b.notified_at,
+        (Array.isArray(b.rows)?b.rows:[]).map(x=> x&&x.done ?'1':'0').join('')])]);
       if(h === _wrBatchesLastHash) return;
       _wrBatchesLastHash = h;
       _wrRenderBatches();
     }catch(e){ /* silent */ }
+  }
+
+  /* [더보기] — 송금완료 이력을 WR_DONE_MORE 개씩 더 불러온다. 늘린 개수는 폴링·realtime 새로고침에도 유지. */
+  async function wrLoadMoreDone(){
+    if(_wrDoneLoading || !_wrDoneHasMore) return;
+    _wrDoneLoading = true;
+    _wrRenderMore();
+    _wrDoneLimit += WR_DONE_MORE;
+    try{ await _wrFetchBatches(); }
+    finally{ _wrDoneLoading = false; _wrRenderMore(); }
+  }
+  /* [접기] — 처음처럼 최근 WR_DONE_FIRST 개만 (다시 받을 필요 없이 화면에서 잘라 낸다) */
+  function wrFoldDone(){
+    _wrDoneLimit = WR_DONE_FIRST;
+    let n = 0;
+    _wrBatches = _wrBatches.filter(b=> b.status!=='done' || ++n <= WR_DONE_FIRST);
+    _wrDoneHasMore = _wrDoneTotal==null ? true : _wrDoneTotal > WR_DONE_FIRST;
+    _wrRenderBatches();
+    document.getElementById('wrBatchList')?.scrollIntoView({block:'nearest'});
+  }
+  window.wrLoadMoreDone = wrLoadMoreDone;
+  window.wrFoldDone = wrFoldDone;
+
+  function _wrMoreHtml(){
+    const shownDone = _wrBatches.filter(b=>b.status==='done').length;
+    const canFold = shownDone > WR_DONE_FIRST && !_wrDoneLoading;
+    if(!_wrDoneHasMore && !canFold) return '<div class="wr-more-row" id="wrMoreRow" hidden></div>';
+    const left = _wrDoneTotal!=null ? Math.max(0, _wrDoneTotal - shownDone) : 0;
+    const moreBtn = _wrDoneHasMore
+      ? `<button type="button" class="wr-btn wr-btn-more" onclick="wrLoadMoreDone()"${_wrDoneLoading?' disabled':''}>${
+          _wrDoneLoading ? '불러오는 중…' : `이전 송금 내역 더보기${left?` <span class="wr-more-left">${left}개 남음</span>`:''}`}</button>`
+      : '';
+    const foldBtn = canFold ? '<button type="button" class="wr-btn wr-btn-reset" onclick="wrFoldDone()">접기</button>' : '';
+    return `<div class="wr-more-row" id="wrMoreRow">${moreBtn}${foldBtn}</div>`;
+  }
+  function _wrRenderMore(){
+    const el = document.getElementById('wrMoreRow');
+    if(el) el.outerHTML = _wrMoreHtml();
   }
 
   function _wrRenderBatches(){
@@ -35165,6 +35223,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!_wrBatches.length){ wrap.innerHTML=''; return; }
     const me = (typeof _diaryGetMe==='function' ? _diaryGetMe() : '') || '';
     const canDone = me === WR_OWNER_NAME;
+    // 다시 그려도 사람이 펼치거나 접어 둔 카드는 그대로 (더보기·30초 폴링 때 보던 이력이 닫히지 않게).
+    // 상태가 바뀐 카드(알림 → 송금완료)는 기본값(진행 중 펼침 · 완료 접힘)으로 돌아간다.
+    const prevOpen = {};
+    wrap.querySelectorAll('details.wr-batch[data-key]').forEach(d=>{ prevOpen[d.dataset.key] = d.open; });
     wrap.innerHTML = _wrBatches.map(b=>{
       const rows = Array.isArray(b.rows)?b.rows:[];
       const total = rows.reduce((s,x)=>s+(Number(x.amount)||0), 0);
@@ -35210,8 +35272,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div style="text-align:right">${doneCell}</div>
         `;
       }).join('');
+      const openKey = `${b.id}:${b.status}`;
+      const isOpen = (openKey in prevOpen) ? prevOpen[openKey] : !isDone;
       return `
-        <details class="wr-batch${isDone?' is-done':''}"${isDone?'':' open'}>
+        <details class="wr-batch${isDone?' is-done':''}" data-key="${_esc(openKey)}"${isOpen?' open':''}>
           <summary class="wr-batch-head">
             <span class="wr-batch-caret">▶</span>
             <span class="wr-batch-status ${badgeCls}"><span class="wr-batch-dot"></span>${badgeText}</span>
@@ -35235,7 +35299,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </div>
         </details>
       `;
-    }).join('');
+    }).join('') + _wrMoreHtml();
   }
   function _wrFmtTs(iso){
     if(!iso) return '';
