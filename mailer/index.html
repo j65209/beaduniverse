@@ -216,6 +216,13 @@
             <button class="btn sm" id="cleanList">목록에서 지우기</button></div>
           <ul id="prevList"></ul>
         </div>
+        <div class="muted" style="font-size:12.5px;margin-top:10px">🧪 테스트용 내 주소 <b id="testList">없음</b> — 예전에 보냈어도 다시 보내요 (이 PC에만 저장)
+          <button class="btn sm" id="testEdit">수정</button>
+          <div class="row" id="testEditBox" hidden style="margin-top:6px">
+            <input class="in" id="testInput" placeholder="내 테스트 주소 (쉼표로 여러 개)" style="flex:1">
+            <button class="btn primary sm" id="testSave">저장</button>
+          </div>
+        </div>
         <div class="send-box">
           <div class="row" style="margin-bottom:12px">
             <span class="muted">한 통 보내고</span>
@@ -378,7 +385,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const LS = { conn: 'bb_mailer_conn_v1', pendingKey: 'bb_mailer_pending_key_v1', draft: 'bb_mailer_draft_v1', rcpt: 'bb_mailer_recipients_v1',
-    conn2: 'bb_mailer_conn2_v1', pendingKey2: 'bb_mailer_pending_key2_v1' };
+    conn2: 'bb_mailer_conn2_v1', pendingKey2: 'bb_mailer_pending_key2_v1', testEmails: 'bb_mailer_test_emails_v1' };
   const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
   const LINK_PREFIX = 'BBMAIL1.';
   const SERVER_VERSION = 5;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
@@ -422,6 +429,7 @@
     server2: null,                       // { sender, remaining, logUrl }
     draft: lsGet(LS.draft, { subject: DEFAULT_SUBJECT, name: '브라이트비드', body: DEFAULT_BODY, interval: 3, attachments: [], dirty: false }),
     prev: new Map(),                     // 예전에 보낸 주소 → { source: 'log'|'gmail', when }
+    testEmails: new Set(lsGet(LS.testEmails, []) || []),  // 내 테스트 주소 — 중복 발송 방지에서 빼고 늘 다시 보냄 (이 PC에만, 공개 레포라 코드엔 안 넣음)
     checked: new Set(),                  // 이번 화면에서 서버에 확인한 주소
     checking: null,                      // 확인 중 진행 { done, total }
     version: 0,                          // 발송 서버 코드 버전
@@ -713,7 +721,7 @@
         const k = e.toLowerCase();
         if (seen.has(k)) { dup++; return; }
         seen.add(k);
-        (state.prev.has(k) ? already : fresh).push(e);
+        (state.prev.has(k) && !state.testEmails.has(k) ? already : fresh).push(e);
       });
     });
     return { fresh, already, dup, bad: badLines };
@@ -800,7 +808,7 @@
   /* 예전에 보낸 적 있는지 서버에 확인 (발송 기록 + 지메일 보낸편지함) */
   async function precheck(list) {
     if (!state.server || state.version < 2) return;
-    const todo = list.map((e) => e.toLowerCase()).filter((k) => !state.checked.has(k) && !state.prev.has(k));
+    const todo = list.map((e) => e.toLowerCase()).filter((k) => !state.checked.has(k) && !state.prev.has(k) && !state.testEmails.has(k));
     if (!todo.length) return;
     state.checking = { done: 0, total: todo.length };
     renderStats();
@@ -1019,7 +1027,8 @@
       const target = useBackup ? state.server2 : state.server;
       setRow(i, 'sending');
       let r;
-      try { r = await api('send', Object.assign({ to: queue[i] }, msg), useBackup ? state.conn2 : state.conn); }
+      const force = state.testEmails.has(queue[i].toLowerCase());   // 내 테스트 주소는 서버의 중복 검사도 건너뜀
+      try { r = await api('send', Object.assign({ to: queue[i], force }, msg), useBackup ? state.conn2 : state.conn); }
       catch (e) { r = { ok: false, status: 'fail', error: e.message }; }
       if (typeof r.remaining === 'number') target.remaining = r.remaining;
       lastBackup = useBackup;
@@ -1087,6 +1096,24 @@
 
   /* ---------------------------------------------------------------- 이벤트 */
   ['subject', 'name', 'replyTo', 'body', 'interval'].forEach((id) => $(id).addEventListener('input', markDirty));
+  function renderTestLine() {
+    const list = Array.from(state.testEmails);
+    $('testList').textContent = list.length ? list.join(', ') : '없음';
+  }
+  $('testEdit').onclick = () => {
+    const box = $('testEditBox');
+    box.hidden = !box.hidden;
+    if (!box.hidden) { $('testInput').value = Array.from(state.testEmails).join(', '); $('testInput').focus(); }
+  };
+  $('testSave').onclick = () => {
+    const list = ($('testInput').value.match(EMAIL_RE) || []).map((e) => e.toLowerCase());
+    state.testEmails = new Set(list);
+    lsSet(LS.testEmails, Array.from(state.testEmails));
+    $('testEditBox').hidden = true;
+    renderTestLine();
+    renderStats();
+    toast(list.length ? '테스트 주소를 저장했어요 · 이 주소들은 예전에 보냈어도 다시 보내요' : '테스트 주소를 비웠어요');
+  };
   let rcptTimer;
   $('recipients').addEventListener('input', () => {
     clearTimeout(rcptTimer);
@@ -1216,6 +1243,7 @@
   $('recipients').value = lsGet(LS.rcpt, '') || '';
   if (state.draft.dirty) $('saveState').textContent = '저장 안 됨';
   renderRows();
+  renderTestLine();
   renderStats();
   renderConn();
   if (state.conn) connect(state.conn, true).then(() => ping2()).catch((e) => { renderConn(); toast(e.message, true); });
