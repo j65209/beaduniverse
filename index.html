@@ -3020,6 +3020,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .wr-btn-more{color:#44403c}
   .wr-btn-more:disabled{opacity:.6;cursor:default}
   .wr-more-left{font-weight:600;color:#a8a29e}
+  /* 취소한 요청 — 지우지 않고 모아 두었다가 되살리기 (2026-11-06) */
+  .wr-cancel-wrap{margin-top:14px;padding-top:10px;border-top:1px dashed #e7e2ce}
+  .wr-cancel-toggle{
+    border:none;background:transparent;color:#78716c;cursor:pointer;
+    font-size:12.5px;font-weight:700;letter-spacing:-.01em;padding:6px 10px;border-radius:8px;
+  }
+  .wr-cancel-toggle:hover{background:#f5f5f4;color:#44403c}
+  .wr-batch.is-cancelled{background:#fafaf9;border-color:#e7e5e4;border-style:dashed}
+  .wr-batch.is-cancelled:not([open]) > .wr-batch-head{opacity:.8}
+  .wr-batch-status.st-cancelled{background:#f5f5f4;color:#57534e}
+  .wr-cancel-lines{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#44403c}
+  .wr-cancel-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+  .wr-cancel-line.is-paid{color:#a8a29e}
+  .wr-cancel-who{font-weight:700}
+  .wr-cancel-amt{font-variant-numeric:tabular-nums;font-weight:600}
+  .wr-cancel-memo{color:#78716c}
+  .wr-cancel-note{padding:10px 4px;font-size:12px;color:#a8a29e}
+  .wr-btn-restore{background:#eef3fb;border-color:#a9c0e6;color:#2f5a9e}
+  .wr-btn-restore:hover{background:#dde8f8}
   .wr-hint{font-size:11.5px;color:#78716c;margin-right:auto;letter-spacing:-.01em}
   .wr-batch{
     margin-top:14px;padding:14px 16px;border:1px solid #e7e2ce;border-radius:12px;background:#fefbf3;
@@ -34875,6 +34894,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   let _wrDoneHasMore = false;         // 더 오래된 송금완료가 남았는지 (limit+1 개 받아 판단)
   let _wrDoneLoading = false;         // [더보기] 불러오는 중
   let _wrFetchSeq = 0;                // 늦게 끝난 옛 요청이 더보기 결과를 덮어쓰지 않게
+  // 취소한 요청 — "알림 취소"·"내역 삭제"는 지우지 않고 status='cancelled' 로 옮긴다 (2026-11-06, 9/30 바크 건 사고 뒤)
+  const WR_CANCEL_SHOW = 30;          // [취소한 요청 보기] 를 펼쳤을 때 받아 올 최근 개수
+  let _wrCancelOpen = false;          // 취소 목록 펼침 여부
+  let _wrCancelCount = 0;             // 취소한 요청 전체 개수
+  let _wrCancelled = [];              // 펼쳤을 때만 받아 둔 취소 목록
 
   function _wrTodayStr(){
     const d=new Date();
@@ -35071,6 +35095,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!confirm('남은 건까지 전부 송금완료로 표시할까요?')) return;
     try{
       const cur = await _wrFetchOne(id);
+      if(!cur || cur.status === 'cancelled'){ toast('취소된 요청입니다 — 새로고침합니다', 'err'); _wrFetchBatches(); return; }
       const now = new Date().toISOString();
       const rows = (Array.isArray(cur && cur.rows)?cur.rows:[]).map(x=> x && x.done ? x : {...x, done:true, done_at:now});
       await _wrPatch(id, {rows, status:'done', done_at:now, done_by: me});
@@ -35088,6 +35113,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let cur;
     try{ cur = await _wrFetchOne(id); }
     catch(e){ toast(`처리 실패 (${e.message||'네트워크'})`, 'err'); return; }
+    if(!cur || cur.status === 'cancelled'){ toast('취소된 요청입니다 — 새로고침합니다', 'err'); _wrFetchBatches(); return; }
     const rows = (Array.isArray(cur && cur.rows)?cur.rows:[]).map(x=>({...x}));
     const target = rows[idx];
     if(!target){ toast('이미 변경된 요청입니다 — 새로고침합니다', 'err'); _wrFetchBatches(); return; }
@@ -35114,24 +35140,110 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const me = (typeof _diaryGetMe==='function' ? _diaryGetMe() : '') || '';
     // 마스터는 완료된 이력까지 삭제 가능, 요청 본인은 미완료만 취소 가능
     if(!isMaster() && (isDone || me !== requestedBy)){
-      toast(isDone ? '완료된 내역은 마스터만 삭제할 수 있습니다' : '본인이 요청한 알림만 취소할 수 있습니다', 'err');
+      toast(isDone ? '완료된 내역은 마스터만 목록에서 뺄 수 있습니다' : '본인이 요청한 알림만 취소할 수 있습니다', 'err');
       return;
     }
-    const msg = isDone
-      ? '송금완료된 이 내역을 목록에서 삭제할까요?\n(실제 송금은 이미 완료된 상태입니다)'
-      : '이 알림을 목록에서 지울까요?\n(이미 뜬 크롬 알림 자체는 사라지지 않습니다)';
+    const b = _wrBatches.find(x=>x.id===id);
+    const bRows = Array.isArray(b && b.rows) ? b.rows : [];
+    const summary = b ? `\n· ${b.requested_by||'-'} 요청 ${bRows.length}건 · ${_wrFmtWon(bRows.reduce((s,x)=>s+(Number(x.amount)||0),0))||'₩0'}` : '';
+    // 지우지 않는다 — status='cancelled' 로 옮겨 목록 아래 [취소한 요청] 에서 언제든 되살릴 수 있게 (2026-11-06)
+    const msg = (isDone
+      ? '송금완료된 이 내역을 목록에서 뺄까요?'
+      : '이 출금 요청을 취소할까요?') + summary +
+      '\n\n지워지지 않고 목록 아래 [취소한 요청]으로 옮겨집니다. 언제든 되살릴 수 있어요.';
     if(!confirm(msg)) return;
     try{
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?id=eq.${encodeURIComponent(id)}`, {
-        method:'DELETE',
-        headers:_sbHeaders({'Prefer':'return=minimal'}),
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?id=eq.${encodeURIComponent(id)}&status=in.(notified,done)`, {
+        method:'PATCH',
+        headers:_sbHeaders({'Prefer':'return=representation'}),
+        body: JSON.stringify({status:'cancelled', cancelled_at:new Date().toISOString(), cancelled_by: me || null}),
       });
-      if(!r.ok){ toast(`삭제 실패 (HTTP ${r.status})`, 'err'); return; }
-      toast(isDone?'내역을 삭제했습니다':'알림을 취소했습니다', 'ok');
+      if(!r.ok){ toast(`취소 실패 (HTTP ${r.status})`, 'err'); return; }
+      const out = await r.json().catch(()=>[]);
+      if(!Array.isArray(out) || !out.length){ toast('이미 바뀐 요청입니다 — 새로고침합니다', 'err'); _wrFetchBatches(); return; }
+      toast(`${isDone?'내역을 목록에서 뺐습니다':'요청을 취소했습니다'} — 아래 [취소한 요청]에서 되살릴 수 있어요`, 'ok');
       _wrFetchBatches();
-    }catch(e){ toast('삭제 실패 — 네트워크 확인', 'err'); }
+    }catch(e){ toast('취소 실패 — 네트워크 확인', 'err'); }
   }
   window.wrCancelBatch = wrCancelBatch;
+
+  /* [취소한 요청] 펼치기·접기 — 펼칠 때만 목록을 받아 온다 */
+  async function wrToggleCancelled(){
+    _wrCancelOpen = !_wrCancelOpen;
+    if(!_wrCancelOpen) _wrCancelled = [];
+    _wrRenderBatches();
+    if(_wrCancelOpen) await _wrFetchBatches();
+  }
+  window.wrToggleCancelled = wrToggleCancelled;
+
+  /* 되살리기 — 취소 전 상태로: 송금완료 시각(done_at)이 있던 건 송금완료, 없던 건 알림 전송됨(진행 중).
+     UPDATE 라서 대표 PC 에 새 출금 요청 알림이 다시 뜨지는 않는다. */
+  async function wrRestoreBatch(id){
+    const b = _wrCancelled.find(x=>x.id===id);
+    if(!b) return;
+    const wasDone = !!b.done_at;
+    const me = _wrCurrentMe();
+    if(!isMaster() && (wasDone || me !== b.requested_by)){
+      toast('되살리기는 요청한 본인이나 마스터만 할 수 있습니다', 'err');
+      return;
+    }
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?id=eq.${encodeURIComponent(id)}&status=eq.cancelled`, {
+        method:'PATCH',
+        headers:_sbHeaders({'Prefer':'return=representation'}),
+        body: JSON.stringify({status: wasDone ? 'done' : 'notified', cancelled_at:null, cancelled_by:null}),
+      });
+      if(!r.ok){ toast(`되살리기 실패 (HTTP ${r.status})`, 'err'); return; }
+      const out = await r.json().catch(()=>[]);
+      if(!Array.isArray(out) || !out.length){ toast('이미 되살렸거나 바뀐 요청입니다 — 새로고침합니다', 'err'); _wrFetchBatches(); return; }
+      toast(wasDone ? '↩ 송금완료 내역으로 되살렸습니다' : '↩ 요청을 되살렸습니다 (알림 전송됨)', 'ok');
+      _wrFetchBatches();
+    }catch(e){ toast('되살리기 실패 — 네트워크 확인', 'err'); }
+  }
+  window.wrRestoreBatch = wrRestoreBatch;
+
+  function _wrCancelHtml(){
+    if(!_wrCancelCount && !_wrCancelOpen) return '';
+    const toggle = `<button type="button" class="wr-cancel-toggle" onclick="wrToggleCancelled()" aria-expanded="${_wrCancelOpen?'true':'false'}">${
+      _wrCancelOpen ? '▾ 취소한 요청 접기' : `▸ 취소한 요청 ${_wrCancelCount}개 보기`}</button>`;
+    if(!_wrCancelOpen) return `<div class="wr-cancel-wrap">${toggle}</div>`;
+    const me = _wrCurrentMe();
+    const cards = _wrCancelled.map(b=>{
+      const rows = Array.isArray(b.rows) ? b.rows : [];
+      const total = rows.reduce((s,x)=>s+(Number(x.amount)||0), 0);
+      const wasDone = !!b.done_at;
+      const canRestore = isMaster() || (!wasDone && me === b.requested_by);
+      const openKey = `${b.id}:cancelled`;
+      const rowsHtml = rows.map(x=>{
+        const who = String(x.holder||x.bank||'-');
+        const memo = String(x.memo||'');
+        return `<div class="wr-cancel-line${x.done?' is-paid':''}"><span class="wr-cancel-who">${_esc(who)}</span><span class="wr-cancel-amt">${_wrFmtWon(x.amount)||'₩0'}</span>${memo?`<span class="wr-cancel-memo">${_esc(memo)}</span>`:''}${x.done?'<span class="wr-row-flag">✅ 송금완료</span>':''}</div>`;
+      }).join('');
+      const cancelInfo = b.cancelled_at ? `<span class="wr-batch-progress">취소 ${_wrFmtTs(b.cancelled_at)}${b.cancelled_by?` · ${_esc(b.cancelled_by)}`:''}</span>` : '';
+      return `
+        <details class="wr-batch is-cancelled" data-key="${_esc(openKey)}">
+          <summary class="wr-batch-head">
+            <span class="wr-batch-caret">▶</span>
+            <span class="wr-batch-status st-cancelled"><span class="wr-batch-dot"></span>${wasDone?'취소 · 송금완료였음':'취소됨'}</span>
+            <span>요청자 <b>${_esc(b.requested_by||'-')}</b></span>
+            <span style="color:#78716c">· ${_wrFmtTs(wasDone ? (b.done_at||b.requested_at) : (b.notified_at||b.requested_at))}</span>
+            <span style="color:#a8a29e">· ${rows.length}건</span>
+            ${cancelInfo}
+            <span class="wr-batch-total">${_wrFmtWon(total)}</span>
+          </summary>
+          <div class="wr-batch-body">
+            <div class="wr-cancel-lines">${rowsHtml}</div>
+            <div class="wr-batch-actions">${canRestore
+              ? `<button type="button" class="wr-btn wr-btn-restore" onclick="wrRestoreBatch('${_esc(b.id)}')">↩ 되살리기</button>`
+              : '<span class="wr-hint">되살리기는 요청한 본인이나 마스터만 할 수 있어요</span>'}</div>
+          </div>
+        </details>`;
+    }).join('');
+    const more = _wrCancelOpen && _wrCancelCount > _wrCancelled.length && _wrCancelled.length
+      ? `<div class="wr-cancel-note">최근 ${_wrCancelled.length}개만 보여 줍니다 (전체 ${_wrCancelCount}개)</div>` : '';
+    const empty = `<div class="wr-cancel-note">${_wrCancelCount ? '불러오는 중…' : '취소한 요청이 없습니다'}</div>`;
+    return `<div class="wr-cancel-wrap">${toggle}<div class="wr-cancel-list">${cards || empty}${more}</div></div>`;
+  }
 
   // 복사 아이콘 (SVG) — 각 셀 복사 버튼용
   const _wrCopyIcon = '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
@@ -35171,20 +35283,33 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const seq = ++_wrFetchSeq;
     try{
       // 미완료 전부 + 송금완료 최근 _wrDoneLimit 개 (하나 더 받아 남은 게 있는지 보고, 전체 개수는 Content-Range 로)
-      const [pR, dR] = await Promise.all([
+      // 취소한 요청은 접혀 있으면 개수만, 펼쳐 있으면 최근 WR_CANCEL_SHOW 개
+      const cancelQ = _wrCancelOpen
+        ? `status=eq.cancelled&select=*&order=cancelled_at.desc.nullslast,requested_at.desc&limit=${WR_CANCEL_SHOW}`
+        : 'status=eq.cancelled&select=id&limit=1';
+      const [pR, dR, cR] = await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.notified&select=*&order=requested_at.desc`, {headers:_sbHeaders(),cache:'no-cache'}),
         fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.done&select=*&order=done_at.desc&limit=${_wrDoneLimit+1}`, {headers:_sbHeaders({Prefer:'count=exact'}),cache:'no-cache'}),
+        fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?${cancelQ}`, {headers:_sbHeaders({Prefer:'count=exact'}),cache:'no-cache'}).catch(()=>null),
       ]);
       if(!pR.ok || !dR.ok) return;
       const pending = await pR.json();
       const doneRaw = await dR.json();
+      const cancelRaw = (cR && cR.ok) ? await cR.json().catch(()=>null) : null; // 취소 목록이 실패해도 본 목록은 그린다
       if(seq !== _wrFetchSeq) return; // 그 사이 더 새로 보낸 요청(더보기·폴링)이 있다 — 그쪽 결과를 쓴다
       const done = Array.isArray(doneRaw) ? doneRaw : [];
       const total = String(dR.headers.get('content-range')||'').match(/\/(\d+)$/);
       _wrDoneTotal = total ? Number(total[1]) : null;
       _wrDoneHasMore = done.length > _wrDoneLimit;
       _wrBatches = [...(Array.isArray(pending)?pending:[]), ...done.slice(0, _wrDoneLimit)];
-      const h = JSON.stringify([_wrDoneLimit, _wrDoneTotal, _wrDoneHasMore, _wrBatches.map(b=>[b.id,b.status,b.done_at,b.notified_at,
+      if(Array.isArray(cancelRaw)){
+        const cTotal = String(cR.headers.get('content-range')||'').match(/\/(\d+)$/);
+        _wrCancelCount = cTotal ? Number(cTotal[1]) : cancelRaw.length;
+        _wrCancelled = _wrCancelOpen ? cancelRaw : [];
+      }
+      const h = JSON.stringify([_wrDoneLimit, _wrDoneTotal, _wrDoneHasMore, _wrCancelOpen, _wrCancelCount,
+        _wrCancelled.map(b=>[b.id,b.cancelled_at]),
+        _wrBatches.map(b=>[b.id,b.status,b.done_at,b.notified_at,
         (Array.isArray(b.rows)?b.rows:[]).map(x=> x&&x.done ?'1':'0').join('')])]);
       if(h === _wrBatchesLastHash) return;
       _wrBatchesLastHash = h;
@@ -35233,7 +35358,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _wrRenderBatches(){
     const wrap = document.getElementById('wrBatchList');
     if(!wrap) return;
-    if(!_wrBatches.length){ wrap.innerHTML=''; return; }
+    if(!_wrBatches.length && !_wrCancelCount && !_wrCancelOpen){ wrap.innerHTML=''; return; }
     const me = (typeof _diaryGetMe==='function' ? _diaryGetMe() : '') || '';
     const canDone = me === WR_OWNER_NAME;
     // 다시 그려도 사람이 펼치거나 접어 둔 카드는 그대로 (더보기·30초 폴링 때 보던 이력이 닫히지 않게).
@@ -35259,7 +35384,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         : '';
       // 취소(삭제) — 마스터는 완료된 이력까지 삭제 가능, 요청 본인은 미완료만
       const canCancel = isMaster() || (!isDone && me === b.requested_by);
-      const cancelLabel = isDone ? '🗑 내역 삭제' : '🗑 알림 취소';
+      const cancelLabel = isDone ? '🗑 목록에서 빼기' : '🗑 알림 취소';
       const cancelBtn = canCancel
         ? `<button type="button" class="wr-btn wr-btn-cancel" onclick="wrCancelBatch('${_esc(b.id)}', '${_esc(b.requested_by||'')}', ${isDone?1:0})">${cancelLabel}</button>`
         : '';
@@ -35312,7 +35437,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </div>
         </details>
       `;
-    }).join('') + _wrMoreHtml();
+    }).join('') + _wrMoreHtml() + _wrCancelHtml();
+    // 취소 카드도 펼쳐 둔 상태를 유지 (위 map 은 본 목록만 그리므로 여기서 한 번 더 맞춘다)
+    wrap.querySelectorAll('details.wr-batch.is-cancelled[data-key]').forEach(d=>{
+      if(d.dataset.key in prevOpen) d.open = prevOpen[d.dataset.key];
+    });
   }
   function _wrFmtTs(iso){
     if(!iso) return '';
@@ -35348,7 +35477,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       .on('postgres_changes', {event:'INSERT', schema:'public', table:'withdrawal_requests'}, (payload)=>{
         _wrFetchBatches();
         const me = _wrCurrentMe();          // ← fresh read, not closure-captured
-        if(me === WR_OWNER_NAME){
+        // 지운 요청을 취소함(status=cancelled)으로 되살려 넣을 때는 새 출금 요청 알림을 띄우지 않는다
+        if(me === WR_OWNER_NAME && (payload.new||{}).status !== 'cancelled'){
           const row = payload.new || {};
           if(row.id && _wrNotifiedIds.has(row.id)) return;
           if(row.id) _wrNotifiedIds.add(row.id);
