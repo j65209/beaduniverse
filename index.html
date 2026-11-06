@@ -3039,6 +3039,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .wr-cancel-note{padding:10px 4px;font-size:12px;color:#a8a29e}
   .wr-btn-restore{background:#eef3fb;border-color:#a9c0e6;color:#2f5a9e}
   .wr-btn-restore:hover{background:#dde8f8}
+  /* 🔕 요청별 알림 끄기 (2026-11-06) */
+  .wr-btn-mute{color:#57534e}
+  .wr-batch-muted{
+    display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;
+    background:#f5f5f4;color:#57534e;font-size:11px;font-weight:700;letter-spacing:-.01em;
+  }
   .wr-hint{font-size:11.5px;color:#78716c;margin-right:auto;letter-spacing:-.01em}
   .wr-batch{
     margin-top:14px;padding:14px 16px;border:1px solid #e7e2ce;border-radius:12px;background:#fefbf3;
@@ -35140,7 +35146,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const me = (typeof _diaryGetMe==='function' ? _diaryGetMe() : '') || '';
     // 마스터는 완료된 이력까지 삭제 가능, 요청 본인은 미완료만 취소 가능
     if(!isMaster() && (isDone || me !== requestedBy)){
-      toast(isDone ? '완료된 내역은 마스터만 목록에서 뺄 수 있습니다' : '본인이 요청한 알림만 취소할 수 있습니다', 'err');
+      toast(isDone ? '완료된 내역은 마스터만 목록에서 뺄 수 있습니다' : '본인이 요청한 건만 취소할 수 있습니다', 'err');
       return;
     }
     const b = _wrBatches.find(x=>x.id===id);
@@ -35150,7 +35156,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const msg = (isDone
       ? '송금완료된 이 내역을 목록에서 뺄까요?'
       : '이 출금 요청을 취소할까요?') + summary +
-      '\n\n지워지지 않고 목록 아래 [취소한 요청]으로 옮겨집니다. 언제든 되살릴 수 있어요.';
+      '\n\n지워지지 않고 목록 아래 [취소한 요청]으로 옮겨집니다. 언제든 되살릴 수 있어요.' +
+      (isDone ? '' : '\n알림만 멈추려면 취소 말고 [🔕 알림 끄기]를 누르세요.');
     if(!confirm(msg)) return;
     try{
       const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?id=eq.${encodeURIComponent(id)}&status=in.(notified,done)`, {
@@ -35166,6 +35173,31 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ toast('취소 실패 — 네트워크 확인', 'err'); }
   }
   window.wrCancelBatch = wrCancelBatch;
+
+  /* 🔕 알림 끄기 / 🔔 다시 켜기 — 요청 상태는 그대로 두고 notify_muted 만 바꾼다 (2026-11-06) */
+  async function wrToggleMute(id){
+    const b = _wrBatches.find(x=>x.id===id);
+    if(!b || b.status !== 'notified') return;
+    if(!(_wrCurrentMe() === WR_OWNER_NAME || isMaster())){
+      toast('알림 끄기는 대표나 마스터만 할 수 있습니다', 'err');
+      return;
+    }
+    const next = !b.notify_muted;
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?id=eq.${encodeURIComponent(id)}&status=eq.notified`, {
+        method:'PATCH',
+        headers:_sbHeaders({'Prefer':'return=representation'}),
+        body: JSON.stringify({notify_muted: next}),
+      });
+      if(!r.ok){ toast(`처리 실패 (HTTP ${r.status})`, 'err'); return; }
+      const out = await r.json().catch(()=>[]);
+      if(!Array.isArray(out) || !out.length){ toast('이미 바뀐 요청입니다 — 새로고침합니다', 'err'); _wrFetchBatches(); return; }
+      if(next){ try{ _wrNotifObjs[id] && _wrNotifObjs[id].close(); }catch(e){} delete _wrNotifObjs[id]; }
+      toast(next ? '🔕 이 요청은 알림을 띄우지 않습니다 (진행 중은 그대로)' : '🔔 이 요청 알림을 다시 켰습니다', 'ok');
+      _wrFetchBatches();
+    }catch(e){ toast('처리 실패 — 네트워크 확인', 'err'); }
+  }
+  window.wrToggleMute = wrToggleMute;
 
   /* [취소한 요청] 펼치기·접기 — 펼칠 때만 목록을 받아 온다 */
   async function wrToggleCancelled(){
@@ -35309,7 +35341,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       const h = JSON.stringify([_wrDoneLimit, _wrDoneTotal, _wrDoneHasMore, _wrCancelOpen, _wrCancelCount,
         _wrCancelled.map(b=>[b.id,b.cancelled_at]),
-        _wrBatches.map(b=>[b.id,b.status,b.done_at,b.notified_at,
+        _wrBatches.map(b=>[b.id,b.status,b.done_at,b.notified_at,!!b.notify_muted,
         (Array.isArray(b.rows)?b.rows:[]).map(x=> x&&x.done ?'1':'0').join('')])]);
       if(h === _wrBatchesLastHash) return;
       _wrBatchesLastHash = h;
@@ -35382,14 +35414,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const doneBtn = (!isDone && canDone)
         ? `<button type="button" class="wr-btn wr-btn-done" onclick="wrMarkDone('${_esc(b.id)}')">✅ ${paidCount>0?'나머지 전부 완료':'전부 송금완료'}</button>`
         : '';
-      // 취소(삭제) — 마스터는 완료된 이력까지 삭제 가능, 요청 본인은 미완료만
+      // 취소 — 마스터는 완료된 이력까지, 요청 본인은 미완료만. 지우지 않고 [취소한 요청]으로 옮긴다.
+      // "알림 취소"라는 이름 때문에 알림만 끄려다 요청을 없애는 일이 있어서 "요청 취소"로 바꾸고, 알림은 따로 끈다 (2026-11-06)
       const canCancel = isMaster() || (!isDone && me === b.requested_by);
-      const cancelLabel = isDone ? '🗑 목록에서 빼기' : '🗑 알림 취소';
+      const cancelLabel = isDone ? '🗑 목록에서 빼기' : '🗑 요청 취소';
       const cancelBtn = canCancel
         ? `<button type="button" class="wr-btn wr-btn-cancel" onclick="wrCancelBatch('${_esc(b.id)}', '${_esc(b.requested_by||'')}', ${isDone?1:0})">${cancelLabel}</button>`
         : '';
-      const actionsHtml = (doneBtn || cancelBtn)
-        ? `<div class="wr-batch-actions">${cancelBtn}${doneBtn}</div>`
+      // 🔕 알림 끄기 — 요청은 진행 중 그대로, 대표 PC 크롬 알림(1시간 재알림 포함)만 멈춘다. 대표·마스터만.
+      const muted = !!b.notify_muted;
+      const canMute = !isDone && (canDone || isMaster());
+      const muteBtn = canMute
+        ? `<button type="button" class="wr-btn wr-btn-mute" onclick="wrToggleMute('${_esc(b.id)}')">${muted ? '🔔 알림 다시 켜기' : '🔕 알림 끄기'}</button>`
+        : '';
+      const mutedPill = (!isDone && muted) ? '<span class="wr-batch-muted" title="이 요청은 대표 PC 크롬 알림을 띄우지 않습니다">🔕 알림 꺼짐</span>' : '';
+      const actionsHtml = (doneBtn || cancelBtn || muteBtn)
+        ? `<div class="wr-batch-actions">${cancelBtn}${muteBtn}${doneBtn}</div>`
         : '';
       const rowsHtml = rows.map((r, ri)=>{
         const bank=String(r.bank||''), account=String(r.account||''), holder=String(r.holder||''), memo=String(r.memo||'');
@@ -35421,6 +35461,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <span style="color:#78716c">· ${tsLabel}</span>
             <span style="color:#a8a29e">· ${rowCount}건</span>
             ${progressHtml}
+            ${mutedPill}
             <span class="wr-batch-total">${_wrFmtWon(total)}</span>
           </summary>
           <div class="wr-batch-body">
@@ -35477,8 +35518,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       .on('postgres_changes', {event:'INSERT', schema:'public', table:'withdrawal_requests'}, (payload)=>{
         _wrFetchBatches();
         const me = _wrCurrentMe();          // ← fresh read, not closure-captured
-        // 지운 요청을 취소함(status=cancelled)으로 되살려 넣을 때는 새 출금 요청 알림을 띄우지 않는다
-        if(me === WR_OWNER_NAME && (payload.new||{}).status !== 'cancelled'){
+        // 지운 요청을 취소함(status=cancelled)으로 되살려 넣을 때·알림 끈 요청은 새 출금 요청 알림을 띄우지 않는다
+        if(me === WR_OWNER_NAME && (payload.new||{}).status !== 'cancelled' && !(payload.new||{}).notify_muted){
           const row = payload.new || {};
           if(row.id && _wrNotifiedIds.has(row.id)) return;
           if(row.id) _wrNotifiedIds.add(row.id);
@@ -35528,7 +35569,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      tag='wr-<id>' 로 같은 알림 슬롯 재사용 (기존 뜬 것 replace 하며 다시 flash). */
   async function _wrPersistNotify(){
     try{
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.notified&order=requested_at.asc&select=id,requested_by,rows,requested_at`, {headers:_sbHeaders(), cache:'no-cache'});
+      // 🔕 알림 끈 요청(notify_muted)은 진행 중이어도 재알림하지 않는다 (2026-11-06)
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.notified&notify_muted=is.false&order=requested_at.asc&select=id,requested_by,rows,requested_at`, {headers:_sbHeaders(), cache:'no-cache'});
       if(!r.ok) return;
       const list = await r.json();
       if(!Array.isArray(list) || !list.length) return;
@@ -35548,7 +35590,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function _wrCatchUpMissed(silent){
     try{
       const since = new Date(Date.now() - 24*3600*1000).toISOString();
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.notified&requested_at=gte.${since}&order=requested_at.asc&select=id,requested_by,rows,requested_at`, {headers:_sbHeaders(), cache:'no-cache'});
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/withdrawal_requests?status=eq.notified&notify_muted=is.false&requested_at=gte.${since}&order=requested_at.asc&select=id,requested_by,rows,requested_at`, {headers:_sbHeaders(), cache:'no-cache'});
       if(!r.ok) return;
       const list = await r.json();
       if(!Array.isArray(list)) return;
@@ -35564,6 +35606,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       });
     }catch(e){}
   }
+  const _wrNotifObjs = {};  // 요청 id → 지금 떠 있는 크롬 알림 (🔕 알림 끄기 때 바로 닫으려고)
   function _wrFireNotif(title, body, stableId){
     toast(`${title} · ${body}`, 'info');
     if('Notification' in window && Notification.permission === 'granted'){
@@ -35572,6 +35615,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const tag = 'wr-' + (stableId || Date.now());
         const n = new Notification(title, {body, tag, requireInteraction:true, renotify:true});
         n.onclick = ()=>{ window.focus(); n.close(); if(typeof triggerVendor === 'function') triggerVendor(); };
+        if(stableId) _wrNotifObjs[stableId] = n;
       }catch(e){}
     }
   }
