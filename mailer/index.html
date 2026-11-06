@@ -292,6 +292,26 @@
         <div class="muted" style="margin-bottom:10px">예) brightbeed@gmail.com → brightbeed@bead-uni.com. 지금까지의 발송 기록 시트를 새 계정이 그대로 이어서 써서, 이미 보낸 곳에 다시 보내지 않아요.</div>
         <div class="row"><button class="btn sm" id="switchAccount">새 계정으로 옮기기</button></div>
       </div>
+      <div class="step" id="backupBox">
+        <h4>➕ 보조 계정 — 한도가 다 차면 이어서 보내기</h4>
+        <div class="muted" style="margin-bottom:10px">메인 계정 한도를 다 쓰면 같은 발송 안에서 보조 계정으로 넘어가 이어 보내요. 발송 기록 시트를 같이 써서 이미 보낸 곳에 다시 보내지 않아요.</div>
+        <div id="backupOn" hidden>
+          <dl class="kv"><dt>보조 계정</dt><dd id="kvSender2">—</dd><dt>보조 남은 한도</dt><dd id="kvQuota2">—</dd></dl>
+          <div class="row"><button class="btn sm" id="backupOff">보조 연결 해제</button></div>
+        </div>
+        <div id="backupSetup">
+          <ol>
+            <li><button class="btn primary sm" id="copyServer3">보조 서버 코드 복사</button>
+              <span class="muted" id="copyServer3State">새 발송 키 + 지금 기록 시트 주소가 들어간 코드예요</span>
+              <textarea class="in codebox" id="serverCode3" readonly></textarea></li>
+            <li>보조로 쓸 계정(예: brightbeed@gmail.com)으로 <b>그 계정의 메일 발송 서버 프로젝트</b>를 열고 코드를 전부 바꿔 붙여넣기 → 저장 → <b>setup ▶ 실행</b> (프로젝트가 없으면 script.new)</li>
+            <li><b>배포 → 배포 관리 → ✏️ 수정 → 버전: 새 버전 → 배포</b> (새 프로젝트면 새 배포 → 웹 앱 · 나 · 모든 사용자)</li>
+            <li>웹 앱 URL 붙여넣고 연결
+              <input class="in" id="urlInput2" placeholder="https://script.google.com/macros/s/…/exec" style="margin-top:6px">
+              <div class="row" style="margin-top:8px"><button class="btn primary sm" id="connectBtn2">보조 연결</button><span class="muted" id="connectState2"></span></div></li>
+          </ol>
+        </div>
+      </div>
       <div class="step">
         <h4>💻 다른 PC에서도 쓰려면</h4>
         <div class="muted" style="margin-bottom:10px">연결 코드를 복사해서 다른 PC의 이 화면 「연결 코드」 칸에 붙여넣으면 바로 연결돼요.</div>
@@ -357,7 +377,8 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const LS = { conn: 'bb_mailer_conn_v1', pendingKey: 'bb_mailer_pending_key_v1', draft: 'bb_mailer_draft_v1', rcpt: 'bb_mailer_recipients_v1' };
+  const LS = { conn: 'bb_mailer_conn_v1', pendingKey: 'bb_mailer_pending_key_v1', draft: 'bb_mailer_draft_v1', rcpt: 'bb_mailer_recipients_v1',
+    conn2: 'bb_mailer_conn2_v1', pendingKey2: 'bb_mailer_pending_key2_v1' };
   const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
   const LINK_PREFIX = 'BBMAIL1.';
   const SERVER_VERSION = 4;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
@@ -397,6 +418,8 @@
   const state = {
     conn: lsGet(LS.conn, null),          // { url, key }
     server: null,                        // { sender, remaining, logUrl }
+    conn2: lsGet(LS.conn2, null),        // 보조 서버 { url, key } — 메인 한도가 다 차면 이어서 보냄
+    server2: null,                       // { sender, remaining, logUrl }
     draft: lsGet(LS.draft, { subject: DEFAULT_SUBJECT, name: '브라이트비드', body: DEFAULT_BODY, interval: 3, attachments: [], dirty: false }),
     prev: new Map(),                     // 예전에 보낸 주소 → { source: 'log'|'gmail', when }
     checked: new Set(),                  // 이번 화면에서 서버에 확인한 주소
@@ -447,14 +470,19 @@
     const s = state.server;
     box.classList.toggle('on', !!s);
     box.classList.toggle('err', !!state.conn && !s);
+    const s2 = state.server2;
     $('connText').innerHTML = s
-      ? '<b></b> · 남은 한도 <b></b>건'
+      ? '<b></b> · 남은 한도 <b></b>건' + (s2 ? ' <span class="muted">+ 보조 <b></b> <b></b>건</span>' : '')
       : (state.conn ? '연결 확인 중…' : '연결 안 됨');
     if (s) {
       const bs = $('connText').querySelectorAll('b');
       bs[0].textContent = s.sender || '보내는 계정';
       bs[1].textContent = s.remaining;
+      if (s2) { bs[2].textContent = s2.sender || '보조 계정'; bs[3].textContent = s2.remaining; }
     }
+    $('backupOn').hidden = !s2;
+    $('backupSetup').hidden = !!s2;
+    if (s2) { $('kvSender2').textContent = s2.sender || '—'; $('kvQuota2').textContent = s2.remaining + '건'; }
     $('setupBanner').hidden = !!state.conn;
     $('updateBanner').hidden = !(s && state.version < SERVER_VERSION);
     $('logLink').hidden = !(s && s.logUrl);
@@ -516,8 +544,8 @@
     return Array.from(a, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 30);
   }
 
-  async function serverCode() {
-    const sw = state.switching;   // 보내는 계정 바꾸는 중: 새 발송 키 + 지금 기록 시트를 이어 쓰게
+  async function serverCode(opt) {
+    const sw = opt || state.switching;   // 계정 옮기기·보조 서버: 새 발송 키 + 지금 기록 시트를 이어 쓰게
     let key = sw ? sw.key : ((state.conn && state.conn.key) || lsGet(LS.pendingKey, null));
     if (!key) { key = newKey(); lsSet(LS.pendingKey, key); }
     const res = await fetch('server.gs?v=' + Date.now());
@@ -529,6 +557,30 @@
   function logIdOf(url) {
     const m = String(url || '').match(/\/d\/([A-Za-z0-9_-]+)/);
     return m ? m[1] : '';
+  }
+
+  /* 보조 서버: 메인과 같은 기록 시트를 쓰는지 확인하고 붙인다 (다른 시트면 중복 발송 방지가 따로 놀아서 거절) */
+  const capacity = () => (state.server ? state.server.remaining : 0) + (state.server2 ? state.server2.remaining : 0);
+  async function connect2(conn, quiet) {
+    const r = await api('ping', null, conn);
+    if (!r.ok) throw new Error(r.error || '보조 서버에 연결하지 못했어요.');
+    if (state.server && r.sender && r.sender === state.server.sender) throw new Error('메인과 같은 계정이에요. 다른 계정의 서버를 연결해 주세요.');
+    const mainLog = logIdOf(state.server && state.server.logUrl);
+    if (mainLog && logIdOf(r.logUrl) && logIdOf(r.logUrl) !== mainLog) {
+      throw new Error('보조 서버가 다른 발송 기록 시트를 쓰고 있어요. 「보조 서버 코드 복사」로 받은 코드로 바꾼 뒤 setup ▶ 실행·새 버전 배포를 해 주세요.');
+    }
+    state.conn2 = conn;
+    lsSet(LS.conn2, conn);
+    lsDel(LS.pendingKey2);
+    state.server2 = { sender: r.sender, remaining: r.remaining, logUrl: r.logUrl };
+    renderConn();
+    if (!quiet) toast('보조 계정 연결됐어요 · ' + (r.sender || '') + ' · 남은 한도 ' + r.remaining + '건');
+  }
+  async function ping2() {
+    if (!state.conn2) return;
+    try { const r = await api('ping', null, state.conn2); if (r.ok) state.server2 = { sender: r.sender, remaining: r.remaining, logUrl: r.logUrl }; }
+    catch (e) { state.server2 = null; }
+    renderConn();
   }
 
   function parseLinkCode(text) {
@@ -839,7 +891,7 @@
     p = p || parseRecipients();
     const btn = $('sendBtn');
     const n = p.fresh.length;
-    const limit = state.server ? Math.min(n, state.server.remaining) : n;
+    const limit = state.server ? Math.min(n, capacity()) : n;
     btn.disabled = state.running || !!state.checking || !state.server || !n || !$('subject').value.trim() || !$('body').value.trim();
     const any = n + p.already.length > 0;
     btn.textContent = !state.server ? '연결하면 보낼 수 있어요'
@@ -894,12 +946,13 @@
       readForm();
       $('cfTitle').textContent = `${limit}건 보낼까요?`;
       $('cfSub').textContent = limit < p.fresh.length
-        ? `남은 한도가 ${state.server.remaining}건이라 ${limit}건만 보내요. 나머지는 한도가 다시 차면(첫 발송부터 24시간) 다시 누르면 이어서 보내요.`
+        ? `남은 한도가 ${capacity()}건이라 ${limit}건만 보내요. 나머지는 한도가 다시 차면(첫 발송부터 24시간) 다시 누르면 이어서 보내요.`
         : '한 통씩 차례로 보내요. 보내는 동안 이 창을 닫지 마세요.';
       const kv = $('cfKv');
       kv.textContent = '';
       const sec = Math.round(limit * (state.draft.interval + 1.5));
-      [['보내는 계정', state.server.sender], ['답장 받을 주소', state.draft.replyTo || state.server.sender], ['제목', state.draft.subject],
+      [['보내는 계정', state.server2 ? `${state.server.sender} (${state.server.remaining}건) → 다 차면 ${state.server2.sender} (${state.server2.remaining}건)` : state.server.sender],
+        ['답장 받을 주소', state.draft.replyTo || state.server.sender], ['제목', state.draft.subject],
         ['첨부', (state.draft.attachments || []).map((f) => f.name).join(', ') || '없음'],
         ['자동 제외', p.already.length ? `예전에 보낸 주소 ${p.already.length}건 (다시 안 보내요)` : '없음'],
         ['예상 시간', sec < 90 ? `약 ${sec}초` : `약 ${Math.ceil(sec / 60)}분`]].forEach(([k, v]) => {
@@ -923,11 +976,12 @@
     if (!state.draft.subject.trim() || !state.draft.body.trim()) { toast('제목과 본문을 채워 주세요.', true); return; }
     if (replyToBad()) { toast('답장 받을 주소가 이메일 형식이 아니에요.', true); return; }
     try { const r = await api('ping'); if (r.ok) state.server.remaining = r.remaining; } catch (e) { toast(e.message, true); return; }
+    await ping2();
     renderConn();
     try { await precheck(p.fresh); } catch (e) { toast('예전 발송 내역을 확인하지 못했어요: ' + e.message, true); return; }
     p = parseRecipients();
     if (!p.fresh.length) { toast('모두 예전에 보낸 주소라 새로 보낼 곳이 없어요.', true); return; }
-    const limit = Math.min(p.fresh.length, state.server.remaining);
+    const limit = Math.min(p.fresh.length, capacity());
     if (limit < 1) { toast('발송 한도를 다 썼어요 (첫 발송부터 24시간 기준). 한도가 다시 차면 이어서 보내 주세요.', true); return; }
     if (!(await confirmSend(p, limit))) return;
 
@@ -943,15 +997,31 @@
 
     const msg = { subject: state.draft.subject, body: state.draft.body, name: state.draft.name, replyTo: state.draft.replyTo,
       attachmentIds: (state.draft.attachments || []).map((f) => f.id) };
-    let stopNote = '';
+    let stopNote = '', viaBackup = 0, switchNote = '';
+    // 메인 한도가 이미 0이면 처음부터 보조로
+    let useBackup = state.server.remaining < 1 && !!state.server2 && state.server2.remaining > 0;
     for (let i = 0; i < queue.length; i++) {
       if (state.stop) { stopNote = '멈춤을 눌러서 중간에 멈췄어요.'; break; }
+      if (!useBackup && state.server.remaining < 1 && state.server2 && state.server2.remaining > 0) {
+        useBackup = true; switchNote = '메인 계정 한도가 다 차서 보조 계정(' + state.server2.sender + ')으로 이어 보냈어요.';
+      }
+      const target = useBackup ? state.server2 : state.server;
       setRow(i, 'sending');
       let r;
-      try { r = await api('send', Object.assign({ to: queue[i] }, msg)); }
+      try { r = await api('send', Object.assign({ to: queue[i] }, msg), useBackup ? state.conn2 : state.conn); }
       catch (e) { r = { ok: false, status: 'fail', error: e.message }; }
-      if (typeof r.remaining === 'number') state.server.remaining = r.remaining;
-      if (r.status === 'sent') { state.prev.set(queue[i].toLowerCase(), { source: 'log', when: new Date().toISOString() }); setRow(i, 'sent', timeNow()); dropRecipient(queue[i]); renderStats(); }
+      if (typeof r.remaining === 'number') target.remaining = r.remaining;
+      if (r.status === 'quota' && !useBackup && state.server2 && state.server2.remaining > 0) {
+        // 메인 한도 끝 → 같은 주소를 보조 계정으로 다시
+        state.server.remaining = 0;
+        useBackup = true; switchNote = '메인 계정 한도가 다 차서 보조 계정(' + state.server2.sender + ')으로 이어 보냈어요.';
+        setRow(i, 'wait', '보조 계정으로 다시 보냄');
+        renderConn();
+        i--;
+        continue;
+      }
+      if (r.status === 'sent' && useBackup) viaBackup++;
+      if (r.status === 'sent') { state.prev.set(queue[i].toLowerCase(), { source: 'log', when: new Date().toISOString() }); setRow(i, 'sent', timeNow() + (useBackup ? ' · 보조 계정' : '')); dropRecipient(queue[i]); renderStats(); }
       else if (r.status === 'skip') { if (r.prev) state.prev.set(queue[i].toLowerCase(), r.prev); setRow(i, 'skip', r.reason || r.error || ''); dropRecipient(queue[i]); renderStats(); }
       else setRow(i, 'fail', r.error || '실패');
       renderConn();
@@ -968,12 +1038,14 @@
     if (c('sent') + c('skip') > 0) cleanRecipients();   // 마무리: 예전에 보낸 주소·중복·이메일 아닌 줄도 정리 (못 보낸 주소만 남김)
     renderStats();
     const left = parseRecipients().fresh.length;
-    toast(`발송 끝 · 보냄 ${c('sent')} · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n남은 한도 ${state.server.remaining}건` +
+    toast(`발송 끝 · 보냄 ${c('sent')}` + (viaBackup ? ` (보조 계정 ${viaBackup})` : '') + ` · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n남은 한도 ${capacity()}건` +
+      (switchNote ? '\n' + switchNote : '') +
       (left ? `\n받는 사람 칸에는 못 보낸 주소 ${left}개만 남겨 뒀어요` : '\n받는 사람 칸을 비웠어요 · 다음 메일 주소를 바로 붙여넣으면 돼요') +
       (stopNote ? '\n' + stopNote : ''), c('fail') > 0);
     loadHistory();
     refreshSent();
     try { const r = await api('ping'); if (r.ok) { state.server.remaining = r.remaining; state.server.logUrl = r.logUrl; renderConn(); } } catch (e) { /* 다음에 */ }
+    ping2();
   }
 
   async function testSend() {
@@ -1067,6 +1139,36 @@
     renderConn();
   };
   $('switchCancel').onclick = () => { state.switching = null; renderConn(); };
+  $('copyServer3').onclick = async () => {
+    if (!state.server) return;
+    let key = lsGet(LS.pendingKey2, null);   // 코드를 복사해 간 뒤 다시 눌러도 같은 키
+    if (!key) { key = newKey(); lsSet(LS.pendingKey2, key); }
+    try {
+      const code = await serverCode({ key, logId: logIdOf(state.server.logUrl) });
+      $('serverCode3').value = code; $('serverCode3').style.display = 'block';
+      try { await navigator.clipboard.writeText(code); $('copyServer3State').textContent = '복사됐어요 ✓ (안 되면 아래 칸을 전체 선택해서 복사)'; }
+      catch (e) { $('serverCode3').select(); $('copyServer3State').textContent = '아래 칸을 전체 선택(Ctrl+A)해서 복사해 주세요'; }
+    } catch (e) { toast(e.message, true); }
+  };
+  $('connectBtn2').onclick = async () => {
+    const raw = $('urlInput2').value.trim();
+    let conn = parseLinkCode(raw);
+    if (!conn) {
+      if (!/^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[^/]+\/exec\/?$/.test(raw)) { $('connectState2').textContent = '웹 앱 URL(…/exec)을 넣어 주세요'; return; }
+      const key = lsGet(LS.pendingKey2, null);
+      if (!key) { $('connectState2').textContent = '먼저 「보조 서버 코드 복사」로 코드를 받아 서버에 넣어 주세요'; return; }
+      conn = { url: raw.replace(/\/$/, ''), key };
+    }
+    $('connectBtn2').disabled = true;
+    $('connectState2').textContent = '연결 확인 중…';
+    try { await connect2(conn); $('connectState2').textContent = ''; $('urlInput2').value = ''; }
+    catch (e) { $('connectState2').textContent = e.message; }
+    finally { $('connectBtn2').disabled = false; }
+  };
+  $('backupOff').onclick = () => {
+    if (!confirm('보조 계정 연결을 해제할까요? (보조 서버와 기록은 그대로 남아요)')) return;
+    lsDel(LS.conn2); state.conn2 = null; state.server2 = null; renderConn();
+  };
   $('copyLinkCode').onclick = async () => {
     if (!state.conn) return;
     const code = makeLinkCode(state.conn);
@@ -1087,7 +1189,7 @@
   renderRows();
   renderStats();
   renderConn();
-  if (state.conn) connect(state.conn, true).catch((e) => { renderConn(); toast(e.message, true); });
+  if (state.conn) connect(state.conn, true).then(() => ping2()).catch((e) => { renderConn(); toast(e.message, true); });
 })();
 </script>
 </body>
