@@ -1005,9 +1005,10 @@
 
     const msg = { subject: state.draft.subject, body: state.draft.body, name: state.draft.name, replyTo: state.draft.replyTo,
       attachmentIds: (state.draft.attachments || []).map((f) => f.id) };
-    let stopNote = '', viaBackup = 0;
+    let stopNote = '', viaBackup = 0, bakNote = '';
     // 보조 계정이 붙어 있으면 한 통씩 번갈아 (첫 통은 메인). 한쪽 한도가 다 차면 남은 쪽으로 계속.
-    const hasRoom = (bak) => (bak ? !!state.server2 && state.server2.remaining > 0 : state.server.remaining > 0);
+    let bakBlocked = false;   // 보조 서버가 이번 발송을 못 하는 상태(첨부파일을 못 엶·발송 키 오류 등)면 메인으로만
+    const hasRoom = (bak) => (bak ? !bakBlocked && !!state.server2 && state.server2.remaining > 0 : state.server.remaining > 0);
     let lastBackup = true;
     for (let i = 0; i < queue.length; i++) {
       if (state.stop) { stopNote = '멈춤을 눌러서 중간에 멈췄어요.'; break; }
@@ -1020,6 +1021,14 @@
       catch (e) { r = { ok: false, status: 'fail', error: e.message }; }
       if (typeof r.remaining === 'number') target.remaining = r.remaining;
       lastBackup = useBackup;
+      if (useBackup && !r.status) {
+        // 보조 서버 쪽 문제(첨부파일을 못 엶·발송 키 오류 등) → 이번 발송은 메인으로만, 같은 주소를 메인으로 다시
+        bakBlocked = true;
+        bakNote = /첨부파일/.test(r.error || '')
+          ? '보조 계정(' + state.server2.sender + ')이 첨부파일을 열지 못해서 이번엔 메인 계정으로만 보냈어요. 메인 계정(' + state.server.sender + ') 드라이브의 「브라이트비드 메일 첨부」 폴더를 ' + state.server2.sender + ' 에 뷰어로 공유하면 다음부터 다시 번갈아 보내요.'
+          : '보조 계정(' + state.server2.sender + ')은 「' + (r.error || '오류') + '」 때문에 이번엔 빼고 메인 계정으로만 보냈어요.';
+        if (hasRoom(false)) { setRow(i, 'wait', '메인 계정으로 다시 보냄'); renderConn(); i--; continue; }
+      }
       if (r.status === 'quota') {
         target.remaining = 0;
         if (hasRoom(!useBackup)) {
@@ -1049,6 +1058,7 @@
     renderStats();
     const left = parseRecipients().fresh.length;
     toast(`발송 끝 · 보냄 ${c('sent')}` + (viaBackup ? ` (보조 계정 ${viaBackup})` : '') + ` · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n남은 한도 ${capacity()}건` +
+      (bakNote ? '\n' + bakNote : '') +
       (left ? `\n받는 사람 칸에는 못 보낸 주소 ${left}개만 남겨 뒀어요` : '\n받는 사람 칸을 비웠어요 · 다음 메일 주소를 바로 붙여넣으면 돼요') +
       (stopNote ? '\n' + stopNote : ''), c('fail') > 0);
     loadHistory();
