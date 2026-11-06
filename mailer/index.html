@@ -165,7 +165,7 @@
     <button class="btn primary" id="bannerConn">연결하기</button>
   </div>
   <div class="banner upd" id="updateBanner" hidden>
-    <div>🛠️ <b>발송 서버 업데이트가 필요해요</b> — 지메일에서 직접 보낸 예전 메일까지 기록 시트에 모으고 중복 발송을 막으려면 서버 코드를 새 버전으로 바꿔 주세요. (2분이면 돼요)</div>
+    <div>🛠️ <b>발송 서버 업데이트가 필요해요</b> — 「답장 받을 주소」를 쓰려면 서버 코드를 새 버전으로 바꿔 주세요. 보내는 계정을 새로 옮길 거라면 연결 설정의 「새 계정으로 옮기기」로 하면 돼요. (2분이면 돼요)</div>
     <div class="spacer"></div>
     <button class="btn primary" id="updateBtn">업데이트 방법</button>
   </div>
@@ -181,6 +181,10 @@
       <div class="field">
         <label class="f" for="name">보내는 사람 이름</label>
         <input class="in" id="name" placeholder="예) 브라이트비드">
+      </div>
+      <div class="field">
+        <label class="f" for="replyTo">답장 받을 주소 <span class="muted">받는 사람이 「답장」을 누르면 이 주소로 가요 · 비우면 보내는 계정으로</span></label>
+        <input class="in" id="replyTo" type="email" placeholder="예) brightbeed@gmail.com">
       </div>
       <div class="field">
         <label class="f" for="body">본문</label>
@@ -216,7 +220,7 @@
           <div class="row" style="margin-bottom:12px">
             <span class="muted">한 통 보내고</span>
             <input class="in interval" id="interval" type="number" min="1" max="60" value="3">
-            <span class="muted">초 쉬기 · 개인 지메일은 하루 100명까지 (하루 30~50곳 권장)</span>
+            <span class="muted">초 쉬기 · 한도는 첫 발송부터 24시간 기준 (개인 지메일 100명 · 워크스페이스 1,500명) · 하루 30~50곳 권장</span>
           </div>
           <button class="btn primary big" id="sendBtn" disabled>발송 시작</button>
           <button class="btn big" id="stopBtn" hidden>멈춤 (지금 보내는 메일까지만)</button>
@@ -281,8 +285,13 @@
     <div id="connInfo" hidden>
       <dl class="kv">
         <dt>보내는 계정</dt><dd id="kvSender">—</dd>
-        <dt>오늘 남은 한도</dt><dd id="kvQuota">—</dd>
+        <dt>남은 한도 (24시간)</dt><dd id="kvQuota">—</dd>
       </dl>
+      <div class="step">
+        <h4>🔁 보내는 계정 바꾸기</h4>
+        <div class="muted" style="margin-bottom:10px">예) brightbeed@gmail.com → brightbeed@bead-uni.com. 지금까지의 발송 기록 시트를 새 계정이 그대로 이어서 써서, 이미 보낸 곳에 다시 보내지 않아요.</div>
+        <div class="row"><button class="btn sm" id="switchAccount">새 계정으로 옮기기</button></div>
+      </div>
       <div class="step">
         <h4>💻 다른 PC에서도 쓰려면</h4>
         <div class="muted" style="margin-bottom:10px">연결 코드를 복사해서 다른 PC의 이 화면 「연결 코드」 칸에 붙여넣으면 바로 연결돼요.</div>
@@ -292,6 +301,15 @@
     </div>
 
     <div id="connSetup">
+      <div class="step" id="switchNote" hidden>
+        <h4>🔁 <span id="switchFrom"></span> → 새 계정으로 옮기기</h4>
+        <ol>
+          <li><b>지금 계정</b>으로 <a id="switchSheet" target="_blank" rel="noopener"><b>발송 기록 시트</b></a>를 열고 <b>공유 → 새 계정 주소 → 편집자</b>로 공유해 주세요 (이걸 해야 예전 기록을 이어서 써요)</li>
+          <li>구글 드라이브의 <b>「브라이트비드 메일 첨부」</b> 폴더도 같은 방법으로 공유 (안 하면 첨부파일을 새로 올려야 해요)</li>
+          <li>아래 1~3을 <b>새 계정으로 로그인해서</b> 진행 — 1번 코드에 기록 시트 주소와 새 발송 키가 들어가 있어요</li>
+        </ol>
+        <div class="row" style="margin-top:8px"><button class="btn sm" id="switchCancel">옮기기 취소</button></div>
+      </div>
       <div class="step">
         <h4><span>1</span>발송 서버 코드 복사</h4>
         <div class="row"><button class="btn primary sm" id="copyServer">서버 코드 복사</button>
@@ -301,8 +319,10 @@
       <div class="step">
         <h4><span>2</span>보내는 구글 계정에 서버 만들기 (처음 한 번)</h4>
         <ol>
-          <li>보내는 계정(brightbeed@gmail.com)으로 로그인한 상태에서 <a href="https://script.new" target="_blank" rel="noopener"><b>script.new</b></a> 열기</li>
+          <li>보내는 계정(예: brightbeed@bead-uni.com)으로 로그인한 상태에서 <a href="https://script.new" target="_blank" rel="noopener"><b>script.new</b></a> 열기
+            <span class="muted">(크롬에 계정이 여러 개 로그인돼 있으면 <b>시크릿 창 Ctrl+Shift+N</b> 에서 그 계정 하나만 로그인)</span></li>
           <li>원래 있던 코드를 지우고 복사한 코드 붙여넣기 → 저장 (<code>Ctrl+S</code>)</li>
+          <li>위쪽 함수 선택에서 <b>setup</b> 고르고 <b>▶ 실행</b> → 권한 요청에서 <b>모두 선택 → 허용</b></li>
           <li>오른쪽 위 <b>배포 → 새 배포</b> → 유형 선택 톱니바퀴에서 <b>웹 앱</b></li>
           <li>다음 사용자 인증 정보로 실행: <b>나</b> · 액세스 권한: <b>모든 사용자</b> → <b>배포</b></li>
           <li>권한 요청이 뜨면 계정 선택 → <b>고급 → (안전하지 않음)으로 이동 → 허용</b> (내 계정 스크립트라 뜨는 경고예요)</li>
@@ -340,7 +360,7 @@
   const LS = { conn: 'bb_mailer_conn_v1', pendingKey: 'bb_mailer_pending_key_v1', draft: 'bb_mailer_draft_v1', rcpt: 'bb_mailer_recipients_v1' };
   const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
   const LINK_PREFIX = 'BBMAIL1.';
-  const SERVER_VERSION = 3;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
+  const SERVER_VERSION = 4;               // 이 화면이 기대하는 발송 서버 버전 (mailer/server.gs)
   const DEFAULT_SUBJECT = '[협업 제안] 브라이트비드 인플루언서 공동구매 | 단일 공구 최고 매출 3억';
   const DEFAULT_BODY = [
     '안녕하세요, 대표님.',
@@ -428,7 +448,7 @@
     box.classList.toggle('on', !!s);
     box.classList.toggle('err', !!state.conn && !s);
     $('connText').innerHTML = s
-      ? '<b></b> · 오늘 남은 한도 <b></b>건'
+      ? '<b></b> · 남은 한도 <b></b>건'
       : (state.conn ? '연결 확인 중…' : '연결 안 됨');
     if (s) {
       const bs = $('connText').querySelectorAll('b');
@@ -442,8 +462,14 @@
     if (sheetUrl) $('logLink').href = sheetUrl;
     $('sheetTop').hidden = !(s && s.logUrl);
     if (sheetUrl) $('sheetTop').href = sheetUrl;
-    $('connInfo').hidden = !s;
-    $('connSetup').hidden = !!s;
+    const sw = state.switching;
+    $('connInfo').hidden = !s || !!sw;
+    $('connSetup').hidden = !!s && !sw;
+    $('switchNote').hidden = !sw;
+    if (sw) {
+      $('switchFrom').textContent = sw.from || '지금 계정';
+      if (sw.logUrl) $('switchSheet').href = sw.logUrl;
+    }
     if (s) { $('kvSender').textContent = s.sender || '—'; $('kvQuota').textContent = s.remaining + '건'; }
     updateSendButton();
   }
@@ -454,6 +480,7 @@
     state.conn = conn;
     lsSet(LS.conn, conn);
     lsDel(LS.pendingKey);
+    state.switching = null;
     state.server = { sender: r.sender, remaining: r.remaining, logUrl: r.logUrl };
     state.version = r.version || 1;
     state.importDone = !!r.importDone;
@@ -467,7 +494,7 @@
     renderConn();
     refreshSent().then(() => autoCheck());
     loadHistory().then(() => runImport());
-    if (!quiet) toast('연결됐어요 · ' + (r.sender || '') + ' · 오늘 남은 한도 ' + r.remaining + '건');
+    if (!quiet) toast('연결됐어요 · ' + (r.sender || '') + ' · 남은 한도 ' + r.remaining + '건 (24시간 기준)');
   }
 
   async function refreshSent() {
@@ -490,12 +517,18 @@
   }
 
   async function serverCode() {
-    let key = (state.conn && state.conn.key) || lsGet(LS.pendingKey, null);
+    const sw = state.switching;   // 보내는 계정 바꾸는 중: 새 발송 키 + 지금 기록 시트를 이어 쓰게
+    let key = sw ? sw.key : ((state.conn && state.conn.key) || lsGet(LS.pendingKey, null));
     if (!key) { key = newKey(); lsSet(LS.pendingKey, key); }
     const res = await fetch('server.gs?v=' + Date.now());
     if (!res.ok) throw new Error('서버 코드를 불러오지 못했어요.');
-    const code = (await res.text()).replace('__MAIL_KEY__', key);
+    let code = (await res.text()).replace('__MAIL_KEY__', key);
+    if (sw && sw.logId) code = code.replace('__LOG_ID__', sw.logId);
     return code;
+  }
+  function logIdOf(url) {
+    const m = String(url || '').match(/\/d\/([A-Za-z0-9_-]+)/);
+    return m ? m[1] : '';
   }
 
   function parseLinkCode(text) {
@@ -514,6 +547,7 @@
   function fillForm() {
     $('subject').value = state.draft.subject || '';
     $('name').value = state.draft.name || '';
+    $('replyTo').value = state.draft.replyTo != null ? state.draft.replyTo : 'brightbeed@gmail.com';   // 예전에 저장한 내용엔 없음 → 지메일로 받기
     $('body').value = state.draft.body || '';
     $('interval').value = state.draft.interval || 3;
     renderFiles();
@@ -521,10 +555,12 @@
   function readForm() {
     state.draft.subject = $('subject').value;
     state.draft.name = $('name').value;
+    state.draft.replyTo = $('replyTo').value.trim();
     state.draft.body = $('body').value;
     const iv = Number($('interval').value);
     state.draft.interval = Number.isFinite(iv) ? Math.min(60, Math.max(1, iv)) : 3;
   }
+  const replyToBad = () => !!state.draft.replyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.draft.replyTo);
   function markDirty() {
     readForm();
     state.draft.dirty = true;
@@ -587,7 +623,7 @@
 
   async function saveTemplate(quiet) {
     readForm();
-    const t = { subject: state.draft.subject, name: state.draft.name, body: state.draft.body, interval: state.draft.interval, attachments: state.draft.attachments || [] };
+    const t = { subject: state.draft.subject, name: state.draft.name, replyTo: state.draft.replyTo, body: state.draft.body, interval: state.draft.interval, attachments: state.draft.attachments || [] };
     const r = await api('saveTemplate', { template: t });
     if (!r.ok) throw new Error(r.error || '저장 실패');
     state.draft.dirty = false;
@@ -808,7 +844,7 @@
     const any = n + p.already.length > 0;
     btn.textContent = !state.server ? '연결하면 보낼 수 있어요'
       : !n ? (any ? '새로 보낼 주소가 없어요 (이미 보낸 주소는 건너뛰어요)' : '보낼 주소를 붙여넣어 주세요')
-      : (limit < n ? `발송 시작 (오늘 한도로 ${limit}건)` : `발송 시작 (${n}건)`);
+      : (limit < n ? `발송 시작 (남은 한도로 ${limit}건)` : `발송 시작 (${n}건)`);
   }
 
   /* ---------------------------------------------------------------- 발송 결과 표 */
@@ -858,12 +894,12 @@
       readForm();
       $('cfTitle').textContent = `${limit}건 보낼까요?`;
       $('cfSub').textContent = limit < p.fresh.length
-        ? `오늘 남은 한도가 ${state.server.remaining}건이라 ${limit}건만 보내요. 나머지는 내일 다시 누르면 이어서 보내요.`
+        ? `남은 한도가 ${state.server.remaining}건이라 ${limit}건만 보내요. 나머지는 한도가 다시 차면(첫 발송부터 24시간) 다시 누르면 이어서 보내요.`
         : '한 통씩 차례로 보내요. 보내는 동안 이 창을 닫지 마세요.';
       const kv = $('cfKv');
       kv.textContent = '';
       const sec = Math.round(limit * (state.draft.interval + 1.5));
-      [['보내는 계정', state.server.sender], ['제목', state.draft.subject],
+      [['보내는 계정', state.server.sender], ['답장 받을 주소', state.draft.replyTo || state.server.sender], ['제목', state.draft.subject],
         ['첨부', (state.draft.attachments || []).map((f) => f.name).join(', ') || '없음'],
         ['자동 제외', p.already.length ? `예전에 보낸 주소 ${p.already.length}건 (다시 안 보내요)` : '없음'],
         ['예상 시간', sec < 90 ? `약 ${sec}초` : `약 ${Math.ceil(sec / 60)}분`]].forEach(([k, v]) => {
@@ -885,13 +921,14 @@
     let p = parseRecipients();
     if (!p.fresh.length) { toast('보낼 주소가 없어요.', true); return; }
     if (!state.draft.subject.trim() || !state.draft.body.trim()) { toast('제목과 본문을 채워 주세요.', true); return; }
+    if (replyToBad()) { toast('답장 받을 주소가 이메일 형식이 아니에요.', true); return; }
     try { const r = await api('ping'); if (r.ok) state.server.remaining = r.remaining; } catch (e) { toast(e.message, true); return; }
     renderConn();
     try { await precheck(p.fresh); } catch (e) { toast('예전 발송 내역을 확인하지 못했어요: ' + e.message, true); return; }
     p = parseRecipients();
     if (!p.fresh.length) { toast('모두 예전에 보낸 주소라 새로 보낼 곳이 없어요.', true); return; }
     const limit = Math.min(p.fresh.length, state.server.remaining);
-    if (limit < 1) { toast('오늘 발송 한도를 다 썼어요. 24시간 뒤 다시 보내 주세요.', true); return; }
+    if (limit < 1) { toast('발송 한도를 다 썼어요 (첫 발송부터 24시간 기준). 한도가 다시 차면 이어서 보내 주세요.', true); return; }
     if (!(await confirmSend(p, limit))) return;
 
     try { await saveTemplate(true); } catch (e) { /* 저장 실패해도 발송은 진행 */ }
@@ -904,7 +941,7 @@
     $('sendBtn').hidden = true; $('stopBtn').hidden = false;
     updateSendButton();
 
-    const msg = { subject: state.draft.subject, body: state.draft.body, name: state.draft.name,
+    const msg = { subject: state.draft.subject, body: state.draft.body, name: state.draft.name, replyTo: state.draft.replyTo,
       attachmentIds: (state.draft.attachments || []).map((f) => f.id) };
     let stopNote = '';
     for (let i = 0; i < queue.length; i++) {
@@ -918,7 +955,7 @@
       else if (r.status === 'skip') { if (r.prev) state.prev.set(queue[i].toLowerCase(), r.prev); setRow(i, 'skip', r.reason || r.error || ''); dropRecipient(queue[i]); renderStats(); }
       else setRow(i, 'fail', r.error || '실패');
       renderConn();
-      if (r.status === 'quota') { stopNote = '오늘 발송 한도를 다 써서 멈췄어요.'; break; }
+      if (r.status === 'quota') { stopNote = '발송 한도(첫 발송부터 24시간)를 다 써서 멈췄어요.'; break; }
       if (i < queue.length - 1 && !state.stop) await sleep(state.draft.interval * 1000);
     }
     state.rows.forEach((row, i) => { if (row.st === 'wait') setRow(i, 'skip', '보내지 않음'); });
@@ -931,7 +968,7 @@
     if (c('sent') + c('skip') > 0) cleanRecipients();   // 마무리: 예전에 보낸 주소·중복·이메일 아닌 줄도 정리 (못 보낸 주소만 남김)
     renderStats();
     const left = parseRecipients().fresh.length;
-    toast(`발송 끝 · 보냄 ${c('sent')} · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n오늘 남은 한도 ${state.server.remaining}건` +
+    toast(`발송 끝 · 보냄 ${c('sent')} · 실패 ${c('fail')} · 건너뜀 ${c('skip')}\n남은 한도 ${state.server.remaining}건` +
       (left ? `\n받는 사람 칸에는 못 보낸 주소 ${left}개만 남겨 뒀어요` : '\n받는 사람 칸을 비웠어요 · 다음 메일 주소를 바로 붙여넣으면 돼요') +
       (stopNote ? '\n' + stopNote : ''), c('fail') > 0);
     loadHistory();
@@ -943,9 +980,10 @@
     if (!state.server) { openConn(); return; }
     readForm();
     if (!state.draft.subject.trim() || !state.draft.body.trim()) { toast('제목과 본문을 채워 주세요.', true); return; }
+    if (replyToBad()) { toast('답장 받을 주소가 이메일 형식이 아니에요.', true); return; }
     $('testBtn').disabled = true;
     try {
-      const r = await api('send', { test: true, subject: state.draft.subject, body: state.draft.body, name: state.draft.name,
+      const r = await api('send', { test: true, subject: state.draft.subject, body: state.draft.body, name: state.draft.name, replyTo: state.draft.replyTo,
         attachmentIds: (state.draft.attachments || []).map((f) => f.id) });
       if (typeof r.remaining === 'number') { state.server.remaining = r.remaining; renderConn(); }
       if (r.status !== 'sent') throw new Error(r.error || '테스트 발송 실패');
@@ -955,7 +993,7 @@
   }
 
   /* ---------------------------------------------------------------- 이벤트 */
-  ['subject', 'name', 'body', 'interval'].forEach((id) => $(id).addEventListener('input', markDirty));
+  ['subject', 'name', 'replyTo', 'body', 'interval'].forEach((id) => $(id).addEventListener('input', markDirty));
   let rcptTimer;
   $('recipients').addEventListener('input', () => {
     clearTimeout(rcptTimer);
@@ -1015,6 +1053,20 @@
     catch (e) { $('connectState').textContent = e.message; }
     finally { $('connectBtn').disabled = false; }
   };
+  $('switchAccount').onclick = () => {
+    if (!state.server) return;
+    let key = lsGet(LS.pendingKey, null);   // 코드를 복사해 간 뒤 다시 눌러도 같은 키
+    if (!key) { key = newKey(); lsSet(LS.pendingKey, key); }
+    const logUrl = state.server.logUrl || '';
+    state.switching = { key, logId: logIdOf(logUrl), logUrl, from: state.server.sender || '' };
+    if (!state.switching.logId) toast('지금 발송 기록 시트 주소를 못 찾았어요. 발송 기록 「새로고침」 뒤 다시 눌러 주세요.', true);
+    $('serverCode').style.display = 'none';
+    $('copyServerState').textContent = '새 발송 키 + 지금 기록 시트 주소가 들어간 코드예요';
+    $('urlInput').value = '';
+    $('connectState').textContent = '';
+    renderConn();
+  };
+  $('switchCancel').onclick = () => { state.switching = null; renderConn(); };
   $('copyLinkCode').onclick = async () => {
     if (!state.conn) return;
     const code = makeLinkCode(state.conn);

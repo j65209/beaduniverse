@@ -2,8 +2,10 @@
  * 브라이트비드 오피스 · 메일 발송 서버 (Google Apps Script 웹 앱)
  *
  * 오피스앱 「📂 업무용 툴 → 📨 메일 발송」이 이 서버를 불러서 메일을 한 통씩 보낸다.
- * - 메일은 이 스크립트를 배포한 구글 계정(예: brightbeed@gmail.com) 이름으로 나간다.
- * - 개인 지메일은 하루 100명(받는 사람 기준)까지 보낼 수 있다.
+ * - 메일은 이 스크립트를 배포한 구글 계정(예: brightbeed@bead-uni.com) 이름으로 나간다.
+ *   메일마다 「답장 받을 주소」(Reply-To)를 따로 정할 수 있다 (예: 답장은 brightbeed@gmail.com 으로).
+ * - 발송 한도는 받는 사람 기준, 첫 발송부터 24시간 단위 (자정 초기화 아님):
+ *   개인 지메일 100명 · 구글 워크스페이스 1,500명 (체험 중이거나 막 시작한 계정은 더 적을 수 있음).
  * - 제목·본문·첨부 설정은 이 계정에 저장돼서 어느 PC에서 열어도 같다.
  * - 보낸 기록은 구글 시트 「브라이트비드 메일 발송 기록」에 전부 쌓인다 (발송완료 · 실패).
  *   지메일에서 직접 보낸 메일(보낸편지함)도 이 시트로 가져와서 지금까지 보낸 기록을 한곳에서 본다
@@ -17,8 +19,12 @@
  * 이 키를 아는 사람만 이 서버로 메일을 보낼 수 있으니 저장소(GitHub)에 올리지 말 것.
  */
 const MAIL_KEY = '__MAIL_KEY__';
+/* 「보내는 계정 바꾸기」로 복사한 코드에만 채워진다 — 예전 계정의 발송 기록 시트를 이어서 써서
+   중복 발송 방지가 끊기지 않게 한다. 그 시트를 이 계정에 「편집자」로 공유해 둬야 한다. */
+const LOG_SHEET_ID = '__LOG_ID__';
 
-const SERVER_VERSION = 3;
+const SERVER_VERSION = 4;
+const QUOTA_TEXT = '발송 한도를 다 썼어요 (첫 발송부터 24시간 기준). 한도가 다시 차면 이어서 보내 주세요.';
 const LOG_TITLE = '브라이트비드 메일 발송 기록';
 const FOLDER_TITLE = '브라이트비드 메일 첨부';
 const STATUS_SENT = '발송완료';
@@ -62,7 +68,7 @@ function doPost(e) {
 /* ---------------------------------------------------------------- 요청 처리 */
 
 function ping_() {
-  const logId = props_().getProperty('logId');
+  const logId = logId_();
   return {
     ok: true,
     version: SERVER_VERSION,
@@ -87,6 +93,7 @@ function saveTemplate_(t) {
     subject: String(t.subject || ''),
     body: String(t.body || ''),
     name: String(t.name || ''),
+    replyTo: extractEmail_(t.replyTo),
     interval: Number(t.interval) || 3,
     attachments: (t.attachments || []).map(function (a) {
       return { id: String(a.id), name: String(a.name || ''), size: Number(a.size) || 0, mimeType: String(a.mimeType || '') };
@@ -125,7 +132,7 @@ function send_(req) {
     }
   }
   if (MailApp.getRemainingDailyQuota() < 1) {
-    return { ok: false, status: 'quota', error: '오늘 발송 한도를 다 썼어요. 24시간 뒤 다시 보내 주세요.', remaining: 0 };
+    return { ok: false, status: 'quota', error: QUOTA_TEXT, remaining: 0 };
   }
 
   const attachments = (req.attachmentIds || []).map(function (id) {
@@ -138,6 +145,8 @@ function send_(req) {
 
   const msg = { to: to, subject: (test ? '[테스트] ' : '') + subject, body: body, htmlBody: toHtml_(body) };
   if (req.name) msg.name = String(req.name);
+  const replyTo = extractEmail_(req.replyTo);
+  if (replyTo) msg.replyTo = replyTo;   // 받는 사람이 「답장」을 누르면 이 주소로 간다
   if (attachments.length) msg.attachments = attachments;
 
   try {
@@ -146,7 +155,7 @@ function send_(req) {
     const err = errText_(e);
     if (!test) log_(to, subject, STATUS_FAIL, err);
     const quota = /too many times|quota|limit/i.test(err);
-    return { ok: false, status: quota ? 'quota' : 'fail', error: quota ? '오늘 발송 한도를 다 썼어요. 24시간 뒤 다시 보내 주세요.' : err, remaining: MailApp.getRemainingDailyQuota() };
+    return { ok: false, status: quota ? 'quota' : 'fail', error: quota ? QUOTA_TEXT : err, remaining: MailApp.getRemainingDailyQuota() };
   }
   if (!test) log_(to, subject, STATUS_SENT, '');
   return { ok: true, status: 'sent', to: to, remaining: MailApp.getRemainingDailyQuota() };
@@ -154,8 +163,28 @@ function send_(req) {
 
 /* ---------------------------------------------------------------- 기록 시트 · 폴더 */
 
+/** 이어서 쓰라고 지정된 예전 기록 시트 ID (없으면 '') */
+function fixedLogId_() {
+  return LOG_SHEET_ID.indexOf('__') === 0 ? '' : LOG_SHEET_ID;
+}
+
+function logId_() {
+  return fixedLogId_() || props_().getProperty('logId') || '';
+}
+
 function logSheet_() {
   const p = props_();
+  const fixed = fixedLogId_();
+  if (fixed) {
+    // 예전 계정의 기록을 이어서 쓴다 — 못 열면 새 시트를 만들지 않고 멈춘다 (빈 기록으로 보내면 같은 곳에 또 보내게 됨)
+    let ss;
+    try { ss = SpreadsheetApp.openById(fixed); } catch (e) {
+      throw new Error('예전 계정의 발송 기록 시트를 열 수 없어요. 그 시트를 ' + Session.getEffectiveUser().getEmail() +
+        ' 에 「편집자」로 공유한 뒤 다시 해 주세요.');
+    }
+    if (p.getProperty('logId') !== fixed) p.setProperty('logId', fixed);
+    return ss.getSheets()[0];
+  }
   const id = p.getProperty('logId');
   if (id) {
     try { return SpreadsheetApp.openById(id).getSheets()[0]; } catch (e) { /* 지워졌으면 새로 만든다 */ }
@@ -362,7 +391,7 @@ function history_(limit) {
   const sh = logSheet_();
   const last = sh.getLastRow();
   const counts = { sent: 0, fail: 0, tool: 0, gmail: 0 };
-  const url = logUrl_(props_().getProperty('logId'));
+  const url = logUrl_(logId_());
   if (last < 2) return { ok: true, total: 0, rows: [], counts: counts, logUrl: url };
   const all = sh.getRange(2, 1, last - 1, 6).getValues();
   all.forEach(function (r) {
@@ -435,5 +464,6 @@ function setup() {
   ensureTrigger_(); // 지메일에서 직접 보낸 메일 1시간마다 기록 시트로
   const r = withLock_(function () { return syncSent_(4.5 * 60 * 1000); }); // 지금까지 보낸 메일 가져오기 (많으면 나머지는 이어서)
   Logger.log(r.ok ? '보낸편지함 가져오기: ' + r.added + '건 추가' + (r.done ? ' · 전부 가져옴' : ' · 남은 건 1시간마다 이어서 가져옴') : r.error);
-  Logger.log('준비 완료 · 보내는 계정: ' + Session.getEffectiveUser().getEmail() + ' · 오늘 남은 한도: ' + MailApp.getRemainingDailyQuota());
+  Logger.log('준비 완료 · 보내는 계정: ' + Session.getEffectiveUser().getEmail() + ' · 남은 한도(24시간): ' + MailApp.getRemainingDailyQuota() +
+    (fixedLogId_() ? ' · 예전 계정의 기록 시트를 이어서 씀' : ''));
 }
