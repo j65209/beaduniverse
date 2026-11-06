@@ -8,6 +8,9 @@ name: 사이트 배포 (GitHub Pages)
 #   - 배포를 한 줄로 세운다: 진행 중인 배포는 끝까지 두고, 그사이 쌓인 커밋은 최신 것 하나만 배포한다
 #     (밀려난 대기 배포는 '취소'로 끝나서 실패 메일이 안 간다)
 #   - 일시 오류면 기다렸다가 최대 3번까지 다시 시도한다
+#   - 3번 다 안 돼도 뒤에 더 새 커밋의 배포가 기다리고 있으면 실패로 치지 않는다 (경고만 남김).
+#     기다리던 배포가 최신 커밋을 올리면서 이번 내용까지 같이 반영되기 때문.
+#     기다리는 배포가 없을 때만 실패로 끝낸다 (→ 실패 메일)
 #   - 사이트가 raw.githubusercontent / GitHub API 로 직접 읽는 파일만 바뀐 커밋은 배포하지 않는다
 # 저장소 Settings → Pages → Source 가 'GitHub Actions' 일 때만 배포한다 (아니면 건너뜀 — 기본 배포와 겹치지 않게).
 
@@ -27,6 +30,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read    # 3번 다 실패했을 때 뒤에 기다리는 배포가 있는지 보려고
 
 concurrency:
   group: site-deploy
@@ -83,8 +87,9 @@ jobs:
         with:
           timeout: 300000
 
+      # 다시 하기 전 90초 쉰다. 30초만 쉬면 방금 끊은 배포의 '취소' 상태를 그대로 받아 바로 실패하곤 했다.
       - if: steps.try1.outcome == 'failure'
-        run: sleep 30
+        run: sleep 90
       - id: try2
         if: steps.try1.outcome == 'failure'
         uses: actions/deploy-pages@v5
@@ -97,5 +102,22 @@ jobs:
       - id: try3
         if: steps.try2.outcome == 'failure'
         uses: actions/deploy-pages@v5
+        continue-on-error: true
         with:
           timeout: 600000
+
+      # 3번 다 실패: 뒤에 더 새 커밋의 배포가 기다리고 있으면 그 배포가 이번 내용까지 올리므로 경고만 남기고 끝낸다.
+      # 기다리는 배포가 없을 때만 실패로 끝낸다 (→ 실패 메일).
+      - name: 배포 실패 처리
+        if: steps.try3.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          newer=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs?per_page=20" \
+                    --jq "[.workflow_runs[] | select(.run_number > $GITHUB_RUN_NUMBER and .status != \"completed\")] | length") || newer=0
+          if [ "${newer:-0}" -gt 0 ]; then
+            echo "::warning::GitHub Pages 가 이 배포를 3번 다 처리하지 못함 (GitHub 쪽 일시 문제) → 뒤에 기다리는 더 새 배포가 이번 내용까지 올림"
+            exit 0
+          fi
+          echo "::error::GitHub Pages 배포가 3번 모두 실패함 — https://www.githubstatus.com 확인 뒤 Actions 에서 '사이트 배포'를 다시 실행"
+          exit 1
