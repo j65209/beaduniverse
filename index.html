@@ -12532,7 +12532,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="ably-formula" id="sbBasis"></div>
           <section class="ably-sec">
             <h2>채널별 순수익 <span class="sb-basis-tag" id="sbChBasis"></span></h2>
-            <div class="sb-unit">플랫폼 택배비 <b>주문 1건당 ₩</b><input class="sb-in" id="sbShipUnit" data-unit="1" inputmode="numeric" autocomplete="off" aria-label="주문 1건당 택배비"><span>보고 있는 달부터 적용 · 에이블리 · 지그재그 · 29CM · W컨셉 (공홈은 고정비)</span></div>
+            <div class="sb-unit">플랫폼 택배비 <b>주문 1건당 ₩</b><input class="sb-in" id="sbShipUnit" data-unit="1" inputmode="numeric" autocomplete="off" aria-label="주문 1건당 택배비"><span>보고 있는 달부터 적용 · 에이블리 · 지그재그 · 스마트스토어 · 29CM · W컨셉 (공홈은 고정비)</span></div>
             <div class="ably-tbl-wrap"><table class="ably-tbl sb-tbl" id="sbChannels"></table></div>
           </section>
           <details class="ably-sec ably-fold" id="sbFixedFold">
@@ -40379,6 +40379,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'apt-ably',     brand:'apt', label:'에이블리', report:'ably-apt', perOrderShip:true},
     {id:'apt-zigzag',   brand:'apt', label:'지그재그', report:'zigzag-apt', perOrderShip:true, feeAuto:true},
     {id:'apt-wconcept', brand:'apt', label:'W컨셉', perOrderShip:true},
+    {id:'6a-home',      brand:'6a',  label:'공홈',     report:'home-6a'},
+    {id:'6a-ably',      brand:'6a',  label:'에이블리', report:'ably-6a', perOrderShip:true},
+    {id:'6a-zigzag',    brand:'6a',  label:'지그재그', report:'zigzag-6a', perOrderShip:true, feeAuto:true},
+    {id:'ct-home',      brand:'ct',  label:'공홈',     report:'home-ct'},
+    {id:'yar-home',     brand:'yar', label:'공홈',     report:'home-yar'},
+    {id:'pp-home',      brand:'pp',  label:'공홈',     report:'home-pp'},
+    {id:'pp-smartstore',brand:'pp',  label:'스마트스토어', report:'smartstore-pp', perOrderShip:true, feeAuto:true, feeFromNet:true},
+    {id:'akoi-home',    brand:'akoi',label:'공홈',     report:'home-akoi'},
+    {id:'koz-home',     brand:'koz', label:'공홈',     report:'home-koz'},
   ];
   const _sb={month:'', doc:null, view:null, ready:false, loadError:'', loadedAt:0, seq:0, saveGen:0,
              ops:null, inflight:0, saving:false, fail:0, timer:null, built:false, fixedSig:'', bound:false, paintQueued:false};
@@ -40401,8 +40410,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _sbSeries(c){
     const idx=c.report&&_strat.index[c.report];
     if(!idx||idx.error) return null;
+    // 스마트스토어 index 에는 수수료 칸이 없어 보고서 순이익 식(실결제 − 수수료 − 택배비 − 광고비 − 원가)에서 되짚는다 — 일별 보고서의 네이버 실제 수수료와 일치
+    const feeOf=d=>c.feeFromNet?Math.max(0,(Number(d.paid)||0)-(Number(d.net)||0)-(Number(d.ad_spend)||0)-(Number(d.cost)||0)-(Number(d.orders)||0)*SB_SHIP_DEFAULT):Number(d.fees_est)||0;
     // 주문수는 택배비 계산용 — 지그재그는 ship_orders (직진배송은 창고에서 나가고 출고비가 직배 이용료에 있어 뺌, 사장님 결정 2026-11-02)
-    return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.ship_orders??d.orders)||0, fee:Number(d.fees_est)||0, direct:Number(d.direct_fee)||0}));
+    return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.ship_orders??d.orders)||0, fee:feeOf(d), direct:Number(d.direct_fee)||0}));
   }
   // 채널 · 달의 자동 값 {fields, actual(실적 매출), left(예상으로 채운 날 수)}. 쓸 데이터가 없으면 null.
   function _sbAuto(c,month){
@@ -40421,7 +40432,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       fields.forEach(f=>{ out.fields[f]=Math.round(sum(done,f)+sum(recent,f)/recent.length*out.left); });
       return out;
     }
-    if(rows.length<20) return null;  // 달의 2/3 도 안 남은 데이터
+    if(rows.length<20){
+      // 그 달 중간에 수집을 시작한 채널 — 없는 날을 늘려 잡지 않고 있는 날만 합산 (화면에 따로 알림). 그 밖의 빈 달은 지난달 기준으로 넘긴다.
+      const first=s.reduce((a,d)=>d.date<a?d.date:a,'9999-99-99');
+      if(!rows.length||!first.startsWith(month)) return null;  // 달의 2/3 도 안 남은 데이터
+      fields.forEach(f=>{ out.fields[f]=Math.round(sum(rows,f)); });
+      out.partial=rows.length;
+      return out;
+    }
     fields.forEach(f=>{ out.fields[f]=Math.round(sum(rows,f)*days/rows.length); });
     return out;
   }
@@ -40431,7 +40449,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const typed=(((_sb.view||{}).months||{})[month]||{}).cells||{};
     const prev=month>SB_FIRST_MONTH?_sbResolve(_sbPrevMonth(month),memo):null;
     const unit=_sbShipUnit(month);
-    const res={rows:[], byId:{}, sales:0, net:0, actual:0, left:0, est:0, unread:[], unit};
+    const res={rows:[], byId:{}, sales:0, net:0, actual:0, left:0, est:0, unread:[], partial:[], unit};
     SB_CHANNELS.forEach(c=>{
       const auto=_sbAuto(c,month), t=typed[c.id]||{}, before=prev&&prev.byId[c.id];
       const vals={};
@@ -40453,6 +40471,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(auto){ res.actual+=auto.actual; res.left=Math.max(res.left,auto.left); }
       res.est+=SB_FIELDS.filter(([f])=>vals[f].src==='ratio'||vals[f].src==='prev').length;
       if(c.report&&!_sbSeries(c)&&typeof t.sales!=='number') res.unread.push(`${_sbBrand(c.brand).display} ${c.label}`);
+      if(auto&&auto.partial&&typeof t.sales!=='number') res.partial.push(`${_sbBrand(c.brand).display} ${c.label} ${auto.partial}일치`);
     });
     memo[month]=res;
     return res;
@@ -40632,13 +40651,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const totalCells=p=>SB_FIELDS.map(([f])=>`<td class="n" id="sb-${p}-${f}"></td>`).join('')+`<td class="n sb-net" id="sb-${p}-net"></td><td class="n" id="sb-${p}-rate"></td>`;
     let html='<thead><tr><th class="sb-ch">채널</th>'+SB_FIELDS.map(([,l])=>`<th class="n">${l}</th>`).join('')+'<th class="n">순수익</th><th class="n">이익률</th></tr></thead><tbody>';
     new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>{
-      const meta=_sbBrand(b);
-      SB_CHANNELS.filter(c=>c.brand===b).forEach(c=>{
+      const meta=_sbBrand(b), list=SB_CHANNELS.filter(c=>c.brand===b);
+      list.forEach(c=>{
         html+=`<tr><td class="sb-ch"><span class="brand-dot" style="background:${meta.dot}"></span>${_stratEsc(meta.display)} ${_stratEsc(c.label)}</td>`
           +SB_FIELDS.map(([f,l])=>`<td><input class="sb-in" id="sb-${c.id}-${f}" data-c="${c.id}" data-f="${f}" inputmode="numeric" autocomplete="off" aria-label="${_stratEsc(meta.display)} ${_stratEsc(c.label)} ${l}"></td>`).join('')
           +`<td class="n sb-net" id="sb-${c.id}-net"></td><td class="n" id="sb-${c.id}-rate"></td></tr>`;
       });
-      html+=`<tr class="sb-sub"><td class="sb-ch">${_stratEsc(meta.display)} 합계</td>${totalCells(b)}</tr>`;
+      // 채널이 하나뿐인 브랜드는 합계 줄이 바로 윗줄과 같아서 생략
+      if(list.length>1) html+=`<tr class="sb-sub"><td class="sb-ch">${_stratEsc(meta.display)} 합계</td>${totalCells(b)}</tr>`;
     });
     html+=`<tr class="is-total"><td class="sb-ch">전체 합계</td>${totalCells('all')}</tr></tbody>`;
     document.getElementById('sbChannels').innerHTML=html;
@@ -40671,10 +40691,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       kpi('부가세 예상', '₩'+w(vat), '매출 ÷ 11 · 매입 공제 전'),
     ].join('');
     const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 월 고정비 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
-    if(cur) lines.push(`월말 예상: 공홈 · 에이블리 · 지그재그는 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 29CM · W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요 — 주문수를 넣으면 택배비가 바로 계산돼요.`);
+    if(cur) lines.push(`월말 예상: 공홈 · 에이블리 · 지그재그 · 스마트스토어는 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 29CM · W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요 — 주문수를 넣으면 택배비가 바로 계산돼요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
+    if(res.partial.length) lines.push(`<span class="sb-warn">⚠ 이 달 중간부터 보고서가 있는 채널: ${_stratEsc(res.partial.join(', '))} — 있는 날만 합산했어요.</span>`);
     lines.push(`플랫폼 택배비 = 주문수 × ₩${w(res.unit)} (우리가 직접 보내 정산 때 나가는 비용). 지그재그 주문수는 스토어배송만 — 직진배송은 창고에서 나가고 출고비가 직배 이용료에 들어 있어요.`);
     document.getElementById('sbBasis').innerHTML=lines.join('<br>');
     document.getElementById('sbChBasis').textContent=cur?`· ${_sbMonthLabel(m)} 월말 예상`:`· ${_sbMonthLabel(m)} 한 달 합계`;
@@ -40702,7 +40723,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       document.getElementById(`sb-${p}-net`).innerHTML=money(net);
       document.getElementById(`sb-${p}-rate`).textContent=rate(net,sales);
     };
-    new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>paintTotal(b,res.rows.filter(r=>r.c.brand===b)));
+    new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>{ const rows=res.rows.filter(r=>r.c.brand===b); if(rows.length>1) paintTotal(b,rows); });
     paintTotal('all',res.rows);
 
     document.getElementById('sbFixedSum').innerHTML=`₩${w(fixedSum)} · ${fixed.length}개`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'');
