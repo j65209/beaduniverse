@@ -13057,6 +13057,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   </div>
 </div>
 
+<!-- 프록시 접속키 입력 — 서버가 401 을 주면 뜬다 (키는 이 브라우저에만 저장) -->
+<div class="modal-bg" id="proxyKeyModal">
+  <div class="modal">
+    <div class="modal-title">사내 접속키 입력</div>
+    <div class="modal-sub">서버 PC(맥미니)로 가는 기능에 필요합니다. 이 브라우저에서 한 번만 넣으면 되고, 키는 이 브라우저에만 저장됩니다.</div>
+    <input class="modal-input" id="proxyKeyInput" type="password" placeholder="받은 접속키를 붙여 넣어 주세요" autocomplete="off" spellcheck="false">
+    <div id="proxyKeyMsg" style="min-height:18px;margin-top:8px;font-size:12px;color:var(--text-2)" aria-live="polite"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="proxyKeyLater">나중에</button>
+      <button class="modal-btn modal-btn-primary" id="proxyKeySave">확인</button>
+    </div>
+  </div>
+</div>
+
 <!-- 기획전 일정 추가/수정 모달 -->
 <div class="modal-bg" id="mdEventModal">
   <div class="modal md-event-modal">
@@ -13188,7 +13202,62 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return _proxyBase;
     }catch(e){ return _proxyBase }
   }
-  function ghPin(){ return localStorage.getItem(ROLE_KEY)==='master' ? PROXY_PIN_MASTER : PIN_VIEWER }
+  /* 프록시 접속키 — 공개 소스에 두지 않는다. 기기마다 한 번 넣으면 이 브라우저(localStorage)에만 남는다.
+     서버 Mac config.env 에는 키 뒤에 -v(보기) · -m(수정) 을 붙인 값이 들어 있고, 권한 구분은 예전 PIN 과 같다.
+     키가 없는 기기는 아직 옛 PIN 을 보낸다 — 서버 전환이 끝나면 옛 PIN 을 이 소스에서 지운다. */
+  const PROXY_KEY_STORE='brightbeed_proxy_key';
+  const PROXY_KEY_LEN=20;
+  function proxyKey(){ try{ return localStorage.getItem(PROXY_KEY_STORE)||'' }catch(e){ return '' } }
+  function proxyPinMaster(){ const k=proxyKey(); return k ? k+'-m' : PROXY_PIN_MASTER }
+  function ghPin(){
+    if(localStorage.getItem(ROLE_KEY)==='master') return proxyPinMaster();
+    const k=proxyKey();
+    return k ? k+'-v' : PIN_VIEWER;
+  }
+  /* 접속키 입력창 — 프록시가 401 을 주면 (이 브라우저에 키가 없거나 키가 바뀌었을 때) 띄운다. 맞으면 저장하고 새로고침. */
+  (function(){
+    const modal=document.getElementById('proxyKeyModal');
+    const input=document.getElementById('proxyKeyInput');
+    const msg=document.getElementById('proxyKeyMsg');
+    const save=document.getElementById('proxyKeySave');
+    let open=false, later=false, busy=false;
+    function close(){ open=false; modal.classList.remove('show'); }
+    function ask(){
+      if(open||later||!app.classList.contains('show')) return;
+      open=true; input.value=''; msg.textContent=''; modal.classList.add('show');
+      setTimeout(()=>input.focus(),50);
+    }
+    async function submit(){
+      if(busy) return;
+      const k=String(input.value).toUpperCase().replace(/[^A-Z0-9]/g,'');
+      if(k.length!==PROXY_KEY_LEN){ msg.textContent='접속키는 영문·숫자 20자입니다. 받은 키를 그대로 붙여 넣어 주세요.'; input.focus(); return; }
+      busy=true; save.disabled=true; msg.textContent='확인 중…';
+      try{
+        const base=await loadProxyBase(true);
+        if(!base) throw new Error('proxy unavailable');
+        const r=await fetch(base+'/gh/rate_limit',{headers:{'X-Brightbeed-PIN':k+'-v'},cache:'no-store'});
+        if(r.status===401){ msg.textContent='접속키가 맞지 않습니다. 다시 확인해 주세요.'; input.focus(); return; }
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        try{ localStorage.setItem(PROXY_KEY_STORE,k); }
+        catch(e){ if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace(); localStorage.setItem(PROXY_KEY_STORE,k); }
+        location.reload();
+      }catch(e){
+        msg.textContent='서버 PC(맥미니)에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.';
+      }finally{ busy=false; save.disabled=false; }
+    }
+    save.onclick=submit;
+    document.getElementById('proxyKeyLater').onclick=()=>{ later=true; close(); };
+    input.addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+    // 다른 탭에서 키를 넣으면 이 탭도 새로고침
+    window.addEventListener('storage',e=>{ if(e.key===PROXY_KEY_STORE&&e.newValue&&open) location.reload(); });
+    const fetchBefore=window.fetch;
+    window.fetch=function(u,init){
+      const p=fetchBefore.apply(this,arguments);
+      if(!(init&&init.headers&&init.headers['X-Brightbeed-PIN'])) return p;
+      return p.then(r=>{ if(r.status===401) ask(); return r; });
+    };
+  })();
+  /* 접속키 입력창 끝 */
   async function ghFetch(url,opts){
     opts=opts||{};
     const buildReq=async()=>{
@@ -13198,7 +13267,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const headers=Object.assign({},opts.headers||{});
       delete headers.Authorization;
       // forceMaster: viewer 역할이어도 master PIN으로 호출 (일부 공용 액션용)
-      headers['X-Brightbeed-PIN']=opts.forceMaster ? PROXY_PIN_MASTER : ghPin();
+      headers['X-Brightbeed-PIN']=opts.forceMaster ? proxyPinMaster() : ghPin();
       const fwd=Object.assign({},opts,{headers});
       delete fwd.forceMaster;
       return [proxyUrl, fwd];
@@ -26322,7 +26391,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!base) throw new Error('서버 프록시를 찾을 수 없습니다 (tunnel.json)');
       const r=await fetch(base+'/orders-parse',{
         method:'POST',
-        headers:{'X-Brightbeed-PIN':PROXY_PIN_MASTER,'Accept':'application/json'},
+        headers:{'X-Brightbeed-PIN':proxyPinMaster(),'Accept':'application/json'},
       });
       let j={};
       try{ j=await r.json(); }catch{}

@@ -695,7 +695,13 @@ function pushChat(id, msg){
    프록시
    ------------------------------------------------------------------------- */
 function isMaster(){ return localStorage.getItem(ROLE_KEY) === 'master'; }
-function bbPin(){ return isMaster() ? PROXY_PIN_MASTER : PIN_VIEWER; }
+// 프록시 접속키 — 공개 소스에 두지 않는다. 오피스 화면에서 한 번 넣으면 이 브라우저에 남는다 (index.html proxyKey 참고)
+function bbPin(){
+  const k = localStorage.getItem('brightbeed_proxy_key') || '';
+  if(k) return k + (isMaster() ? '-m' : '-v');
+  return isMaster() ? PROXY_PIN_MASTER : PIN_VIEWER;
+}
+const NEED_KEY_MSG = '접속키가 필요합니다 — 오피스 화면을 열어 접속키를 넣어 주세요';
 
 async function loadProxyBase(force){
   if(_proxyBase && !force && Date.now() - _proxyBaseAt < PROXY_BASE_TTL_MS) return _proxyBase;
@@ -721,6 +727,7 @@ async function api(path, opts){
     body = JSON.stringify(body);
   }
   const r = await fetch(base + path, {method:opts.method||'GET', headers, body, cache:'no-store'});
+  if(r.status === 401) throw new Error(NEED_KEY_MSG);
   const text = await r.text();
   let json = null;
   try{ json = JSON.parse(text); }catch(e){}
@@ -737,6 +744,7 @@ async function apiText(path){
   const base = await loadProxyBase();
   if(!base) throw new Error('프록시에 연결할 수 없습니다 (서버 PC 확인 필요)');
   const r = await fetch(base + path, {headers:{'X-Brightbeed-PIN':bbPin()}, cache:'no-store'});
+  if(r.status === 401) throw new Error(NEED_KEY_MSG);
   const text = await r.text();
   if(!r.ok){
     let d = text.slice(0,180);
