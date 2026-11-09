@@ -13119,7 +13119,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(Date.now()-lastInput>30000) return false;
       if(/script\.google\.com/.test(url)) return typeof body==='string'&&body.indexOf('"action":"write"')>=0;
       if(SKIP.test(url)) return false;
-      return /\/rest\/v1\//.test(url)||(method==='PUT'&&/\/contents\/data\//.test(url));
+      return /\/rest\/v1\//.test(url)||(method==='PUT'&&/\/contents\/(data|office)\//.test(url));
     };
     const ownTagVisible=()=>['diarySaveTag','csSaveTag','dsgSaveTag','adshSaveTag','fxSaveTag'].some(id=>{ const n=document.getElementById(id); return n&&n.offsetParent; });
     function show(state){
@@ -29343,17 +29343,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ============ 업무용 비밀번호 모음 (옛 이름 사내 공지사항) — 자격증명 관리 (GitHub 동기화) ============ */
   /* ===================================================== */
   const NOTICE_KEY='brightbeed_notice';
-  const NOTICE_PATH='data/notice.json';
-  const NOTICE_RAW=`https://raw.githubusercontent.com/${PO_REPO}/${PO_BRANCH}/${NOTICE_PATH}`;
-  const NOTICE_API=`https://api.github.com/repos/${PO_REPO}/contents/${NOTICE_PATH}`;
+  /* 아이디 · 비밀번호 · 토큰이 들어 있어 비공개 레포에 둔다 (프록시 경유, 전략팀 메인보드와 같은 방식).
+     2026-11-09 공개 레포 data/notice.json 에서 옮겼다 — 공개 경로로 되돌리지 말 것.
+     새로고침 안 한 옛 탭이 그 경로에 파일을 다시 만들지 못하게 data/notice.json 은 폴더로 막아 뒀다 (안의 MOVED.txt). */
+  const NOTICE_API='https://api.github.com/repos/j65209/brightbeed-reports/contents/office/notice.json';
   let _notice_lastHash=null;
+  let _noticeLoadFailed=false;   // 서버에서 못 읽음 — 맥미니 프록시가 꺼져 있으면 "항목 없음"으로 보이지 않게
   let _cred_filter='all';    // all | login | custom
   let _cred_search='';
   let _cred_editorState=null; // {mode:'add'|'edit', type:'login'|'custom', id?, fields:[]}
   let _cred_modalOpen=false;
 
-  /* pushed-snap — raw.githubusercontent 는 커밋 후 수십초간 옛 파일을 반환한다.
-     그 사이 pull 이 돌면 방금 저장한 항목이 로컬에서 지워진다. */
+  /* pushed-snap — 커밋 직후 읽기가 옛 내용을 주면 방금 저장한 항목이 로컬에서 지워진다.
+     (raw.githubusercontent 를 쓰던 때 수십초씩 밀렸다. contents API 는 거의 안 밀리지만 안전장치로 둔다) */
   const NOTICE_PUSHED_KEY='brightbeed_notice_pushed_v1';
   const NOTICE_CONFIRM_MS=6*60*1000;
   let _noticePushedSnap=null; // {json, ts}
@@ -29584,41 +29586,42 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else{try{localStorage.removeItem(NOTICE_KEY)}catch(e){} _notice_lastHash='null'}
   }
 
+  /* 못 읽은 것과 비어 있는 것은 다르다 — 비공개 레포는 권한이 없어도 404 를 주므로, 404 를 "빈 파일"로 치면
+     프록시 설정 하나 바뀐 것으로 PC 마다 목록이 지워진다. 항목을 다 지워도 파일은 {"entries":[]} 로 남는다. */
   async function fetchNoticeFromRemote(){
+    const file=await ghGetFile(NOTICE_API);
+    if(file.error || !file.sha || !file.text) return null;
     try{
-      const r=await fetch(`${NOTICE_RAW}?cb=${Date.now()}`,{cache:'no-cache'});
-      if(r.status===404) return {empty:true};
-      if(!r.ok) return null;
-      const data=await r.json();
-      return (data && typeof data==='object') ? data : {empty:true};
+      const data=JSON.parse(file.text);
+      return (data && typeof data==='object') ? data : null;
     }catch(e){return null}
   }
 
   async function syncNoticeFromRemote(){
     if(_cred_modalOpen) return; // 편집 중이면 덮어쓰기 방지
     if(_noticeOps.length) return; // 미전송 편집 보유 — 옛 remote 로 덮지 않음
+    // 60초 폴링(pollPO)에서도 불린다. 프록시 · GitHub API 를 쓰므로 이 화면을 열어 둔 동안만 읽는다
+    const view=document.getElementById('viewNotice');
+    if(!view || view.hidden) return;
     const remote=await fetchNoticeFromRemote();
-    if(remote===null) return;
-    const snap=_noticeLoadPushedSnap();
-    if(remote.empty){
-      if(snap) return; // CDN 지연 — 방금 올린 내용 유지
-      const cur=loadNotice();
-      if(cur.entries.length>0 || cur.legacyHtml){
-        saveNoticeLocal(credEmptyState());
-        renderCredentials();
-        renderNoticeUpdatedTag();
-      } else {
-        _notice_lastHash='null';
-      }
+    if(_cred_modalOpen || _noticeOps.length) return; // 읽는 사이에 편집이 시작됐으면 옛 내용으로 덮지 않음
+    const failedBefore=_noticeLoadFailed;
+    _noticeLoadFailed=(remote===null);
+    if(remote===null){
+      if(!failedBefore) renderCredentials();
       return;
     }
+    const snap=_noticeLoadPushedSnap();
     const normalized=normalizeNotice(remote);
     const json=JSON.stringify(normalized);
     if(snap){
       if(json!==snap.json) return;   // 아직 옛 파일 — pull skip
       _noticeClearPushedSnap();      // 원격 반영 확인
     }
-    if(json===_notice_lastHash) return;
+    if(json===_notice_lastHash){
+      if(failedBefore) renderCredentials();
+      return;
+    }
     saveNoticeLocal(normalized);
     renderCredentials();
     renderNoticeUpdatedTag();
@@ -29662,7 +29665,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       list.style.display='none';
       if(empty){
         empty.hidden=false;
-        if(n.entries.length===0){
+        if(n.entries.length===0 && _noticeLoadFailed){
+          empty.querySelector('.cred-empty-text').textContent='목록을 불러오지 못했습니다';
+          empty.querySelector('.cred-empty-sub').textContent='서버 PC(맥미니) 연결을 확인한 뒤 새로고침하세요';
+        } else if(n.entries.length===0){
           empty.querySelector('.cred-empty-text').textContent='저장된 항목이 없습니다';
           empty.querySelector('.cred-empty-sub').innerHTML='우측 상단 <b>＋ 로그인</b> 또는 <b>＋ 사용자지정</b>으로 추가하세요';
         } else {
@@ -30053,7 +30059,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         try {
           const file = await ghGetFile(NOTICE_API);
           if(file.error){ lastReason = file.error; break; }
-          if(file.sha && !file.text){ lastReason = 'read_empty'; break; }   // 내용을 못 읽었는데 빈 파일로 보면 전체가 지워진다
+          if(!file.sha){ lastReason = 'missing'; break; }   // 비공개 레포는 권한이 없어도 404 — 없는 파일로 보고 새로 만들면 목록이 이번 항목 하나만 남는다
+          if(!file.text){ lastReason = 'read_empty'; break; }   // 내용을 못 읽었는데 빈 파일로 보면 전체가 지워진다
           let remote = credEmptyState();
           if(file.text){
             try{ remote = normalizeNotice(JSON.parse(file.text)); }
