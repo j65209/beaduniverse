@@ -4840,6 +4840,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-mailer {--m-color:#f97316;--m-border:rgba(249,115,22,.45)}
   .sub-module.m-mailer .sub-module-icon{color:#f97316}
   .sub-module.m-mailer .sub-module-tag{color:#ea580c;border-color:rgba(249,115,22,.5);border-style:solid}
+  .sub-module.m-yearend {--m-color:#4f7fcf;--m-border:rgba(79,127,207,.5)}
+  .sub-module.m-yearend .sub-module-tag{color:#3f6dbd;border-color:rgba(79,127,207,.55);border-style:solid}
   /* .sub-module 의 display:flex 가 hidden 속성을 덮어쓰므로 명시 (권한 카드 숨김: 대표 전용 금고 등) */
   .sub-module[hidden]{display:none}
 
@@ -10360,6 +10362,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <span class="folder-meta"><b id="subModulesCount">—</b> 도구</span>
       </div>
       <div class="sub-modules">
+        <!-- 2026 송년회 — 전승훈 · 전수빈 PC 에만 노출 (yeRefreshAccess) -->
+        <div class="sub-module m-yearend" id="yearEndCard" onclick="triggerYearEnd()" hidden>
+          <div class="sub-module-icon">🎉</div>
+          <div class="sub-module-title">2026 송년회</div>
+          <div class="sub-module-sub">챕터형 팀 대항전 · 전승훈 · 전수빈만</div>
+          <div class="sub-module-tag">EVENT</div>
+        </div>
         <div class="sub-module m-notice" onclick="triggerNotice()">
           <div class="sub-module-icon">🔐</div>
           <div class="sub-module-title">업무용 비밀번호 모음</div>
@@ -12500,6 +12509,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
   </div>
+
+  <!-- ============ 2026 송년회 — 챕터형 팀 대항전 (전승훈 · 전수빈 전용, 본체는 yearend/) ============ -->
+  <div class="view" id="viewYearEnd" hidden><div id="yeRoot"></div></div>
 
   <!-- ============ 전략팀 — 채널별 일일 손익 보고서 (전승훈 · 전수빈 · 김수민 전용) ============
        공홈 탭 = 8개 브랜드 자사몰 · 플랫폼 탭 = 에이블리 · 지그재그 · 스마트스토어 (마케팅팀 매출 탭과 같은 목록).
@@ -15757,8 +15769,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -15872,6 +15884,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       if(typeof stratInit==='function') stratInit();
     }
+    if(id==='viewYearEnd'){
+      // 명단 밖 접근 방어 (해시 직입력 등)
+      if(typeof yeHasAccess==='function' && !yeHasAccess()){
+        toast('대표 전용 화면입니다','err');
+        history.replaceState({view:'viewHome'},'',location.pathname+location.search);
+        applyView('viewHome');
+        return;
+      }
+      if(typeof yeOpen==='function') yeOpen();
+    }
     if(id==='viewDiary'){
       if(typeof initDiaryView==='function') initDiaryView();
     }
@@ -15918,6 +15940,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof cecRenderHomeCard === 'function') cecRenderHomeCard();
       // 전략팀 카드 (전승훈/전수빈/김수민 PC 에만 노출)
       if(typeof stratRefreshAccess === 'function') stratRefreshAccess();
+      // 2026 송년회 (전승훈/전수빈 PC 에만 노출)
+      if(typeof yeRefreshAccess === 'function') yeRefreshAccess();
     }
   }
 
@@ -23253,6 +23277,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof execRefreshAccess==='function') execRefreshAccess();
       if(typeof renderCredentials==='function') renderCredentials();
       if(typeof stratRefreshAccess==='function') stratRefreshAccess();
+      if(typeof yeRefreshAccess==='function') yeRefreshAccess();
       if(typeof _diaryApplyHomeVisibility==='function') _diaryApplyHomeVisibility();
       toast(`${name}님으로 로그인되었습니다`, 'ok');
     };
@@ -40893,6 +40918,67 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.stratRefresh=stratRefresh;
   window.stratRenderOrders=stratRenderOrders;
   stratRefreshAccess();
+
+  /* ===== 2026 송년회 (viewYearEnd) — 챕터형 팀 대항전 =====
+     접근: diary_me ∈ YE_ALLOWED. 카드 노출 · 화면 진입 모두 이 명단으로 판정 (마스터여도 명단 밖이면 숨김).
+     본체는 yearend/yearend.js · yearend.css — 명단 안의 PC 에서만 불러온다. 고치면 YE_BUILD 를 올릴 것.
+     직원에게 열 때는 YE_ALLOWED 에 이름을 넣으면 된다. 진행 상황은 app_kv 'yearend_2026'. */
+  const YE_ALLOWED=new Set(['전승훈','전수빈']);
+  const YE_BUILD='2026110901';
+  let _yeLoading=null;
+  function yeHasAccess(){ return YE_ALLOWED.has(String(_diaryGetMe()||'').trim()); }
+  function yeRefreshAccess(){
+    const ok=yeHasAccess();
+    const card=document.getElementById('yearEndCard');
+    if(card) card.hidden=!ok;
+    if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
+    const v=document.getElementById('viewYearEnd');
+    if(!ok && v && !v.hidden) goHome();
+    if(ok) yeLoad().catch(()=>{});   // 행사장 와이파이가 약해도 열리도록 미리 받아 둔다
+  }
+  async function yeDiaryTotal(){   // 회사 전체 건수만 센다 (내용·개인별 집계 없음)
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/diary_items?select=id&deleted_at=is.null&limit=1`,{headers:_sbHeaders({'Prefer':'count=exact'}),cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const m=(r.headers.get('content-range')||'').match(/\/(\d+)$/);
+    return m?+m[1]:null;
+  }
+  function yeLoad(){
+    if(_yeLoading) return _yeLoading;
+    window.YE_BRIDGE={
+      people:()=>STAFF.filter(s=>!_hiddenStaff.has(s.name)).map(s=>({name:s.name,dept:s.dept||'',team:_normTeam(s.team)||'',hire:s.hire||'',ceo:!!s.ceo,title:getStaffTitle(s.name)||''})),
+      brands:()=>BRAND_SECTIONS.map(b=>({id:b.id,name:b.display})),
+      kvSet, kvPull, toast, goHome,
+      loadRealtime:_diaryLoadSupabaseClient,
+      diaryTotal:yeDiaryTotal,
+      refreshOrg:()=>syncDeptOverridesFromRemote(),   // 직책 · 부서 변경은 인사팀 화면에서만 받아 오므로 여기서도 받는다
+    };
+    _yeLoading=new Promise((resolve,reject)=>{
+      const css=document.createElement('link');
+      css.rel='stylesheet';
+      css.href='yearend/yearend.css?v='+YE_BUILD;
+      document.head.appendChild(css);
+      const js=document.createElement('script');
+      js.src='yearend/yearend.js?v='+YE_BUILD;
+      js.onload=resolve;
+      js.onerror=()=>{ css.remove(); js.remove(); _yeLoading=null; reject(new Error('load failed')); };
+      document.head.appendChild(js);
+    });
+    return _yeLoading;
+  }
+  async function yeOpen(){
+    try{ await yeLoad(); window.YearEnd.open(); }
+    catch(e){
+      const root=document.getElementById('yeRoot');
+      if(root) root.innerHTML='<p style="padding:40px;text-align:center">송년회 화면을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.</p>';
+    }
+  }
+  function triggerYearEnd(){
+    if(!yeHasAccess()){ toast('대표 전용 화면입니다','err'); return; }
+    showView('viewYearEnd');
+  }
+  window.triggerYearEnd=triggerYearEnd;
+  window.yeRefreshAccess=yeRefreshAccess;
+  yeRefreshAccess();
 
   /* ===== MD팀 — 구글시트 6종 실시간 양방향 연동 =====
      · 구글시트 ↔ 오피스는 Apps Script 웹앱(scripts/md-sheets-bridge.gs)이 중계. URL·토큰은 md_sheet_config 테이블.
