@@ -4931,6 +4931,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-tbl tr.sb-sub td{background:var(--bg-2);font-weight:600;color:var(--text-1)}
   .sb-tbl tr.is-total td{padding-top:7px;padding-bottom:7px}
   .sb-tbl tr.is-total .sb-ch{background:var(--bg-2)}
+  .sb-tbl tr.sb-gap td,.sb-tbl tr.sb-gap:hover td{height:18px;padding:0;border:0;background:transparent}
   .sb-net{font-weight:700;color:var(--text-1)}
   .sb-in{width:100%;min-width:92px;box-sizing:border-box;padding:4px 6px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--text-1);font:inherit;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
   .sb-in::placeholder{color:var(--text-3);font-weight:400;opacity:1}
@@ -40736,6 +40737,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       });
       // 채널이 하나뿐인 브랜드는 합계 줄이 바로 윗줄과 같아서 생략
       if(list.length>1) html+=`<tr class="sb-sub"><td class="sb-ch">${_stratEsc(meta.display)} 합계</td>${totalCells(b)}</tr>`;
+      // 브랜드마다 띄운다 — 합계 줄이 없는 단일 채널 브랜드가 옆 브랜드에 붙어 보이지 않게
+      html+=`<tr class="sb-gap" aria-hidden="true"><td colspan="${SB_FIELDS.length+3}"></td></tr>`;
     });
     html+=`<tr class="is-total"><td class="sb-ch">전체 합계</td>${totalCells('all')}</tr></tbody>`;
     document.getElementById('sbChannels').innerHTML=html;
