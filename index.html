@@ -40450,12 +40450,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'6a-ably',      brand:'6a',  label:'에이블리', report:'ably-6a', perOrderShip:true},
     {id:'6a-zigzag',    brand:'6a',  label:'지그재그', report:'zigzag-6a', perOrderShip:true, feeAuto:true},
     {id:'ct-home',      brand:'ct',  label:'공홈',     report:'home-ct'},
-    {id:'yar-home',     brand:'yar', label:'공홈',     report:'home-yar'},
     {id:'pp-home',      brand:'pp',  label:'공홈',     report:'home-pp'},
     {id:'pp-smartstore',brand:'pp',  label:'스마트스토어', report:'smartstore-pp', perOrderShip:true, feeAuto:true, feeFromNet:true},
     {id:'akoi-home',    brand:'akoi',label:'공홈',     report:'home-akoi'},
     {id:'koz-home',     brand:'koz', label:'공홈',     report:'home-koz'},
-    // 플레이오토 수집분 (맥미니 playauto-live, 매일 새벽) — 매출 · 주문수 · 원가 자동, 수수료 · 광고비는 플레이오토에 없어 칸에 직접 넣는다
+    {id:'yar-home',     brand:'yar', label:'공홈',     report:'home-yar'},
+    // 플레이오토 수집분 (맥미니 playauto-live, 30분마다) — 매출 · 주문수 · 원가 자동, 수수료 · 광고비는 플레이오토에 없어 칸에 직접 넣는다
     {id:'pp-29cm',      brand:'pp',  label:'29CM',     report:'29cm-pp', perOrderShip:true, noAutoAd:true},
     {id:'pp-ohou',      brand:'pp',  label:'오늘의집', report:'ohou-pp', perOrderShip:true, noAutoAd:true},
     {id:'pp-eql',       brand:'pp',  label:'EQL',      report:'eql-pp', perOrderShip:true, noAutoAd:true},
@@ -40735,9 +40735,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           +SB_FIELDS.map(([f,l])=>`<td><input class="sb-in" id="sb-${c.id}-${f}" data-c="${c.id}" data-f="${f}" inputmode="numeric" autocomplete="off" aria-label="${_stratEsc(meta.display)} ${_stratEsc(c.label)} ${l}"></td>`).join('')
           +`<td class="n sb-net" id="sb-${c.id}-net"></td><td class="n" id="sb-${c.id}-rate"></td></tr>`;
       });
-      // 채널이 하나뿐인 브랜드는 합계 줄이 바로 윗줄과 같아서 생략
-      if(list.length>1) html+=`<tr class="sb-sub"><td class="sb-ch">${_stratEsc(meta.display)} 합계</td>${totalCells(b)}</tr>`;
-      // 브랜드마다 띄운다 — 합계 줄이 없는 단일 채널 브랜드가 옆 브랜드에 붙어 보이지 않게
+      // 채널이 하나뿐인 브랜드(야르 · 코즈미)도 다른 브랜드와 똑같이 합계 줄을 둔다 — 없으면 옆 브랜드 묶음처럼 보인다
+      html+=`<tr class="sb-sub"><td class="sb-ch">${_stratEsc(meta.display)} 합계</td>${totalCells(b)}</tr>`;
       html+=`<tr class="sb-gap" aria-hidden="true"><td colspan="${SB_FIELDS.length+3}"></td></tr>`;
     });
     html+=`<tr class="is-total"><td class="sb-ch">전체 합계</td>${totalCells('all')}</tr></tbody>`;
@@ -40804,7 +40803,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       document.getElementById(`sb-${p}-net`).innerHTML=money(net);
       document.getElementById(`sb-${p}-rate`).textContent=rate(net,sales);
     };
-    new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>{ const rows=res.rows.filter(r=>r.c.brand===b); if(rows.length>1) paintTotal(b,rows); });
+    new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>{ paintTotal(b,res.rows.filter(r=>r.c.brand===b)); });
     paintTotal('all',res.rows);
 
     document.getElementById('sbFixedSum').innerHTML=`₩${w(fixedSum)} · ${fixed.length}개`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'');
