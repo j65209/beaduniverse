@@ -4902,6 +4902,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .ably-datebar select{max-width:130px}
   }
 
+  /* ===== 잠시 중단한 브랜드 숨김 — 클리어타입 (2026-11-09~). 다시 열 땐 이 줄과 스크립트의 PAUSED_BRANDS 에서 뺀다 ===== */
+  .m-metaads-ct,.m-brep-ct,.m-sixstock-ct,.best-col-ct,.ng-builder-ct{display:none!important}
+
   /* ===== 전략팀 월간 손익 메인보드 (.sb-*) — 시트처럼 칸마다 자동 값(흐리게) 위에 직접 입력 ===== */
   .sb{display:flex;flex-direction:column;gap:12px}
   .sb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -10371,7 +10374,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="sub-module m-namegen" onclick="triggerNamegen()">
           <div class="sub-module-icon">🌍</div>
           <div class="sub-module-title">제품명 생성기</div>
-          <div class="sub-module-sub">도시명 추출 + 식스에이 · 클리어타입 풀네임 빌더</div>
+          <div class="sub-module-sub">도시명 추출 + 브랜드별 풀네임 빌더</div>
           <div class="sub-module-tag">TOOL</div>
         </div>
         <div class="sub-module m-topping" onclick="triggerTopping()">
@@ -11366,7 +11369,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="best-grid" id="bestGrid">
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#22d3ee"></span><span class="best-col-name">식스에이</span><span class="best-col-site">6ashop</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
-        <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#22c55e"></span><span class="best-col-name">클리어타입</span><span class="best-col-site">cleartype1</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
+        <div class="best-col best-col-ct"><div class="best-col-head"><span class="best-col-dot" style="background:#22c55e"></span><span class="best-col-name">클리어타입</span><span class="best-col-site">cleartype1</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#a78bfa"></span><span class="best-col-name">야르</span><span class="best-col-site">yarshop</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#f59e0b"></span><span class="best-col-name">프로덕트피알</span><span class="best-col-site">produktepr</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#818cf8"></span><span class="best-col-name">코페리</span><span class="best-col-site">coferryworld</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
@@ -12033,7 +12036,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="cred-modal-body">
         <div class="cred-form-row">
           <label for="credEditName">서비스명</label>
-          <input type="text" id="credEditName" placeholder="예: 구글, 에이블리 (6A), 클리어타입 토큰" autocomplete="off" spellcheck="false">
+          <input type="text" id="credEditName" placeholder="예: 구글, 에이블리 (6A), 메타 토큰" autocomplete="off" spellcheck="false">
         </div>
 
         <div class="cred-form-login" id="credFormLogin">
@@ -12082,7 +12085,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="ng-panel ng-builder-panel">
         <div class="ng-panel-head">
           <div class="ng-panel-title ng-builder-title">풀네임 빌더</div>
-          <div class="ng-panel-meta">제품명 + 카테고리 → 식스에이 · 클리어타입 동시 생성</div>
+          <div class="ng-panel-meta">제품명 + 카테고리 → 브랜드별 동시 생성</div>
         </div>
         <div class="ng-builder-grid">
           <div class="ng-ctl">
@@ -13304,6 +13307,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return fetch(url, Object.assign({},opts,{headers}));
   }
 
+  // 잠시 중단한 브랜드 — 오피스 화면 전체에서 숨긴다. 수집 · 데이터는 그대로라 여기서 빼고 위 CSS 한 줄만 지우면 다시 나온다.
+  const PAUSED_BRANDS=new Set(['ct']);
+
   /* ===== 브랜드 리포트 (viewBrandReport) =====
      proxy /sx/report?brand=X → out/report_{brand}.json (30분 launchd 캐시).
      한 페이지에 어제 TOP10 / 리오더 필요 / 급상승 핫 아이템 세 섹션. */
@@ -13316,9 +13322,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {key:'kop',  display:'코페리',       dot:'#818cf8'},
     {key:'apt',  display:'아페티',       dot:'#fb7185'},
     {key:'koz',  display:'코즈미',       dot:'#14b8a6'},
-  ];
-  // 새로고침해도 보던 브랜드 유지
-  let _brepBrand=(()=>{ try{ return localStorage.getItem('brepLastBrand')||'6a'; }catch(e){ return '6a'; } })();
+  ].filter(b=>!PAUSED_BRANDS.has(b.key));
+  // 새로고침해도 보던 브랜드 유지 (지금 없는 브랜드를 보던 자리면 첫 브랜드로)
+  let _brepBrand=(()=>{ try{ const k=localStorage.getItem('brepLastBrand'); return BREP_BRANDS.some(b=>b.key===k)?k:'6a'; }catch(e){ return '6a'; } })();
   function _brepSetBrand(k){ _brepBrand=k; try{ localStorage.setItem('brepLastBrand',k); }catch(e){} }
   const _brepCache={};
   let _brepBusy=false;
@@ -13792,7 +13798,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const d=_signageData;
     // 광고 지출 많은 순으로 정렬 (서버 순서에 의존하지 않고 프론트에서 보장)
     const active=(d.brand_totals||[])
-      .filter(b=>b.active_camps>0)
+      .filter(b=>b.active_camps>0&&!PAUSED_BRANDS.has(b.brand))
       .sort((a,b)=>(Number(b.spend)||0)-(Number(a.spend)||0));
 
     // 필터가 미설정이거나 더 이상 활성 브랜드가 아닌 경우 → 첫 활성 브랜드로 자동 선택
@@ -13945,7 +13951,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         return;
       }
       const j=await r.json();
-      const brands=(j&&j.brands)||[];
+      const brands=((j&&j.brands)||[]).filter(b=>!PAUSED_BRANDS.has(b.brand));
       if(!brands.length){
         grid.innerHTML=`<div class="best-col" style="grid-column:1/-1"><div class="best-err">${_bestEsc(j&&j.error||'브랜드 데이터 없음')}</div></div>`;
         return;
@@ -14095,7 +14101,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'kop',  endpoint:'/pro-sales?brand=kop',    group:'식스샵프로',display:'코페리',     dot:'#818cf8', hasItemAmount:true,  hasOptions:true,  platforms:['ably','smartstore','zigzag']},
     {id:'apt',  endpoint:'/pro-sales?brand=apt',    group:'식스샵프로',display:'아페티',     dot:'#fb7185', hasItemAmount:true,  hasOptions:true,  platforms:['ably','zigzag']},
     {id:'koz',  endpoint:'/pro-sales?brand=koz',    group:'식스샵프로',display:'코즈미',     dot:'#14b8a6', hasItemAmount:true,  hasOptions:true},
-  ];
+  ].filter(b=>!PAUSED_BRANDS.has(b.id));
   const _PLAT_LABEL={ably:'에이블리', smartstore:'스마트스토어', zigzag:'지그재그'};
   const _GROUP_TO_PLAT={'에이블리':'ably','스마트스토어':'smartstore','지그재그':'zigzag'};  // 플랫폼 탭 카드용 역매핑
   // 플랫폼 탭 (외부 마켓플레이스). 6thanother = 식스에이 에이블리 계정.
@@ -15686,6 +15692,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
+  if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
 
   function applyView(id){
     VIEW_IDS.forEach(v=>{
@@ -15972,7 +15979,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {key:'kop', display:'코페리',       host:'store.sixshop.com/coferry',     endpoint:'/pro-stock?brand=kop',  proShape:true},
     {key:'apt', display:'아페티',       host:'store.sixshop.com/apeti',       endpoint:'/pro-stock?brand=apt',  proShape:true},
     {key:'koz', display:'코즈미',       host:'store.sixshop.com/cos-mi',      endpoint:'/pro-stock?brand=koz',  proShape:true},
-  ];
+  ].filter(b=>!PAUSED_BRANDS.has(b.key));
   const _sixStockCache    = { '6a':null,  'ct':null,  'pp':null,  'akoi':null,  'yar':null,  'kop':null,  'apt':null,  'koz':null };
   const _sixStockInflight = { '6a':false, 'ct':false, 'pp':false, 'akoi':false, 'yar':false, 'kop':false, 'apt':false, 'koz':false };
   const _sixStockCollapsed= { '6a':false, 'ct':false, 'pp':false, 'akoi':false, 'yar':false, 'kop':false, 'apt':false, 'koz':false };
@@ -29185,7 +29192,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'kop',  name:'코페리'},
     {id:'apt',  name:'아페티'},
     {id:'koz',  name:'코즈미'},
-  ];
+  ].filter(b=>!PAUSED_BRANDS.has(b.id));
   const _metaadsMeta = {};
 
   function _metaadsFmtDate(d){
@@ -31038,7 +31045,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   ];
 
   // 기획전 필터/모달용 브랜드 · 플랫폼 정의
-  const MD_BRANDS=[
+  const MD_BRANDS_ALL=[
     {key:'6a',   label:'식스에이',      color:'#22d3ee'},
     {key:'ct',   label:'클리어타입',    color:'#22c55e'},
     {key:'yar',  label:'야르',          color:'#a78bfa'},
@@ -31048,6 +31055,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {key:'apt',  label:'아페티',        color:'#fb7185'},
     {key:'koz',  label:'코즈미',        color:'#14b8a6'},
   ];
+  const MD_BRANDS=MD_BRANDS_ALL.filter(b=>!PAUSED_BRANDS.has(b.key));
   const MD_PLATFORMS=[
     {key:'own',        label:'자사몰',       color:'#0ea5e9'},
     {key:'ably',       label:'에이블리',     color:'#ff5a92'},
@@ -31096,7 +31104,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(Array.isArray(ev.brands) && ev.brands.length>0) return ev.brands;
     const title=String(ev.title||'').toLowerCase();
     const matched=[];
-    for(const b of MD_BRANDS){
+    // 중단 브랜드 제목도 알아봐야 "브랜드 미지정"으로 새어 나오지 않는다
+    for(const b of MD_BRANDS_ALL){
       const patterns=new Set([b.key.toLowerCase(), b.label.toLowerCase()]);
       if(b.key==='akoi'){ patterns.add('아코이'); patterns.add('akoi'); patterns.add('ak'); }
       if(b.key==='6a')  { patterns.add('6a'); patterns.add('식스에이'); patterns.add('sixa'); }
@@ -31799,7 +31808,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _mdCal_pickedColor=ev.color || 'rose';
     _mdRenderColorPicker();
     _mdModalBrands.clear();
-    (Array.isArray(ev.brands)?ev.brands:[]).forEach(b=>{ if(_mdBrandMap[b]) _mdModalBrands.add(b); });
+    (Array.isArray(ev.brands)?ev.brands:[]).forEach(b=>{ if(_mdBrandMap[b]||PAUSED_BRANDS.has(b)) _mdModalBrands.add(b); });  // 수정해도 중단 브랜드 표시는 지우지 않음
     _mdModalPlats.clear();
     (Array.isArray(ev.platforms)?ev.platforms:[]).forEach(p=>{ if(_mdPlatMap[p]) _mdModalPlats.add(p); });
     _mdRenderModalPills();
@@ -40388,7 +40397,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'pp-smartstore',brand:'pp',  label:'스마트스토어', report:'smartstore-pp', perOrderShip:true, feeAuto:true, feeFromNet:true},
     {id:'akoi-home',    brand:'akoi',label:'공홈',     report:'home-akoi'},
     {id:'koz-home',     brand:'koz', label:'공홈',     report:'home-koz'},
-  ];
+  ].filter(c=>!PAUSED_BRANDS.has(c.brand));
   const _sb={month:'', doc:null, view:null, ready:false, loadError:'', loadedAt:0, seq:0, saveGen:0,
              ops:null, inflight:0, saving:false, fail:0, timer:null, built:false, fixedSig:'', bound:false, paintQueued:false};
 
