@@ -40436,11 +40436,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const SB_FIELDS=[['sales','매출'],['orders','주문수'],['ad','광고비'],['fee','수수료'],['ship','택배비'],['direct','직배 이용료'],['cost','원가'],['material','부자재']];
   const SB_COST_FIELDS=SB_FIELDS.filter(([f])=>f!=='sales'&&f!=='orders');
   // 공홈 택배비는 시트처럼 고정비의 "택배비" 한 줄로 계산 — 플랫폼은 우리가 직접 보내니 전부 주문수 × 단가를 채널에서 뺀다
+  const SB_29CM_FEE=0.3; // 29CM 수수료 — 매출의 30% 고정 (사장님 확인 2026-11-09)
   const SB_CHANNELS=[
     {id:'kop-home',     brand:'kop', label:'공홈',     report:'home-kop'},
     {id:'kop-ably',     brand:'kop', label:'에이블리', report:'ably-kop', perOrderShip:true},
     {id:'kop-zigzag',   brand:'kop', label:'지그재그', report:'zigzag-kop', perOrderShip:true, feeAuto:true},
-    {id:'kop-29cm',     brand:'kop', label:'29CM', report:'29cm-kop', perOrderShip:true, noAutoAd:true},
+    {id:'kop-29cm',     brand:'kop', label:'29CM', report:'29cm-kop', perOrderShip:true, noAutoAd:true, feeRate:SB_29CM_FEE},
     {id:'kop-wconcept', brand:'kop', label:'W컨셉', report:'wconcept-kop', perOrderShip:true, noAutoAd:true},
     {id:'apt-home',     brand:'apt', label:'공홈',     report:'home-apt'},
     {id:'apt-ably',     brand:'apt', label:'에이블리', report:'ably-apt', perOrderShip:true},
@@ -40455,12 +40456,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'koz-home',     brand:'koz', label:'공홈',     report:'home-koz'},
     {id:'yar-home',     brand:'yar', label:'공홈',     report:'home-yar'},
     // 플레이오토 수집분 (맥미니 playauto-live, 30분마다) — 매출 · 주문수 · 원가 자동, 수수료 · 광고비는 플레이오토에 없어 칸에 직접 넣는다
-    {id:'pp-29cm',      brand:'pp',  label:'29CM',     report:'29cm-pp', perOrderShip:true, noAutoAd:true},
+    {id:'pp-29cm',      brand:'pp',  label:'29CM',     report:'29cm-pp', perOrderShip:true, noAutoAd:true, feeRate:SB_29CM_FEE},
     {id:'pp-ohou',      brand:'pp',  label:'오늘의집', report:'ohou-pp', perOrderShip:true, noAutoAd:true},
     {id:'pp-eql',       brand:'pp',  label:'EQL',      report:'eql-pp', perOrderShip:true, noAutoAd:true},
     {id:'pp-ably',      brand:'pp',  label:'에이블리', report:'ably-pp', perOrderShip:true, noAutoAd:true},
     {id:'pp-wconcept',  brand:'pp',  label:'W컨셉',    report:'wconcept-pp', perOrderShip:true, noAutoAd:true},
-    {id:'akoi-29cm',    brand:'akoi',label:'29CM',     report:'29cm-akoi', perOrderShip:true, noAutoAd:true},
+    {id:'akoi-29cm',    brand:'akoi',label:'29CM',     report:'29cm-akoi', perOrderShip:true, noAutoAd:true, feeRate:SB_29CM_FEE},
     {id:'akoi-ohou',    brand:'akoi',label:'오늘의집', report:'ohou-akoi', perOrderShip:true, noAutoAd:true},
     {id:'akoi-wconcept',brand:'akoi',label:'W컨셉',    report:'wconcept-akoi', perOrderShip:true, noAutoAd:true},
   ].filter(c=>!PAUSED_BRANDS.has(c.brand));
@@ -40486,7 +40487,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const idx=c.report&&_strat.index[c.report];
     if(!idx||idx.error) return null;
     // 스마트스토어 index 에는 수수료 칸이 없어 보고서 순이익 식(실결제 − 수수료 − 택배비 − 광고비 − 원가)에서 되짚는다 — 일별 보고서의 네이버 실제 수수료와 일치
-    const feeOf=d=>c.feeFromNet?Math.max(0,(Number(d.paid)||0)-(Number(d.net)||0)-(Number(d.ad_spend)||0)-(Number(d.cost)||0)-(Number(d.orders)||0)*SB_SHIP_DEFAULT):Number(d.fees_est)||0;
+    const feeOf=d=>c.feeRate?Math.round((Number(d.paid)||0)*c.feeRate):c.feeFromNet?Math.max(0,(Number(d.paid)||0)-(Number(d.net)||0)-(Number(d.ad_spend)||0)-(Number(d.cost)||0)-(Number(d.orders)||0)*SB_SHIP_DEFAULT):Number(d.fees_est)||0;
     // 주문수는 택배비 계산용 — 지그재그는 ship_orders (직진배송은 창고에서 나가고 출고비가 직배 이용료에 있어 뺌, 사장님 결정 2026-11-02)
     return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.ship_orders??d.orders)||0, fee:feeOf(d), direct:Number(d.direct_fee)||0}));
   }
@@ -40495,7 +40496,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const s=_sbSeries(c);
     if(!s) return null;
     // 플레이오토 수집분은 광고비가 없어 자동 칸에서 뺀다 — 0 으로 덮지 않고 지난달 비율로 추정
-    const fields=['sales','orders'].concat(c.noAutoAd?[]:['ad'],['cost'],c.feeAuto?['fee','direct']:[]);
+    const fields=['sales','orders'].concat(c.noAutoAd?[]:['ad'],['cost'],c.feeAuto?['fee','direct']:c.feeRate?['fee']:[]);
     const today=_stratToday(), days=_sbDaysIn(month);
     const sum=(rows,f)=>rows.reduce((a,d)=>a+(Number(d[f])||0),0);
     const rows=s.filter(d=>d.date.startsWith(month));
@@ -40771,7 +40772,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 월 고정비 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
     if(cur) lines.push(`월말 예상: 자동 수집 채널은 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 아페티 W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요 — 주문수를 넣으면 택배비가 바로 계산돼요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
-    lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
+    lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 29CM 수수료는 매출의 30%로 계산해요. 그 밖의 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
     if(res.partial.length) lines.push(`<span class="sb-warn">⚠ 이 달 중간부터 보고서가 있는 채널: ${_stratEsc(res.partial.join(', '))} — 있는 날만 합산했어요.</span>`);
