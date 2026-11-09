@@ -40953,7 +40953,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      본체는 yearend/yearend.js · yearend.css — 명단 안의 PC 에서만 불러온다. 고치면 YE_BUILD 를 올릴 것.
      직원에게 열 때는 YE_ALLOWED 에 이름을 넣으면 된다. 진행 상황은 app_kv 'yearend_2026'. */
   const YE_ALLOWED=new Set(['전승훈','전수빈']);
-  const YE_BUILD='2026110901';
+  const YE_BUILD='2026110902';
   let _yeLoading=null;
   function yeHasAccess(){ return YE_ALLOWED.has(String(_diaryGetMe()||'').trim()); }
   function yeRefreshAccess(){
@@ -40965,20 +40965,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!ok && v && !v.hidden) goHome();
     if(ok) yeLoad().catch(()=>{});   // 행사장 와이파이가 약해도 열리도록 미리 받아 둔다
   }
-  async function yeDiaryTotal(){   // 회사 전체 건수만 센다 (내용·개인별 집계 없음)
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/diary_items?select=id&deleted_at=is.null&limit=1`,{headers:_sbHeaders({'Prefer':'count=exact'}),cache:'no-store'});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const m=(r.headers.get('content-range')||'').match(/\/(\d+)$/);
-    return m?+m[1]:null;
-  }
   function yeLoad(){
     if(_yeLoading) return _yeLoading;
     window.YE_BRIDGE={
       people:()=>STAFF.filter(s=>!_hiddenStaff.has(s.name)).map(s=>({name:s.name,dept:s.dept||'',team:_normTeam(s.team)||'',hire:s.hire||'',ceo:!!s.ceo,title:getStaffTitle(s.name)||''})),
-      brands:()=>BRAND_SECTIONS.map(b=>({id:b.id,name:b.display})),
       kvSet, kvPull, toast, goHome,
       loadRealtime:_diaryLoadSupabaseClient,
-      diaryTotal:yeDiaryTotal,
       refreshOrg:()=>syncDeptOverridesFromRemote(),   // 직책 · 부서 변경은 인사팀 화면에서만 받아 오므로 여기서도 받는다
     };
     _yeLoading=new Promise((resolve,reject)=>{
