@@ -21,8 +21,7 @@
 | 항목 | 값 |
 |---|---|
 | URL | https://j65209.github.io/beaduniverse/ |
-| PIN | 뷰어 4자리 · 관리자 6자리 (`index.html` 의 `PIN_VIEWER` · `PIN_MASTER`, 잠금화면 전용) |
-| 프록시 접속키 | 브라우저마다 한 번 입력, 소스에 없음 (8. 보안 메모) |
+| PIN | 뷰어 4자리 · 관리자 6자리 (`index.html` 의 `PIN_VIEWER` · `PIN_MASTER`, 서버 프록시용 값은 `PROXY_PIN_MASTER` 로 따로) |
 | 자동 통과 IP | `110.11.178.25` |
 | 저장 키 | `brightbeed_unlocked` (localStorage) |
 
@@ -99,13 +98,10 @@ git add . && git commit -m "수정 내용" && git push
 
 ## 8. 보안 메모
 
-- 저장소는 **Public** 이라 소스의 PIN 은 누구나 볼 수 있다 — 잠금화면 PIN 은 화면만 가린다
+- 저장소는 **Public** 이지만 PIN 잠금으로 일반인 접근을 차단
 - API 키, 토큰, 비밀번호 등 민감 정보는 **절대 commit 금지**
 - 외부 연동 시(드롭박스/구글/ERP) 토큰은 GitHub Secrets 또는 별도 백엔드로 분리
-- 서버 Mac 프록시는 공개 소스에 없는 **접속키**로 잠겨 있다 (2026-11-09~)
-  - 브라우저마다 한 번 입력하고 그 브라우저 localStorage `brightbeed_proxy_key` 에만 남는다. 키가 없거나 바뀌면 401 → 입력창
-  - 서버 값은 맥미니 `~/server/brightbeed-proxy/config.env` 의 `BRIGHTBEED_PIN_VIEWER`(키-v) · `BRIGHTBEED_PIN_MASTER`(키-m)
-  - 접속키를 소스 · 공지 · 공개 레포에 적지 말 것. 숫자 PIN 으로 되돌리면 비공개 레포까지 다시 열린다
+- PIN 노출 우려가 생기면 `index.html` 상단 `PIN` 상수만 바꿔서 commit
 
 ## 9. 업무일지 저장 구조 (v0.5 — 줄 단위 실시간)
 
