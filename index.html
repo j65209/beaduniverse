@@ -13177,12 +13177,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     window.addEventListener('beforeunload',e=>{ if(inflight>0){ e.preventDefault(); e.returnValue=''; } });
   })();
 
-  const PIN_VIEWER='2580';     // 보기 전용 (서버 Mac 프록시도 같은 값으로 검사)
-  const PIN_MASTER='230108';   // 수정 권한 — 잠금화면 로그인에만 씀
-  /* 서버 Mac 프록시가 수정 권한으로 받는 값 (X-Brightbeed-PIN). 로그인 PIN 과 따로 둔다:
-     직원 화면도 공용 저장(forceMaster)에 이 값을 보내므로, 관리자 PIN 을 바꿔도 이 값은 그대로 둔다.
-     맥미니 프록시 설정을 바꿀 때만 같이 바꾼다 (agents.html 에도 같은 값). */
-  const PROXY_PIN_MASTER='0000';
+  const PIN_VIEWER='2580';     // 잠금화면 보기 전용 — 화면만 가린다 (서버 프록시는 아래 접속키로 잠겨 있다)
+  const PIN_MASTER='230108';   // 잠금화면 관리자 — 화면만 가린다
   const AUTH_VERSION='4';      // PIN 회전 시 bump → 모든 기기 강제 재로그인
   const MASTER_PIN_VER='1';    // 관리자 PIN 바꿀 때 bump → 관리자로 들어와 있던 기기만 재로그인 (직원 기기는 그대로)
   const KEY='brightbeed_unlocked';
@@ -13197,7 +13193,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== GitHub API 프록시 (토큰은 서버 Mac에만 보관) =====
      - 서버 Mac이 cloudflared quick tunnel을 띄우고 URL을 tunnel.json에 기록.
      - 대시보드는 tunnel.json을 읽어 base URL을 확보, /gh/* 로 호출 → 프록시가 PAT 주입 후 api.github.com 으로 포워딩.
-     - 인증은 X-Brightbeed-PIN 헤더. viewer PIN은 GET만, master PIN은 모든 메서드. */
+     - 인증은 X-Brightbeed-PIN 헤더 (접속키-v 는 GET만, 접속키-m 은 모든 메서드). 값은 아래 proxyKey 참고. */
   const PROXY_TUNNEL_URL='https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json';
   // 서버 재부팅으로 터널 주소가 바뀌어도 열어 둔 탭이 새로고침 없이 새 주소로 넘어가도록 주기적으로 다시 읽는다.
   const PROXY_BASE_TTL_MS=5*60*1000;
@@ -13215,17 +13211,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ return _proxyBase }
   }
   /* 프록시 접속키 — 공개 소스에 두지 않는다. 기기마다 한 번 넣으면 이 브라우저(localStorage)에만 남는다.
-     서버 Mac config.env 에는 키 뒤에 -v(보기) · -m(수정) 을 붙인 값이 들어 있고, 권한 구분은 예전 PIN 과 같다.
-     키가 없는 기기는 아직 옛 PIN 을 보낸다 — 서버 전환이 끝나면 옛 PIN 을 이 소스에서 지운다. */
+     서버 Mac config.env 의 BRIGHTBEED_PIN_VIEWER · BRIGHTBEED_PIN_MASTER 에 키 뒤에 -v · -m 을 붙인 값이 들어 있다.
+     직원 화면도 공용 저장(forceMaster)에 -m 을 보내므로 기기마다 키 하나면 된다. 키가 없으면 401 → 아래 입력창. */
   const PROXY_KEY_STORE='brightbeed_proxy_key';
   const PROXY_KEY_LEN=20;
   function proxyKey(){ try{ return localStorage.getItem(PROXY_KEY_STORE)||'' }catch(e){ return '' } }
-  function proxyPinMaster(){ const k=proxyKey(); return k ? k+'-m' : PROXY_PIN_MASTER }
-  function ghPin(){
-    if(localStorage.getItem(ROLE_KEY)==='master') return proxyPinMaster();
-    const k=proxyKey();
-    return k ? k+'-v' : PIN_VIEWER;
-  }
+  function proxyPinMaster(){ return proxyKey()+'-m' }
+  function ghPin(){ return localStorage.getItem(ROLE_KEY)==='master' ? proxyPinMaster() : proxyKey()+'-v' }
   /* 접속키 입력창 — 프록시가 401 을 주면 (이 브라우저에 키가 없거나 키가 바뀌었을 때) 띄운다. 맞으면 저장하고 새로고침. */
   (function(){
     const modal=document.getElementById('proxyKeyModal');
