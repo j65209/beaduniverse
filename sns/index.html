@@ -19,6 +19,8 @@
   서버: Supabase 엣지 함수 "sns" (원본 supabase/functions/sns/index.ts)
     GET /overview (계정 · 게시물 · 팔로워 기록) · GET /history (게시물 하나의 통계 기록)
     POST /collect (지금 모으기 — 6시간마다 자동) · POST /token · POST /test
+    등록된 브라우저만: POST /upload · GET·POST /queue (draft:true = 임시저장 · now · scheduled_at)
+      · /queue/update (임시저장 고치기) · /queue/publish (임시저장 → 발행) · /queue/cancel · /queue/retry · /device/*
   토큰은 이 화면 → 서버로만 가고, 저장된 값은 화면에 다시 나오지 않는다.
   ?demo=1 → 예시 숫자로 화면 미리보기 (서버에 아무것도 보내지 않음)
   차트 색: dataviz 기본 팔레트 1번(파랑)=인스타, 2번(주황)=스레드 — 이 화면 카드 바탕(#fff / #171e29)에서 검사 통과
@@ -169,6 +171,7 @@
   .thumb .tools{display:flex;justify-content:space-between;padding:3px}
   .thumb .tools button{padding:2px 7px;font-size:12px;border-radius:7px}
   .thumb.bad{outline:2px solid var(--bad)}
+  .thumbs.locked{pointer-events:none;opacity:.6}
   .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
   @media (max-width:760px){ .grid2{grid-template-columns:1fr} }
   textarea{font:inherit;font-size:14px;width:100%;min-height:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);resize:vertical}
@@ -188,6 +191,7 @@
   .qres .bad{color:var(--bad)}
   .pill.info{color:var(--accent);background:var(--bg)}
   .pill.mute{color:var(--sub);background:var(--bg)}
+  .pill.draft{color:var(--demo-ink);background:var(--demo)}
   @media (max-width:560px){ .qrow{grid-template-columns:48px minmax(0,1fr)} .qrow > .row{grid-column:1 / -1} }
 </style>
 </head>
@@ -210,8 +214,12 @@
     <div class="card-head">
       <div>
         <h2>카드뉴스 올리기</h2>
-        <p class="lead">사진(최대 10장)을 순서대로 넣고 문구를 쓴 뒤 지금 올리거나 예약하세요. PNG 도 JPG 로 바꿔서 올려요.</p>
+        <p class="lead">사진(최대 10장)을 순서대로 넣고 문구를 쓴 뒤 지금 올리거나 예약하세요. 바로 올리지 않을 거면 <b>임시저장</b>해 두고 나중에 발행하면 돼요. PNG 도 JPG 로 바꿔서 올려요.</p>
       </div>
+    </div>
+    <div id="editBar" class="banner" style="margin-bottom:10px" hidden>
+      <span>📝 임시저장 <b id="editId"></b> 고치는 중 — 임시저장하면 이 글에 덮어쓰고, 올리기·예약하면 이 글이 올라가요.</span>
+      <button id="btnNew" class="ghost" type="button">새 글로 시작</button>
     </div>
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="사진 고르기">사진을 여기로 끌어다 놓거나 눌러서 고르세요 · 4:5(1080×1350)나 1:1 을 추천해요</div>
     <input type="file" id="fileIn" accept="image/*" multiple hidden>
@@ -241,6 +249,7 @@
     </div>
     <div class="row" style="margin-top:12px">
       <button id="btnPost" type="button">지금 올리기</button>
+      <button id="btnDraft" class="ghost" type="button">임시저장</button>
       <button id="btnDry" class="ghost" type="button">이 사진으로 올리기 직전까지 시험</button>
       <span id="postHint" class="small"></span>
     </div>
@@ -250,8 +259,8 @@
   <section class="card" id="queueCard">
     <div class="card-head">
       <div>
-        <h2>올리기 예약 · 진행</h2>
-        <p class="lead">예약은 그 시각부터 5분 안에 올라가요. 결과(게시 링크 · 실패 이유)가 여기 남아요.</p>
+        <h2>임시저장 · 예약 · 진행</h2>
+        <p class="lead">임시저장은 <b>지금 발행</b>을 눌러야 올라가요(고치거나 예약하려면 불러오기). 예약은 그 시각부터 5분 안에 올라가요. 결과(게시 링크 · 실패 이유)도 여기 남아요.</p>
       </div>
       <button id="qRefresh" class="ghost" type="button">새로고침</button>
     </div>
@@ -819,9 +828,11 @@
   // 올리기·예약은 '등록된 브라우저'만 된다. 키는 이 브라우저 localStorage(ggul_device_key)에만 있고 서버엔 sha256 만.
   var MAX_IMG = 10, IG_MAX = 2200, TH_MAX = 500, TAG_MAX = 30;
   var dev = { status: 'none', code: '' }, pendingDevs = [];
-  var comp = { items: [] };
+  // draftId = 불러와서 고치는 중인 임시저장 · busy = 아직 준비 중(JPG 변환·불러오기)인 사진 수
+  // saving = 올리기·임시저장·시험 진행 중 · gen = 화면을 비우거나 다른 글을 불러올 때마다 +1 (늦게 끝난 사진이 섞이지 않게)
+  var comp = { items: [], draftId: null, busy: 0, saving: false, gen: 0 };
   var armed = false, armTimer = null, dryUntil = 0;
-  state.queue = [];
+  state.queue = []; state.showGone = false;
 
   function deviceKey() {
     var k = '';
@@ -921,26 +932,34 @@
     $('pIg').disabled = !t.ig || !ok; $('igHint').textContent = t.ig ? '' : '(연결 필요)';
     $('pTh').disabled = !t.th || !ok; $('thHint').textContent = t.th ? '' : '(프로필·연결 필요)';
     if (!t.th) $('pTh').checked = false;
-    ['capIg', 'capTh'].forEach(function (id) { $(id).disabled = !ok; });
+    var busy = comp.busy > 0 || comp.saving; // 사진 준비 중이거나 저장 중이면 버튼을 잠근다 (사진이 빠진 채로 저장되지 않게)
+    ['capIg', 'capTh'].forEach(function (id) { $(id).disabled = !ok; $(id).readOnly = comp.saving; });
     document.querySelectorAll('input[name="when"]').forEach(function (r) { r.disabled = !ok; });
     $('whenAt').disabled = !ok || whenNow();
-    $('drop').setAttribute('aria-disabled', String(!ok || DEMO));
-    $('btnPost').disabled = !ok || DEMO;
-    $('btnDry').disabled = !ok || DEMO || !t.ig || Date.now() < dryUntil;
+    $('drop').setAttribute('aria-disabled', String(!ok || DEMO || comp.saving));
+    $('thumbs').classList.toggle('locked', comp.saving);
+    $('btnPost').disabled = !ok || DEMO || busy;
+    $('btnDry').disabled = !ok || DEMO || !t.ig || Date.now() < dryUntil || busy;
+    $('btnDraft').disabled = !ok || DEMO || busy;
+    $('btnDraft').textContent = comp.draftId ? '임시저장 덮어쓰기' : '임시저장';
+    $('editBar').hidden = !comp.draftId; $('editId').textContent = comp.draftId ? '#' + comp.draftId : '';
     if (!armed) $('btnPost').textContent = whenNow() ? '지금 올리기' : '예약하기';
     var ig = $('capIg').value, th = $('capTh').value;
     var ci = $('cntIg'); ci.textContent = ig.length + '/' + IG_MAX + ' · 해시태그 ' + tagCount(ig) + '/' + TAG_MAX;
     ci.className = 'count' + (ig.length > IG_MAX || tagCount(ig) > TAG_MAX ? ' over' : '');
     var ct = $('cntTh'); ct.textContent = th.trim() ? th.length + '/' + TH_MAX : '비우면 인스타 문구 앞 500자를 써요';
     ct.className = 'count' + (th.length > TH_MAX ? ' over' : '');
-    $('postHint').textContent = DEMO ? '예시 화면에서는 올릴 수 없어요' : !ok ? '위에서 이 브라우저를 등록하면 켜져요' : Date.now() < dryUntil ? '시험은 1분에 한 번이에요' : '';
+    $('postHint').textContent = DEMO ? '예시 화면에서는 올릴 수 없어요' : !ok ? '위에서 이 브라우저를 등록하면 켜져요' : comp.busy ? '사진 준비가 끝나면 켜져요' : Date.now() < dryUntil ? '시험은 1분에 한 번이에요' : '';
   }
 
-  function validate(forDry) {
+  // mode: 'post'(올리기·예약) · 'draft'(임시저장 — 시각은 안 봄) · 'dry'(시험 — 인스타 사진만 봄)
+  function validate(mode) {
     if (!canPost()) return '이 브라우저를 먼저 등록해 주세요.';
-    var plats = selectedPlatforms();
-    if (!forDry && !plats.length) return '올릴 곳(인스타·스레드)을 골라 주세요.';
-    if ((forDry || plats.indexOf('instagram') >= 0) && !comp.items.length) return '사진을 1장 이상 넣어 주세요.';
+    if (comp.busy) return '사진을 준비하는 중이에요. 잠시 뒤 다시 눌러 주세요.';
+    var plats = selectedPlatforms(), dry = mode === 'dry';
+    if (!dry && !plats.length) return '올릴 곳(인스타·스레드)을 골라 주세요.';
+    if ((dry || plats.indexOf('instagram') >= 0) && !comp.items.length) return '사진을 1장 이상 넣어 주세요.';
+    if (!dry && !comp.items.length && !$('capIg').value.trim() && !$('capTh').value.trim()) return '스레드에 올릴 글이나 사진이 없어요.';
     if (comp.items.length > MAX_IMG) return '사진은 ' + MAX_IMG + '장까지예요.';
     var bad = comp.items.map(function (it, i) { return ratioProblem(it.ratio) ? (i + 1) + '번 사진: ' + ratioProblem(it.ratio) : ''; }).filter(Boolean);
     if (bad.length) return bad.join(' · ') + ' — 인스타는 4:5 ~ 1.91:1 비율만 받아요.';
@@ -948,7 +967,7 @@
     if (ig.length > IG_MAX) return '인스타 문구가 ' + IG_MAX + '자를 넘어요.';
     if (tagCount(ig) > TAG_MAX) return '인스타 해시태그는 ' + TAG_MAX + '개까지예요.';
     if ($('capTh').value.length > TH_MAX) return '스레드 문구가 ' + TH_MAX + '자를 넘어요.';
-    if (!forDry && !whenNow()) {
+    if (mode === 'post' && !whenNow()) {
       var v = $('whenAt').value, t = v ? new Date(v).getTime() : NaN;
       if (!isFinite(t)) return '예약 시각을 골라 주세요.';
       if (t < Date.now() + 60e3) return '예약 시각이 너무 가까워요. 지금 올리기를 쓰거나 1분 뒤 이후로 골라 주세요.';
@@ -963,17 +982,23 @@
   }
 
   function addFiles(files) {
-    if (!canPost() || DEMO) return;
+    if (!canPost() || DEMO || comp.saving) return;
     var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type); });
     if (!list.length) return;
-    var room = MAX_IMG - comp.items.length;
+    var room = MAX_IMG - comp.items.length - comp.busy;
     if (room <= 0) { $('imgMsg').textContent = '사진은 ' + MAX_IMG + '장까지예요.'; return; }
     if (list.length > room) list = list.slice(0, room);
+    var gen = comp.gen, failed = [];
+    comp.busy += list.length; renderThumbs(); updateComposer();
     (async function () {
       for (var i = 0; i < list.length; i++) {
-        try { comp.items.push(await toJpeg(list[i])); } catch (e) { $('imgMsg').textContent = list[i].name + ': 사진을 읽지 못했어요.'; }
-        renderThumbs();
+        var it = null;
+        try { it = await toJpeg(list[i]); } catch (e) { failed.push(list[i].name); }
+        if (gen !== comp.gen) { if (it) URL.revokeObjectURL(it.url); continue; } // 그 사이 화면을 비웠거나 다른 글을 불러옴
+        comp.busy--; if (it) comp.items.push(it);
+        renderThumbs(); updateComposer();
       }
+      if (failed.length && gen === comp.gen) $('imgMsg').textContent += (comp.items.length ? ' · ' : '') + failed.join(', ') + ': 사진을 읽지 못했어요.';
     })();
   }
 
@@ -1013,6 +1038,7 @@
       var bad = comp.items.map(function (it, i) { return ratioProblem(it.ratio) ? (i + 1) + '번: ' + ratioProblem(it.ratio) : ''; }).filter(Boolean);
       if (bad.length) msg.push(bad.join(' · '));
     }
+    if (comp.busy) msg.push('사진 준비 중… ' + comp.busy + '장 남음');
     $('imgMsg').textContent = msg.join(' · ');
   }
   function moveImg(i, d) { var a = comp.items, j = i + d; if (j < 0 || j >= a.length) return; var t = a[i]; a[i] = a[j]; a[j] = t; renderThumbs(); }
@@ -1029,8 +1055,50 @@
   }
 
   function resetComposer() {
-    comp.items.forEach(function (it) { URL.revokeObjectURL(it.url); }); comp.items = [];
-    $('capIg').value = ''; $('capTh').value = ''; renderThumbs(); updateComposer();
+    comp.items.forEach(function (it) { if (it.blob) URL.revokeObjectURL(it.url); }); comp.items = []; comp.draftId = null;
+    comp.gen++; comp.busy = 0;
+    $('capIg').value = ''; $('capTh').value = ''; renderThumbs(); updateComposer(); renderQueue();
+  }
+  function composerDirty() { return comp.items.length > 0 || !!$('capIg').value.trim() || !!$('capTh').value.trim(); }
+  function composeBody(plats, paths) {
+    var body = { platforms: plats, image_paths: paths, caption: $('capIg').value };
+    if ($('capTh').value.trim()) body.threads_text = $('capTh').value;
+    return body;
+  }
+  function lockComposer() { comp.saving = true; updateComposer(); }
+  function unlockComposer() { comp.saving = false; updateComposer(); }
+  function imgSize(url) {
+    return new Promise(function (resolve) {
+      var im = new Image();
+      im.onload = function () { resolve({ w: im.naturalWidth, h: im.naturalHeight }); };
+      im.onerror = function () { resolve({ w: 0, h: 0 }); };
+      im.src = url;
+    });
+  }
+
+  // 임시저장 불러오기 — 사진은 이미 서버에 있으니(path) 다시 올리지 않는다
+  async function loadDraft(q) {
+    resetComposer();
+    comp.draftId = q.id;
+    var gen = comp.gen, plats = q.platforms || [], paths = q.image_paths || [], urls = q.image_urls || [];
+    comp.busy = paths.length; // 사진을 다 불러오기 전에는 저장·올리기를 잠근다 (사진이 빠진 채로 덮어쓰지 않게)
+    if (!$('pIg').disabled) $('pIg').checked = plats.indexOf('instagram') >= 0;
+    if (!$('pTh').disabled) $('pTh').checked = plats.indexOf('threads') >= 0;
+    $('capIg').value = q.caption || '';
+    // 스레드 문구를 비워 두고 저장하면 서버가 인스타 문구 앞 500자를 넣는다 → 그런 경우엔 다시 비워 둔다
+    $('capTh').value = q.threads_text && q.threads_text !== (q.caption || '').slice(0, TH_MAX) ? q.threads_text : '';
+    updateComposer(); renderQueue(); renderThumbs();
+    postMsg('info', '임시저장 #' + q.id + ' 불러오는 중…');
+    $('composer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    for (var i = 0; i < paths.length; i++) {
+      var d = await imgSize(urls[i]);
+      if (gen !== comp.gen) return; // 불러오는 사이 화면을 비웠거나 다른 글로 바뀜
+      comp.busy--;
+      comp.items.push({ blob: null, url: urls[i], w: d.w, h: d.h, ratio: d.w && d.h ? d.w / d.h : 0.8, name: '임시저장 ' + (i + 1), path: paths[i] });
+      renderThumbs(); updateComposer();
+    }
+    updateComposer();
+    postMsg('info', '임시저장 #' + q.id + ' 불러왔어요. 고친 뒤 임시저장하거나, 바로 올리기·예약하면 돼요.');
   }
 
   function resultNodes(results, platforms) {
@@ -1046,7 +1114,7 @@
   }
 
   $('btnPost').addEventListener('click', async function () {
-    var err = validate(false); if (err) { postMsg('bad', err); return; }
+    var err = validate('post'); if (err) { postMsg('bad', err); return; }
     var now = whenNow();
     if (now && !armed) { // '지금 올리기'는 바로 공개라 한 번 더 눌러야 올라간다
       armed = true; $('btnPost').textContent = '정말 지금 올릴까요? 한 번 더 누르면 바로 공개돼요';
@@ -1054,33 +1122,59 @@
       return;
     }
     armed = false; clearTimeout(armTimer);
-    var plats = selectedPlatforms();
-    $('btnPost').disabled = true; $('btnDry').disabled = true;
+    var plats = selectedPlatforms(), draftId = comp.draftId;
+    lockComposer();
     try {
       var paths = await ensureUploaded();
       postMsg('info', now ? plats.map(function (p) { return PL[p].name; }).join('·') + '에 올리는 중… 30초쯤 걸려요.' : '예약하는 중…');
-      var body = { platforms: plats, image_paths: paths, caption: $('capIg').value, now: now };
-      if ($('capTh').value.trim()) body.threads_text = $('capTh').value;
-      if (!now) body.scheduled_at = new Date($('whenAt').value).toISOString();
-      var j = await apiDev('/queue', body);
+      var body = composeBody(plats, paths), whenIso = now ? null : new Date($('whenAt').value).toISOString(), j;
+      if (draftId) { // 불러온 임시저장 — 고친 내용을 먼저 저장하고 그 글을 발행한다 (새 글을 또 만들지 않음)
+        var u = await apiDev('/queue/update', Object.assign({ id: draftId }, body));
+        if (!u.ok) throw new Error(u.error || '임시저장을 고치지 못했어요.');
+        j = await apiDev('/queue/publish', now ? { id: draftId, now: true } : { id: draftId, scheduled_at: whenIso });
+      } else {
+        j = await apiDev('/queue', Object.assign(body, now ? { now: true } : { scheduled_at: whenIso }));
+      }
       if (!j.ok) throw new Error(j.error || '실패했어요.');
       if (now) {
         var good = j.status === 'published';
-        postMsg(good ? 'ok' : 'bad', good ? '올렸어요!' : j.status === 'partial' ? '일부만 올라갔어요 — 아래 목록에서 다시 시도할 수 있어요.' : '올리지 못했어요 — 이유를 확인해 주세요.', resultNodes(j.results, plats));
-        if (good) resetComposer();
+        if (j.status === 'skipped') postMsg('info', '이미 올리는 중이에요 — 잠시 뒤 아래 목록에서 결과를 확인해 주세요.');
+        else postMsg(good ? 'ok' : 'bad', good ? '올렸어요!' : j.status === 'partial' ? '일부만 올라갔어요 — 아래 목록에서 다시 시도할 수 있어요.' : '올리지 못했어요 — 이유를 확인해 주세요.', resultNodes(j.results, plats));
+        // 실패(아무 데도 안 올라감)일 때만 내용을 남겨 둔다 — 그 글은 이제 임시저장이 아니라 목록의 '실패' 줄
+        if (j.status === 'failed') comp.draftId = null; else resetComposer();
         load();
       } else {
-        postMsg('ok', '예약했어요 — ' + fmtWhen(body.scheduled_at) + '부터 5분 안에 올라가요.');
+        postMsg('ok', '예약했어요 — ' + fmtWhen(whenIso) + '부터 5분 안에 올라가요.');
         resetComposer();
       }
       loadQueue();
     } catch (e) { postMsg('bad', e.message || '실패했어요.'); }
-    finally { updateComposer(); }
+    finally { unlockComposer(); }
   });
 
+  // 임시저장 — 올리지 않고 서버에 보관. 저장하면 화면은 비우고(목록에서 불러와 고치거나 발행)
+  $('btnDraft').addEventListener('click', async function () {
+    var err = validate('draft'); if (err) { postMsg('bad', err); return; }
+    armed = false; clearTimeout(armTimer);
+    var plats = selectedPlatforms(), draftId = comp.draftId;
+    lockComposer();
+    try {
+      var paths = await ensureUploaded();
+      postMsg('info', '임시저장하는 중…');
+      var body = composeBody(plats, paths);
+      var j = draftId ? await apiDev('/queue/update', Object.assign({ id: draftId }, body)) : await apiDev('/queue', Object.assign({ draft: true }, body));
+      if (!j.ok) throw new Error(j.error || '임시저장하지 못했어요.');
+      resetComposer();
+      postMsg('ok', (draftId ? '임시저장 #' + j.id + ' 고친 내용을 저장했어요.' : '임시저장했어요 (#' + j.id + ').') + ' 아래 목록에서 언제든 발행하거나, 불러와서 고칠 수 있어요.');
+      loadQueue();
+    } catch (e) { postMsg('bad', e.message || '임시저장하지 못했어요.'); }
+    finally { unlockComposer(); }
+  });
+  $('btnNew').addEventListener('click', function () { resetComposer(); $('postMsg').hidden = true; });
+
   $('btnDry').addEventListener('click', async function () {
-    var err = validate(true); if (err) { postMsg('bad', err); return; }
-    $('btnDry').disabled = true; $('btnPost').disabled = true;
+    var err = validate('dry'); if (err) { postMsg('bad', err); return; }
+    lockComposer();
     try {
       var paths = await ensureUploaded();
       postMsg('info', '인스타에 올리기 직전까지 시험 중… (실제로 올리지 않아요)');
@@ -1089,7 +1183,7 @@
       var nodes = (j.steps || []).map(function (s) { return el('div', null, (s.ok ? '✅ ' : '❌ ') + s.name + (s.detail ? ' — ' + s.detail : '')); });
       postMsg(j.ok ? 'ok' : 'bad', j.ok ? '이 사진으로 올릴 준비가 됐어요 (실제로 올리지 않았어요).' : (j.error || '시험이 중간에 멈췄어요.'), nodes);
     } catch (e) { postMsg('bad', e.message || '시험하지 못했어요.'); }
-    finally { updateComposer(); }
+    finally { unlockComposer(); }
   });
 
   var drop = $('drop');
@@ -1110,7 +1204,7 @@
   $('whenAt').min = fmtLocalInput(new Date(Date.now() + 2 * 6e4));
 
   function statusPill(s) {
-    var m = { scheduled: ['info', '⏰ 예약됨'], publishing: ['info', '⏳ 올리는 중'], published: ['ok', '✓ 게시됨'], partial: ['warn', '⚠ 일부만'], failed: ['bad', '✕ 실패'], canceled: ['mute', '취소됨'] }[s] || ['mute', s];
+    var m = { draft: ['draft', '📝 임시저장'], scheduled: ['info', '⏰ 예약됨'], publishing: ['info', '⏳ 올리는 중'], published: ['ok', '✓ 게시됨'], partial: ['warn', '⚠ 일부만'], failed: ['bad', '✕ 실패'], canceled: ['mute', '취소·삭제됨'] }[s] || ['mute', s];
     return el('span', 'pill ' + m[0], m[1]);
   }
   async function loadQueue() {
@@ -1120,7 +1214,7 @@
     }
     renderQueue();
   }
-  function twoStep(label, confirmText, action) {
+  function twoStep(label, confirmText, action, onOk) {
     var b = el('button', 'ghost', label); b.type = 'button'; var armedB = false, tm;
     b.addEventListener('click', async function () {
       if (DEMO) return;
@@ -1128,19 +1222,35 @@
       clearTimeout(tm); b.disabled = true; b.textContent = '처리 중…';
       var j = await action().catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
       if (!j.ok) { b.disabled = false; b.textContent = label; postMsg('bad', j.error || '실패했어요.'); }
+      else if (onOk) onOk(j);
       loadQueue(); if (j.ok && j.status) load();
+    });
+    return b;
+  }
+  function loadButton(q) {
+    var editing = comp.draftId === q.id;
+    var b = el('button', 'ghost', editing ? '위에서 고치는 중' : '불러오기'); b.type = 'button'; b.disabled = editing;
+    var armedL = false, tm;
+    b.addEventListener('click', function () {
+      if (DEMO) { postMsg('info', '예시 화면에서는 불러올 수 없어요.'); return; }
+      if (comp.saving) { postMsg('info', '저장·올리기가 끝난 뒤에 불러와 주세요.'); return; }
+      if (composerDirty() && !armedL) { armedL = true; b.textContent = '쓰던 내용 지우고 불러올까요?'; tm = setTimeout(function () { armedL = false; b.textContent = '불러오기'; }, 5000); return; }
+      clearTimeout(tm); b.disabled = true; loadDraft(q);
     });
     return b;
   }
   function renderQueue() {
     var box = $('queueList'); box.textContent = '';
-    if (!canPost()) { box.appendChild(el('div', 'empty', '이 브라우저를 등록하면 예약·진행 목록이 보여요.')); return; }
-    if (!state.queue.length) { box.appendChild(el('div', 'empty', '아직 올리거나 예약한 카드뉴스가 없어요.')); return; }
-    state.queue.forEach(function (q) {
-      var row = el('div', 'qrow');
+    if (!canPost()) { box.appendChild(el('div', 'empty', '이 브라우저를 등록하면 임시저장·예약 목록이 보여요.')); return; }
+    var gone = state.queue.filter(function (q) { return q.status === 'canceled'; }).length;
+    var list = state.queue.filter(function (q) { return state.showGone || q.status !== 'canceled'; })
+      .sort(function (a, b) { return (b.status === 'draft') - (a.status === 'draft'); }); // 임시저장을 맨 위로 (나머지는 서버 순서 그대로)
+    if (!list.length) box.appendChild(el('div', 'empty', gone ? '남아 있는 임시저장·예약이 없어요.' : '아직 임시저장하거나 올린 카드뉴스가 없어요.'));
+    list.forEach(function (q) {
+      var draft = q.status === 'draft', row = el('div', 'qrow');
       var im = el('img'); im.alt = ''; im.loading = 'lazy'; if (q.image_urls && q.image_urls[0]) im.src = q.image_urls[0]; row.appendChild(im);
       var mid = el('div');
-      mid.appendChild(el('div', 'qmeta', fmtWhen(q.scheduled_at) + ' · ' + (q.platforms || []).map(function (p) { return PL[p] ? PL[p].name : p; }).join('·') + ' · 사진 ' + (q.image_paths || []).length + '장'));
+      mid.appendChild(el('div', 'qmeta', (draft ? fmtWhen(q.created_at) + ' 저장' : fmtWhen(q.scheduled_at)) + ' · ' + (q.platforms || []).map(function (p) { return PL[p] ? PL[p].name : p; }).join('·') + ' · 사진 ' + (q.image_paths || []).length + '장'));
       mid.appendChild(el('div', 'qcap', (q.caption || q.threads_text || '(문구 없음)').split('\n')[0]));
       var res = el('div', 'qres');
       (q.platforms || []).forEach(function (p) {
@@ -1153,10 +1263,23 @@
       if (q.note) res.appendChild(el('span', null, q.note));
       mid.appendChild(res); row.appendChild(mid);
       var right = el('div', 'row'); right.appendChild(statusPill(q.status));
+      if (draft) {
+        var clearIfEditing = function () { if (comp.draftId === q.id) resetComposer(); };
+        right.appendChild(loadButton(q));
+        var pub = twoStep('지금 발행', '정말 지금 올릴까요? 바로 공개돼요', function () { return apiDev('/queue/publish', { id: q.id, now: true }); }, clearIfEditing);
+        if (comp.draftId === q.id) { pub.disabled = true; pub.title = '고치는 중인 글은 위에서 올리기·예약을 눌러 주세요'; }
+        right.appendChild(pub);
+        right.appendChild(twoStep('삭제', '지울까요?', function () { return apiDev('/queue/cancel', { id: q.id }); }, clearIfEditing));
+      }
       if (q.status === 'scheduled') right.appendChild(twoStep('예약 취소', '취소할까요?', function () { return apiDev('/queue/cancel', { id: q.id }); }));
       if (q.status === 'failed' || q.status === 'partial') right.appendChild(twoStep('다시 시도', '지금 다시 올릴까요?', function () { return apiDev('/queue/retry', { id: q.id }); }));
       row.appendChild(right); box.appendChild(row);
     });
+    if (gone) {
+      var t = el('button', 'ghost', state.showGone ? '취소·삭제한 것 숨기기' : '취소·삭제한 것 ' + gone + '개 보기'); t.type = 'button'; t.style.marginTop = '8px';
+      t.addEventListener('click', function () { state.showGone = !state.showGone; renderQueue(); });
+      box.appendChild(t);
+    }
   }
   $('qRefresh').addEventListener('click', loadQueue);
   setInterval(function () { if (!document.hidden && state.queue.some(function (q) { return q.status === 'scheduled' || q.status === 'publishing'; })) loadQueue(); }, 60000);
@@ -1164,6 +1287,7 @@
   function demoQueue() {
     var now = Date.now();
     return [
+      { id: 3, platforms: ['instagram'], image_paths: ['1', '2', '3', '4'], image_urls: [], caption: '자취생 주방 정리 꿀팁 5\n#꿀템 #자취', created_at: new Date(now - 2 * 36e5).toISOString(), scheduled_at: new Date(now - 2 * 36e5).toISOString(), status: 'draft', results: {} },
       { id: 2, platforms: ['instagram', 'threads'], image_paths: ['1', '2', '3'], image_urls: [], caption: '이번 주 최저가 득템 리스트 5\n#꿀템', scheduled_at: new Date(now + 20 * 36e5).toISOString(), status: 'scheduled', results: {} },
       { id: 1, platforms: ['instagram'], image_paths: ['1', '2'], image_urls: [], caption: '겨울 필수템 3가지 — 지갑 지키는 꿀템', scheduled_at: new Date(now - 30 * 36e5).toISOString(), status: 'published', results: { instagram: { ok: true, permalink: null } } },
     ];

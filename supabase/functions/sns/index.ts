@@ -22,8 +22,10 @@
 //   POST /sns/device/approve      {id}
 //   POST /sns/upload              본문 = JPEG 한 장 → storage sns-media/posts/YYYY-MM/<uuid>.jpg, {path, url}
 //   GET  /sns/queue               예약·게시 목록
-//   POST /sns/queue               {platforms, image_paths, caption, threads_text, scheduled_at?, now?} — now 면 바로 올림
-//   POST /sns/queue/cancel        {id} — 예약 취소
+//   POST /sns/queue               {platforms, image_paths, caption, threads_text, scheduled_at?, now?, draft?} — now 면 바로 올림, draft 면 임시저장
+//   POST /sns/queue/update        {id, platforms, image_paths, caption, threads_text} — 임시저장 고치기
+//   POST /sns/queue/publish       {id, now? | scheduled_at?} — 임시저장 → 발행(바로 또는 예약)
+//   POST /sns/queue/cancel        {id} — 예약 취소 · 임시저장 삭제
 //   POST /sns/queue/retry         {id} — 실패한 플랫폼만 다시 올림
 //
 // 표 (전부 RLS 켜짐 · 정책 없음 · anon/authenticated 권한 회수 — service role 만 접근):
@@ -661,45 +663,104 @@ async function queueList(req: Request) {
   return reply(req, 200, { ok: true, items });
 }
 
+type PostInput = { platforms: Platform[]; paths: string[]; caption: string; threadsText: string };
+
+// 올릴 내용 검사 — 새로 만들 때 · 임시저장 고칠 때 같이 쓴다
+async function readPostInput(body: any): Promise<{ error: string } | PostInput> {
+  const platforms = [...new Set(((body?.platforms ?? []) as string[]).filter((p) => p === 'instagram' || p === 'threads'))] as Platform[];
+  if (!platforms.length) return { error: '올릴 곳(인스타·스레드)을 골라 주세요.' };
+  const paths = ((body?.image_paths ?? []) as string[]).map(String);
+  if (paths.length > MAX_IMAGES) return { error: `사진은 ${MAX_IMAGES}장까지예요.` };
+  if (paths.some((p) => !isQueuePath(p))) return { error: '사진 경로가 이상해요. 사진을 다시 올려 주세요.' };
+  const caption = cleanText(body?.caption, IG_CAPTION_MAX);
+  const threadsText = cleanText(body?.threads_text ?? caption, TH_TEXT_MAX);
+  if (platforms.includes('instagram') && !paths.length) return { error: '인스타는 사진이 1장 이상 있어야 올릴 수 있어요.' };
+  if ((caption.match(/#[^\s#]+/g) ?? []).length > IG_HASHTAG_MAX) return { error: `인스타 해시태그는 ${IG_HASHTAG_MAX}개까지예요.` };
+  if (platforms.includes('threads') && !paths.length && !threadsText) return { error: '스레드에 올릴 글이나 사진이 없어요.' };
+  for (const p of platforms) {
+    if (!(await accountFor(p))) return { error: `${label(p)} 계정이 아직 연결되지 않았어요.` };
+  }
+  return { platforms, paths, caption, threadsText };
+}
+
+function readWhen(body: any): { error: string } | { when: number } {
+  const now = Date.now();
+  const when = body?.now ? now : Date.parse(String(body?.scheduled_at ?? ''));
+  if (!Number.isFinite(when)) return { error: '예약 시각을 골라 주세요.' };
+  if (when < now - 60_000) return { error: '이미 지난 시각이에요. 지금 올리기를 쓰거나 시각을 다시 골라 주세요.' };
+  if (when > now + MAX_SCHEDULE_DAYS * DAY_MS) return { error: `예약은 ${MAX_SCHEDULE_DAYS}일 안으로만 할 수 있어요.` };
+  return { when };
+}
+
+const postFields = (v: PostInput) => ({
+  platforms: v.platforms,
+  image_paths: v.paths,
+  caption: v.platforms.includes('instagram') ? v.caption : null,
+  threads_text: v.platforms.includes('threads') ? v.threadsText : null,
+});
+
 async function queueCreate(req: Request) {
   const dev = await approvedDevice(req);
   if (!dev) return reply(req, 403, NOT_APPROVED);
   const body = await req.json().catch(() => ({}));
-  const platforms = [...new Set(((body?.platforms ?? []) as string[]).filter((p) => p === 'instagram' || p === 'threads'))] as Platform[];
-  if (!platforms.length) return reply(req, 400, { ok: false, error: '올릴 곳(인스타·스레드)을 골라 주세요.' });
-  const paths = ((body?.image_paths ?? []) as string[]).map(String);
-  if (paths.length > MAX_IMAGES) return reply(req, 400, { ok: false, error: `사진은 ${MAX_IMAGES}장까지예요.` });
-  if (paths.some((p) => !isQueuePath(p))) return reply(req, 400, { ok: false, error: '사진 경로가 이상해요. 사진을 다시 올려 주세요.' });
-  const caption = cleanText(body?.caption, IG_CAPTION_MAX);
-  const threadsText = cleanText(body?.threads_text ?? caption, TH_TEXT_MAX);
-  if (platforms.includes('instagram') && !paths.length) return reply(req, 400, { ok: false, error: '인스타는 사진이 1장 이상 있어야 올릴 수 있어요.' });
-  if ((caption.match(/#[^\s#]+/g) ?? []).length > IG_HASHTAG_MAX) return reply(req, 400, { ok: false, error: `인스타 해시태그는 ${IG_HASHTAG_MAX}개까지예요.` });
-  if (platforms.includes('threads') && !paths.length && !threadsText) return reply(req, 400, { ok: false, error: '스레드에 올릴 글이나 사진이 없어요.' });
-  for (const p of platforms) {
-    if (!(await accountFor(p))) return reply(req, 400, { ok: false, error: `${label(p)} 계정이 아직 연결되지 않았어요.` });
+  const v = await readPostInput(body);
+  if ('error' in v) return reply(req, 400, { ok: false, error: v.error });
+  const draft = !!body?.draft;
+  let when = Date.now();
+  if (!draft) {
+    const w = readWhen(body);
+    if ('error' in w) return reply(req, 400, { ok: false, error: w.error });
+    when = w.when;
   }
-  const now = Date.now();
-  const when = body?.now ? now : Date.parse(String(body?.scheduled_at ?? ''));
-  if (!Number.isFinite(when)) return reply(req, 400, { ok: false, error: '예약 시각을 골라 주세요.' });
-  if (when < now - 60_000) return reply(req, 400, { ok: false, error: '이미 지난 시각이에요. 지금 올리기를 쓰거나 시각을 다시 골라 주세요.' });
-  if (when > now + MAX_SCHEDULE_DAYS * DAY_MS) return reply(req, 400, { ok: false, error: `예약은 ${MAX_SCHEDULE_DAYS}일 안으로만 할 수 있어요.` });
-
   const { data, error } = await sb
     .from('sns_queue')
-    .insert({
-      device_id: dev.id,
-      platforms,
-      image_paths: paths,
-      caption: platforms.includes('instagram') ? caption : null,
-      threads_text: platforms.includes('threads') ? threadsText : null,
-      scheduled_at: new Date(when).toISOString(),
-    })
+    .insert({ device_id: dev.id, ...postFields(v), scheduled_at: new Date(when).toISOString(), status: draft ? 'draft' : 'scheduled' })
     .select('id')
     .single();
   if (error) throw error;
+  if (draft) return reply(req, 200, { ok: true, id: data.id, status: 'draft' });
   if (!body?.now) return reply(req, 200, { ok: true, id: data.id, status: 'scheduled' });
   const result = await publishOne(Number(data.id));
   return reply(req, 200, { ok: true, id: data.id, ...result });
+}
+
+// 임시저장 고치기 — draft 인 것만
+async function queueUpdate(req: Request) {
+  if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
+  const body = await req.json().catch(() => ({}));
+  const v = await readPostInput(body);
+  if ('error' in v) return reply(req, 400, { ok: false, error: v.error });
+  const { data, error } = await sb
+    .from('sns_queue')
+    .update({ ...postFields(v), updated_at: new Date().toISOString() })
+    .eq('id', Number(body?.id))
+    .eq('status', 'draft')
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return reply(req, 409, { ok: false, error: '임시저장 상태인 것만 고칠 수 있어요.' });
+  return reply(req, 200, { ok: true, id: data.id, status: 'draft' });
+}
+
+// 임시저장 → 발행 (now 면 바로, scheduled_at 이면 그 시각에)
+async function queuePublish(req: Request) {
+  if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
+  const body = await req.json().catch(() => ({}));
+  const id = Number(body?.id);
+  const w = readWhen(body);
+  if ('error' in w) return reply(req, 400, { ok: false, error: w.error });
+  const scheduledAt = new Date(w.when).toISOString();
+  const { data, error } = await sb
+    .from('sns_queue')
+    .update({ status: 'scheduled', scheduled_at: scheduledAt, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('status', 'draft')
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return reply(req, 409, { ok: false, error: '임시저장 상태인 것만 발행할 수 있어요.' });
+  if (!body?.now) return reply(req, 200, { ok: true, id, status: 'scheduled', scheduled_at: scheduledAt });
+  return reply(req, 200, { ok: true, id, ...(await publishOne(id)) });
 }
 
 async function queueCancel(req: Request) {
@@ -707,13 +768,13 @@ async function queueCancel(req: Request) {
   const body = await req.json().catch(() => ({}));
   const { data, error } = await sb
     .from('sns_queue')
-    .update({ status: 'canceled', note: '화면에서 취소' })
+    .update({ status: 'canceled', note: '화면에서 취소·삭제', updated_at: new Date().toISOString() })
     .eq('id', Number(body?.id))
-    .eq('status', 'scheduled')
+    .in('status', ['draft', 'scheduled'])
     .select('id')
     .maybeSingle();
   if (error) throw error;
-  if (!data) return reply(req, 409, { ok: false, error: '예약 상태인 것만 취소할 수 있어요(이미 올라갔거나 올리는 중).' });
+  if (!data) return reply(req, 409, { ok: false, error: '임시저장·예약 상태인 것만 지울 수 있어요(이미 올라갔거나 올리는 중).' });
   return reply(req, 200, { ok: true });
 }
 
@@ -861,6 +922,8 @@ Deno.serve(async (req) => {
     if (M === 'POST' && route === 'upload') return await upload(req);
     if (M === 'GET' && route === 'queue') return await queueList(req);
     if (M === 'POST' && route === 'queue') return await queueCreate(req);
+    if (M === 'POST' && route === 'queue/update') return await queueUpdate(req);
+    if (M === 'POST' && route === 'queue/publish') return await queuePublish(req);
     if (M === 'POST' && route === 'queue/cancel') return await queueCancel(req);
     if (M === 'POST' && route === 'queue/retry') return await queueRetry(req);
     return reply(req, 404, { ok: false, error: '없는 경로예요.' });
