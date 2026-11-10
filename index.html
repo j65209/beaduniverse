@@ -6409,7 +6409,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      그래프 색: 강조 #0284c7 (CS 시안, 흰 배경 4.1:1 · 검사 통과) / 그 외 #b3ac9a (회색 — 2.3:1 이라 표 보기 · 범례로 보완) */
   .csi-tabs{max-width:1400px;padding:0 24px 14px}
   .csi-wrap{
-    --csi-accent:#0284c7;--csi-other:#b3ac9a;--csi-grid:#ece7da;--csi-axis:#cfc8b6;--csi-ink-3:#6f6b62;
+    --csi-accent:#0284c7;--csi-co:#eb6834;--csi-other:#b3ac9a;--csi-grid:#ece7da;--csi-axis:#cfc8b6;--csi-ink-3:#6f6b62;
     max-width:1400px;margin:0 auto 26px;padding:0 24px
   }
   .csi-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
@@ -6480,6 +6480,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .csi-axisline{stroke:var(--csi-axis);stroke-width:1}
   .csi-seg-def{fill:var(--csi-accent)}
   .csi-seg-oth{fill:var(--csi-other)}
+  .csi-seg-co{fill:var(--csi-co)}
   .csi-col .hit{fill:transparent}
   .csi-col:hover .hit{fill:rgba(15,23,42,.05)}
   .csi-col-today{fill:var(--text-0);font-weight:700}
@@ -6566,6 +6567,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .csi-chip:hover{background:var(--bg-2)}
   .csi-chip.on{background:var(--neon-cs);border-color:var(--neon-cs);color:#fff}
   .csi-chips-sm .csi-chip{font-size:12.5px;padding:5px 11px}
+  .csi-chip .cc{font-weight:800;color:var(--neon-cs);margin-right:5px;font-variant-numeric:tabular-nums}
+  .csi-chip.on .cc{color:#e0f2fe}
+  .csi-f-hint{margin-top:8px;font-size:12px;line-height:1.5;color:var(--text-2);background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+  .csi-urgent{color:#b91c1c;background:#fee2e2}
   .csi-f-msg{min-height:20px;font-size:12.5px;font-weight:600;color:var(--danger);margin:4px 0 10px}
   .csi-f-msg.ok{color:var(--ok)}
   .csi-privacy{font-size:11.5px;color:var(--text-3);margin-top:-4px;margin-bottom:12px}
@@ -11420,7 +11425,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="csi-card csi-onboard" id="csiEmpty" hidden>
         <div class="csi-onboard-title">아직 CS 기록이 없어요</div>
         <ol class="csi-onboard-steps">
-          <li><b>＋ 이슈 기록</b> — 문의 · 교환 · 반품이 들어올 때마다 상품, 유형(불량 · 사이즈 · 배송 …), 처리를 골라 한 줄씩 남겨요.</li>
+          <li><b>＋ 이슈 기록</b> — 문의 · 교환 · 반품이 들어올 때마다 상품, VOC 코드(Q 제품 불량 · S 사양·디자인 · I 상품 정보 · D 배송 …), 원인, 처리를 골라 한 줄씩 남겨요. 코드는 'VOC 관리' 시트의 분류표와 같아요.</li>
           <li><b>⬆ 엑셀 · CSV 올리기</b> — 플랫폼에서 받은 교환 · 반품 · 문의 엑셀이나 CS 시트를 그대로 올리면 열을 알아서 맞춰 한꺼번에 들어가요. 같은 파일을 다시 올려도 겹치지 않아요.</li>
           <li>기록이 쌓이면 <b>불량 많은 상품 · 고질 문제 · 팀별 전달 사항 · 일일 리포트</b>가 바로 만들어져요.</li>
         </ol>
@@ -11479,8 +11484,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <label class="csi-f csi-f-wide"><span>상품명 *</span><input id="csiFProduct" list="csiProductList" maxlength="200" placeholder="예) 실버 오픈링 — 전에 쓴 이름이 아래에 떠요"></label>
             <label class="csi-f csi-f-wide"><span>옵션</span><input id="csiFOption" maxlength="200" placeholder="컬러 · 기종 · 사이즈 (예: 실버 / 9호)"></label>
           </div>
-          <div class="csi-f-block"><div class="csi-f-label">유형 *</div><div class="csi-chips" id="csiFCats"></div></div>
-          <div class="csi-f-block"><div class="csi-f-label">증상</div><div class="csi-chips csi-chips-sm" id="csiFSubs"></div></div>
+          <div class="csi-f-block"><div class="csi-f-label">접수 구분 *</div><div class="csi-chips csi-chips-sm" id="csiFKinds"></div></div>
+          <div class="csi-f-block"><div class="csi-f-label">대분류 *</div><div class="csi-chips" id="csiFCats"></div></div>
+          <div class="csi-f-block"><div class="csi-f-label">VOC 코드 (증상) * <span class="csi-muted">· 칩에 마우스를 올리면 판단 기준이 보여요</span></div><div class="csi-chips csi-chips-sm" id="csiFCodes"></div><div class="csi-f-hint" id="csiFHint" hidden></div></div>
+          <div class="csi-f-block"><div class="csi-f-label">원인 <span class="csi-muted">· 모르면 비워 두거나 '확인 중'. 고르면 원인에 맞는 팀으로 전달돼요</span></div><div class="csi-chips csi-chips-sm" id="csiFCauses"></div></div>
           <div class="csi-f-block"><div class="csi-f-label">처리</div><div class="csi-chips csi-chips-sm" id="csiFActions"></div></div>
           <div class="csi-form-grid" style="margin-top:0">
             <label class="csi-f csi-f-wide"><span>내용</span><textarea id="csiFDetail" maxlength="1000" rows="3" placeholder="어떤 상황인지 한두 줄 (Ctrl+Enter 저장)"></textarea></label>
@@ -11500,7 +11507,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="modal-bg" id="csiImportModal" role="dialog" aria-modal="true" aria-labelledby="csiImpTitle">
         <div class="modal csi-modal csi-modal-wide">
           <div class="modal-title" id="csiImpTitle">엑셀 · CSV 올리기</div>
-          <div class="modal-sub">플랫폼에서 받은 교환 · 반품 · 문의 엑셀이나 CS 시트를 그대로 올리세요. 열 이름을 보고 날짜 · 상품 · 사유를 알아서 맞추고, 사유 글로 유형(불량 · 배송 …)을 나눠요. 같은 파일을 다시 올려도 겹치지 않아요.</div>
+          <div class="modal-sub">플랫폼에서 받은 교환 · 반품 · 문의 엑셀이나 'VOC 관리' 시트의 VOC 기록을 그대로 올리세요. 열 이름을 보고 날짜 · 상품 · 사유를 알아서 맞추고, VOC 코드 열이 있으면 그대로, 없으면 사유 글을 보고 VOC 코드를 정해요. 같은 파일을 다시 올려도 겹치지 않아요.</div>
           <div id="csiImpStep1">
             <label class="csi-drop" id="csiDrop">
               <input type="file" id="csiImpFile" accept=".xlsx,.xls,.csv,.tsv,.txt" hidden onchange="csiImpFile(this.files&&this.files[0])">
@@ -11519,6 +11526,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <div class="csi-imp-map">
                 <label class="csi-f"><span>채널</span><select id="csiImpDefCh"></select></label>
                 <label class="csi-f"><span>브랜드</span><select id="csiImpDefBrand"></select></label>
+                <label class="csi-f"><span>접수 구분</span><select id="csiImpDefKind"></select></label>
               </div>
             </div>
             <div class="csi-imp-box">
@@ -11542,7 +11550,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="modal-bg" id="csiSetModal" role="dialog" aria-modal="true" aria-labelledby="csiSetTitle">
         <div class="modal csi-modal">
           <div class="modal-title" id="csiSetTitle">전달 팀 설정</div>
-          <div class="modal-sub">유형마다 어느 팀에 전달할지 정해요. 팀별 전달 사항 · 일일 리포트 · 고질 문제의 "→ 팀"이 이 설정을 따라요.</div>
+          <div class="modal-sub">원인을 고른 기록은 원인별 팀으로, 원인이 없거나 '확인 중'이면 VOC 코드의 기본 팀으로 전달돼요. VOC 코드별 기본 팀은 'VOC 관리' 시트의 분류표와 같고, 여기서는 원인별 팀만 바꿔요.</div>
           <div id="csiSetRows"></div>
           <div class="csi-f-block" style="margin-top:14px">
             <div class="csi-f-label">고질 문제로 보는 기준 (최근 30일, 같은 상품 · 같은 증상)</div>
@@ -31024,67 +31032,136 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===================================================== */
   /* =====================================================================
      CS 이슈 분석 — CS팀 > 📊 CS 이슈 분석 (2026-11-10)
+     · 분류: 'VOC 관리 (코페리·아페티)' 구글 시트의 VOC 분류표와 같다 — 대분류 8개(Q·S·I·D·C·O·V·E), VOC 코드 44개.
+             증상(VOC 코드)과 원인을 따로 적고, 전달 팀은 원인을 따른다. 원인이 없거나 '확인 중'이면 VOC 코드의 기본 팀.
      · 기록: Supabase cs_issues (한 줄 = 한 건, deleted_at 소프트 삭제, 변경은 row_history)
-             일일 코멘트 cs_daily_notes (날짜당 하나) · 전달 팀 설정 app_kv 'cs_insight_settings'
-     · 입력: ＋ 이슈 기록(팝업) / 엑셀 · CSV 올리기 — 열 이름으로 자동으로 맞추고, import_key 로 같은 파일을 다시 올려도 안 겹친다
-     · 분석: 기간(오늘 · 어제 · 7 · 30 · 90일, 기준일) × 브랜드 × 채널 — 접수 · 제품 불량 · 교환 · 반품 · 고질 /
-             불량 많은 상품 / 유형별 / 일별 추이 / 고질 문제(30일, 같은 증상 N건 이상 · M주 이상) / 팀별 전달 / 일일 리포트(복사)
+             일일 코멘트 cs_daily_notes (날짜당 하나) · 원인별 전달 팀 · 고질 기준은 app_kv 'cs_insight_settings'
+     · 입력: ＋ 이슈 기록(팝업) / 엑셀 · CSV 올리기 — 열 이름으로 자동 맞춤 (VOC 시트의 열 이름 그대로도 됨),
+             import_key 로 같은 파일을 다시 올려도 안 겹친다
+     · 분석: 기간(오늘 · 어제 · 7 · 30 · 90일, 기준일) × 브랜드 × 채널 — 접수 · 제품 불량 · 교환·반품 · 고질 /
+             불량 많은 상품 / 대분류별 / 일별 추이(제품 불량 · 그 외 회사 귀책 · 고객 사유·문의) /
+             고질 문제(30일, 같은 상품 · 같은 VOC 코드) / 팀별 전달 / 일일 리포트(복사)
      · 고객 이름 · 연락처 · 주소는 저장하지 않는다 — 엑셀의 개인정보 열은 읽지 않고, 내용 속 전화번호 · 이메일은 가린다
      ===================================================================== */
   const CSI_CATS=[
-    {key:'defect', label:'제품 불량',        team:'md',     subs:['파손·부러짐','변색·착색','도금·코팅 벗겨짐','흠집·마감 불량','작동 불량','구성품 누락','기타 불량']},
-    {key:'fit',    label:'사이즈·착용감',    team:'design', subs:['작아요','커요','사이즈 안 맞음','착용이 불편해요','무게·두께']},
-    {key:'look',   label:'사진과 달라요',    team:'design', subs:['색상 차이','디자인·형태 차이','소재감 차이']},
-    {key:'info',   label:'상품 정보·사용법', team:'md',     subs:['정보 부족·오류','옵션 헷갈림','관리·사용법 문의']},
-    {key:'ship',   label:'배송',             team:'lg',     subs:['배송 지연','오배송','누락','배송 중 파손']},
-    {key:'stock',  label:'재고·재입고',      team:'md',     subs:['재입고 문의','품절·주문 취소']},
-    {key:'change', label:'단순 변심',        team:'',       subs:['교환 요청','반품·환불 요청']},
-    {key:'etc',    label:'기타 문의',        team:'',       subs:['할인·쿠폰','결제·주문','기타']},
+    {key:'Q', label:'제품 불량',        fallback:'Q91'},
+    {key:'S', label:'사양·디자인',      fallback:'S21'},
+    {key:'I', label:'상품 정보·이미지', fallback:'I12'},
+    {key:'D', label:'배송·출고',        fallback:'D21'},
+    {key:'C', label:'고객 사유',        fallback:'C13'},
+    {key:'O', label:'주문·재고',        fallback:'O31'},
+    {key:'V', label:'응대·서비스',      fallback:'V12'},
+    {key:'E', label:'기타 문의',        fallback:'E12'},
   ];
   const CSI_CAT=Object.fromEntries(CSI_CATS.map(c=>[c.key,c]));
-  const CSI_TEAMS=[{key:'design',label:'디자인팀'},{key:'md',label:'MD팀'},{key:'lg',label:'물류팀'},{key:'mkt',label:'온라인사업팀'}];
+  const CSI_COMPANY=new Set(['Q','S','I','D']);     // 회사 귀책 — 고질 문제 · 팀 전달 대상
+  // [코드, 중분류, 증상, 기본 전달 팀, 심각도, 판단 기준] — VOC 관리 시트의 'VOC 분류표'와 같게 유지한다
+  const CSI_CODES=[
+    ['Q11','봉제','박음질 풀림·불량','md','높음','실밥이 풀리거나 박음질이 비뚤어지고 접힘'],
+    ['Q12','봉제','손잡이·끈 연결부 뜯어짐','md','높음','손잡이·어깨끈·스트랩이 본체와 이어진 부분이 뜯어지거나 끊어짐'],
+    ['Q21','원단·내피','원단·내피 찢어짐','md','높음','겉감이나 안감이 찢어지거나 구멍이 남'],
+    ['Q22','원단·내피','오염·얼룩·물빠짐','md','높음','받았을 때부터 얼룩이나 오염이 있거나 물이 빠짐'],
+    ['Q31','부자재','지퍼·자석·버클 불량','md','높음','지퍼가 안 닫히거나 자석·버클이 붙지 않음'],
+    ['Q32','부자재','부자재 빠짐·없음','md','높음','제품에 달려 있어야 할 고리·장식이 없거나 빠짐. 따로 넣는 구성품을 안 보낸 경우는 D12'],
+    ['Q41','금속·도금','변색·착색','md','보통','착용 후 검게 변하거나 색이 변함. 실버 92.5·유화 코팅의 자연스러운 변색이면 관리법 안내(E11)'],
+    ['Q42','금속·도금','도금 벗겨짐','md','높음','도금이 벗겨져 바탕 금속이 보임'],
+    ['Q43','금속·도금','부러짐·휨·장식 빠짐','md','높음','링이 부러지거나 휘고, 큐빅·장식이 빠짐'],
+    ['Q51','마감','마감 거침·날카로움','md','높음','안쪽이나 모서리가 꺼끌거리거나 날카로움. 다쳤다면 심각도 긴급'],
+    ['Q52','마감','흠집·찍힘·본드 자국','md','보통','받았을 때부터 흠집, 찍힘, 본드 자국, 삐져나온 실밥이 보임'],
+    ['Q61','기능','작동 불량','md','높음','충전·인식이 안 되는 등 기능이 작동하지 않음'],
+    ['Q91','기타','기타 불량','md','높음','위에 없는 제품 결함. 내용에 자세히 적음'],
+    ['S11','사이즈','사이즈가 작음','design','보통','표기대로 왔지만 고객에게 작음 (반지 호수, 가방 크기)'],
+    ['S12','사이즈','사이즈가 큼','design','보통','표기대로 왔지만 고객에게 큼'],
+    ['S21','사용감','착용·사용이 불편함','design','보통','무게, 끈 길이, 조임 등으로 쓰기 불편함'],
+    ['S22','사용감','피부 트러블·알레르기','md','긴급','착용 후 가려움, 붉어짐'],
+    ['S23','사용감','수납·실용성 부족','design','낮음','생각보다 안 들어가거나 주머니가 부족함'],
+    ['S31','구조','구조·디자인 약점','design','보통','불량은 아니지만 구조 때문에 생기는 문제 (내피가 비침, 쉽게 처지거나 늘어남)'],
+    ['I11','사진','색상이 사진과 다름','design','보통','실물 색이 상세 사진과 달라 보임'],
+    ['I12','사진','디자인·소재감이 사진과 다름','design','보통','모양, 크기감, 광택, 소재감이 사진과 다름'],
+    ['I21','정보','사이즈·치수 정보 부족·오류','md','보통','치수가 없거나, 재는 기준이 불분명하거나, 틀림'],
+    ['I22','정보','소재·관리법 정보 부족','md','낮음','소재, 변색 가능성, 세척·보관법 안내가 부족함'],
+    ['I23','정보','옵션 표기 혼동','md','보통','옵션 이름이나 순서가 헷갈려 잘못 주문함'],
+    ['D11','출고','오배송','lg','높음','다른 상품이나 다른 옵션이 감'],
+    ['D12','출고','구성품 누락','lg','높음','따로 넣어야 할 스트랩·더스트백·사은품을 안 넣음'],
+    ['D13','출고','수량 누락','lg','높음','주문 수량보다 적게 감'],
+    ['D21','배송','배송 지연','lg','보통','안내한 기간보다 늦게 도착함'],
+    ['D22','배송','배송 중 파손','lg','높음','상자가 찌그러지거나 젖어 제품이 상함'],
+    ['D23','배송','분실·배송 오류','lg','높음','배송 완료로 뜨지만 못 받았거나 다른 곳으로 감'],
+    ['C11','변심','단순 변심 반품','cs','낮음','제품 문제 없이 마음이 바뀜'],
+    ['C12','변심','컬러·사이즈 교환','cs','낮음','제품 문제 없이 다른 컬러·사이즈를 원함'],
+    ['C13','변심','기대와 다름 (사유 불명)','cs','낮음','구체적인 사유 없이 생각과 다르다고 함. 한 번 더 물어 다른 코드로 바꿀 수 있으면 바꿈'],
+    ['C21','주문','주문 실수','cs','낮음','옵션이나 수량을 잘못 고름. 표기가 헷갈렸다면 I23'],
+    ['O11','재고','재입고 문의','md','낮음','품절 상품의 재입고·입고 일정 문의'],
+    ['O12','재고','품절로 주문 취소','md','보통','주문 뒤 재고가 없어 취소함'],
+    ['O21','주문','주문·배송지 변경','lg','낮음','출고 전 옵션·주소 변경 요청'],
+    ['O31','결제·혜택','결제·환불 문의','cs','낮음','결제 오류, 환불 시점 문의'],
+    ['O32','결제·혜택','할인·쿠폰·이벤트 문의','mkt','낮음','할인 기간, 쿠폰 적용 문의'],
+    ['V11','응대','답변 지연','cs','보통','문의 답변이 늦다는 불만'],
+    ['V12','처리','처리 결과 불만','cs','보통','반려, 보상 범위, 처리 방식에 대한 불만'],
+    ['V13','절차','교환·반품 절차 불편','cs','낮음','회수·신청 방법이 불편하다는 의견'],
+    ['E11','사용법','사용·관리 방법 문의','cs','낮음','착용법, 보관법, 세척법, 사이즈 조절 문의'],
+    ['E12','기타','기타','cs','낮음','위 어디에도 해당하지 않음'],
+  ].map(([code,mid,name,team,sev,def])=>({code,cat:code[0],mid,name,team,sev,def,label:code+' '+name}));
+  const CSI_CODE=Object.fromEntries(CSI_CODES.map(c=>[c.code,c]));
+  const CSI_TEAMS=[{key:'design',label:'디자인팀'},{key:'md',label:'MD팀'},{key:'lg',label:'물류팀'},{key:'mkt',label:'온라인사업팀'},{key:'cs',label:'CS팀'}];
   const CSI_TEAM_LABEL=Object.fromEntries(CSI_TEAMS.map(t=>[t.key,t.label]));
-  const CSI_CHANNELS=['공홈','에이블리','지그재그','스마트스토어','29CM','W컨셉','오늘의집','EQL','카카오톡','기타'];
-  const CSI_CH_ALIAS={'공홈':['공홈','자사몰','식스샵','홈페이지','공식몰','sixshop'],'에이블리':['에이블리','ably'],'지그재그':['지그재그','zigzag'],'스마트스토어':['스마트스토어','네이버','smartstore'],'29CM':['29cm'],'W컨셉':['w컨셉','더블유컨셉','wconcept'],'오늘의집':['오늘의집','ohou'],'EQL':['eql','이큐엘'],'카카오톡':['카카오','카톡','kakao']};
+  // 원인 → 기본 전달 팀 (관리자가 ⚙ 에서 바꿀 수 있다). '확인 중'은 VOC 코드 기본 팀을 따른다
+  const CSI_CAUSES=[['제조 불량','md'],['입고 검수 누락','lg'],['디자인·구조','design'],['상세페이지 사진','design'],['상세페이지 정보','md'],['출고·포장 실수','lg'],['택배사','lg'],['고객 사유','cs'],['확인 중','']];
+  const CSI_CAUSE_DEFAULT=Object.fromEntries(CSI_CAUSES);
+  const CSI_KINDS=['교환','반품','문의','재발송 요청','기타'];
+  const CSI_RETURN_KINDS=new Set(['교환','반품']);
+  const CSI_ACTIONS=['교환 재발송','부분 재발송','반품 환불','부분 환불','수선','안내 종결','반려','처리 중'];
+  const CSI_CHANNELS=['공홈','에이블리','지그재그','스마트스토어','29CM','W컨셉','오늘의집','EQL','카카오톡','전화','기타'];
+  const CSI_CH_ALIAS={'공홈':['공홈','자사몰','식스샵','홈페이지','공식몰','sixshop','네이버페이'],'에이블리':['에이블리','ably'],'지그재그':['지그재그','zigzag'],'스마트스토어':['스마트스토어','smartstore'],'29CM':['29cm'],'W컨셉':['w컨셉','더블유컨셉','wconcept'],'오늘의집':['오늘의집','ohou'],'EQL':['eql','이큐엘'],'카카오톡':['카카오','카톡','kakao'],'전화':['전화','통화']};
   const CSI_BRAND_ALIAS={'6a':['식스에이','sixa','6thanother'],ct:['클리어타입','cleartype'],yar:['야르'],pp:['프로덕트피알','produktepr','프피'],akoi:['아코이하우스','아코이','akoihaus'],kop:['코페리','coferry'],apt:['아페티','apeti'],koz:['코즈미','cosmi','cos-mi']};
-  const CSI_ACTIONS=['교환','반품·환불','재발송','안내만','처리 중'];
-  const CSI_RETURN_ACTIONS=new Set(['교환','반품·환불']);
   const CSI_RANGES=[{key:'today',label:'오늘',days:1},{key:'yday',label:'어제',days:1},{key:'7',label:'7일',days:7},{key:'30',label:'30일',days:30},{key:'90',label:'90일',days:90}];
   const CSI_LOAD_DAYS=180;   // 90일 + 직전 90일 비교까지
   const CSI_KV_KEY='cs_insight_settings';
   const CSI_PREF_KEY='csi_prefs_v1';
-  const CSI_SELECT='id,issue_date,channel,brand,product,option_text,category,sub,detail,action,photo_url,source,created_by,created_at,updated_by,updated_at,deleted_at';
-  /* 사유 글 → 유형 · 증상. 공백을 뺀 소문자 글에 위에서부터 처음 맞는 줄. 순서가 중요 — 구체적인 말(구성품 누락 · 오배송)을 앞에, 단순 변심은 뒤에 */
+  const CSI_SELECT='id,issue_date,channel,brand,kind,product,option_text,category,code,sub,cause,detail,action,photo_url,source,created_by,created_at,updated_by,updated_at,deleted_at';
+  /* 사유 글 → VOC 코드. 공백을 뺀 소문자 글에 위에서부터 처음 맞는 줄. 순서가 중요 — 구체적인 말(구성품 · 이음새 · 오배송)을 앞에, 단순 변심은 맨 뒤에 */
   const CSI_RULES=[
-    ['defect','구성품 누락',/구성품|부속품|(줄|체인|케이스|파우치|고리|잠금장치|마개|캡|부품)(이|가)?(없|빠져|누락|안들어)/],
-    ['ship','오배송',/오배송|다른(상품|제품|색상|컬러|옵션|사이즈)(이|가|으로|로)?(왔|옴|배송|발송|보내)|잘못(왔|옴|배송|발송|보내)/],
-    ['ship','배송 중 파손',/배송중(에)?파손|택배(가)?파손|박스(가)?(파손|찢|젖|구겨)|포장(이)?(파손|찢|훼손|뜯)|배송파손/],
-    // "아직 안 왔어요"는 지연, "하나가 안 왔어요 · 빠져서 왔어요"는 누락
-    ['ship','배송 지연',/배송지연|지연|늦게와|늦어|언제(와|오|도착|배송|발송|출고)|배송(언제|조회|현황)|출고(언제|지연|안)|도착(이)?안|아직(도)?(안|못)(왔|와|받)|안왔|안와요/],
-    ['ship','누락',/누락|미배송|미수령|못받|수량(이)?부족|덜왔|하나만왔|(하나|한개|1개|일부|한쪽)(가|는|이)?(안|빠져)/],
-    ['defect','변색·착색',/변색|착색|검게|검은색|까맣|까매|거뭇|녹슬|녹이|산화|색(이)?변|색(이)?바래|누렇/],
-    ['defect','도금·코팅 벗겨짐',/도금|코팅|벗겨|까져|까짐|칠이/],
-    ['defect','파손·부러짐',/파손|부러|깨[짐졌져지]|부서|끊어|끊김|빠졌|빠짐|떨어[졌져지]|분리(됐|되었|돼)|휘어|휘었|찌그러|금(이)?갔/],
-    ['defect','작동 불량',/작동|충전(이)?(안|불가|되지|느|끊)|인식(이)?(안|불가)|고장|접촉불량|단선|안돼요|안됩니다|전원/],
-    ['defect','흠집·마감 불량',/흠집|스크래치|기스|찍힘|찍혀|마감|이물|얼룩|오염|본드|접착|실밥|올풀|구멍/],
-    ['defect','기타 불량',/불량|하자|결함|문제(가)?있/],
-    ['fit','작아요',/작아|작음|작습|작네|타이트|꽉(껴|끼)|안들어가|조여|사이즈업|한치수크게/],
-    ['fit','커요',/커요|커서|큼|큽니|헐렁|크다|흘러내|사이즈다운|한치수작게/],
-    ['fit','사이즈 안 맞음',/사이즈(가)?(안맞|맞지않|애매)|핏(이)?(안맞|별로)/],
-    ['fit','착용이 불편해요',/불편|아파|아프|따가|간지|가려|피부|트러블|알레르기|알러지/],
-    ['fit','무게·두께',/무거|두꺼|두께|얇아|얇네|가벼/],
-    ['look','색상 차이',/(색상|색깔|컬러)(이|가)?(달|차이|다름|다르|상이|생각과|별로)|사진(과|이랑|하고|보다)?(색|컬러)/],
-    ['look','디자인·형태 차이',/사진(과|이랑|하고|보다)?(달|다름|다르|별로)|실물(이|은|과)?(달|다르|별로|실망)|(상품정보|설명)(와|과|랑|이랑)?(상이|다름|다르)|상이|형태|모양(이)?(달|다르)|디자인(이)?(달|다르)/],
-    ['look','소재감 차이',/소재감|재질|싸구려|저렴해보|퀄리티|질감/],
-    ['info','옵션 헷갈림',/옵션(을|이)?(잘못|헷갈|착각)|잘못(주문|선택)|주문실수|선택실수/],
-    ['info','관리·사용법 문의',/관리(법|방법)|보관(법|방법)|세척|물에|샤워|사용(법|방법)|어떻게(사용|써|착용|조절|끼)|조절/],
-    ['info','정보 부족·오류',/상세(페이지)?(정보|설명|에)|정보(가)?(없|부족|틀|오류|잘못)|설명(이)?(없|부족|틀)|표기|사이즈(표|정보|문의)|실버(맞|인가)|순은|써지컬|각인|소재(가)?(뭐|무엇)/],
-    ['stock','재입고 문의',/재입고|입고(예정|언제|일정|되면)|다시(들어|입고|판매)/],
-    ['stock','품절·주문 취소',/품절|재고(가)?없|결품|주문취소|취소(해|요청|할게|부탁)/],
-    ['change','교환 요청',/교환|사이즈변경|색상변경|옵션변경/],
-    ['change','반품·환불 요청',/반품|환불|단순변심|변심|마음에안|맘에안|필요없|구매의사|안쓸/],
-    ['etc','할인·쿠폰',/할인|쿠폰|적립|포인트|이벤트|프로모션|세일/],
-    ['etc','결제·주문',/결제|입금|무통장|주문(확인|조회|변경|내역)|영수증|세금계산서|배송지|주소변경/],
+    ['D12',/구성품|스트랩(이|을|만)?(안|빠|누락|없|못)|더스트백|사은품(이|을)?(안|빠|없)/],
+    ['Q32',/(고리|장식|키링|참|펜던트)(이|가)?(없|빠져|빠짐|떨어)/],
+    ['D11',/오배송|다른(상품|제품|색상|컬러|옵션|사이즈)(이|가|으로|로)?(왔|옴|배송|발송|보내)|잘못(왔|옴|배송|발송|보내)/],
+    ['D22',/배송중(에)?파손|택배(가)?파손|박스(가)?(파손|찢|젖|구겨)|포장(이)?(파손|찢|훼손|뜯)|배송파손/],
+    ['D21',/배송지연|지연|늦게와|늦어|언제(와|오|도착|배송|발송|출고)|배송(언제|조회|현황)|출고(언제|지연|안)|도착(이)?안|아직(도)?(안|못)(왔|와|받)|안왔|안와요/],
+    ['D13',/수량(이)?부족|덜왔|하나만왔|(하나|한개|1개|일부|한쪽)(가|는|이)?(안|빠져)/],
+    ['D23',/분실|미수령|못받|배송완료(인데|라고|로)|다른주소/],
+    ['Q12',/손잡이|어깨끈|이음새|연결부|끈(이|과|하고)?(본체)?(가|이)?(뜯|끊|떨어|풀)/],
+    ['Q11',/박음질|봉제|실밥(이)?풀|바느질/],
+    ['Q21',/내피(가|이)?(찢|뜯|구멍)|원단(이)?(찢|뜯|구멍)|찢어|찢김|구멍/],
+    ['Q22',/오염|얼룩|물빠짐|이염|더러/],
+    ['Q31',/지퍼|자석|버클|똑딱|단추/],
+    ['Q41',/변색|착색|검게|검은색|까맣|까매|거뭇|녹슬|녹이|산화|색(이)?변|색(이)?바래|누렇/],
+    ['Q42',/도금|코팅|벗겨|까져|까짐|칠이/],
+    ['Q43',/부러|휘어|휘었|큐빅|스톤|알(이)?빠|깨[짐졌져지]|부서|파손|끊어|끊김|분리(됐|되었|돼)|찌그러/],
+    ['Q51',/꺼끌|거칠|날카|베였|긁혀|따끔|마감(이)?(안|불량|거)/],
+    ['Q52',/흠집|스크래치|기스|찍힘|찍혀|본드|접착|올풀|마감/],
+    ['Q61',/작동|충전(이)?(안|불가|되지|느|끊)|인식(이)?(안|불가)|고장|접촉불량|단선|전원/],
+    ['Q91',/불량|하자|결함|문제(가)?있/],
+    ['S22',/피부|트러블|알레르기|알러지|가려|붉어|발진/],
+    ['S11',/작아|작음|작습|작네|타이트|꽉(껴|끼)|안들어가|조여|사이즈업|한치수크게/],
+    ['S12',/커요|커서|큼|큽니|헐렁|크다|흘러내|사이즈다운|한치수작게/],
+    ['S23',/수납|안들어감|주머니|용량/],
+    ['S31',/내피(가|이)?(보|비침|비쳐)|처짐|늘어나|늘어남|모양(이)?무너|구조/],
+    ['S21',/불편|무거|두꺼|무게|끈길이|아파|아프/],
+    ['I11',/(색상|색깔|컬러)(이|가)?(달|차이|다름|다르|상이|생각과|별로)|사진(과|이랑|하고|보다)?(색|컬러)/],
+    ['I12',/사진(과|이랑|하고|보다)?(달|다름|다르|별로)|실물(이|은|과)?(달|다르|별로|실망)|(상품정보|설명|이미지)(와|과|랑|이랑)?(상이|다름|다르)|상이|소재감|재질|퀄리티|싸구려|저렴해보/],
+    ['I21',/(길이|사이즈|치수|크기)(를|가|이)?(측정|재는|표기|정보|설명|안내)|측정|사이즈(표|정보|문의)/],
+    ['I22',/관리(법|방법)|보관(법|방법)|세척|소재(가)?(뭐|무엇)|실버(맞|인가)|순은|써지컬|각인|물에/],
+    ['I23',/옵션(을|이)?(잘못|헷갈|착각)|옵션(명|표기)/],
+    ['C21',/잘못(주문|선택)|주문실수|선택실수/],
+    ['O11',/재입고|입고(예정|언제|일정|되면)|다시(들어|입고|판매)/],
+    ['O12',/품절|재고(가)?없|결품/],
+    ['O21',/배송지|주소(변경|바꿔|수정)|출고전(에)?(변경|바꿔)/],
+    ['O31',/결제|입금|무통장|환불(언제|시점|일정|안)|영수증|세금계산서/],
+    ['O32',/할인|쿠폰|적립|포인트|이벤트|프로모션|세일/],
+    ['V11',/답변(이)?(늦|없)|답장|연락(이)?(없|안)/],
+    ['V12',/반려|보상|처리(가|결과)?(불만|이상)/],
+    ['C12',/교환|사이즈변경|색상변경|컬러변경|옵션변경/],
+    ['C11',/반품|환불|단순변심|변심|마음에안|맘에안|필요없|구매의사|안쓸|취소/],
+    ['E11',/사용(법|방법)|어떻게(사용|써|착용|조절|끼)|조절/],
   ];
   /* 엑셀 열 이름 → 칸. 앞에 있는 이름일수록 우선 (같은 표에 '주문일시'와 '반품요청일시'가 있으면 요청일) */
   const CSI_COLS={
@@ -31092,22 +31169,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     date:['접수일','접수일자','접수일시','요청일','요청일자','요청일시','클레임요청일','클레임요청일시','반품요청일','반품요청일시','교환요청일','교환요청일시','취소요청일','문의일','문의일시','등록일','등록일시','작성일','작성일시','처리일','날짜','일자','일시','date'],
     product:['상품명','제품명','상품','제품','품명','상품명옵션포함','상품정보','주문상품','모델명'],
     option:['옵션','옵션명','옵션정보','옵션내용','선택옵션','옵션값','컬러','색상','기종','사이즈','규격'],
+    code:['VOC 코드','VOC코드','분류 코드','분류코드','코드'],
     sub:['증상','세부','세부유형','소분류','세부사유'],
-    type:['유형','문의유형','클레임유형','분류','대분류','사유','반품사유','교환사유','클레임사유','요청사유','취소사유','사유구분'],
-    detail:['내용','상세사유','상세내용','문의내용','클레임내용','요청내용','사유상세','고객요청사항','상세','메모','비고','문의'],
-    action:['처리','처리결과','처리방법','처리상태','진행상태','클레임상태','클레임구분','요청구분','상태','구분'],
+    kind:['접수 구분','접수구분','클레임 구분','클레임구분','요청 구분','요청구분','구분'],
+    type:['대분류','유형','문의유형','클레임유형','분류','사유','반품사유','교환사유','클레임사유','요청사유','취소사유','사유구분'],
+    detail:['고객 내용','내용','상세사유','상세내용','문의내용','클레임내용','요청내용','사유상세','고객요청사항','상세','확인 결과','메모','비고','문의'],
+    cause:['원인','귀책','귀책 사유'],
+    action:['처리','처리결과','처리방법','처리상태','진행상태','클레임상태','상태'],
     channel:['채널','판매처','쇼핑몰','쇼핑몰명','마켓','마켓명','플랫폼','판매채널','몰','몰명','사이트'],
     brand:['브랜드','브랜드명','상점','상점명','스토어','스토어명'],
-    photo:['사진','사진링크','이미지','첨부'],
+    photo:['사진 링크','사진링크','사진','이미지','첨부'],
   };
-  const CSI_IMP_FIELDS=[['date','날짜'],['product','상품명 *'],['option','옵션'],['type','유형 · 사유'],['sub','증상 (세부)'],['detail','내용'],['action','처리'],['channel','채널'],['brand','브랜드'],['photo','사진 링크'],['order','주문번호 (겹침 확인에만 · 저장 안 함)']];
+  const CSI_IMP_FIELDS=[['date','날짜'],['product','상품명 *'],['option','옵션'],['code','VOC 코드'],['type','유형 · 사유'],['sub','증상'],['detail','내용'],['kind','접수 구분'],['cause','원인'],['action','처리'],['channel','채널'],['brand','브랜드'],['photo','사진 링크'],['order','주문번호 (겹침 확인에만 · 저장 안 함)']];
   const CSI_PII=/이름|성함|주문자|수령인|수취인|구매자|받는분|받는사람|고객명|회원|연락처|전화|휴대|핸드폰|폰번호|주소|우편|이메일|메일|아이디|^id$|계좌|생년|닉네임/;
 
   const _csi={byId:new Map(), gone:new Map(), duringLoad:[], rows:[], loaded:false, loading:false, reloadAgain:false, loadedFrom:'', lastSync:'', err:'', syncedAt:0,
     tab:'insight', range:'7', date:'', dateTouched:false, brand:'', channel:'', q:'', listLimit:50, trendTable:false,
-    settings:{routing:{}, chronicMin:3, chronicWeeks:2}, settingsLoaded:false,
+    settings:{causeRouting:{}, chronicMin:3, chronicWeeks:2}, settingsLoaded:false,
     note:{date:'', text:'', by:'', at:'', dirty:false, saving:false, err:false}, noteTimer:null,
-    form:null, saving:false, imp:null, importing:false, pollTimer:null, inited:false, lastFormCh:'', lastFormBrand:''};
+    form:null, saving:false, imp:null, importing:false, pollTimer:null, inited:false, lastFormCh:'', lastFormBrand:'', lastFormKind:''};
 
   /* ── 작은 도구 ── */
   function _csiMe(){ try{ return (localStorage.getItem('brightbeed_diary_me')||'').trim().slice(0,40) }catch(e){ return '' } }
@@ -31125,12 +31205,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const b=BRAND_SECTIONS.find(x=>x.id===id);
     return b ? b.display : ({ct:'클리어타입'}[id]||id);
   }
-  function _csiCatLabel(k){ return (CSI_CAT[k]||CSI_CAT.etc).label }
-  function _csiTeamOf(cat){
-    const r=(_csi.settings&&_csi.settings.routing)||{};
-    if(Object.prototype.hasOwnProperty.call(r,cat)) return r[cat];
-    return (CSI_CAT[cat]||CSI_CAT.etc).team;
+  function _csiCatLabel(k){ return (CSI_CAT[k]||CSI_CAT.E).label }
+  function _csiSymptom(r){ const c=CSI_CODE[r.code]; return c ? c.name : (r.sub||_csiCatLabel(r.category)) }
+  function _csiCodeLabel(r){ const c=CSI_CODE[r.code]; return c ? c.label : (r.sub||_csiCatLabel(r.category)) }
+  function _csiCauseTeam(cause){
+    const r=(_csi.settings&&_csi.settings.causeRouting)||{};
+    if(Object.prototype.hasOwnProperty.call(r,cause)) return r[cause];
+    return CSI_CAUSE_DEFAULT[cause]||'';
   }
+  // 전달 팀 — 원인이 있으면 원인 기준, 없거나 '확인 중'이면 VOC 코드 기본 팀
+  function _csiTeamOf(r){
+    if(r.cause && r.cause!=='확인 중'){ const t=_csiCauseTeam(r.cause); if(t) return t; }
+    const c=CSI_CODE[r.code];
+    return c ? c.team : (CSI_COMPANY.has(r.category) ? 'md' : 'cs');
+  }
+  function _csiGroupOf(cat){ return cat==='Q' ? 'q' : CSI_COMPANY.has(cat) ? 'co' : 'cu' }
   function _csiScrub(s){
     return String(s==null?'':s)
       .replace(/(01[016789])[-.\s]?\d{3,4}[-.\s]?\d{4}/g,'$1-****-****')
@@ -31148,6 +31237,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return `M${f(x)},${f(y+h)}V${f(y+r)}Q${f(x)},${f(y)} ${f(x+r)},${f(y)}H${f(x+w-r)}Q${f(x+w)},${f(y)} ${f(x+w)},${f(y+r)}V${f(y+h)}Z`;
   }
   function _csiCountBy(rows,fn){ const m=new Map(); for(const r of rows){ const k=fn(r); m.set(k,(m.get(k)||0)+1) } return [...m.entries()].sort((a,b)=>b[1]-a[1]) }
+  function _csiMajor(m){ let best='', n=-1; for(const [k,v] of m) if(v>n){ best=k; n=v; } return best }
 
   /* ── 화면 상태 (이 브라우저에만) ── */
   function _csiLoadPrefs(){
@@ -31159,10 +31249,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof p.channel==='string') _csi.channel=p.channel;
       if(typeof p.formCh==='string') _csi.lastFormCh=p.formCh;
       if(typeof p.formBrand==='string') _csi.lastFormBrand=p.formBrand;
+      if(CSI_KINDS.includes(p.formKind)) _csi.lastFormKind=p.formKind;
     }catch(e){}
   }
   function _csiSavePrefs(){
-    try{ localStorage.setItem(CSI_PREF_KEY, JSON.stringify({tab:_csi.tab, range:_csi.range, brand:_csi.brand, channel:_csi.channel, formCh:_csi.lastFormCh, formBrand:_csi.lastFormBrand})) }catch(e){}
+    try{ localStorage.setItem(CSI_PREF_KEY, JSON.stringify({tab:_csi.tab, range:_csi.range, brand:_csi.brand, channel:_csi.channel, formCh:_csi.lastFormCh, formBrand:_csi.lastFormBrand, formKind:_csi.lastFormKind})) }catch(e){}
   }
 
   /* ── 진입 ── */
@@ -31190,12 +31281,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('csiRange').innerHTML=CSI_RANGES.map(r=>`<button type="button" data-range="${r.key}" aria-pressed="false">${r.label}</button>`).join('');
     document.getElementById('csiRange').addEventListener('click',e=>{ const b=e.target.closest('[data-range]'); if(b) csiSetRange(b.dataset.range) });
     const brandOpts=(all)=>`<option value="">${all}</option>`+BRAND_SECTIONS.map(b=>`<option value="${_esc(b.id)}">${_esc(b.display)}</option>`).join('');
+    const listOpts=(all,arr)=>`<option value="">${all}</option>`+arr.map(c=>`<option value="${_esc(c)}">${_esc(c)}</option>`).join('');
     document.getElementById('csiBrand').innerHTML=brandOpts('전체');
-    document.getElementById('csiChannel').innerHTML='<option value="">전체</option>'+CSI_CHANNELS.map(c=>`<option value="${_esc(c)}">${_esc(c)}</option>`).join('');
+    document.getElementById('csiChannel').innerHTML=listOpts('전체',CSI_CHANNELS);
     document.getElementById('csiFBrand').innerHTML=brandOpts('브랜드 미지정');
-    document.getElementById('csiFChannel').innerHTML='<option value="">채널 미지정</option>'+CSI_CHANNELS.map(c=>`<option value="${_esc(c)}">${_esc(c)}</option>`).join('');
+    document.getElementById('csiFChannel').innerHTML=listOpts('채널 미지정',CSI_CHANNELS);
     document.getElementById('csiImpDefBrand').innerHTML=brandOpts('열에서 읽기 (없으면 미지정)');
-    document.getElementById('csiImpDefCh').innerHTML='<option value="">열에서 읽기 (없으면 미지정)</option>'+CSI_CHANNELS.map(c=>`<option value="${_esc(c)}">${_esc(c)}</option>`).join('');
+    document.getElementById('csiImpDefCh').innerHTML=listOpts('열에서 읽기 (없으면 미지정)',CSI_CHANNELS);
+    document.getElementById('csiImpDefKind').innerHTML=listOpts('열에서 읽기 (없으면 사유로 짐작)',CSI_KINDS);
     if(_csi.brand && !BRAND_SECTIONS.some(b=>b.id===_csi.brand)) _csi.brand='';
     if(_csi.channel && !CSI_CHANNELS.includes(_csi.channel)) _csi.channel='';
     document.getElementById('csiBrand').value=_csi.brand;
@@ -31208,10 +31301,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       else if(b.dataset.act==='more'){ _csi.listLimit+=100; csiRender(); }
     });
     document.getElementById('csiTrend').addEventListener('click',e=>{ if(e.target.closest('[data-act="trend-table"]')){ _csi.trendTable=!_csi.trendTable; csiRender(); } });
-    // 기록 팝업 — 칩
-    document.getElementById('csiFCats').addEventListener('click',e=>{ const b=e.target.closest('[data-cat]'); if(!b||!_csi.form) return; const k=b.dataset.cat; if(_csi.form.cat!==k){ _csi.form.cat=k; _csi.form.sub=''; } _csi.form.dirty=true; _csiRenderChips(); });
-    document.getElementById('csiFSubs').addEventListener('click',e=>{ const b=e.target.closest('[data-sub]'); if(!b||!_csi.form) return; const s=b.dataset.sub; _csi.form.sub = _csi.form.sub===s ? '' : s; _csi.form.dirty=true; _csiRenderChips(); });
-    document.getElementById('csiFActions').addEventListener('click',e=>{ const b=e.target.closest('[data-action]'); if(!b||!_csi.form) return; const s=b.dataset.action; _csi.form.action = _csi.form.action===s ? '' : s; _csi.form.dirty=true; _csiRenderChips(); });
+    // 기록 팝업 — 칩 (접수 구분 · 대분류 · VOC 코드 · 원인 · 처리)
+    const chip=(id,fn)=>document.getElementById(id).addEventListener('click',e=>{ const b=e.target.closest('[data-v]'); if(!b||!_csi.form) return; fn(b.dataset.v); _csi.form.dirty=true; _csiRenderChips(); });
+    chip('csiFKinds',v=>{ _csi.form.kind = _csi.form.kind===v ? '' : v; });
+    chip('csiFCats',v=>{ if(_csi.form.cat!==v){ _csi.form.cat=v; _csi.form.code=''; } });
+    chip('csiFCodes',v=>{ _csi.form.code = _csi.form.code===v ? '' : v; });
+    chip('csiFCauses',v=>{ _csi.form.cause = _csi.form.cause===v ? '' : v; });
+    chip('csiFActions',v=>{ _csi.form.action = _csi.form.action===v ? '' : v; });
     document.getElementById('csiFBrand').addEventListener('change',e=>_csiFillProductList(e.target.value));
     document.getElementById('csiForm').addEventListener('input',()=>{ if(_csi.form) _csi.form.dirty=true });
     document.getElementById('csiFDetail').addEventListener('keydown',e=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); csiFormSave(false); } });
@@ -31227,6 +31323,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('csiImpMap').addEventListener('change',e=>{ const s=e.target.closest('select[data-field]'); if(!s||!_csi.imp) return; _csi.imp.map[s.dataset.field]=+s.value; _csiImpPreview(); });
     document.getElementById('csiImpDefCh').addEventListener('change',e=>{ if(_csi.imp){ _csi.imp.defCh=e.target.value; _csiImpPreview(); } });
     document.getElementById('csiImpDefBrand').addEventListener('change',e=>{ if(_csi.imp){ _csi.imp.defBrand=e.target.value; _csiImpPreview(); } });
+    document.getElementById('csiImpDefKind').addEventListener('change',e=>{ if(_csi.imp){ _csi.imp.defKind=e.target.value; _csiImpPreview(); } });
     document.getElementById('csiNoteState').addEventListener('click',()=>{ if(_csi.note.err) _csiSaveNote() });
     // 창 폭이 바뀌면 추이 그래프만 다시
     let rt=null;
@@ -31311,11 +31408,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     el.textContent=_csi.loaded ? `최근 ${CSI_LOAD_DAYS}일 ${_csiN(_csi.rows.length)}건 · ${new Date(_csi.syncedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})} 갱신` : '';
   }
 
-  /* ── 설정 (전달 팀 · 고질 기준) ── */
+  /* ── 설정 (원인별 전달 팀 · 고질 기준) ── */
   function _csiNormSettings(v){
-    const out={routing:{}, chronicMin:3, chronicWeeks:2};
+    const out={causeRouting:{}, chronicMin:3, chronicWeeks:2};
     if(v && typeof v==='object'){
-      if(v.routing && typeof v.routing==='object') for(const c of CSI_CATS){ const t=v.routing[c.key]; if(t==='' || CSI_TEAMS.some(x=>x.key===t)) out.routing[c.key]=t; }
+      if(v.causeRouting && typeof v.causeRouting==='object') for(const [c] of CSI_CAUSES){ const t=v.causeRouting[c]; if(c!=='확인 중' && CSI_TEAMS.some(x=>x.key===t)) out.causeRouting[c]=t; }
       const m=Math.round(+v.chronicMin), w=Math.round(+v.chronicWeeks);
       if(m>=2 && m<=20) out.chronicMin=m;
       if(w>=1 && w<=4) out.chronicWeeks=w;
@@ -31330,8 +31427,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     csiRender();
   }
   function csiOpenSettings(){
-    const teamOpts=sel=>[['','CS에서 처리 (전달 안 함)'],...CSI_TEAMS.map(t=>[t.key,t.label])].map(([k,l])=>`<option value="${k}"${k===sel?' selected':''}>${_esc(l)}</option>`).join('');
-    document.getElementById('csiSetRows').innerHTML=CSI_CATS.map(c=>`<label class="csi-set-row"><span>${_esc(c.label)} <span class="csi-muted">${_esc(c.subs.join(' · '))}</span></span><select data-cat="${c.key}">${teamOpts(_csiTeamOf(c.key))}</select></label>`).join('');
+    const teamOpts=sel=>CSI_TEAMS.map(t=>`<option value="${t.key}"${t.key===sel?' selected':''}>${_esc(t.key==='cs'?'CS팀 (전달 안 함)':t.label)}</option>`).join('');
+    document.getElementById('csiSetRows').innerHTML=CSI_CAUSES.filter(([c])=>c!=='확인 중').map(([c])=>`<label class="csi-set-row"><span>${_esc(c)}</span><select data-cause="${_esc(c)}">${teamOpts(_csiCauseTeam(c))}</select></label>`).join('')
+      +`<div class="csi-set-row"><span>확인 중 · 원인 비움</span><span class="csi-muted">VOC 코드 기본 팀</span></div>`;
     const s=_csi.settings;
     document.getElementById('csiSetMin').innerHTML=[2,3,4,5,6,8,10].map(n=>`<option value="${n}"${n===s.chronicMin?' selected':''}>${n}건 이상</option>`).join('');
     document.getElementById('csiSetWeeks').innerHTML=[1,2,3,4].map(n=>`<option value="${n}"${n===s.chronicWeeks?' selected':''}>${n===1?'1주 (몇 주든 상관없이)':n+'주 이상'}</option>`).join('');
@@ -31341,8 +31439,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function csiCloseSettings(){ document.getElementById('csiSetModal').classList.remove('show') }
   async function csiSaveSettings(){
-    const v={routing:{}, chronicMin:+document.getElementById('csiSetMin').value, chronicWeeks:+document.getElementById('csiSetWeeks').value};
-    document.querySelectorAll('#csiSetRows select[data-cat]').forEach(s=>{ v.routing[s.dataset.cat]=s.value });
+    const v={causeRouting:{}, chronicMin:+document.getElementById('csiSetMin').value, chronicWeeks:+document.getElementById('csiSetWeeks').value};
+    document.querySelectorAll('#csiSetRows select[data-cause]').forEach(s=>{ v.causeRouting[s.dataset.cause]=s.value });
     const btn=document.getElementById('csiSetSave'), msg=document.getElementById('csiSetMsg');
     btn.disabled=true; msg.className='csi-f-msg'; msg.textContent='저장 중…';
     try{
@@ -31382,15 +31480,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ── 분석 ── */
-  function _csiGroupKey(r){ return [r.brand, _csiKeyName(r.product), r.category, r.sub||''].join('|') }
+  function _csiGroupKey(r){ return [r.brand, _csiKeyName(r.product), r.code || (r.category+':'+(r.sub||''))].join('|') }
   function _csiProdRank(rows){
     const g=new Map();
     for(const r of rows){
-      if(r.category!=='defect') continue;
+      if(r.category!=='Q') continue;
       const k=r.brand+'|'+_csiKeyName(r.product);
       let x=g.get(k);
       if(!x){ x={brand:r.brand, product:_csiNormName(r.product), n:0, subs:new Map()}; g.set(k,x); }
-      x.n++; const s=r.sub||'기타 불량'; x.subs.set(s,(x.subs.get(s)||0)+1);
+      x.n++; const s=_csiSymptom(r); x.subs.set(s,(x.subs.get(s)||0)+1);
     }
     return [...g.values()].sort((a,b)=>b.n-a.n || a.product.localeCompare(b.product,'ko'));
   }
@@ -31404,22 +31502,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     for(const r of rows){
       const k=_csiGroupKey(r);
       let x=g.get(k);
-      if(!x){ x={brand:r.brand, product:_csiNormName(r.product), category:r.category, sub:r.sub||'', n:0, opts:new Map()}; g.set(k,x); }
+      if(!x){ x={key:k, brand:r.brand, product:_csiNormName(r.product), category:r.category, code:r.code, label:_csiCodeLabel(r), n:0, opts:new Map()}; g.set(k,x); }
       x.n++; if(r.option_text){ const o=_csiNormName(r.option_text); x.opts.set(o,(x.opts.get(o)||0)+1); }
     }
     return [...g.values()].sort((a,b)=>b.n-a.n || a.product.localeCompare(b.product,'ko'));
   }
   function _csiTopOpt(m){ let best='', n=0; for(const [k,v] of m) if(v>n){ best=k; n=v; } return n>=2 ? `${best} ${n}건` : '' }
-  /* 고질 문제 — 기준일까지 30일 안에 같은 상품 · 같은 증상이 N건 이상, M주 이상에 걸쳐. 단순 변심 · 기타 문의는 제품 문제가 아니라 뺀다 */
+  /* 고질 문제 — 기준일까지 30일 안에 같은 상품 · 같은 VOC 코드가 N건 이상, M주 이상에 걸쳐. 회사 귀책(Q·S·I·D)만 본다 */
   function _csiChronic(){
     const d=_csi.date||_csiToday();
     const min=_csi.settings.chronicMin, minW=_csi.settings.chronicWeeks;
     const g=new Map();
     for(const r of _csiFilter(_csiAdd(d,-55), d)){
-      if(r.category==='change' || r.category==='etc') continue;
+      if(!CSI_COMPANY.has(r.category)) continue;
       const k=_csiGroupKey(r);
       let x=g.get(k);
-      if(!x){ x={key:k, brand:r.brand, product:_csiNormName(r.product), category:r.category, sub:r.sub||'', n30:0, weeks:new Set(), w8:new Array(8).fill(0), first:'', last:'', opts:new Map()}; g.set(k,x); }
+      if(!x){ x={key:k, brand:r.brand, product:_csiNormName(r.product), category:r.category, code:r.code, label:_csiCodeLabel(r), n30:0, weeks:new Set(), w8:new Array(8).fill(0), first:'', last:'', opts:new Map(), teams:new Map()}; g.set(k,x); }
       const age=_csiDiff(d,r.issue_date), wi=Math.floor(age/7);
       if(wi>=0 && wi<8) x.w8[7-wi]++;
       if(age<30){
@@ -31427,9 +31525,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(!x.first || r.issue_date<x.first) x.first=r.issue_date;
         if(!x.last || r.issue_date>x.last) x.last=r.issue_date;
         if(r.option_text){ const o=_csiNormName(r.option_text); x.opts.set(o,(x.opts.get(o)||0)+1); }
+        const t=_csiTeamOf(r); x.teams.set(t,(x.teams.get(t)||0)+1);
       }
     }
-    return [...g.values()].filter(x=>x.n30>=min && x.weeks.size>=minW).sort((a,b)=>b.n30-a.n30 || (a.last<b.last?1:-1));
+    return [...g.values()].filter(x=>x.n30>=min && x.weeks.size>=minW).map(x=>Object.assign(x,{team:_csiMajor(x.teams)})).sort((a,b)=>b.n30-a.n30 || (a.last<b.last?1:-1));
   }
 
   /* ── 그리기 ── */
@@ -31462,11 +31561,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _csiRenderChronic(chronic);
     _csiRenderTeams(P,cur,chronic);
     _csiRenderReport(chronic);
-    _csiRenderList(P,cur);
+    _csiRenderList(P);
   }
   function _csiRenderKpis(P,cur,prev,chronic){
-    const def=cur.filter(r=>r.category==='defect').length, pdef=prev.filter(r=>r.category==='defect').length;
-    const ret=cur.filter(r=>CSI_RETURN_ACTIONS.has(r.action)).length, pret=prev.filter(r=>CSI_RETURN_ACTIONS.has(r.action)).length;
+    const def=cur.filter(r=>r.category==='Q').length, pdef=prev.filter(r=>r.category==='Q').length;
+    const ret=cur.filter(r=>CSI_RETURN_KINDS.has(r.kind)).length, pret=prev.filter(r=>CSI_RETURN_KINDS.has(r.kind)).length;
     const pl=_csiPrevLabel(P);
     const delta=(c,p)=>{
       const d=c-p, cls=d>0?'up':d<0?'down':'';
@@ -31478,39 +31577,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('csiKpis').innerHTML=
       tile('접수', cur.length, '건', delta(cur.length, prev.length)) +
       tile('제품 불량', def, '건', delta(def,pdef)+`<div class="csi-kpi-sub">전체의 ${share}%</div>`) +
-      tile('교환 · 반품', ret, '건', delta(ret,pret)) +
-      tile(`${chronic.length?'⚠ ':''}고질 문제`, chronic.length, '가지', `<div class="csi-kpi-sub">기준일까지 30일 · 같은 증상 ${s.chronicMin}건 이상${s.chronicWeeks>1?` · ${s.chronicWeeks}주 이상`:''}</div>`, chronic.length?'is-warn':'');
+      tile('교환 · 반품', ret, '건', delta(ret,pret)+'<div class="csi-kpi-sub">접수 구분 기준</div>') +
+      tile(`${chronic.length?'⚠ ':''}고질 문제`, chronic.length, '가지', `<div class="csi-kpi-sub">기준일까지 30일 · 같은 VOC 코드 ${s.chronicMin}건 이상${s.chronicWeeks>1?` · ${s.chronicWeeks}주 이상`:''}</div>`, chronic.length?'is-warn':'');
   }
   function _csiRenderProducts(P,cur){
     const el=document.getElementById('csiProd');
     const rank=_csiProdRank(cur), top=rank.slice(0,10);
-    const head=`<div class="csi-card-head"><div><div class="csi-card-title">불량 많은 상품 TOP ${top.length||10}</div><div class="csi-card-sub">${_csiPeriodDesc(P)} · 제품 불량 건수${rank.length>10?` · 불량 난 상품 ${rank.length}개 중`:''}</div></div></div>`;
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">불량 많은 상품 TOP ${top.length||10}</div><div class="csi-card-sub">${_csiPeriodDesc(P)} · 제품 불량(Q) 건수${rank.length>10?` · 불량 난 상품 ${rank.length}개 중`:''}</div></div></div>`;
     if(!top.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 제품 불량 기록이 없어요</div>'; return; }
     const max=top[0].n;
     el.innerHTML=head+`<div class="csi-hbars">${top.map((x,i)=>{
       const name=(_csi.brand||!x.brand?'':`<span class="b">${_esc(_csiBrandLabel(x.brand))}</span>`)+_esc(x.product);
-      const subs=_csiSubsText(x.subs,3);
       const tip=`${x.n}건 · ${i+1}위\n${_csiBrandLabel(x.brand)} · ${x.product}\n${_csiSubsText(x.subs,8)}`;
       return `<div class="csi-hbar" tabindex="0" data-tip="${_esc(tip)}" aria-label="${_esc(`${i+1}위 ${x.product} ${x.n}건`)}">
         <div class="csi-hbar-label">${name}</div>
         <div class="csi-hbar-track"><div class="csi-hbar-fill" style="width:calc((100% - 52px) * ${(x.n/max).toFixed(4)})"></div><span class="csi-hbar-val">${_csiN(x.n)}건</span></div>
-        <div class="csi-hbar-sub">${_esc(subs)}</div></div>`;
+        <div class="csi-hbar-sub">${_esc(_csiSubsText(x.subs,3))}</div></div>`;
     }).join('')}</div>`;
   }
   function _csiRenderCats(P,cur){
     const el=document.getElementById('csiCats');
     const by=new Map();
-    for(const r of cur){ const k=CSI_CAT[r.category]?r.category:'etc'; let x=by.get(k); if(!x){ x={n:0,subs:new Map()}; by.set(k,x); } x.n++; const s=r.sub||'기타'; x.subs.set(s,(x.subs.get(s)||0)+1); }
+    for(const r of cur){ const k=CSI_CAT[r.category]?r.category:'E'; let x=by.get(k); if(!x){ x={n:0,subs:new Map()}; by.set(k,x); } x.n++; const s=_csiSymptom(r); x.subs.set(s,(x.subs.get(s)||0)+1); }
     const arr=[...by.entries()].sort((a,b)=>b[1].n-a[1].n);
-    const head=`<div class="csi-card-head"><div><div class="csi-card-title">유형별 CS</div><div class="csi-card-sub">${_csiPeriodDesc(P)} · 전체 ${_csiN(cur.length)}건</div></div></div>`;
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">대분류별 CS</div><div class="csi-card-sub">${_csiPeriodDesc(P)} · 전체 ${_csiN(cur.length)}건</div></div></div>`;
     if(!arr.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 기록이 없어요</div>'; return; }
     const max=arr[0][1].n;
     el.innerHTML=head+`<div class="csi-hbars">${arr.map(([k,x])=>{
-      const team=CSI_TEAM_LABEL[_csiTeamOf(k)]||'';
       const pct=Math.round(x.n/cur.length*100);
-      const tip=`${x.n}건 · ${pct}%\n${_csiCatLabel(k)}${team?` → ${team}`:''}\n${_csiSubsText(x.subs,8)}`;
+      const tip=`${x.n}건 · ${pct}%\n${k} ${_csiCatLabel(k)}\n${_csiSubsText(x.subs,8)}`;
       return `<div class="csi-hbar" tabindex="0" data-tip="${_esc(tip)}" aria-label="${_esc(`${_csiCatLabel(k)} ${x.n}건`)}">
-        <div class="csi-hbar-label">${_esc(_csiCatLabel(k))}${team?`<span class="t">→ ${_esc(team)}</span>`:''}</div>
+        <div class="csi-hbar-label"><span class="b">${k}</span>${_esc(_csiCatLabel(k))}</div>
         <div class="csi-hbar-track"><div class="csi-hbar-fill" style="width:calc((100% - 86px) * ${(x.n/max).toFixed(4)})"></div><span class="csi-hbar-val">${_csiN(x.n)}건<small>${pct}%</small></span></div>
         <div class="csi-hbar-sub">${_esc(_csiSubsText(x.subs,3))}</div></div>`;
     }).join('')}</div>`;
@@ -31520,19 +31617,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     for(const m of [1,2,2.5,5,10]){ const s=m*p; if(s>=raw && Number.isInteger(s)) return s; }
     return Math.ceil(raw);
   }
+  // 일별 추이 — 제품 불량(Q) · 그 외 회사 귀책(S·I·D) · 고객 사유·문의(C·O·V·E) 누적 막대 (VOC 시트 '현황'의 8주 추이와 같은 묶음)
   function _csiRenderTrend(P){
     const el=document.getElementById('csiTrend');
     const days=P.len<=7 ? 14 : P.len, to=P.to, from=_csiAdd(to,-(days-1));
     const dates=[]; for(let i=0;i<days;i++) dates.push(_csiAdd(from,i));
     const idx=new Map(dates.map((d,i)=>[d,i]));
-    const def=new Array(days).fill(0), oth=new Array(days).fill(0);
-    for(const r of _csiFilter(from,to)){ const i=idx.get(r.issue_date); if(i==null) continue; if(r.category==='defect') def[i]++; else oth[i]++; }
-    const tot=def.map((v,i)=>v+oth[i]), sum=tot.reduce((a,b)=>a+b,0), dsum=def.reduce((a,b)=>a+b,0);
-    const head=`<div class="csi-card-head"><div><div class="csi-card-title">일별 추이 · 최근 ${days}일</div><div class="csi-card-sub">${_csiMd(from)} ~ ${_csiMd(to)} · 전체 ${_csiN(sum)}건 중 제품 불량 ${_csiN(dsum)}건 · 하루 평균 ${(sum/days).toFixed(1)}건</div></div>
-      <div class="csi-legend"><span><i style="background:var(--csi-accent)"></i>제품 불량</span><span><i style="background:var(--csi-other)"></i>그 외</span><button type="button" class="csi-tbl-toggle" data-act="trend-table">${_csi.trendTable?'그래프로 보기':'표로 보기'}</button></div></div>`;
+    const G={q:new Array(days).fill(0), co:new Array(days).fill(0), cu:new Array(days).fill(0)};
+    for(const r of _csiFilter(from,to)){ const i=idx.get(r.issue_date); if(i==null) continue; G[_csiGroupOf(r.category)][i]++; }
+    const tot=dates.map((d,i)=>G.q[i]+G.co[i]+G.cu[i]), sum=tot.reduce((a,b)=>a+b,0), qsum=G.q.reduce((a,b)=>a+b,0);
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">일별 추이 · 최근 ${days}일</div><div class="csi-card-sub">${_csiMd(from)} ~ ${_csiMd(to)} · 전체 ${_csiN(sum)}건 중 제품 불량 ${_csiN(qsum)}건 · 하루 평균 ${(sum/days).toFixed(1)}건</div></div>
+      <div class="csi-legend"><span><i style="background:var(--csi-accent)"></i>제품 불량</span><span><i style="background:var(--csi-co)"></i>그 외 회사 귀책</span><span><i style="background:var(--csi-other)"></i>고객 사유·문의</span><button type="button" class="csi-tbl-toggle" data-act="trend-table">${_csi.trendTable?'그래프로 보기':'표로 보기'}</button></div></div>`;
     if(_csi.trendTable){
-      el.innerHTML=head+`<div class="csi-scroll csi-tbl-max"><table class="csi-tbl"><thead><tr><th>날짜</th><th class="n">전체</th><th class="n">제품 불량</th><th class="n">그 외</th></tr></thead><tbody>${
-        dates.map((d,i)=>[d,i]).reverse().map(([d,i])=>`<tr><td class="nw">${_csiMd(d)} (${_csiDow(d)})</td><td class="n">${tot[i]}</td><td class="n">${def[i]}</td><td class="n">${oth[i]}</td></tr>`).join('')
+      el.innerHTML=head+`<div class="csi-scroll csi-tbl-max"><table class="csi-tbl"><thead><tr><th>날짜</th><th class="n">전체</th><th class="n">제품 불량</th><th class="n">그 외 회사 귀책</th><th class="n">고객 사유·문의</th></tr></thead><tbody>${
+        dates.map((d,i)=>[d,i]).reverse().map(([d,i])=>`<tr><td class="nw">${_csiMd(d)} (${_csiDow(d)})</td><td class="n">${tot[i]}</td><td class="n">${G.q[i]}</td><td class="n">${G.co[i]}</td><td class="n">${G.cu[i]}</td></tr>`).join('')
       }</tbody></table></div>`;
       return;
     }
@@ -31544,18 +31642,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let g='';
     for(let v=0; v<=top+1e-9; v+=step){ const yy=y(v).toFixed(1); g+=`<line class="csi-gridline" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text x="${L-6}" y="${(+yy+3.5).toFixed(1)}" text-anchor="end">${v}</text>`; }
     const sw=iw/days, bw=Math.min(24, Math.max(3, sw*0.62)), every=Math.max(1, Math.ceil(days/8)), base=T+ih;
+    const SEGS=[['q','csi-seg-def'],['co','csi-seg-co'],['cu','csi-seg-oth']];
     dates.forEach((d,i)=>{
-      const cx=L+sw*i+sw/2, x=cx-bw/2, dv=def[i], ov=oth[i];
-      const hd=dv/top*ih, ht=(dv+ov)/top*ih, gap=(dv>0&&ov>0)?2:0;
-      let seg='';
-      if(dv>0) seg+=`<path class="csi-seg-def" d="${_csiColPath(x, base-hd, bw, hd, ov>0?0:4)}"/>`;
-      if(ov>0){ const ho=Math.max(1, ht-hd-gap); seg+=`<path class="csi-seg-oth" d="${_csiColPath(x, base-hd-gap-ho, bw, ho, 4)}"/>`; }
-      const tip=`${dv+ov}건 · ${_csiMd(d)} (${_csiDow(d)})\n제품 불량 ${dv}건 · 그 외 ${ov}건`;
+      const cx=L+sw*i+sw/2, x=cx-bw/2;
+      const vals=SEGS.map(([k])=>G[k][i]);
+      const lastOn=vals.reduce((a,v,j)=>v>0?j:a,-1);
+      let seg='', cum=0, drawn=false;
+      SEGS.forEach(([k,cls],j)=>{
+        const v=vals[j]; if(!v) return;
+        const bottom=y(cum)-(drawn?2:0); cum+=v;
+        const topY=y(cum), h=Math.max(1,bottom-topY);
+        seg+=`<path class="${cls}" d="${_csiColPath(x, bottom-h, bw, h, j===lastOn?4:0)}"/>`;
+        drawn=true;
+      });
+      const tip=`${tot[i]}건 · ${_csiMd(d)} (${_csiDow(d)})\n제품 불량 ${G.q[i]} · 그 외 회사 귀책 ${G.co[i]} · 고객 사유·문의 ${G.cu[i]}`;
       g+=`<g class="csi-col" data-tip="${_esc(tip)}"><rect class="hit" x="${(L+sw*i).toFixed(1)}" y="${T}" width="${sw.toFixed(1)}" height="${ih}"/>${seg}</g>`;
       if((days-1-i)%every===0) g+=`<text x="${cx.toFixed(1)}" y="${H-9}" text-anchor="middle"${i===days-1?' class="csi-col-today"':''}>${_csiMd(d)}</text>`;
     });
     g+=`<line class="csi-axisline" x1="${L}" x2="${W-R}" y1="${base}" y2="${base}"/>`;
-    el.innerHTML=head+`<svg class="csi-trend-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${_esc(`최근 ${days}일 일별 CS 건수, 제품 불량과 그 외. 숫자는 표로 보기에서`)}">${g}</svg>`;
+    el.innerHTML=head+`<svg class="csi-trend-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${_esc(`최근 ${days}일 일별 CS 건수, 제품 불량 · 그 외 회사 귀책 · 고객 사유와 문의. 숫자는 표로 보기에서`)}">${g}</svg>`;
   }
   function _csiSpark(w8){
     const max=Math.max(1,...w8), Wd=8*9-2, Hd=20;
@@ -31567,41 +31672,39 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
     return `<svg class="csi-spark" viewBox="0 0 ${Wd} ${Hd}" width="${Wd}" height="${Hd}" aria-hidden="true">${s}</svg>`;
   }
+  function _csiSevChip(code){ const c=CSI_CODE[code]; return c && c.sev==='긴급' ? ' <span class="csi-warn-chip csi-urgent">긴급</span>' : '' }
   function _csiRenderChronic(chronic){
     const el=document.getElementById('csiChronic');
     const s=_csi.settings;
-    const head=`<div class="csi-card-head"><div><div class="csi-card-title">⚠ 고질 문제</div><div class="csi-card-sub">${_csiMd(_csiAdd(_csi.date||_csiToday(),-29))} ~ ${_csiMd(_csi.date||_csiToday())} 30일 동안 같은 상품에서 같은 증상이 ${s.chronicMin}건 이상${s.chronicWeeks>1?`, ${s.chronicWeeks}주 이상에 걸쳐`:''} 나온 것 · 단순 변심 · 기타 문의는 빼요</div></div></div>`;
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">⚠ 고질 문제</div><div class="csi-card-sub">${_csiMd(_csiAdd(_csi.date||_csiToday(),-29))} ~ ${_csiMd(_csi.date||_csiToday())} 30일 동안 같은 상품에서 같은 VOC 코드가 ${s.chronicMin}건 이상${s.chronicWeeks>1?`, ${s.chronicWeeks}주 이상에 걸쳐`:''} 나온 것 · 회사 귀책(Q·S·I·D)만</div></div></div>`;
     if(!chronic.length){ el.innerHTML=head+'<div class="csi-empty-line">지금은 고질 문제가 없어요</div>'; return; }
-    el.innerHTML=head+`<div class="csi-scroll"><table class="csi-tbl csi-tbl-chronic"><thead><tr><th>상품</th><th>증상</th><th class="n">30일</th><th class="n">반복</th><th>최근 8주</th><th>처음 → 최근</th><th>전달</th></tr></thead><tbody>${chronic.map(x=>{
-      const team=CSI_TEAM_LABEL[_csiTeamOf(x.category)]||'CS';
+    el.innerHTML=head+`<div class="csi-scroll"><table class="csi-tbl csi-tbl-chronic"><thead><tr><th>상품</th><th>VOC 코드</th><th class="n">30일</th><th class="n">반복</th><th>최근 8주</th><th>처음 → 최근</th><th>전달</th></tr></thead><tbody>${chronic.map(x=>{
       const opt=_csiTopOpt(x.opts);
       const tip=`8주 전 → 이번 주\n${x.w8.join(' · ')}`;
       return `<tr><td><b>${_esc(x.product)}</b><div class="csi-muted">${_esc(_csiBrandLabel(x.brand))}${opt?` · 많은 옵션 ${_esc(opt)}`:''}</div></td>
-        <td>${_esc(x.sub||_csiCatLabel(x.category))}<div class="csi-muted">${_esc(_csiCatLabel(x.category))}</div></td>
+        <td>${_esc(x.label)}${_csiSevChip(x.code)}<div class="csi-muted">${_esc(_csiCatLabel(x.category))}</div></td>
         <td class="n"><b>${x.n30}건</b></td><td class="n">${x.weeks.size}주</td>
         <td data-tip="${_esc(tip)}">${_csiSpark(x.w8)}</td>
         <td class="nw csi-muted">${_csiMd(x.first)} → ${_csiMd(x.last)}</td>
-        <td><span class="csi-team-chip">${_esc(team)}</span></td></tr>`;
+        <td><span class="csi-team-chip">${_esc(CSI_TEAM_LABEL[x.team]||'CS팀')}</span></td></tr>`;
     }).join('')}</tbody></table></div>`;
   }
   function _csiRenderTeams(P,cur,chronic){
     const el=document.getElementById('csiTeams');
     const chr=new Set(chronic.map(x=>x.key));
-    const cards=CSI_TEAMS.map(t=>{
-      const cats=CSI_CATS.filter(c=>_csiTeamOf(c.key)===t.key);
-      const rows=cur.filter(r=>_csiTeamOf(r.category)===t.key);
-      if(!cats.length && !rows.length) return '';
+    const selfN=cur.filter(r=>_csiTeamOf(r)==='cs').length;
+    const cards=CSI_TEAMS.filter(t=>t.key!=='cs').map(t=>{
+      const rows=cur.filter(r=>_csiTeamOf(r)===t.key);
+      if(t.key==='mkt' && !rows.length) return '';
       const groups=_csiGroups(rows);
       const list=groups.slice(0,6).map(gp=>{
         const opt=_csiTopOpt(gp.opts);
-        return `<li><b>${_esc(gp.product)}</b> <span class="csi-muted">${_esc(_csi.brand||!gp.brand?'':_csiBrandLabel(gp.brand))}</span><br>${_esc(gp.sub||_csiCatLabel(gp.category))} <span class="n">${gp.n}건</span>${opt?` <span class="csi-muted">(${_esc(opt)})</span>`:''}${chr.has(_csiGroupKey(gp))?' <span class="csi-warn-chip">⚠ 고질</span>':''}</li>`;
+        return `<li><b>${_esc(gp.product)}</b> <span class="csi-muted">${_esc(_csi.brand||!gp.brand?'':_csiBrandLabel(gp.brand))}</span><br>${_esc(gp.label)} <span class="n">${gp.n}건</span>${opt?` <span class="csi-muted">(${_esc(opt)})</span>`:''}${_csiSevChip(gp.code)}${chr.has(gp.key)?' <span class="csi-warn-chip">⚠ 고질</span>':''}</li>`;
       }).join('');
       return `<div class="csi-team"><div class="csi-team-head"><span class="csi-team-name">${_esc(t.label)}</span><span class="csi-team-count">${_csiN(rows.length)}건</span></div>
-        ${groups.length ? `<ul class="csi-team-list">${list}</ul>${groups.length>6?`<div class="csi-muted" style="margin-top:6px">그 외 ${groups.length-6}가지</div>`:''}` : '<div class="csi-empty-line" style="padding:12px 0">이 기간에 전달할 내용이 없어요</div>'}
-        <div class="csi-team-foot">받는 유형: ${cats.length?_esc(cats.map(c=>c.label).join(' · ')):'없음'}</div></div>`;
+        ${groups.length ? `<ul class="csi-team-list">${list}</ul>${groups.length>6?`<div class="csi-muted" style="margin-top:6px">그 외 ${groups.length-6}가지</div>`:''}` : '<div class="csi-empty-line" style="padding:12px 0">이 기간에 전달할 내용이 없어요</div>'}</div>`;
     }).join('');
-    const self=CSI_CATS.filter(c=>!_csiTeamOf(c.key)).map(c=>c.label);
-    el.innerHTML=`<div class="csi-sec-title">팀별 전달 사항<span>${_csiPeriodDesc(P)} · 같은 상품 · 같은 증상끼리 묶음${self.length?` · ${_esc(self.join(' · '))}는 CS에서 처리`:''}</span></div><div class="csi-teams">${cards||'<div class="csi-card csi-empty-line">전달 팀이 정해진 유형이 없어요 — ⚙ 전달 팀 설정에서 정해 주세요</div>'}</div>`;
+    el.innerHTML=`<div class="csi-sec-title">팀별 전달 사항<span>${_csiPeriodDesc(P)} · 같은 상품 · 같은 VOC 코드끼리 묶음 · 원인을 고르면 원인 기준, 아니면 VOC 코드 기본 팀${selfN?` · CS에서 처리 ${_csiN(selfN)}건`:''}</span></div><div class="csi-teams">${cards}</div>`;
   }
   function _csiReportText(chronic){
     const d=_csi.date||_csiToday(), y=_csiAdd(d,-1);
@@ -31612,7 +31715,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     L.push(`[CS 일일 리포트] ${_csiKoDate(d)}${tag?` · ${tag}`:''}`);
     const diff=day.length-yday.length;
     L.push(`접수 ${day.length}건 (전날 ${yday.length}건${diff?`, ${diff>0?'+':''}${diff}`:''}) · 최근 7일 ${week.length}건`);
-    const cats=_csiCountBy(day,r=>CSI_CAT[r.category]?r.category:'etc');
+    const cats=_csiCountBy(day,r=>CSI_CAT[r.category]?r.category:'E');
     if(cats.length) L.push('· '+cats.map(([k,n])=>`${_csiCatLabel(k)} ${n}`).join(' · '));
     L.push('');
     L.push('▶ 불량 많은 상품 (최근 7일)');
@@ -31621,18 +31724,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else L.push('· 없음');
     L.push('');
     const s=_csi.settings;
-    L.push(`⚠ 고질 문제 (30일 · 같은 증상 ${s.chronicMin}건 이상${s.chronicWeeks>1?` · ${s.chronicWeeks}주 이상`:''})`);
+    L.push(`⚠ 고질 문제 (30일 · 같은 VOC 코드 ${s.chronicMin}건 이상${s.chronicWeeks>1?` · ${s.chronicWeeks}주 이상`:''})`);
     if(chronic.length){
-      chronic.slice(0,5).forEach(x=>{ const t=CSI_TEAM_LABEL[_csiTeamOf(x.category)]; L.push(`· ${brand(x.brand)}${x.product} · ${x.sub||_csiCatLabel(x.category)} — ${x.n30}건, ${x.weeks.size}주에 걸쳐${t?` → ${t}`:''}`); });
+      chronic.slice(0,5).forEach(x=>{ const t=CSI_TEAM_LABEL[x.team]; L.push(`· ${brand(x.brand)}${x.product} · ${x.label} — ${x.n30}건, ${x.weeks.size}주에 걸쳐${t&&x.team!=='cs'?` → ${t}`:''}`); });
       if(chronic.length>5) L.push(`· 그 외 ${chronic.length-5}가지`);
     }else L.push('· 없음');
     let any=false;
     for(const t of CSI_TEAMS){
-      const gs=_csiGroups(day.filter(r=>_csiTeamOf(r.category)===t.key));
+      if(t.key==='cs') continue;
+      const gs=_csiGroups(day.filter(r=>_csiTeamOf(r)===t.key));
       if(!gs.length) continue;
       any=true;
       L.push(''); L.push(`▶ ${t.label} 전달 (오늘 ${gs.reduce((a,g)=>a+g.n,0)}건)`);
-      gs.slice(0,5).forEach(g=>{ const o=_csiTopOpt(g.opts); L.push(`· ${brand(g.brand)}${g.product} — ${g.sub||_csiCatLabel(g.category)} ${g.n}건${o?` (${o})`:''}`); });
+      gs.slice(0,5).forEach(g=>{ const o=_csiTopOpt(g.opts); L.push(`· ${brand(g.brand)}${g.product} — ${g.label} ${g.n}건${o?` (${o})`:''}`); });
       if(gs.length>5) L.push(`· 그 외 ${gs.length-5}가지`);
     }
     if(!any){ L.push(''); L.push('▶ 팀별 전달: 오늘 들어온 건은 없어요'); }
@@ -31660,15 +31764,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const el=document.getElementById('csiList');
     const q=_csiKeyName(_csi.q);
     let rows=_csiFilter(P.from,P.to);
-    if(q) rows=rows.filter(r=>_csiKeyName([r.product,r.option_text,r.detail,r.sub,_csiCatLabel(r.category),r.channel,_csiBrandLabel(r.brand),r.action,r.created_by].join(' ')).includes(q));
+    if(q) rows=rows.filter(r=>_csiKeyName([r.product,r.option_text,r.detail,_csiCodeLabel(r),_csiCatLabel(r.category),r.cause,r.kind,r.channel,_csiBrandLabel(r.brand),r.action,r.created_by].join(' ')).includes(q));
     document.getElementById('csiListSub').textContent=`${_csiPeriodDesc(P)} · ${_csiN(rows.length)}건${q?' (검색)':''} · 최근 순`;
     if(!rows.length){ el.innerHTML=`<div class="csi-empty-line">${q?'검색에 맞는 기록이 없어요':'이 기간에는 기록이 없어요'}</div>`; return; }
     const shown=rows.slice(0,_csi.listLimit);
-    el.innerHTML=`<div class="csi-scroll"><table class="csi-tbl csi-tbl-list"><thead><tr><th>날짜</th><th>채널</th><th>브랜드</th><th>상품 · 옵션</th><th>유형 · 증상</th><th>처리</th><th>내용</th><th>기록</th><th></th></tr></thead><tbody>${shown.map(r=>{
+    el.innerHTML=`<div class="csi-scroll"><table class="csi-tbl csi-tbl-list"><thead><tr><th>날짜</th><th>채널</th><th>브랜드</th><th>상품 · 옵션</th><th>구분</th><th>VOC 코드</th><th>원인 · 전달</th><th>처리</th><th>내용</th><th>기록</th><th></th></tr></thead><tbody>${shown.map(r=>{
       const photo=_csiSafeUrl(r.photo_url);
       return `<tr><td class="nw">${_csiMd(r.issue_date)}</td><td class="nw">${_esc(r.channel||'—')}</td><td class="nw">${_esc(r.brand?_csiBrandLabel(r.brand):'—')}</td>
         <td><b>${_esc(r.product)}</b>${r.option_text?`<div class="csi-muted">${_esc(r.option_text)}</div>`:''}</td>
-        <td class="nw">${_esc(_csiCatLabel(r.category))}${r.sub?`<div class="csi-muted">${_esc(r.sub)}</div>`:''}</td>
+        <td class="nw">${_esc(r.kind||'—')}</td>
+        <td>${_esc(_csiCodeLabel(r))}${_csiSevChip(r.code)}<div class="csi-muted">${_esc(_csiCatLabel(r.category))}</div></td>
+        <td class="nw">${_esc(r.cause||'원인 미입력')}<div class="csi-muted">→ ${_esc(CSI_TEAM_LABEL[_csiTeamOf(r)]||'CS팀')}</div></td>
         <td class="nw">${_esc(r.action||'—')}</td>
         <td class="csi-detail">${_esc(r.detail)}${photo?`<a class="csi-photo" href="${_esc(photo)}" target="_blank" rel="noopener noreferrer">📷 사진</a>`:''}</td>
         <td class="nw csi-muted">${_esc(r.created_by||'—')}${r.source==='import'?'<br>엑셀':''}</td>
@@ -31719,20 +31825,27 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function _csiRenderChips(){
     const f=_csi.form; if(!f) return;
-    document.getElementById('csiFCats').innerHTML=CSI_CATS.map(c=>`<button type="button" class="csi-chip${f.cat===c.key?' on':''}" data-cat="${c.key}" aria-pressed="${f.cat===c.key}">${_esc(c.label)}</button>`).join('');
-    const cat=CSI_CAT[f.cat];
-    const subs=cat ? cat.subs.slice() : [];
-    if(f.sub && !subs.includes(f.sub)) subs.push(f.sub);
-    document.getElementById('csiFSubs').innerHTML=cat
-      ? subs.map(s=>`<button type="button" class="csi-chip${f.sub===s?' on':''}" data-sub="${_esc(s)}" aria-pressed="${f.sub===s}">${_esc(s)}</button>`).join('')
-      : '<span class="csi-muted">유형을 먼저 고르세요</span>';
-    document.getElementById('csiFActions').innerHTML=CSI_ACTIONS.map(a=>`<button type="button" class="csi-chip${f.action===a?' on':''}" data-action="${_esc(a)}" aria-pressed="${f.action===a}">${_esc(a)}</button>`).join('');
+    const chips=(id,items,cur)=>{ document.getElementById(id).innerHTML=items.map(([v,html,title])=>`<button type="button" class="csi-chip${cur===v?' on':''}" data-v="${_esc(v)}" aria-pressed="${cur===v}"${title?` title="${_esc(title)}"`:''}>${html}</button>`).join(''); };
+    chips('csiFKinds', CSI_KINDS.map(k=>[k,_esc(k)]), f.kind);
+    chips('csiFCats', CSI_CATS.map(c=>[c.key,`<span class="cc">${c.key}</span>${_esc(c.label)}`]), f.cat);
+    const codes=CSI_CODES.filter(c=>c.cat===f.cat);
+    if(f.cat) chips('csiFCodes', codes.map(c=>[c.code,`<span class="cc">${c.code}</span>${_esc(c.name)}`,`${c.mid} · ${c.def}`]), f.code);
+    else document.getElementById('csiFCodes').innerHTML='<span class="csi-muted">대분류를 먼저 고르세요</span>';
+    chips('csiFCauses', CSI_CAUSES.map(([c])=>[c,_esc(c)]), f.cause);
+    chips('csiFActions', CSI_ACTIONS.map(a=>[a,_esc(a)]), f.action);
+    // 고른 코드의 기준 · 전달 팀
+    const hint=document.getElementById('csiFHint'), c=CSI_CODE[f.code];
+    if(c){
+      const team=_csiTeamOf({code:c.code, category:c.cat, cause:f.cause});
+      hint.textContent=`${c.def} · 전달: ${CSI_TEAM_LABEL[team]||'CS팀'}${f.cause&&f.cause!=='확인 중'?' (원인 기준)':''} · 심각도 ${c.sev}`;
+      hint.hidden=false;
+    }else hint.hidden=true;
   }
   function csiOpenForm(id){
     if(!_csi.inited) return;
     const r=id!=null ? _csi.byId.get(id) : null;
     if(id!=null && !r){ toast('그 기록을 찾지 못했어요 — 새로고침해 주세요','err'); return; }
-    _csi.form={id:r?r.id:null, cat:r?r.category:'', sub:r?(r.sub||''):'', action:r?(r.action||''):'', dirty:false};
+    _csi.form={id:r?r.id:null, kind:r?(r.kind||''):_csi.lastFormKind, cat:r?r.category:'', code:r?(r.code||''):'', cause:r?(r.cause||''):'', action:r?(r.action||''):'', dirty:false};
     const g=k=>document.getElementById(k);
     g('csiFormTitle').textContent=r ? '기록 고치기' : 'CS 이슈 기록';
     g('csiFSaveMore').hidden=!!r;
@@ -31764,13 +31877,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const g=k=>document.getElementById(k), msg=g('csiFMsg');
     const say=(t,ok)=>{ msg.textContent=t; msg.className='csi-f-msg'+(ok?' ok':''); };
     const date=g('csiFDate').value, product=_csiNormName(g('csiFProduct').value), photo=g('csiFPhoto').value.trim();
+    const c=CSI_CODE[f.code];
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ say('날짜를 넣어 주세요'); g('csiFDate').focus(); return; }
     if(!product){ say('상품명을 넣어 주세요'); g('csiFProduct').focus(); return; }
-    if(!f.cat){ say('유형을 골라 주세요'); return; }
+    if(!f.kind){ say('접수 구분을 골라 주세요'); return; }
+    if(!c){ say(f.cat ? 'VOC 코드(증상)를 골라 주세요' : '대분류와 VOC 코드(증상)를 골라 주세요'); return; }
     if(photo && !_csiSafeUrl(photo)){ say('사진 링크는 http:// 나 https:// 로 시작해야 해요'); g('csiFPhoto').focus(); return; }
     const me=_csiMe();
-    const row={issue_date:date, channel:g('csiFChannel').value, brand:g('csiFBrand').value, product:_csiScrub(product).slice(0,200),
-      option_text:_csiScrub(g('csiFOption').value).slice(0,200), category:f.cat, sub:(f.sub||'').slice(0,60),
+    const row={issue_date:date, channel:g('csiFChannel').value, brand:g('csiFBrand').value, kind:f.kind, product:_csiScrub(product).slice(0,200),
+      option_text:_csiScrub(g('csiFOption').value).slice(0,200), category:c.cat, code:c.code, sub:c.name.slice(0,60), cause:f.cause||'',
       detail:_csiScrub(g('csiFDetail').value).slice(0,1000), action:f.action||'', photo_url:photo.slice(0,500), updated_by:me};
     _csi.saving=true; g('csiFSave').disabled=true; g('csiFSaveMore').disabled=true; say('저장 중…',true);
     try{
@@ -31785,10 +31900,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const saved=(await res.json())[0];
       if(!saved) throw new Error('응답 없음');
       _csiPutLocal(saved); _csiRebuild(); csiRender();
-      _csi.lastFormCh=row.channel; _csi.lastFormBrand=row.brand; _csiSavePrefs();
+      _csi.lastFormCh=row.channel; _csi.lastFormBrand=row.brand; _csi.lastFormKind=row.kind; _csiSavePrefs();
       toast(f.id!=null ? '✓ 기록을 고쳤어요' : `✓ 기록했어요 — ${saved.product}`,'ok');
       if(more && f.id==null){
-        _csi.form={id:null, cat:'', sub:'', action:'', dirty:false};
+        _csi.form={id:null, kind:f.kind, cat:'', code:'', cause:'', action:'', dirty:false};
         ['csiFProduct','csiFOption','csiFDetail','csiFPhoto'].forEach(k=>{ g(k).value=''; });
         _csiFillProductList(g('csiFBrand').value); _csiRenderChips();
         say(`✓ 저장했어요 (${saved.product}) — 다음 건을 적으세요`,true);
@@ -31882,7 +31997,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const pii=new Set();
     norm.forEach((h,i)=>{ if(_csiIsPiiHeader(h)) pii.add(i); });
     const map={}, used=new Set();
-    for(const f of ['order','date','product','option','sub','type','detail','action','channel','brand','photo']){
+    for(const f of ['order','date','product','option','code','sub','kind','type','detail','cause','action','channel','brand','photo']){
       let pick=-1, best=0;
       norm.forEach((h,i)=>{
         if(!h || used.has(i) || pii.has(i)) return;
@@ -31928,24 +32043,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _csiRuleMatch(text,onlyCat){
     const s=String(text||'').toLowerCase().replace(/\s+/g,'');
     if(!s) return null;
-    for(const r of CSI_RULES){ if(onlyCat && r[0]!==onlyCat) continue; if(r[2].test(s)) return r; }
+    for(const r of CSI_RULES){ if(onlyCat && r[0][0]!==onlyCat) continue; if(r[1].test(s)) return r; }
     return null;
   }
-  function _csiClassify(typeT,subT,detT,actT){
-    // ① 우리 양식 그대로 — 유형 칸이 대분류 이름이면 그대로, 증상 칸이 그 대분류의 세부와 같으면 그것까지
-    const tk=_csiKeyName(typeT), sk=_csiKeyName(subT);
-    const cat=CSI_CATS.find(c=>tk && (_csiKeyName(c.label)===tk || c.key===tk));
-    if(cat){
-      const s=cat.subs.find(x=>_csiKeyName(x)===sk);
-      if(s) return {category:cat.key, sub:s};
-      const m=_csiRuleMatch([subT,detT].join(' '), cat.key);
-      return {category:cat.key, sub:m ? m[1] : _csiNormName(subT).slice(0,60)};
-    }
-    // ② 증상 칸이 어느 세부 이름과 같으면
-    if(sk) for(const c of CSI_CATS){ const s=c.subs.find(x=>_csiKeyName(x)===sk); if(s) return {category:c.key, sub:s}; }
-    // ③ 사유 · 내용 글로 나누기
+  // VOC 코드 고르기 — ① VOC 코드 칸 ② 증상 이름 ③ 유형 칸이 대분류면 그 안에서 ④ 사유 · 내용 글
+  function _csiClassify(codeT,typeT,subT,detT,actT){
+    const cm=String(codeT||'').trim().toUpperCase().match(/^([QSIDCOVE]\d{2})/);
+    if(cm && CSI_CODE[cm[1]]) return cm[1];
+    const sk=_csiKeyName(subT);
+    if(sk){ const c=CSI_CODES.find(x=>_csiKeyName(x.name)===sk || _csiKeyName(x.label)===sk); if(c) return c.code; }
+    const tk=_csiKeyName(typeT);
+    const cat=tk && CSI_CATS.find(c=>_csiKeyName(c.label)===tk || c.key.toLowerCase()===tk);
+    if(cat){ const m=_csiRuleMatch([subT,detT].join(' '), cat.key); return m ? m[0] : cat.fallback; }
     const m=_csiRuleMatch([typeT,subT,detT,actT].join(' '));
-    return m ? {category:m[0], sub:m[1]} : {category:'etc', sub:'기타'};
+    return m ? m[0] : 'E12';
   }
   function _csiMatchChannel(v){
     const s=_csiKeyName(v); if(!s) return '';
@@ -31961,13 +32072,40 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     for(const [id,al] of Object.entries(CSI_BRAND_ALIAS)) al.forEach(a=>consider(id,a));
     return best;
   }
+  function _csiMatchKind(v){
+    const s=_csiKeyName(v); if(!s) return '';
+    for(const k of CSI_KINDS) if(_csiKeyName(k)===s) return k;
+    if(/재발송|재배송|누락/.test(s)) return '재발송 요청';
+    if(/교환/.test(s)) return '교환';
+    if(/반품|환불|취소/.test(s)) return '반품';
+    if(/문의|질문/.test(s)) return '문의';
+    return '';
+  }
   function _csiMatchAction(v){
     const s=_csiKeyName(v); if(!s) return '';
-    if(/재발송|재배송|재출고|새제품/.test(s)) return '재발송';
-    if(/교환/.test(s)) return '교환';
-    if(/반품|환불|취소/.test(s)) return '반품·환불';
-    if(/안내|답변|응대/.test(s)) return '안내만';
-    if(/처리중|진행중|접수|대기|보류/.test(s)) return '처리 중';
+    for(const a of CSI_ACTIONS) if(_csiKeyName(a)===s) return a;
+    if(/부분환불/.test(s)) return '부분 환불';
+    if(/부분재발송|(구성품|부자재|스트랩)(만)?(재발송|재배송|발송)/.test(s)) return '부분 재발송';
+    if(/재발송|재배송|재출고|새제품|교환/.test(s)) return '교환 재발송';
+    if(/반품|환불|취소/.test(s)) return '반품 환불';
+    if(/수선|수리|a\/s|^as$/.test(s)) return '수선';
+    if(/반려|거절|거부|불가/.test(s)) return '반려';
+    if(/안내|답변|응대|종결/.test(s)) return '안내 종결';
+    if(/처리중|진행중|접수|대기|보류|확인중/.test(s)) return '처리 중';
+    return '';
+  }
+  function _csiMatchCause(v){
+    const s=_csiKeyName(v); if(!s) return '';
+    for(const [c] of CSI_CAUSES) if(_csiKeyName(c)===s) return c;
+    if(/제조|공장|생산/.test(s)) return '제조 불량';
+    if(/검수/.test(s)) return '입고 검수 누락';
+    if(/디자인|구조|설계/.test(s)) return '디자인·구조';
+    if(/사진|이미지/.test(s)) return '상세페이지 사진';
+    if(/상세|정보/.test(s)) return '상세페이지 정보';
+    if(/출고|포장|물류/.test(s)) return '출고·포장 실수';
+    if(/택배/.test(s)) return '택배사';
+    if(/고객|변심/.test(s)) return '고객 사유';
+    if(/확인/.test(s)) return '확인 중';
     return '';
   }
   async function _csiSha(s){
@@ -32008,7 +32146,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _csiImpFromWb(wb,name){
     let best=null;
     for(const sn of wb.SheetNames){
-      if(sn==='유형 목록') continue;   // 우리 양식의 안내 시트
+      if(/^(VOC 코드|원인 · 목록|유형 목록|VOC 분류표|처리 기준|사용법|현황|개선 요청|상품별 반품률)$/.test(sn)) continue;   // 안내 · 집계 시트는 건너뛴다
       const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});
       if(!aoa.length) continue;
       let hdr=0, sc=-1;
@@ -32018,14 +32156,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!best || best.score<1){ _csiImpSay('표의 머리글(상품명 · 사유 · 날짜 같은 열 이름)을 찾지 못했어요 — 첫 줄에 열 이름이 있는지 확인해 주세요'); return; }
     const headers=(best.aoa[best.hdr]||[]).map(h=>_csiCellText(h));
     const {map,pii}=_csiAutoMap(headers);
-    _csi.imp={name, sheet:best.sheet, aoa:best.aoa, hdr:best.hdr, headers, map, pii, defCh:'', defBrand:_csi.brand||''};
+    _csi.imp={name, sheet:best.sheet, aoa:best.aoa, hdr:best.hdr, headers, map, pii, defCh:'', defBrand:_csi.brand||'', defKind:''};
     _csiImpRenderStep2();
   }
   function _csiImpRenderStep2(){
     const im=_csi.imp, g=k=>document.getElementById(k);
     g('csiImpStep1').hidden=true; g('csiImpStep2').hidden=false; g('csiImpBack').hidden=false;
     g('csiImpName').textContent=`📄 ${im.name}${im.sheet?` · '${im.sheet}' 시트`:''} · 머리글 ${im.hdr+1}번째 줄 · 데이터 ${_csiN(Math.max(0,im.aoa.length-im.hdr-1))}줄`;
-    g('csiImpDefCh').value=im.defCh; g('csiImpDefBrand').value=im.defBrand;
+    g('csiImpDefCh').value=im.defCh; g('csiImpDefBrand').value=im.defBrand; g('csiImpDefKind').value=im.defKind;
     const piiSet=new Set(im.pii);
     const opts=sel=>'<option value="-1">— 없음 —</option>'+im.headers.map((h,i)=>(!h||piiSet.has(i))?'':`<option value="${i}"${i===sel?' selected':''}>${_esc(h)}</option>`).join('');
     g('csiImpMap').innerHTML=CSI_IMP_FIELDS.map(([f,l])=>`<label class="csi-f"><span>${_esc(l)}</span><select data-field="${f}">${opts(im.map[f])}</select></label>`).join('');
@@ -32047,16 +32185,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!product || /^(합계|총계|소계|total)$/i.test(product) || /^\(예시\)/.test(product)){ if(row.some(v=>String(v==null?'':v).trim())) skipped++; continue; }
       let date=_csiParseDate(raw('date'),year);
       if(!date){ date=fallback; dateMissing++; }
-      const chT=txt('channel'), brT=txt('brand'), typeT=txt('type'), subT=txt('sub'), detT=txt('detail'), actT=txt('action'), optT=txt('option');
-      const cls=_csiClassify(typeT,subT,detT,actT);
-      const typeIsCat=CSI_CATS.some(c=>_csiKeyName(c.label)===_csiKeyName(typeT));
+      const chT=txt('channel'), brT=txt('brand'), codeT=txt('code'), typeT=txt('type'), subT=txt('sub'), detT=txt('detail'), kindT=txt('kind'), causeT=txt('cause'), actT=txt('action'), optT=txt('option');
+      const code=_csiClassify(codeT,typeT,subT,detT,actT), c=CSI_CODE[code];
+      const typeIsCat=CSI_CATS.some(x=>_csiKeyName(x.label)===_csiKeyName(typeT));
       const photo=_csiSafeUrl(txt('photo'));
-      rows.push({issue_date:date, channel:_csiMatchChannel(chT)||im.defCh||'', brand:_csiMatchBrand(brT)||im.defBrand||'',
-        product:product.slice(0,200), option_text:_csiScrub(optT).slice(0,200), category:cls.category, sub:cls.sub,
+      const kind=_csiMatchKind(kindT) || im.defKind || _csiMatchKind(typeT) || _csiMatchKind(actT) || (code==='C11'?'반품':code==='C12'?'교환':'');
+      rows.push({issue_date:date, channel:_csiMatchChannel(chT)||im.defCh||'', brand:_csiMatchBrand(brT)||im.defBrand||'', kind,
+        product:product.slice(0,200), option_text:_csiScrub(optT).slice(0,200), category:c.cat, code, sub:c.name, cause:_csiMatchCause(causeT),
         detail:_csiScrub([typeIsCat?'':typeT, detT].filter(Boolean).join(' · ')).slice(0,1000),
-        action:_csiMatchAction(actT)||_csiMatchAction(typeT)||'', photo_url:photo.slice(0,500),
-        _k:[_csiCellText(raw('date')), chT, brT, product, optT, typeT, subT, detT, txt('order')].join('␟')});
-      cats.set(cls.category,(cats.get(cls.category)||0)+1);
+        action:_csiMatchAction(actT)||'', photo_url:photo.slice(0,500),
+        _k:[_csiCellText(raw('date')), chT, brT, product, optT, codeT, typeT, subT, detT, kindT, txt('order')].join('␟')});
+      cats.set(c.cat,(cats.get(c.cat)||0)+1);
     }
     return {rows, skipped, dateMissing, cats};
   }
@@ -32069,15 +32208,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       parts.push(`${_csiN(P.rows.length)}건을 가져올 수 있어요`);
       const cats=[...P.cats.entries()].sort((a,b)=>b[1]-a[1]).map(([k,n])=>`${_csiCatLabel(k)} ${n}`).join(' · ');
       if(cats) parts.push(cats);
+      const noKind=P.rows.filter(r=>!r.kind).length;
+      if(noKind) parts.push(`접수 구분이 비는 ${noKind}건 — 위 '접수 구분'을 고르면 채워져요`);
       if(P.dateMissing) parts.push(`날짜를 못 읽은 ${P.dateMissing}건은 ${_csiMd(_csi.date||_csiToday())}로 넣어요`);
       if(P.skipped) parts.push(`상품명이 없거나 합계 · 예시인 ${P.skipped}줄은 건너뛰어요`);
     }
     g('csiImpSum').textContent=parts.join(' · ');
     const sample=P.rows.slice(0,8);
-    g('csiImpPreview').innerHTML=sample.length ? `<table class="csi-tbl csi-tbl-imp"><thead><tr><th>날짜</th><th>채널</th><th>브랜드</th><th>상품 · 옵션</th><th>유형 · 증상</th><th>처리</th><th>내용</th></tr></thead><tbody>${sample.map(r=>`<tr>
-      <td class="nw">${_csiMd(r.issue_date)}</td><td class="nw">${_esc(r.channel||'—')}</td><td class="nw">${_esc(r.brand?_csiBrandLabel(r.brand):'—')}</td>
+    g('csiImpPreview').innerHTML=sample.length ? `<table class="csi-tbl csi-tbl-imp"><thead><tr><th>날짜</th><th>채널</th><th>브랜드</th><th>구분</th><th>상품 · 옵션</th><th>VOC 코드</th><th>원인</th><th>처리</th><th>내용</th></tr></thead><tbody>${sample.map(r=>`<tr>
+      <td class="nw">${_csiMd(r.issue_date)}</td><td class="nw">${_esc(r.channel||'—')}</td><td class="nw">${_esc(r.brand?_csiBrandLabel(r.brand):'—')}</td><td class="nw">${_esc(r.kind||'—')}</td>
       <td><b>${_esc(r.product)}</b>${r.option_text?`<div class="csi-muted">${_esc(r.option_text)}</div>`:''}</td>
-      <td class="nw">${_esc(_csiCatLabel(r.category))}<div class="csi-muted">${_esc(r.sub||'')}</div></td><td class="nw">${_esc(r.action||'—')}</td>
+      <td>${_esc(CSI_CODE[r.code].label)}<div class="csi-muted">${_esc(_csiCatLabel(r.category))}</div></td><td class="nw">${_esc(r.cause||'—')}</td><td class="nw">${_esc(r.action||'—')}</td>
       <td class="csi-detail">${_esc(r.detail.length>80?r.detail.slice(0,80)+'…':r.detail)}</td></tr>`).join('')}</tbody></table>${P.rows.length>8?`<div class="csi-muted" style="padding:6px 8px">… 처음 8건만 보여요</div>`:''}` : '';
     const ok=im.map.product>=0 && P.rows.length>0;
     g('csiImpGo').disabled=!ok || _csi.importing;
@@ -32113,21 +32254,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ _csiImpSay('가져오지 못했어요 — '+(e.message||e)+' · 다시 눌러도 겹치지 않아요'); go.disabled=false; }
     finally{ _csi.importing=false; }
   }
+  // 기록 양식 — 열 이름은 'VOC 관리' 시트의 VOC 기록과 같다 (그 시트에서 복사해 붙여넣어도 된다)
   function csiDownloadTemplate(){
     if(!window.XLSX){ toast('엑셀 도구를 불러오지 못했어요 — 새로고침해 주세요','err'); return; }
-    const head=['날짜','채널','브랜드','상품명','옵션','유형','증상','처리','내용'];
+    const head=['접수일','브랜드','채널','접수 구분','상품명','옵션','VOC 코드','고객 내용','원인','처리'];
     // 예시 줄 — 상품명이 '(예시)'로 시작하면 올릴 때 건너뛴다 (지우지 않고 올려도 기록되지 않게)
-    const ex=[_csi.date||_csiToday(),'공홈',(BRAND_SECTIONS[0]||{}).display||'','(예시) 실버 오픈링','실버 / 9호','제품 불량','변색·착색','교환','착용 일주일 만에 검게 변했다고 함'];
+    const ex=[_csi.date||_csiToday(),(BRAND_SECTIONS.find(b=>b.id==='kop')||BRAND_SECTIONS[0]||{}).display||'','공홈','교환','(예시) Y.O.U. bag','Black','Q12 손잡이·끈 연결부 뜯어짐','손잡이 봉제 부분이 뜯어졌다고 함','제조 불량','교환 재발송'];
     const ws=XLSX.utils.aoa_to_sheet([head,ex]);
-    ws['!cols']=[{wch:12},{wch:10},{wch:12},{wch:26},{wch:16},{wch:14},{wch:16},{wch:10},{wch:44}];
-    const list=[['유형','증상 (이 중에서 고르면 그대로 들어가요)','전달 팀']].concat(CSI_CATS.map(c=>[c.label, c.subs.join(', '), CSI_TEAM_LABEL[_csiTeamOf(c.key)]||'CS에서 처리']));
-    list.push([],['채널',CSI_CHANNELS.join(', ')],['브랜드',BRAND_SECTIONS.map(b=>b.display).join(', ')],['처리',CSI_ACTIONS.join(', ')],[],['고객 이름 · 연락처 · 주소는 적지 마세요.']);
-    const ws2=XLSX.utils.aoa_to_sheet(list);
-    ws2['!cols']=[{wch:16},{wch:70},{wch:14}];
+    ws['!cols']=[{wch:12},{wch:12},{wch:10},{wch:10},{wch:26},{wch:14},{wch:30},{wch:40},{wch:16},{wch:14}];
+    const codes=[['VOC 코드','대분류','중분류','증상','기본 전달 팀','심각도','판단 기준']].concat(CSI_CODES.map(c=>[c.label,_csiCatLabel(c.cat),c.mid,c.name,CSI_TEAM_LABEL[c.team],c.sev,c.def]));
+    const ws2=XLSX.utils.aoa_to_sheet(codes);
+    ws2['!cols']=[{wch:30},{wch:16},{wch:10},{wch:24},{wch:12},{wch:8},{wch:60}];
+    const lists=[['원인','전달 팀'],...CSI_CAUSES.map(([c,t])=>[c,t?CSI_TEAM_LABEL[t]:'VOC 코드 기본 팀']),[],['접수 구분',CSI_KINDS.join(', ')],['처리',CSI_ACTIONS.join(', ')],['채널',CSI_CHANNELS.join(', ')],['브랜드',BRAND_SECTIONS.map(b=>b.display).join(', ')],[],['고객 이름 · 연락처 · 주소는 적지 마세요.']];
+    const ws3=XLSX.utils.aoa_to_sheet(lists);
+    ws3['!cols']=[{wch:16},{wch:70}];
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'CS 기록');
-    XLSX.utils.book_append_sheet(wb,ws2,'유형 목록');
-    XLSX.writeFile(wb,'CS_이슈기록_양식.xlsx');
+    XLSX.utils.book_append_sheet(wb,ws2,'VOC 코드');
+    XLSX.utils.book_append_sheet(wb,ws3,'원인 · 목록');
+    XLSX.writeFile(wb,'CS_VOC_기록양식.xlsx');
   }
 
   /* ===================================================== */
