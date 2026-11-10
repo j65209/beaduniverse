@@ -6651,6 +6651,34 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .csi-kpi.is-warn:hover{box-shadow:0 0 0 3px #fde68a}
   .csi-chr-mark{color:#b45309;font-weight:800;margin-right:4px}
 
+  .csi-filters[hidden]{display:none}
+
+  /* 🛠 개선 요청 표 — 상태 · 우선순위 색, 긴 글 칸은 쓰는 동안 펼침, 조치 효과 색 */
+  .csi-req td.c-req_no{font-weight:800;color:var(--text-1);padding:0 8px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .csi-req tr[data-status="등록"] td.c-status .cell{color:#92400e;font-weight:700}
+  .csi-req tr[data-status="전달함"] td.c-status .cell{color:#0369a1;font-weight:700}
+  .csi-req tr[data-status="검토 중"] td.c-status .cell,.csi-req tr[data-status="조치 중"] td.c-status .cell{color:#6d28d9;font-weight:700}
+  .csi-req tr[data-status="완료"] td.c-status .cell{color:#15803d;font-weight:700}
+  .csi-req tr[data-status="보류"] td.c-status .cell{color:var(--text-3);font-weight:600}
+  .csi-req tr[data-status="완료"] .cell,.csi-req tr[data-status="보류"] .cell,.csi-req tr[data-status="완료"] td.c-req_no{color:var(--text-2)}
+  .csi-req tr[data-pri="긴급"] td.c-priority .cell{color:#b91c1c;font-weight:800}
+  .csi-req tr[data-pri="높음"] td.c-priority .cell{color:#b45309;font-weight:700}
+  .csi-req td.c-ta textarea.cell{resize:none;overflow:hidden;white-space:nowrap;line-height:33px;padding-top:0;padding-bottom:0}
+  .csi-req td.c-ta.is-open textarea.cell{position:absolute;left:0;top:0;z-index:6;width:max(100%,380px);min-height:120px;white-space:pre-wrap;line-height:1.55;padding:8px 10px;overflow:auto;background:#fff;box-shadow:0 10px 26px rgba(15,23,42,.18),inset 0 0 0 2px var(--neon-cs);border-radius:4px}
+  .csi-req td.c-eff,.csi-req td.c-now30{font-size:12px;font-weight:600;color:var(--text-2);padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+  .csi-req td.c-eff.e-good{color:#15803d;font-weight:700}
+  .csi-req td.c-eff.e-bad{color:#b91c1c;font-weight:700}
+  .csi-req td.c-eff.e-wait{color:var(--text-3)}
+  .csi-sheet tr.is-flash td{animation:csiFlash 1.6s ease-out}
+  @keyframes csiFlash{0%{background:#bae6fd}100%{background:inherit}}
+  .csi-req-chip{font:inherit;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 9px;border:1px solid var(--line-2);background:var(--bg-1);color:var(--text-1);cursor:pointer;white-space:nowrap}
+  .csi-req-chip[data-status="등록"]{color:#92400e;border-color:#fde68a;background:#fffbeb}
+  .csi-req-chip[data-status="전달함"]{color:#0369a1;border-color:#bae6fd;background:#f0f9ff}
+  .csi-req-chip[data-status="완료"]{color:#15803d;border-color:#bbf7d0;background:#f0fdf4}
+  .csi-req-chip:hover{border-color:var(--neon-cs)}
+  .csi-req-new{white-space:nowrap;margin-left:0}
+  .csi-seg button b{font-weight:800;margin-left:2px}
+
   /* 📖 VOC 코드표 */
   .csi-code-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:12px 0 10px}
   .csi-code-bar .csi-search[hidden]{display:none}
@@ -11481,15 +11509,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- ============ CS팀 탭 (2026-11-10) — 📝 CS 기록(엑셀식 표) / 📊 이슈 분석 / 🗂 기존 작업 보드 · 메모장 · FAQ ============ -->
+    <!-- ============ CS팀 탭 (2026-11-10) — 📝 CS 기록(엑셀식 표) / 📊 이슈 분석 / 🛠 개선 요청 / 🗂 기존 작업 보드 · 메모장 · FAQ ============ -->
     <div class="lg-tabs csi-tabs" role="tablist" aria-label="CS팀 화면">
       <button class="lg-tab active" type="button" data-csi-tab="sheet" role="tab" aria-selected="true" onclick="csiSwitchTab('sheet')">📝 CS 기록</button>
       <button class="lg-tab" type="button" data-csi-tab="insight" role="tab" aria-selected="false" onclick="csiSwitchTab('insight')">📊 이슈 분석</button>
+      <button class="lg-tab" type="button" data-csi-tab="req" role="tab" aria-selected="false" onclick="csiSwitchTab('req')">🛠 개선 요청</button>
       <button class="lg-tab" type="button" data-csi-tab="work" role="tab" aria-selected="false" onclick="csiSwitchTab('work')">🗂 작업 보드 · 메모 · FAQ</button>
     </div>
 
     <!-- CS 기록 · 이슈 분석 — 데이터: Supabase cs_issues · cs_daily_notes · app_kv(cs_insight_settings). 브랜드 탭 · 기간 · 채널은 두 탭이 같이 쓴다 -->
-    <div class="csi-wrap" id="csiPane" data-csi-pane="sheet insight">
+    <div class="csi-wrap" id="csiPane" data-csi-pane="sheet insight req">
       <div class="csi-toolbar">
         <div class="csi-toolbar-main">
           <button class="csi-btn csi-btn-primary" type="button" onclick="csiAddRow()" title="CS 기록 표 맨 위에 새 줄을 만들어요">＋ 새 줄</button>
@@ -11529,6 +11558,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="csi-sheet-wrap" id="csiSheetWrap"><table class="csi-sheet" id="csiSheet"></table></div>
         <div class="csi-sheet-info" id="csiSheetInfo" aria-live="polite"></div>
         <div class="csi-sheet-foot">칸을 고치면 바로 저장돼요 · 새 줄은 <b>브랜드 · 상품명 · 접수 구분 · VOC 코드</b>가 다 차면 저장되고, 그 전까지는 이 컴퓨터에 남아 있어요 · 고객 이름 · 연락처 · 주소는 적지 마세요 (내용 속 전화번호 · 이메일은 저장할 때 가려요)</div>
+      </section>
+
+      <!-- 🛠 개선 요청 — 디자인팀 · MD팀 · 물류팀에 보낸 요청과 진행 상태. 칸을 고치면 바로 저장, 조치 전 · 후 30일 건수는 CS 기록에서 자동 -->
+      <section class="csi-card csi-sheet-card" id="csiReqCard" aria-label="개선 요청 표" hidden>
+        <div class="csi-card-head">
+          <div>
+            <div class="csi-card-title" id="csiReqTitle">🛠 개선 요청</div>
+            <div class="csi-card-sub" id="csiReqSub"></div>
+          </div>
+          <div class="csi-sheet-tools">
+            <div class="csi-seg" id="csiReqSeg" role="group" aria-label="상태로 거르기"></div>
+            <button class="csi-btn csi-btn-primary" type="button" onclick="csiReqAdd()">＋ 개선 요청</button>
+          </div>
+        </div>
+        <div class="csi-sheet-wrap" id="csiReqWrap"><table class="csi-sheet csi-req" id="csiReqSheet"></table></div>
+        <div class="csi-sheet-foot">상태: 등록 → 전달함(받는 팀에 보냄) → 검토 중 → 조치 중 → 완료 · 보류 · '완료'로 바꾸면 조치일이 오늘로 들어가요 · <b>조치 전 → 후 30일</b>은 조치일 앞뒤 30일 동안 같은 브랜드 · 상품 · VOC 코드로 들어온 CS 건수예요 (30일이 지나면 줄어듦 · 변화 없음 · 늘어남) · 상품을 비우면 브랜드 전체, VOC 코드는 앞자리로 묶을 수 있어요 (Q1 = Q11 · Q12) · 고질 문제 카드의 <b>🛠 요청 만들기</b>로 근거까지 채워서 바로 만들 수 있어요</div>
+        <datalist id="csiReqProducts"></datalist>
       </section>
 
       <!-- 📊 이슈 분석 — 고질 문제(맨 위) → 불량 많은 상품 · 유형 · 추이 · 팀별 전달 · 일일 리포트 -->
@@ -31253,7 +31299,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _csiLoadPrefs(){
     try{
       const p=JSON.parse(localStorage.getItem(CSI_PREF_KEY)||'{}');
-      if(p.tab==='work'||p.tab==='insight'||p.tab==='sheet') _csi.tab=p.tab;
+      if(p.tab==='work'||p.tab==='insight'||p.tab==='sheet'||p.tab==='req') _csi.tab=p.tab;
       if(CSI_RANGES.some(r=>r.key===p.range)) _csi.range=p.range;
       if(typeof p.brand==='string') _csi.brand=p.brand;
       if(typeof p.channel==='string') _csi.channel=p.channel;
@@ -31280,7 +31326,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _csiStartPoll();
   }
   function csiSwitchTab(tab, silent){
-    _csi.tab = (tab==='work'||tab==='insight') ? tab : 'sheet';
+    _csi.tab = (tab==='work'||tab==='insight'||tab==='req') ? tab : 'sheet';
     document.querySelectorAll('#viewCs [data-csi-tab]').forEach(b=>{
       const on=b.dataset.csiTab===_csi.tab; b.classList.toggle('active',on); b.setAttribute('aria-selected',on?'true':'false');
     });
@@ -31317,6 +31363,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     },200); });
     _csiTipInit();
     _csiSheetInit();
+    _csiReqInit();
     _csiDraftsLoad();
   }
   function _csiStartPoll(){
@@ -31350,6 +31397,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 늦게 도착한 옛 값은 버린다 — 저장 · 삭제 직후 진행 중이던 불러오기가 옛 줄을 가져와도 되돌아가지 않게
     if(old && old.updated_at && r.updated_at && r.updated_at<old.updated_at) return;
     if(!r.deleted_at && gone && r.updated_at && r.updated_at<=gone) return;
+    // 이미 가진 것과 같은 줄 (1분 갱신은 겹쳐 읽는다) — 바뀐 게 없으니 표를 다시 그리지 않게 ver 를 올리지 않는다
+    if(old && !r.deleted_at && r.updated_at && old.updated_at===r.updated_at && !(_csi.loadedFrom && r.issue_date<_csi.loadedFrom)) return;
     if(r.deleted_at){ _csi.byId.delete(r.id); _csi.gone.set(r.id, r.updated_at||''); }
     else if(_csi.loadedFrom && r.issue_date<_csi.loadedFrom) _csi.byId.delete(r.id);
     else _csi.byId.set(r.id, r);
@@ -31375,6 +31424,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const since=new Date(Date.parse(_csi.lastSync)-15000).toISOString();
         (await _csiGetRows(`updated_at=gte.${encodeURIComponent(since)}`)).forEach(_csiPut);
       }
+      // 개선 요청도 같이 (실패해도 CS 기록은 그대로 보인다)
+      try{ await _csiReqLoad(); }catch(e){ _csi.rq.err=e.message||String(e); }
       _csi.err=''; _csi.syncedAt=Date.now();
     }catch(e){ _csi.err=e.message||String(e); }
     finally{ _csi.loading=false; _csi.duringLoad=[]; }
@@ -31450,7 +31501,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ── 기간 · 필터 ── */
   // 거르기를 바꾸면 '이번에 고친 줄' 고정도 푼다
   function csiSetRange(k){ if(!CSI_RANGES.some(r=>r.key===k)) return; _csi.range=k; _csi.listLimit=50; _csi.pin.clear(); _csiSavePrefs(); csiRender(); }
-  function csiSetBrand(v){ _csi.brand=v||''; _csi.listLimit=50; _csi.pin.clear(); _csiSavePrefs(); csiRender(); }
+  function csiSetBrand(v){ _csi.brand=v||''; _csi.listLimit=50; _csi.pin.clear(); _csi.rq.pin.clear(); _csiSavePrefs(); csiRender(); }
   function csiSetChannel(v){ _csi.channel=v||''; _csi.listLimit=50; _csi.pin.clear(); _csiSavePrefs(); csiRender(); }
   function csiSetSearch(v){ _csi.q=v||''; _csi.listLimit=50; _csi.pin.clear(); _csiRenderSheet(); }
   function csiSetDate(v){
@@ -31543,12 +31594,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       // 처음 불러오기 전 — 빈 표 · 그래프 대신 상태 한 줄
       first.hidden=false;
       first.textContent=_csi.err ? `CS 기록을 불러오지 못했어요 (${_csi.err}) — 오른쪽 위 ↻ 를 눌러 다시 시도해 주세요` : 'CS 기록을 불러오는 중…';
-      sheet.hidden=true; ins.hidden=true;
+      sheet.hidden=true; ins.hidden=true; document.getElementById('csiReqCard').hidden=true;
       return;
     }
     first.hidden=true;
     sheet.hidden=_csi.tab!=='sheet'; ins.hidden=_csi.tab!=='insight';
+    document.getElementById('csiReqCard').hidden=_csi.tab!=='req';
+    document.querySelector('#csiPane .csi-filters').hidden=_csi.tab==='req';   // 개선 요청은 기간과 상관없이 전부
     if(_csi.tab==='sheet'){ _csiRenderSheet(); return; }
+    if(_csi.tab==='req'){ _csiRenderReq(); return; }
     if(_csi.tab!=='insight') return;
     const empty=!_csi.rows.length;
     document.getElementById('csiEmpty').hidden=!empty;
@@ -31682,7 +31736,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     el.classList.toggle('is-on', chronic.length>0);   // 고질 문제가 있으면 카드 전체를 경고색으로
     const head=`<div class="csi-card-head"><div><div class="csi-card-title">⚠ 고질 문제${chronic.length?` <span class="csi-chr-count">${chronic.length}가지</span>`:''}</div><div class="csi-card-sub">${_csiMd(_csiAdd(_csi.date||_csiToday(),-29))} ~ ${_csiMd(_csi.date||_csiToday())} 30일 동안 같은 상품에서 같은 VOC 코드가 ${s.chronicMin}건 이상${s.chronicWeeks>1?`, ${s.chronicWeeks}주 이상에 걸쳐`:''} 나온 것 · 회사 귀책(Q·S·I·D)만${chronic.length?' · 담당 팀에 먼저 전달하세요':''}</div></div></div>`;
     if(!chronic.length){ el.innerHTML=head+'<div class="csi-empty-line">✓ 지금은 고질 문제가 없어요</div>'; return; }
-    el.innerHTML=head+`<div class="csi-scroll"><table class="csi-tbl csi-tbl-chronic"><thead><tr><th>상품</th><th>VOC 코드</th><th class="n">30일</th><th class="n">반복</th><th>최근 8주</th><th>처음 → 최근</th><th>전달</th></tr></thead><tbody>${chronic.map(x=>{
+    el.innerHTML=head+`<div class="csi-scroll"><table class="csi-tbl csi-tbl-chronic"><thead><tr><th>상품</th><th>VOC 코드</th><th class="n">30일</th><th class="n">반복</th><th>최근 8주</th><th>처음 → 최근</th><th>전달</th><th>개선 요청</th></tr></thead><tbody>${chronic.map(x=>{
       const opt=_csiTopOpt(x.opts);
       const tip=`8주 전 → 이번 주\n${x.w8.join(' · ')}`;
       return `<tr><td><b>${_esc(x.product)}</b><div class="csi-muted">${_esc(_csiBrandLabel(x.brand))}${opt?` · 많은 옵션 ${_esc(opt)}`:''}</div></td>
@@ -31690,7 +31744,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <td class="n"><b>${x.n30}건</b></td><td class="n">${x.weeks.size}주</td>
         <td data-tip="${_esc(tip)}">${_csiSpark(x.w8)}</td>
         <td class="nw csi-muted">${_csiMd(x.first)} → ${_csiMd(x.last)}</td>
-        <td><span class="csi-team-chip">${_esc(CSI_TEAM_LABEL[x.team]||'CS팀')}</span></td></tr>`;
+        <td><span class="csi-team-chip">${_esc(CSI_TEAM_LABEL[x.team]||'CS팀')}</span></td>
+        <td class="nw">${_csiReqTag(x)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
   }
   function _csiRenderTeams(P,cur,chronic){
@@ -31730,6 +31785,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(chronic.length>5) L.push(`· 그 외 ${chronic.length-5}가지`);
     }else L.push('· 없음');
     L.push('');
+    const rq=_csiReqReportLines();
+    if(rq.length){ L.push(...rq); L.push(''); }
     L.push('▶ 불량 많은 상품 (최근 7일)');
     const top=_csiProdRank(week).slice(0,3);
     if(top.length) top.forEach((x,i)=>L.push(`${i+1}. ${brand(x.brand)}${x.product} — ${x.n}건 (${_csiSubsText(x.subs,3)})`));
@@ -32378,7 +32435,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       L.push(`<b>${_esc(c.label)}</b> <span class="csi-muted">${_esc(_csiCatLabel(c.cat))} · ${_esc(c.mid)}</span> — ${_esc(c.def)}`);
       L.push(`<b>기본 처리</b> ${_esc(c.basic||'—')} · <b>전달</b> ${_esc(team)}${v.cause&&v.cause!=='확인 중'?' (원인 기준)':''} · <b>심각도</b> ${_esc(c.sev)}${c.likely&&!v.cause?` · <b>주로 의심할 원인</b> ${_esc(c.likely)}`:''}`);
       const chr=(!draft && _csi.chr) ? _csi.chr.get([v.brand,_csiKeyName(v.product),v.code].join('|')) : null;
-      if(chr) L.push(`<span class="i-chr">⚠ 고질 문제 — 같은 상품 · 같은 증상이 30일 ${chr.n30}건, ${chr.weeks.size}주에 걸쳐 나왔어요 (${_esc(CSI_TEAM_LABEL[chr.team]||'CS팀')}에 전달)</span>`);
+      if(chr) L.push(`<span class="i-chr">⚠ 고질 문제 — 같은 상품 · 같은 증상이 30일 ${chr.n30}건, ${chr.weeks.size}주에 걸쳐 나왔어요 (${_esc(CSI_TEAM_LABEL[chr.team]||'CS팀')}에 전달)</span> ${_csiReqTag(chr)}`);
+      else if(!draft){ const q=_csiReqFind({brand:v.brand, product:v.product, code:v.code}); if(q) L.push(`<span class="csi-muted">이 증상에 걸린 개선 요청</span> ${_csiReqTag({brand:v.brand, product:v.product, code:v.code})}`); }
     }else L.push('<span class="csi-muted">VOC 코드를 고르면 판단 기준 · 기본 처리 · 전달 팀이 나와요</span> · <button type="button" class="csi-linkbtn" onclick="csiOpenCodes()">📖 VOC 코드표</button>');
     const meta=[];
     if(r){ if(r.created_by) meta.push(`적은 사람 ${_esc(r.created_by)}`); if(r.updated_by && r.updated_by!==r.created_by) meta.push(`고친 사람 ${_esc(r.updated_by)}`); const w=_csiWhen(r.updated_at||r.created_at); if(w) meta.push(w); }
@@ -32508,7 +32566,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const el=document.getElementById('csiBrandTabs'); if(!el) return;
     const P=_csiPeriod(), ch=_csi.channel, cnt=new Map(), chr=new Map(), dr=new Map();
     let all=0, chrAll=0, drAll=0;
-    for(const r of _csi.rows){ if(r.issue_date<P.from || r.issue_date>P.to || (ch && r.channel!==ch)) continue; all++; cnt.set(r.brand,(cnt.get(r.brand)||0)+1); }
+    if(_csi.tab==='req'){   // 개선 요청 탭에서는 진행 중인 요청 수
+      for(const q of _csi.rq.byId.values()){ if(!CSI_REQ_OPEN.has(q.status)) continue; all++; cnt.set(q.brand,(cnt.get(q.brand)||0)+1); }
+    }else for(const r of _csi.rows){ if(r.issue_date<P.from || r.issue_date>P.to || (ch && r.channel!==ch)) continue; all++; cnt.set(r.brand,(cnt.get(r.brand)||0)+1); }
     for(const x of (_csi.chr||new Map()).values()){ chrAll++; chr.set(x.brand,(chr.get(x.brand)||0)+1); }
     for(const e of _csi.ed.values()) if(!e.id && _csiHasContent(e.v)){ drAll++; dr.set(e.v.brand,(dr.get(e.v.brand)||0)+1); }
     const tabs=[{id:'', label:'전체', dot:''}].concat(BRAND_SECTIONS.map(b=>({id:b.id, label:b.display, dot:b.dot||''})));
@@ -32538,6 +32598,412 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const tr=document.querySelector(`#csiSheet tr[data-k="${k}"]`); if(tr) tr.remove();
       _csiRebuild(); csiRender(); _csiAfterSave(); toast('기록을 지웠어요','ok');
     }catch(e){ toast('지우지 못했어요 — 다시 시도해 주세요 ('+(e.message||e)+')','err'); }
+  }
+
+  /* ── 🛠 개선 요청 — 디자인팀 · MD팀 · 물류팀에 보낸 개선 요청과 진행 상태, 조치 전 · 후 30일 CS 건수 (2026-11-10) ──
+     · Supabase cs_requests (한 줄 = 한 요청, R-번호는 DB 가 자동, deleted_at 소프트 삭제, row_history). 'VOC 관리' 시트의 R-001~R-007 을 옮겨 옴.
+     · 엑셀처럼 칸에서 바로 고치면 저장. 새 요청은 칸을 하나라도 적는 순간 저장되고 번호가 붙는다.
+     · 상품이 비면 브랜드 전체, VOC 코드는 앞자리로도 묶는다 (Q1 = Q11 · Q12, Q = 제품 불량 전체). 건수는 CS 기록(최근 180일)에서 센다.
+     · 고질 문제 카드 · CS 기록 표 아래 안내에서 바로 요청을 만들거나 걸린 요청으로 간다. */
+  const CSI_REQ_STATUS=['등록','전달함','검토 중','조치 중','완료','보류'];
+  const CSI_REQ_OPEN=new Set(['등록','전달함','검토 중','조치 중']);
+  const CSI_REQ_PRI=['긴급','높음','보통','낮음'];
+  const CSI_REQ_FIELDS=['created_on','brand','product','code','evidence','team','ask','priority','status','owner','action_note','action_on','memo'];
+  const CSI_REQ_LONG=new Set(['evidence','ask','action_note','memo']);
+  const CSI_REQ_SELECT='id,req_no,'+CSI_REQ_FIELDS.join(',')+',created_by,updated_by,created_at,updated_at,deleted_at';
+  // [칸, 머리글, 폭] — 브랜드 칸은 전체 탭에서만
+  const CSI_REQ_COLS=[['st','',50],['req_no','번호',66],['status','상태',94],['priority','우선',72],['brand','브랜드',104],['product','상품',170],['code','VOC 코드',200],['team','받는 팀',100],
+    ['ask','요청 내용',270],['evidence','근거',250],['owner','담당자',86],['action_on','조치일',124],['action_note','조치 내용',230],['eff','조치 전 → 후 30일',160],['now30','최근 30일',78],['created_on','등록일',124],['memo','메모',190],['del','',40]];
+  _csi.rq={byId:new Map(), loaded:false, err:'', ed:new Map(), seq:0, pin:new Set(), filter:'open', sig:'', stale:false, ver:0, focusK:null, codeHtml:''};
+
+  function _csiReqVal(x,f){ const v=x[f]; return v==null ? '' : String(v); }
+  function _csiReqVals(x){ const o={}; for(const f of CSI_REQ_FIELDS) o[f]=_csiReqVal(x,f); return o; }
+  function _csiReqView(k){ const e=_csi.rq.ed.get(k); if(e) return e.v; const x=_csi.rq.byId.get(+k); return x ? _csiReqVals(x) : null; }
+  // 줄바꿈은 살리고 전화번호 · 이메일 · 주민번호는 가린다
+  function _csiScrubML(s){
+    return String(s==null?'':s)
+      .replace(/(01[016789])[-. ]?\d{3,4}[-. ]?\d{4}/g,'$1-****-****')
+      .replace(/\b0\d{1,2}[-. ]\d{3,4}[-. ]\d{4}\b/g,'0**-****-****')
+      .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,'(이메일)')
+      .replace(/\b\d{6}[- ]?[1-4]\d{6}\b/g,'(주민번호)')
+      .replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  }
+
+  /* 불러오기 — 지운 것만 빼고 전부 (많지 않다) */
+  async function _csiReqLoad(){
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/cs_requests?select=${CSI_REQ_SELECT}&deleted_at=is.null&order=id.asc&limit=2000`,{headers:_sbHeaders(),cache:'no-cache'});
+    if(!r.ok) throw new Error('개선 요청 HTTP '+r.status);
+    const a=await r.json(), m=new Map();
+    for(const x of a) m.set(x.id, x);
+    const changed = m.size!==_csi.rq.byId.size || a.some(x=>{ const o=_csi.rq.byId.get(x.id); return !o || o.updated_at!==x.updated_at; });
+    _csi.rq.byId=m; _csi.rq.loaded=true; _csi.rq.err='';
+    if(changed) _csi.rq.ver++;
+    // 고치는 중인 줄 — 안 고친 칸은 새 값으로, 지워진 줄은 놓는다
+    for(const e of [..._csi.rq.ed.values()]){
+      if(!e.id) continue;
+      const x=m.get(e.id);
+      if(!x){ if(!e.busy){ clearTimeout(e.timer); _csi.rq.ed.delete(e.k); } continue; }
+      for(const f of CSI_REQ_FIELDS) if(!e.dirty.has(f)) e.v[f]=_csiReqVal(x,f);
+    }
+  }
+
+  /* CS 기록과 맞춰 보기 — 브랜드 · 상품(비면 전체) · VOC 코드 앞자리 */
+  function _csiReqMatch(q, r){
+    if(!(q.brand || q.product || q.code)) return false;   // 조건이 하나도 없으면 세지 않는다
+    if(q.brand && r.brand!==q.brand) return false;
+    if(q.product && _csiKeyName(r.product)!==_csiKeyName(q.product)) return false;
+    if(q.code && !String(r.code||'').startsWith(q.code)) return false;
+    return true;
+  }
+  function _csiReqCount(q, from, to){ let n=0; for(const r of _csi.rows) if(r.issue_date>=from && r.issue_date<=to && _csiReqMatch(q,r)) n++; return n; }
+  function _csiReqEffect(q){
+    const today=_csiToday(), now30=_csiReqCount(q, _csiAdd(today,-29), today);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(q.action_on||'')) return {now30, text:'', cls:'', tip:'조치일을 넣으면 조치 전 · 후 30일 CS 건수가 나와요'};
+    const a=q.action_on, before=_csiReqCount(q,_csiAdd(a,-30),_csiAdd(a,-1)), after=_csiReqCount(q,a,_csiAdd(a,29)), days=_csiDiff(today,a)+1;
+    if(days<30) return {now30, before, after, done:false, text:`${before} → ${after}건 · ${Math.max(days,1)}일째`, cls:'wait', tip:`조치 전 30일 ${before}건, 조치 뒤 지금까지 ${after}건 — 조치하고 30일이 지나면 효과가 나와요`};
+    const eff = after<before ? '줄어듦' : after===before ? '변화 없음' : '늘어남';
+    return {now30, before, after, done:true, eff, text:`${before} → ${after}건 · ${eff}`, cls: after<before ? 'good' : after===before ? 'same' : 'bad', tip:`조치 전 30일 ${before}건 → 조치 후 30일 ${after}건`};
+  }
+  // 고질 문제 · CS 한 줄에 걸린 요청 — 진행 중인 것, 상품까지 같은 것 먼저
+  function _csiReqFind(g){
+    let best=null, score=-1;
+    for(const q of _csi.rq.byId.values()){
+      if(!_csiReqMatch(q, g)) continue;
+      const s=(CSI_REQ_OPEN.has(q.status)?4:0)+(q.product?2:0)+(q.code===g.code?1:0);
+      if(s>score){ best=q; score=s; }
+    }
+    return best;
+  }
+  function _csiReqChronic(v){ for(const c of (_csi.chr||new Map()).values()) if(_csiReqMatch(v,{brand:c.brand, product:c.product, code:c.code})) return c; return null; }
+  function _csiReqCodeLabel(code){
+    if(!code) return '';
+    if(CSI_CODE[code]) return CSI_CODE[code].label;
+    if(CSI_CAT[code]) return `${code} ${CSI_CAT[code].label} 전체`;
+    const cs=CSI_CODES.filter(c=>c.code.startsWith(code));
+    return cs.length ? `${code} ${[...new Set(cs.map(c=>c.mid))].join('·')} (${cs.map(c=>c.code).join('·')})` : code;
+  }
+  // VOC 코드 칸 — 대분류 전체 · 앞자리 묶음 · 코드
+  function _csiReqCodeOpts(cur){
+    if(!_csi.rq.codeHtml){
+      let h='';
+      for(const cat of CSI_CATS){
+        const codes=CSI_CODES.filter(c=>c.cat===cat.key), pre=new Map();
+        for(const c of codes){ const p=c.code.slice(0,2); if(!pre.has(p)) pre.set(p,[]); pre.get(p).push(c); }
+        h+=`<optgroup label="${cat.key} ${_esc(cat.label)}"><option value="${cat.key}">${cat.key} ${_esc(cat.label)} 전체</option>`;
+        for(const [p,cs] of pre) if(cs.length>1) h+=`<option value="${p}">${_esc(_csiReqCodeLabel(p))}</option>`;
+        h+=codes.map(c=>`<option value="${c.code}">${c.code} ${_esc(c.name)}</option>`).join('')+'</optgroup>';
+      }
+      _csi.rq.codeHtml=h;
+    }
+    const known=!!cur && _csi.rq.codeHtml.includes(`<option value="${cur}">`);
+    let h='<option value="">— (증상 전체)</option>';
+    if(cur && !known) h+=`<option value="${_esc(cur)}" selected>${_esc(cur)}</option>`;
+    return h+(known ? _csi.rq.codeHtml.replace(`<option value="${cur}">`,`<option value="${cur}" selected>`) : _csi.rq.codeHtml);
+  }
+
+  /* ── 표 ── */
+  function _csiReqRows(){
+    const b=_csi.brand, f=_csi.rq.filter, pin=_csi.rq.pin;
+    let rows=[..._csi.rq.byId.values()].filter(x=>!b || x.brand===b);
+    const cnt={open:0, done:0, hold:0, all:rows.length};
+    for(const x of rows){ if(CSI_REQ_OPEN.has(x.status)) cnt.open++; else if(x.status==='완료') cnt.done++; else cnt.hold++; }
+    if(f==='open') rows=rows.filter(x=>CSI_REQ_OPEN.has(x.status) || pin.has(x.id));
+    else if(f==='done') rows=rows.filter(x=>x.status==='완료' || pin.has(x.id));
+    else if(f==='hold') rows=rows.filter(x=>x.status==='보류' || pin.has(x.id));
+    const pr=p=>{ const i=CSI_REQ_PRI.indexOf(p); return i<0 ? 9 : i; };
+    rows.sort((a,c)=> (CSI_REQ_OPEN.has(a.status)?0:1)-(CSI_REQ_OPEN.has(c.status)?0:1) || pr(a.priority)-pr(c.priority) || (a.req_no<c.req_no ? -1 : 1));
+    return {rows, cnt};
+  }
+  function _csiReqRowHtml(k, v, x, hasBrand, draft){
+    const inp=(f,label,extra)=>`<td class="c-${f}"><input class="cell" data-f="${f}" aria-label="${label}" value="${_esc(v[f]||'')}"${extra||''}></td>`;
+    const ta=(f,label,ph)=>`<td class="c-${f} c-ta"><textarea class="cell" data-f="${f}" aria-label="${label}" rows="1" maxlength="2000"${ph?` placeholder="${ph}"`:''}>${_esc(v[f]||'')}</textarea></td>`;
+    const sel=(f,label,opts)=>`<td class="c-${f}"><select class="cell" data-f="${f}" aria-label="${label}">${opts}</select></td>`;
+    const date=(f,label)=>`<td class="c-${f}"><input class="cell" type="date" data-f="${f}" aria-label="${label}" value="${_esc(v[f]||'')}" max="${_csiToday()}"></td>`;
+    return `<tr data-k="${k}"><td class="c-st"></td><td class="c-req_no">${x ? _esc(x.req_no) : ''}</td>`
+      +sel('status','상태',CSI_REQ_STATUS.map(s=>`<option${s===v.status?' selected':''}>${s}</option>`).join(''))
+      +sel('priority','우선순위',CSI_REQ_PRI.map(s=>`<option${s===v.priority?' selected':''}>${s}</option>`).join(''))
+      +(hasBrand ? sel('brand','브랜드',_csiBrandOpts(v.brand)) : '')
+      +inp('product','상품',` maxlength="200" autocomplete="off" spellcheck="false" list="csiReqProducts" placeholder="${draft?'비우면 브랜드 전체':''}"`)
+      +sel('code','VOC 코드',_csiReqCodeOpts(v.code))
+      +sel('team','받는 팀','<option value="">—</option>'+CSI_TEAMS.map(t=>`<option value="${t.key}"${t.key===v.team?' selected':''}>${_esc(t.label)}</option>`).join(''))
+      +ta('ask','요청 내용', draft?'무엇을 해 달라는지':'')
+      +ta('evidence','근거', draft?'몇 건 · 어떤 증상 · 언제':'')
+      +inp('owner','담당자',' maxlength="40" autocomplete="off"')
+      +date('action_on','조치일')
+      +ta('action_note','조치 내용','')
+      +'<td class="c-eff"></td><td class="c-now30"></td>'
+      +date('created_on','등록일')
+      +ta('memo','메모','')
+      +'<td class="c-del"><button type="button" class="csi-del" data-act="rq-del" title="이 요청 지우기" aria-label="이 요청 지우기">🗑</button></td></tr>';
+  }
+  function _csiReqBusy(){ const a=document.activeElement, t=document.getElementById('csiReqSheet'); return !!(a && t && t.contains(a) && a.classList.contains('cell')); }
+  function _csiReqSig(){ return [_csi.rq.ver, _csi.ver, _csi.brand, _csi.rq.filter, _csi.rq.pin.size, [..._csi.rq.ed.values()].filter(e=>!e.id).map(e=>e.k).join(',')].join('|'); }
+  function _csiRenderReq(force){
+    const tbl=document.getElementById('csiReqSheet'); if(!tbl) return;
+    const sig=_csiReqSig();
+    if(!force && sig===_csi.rq.sig && tbl.rows.length) return;
+    if(!force && _csiReqBusy()){ _csi.rq.stale=true; return; }
+    _csi.rq.sig=sig; _csi.rq.stale=false;
+    const b=_csi.brand, hasBrand=!b, {rows, cnt}=_csiReqRows();
+    const drafts=[..._csi.rq.ed.values()].filter(e=>!e.id && (!b || !e.v.brand || e.v.brand===b)).sort((x,y)=>y.at-x.at);
+    const cols=CSI_REQ_COLS.filter(c=>hasBrand || c[0]!=='brand');
+    tbl.style.width=cols.reduce((a,c)=>a+c[2],0)+'px';
+    tbl.innerHTML=`<colgroup>${cols.map(c=>`<col style="width:${c[2]}px">`).join('')}</colgroup>`
+      +`<thead><tr>${cols.map(c=>`<th class="h-${c[0]}">${c[1]}</th>`).join('')}</tr></thead><tbody>`
+      +drafts.map(e=>_csiReqRowHtml(e.k, e.v, null, hasBrand, true)).join('')
+      +rows.map(x=>_csiReqRowHtml(String(x.id), _csiReqView(String(x.id)), x, hasBrand, false)).join('')
+      +(!drafts.length && !rows.length ? `<tr class="csi-sheet-empty"><td colspan="${cols.length}">${_csi.rq.loaded ? (_csi.rq.filter==='open'?'진행 중인 개선 요청이 없어요':'해당하는 개선 요청이 없어요') : (_csi.rq.err?`개선 요청을 불러오지 못했어요 (${_esc(_csi.rq.err)})`:'불러오는 중…')} — <button type="button" class="csi-linkbtn" data-act="rq-add">＋ 개선 요청</button></td></tr>` : '')
+      +'</tbody>';
+    tbl.querySelectorAll('tbody tr[data-k]').forEach(_csiReqPaint);
+    // 상태 거르기 · 제목
+    const seg=document.getElementById('csiReqSeg');
+    if(seg) seg.innerHTML=[['open','진행 중',cnt.open],['done','완료',cnt.done],['hold','보류',cnt.hold],['all','전체',cnt.all]].map(([k,l,n])=>`<button type="button" data-rq-f="${k}" aria-pressed="${_csi.rq.filter===k}">${l} <b>${n}</b></button>`).join('');
+    document.getElementById('csiReqTitle').textContent=`🛠 ${b?_csiBrandLabel(b)+' ':''}개선 요청`;
+    document.getElementById('csiReqSub').textContent=`진행 중 ${cnt.open}건 · 완료 ${cnt.done}건${cnt.hold?` · 보류 ${cnt.hold}건`:''} · 진행 중 → 우선순위 → 번호 순 · 건수는 CS 기록(같은 브랜드 · 상품 · VOC 코드)에서 자동으로 세요`;
+  }
+  function _csiReqPaint(tr){
+    const k=tr.dataset.k, v=_csiReqView(k), e=_csi.rq.ed.get(k); if(!v) return;
+    tr.dataset.status=v.status; tr.dataset.pri=v.priority;
+    const ef=_csiReqEffect(v);
+    const eff=tr.querySelector('td.c-eff'); if(eff){ eff.textContent=ef.text; eff.className='c-eff'+(ef.cls?' e-'+ef.cls:''); eff.title=ef.tip||''; }
+    const n=tr.querySelector('td.c-now30'); if(n){ n.textContent=(v.brand||v.product||v.code) ? `${ef.now30}건` : ''; n.title='같은 브랜드 · 상품 · VOC 코드로 최근 30일에 들어온 CS'; }
+    const chr=CSI_REQ_OPEN.has(v.status) ? _csiReqChronic(v) : null;
+    tr.classList.toggle('is-chronic', !!chr);
+    const st=tr.querySelector('td.c-st'); let html='', tip='';
+    if(e && e.err){ html='<span class="s-err">오류</span>'; tip=e.err+' — 누르면 다시 저장해요'; }
+    else if(e && (e.busy || e.timer)){ html='<span class="s-save">저장…</span>'; tip='저장 중'; }
+    else if(e && !e.id){ html='<span class="s-new">새 요청</span>'; tip='칸을 적으면 바로 저장되고 번호가 붙어요'; }
+    else if(chr){ html='<span class="s-chr">⚠ 고질</span>'; tip=`이 요청의 고질 문제가 아직 계속돼요 — 30일 ${chr.n30}건, ${chr.weeks.size}주에 걸쳐`; }
+    if(st){ st.innerHTML=html; st.title=tip; }
+    tr.classList.toggle('is-draft', !!(e && !e.id));
+    tr.classList.toggle('is-err', !!(e && e.err));
+  }
+
+  /* ── 저장 ── */
+  function _csiReqEntry(k, create){
+    let e=_csi.rq.ed.get(k);
+    if(!e && create){
+      const x=_csi.rq.byId.get(+k); if(!x) return null;
+      e={k:String(x.id), id:x.id, v:_csiReqVals(x), dirty:new Set(), timer:null, busy:false, again:false, err:'', at:Date.now()};
+      _csi.rq.ed.set(e.k, e);
+    }
+    return e||null;
+  }
+  function _csiReqNewDraft(o){
+    const k='q'+(++_csi.rq.seq);
+    const v=Object.assign({created_on:_csiToday(), brand:'', product:'', code:'', evidence:'', team:'', ask:'', priority:'보통', status:'등록', owner:'', action_note:'', action_on:'', memo:''}, o||{});
+    const e={k, id:null, v, dirty:new Set(), timer:null, busy:false, again:false, err:'', at:Date.now()};
+    _csi.rq.ed.set(k, e);
+    return e;
+  }
+  function _csiReqQueue(e, ms){
+    clearTimeout(e.timer);
+    e.timer=setTimeout(()=>{ e.timer=null; _csiReqSave(e); }, ms==null ? 700 : ms);
+    const tr=document.querySelector(`#csiReqSheet tr[data-k="${e.k}"]`); if(tr) _csiReqPaint(tr);
+  }
+  function _csiReqBody(e, fields){
+    const v=e.v, o={};
+    for(const f of fields){
+      if(f==='action_on') o.action_on=v.action_on || null;
+      else if(CSI_REQ_LONG.has(f)) o[f]=_csiScrubML(v[f]).slice(0,2000);
+      else if(f==='product') o.product=_csiScrub(v.product).slice(0,200);
+      else o[f]=String(v[f]||'').slice(0,40);
+    }
+    return o;
+  }
+  async function _csiReqSave(e){
+    if(e.busy){ e.again=true; return; }
+    clearTimeout(e.timer); e.timer=null;
+    const okDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
+    let fields, method, url;
+    if(!e.id){
+      fields=CSI_REQ_FIELDS.filter(f=> f==='created_on' ? okDate(e.v.created_on) : f==='action_on' ? (!e.v.action_on || okDate(e.v.action_on)) : true);
+      method='POST'; url=`${SUPABASE_URL}/rest/v1/cs_requests?select=${CSI_REQ_SELECT}`;
+    }else{
+      fields=[...e.dirty].filter(f=> f==='created_on' ? okDate(e.v.created_on) : f==='action_on' ? (!e.v.action_on || okDate(e.v.action_on)) : true);
+      if(!fields.length) return;
+      method='PATCH'; url=`${SUPABASE_URL}/rest/v1/cs_requests?id=eq.${e.id}&select=${CSI_REQ_SELECT}`;
+    }
+    const me=_csiMe(), body=_csiReqBody(e, fields);
+    body.updated_by=me; if(method==='POST') body.created_by=me;
+    const sent=Object.assign({}, e.v);
+    e.busy=true; e.err='';
+    let tr=document.querySelector(`#csiReqSheet tr[data-k="${e.k}"]`); if(tr) _csiReqPaint(tr);
+    try{
+      const res=await fetch(url,{method,headers:_sbHeaders({'Prefer':'return=representation'}),body:JSON.stringify(body)});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const x=(await res.json())[0]; if(!x) throw new Error('응답 없음');
+      if(!e.id){
+        // 번호가 붙은 새 요청 — 표의 줄 키도 지금 찾아서 바꾼다 (보내는 사이 표를 다시 그렸을 수 있어서)
+        const old=e.k; e.id=x.id; e.k=String(x.id);
+        _csi.rq.ed.delete(old); _csi.rq.ed.set(e.k, e);
+        const t0=document.querySelector(`#csiReqSheet tr[data-k="${old}"]`);
+        if(t0){ t0.dataset.k=e.k; const no=t0.querySelector('td.c-req_no'); if(no) no.textContent=x.req_no; }
+        if(_csi.rq.focusK===old) _csi.rq.focusK=e.k;
+        toast(`✓ 개선 요청 ${x.req_no} 를 만들었어요`,'ok');
+      }
+      for(const f of fields) if(e.v[f]===sent[f]) e.dirty.delete(f);
+      _csi.rq.byId.set(x.id, x); _csi.rq.ver++; _csi.rq.pin.add(x.id);
+      // 저장된 값(가린 전화번호 등)을 칸에 — 지금 쓰는 칸 · 아직 못 보낸 칸은 그대로
+      tr=document.querySelector(`#csiReqSheet tr[data-k="${e.k}"]`);
+      for(const f of CSI_REQ_FIELDS){
+        if(e.dirty.has(f)) continue;
+        e.v[f]=_csiReqVal(x,f);
+        const el=tr && tr.querySelector(`[data-f="${f}"]`);
+        if(el && document.activeElement!==el && el.value!==e.v[f]) el.value=e.v[f];
+      }
+      _csiRenderBrandTabs();
+    }catch(err){ e.err='저장하지 못했어요 ('+(err.message||err)+')'; }
+    finally{
+      e.busy=false;
+      if(e.again){ e.again=false; _csiReqSave(e); }
+      else{
+        tr=document.querySelector(`#csiReqSheet tr[data-k="${e.k}"]`); if(tr) _csiReqPaint(tr);
+        if(e.id && !e.dirty.size && !e.timer && !e.err && _csi.rq.focusK!==e.k) _csi.rq.ed.delete(e.k);
+      }
+    }
+  }
+  function _csiReqSet(el){
+    const tr=el.closest('tr[data-k]'); if(!tr) return;
+    const k=tr.dataset.k, f=el.dataset.f, e=_csi.rq.ed.get(k) || _csiReqEntry(k, true); if(!e) return;
+    e.v[f]=el.value; e.dirty.add(f);
+    // '완료' 로 바꾸는데 조치일이 비었으면 오늘로
+    if(f==='status' && el.value==='완료' && !e.v.action_on){ e.v.action_on=_csiToday(); e.dirty.add('action_on'); const d=tr.querySelector('[data-f="action_on"]'); if(d) d.value=e.v.action_on; }
+    const text=el.tagName==='TEXTAREA' || (el.tagName==='INPUT' && el.type!=='date');
+    _csiReqQueue(e, text ? 700 : 0);
+  }
+
+  /* ── 새 요청 · 지우기 · 이동 ── */
+  function csiReqAdd(pre){
+    if(!_csi.inited) return;
+    if(_csi.tab!=='req') csiSwitchTab('req');
+    const e=_csiReqNewDraft(Object.assign({brand:_csi.brand||''}, pre||{}));
+    if(_csi.rq.filter==='done' || _csi.rq.filter==='hold') _csi.rq.filter='open';
+    if(pre) _csiReqSave(e);   // 고질 문제에서 만든 요청은 바로 저장 (번호가 붙는다)
+    _csiRenderReq(true);
+    const tr=document.querySelector(`#csiReqSheet tr[data-k="${e.k}"]`);
+    if(tr){
+      const w=document.getElementById('csiReqWrap'); if(w){ w.scrollTop=0; w.scrollLeft=0; }
+      const f=tr.querySelector(pre ? '[data-f="ask"]' : (_csi.brand ? '[data-f="product"]' : '[data-f="brand"]')); if(f) f.focus();
+    }
+  }
+  // 고질 문제 묶음(그룹 키)으로 요청 만들기 — 근거 · 받는 팀 · 우선순위를 채워서
+  function csiReqFromChronic(key){
+    const c=(_csi.chr||new Map()).get(key) || _csiChronic().find(x=>x.key===key);
+    if(!c){ toast('그 고질 문제를 찾지 못했어요 — 새로고침해 주세요','err'); return; }
+    const opt=_csiTopOpt(c.opts), code=CSI_CODE[c.code];
+    if(_csi.brand && _csi.brand!==c.brand) _csi.brand=c.brand;
+    csiReqAdd({brand:c.brand, product:c.product, code:c.code||'', team:c.team&&c.team!=='cs'?c.team:(code?code.team:''), priority:code&&code.sev==='긴급'?'긴급':'높음',
+      evidence:`${_csiMd(c.first)}~${_csiMd(c.last)} ${c.n30}건, ${c.weeks.size}주에 걸쳐 (${c.label})${opt?` · 많은 옵션 ${opt}`:''} — 고질 문제로 잡힘`});
+  }
+  function csiReqGo(id){
+    const x=_csi.rq.byId.get(+id); if(!x) return;
+    if(_csi.brand && x.brand!==_csi.brand) _csi.brand='';
+    if(!(_csi.rq.filter==='all' || (_csi.rq.filter==='open' && CSI_REQ_OPEN.has(x.status)) || (_csi.rq.filter==='done' && x.status==='완료') || (_csi.rq.filter==='hold' && x.status==='보류'))) _csi.rq.filter='all';
+    if(_csi.tab!=='req') csiSwitchTab('req'); else csiRender();
+    _csiRenderReq(true);
+    const tr=document.querySelector(`#csiReqSheet tr[data-k="${x.id}"]`);
+    if(tr){ tr.scrollIntoView({block:'center'}); tr.classList.add('is-flash'); setTimeout(()=>tr.classList.remove('is-flash'),1600); }
+  }
+  async function csiReqDelete(k){
+    const e=_csi.rq.ed.get(k);
+    if(e && !e.id){ clearTimeout(e.timer); _csi.rq.ed.delete(k); _csiRenderReq(true); return; }
+    const x=_csi.rq.byId.get(+k); if(!x) return;
+    if(!confirm(`개선 요청 ${x.req_no} 를 지울까요?\n(목록에서 빠지고, 필요하면 관리자가 되살릴 수 있어요)`)) return;
+    try{
+      const me=_csiMe();
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/cs_requests?id=eq.${x.id}&select=id`,{method:'PATCH',headers:_sbHeaders({'Prefer':'return=representation'}),body:JSON.stringify({deleted_at:new Date().toISOString(), deleted_by:me, updated_by:me})});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      if(e){ clearTimeout(e.timer); _csi.rq.ed.delete(k); }
+      _csi.rq.byId.delete(x.id); _csi.rq.pin.delete(x.id); _csi.rq.ver++;
+      if(_csi.rq.focusK===k) _csi.rq.focusK=null;
+      _csiRenderReq(true); _csiRenderBrandTabs(); toast(`개선 요청 ${x.req_no} 를 지웠어요`,'ok');
+    }catch(err){ toast('지우지 못했어요 — 다시 시도해 주세요 ('+(err.message||err)+')','err'); }
+  }
+  // 상품 칸 고르기 목록 — 그 브랜드로 CS 에 적힌 상품 + 받아 둔 상품 목록(색 상품은 이름만)
+  function _csiReqFillProducts(brand){
+    const dl=document.getElementById('csiReqProducts'); if(!dl) return;
+    const names=new Map();
+    for(const r of _csi.rows) if(!brand || r.brand===brand){ const n=_csiNormName(r.product); if(n) names.set(_csiKeyName(n), n); }
+    const c=brand ? _csiCatGet(brand) : null;
+    if(c) for(const it of c.items){ const sv=(it.opts&&it.opts.length) ? null : _csiSplitVariant(it.name), n=sv ? sv[0] : it.name; names.set(_csiKeyName(n), n); }
+    dl.innerHTML=[...names.values()].sort((a,b)=>a.localeCompare(b,'ko')).slice(0,400).map(n=>`<option value="${_esc(n)}"></option>`).join('');
+  }
+  // 긴 글 칸 — 쓰는 동안 칸을 펼쳐 보인다
+  function _csiReqGrow(ta){ ta.style.height='auto'; ta.style.height=Math.min(320, Math.max(120, ta.scrollHeight+4))+'px'; }
+
+  function _csiReqInit(){
+    const tbl=document.getElementById('csiReqSheet');
+    tbl.addEventListener('input',ev=>{
+      const el=ev.target; if(!el.classList || !el.classList.contains('cell') || el.tagName==='SELECT' || el.type==='date') return;
+      _csiReqSet(el); if(el.tagName==='TEXTAREA') _csiReqGrow(el);
+    });
+    tbl.addEventListener('change',ev=>{ const el=ev.target; if(el.classList && el.classList.contains('cell') && (el.tagName==='SELECT' || el.type==='date')) _csiReqSet(el); });
+    tbl.addEventListener('keydown',ev=>{
+      const el=ev.target; if(!el.classList || !el.classList.contains('cell') || ev.isComposing || ev.keyCode===229) return;
+      if(ev.key==='Escape' && el.dataset.orig!=null && el.value!==el.dataset.orig){ ev.preventDefault(); el.value=el.dataset.orig; _csiReqSet(el); if(el.tagName==='TEXTAREA') _csiReqGrow(el); return; }
+      if(el.tagName==='TEXTAREA') return;   // 긴 글 칸의 Enter 는 줄바꿈
+      if(ev.key==='Enter'){ ev.preventDefault(); _csiSheetMove(el.closest('tr[data-k]'), el.dataset.f, ev.shiftKey?-1:1); }
+    });
+    tbl.addEventListener('focusin',ev=>{
+      const el=ev.target; if(!el.classList || !el.classList.contains('cell')) return;
+      el.dataset.orig=el.value;
+      const tr=el.closest('tr[data-k]'), k=tr.dataset.k;
+      if(_csi.rq.focusK && _csi.rq.focusK!==k){ const pe=_csi.rq.ed.get(_csi.rq.focusK); if(pe && pe.id && !pe.dirty.size && !pe.busy && !pe.timer && !pe.err) _csi.rq.ed.delete(pe.k); }
+      _csi.rq.focusK=k;
+      tbl.querySelectorAll('tr.is-cur').forEach(t=>{ if(t!==tr) t.classList.remove('is-cur'); });
+      tr.classList.add('is-cur');
+      if(el.tagName==='TEXTAREA'){ el.closest('td').classList.add('is-open'); _csiReqGrow(el); }
+      if(el.dataset.f==='product'){ const v=_csiReqView(k); _csiReqFillProducts(v ? v.brand : _csi.brand); if(v && v.brand) _csiCatLoad(v.brand); }
+    });
+    tbl.addEventListener('focusout',ev=>{
+      const el=ev.target;
+      if(el.tagName==='TEXTAREA'){ el.closest('td').classList.remove('is-open'); el.style.height=''; el.scrollTop=0; }
+      if(ev.relatedTarget && tbl.contains(ev.relatedTarget)) return;
+      setTimeout(()=>{
+        if(_csiReqBusy()) return;
+        tbl.querySelectorAll('tr.is-cur').forEach(t=>t.classList.remove('is-cur'));
+        _csi.rq.focusK=null;
+        if(_csi.rq.stale) _csiRenderReq();
+      },150);
+    });
+    tbl.addEventListener('click',ev=>{
+      const a=ev.target.closest('[data-act]');
+      if(a){ const tr=a.closest('tr[data-k]'); if(a.dataset.act==='rq-del' && tr) csiReqDelete(tr.dataset.k); else if(a.dataset.act==='rq-add') csiReqAdd(); return; }
+      const st=ev.target.closest('td.c-st'); if(st){ const e=_csi.rq.ed.get(st.parentNode.dataset.k); if(e && e.err) _csiReqSave(e); }
+    });
+    document.getElementById('csiReqSeg').addEventListener('click',ev=>{ const b=ev.target.closest('[data-rq-f]'); if(!b) return; _csi.rq.filter=b.dataset.rqF; _csi.rq.pin.clear(); _csiRenderReq(true); });
+    // 고질 문제 카드 · CS 기록 안내에서 — 요청 만들기 / 걸린 요청으로
+    const go=ev=>{
+      const a=ev.target.closest('[data-act]'); if(!a) return;
+      if(a.dataset.act==='rq-go') csiReqGo(a.dataset.id);
+      else if(a.dataset.act==='rq-new') csiReqFromChronic(a.dataset.key);
+    };
+    document.getElementById('csiChronic').addEventListener('click',go);
+    document.getElementById('csiSheetInfo').addEventListener('click',go);
+  }
+  // 고질 문제 표 · CS 기록 안내에 붙이는 요청 표시
+  function _csiReqTag(g){
+    const q=_csiReqFind(g);
+    if(q) return `<button type="button" class="csi-req-chip" data-act="rq-go" data-id="${q.id}" data-status="${_esc(q.status)}" title="${_esc(q.ask||'요청 내용 없음')}">🛠 ${_esc(q.req_no)} · ${_esc(q.status)}</button>`;
+    return g.key ? `<button type="button" class="csi-mini csi-req-new" data-act="rq-new" data-key="${_esc(g.key)}">🛠 요청 만들기</button>` : '';
+  }
+  // 리포트 — 진행 중인 개선 요청 · 효과가 나온 요청
+  function _csiReqReportLines(){
+    const b=_csi.brand, all=[..._csi.rq.byId.values()].filter(q=>!b || q.brand===b);
+    const open=all.filter(q=>CSI_REQ_OPEN.has(q.status));
+    if(!all.length) return [];
+    const L=[], by=s=>open.filter(q=>q.status===s).length;
+    L.push(`🛠 개선 요청 — 진행 중 ${open.length}건${open.length?` (${['등록','전달함','검토 중','조치 중'].map(s=>by(s)?`${s} ${by(s)}`:'').filter(Boolean).join(' · ')})`:''}`);
+    const pr=p=>{ const i=CSI_REQ_PRI.indexOf(p); return i<0?9:i; };
+    open.slice().sort((a,c)=>pr(a.priority)-pr(c.priority) || (a.req_no<c.req_no?-1:1)).slice(0,5).forEach(q=>{
+      const t=CSI_TEAM_LABEL[q.team];
+      L.push(`· ${q.req_no} [${q.priority}] ${b?'':(q.brand?_csiBrandLabel(q.brand)+' ':'')}${q.product||'전체'}${q.code?` · ${_csiReqCodeLabel(q.code)}`:''}${t?` → ${t}`:''} · ${q.status}`);
+    });
+    if(open.length>5) L.push(`· 그 외 ${open.length-5}건`);
+    const done=all.filter(q=>q.status==='완료' && q.action_on).map(q=>({q, ef:_csiReqEffect(_csiReqVals(q))})).filter(x=>x.ef.done);
+    done.slice(-3).forEach(({q,ef})=>L.push(`· 효과 ${q.req_no} ${q.product||'전체'}: 조치 전 30일 ${ef.before}건 → 후 ${ef.after}건 (${ef.eff})`));
+    return L;
   }
 
   /* ── 📖 VOC 코드표 — 코드 뜻 · 판단 기준 · 기본 처리 / 원인별 전달 팀 / 처리 기준 · 심각도 ── */
