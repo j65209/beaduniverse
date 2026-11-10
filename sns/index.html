@@ -154,6 +154,41 @@
   .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
   @media (max-width:760px){ .two{grid-template-columns:1fr} }
   .loading{opacity:.55;transition:opacity .15s}
+
+  /* 카드뉴스 올리기 · 예약 목록 · 이 브라우저 등록 */
+  .banner{border-radius:12px;padding:10px 14px;font-size:13.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--warn-bg);color:var(--warn)}
+  .banner.ok{background:var(--ok-bg);color:var(--ok)}
+  .banner b{font-weight:800}
+  .drop{border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--sub);font-size:13.5px;cursor:pointer}
+  .drop.over{border-color:var(--accent);color:var(--accent)}
+  .drop[aria-disabled="true"]{cursor:not-allowed;opacity:.5}
+  .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .thumb{position:relative;width:96px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+  .thumb img{display:block;width:96px;height:120px;object-fit:cover}
+  .thumb .no{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px}
+  .thumb .tools{display:flex;justify-content:space-between;padding:3px}
+  .thumb .tools button{padding:2px 7px;font-size:12px;border-radius:7px}
+  .thumb.bad{outline:2px solid var(--bad)}
+  .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+  @media (max-width:760px){ .grid2{grid-template-columns:1fr} }
+  textarea{font:inherit;font-size:14px;width:100%;min-height:120px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);resize:vertical}
+  input[type=datetime-local]{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+  .count{font-size:12px;color:var(--sub);text-align:right}
+  .count.over{color:var(--bad);font-weight:700}
+  .opts{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:13.5px}
+  .opts label{font-size:13.5px;color:var(--ink);font-weight:600;display:inline-flex;gap:6px;align-items:center}
+  .opts .sep{width:1px;height:18px;background:var(--line)}
+  .qrow{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .qrow:last-child{border-bottom:0}
+  .qrow img{width:56px;height:70px;object-fit:cover;border-radius:8px;background:var(--bg)}
+  .qmeta{font-size:12.5px;color:var(--sub)}
+  .qcap{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qres{font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;color:var(--sub)}
+  .qres a{font-weight:700}
+  .qres .bad{color:var(--bad)}
+  .pill.info{color:var(--accent);background:var(--bg)}
+  .pill.mute{color:var(--sub);background:var(--bg)}
+  @media (max-width:560px){ .qrow{grid-template-columns:48px minmax(0,1fr)} .qrow > .row{grid-column:1 / -1} }
 </style>
 </head>
 <body>
@@ -168,6 +203,60 @@
 
 <main id="app" hidden>
   <div id="demoBanner" class="demo-banner" hidden>예시 숫자로 보는 미리보기예요 — 실제 꿀꿀집 숫자가 아니에요. <a href="./">실제 화면으로 돌아가기</a></div>
+
+  <div id="devBanner" class="banner" hidden></div>
+
+  <section class="card" id="composer">
+    <div class="card-head">
+      <div>
+        <h2>카드뉴스 올리기</h2>
+        <p class="lead">사진(최대 10장)을 순서대로 넣고 문구를 쓴 뒤 지금 올리거나 예약하세요. PNG 도 JPG 로 바꿔서 올려요.</p>
+      </div>
+    </div>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="사진 고르기">사진을 여기로 끌어다 놓거나 눌러서 고르세요 · 4:5(1080×1350)나 1:1 을 추천해요</div>
+    <input type="file" id="fileIn" accept="image/*" multiple hidden>
+    <div class="thumbs" id="thumbs"></div>
+    <div id="imgMsg" class="small" style="margin-top:6px"></div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="field">
+        <label for="capIg">인스타 문구</label>
+        <textarea id="capIg" maxlength="2200" placeholder="첫 줄이 제일 중요해요. 해시태그는 30개까지"></textarea>
+        <div class="count" id="cntIg"></div>
+      </div>
+      <div class="field">
+        <label for="capTh">스레드 문구</label>
+        <textarea id="capTh" maxlength="500" placeholder="비워 두면 인스타 문구 앞부분 500자를 써요"></textarea>
+        <div class="count" id="cntTh"></div>
+      </div>
+    </div>
+    <div class="opts">
+      <span class="small">올릴 곳</span>
+      <label><input type="checkbox" id="pIg" checked> 인스타 <span id="igHint" class="small"></span></label>
+      <label><input type="checkbox" id="pTh"> 스레드 <span id="thHint" class="small"></span></label>
+      <span class="sep" aria-hidden="true"></span>
+      <span class="small">언제</span>
+      <label><input type="radio" name="when" value="now" checked> 지금 바로</label>
+      <label><input type="radio" name="when" value="at"> 예약</label>
+      <input type="datetime-local" id="whenAt" disabled aria-label="예약 시각">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="btnPost" type="button">지금 올리기</button>
+      <button id="btnDry" class="ghost" type="button">이 사진으로 올리기 직전까지 시험</button>
+      <span id="postHint" class="small"></span>
+    </div>
+    <div id="postMsg" class="msg" hidden></div>
+  </section>
+
+  <section class="card" id="queueCard">
+    <div class="card-head">
+      <div>
+        <h2>올리기 예약 · 진행</h2>
+        <p class="lead">예약은 그 시각부터 5분 안에 올라가요. 결과(게시 링크 · 실패 이유)가 여기 남아요.</p>
+      </div>
+      <button id="qRefresh" class="ghost" type="button">새로고침</button>
+    </div>
+    <div id="queueList"></div>
+  </section>
 
   <div class="filters" role="toolbar" aria-label="보기 범위">
     <button class="chip" type="button" data-period="7">7일</button>
@@ -367,6 +456,7 @@
     }
     $('app').classList.remove('loading');
     renderAll();
+    updateComposer();
   }
 
   // ── 그리기 ─────────────────────────────────────────────────
@@ -725,6 +815,360 @@
 
   var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { renderBars(); renderFollowers(); if (state.sel) { var p = state.posts.find(function (q) { return q.media_id === state.sel; }); if (p) openDetail(p, true); } }, 150); });
 
+  // ── 카드뉴스 올리기 · 예약 · 이 브라우저 등록 ─────────────────────────
+  // 올리기·예약은 '등록된 브라우저'만 된다. 키는 이 브라우저 localStorage(ggul_device_key)에만 있고 서버엔 sha256 만.
+  var MAX_IMG = 10, IG_MAX = 2200, TH_MAX = 500, TAG_MAX = 30;
+  var dev = { status: 'none', code: '' }, pendingDevs = [];
+  var comp = { items: [] };
+  var armed = false, armTimer = null, dryUntil = 0;
+  state.queue = [];
+
+  function deviceKey() {
+    var k = '';
+    try { k = localStorage.getItem('ggul_device_key') || ''; } catch (e) { /* noop */ }
+    if (!/^[A-Za-z0-9_-]{32,128}$/.test(k)) {
+      var b = new Uint8Array(32); crypto.getRandomValues(b);
+      k = btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      try { localStorage.setItem('ggul_device_key', k); } catch (e) { /* noop */ }
+    }
+    return k;
+  }
+  var DEVKEY = deviceKey();
+  async function apiDev(path, body, rawJpeg) {
+    var h = { 'x-ggul-device': DEVKEY };
+    var opt = body === undefined ? { method: 'GET', cache: 'no-store', headers: h }
+      : rawJpeg ? { method: 'POST', headers: Object.assign({ 'Content-Type': 'image/jpeg' }, h), body: body }
+      : { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: JSON.stringify(body) };
+    var res = await fetch(FN + path, opt); var j = {};
+    try { j = await res.json(); } catch (e) { /* noop */ }
+    if (!res.ok && !j.error) j.error = '서버 응답 ' + res.status;
+    return j;
+  }
+  function deviceLabel() {
+    var ua = navigator.userAgent || '';
+    var br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '브라우저';
+    var os = /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'Mac' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : '';
+    return [os, br, me].filter(Boolean).join(' · ');
+  }
+  function canPost() { return DEMO || dev.status === 'approved'; }
+
+  async function loadDevice() {
+    if (DEMO) { dev = { status: 'approved', code: 'DEMO' }; state.queue = demoQueue(); renderDevice(); renderQueue(); return; }
+    var j = await apiDev('/device/status').catch(function () { return { ok: false }; });
+    dev = j.ok ? { status: j.status, code: j.code } : { status: 'none', code: '' };
+    pendingDevs = [];
+    if (dev.status === 'approved') {
+      var pj = await apiDev('/device/pending').catch(function () { return {}; });
+      pendingDevs = pj.pending || [];
+    }
+    renderDevice();
+    loadQueue();
+  }
+
+  function renderDevice() {
+    var b = $('devBanner'); b.textContent = '';
+    if (dev.status === 'approved') {
+      b.hidden = !pendingDevs.length; b.className = 'banner ok';
+      pendingDevs.forEach(function (d) {
+        var s = el('span', null, '새 브라우저 등록 요청 — 코드 '); s.appendChild(el('b', null, d.code));
+        if (d.label) s.appendChild(document.createTextNode(' · ' + d.label));
+        var btn = el('button', 'ghost', '승인'); btn.type = 'button';
+        btn.addEventListener('click', async function () {
+          btn.disabled = true;
+          var j = await apiDev('/device/approve', { id: d.id }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+          if (!j.ok) { btn.disabled = false; b.appendChild(el('span', null, ' ' + (j.error || ''))); return; }
+          loadDevice();
+        });
+        b.appendChild(s); b.appendChild(btn);
+      });
+    } else {
+      b.hidden = false; b.className = 'banner';
+      if (dev.status === 'pending') {
+        var s = el('span', null, '이 브라우저 등록을 요청했어요 — 코드 '); s.appendChild(el('b', null, dev.code));
+        s.appendChild(document.createTextNode('. 승인되면 올리기가 켜져요 (Claude 에게 "승인해줘"라고 하거나, 이미 등록된 브라우저에서 승인).'));
+        b.appendChild(s);
+        var again = el('button', 'ghost', '상태 다시 보기'); again.type = 'button'; again.addEventListener('click', loadDevice); b.appendChild(again);
+      } else if (dev.status === 'revoked') {
+        b.appendChild(el('span', null, '이 브라우저는 올리기 권한이 취소됐어요.'));
+      } else {
+        b.appendChild(el('span', null, '이 브라우저는 아직 카드뉴스 올리기 권한이 없어요. 한 번만 등록하면 돼요 (비밀번호 없음).'));
+        var reg = el('button', null, '이 브라우저 등록 요청'); reg.type = 'button';
+        reg.addEventListener('click', async function () {
+          reg.disabled = true;
+          var j = await apiDev('/device/register', { label: deviceLabel() }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+          if (!j.ok) { reg.disabled = false; b.appendChild(el('span', null, ' ' + (j.error || ''))); return; }
+          loadDevice();
+        });
+        b.appendChild(reg);
+      }
+    }
+    updateComposer();
+  }
+
+  function compTargets() {
+    var ig = state.accounts.find(function (a) { return a.platform === 'instagram'; });
+    var th = state.accounts.find(function (a) { return a.platform === 'threads'; });
+    return { ig: !!(ig && ig.has_token), th: !!(th && th.has_token), igId: ig && ig.id };
+  }
+  function fmtLocalInput(d) { var p = function (n) { return String(n).padStart(2, '0'); }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function whenNow() { var r = document.querySelector('input[name="when"]:checked'); return !r || r.value === 'now'; }
+  function selectedPlatforms() { var out = []; if ($('pIg').checked && !$('pIg').disabled) out.push('instagram'); if ($('pTh').checked && !$('pTh').disabled) out.push('threads'); return out; }
+  function tagCount(s) { return (s.match(/#[^\s#]+/g) || []).length; }
+  function ratioProblem(r) { if (r < 0.79) return '세로가 너무 길어요 (4:5보다 김)'; if (r > 1.92) return '가로가 너무 길어요'; return ''; }
+
+  function updateComposer() {
+    var t = compTargets(), ok = canPost();
+    $('pIg').disabled = !t.ig || !ok; $('igHint').textContent = t.ig ? '' : '(연결 필요)';
+    $('pTh').disabled = !t.th || !ok; $('thHint').textContent = t.th ? '' : '(프로필·연결 필요)';
+    if (!t.th) $('pTh').checked = false;
+    ['capIg', 'capTh'].forEach(function (id) { $(id).disabled = !ok; });
+    document.querySelectorAll('input[name="when"]').forEach(function (r) { r.disabled = !ok; });
+    $('whenAt').disabled = !ok || whenNow();
+    $('drop').setAttribute('aria-disabled', String(!ok || DEMO));
+    $('btnPost').disabled = !ok || DEMO;
+    $('btnDry').disabled = !ok || DEMO || !t.ig || Date.now() < dryUntil;
+    if (!armed) $('btnPost').textContent = whenNow() ? '지금 올리기' : '예약하기';
+    var ig = $('capIg').value, th = $('capTh').value;
+    var ci = $('cntIg'); ci.textContent = ig.length + '/' + IG_MAX + ' · 해시태그 ' + tagCount(ig) + '/' + TAG_MAX;
+    ci.className = 'count' + (ig.length > IG_MAX || tagCount(ig) > TAG_MAX ? ' over' : '');
+    var ct = $('cntTh'); ct.textContent = th.trim() ? th.length + '/' + TH_MAX : '비우면 인스타 문구 앞 500자를 써요';
+    ct.className = 'count' + (th.length > TH_MAX ? ' over' : '');
+    $('postHint').textContent = DEMO ? '예시 화면에서는 올릴 수 없어요' : !ok ? '위에서 이 브라우저를 등록하면 켜져요' : Date.now() < dryUntil ? '시험은 1분에 한 번이에요' : '';
+  }
+
+  function validate(forDry) {
+    if (!canPost()) return '이 브라우저를 먼저 등록해 주세요.';
+    var plats = selectedPlatforms();
+    if (!forDry && !plats.length) return '올릴 곳(인스타·스레드)을 골라 주세요.';
+    if ((forDry || plats.indexOf('instagram') >= 0) && !comp.items.length) return '사진을 1장 이상 넣어 주세요.';
+    if (comp.items.length > MAX_IMG) return '사진은 ' + MAX_IMG + '장까지예요.';
+    var bad = comp.items.map(function (it, i) { return ratioProblem(it.ratio) ? (i + 1) + '번 사진: ' + ratioProblem(it.ratio) : ''; }).filter(Boolean);
+    if (bad.length) return bad.join(' · ') + ' — 인스타는 4:5 ~ 1.91:1 비율만 받아요.';
+    var ig = $('capIg').value;
+    if (ig.length > IG_MAX) return '인스타 문구가 ' + IG_MAX + '자를 넘어요.';
+    if (tagCount(ig) > TAG_MAX) return '인스타 해시태그는 ' + TAG_MAX + '개까지예요.';
+    if ($('capTh').value.length > TH_MAX) return '스레드 문구가 ' + TH_MAX + '자를 넘어요.';
+    if (!forDry && !whenNow()) {
+      var v = $('whenAt').value, t = v ? new Date(v).getTime() : NaN;
+      if (!isFinite(t)) return '예약 시각을 골라 주세요.';
+      if (t < Date.now() + 60e3) return '예약 시각이 너무 가까워요. 지금 올리기를 쓰거나 1분 뒤 이후로 골라 주세요.';
+      if (t > Date.now() + 75 * DAY) return '예약은 75일 안으로만 할 수 있어요.';
+    }
+    return '';
+  }
+
+  function postMsg(kind, text, nodes) {
+    var m = $('postMsg'); m.hidden = false; m.className = 'msg ' + kind; m.textContent = text;
+    (nodes || []).forEach(function (n) { m.appendChild(n); });
+  }
+
+  function addFiles(files) {
+    if (!canPost() || DEMO) return;
+    var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type); });
+    if (!list.length) return;
+    var room = MAX_IMG - comp.items.length;
+    if (room <= 0) { $('imgMsg').textContent = '사진은 ' + MAX_IMG + '장까지예요.'; return; }
+    if (list.length > room) list = list.slice(0, room);
+    (async function () {
+      for (var i = 0; i < list.length; i++) {
+        try { comp.items.push(await toJpeg(list[i])); } catch (e) { $('imgMsg').textContent = list[i].name + ': 사진을 읽지 못했어요.'; }
+        renderThumbs();
+      }
+    })();
+  }
+
+  // 어떤 사진이든 JPG 로 — 인스타 API 는 JPEG 만 받는다. 가로 1440px 넘으면 줄이고, PNG 투명 부분은 흰색.
+  function toJpeg(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight, s = Math.min(1, 1440 / w), cw = Math.round(w * s), ch = Math.round(h * s);
+        var c = document.createElement('canvas'); c.width = cw; c.height = ch; var x = c.getContext('2d');
+        x.fillStyle = '#ffffff'; x.fillRect(0, 0, cw, ch);
+        x.drawImage(img, 0, 0, cw, ch); URL.revokeObjectURL(url);
+        c.toBlob(function (b) { if (!b) return reject(new Error('jpeg')); resolve({ blob: b, url: URL.createObjectURL(b), w: cw, h: ch, ratio: cw / ch, name: file.name, path: null }); }, 'image/jpeg', 0.92);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('load')); };
+      img.src = url;
+    });
+  }
+
+  function renderThumbs() {
+    var box = $('thumbs'); box.textContent = '';
+    comp.items.forEach(function (it, i) {
+      var t = el('div', 'thumb' + (ratioProblem(it.ratio) ? ' bad' : ''));
+      var im = el('img'); im.src = it.url; im.alt = (i + 1) + '번째 사진'; t.appendChild(im);
+      t.appendChild(el('span', 'no', String(i + 1)));
+      var tools = el('div', 'tools');
+      var mk = function (txt, title, fn, dis) { var b = el('button', 'ghost', txt); b.type = 'button'; b.title = title; b.disabled = !!dis; b.addEventListener('click', fn); return b; };
+      tools.appendChild(mk('◀', '앞으로', function () { moveImg(i, -1); }, i === 0));
+      tools.appendChild(mk('✕', '빼기', function () { var r = comp.items.splice(i, 1)[0]; if (r) URL.revokeObjectURL(r.url); renderThumbs(); }));
+      tools.appendChild(mk('▶', '뒤로', function () { moveImg(i, 1); }, i === comp.items.length - 1));
+      t.appendChild(tools); box.appendChild(t);
+    });
+    var first = comp.items[0], msg = [];
+    if (first) {
+      msg.push(comp.items.length + '/' + MAX_IMG + '장 · 첫 장 ' + first.w + '×' + first.h);
+      if (comp.items.some(function (it) { return Math.abs(it.ratio - first.ratio) > 0.02; })) msg.push('비율이 다른 사진이 있어요 — 인스타는 첫 장 비율로 잘라요');
+      var bad = comp.items.map(function (it, i) { return ratioProblem(it.ratio) ? (i + 1) + '번: ' + ratioProblem(it.ratio) : ''; }).filter(Boolean);
+      if (bad.length) msg.push(bad.join(' · '));
+    }
+    $('imgMsg').textContent = msg.join(' · ');
+  }
+  function moveImg(i, d) { var a = comp.items, j = i + d; if (j < 0 || j >= a.length) return; var t = a[i]; a[i] = a[j]; a[j] = t; renderThumbs(); }
+
+  async function ensureUploaded() {
+    for (var i = 0; i < comp.items.length; i++) {
+      var it = comp.items[i]; if (it.path) continue;
+      postMsg('info', '사진 올리는 중… ' + (i + 1) + '/' + comp.items.length);
+      var j = await apiDev('/upload', it.blob, true);
+      if (!j.ok) throw new Error(j.error || '사진을 올리지 못했어요.');
+      it.path = j.path;
+    }
+    return comp.items.map(function (it) { return it.path; });
+  }
+
+  function resetComposer() {
+    comp.items.forEach(function (it) { URL.revokeObjectURL(it.url); }); comp.items = [];
+    $('capIg').value = ''; $('capTh').value = ''; renderThumbs(); updateComposer();
+  }
+
+  function resultNodes(results, platforms) {
+    return (platforms || Object.keys(results || {})).map(function (p) {
+      var r = (results || {})[p], line = el('div');
+      if (!r) { line.textContent = PL[p].name + ': 결과 없음'; return line; }
+      if (r.ok) {
+        line.appendChild(document.createTextNode('✓ ' + PL[p].name + ' 게시됨 '));
+        if (r.permalink) { var a = el('a', null, '보기 ↗'); a.href = r.permalink; a.target = '_blank'; a.rel = 'noopener'; line.appendChild(a); }
+      } else line.textContent = '✕ ' + PL[p].name + ': ' + r.error;
+      return line;
+    });
+  }
+
+  $('btnPost').addEventListener('click', async function () {
+    var err = validate(false); if (err) { postMsg('bad', err); return; }
+    var now = whenNow();
+    if (now && !armed) { // '지금 올리기'는 바로 공개라 한 번 더 눌러야 올라간다
+      armed = true; $('btnPost').textContent = '정말 지금 올릴까요? 한 번 더 누르면 바로 공개돼요';
+      clearTimeout(armTimer); armTimer = setTimeout(function () { armed = false; updateComposer(); }, 6000);
+      return;
+    }
+    armed = false; clearTimeout(armTimer);
+    var plats = selectedPlatforms();
+    $('btnPost').disabled = true; $('btnDry').disabled = true;
+    try {
+      var paths = await ensureUploaded();
+      postMsg('info', now ? plats.map(function (p) { return PL[p].name; }).join('·') + '에 올리는 중… 30초쯤 걸려요.' : '예약하는 중…');
+      var body = { platforms: plats, image_paths: paths, caption: $('capIg').value, now: now };
+      if ($('capTh').value.trim()) body.threads_text = $('capTh').value;
+      if (!now) body.scheduled_at = new Date($('whenAt').value).toISOString();
+      var j = await apiDev('/queue', body);
+      if (!j.ok) throw new Error(j.error || '실패했어요.');
+      if (now) {
+        var good = j.status === 'published';
+        postMsg(good ? 'ok' : 'bad', good ? '올렸어요!' : j.status === 'partial' ? '일부만 올라갔어요 — 아래 목록에서 다시 시도할 수 있어요.' : '올리지 못했어요 — 이유를 확인해 주세요.', resultNodes(j.results, plats));
+        if (good) resetComposer();
+        load();
+      } else {
+        postMsg('ok', '예약했어요 — ' + fmtWhen(body.scheduled_at) + '부터 5분 안에 올라가요.');
+        resetComposer();
+      }
+      loadQueue();
+    } catch (e) { postMsg('bad', e.message || '실패했어요.'); }
+    finally { updateComposer(); }
+  });
+
+  $('btnDry').addEventListener('click', async function () {
+    var err = validate(true); if (err) { postMsg('bad', err); return; }
+    $('btnDry').disabled = true; $('btnPost').disabled = true;
+    try {
+      var paths = await ensureUploaded();
+      postMsg('info', '인스타에 올리기 직전까지 시험 중… (실제로 올리지 않아요)');
+      var j = await api('/test', { account_id: compTargets().igId, image_paths: paths });
+      dryUntil = Date.now() + 60000; setTimeout(updateComposer, 60500);
+      var nodes = (j.steps || []).map(function (s) { return el('div', null, (s.ok ? '✅ ' : '❌ ') + s.name + (s.detail ? ' — ' + s.detail : '')); });
+      postMsg(j.ok ? 'ok' : 'bad', j.ok ? '이 사진으로 올릴 준비가 됐어요 (실제로 올리지 않았어요).' : (j.error || '시험이 중간에 멈췄어요.'), nodes);
+    } catch (e) { postMsg('bad', e.message || '시험하지 못했어요.'); }
+    finally { updateComposer(); }
+  });
+
+  var drop = $('drop');
+  drop.addEventListener('click', function () { if (canPost() && !DEMO) $('fileIn').click(); });
+  drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); drop.click(); } });
+  drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
+  drop.addEventListener('drop', function (e) { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer && e.dataTransfer.files); });
+  $('fileIn').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
+  ['capIg', 'capTh'].forEach(function (id) { $(id).addEventListener('input', updateComposer); });
+  ['pIg', 'pTh'].forEach(function (id) { $(id).addEventListener('change', updateComposer); });
+  document.querySelectorAll('input[name="when"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      if (!whenNow() && !$('whenAt').value) { var d = new Date(Date.now() + 36e5); d.setMinutes(0, 0, 0); $('whenAt').value = fmtLocalInput(d); }
+      armed = false; updateComposer();
+    });
+  });
+  $('whenAt').min = fmtLocalInput(new Date(Date.now() + 2 * 6e4));
+
+  function statusPill(s) {
+    var m = { scheduled: ['info', '⏰ 예약됨'], publishing: ['info', '⏳ 올리는 중'], published: ['ok', '✓ 게시됨'], partial: ['warn', '⚠ 일부만'], failed: ['bad', '✕ 실패'], canceled: ['mute', '취소됨'] }[s] || ['mute', s];
+    return el('span', 'pill ' + m[0], m[1]);
+  }
+  async function loadQueue() {
+    if (!DEMO && dev.status === 'approved') {
+      var j = await apiDev('/queue').catch(function () { return { ok: false }; });
+      if (j.ok) state.queue = j.items || [];
+    }
+    renderQueue();
+  }
+  function twoStep(label, confirmText, action) {
+    var b = el('button', 'ghost', label); b.type = 'button'; var armedB = false, tm;
+    b.addEventListener('click', async function () {
+      if (DEMO) return;
+      if (!armedB) { armedB = true; b.textContent = confirmText; tm = setTimeout(function () { armedB = false; b.textContent = label; }, 5000); return; }
+      clearTimeout(tm); b.disabled = true; b.textContent = '처리 중…';
+      var j = await action().catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+      if (!j.ok) { b.disabled = false; b.textContent = label; postMsg('bad', j.error || '실패했어요.'); }
+      loadQueue(); if (j.ok && j.status) load();
+    });
+    return b;
+  }
+  function renderQueue() {
+    var box = $('queueList'); box.textContent = '';
+    if (!canPost()) { box.appendChild(el('div', 'empty', '이 브라우저를 등록하면 예약·진행 목록이 보여요.')); return; }
+    if (!state.queue.length) { box.appendChild(el('div', 'empty', '아직 올리거나 예약한 카드뉴스가 없어요.')); return; }
+    state.queue.forEach(function (q) {
+      var row = el('div', 'qrow');
+      var im = el('img'); im.alt = ''; im.loading = 'lazy'; if (q.image_urls && q.image_urls[0]) im.src = q.image_urls[0]; row.appendChild(im);
+      var mid = el('div');
+      mid.appendChild(el('div', 'qmeta', fmtWhen(q.scheduled_at) + ' · ' + (q.platforms || []).map(function (p) { return PL[p] ? PL[p].name : p; }).join('·') + ' · 사진 ' + (q.image_paths || []).length + '장'));
+      mid.appendChild(el('div', 'qcap', (q.caption || q.threads_text || '(문구 없음)').split('\n')[0]));
+      var res = el('div', 'qres');
+      (q.platforms || []).forEach(function (p) {
+        var r = (q.results || {})[p]; if (!r || !PL[p]) return;
+        if (r.ok) {
+          if (r.permalink) { var a = el('a', null, '✓ ' + PL[p].name + ' 보기 ↗'); a.href = r.permalink; a.target = '_blank'; a.rel = 'noopener'; res.appendChild(a); }
+          else res.appendChild(el('span', null, '✓ ' + PL[p].name));
+        } else res.appendChild(el('span', 'bad', '✕ ' + PL[p].name + ': ' + r.error));
+      });
+      if (q.note) res.appendChild(el('span', null, q.note));
+      mid.appendChild(res); row.appendChild(mid);
+      var right = el('div', 'row'); right.appendChild(statusPill(q.status));
+      if (q.status === 'scheduled') right.appendChild(twoStep('예약 취소', '취소할까요?', function () { return apiDev('/queue/cancel', { id: q.id }); }));
+      if (q.status === 'failed' || q.status === 'partial') right.appendChild(twoStep('다시 시도', '지금 다시 올릴까요?', function () { return apiDev('/queue/retry', { id: q.id }); }));
+      row.appendChild(right); box.appendChild(row);
+    });
+  }
+  $('qRefresh').addEventListener('click', loadQueue);
+  setInterval(function () { if (!document.hidden && state.queue.some(function (q) { return q.status === 'scheduled' || q.status === 'publishing'; })) loadQueue(); }, 60000);
+
+  function demoQueue() {
+    var now = Date.now();
+    return [
+      { id: 2, platforms: ['instagram', 'threads'], image_paths: ['1', '2', '3'], image_urls: [], caption: '이번 주 최저가 득템 리스트 5\n#꿀템', scheduled_at: new Date(now + 20 * 36e5).toISOString(), status: 'scheduled', results: {} },
+      { id: 1, platforms: ['instagram'], image_paths: ['1', '2'], image_urls: [], caption: '겨울 필수템 3가지 — 지갑 지키는 꿀템', scheduled_at: new Date(now - 30 * 36e5).toISOString(), status: 'published', results: { instagram: { ok: true, permalink: null } } },
+    ];
+  }
+
   // ── 예시 숫자 (?demo=1) — 화면 미리보기용. 서버에 아무것도 보내지 않는다 ──
   function demoData() {
     var now = Date.now(), seed = 7; var rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
@@ -758,6 +1202,7 @@
 
   if (DEMO) $('demoBanner').hidden = false;
   load();
+  loadDevice();
 })();
 </script>
 </body>
