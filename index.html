@@ -6653,6 +6653,42 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   .csi-filters[hidden]{display:none}
 
+  /* 📉 상품별 반품 · 불량률 — 판매 수량 칸 + 비율 막대(엑셀 데이터 막대처럼) */
+  .csi-tbl-rate{min-width:760px}
+  .csi-tbl-rate td{vertical-align:middle}
+  .csi-qty{width:92px;font:inherit;font-size:13px;font-weight:600;text-align:right;color:var(--text-0);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-variant-numeric:tabular-nums}
+  .csi-qty:focus{outline:none;border-color:var(--neon-cs);background:#fff}
+  .csi-qty.ok{border-color:#86efac;background:#f0fdf4}
+  .csi-qty.bad{border-color:var(--danger);background:#fef2f2}
+  .csi-tbl-rate td.r{position:relative;min-width:84px;font-weight:700}
+  .csi-tbl-rate td.r::before{content:'';position:absolute;left:6px;top:7px;bottom:7px;width:calc((100% - 12px) * var(--w, 0));border-radius:3px;opacity:.22}
+  .csi-tbl-rate td.rr::before{background:var(--csi-accent)}
+  .csi-tbl-rate td.rd::before{background:#f59e0b}
+  .csi-tbl-rate td.r span{position:relative}
+  .csi-rate-add input{width:100%;font:inherit;font-size:13px;background:var(--bg-2);border:1px dashed var(--line-2);border-radius:6px;padding:5px 8px}
+  .csi-rate-add select{font:inherit;font-size:13px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+
+  /* 📷 사진 — 기록 표의 사진 칸 · 사진 창 */
+  .csi-sheet td.c-photo{white-space:nowrap;padding:0 4px}
+  .csi-ph{font:inherit;font-size:12px;font-weight:700;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:999px;padding:2px 8px;cursor:pointer;margin-right:4px;max-width:96px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+  .csi-ph[hidden]{display:none}
+  .csi-ph:hover{border-color:var(--neon-cs)}
+  .csi-ph-add{font:inherit;font-size:14px;font-weight:700;color:var(--text-3);background:none;border:1px dashed var(--line-2);border-radius:6px;width:26px;height:24px;line-height:20px;cursor:pointer;vertical-align:middle}
+  .csi-ph-add:hover,.csi-ph-add:focus-visible{color:var(--neon-cs);border-color:var(--neon-cs)}
+  .csi-sheet tr.is-drop td{background:#e0f2fe !important;box-shadow:inset 0 1px 0 var(--neon-cs),inset 0 -1px 0 var(--neon-cs)}
+  .csi-ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin:12px 0;max-height:52vh;overflow:auto}
+  .csi-ph-item{position:relative;margin:0;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .csi-ph-item img{display:block;width:100%;height:180px;object-fit:contain;cursor:zoom-in;background:#fff}
+  .csi-ph-item figcaption{font-size:11.5px;color:var(--text-3);padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .csi-ph-item.is-pend{border-style:dashed;border-color:var(--neon-cs)}
+  .csi-ph-item.is-busy{align-items:center;justify-content:center;min-height:120px;font-size:12.5px;color:var(--text-3)}
+  .csi-ph-del{position:absolute;top:6px;right:6px;font-size:12px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:6px;padding:2px 6px;cursor:pointer}
+  .csi-ph-del:hover{background:#fee2e2;border-color:#fecaca}
+  .csi-ph-drop{display:block;border:2px dashed var(--line-2);border-radius:10px;padding:16px;text-align:center;color:var(--text-2);cursor:pointer;background:var(--bg-2);font-size:13px;line-height:1.7}
+  .csi-ph-drop b{color:var(--neon-cs)}
+  .csi-ph-drop.over{border-color:var(--neon-cs);background:#f0f9ff}
+  .csi-ph-link{margin-top:12px}
+
   /* 🛠 개선 요청 표 — 상태 · 우선순위 색, 긴 글 칸은 쓰는 동안 펼침, 조치 효과 색 */
   .csi-req td.c-req_no{font-weight:800;color:var(--text-1);padding:0 8px;white-space:nowrap;font-variant-numeric:tabular-nums}
   .csi-req tr[data-status="등록"] td.c-status .cell{color:#92400e;font-weight:700}
@@ -11557,7 +11593,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
         <div class="csi-sheet-wrap" id="csiSheetWrap"><table class="csi-sheet" id="csiSheet"></table></div>
         <div class="csi-sheet-info" id="csiSheetInfo" aria-live="polite"></div>
-        <div class="csi-sheet-foot">칸을 고치면 바로 저장돼요 · 새 줄은 <b>브랜드 · 상품명 · 접수 구분 · VOC 코드</b>가 다 차면 저장되고, 그 전까지는 이 컴퓨터에 남아 있어요 · 고객 이름 · 연락처 · 주소는 적지 마세요 (내용 속 전화번호 · 이메일은 저장할 때 가려요)</div>
+        <div class="csi-sheet-foot">칸을 고치면 바로 저장돼요 · 새 줄은 <b>브랜드 · 상품명 · 접수 구분 · VOC 코드</b>가 다 차면 저장되고, 그 전까지는 이 컴퓨터에 남아 있어요 · <b>사진</b>은 사진 칸의 ＋, 줄에 끌어다 놓기, 칸에서 Ctrl+V 로 넣어요 · 고객 이름 · 연락처 · 주소는 적지 마세요 (내용 속 전화번호 · 이메일은 저장할 때 가려요)</div>
       </section>
 
       <!-- 🛠 개선 요청 — 디자인팀 · MD팀 · 물류팀에 보낸 요청과 진행 상태. 칸을 고치면 바로 저장, 조치 전 · 후 30일 건수는 CS 기록에서 자동 -->
@@ -11584,7 +11620,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <ol class="csi-onboard-steps">
             <li><b>📝 CS 기록</b> 탭에서 <b>＋ 새 줄</b>을 누르고 엑셀처럼 칸에 바로 적어요. 브랜드 탭에서 적으면 브랜드는 저절로 들어가요.</li>
             <li>상품명 칸에 이름 일부를 치면 그 브랜드의 상품 목록이 떠요. VOC 코드 뜻과 처리 기준은 <b>📖 VOC 코드표</b>에 있어요.</li>
-            <li>기록이 쌓이면 <b>고질 문제 · 불량 많은 상품 · 팀별 전달 사항 · 일일 리포트</b>가 여기 바로 만들어져요.</li>
+            <li>기록이 쌓이면 <b>고질 문제 · 불량 많은 상품 · 상품별 반품 · 불량률 · 일일 리포트</b>가 여기 바로 만들어져요.</li>
           </ol>
           <div class="csi-onboard-note">고객 이름 · 연락처 · 주소는 저장하지 않아요. 내용 속 전화번호 · 이메일은 가려서 저장해요.</div>
         </div>
@@ -11596,8 +11632,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <section class="csi-card" id="csiProd" aria-label="불량 많은 상품"></section>
             <section class="csi-card" id="csiCats" aria-label="유형별 CS"></section>
           </div>
+          <section class="csi-card csi-mb" id="csiRates" aria-label="상품별 반품 · 불량률"></section>
           <section class="csi-card csi-mb" id="csiTrend" aria-label="일별 추이"></section>
-          <section class="csi-mb" id="csiTeams" aria-label="팀별 전달 사항"></section>
           <section class="csi-card" id="csiReport" aria-label="일일 리포트">
             <div class="csi-card-head">
               <div>
@@ -11639,6 +11675,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="modal-actions">
             <button type="button" class="modal-btn" onclick="csiCloseSettings()">취소</button>
             <button type="button" class="modal-btn modal-btn-primary" id="csiSetSave" onclick="csiSaveSettings()">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📷 사진 창 — CS 기록 한 줄의 사진 (크게 보기 · 지우기 · 더 넣기 · 예전 사진 링크) -->
+      <input type="file" id="csiPhFile" accept="image/*" multiple hidden>
+      <div class="modal-bg" id="csiPhotoModal" role="dialog" aria-modal="true" aria-labelledby="csiPhTitle">
+        <div class="modal csi-modal csi-modal-wide">
+          <div class="modal-title" id="csiPhTitle">📷 사진</div>
+          <div class="modal-sub" id="csiPhSub"></div>
+          <div class="csi-ph-grid" id="csiPhGrid"></div>
+          <label class="csi-ph-drop" id="csiPhDrop">
+            <input type="file" id="csiPhFile2" accept="image/*" multiple hidden>
+            <b>사진 고르기</b> · 여기로 끌어다 놓기 · Ctrl+V 로 붙여넣기<br>
+            <span class="csi-muted">큰 사진은 줄여서 저장해요 · 송장 · 얼굴처럼 개인정보가 보이는 사진은 넣지 마세요 · 아이폰 HEIC 는 JPG 로 바꿔서</span>
+          </label>
+          <label class="csi-f csi-ph-link"><span>사진 링크 (예전 방식 · 선택)</span><input id="csiPhLink" type="url" maxlength="500" placeholder="https://"></label>
+          <div class="modal-actions">
+            <button type="button" class="modal-btn" onclick="csiClosePhotos()">닫기</button>
           </div>
         </div>
       </div>
@@ -31140,7 +31195,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
              색마다 따로 등록한 상품('Cordu dot bag (Olive green)')은 상품명 + 옵션으로 나눠 넣어 상품별 집계가 한데 모이게 한다.
      · 분석: 기간(오늘 · 어제 · 7 · 30 · 90일, 기준일) × 브랜드 탭 × 채널 — 접수 · 제품 불량 · 교환·반품 · 고질 /
              고질 문제(30일, 같은 상품 · 같은 VOC 코드 — 맨 위에 경고색, 기록 표 · 브랜드 탭에도 ⚠) /
-             불량 많은 상품 / 대분류별 / 일별 추이 / 팀별 전달 / 일일 리포트(복사)
+             불량 많은 상품 / 대분류별 / 상품별 반품 · 불량률(월, 판매 수량은 직접) / 일별 추이 / 일일 리포트(복사)
+             (팀별 전달 사항은 2026-11-10 사용자 요청으로 뺐다)
+     · 🛠 개선 요청: cs_requests — 받는 팀 · 상태 · 조치 전 · 후 30일 건수
+     · 📷 사진: cs_issue_photos — 기록 표 사진 칸(＋ · 끌어다 놓기 · Ctrl+V), 사진 창에서 크게 보기 · 지우기
      · 고객 이름 · 연락처 · 주소는 저장하지 않는다 — 내용 속 전화번호 · 이메일은 저장할 때 가린다
      ===================================================================== */
   const CSI_CATS=[
@@ -31233,7 +31291,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const CSI_LOAD_DAYS=180;   // 90일 + 직전 90일 비교까지
   const CSI_KV_KEY='cs_insight_settings';
   const CSI_PREF_KEY='csi_prefs_v1';
-  const CSI_SELECT='id,issue_date,channel,brand,kind,product,product_id,option_text,category,code,sub,cause,detail,action,photo_url,source,created_by,created_at,updated_by,updated_at,deleted_at';
+  const CSI_SELECT='id,issue_date,channel,brand,kind,product,product_id,photo_count,option_text,category,code,sub,cause,detail,action,photo_url,source,created_by,created_at,updated_by,updated_at,deleted_at';
 
   const _csi={byId:new Map(), gone:new Map(), duringLoad:[], rows:[], loaded:false, loading:false, reloadAgain:false, loadedFrom:'', lastSync:'', err:'', syncedAt:0,
     tab:'sheet', range:'7', date:'', dateTouched:false, brand:'', channel:'', q:'', listLimit:50, trendTable:false,
@@ -31364,6 +31422,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _csiTipInit();
     _csiSheetInit();
     _csiReqInit();
+    _csiRatesInit();
+    _csiPhotoInit();
     _csiDraftsLoad();
   }
   function _csiStartPoll(){
@@ -31426,6 +31486,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       // 개선 요청도 같이 (실패해도 CS 기록은 그대로 보인다)
       try{ await _csiReqLoad(); }catch(e){ _csi.rq.err=e.message||String(e); }
+      if(_csi.tab==='insight' && _csi.sq.month) _csiSqLoad(_csi.sq.month, true);   // 다른 사람이 넣은 판매 수량
       _csi.err=''; _csi.syncedAt=Date.now();
     }catch(e){ _csi.err=e.message||String(e); }
     finally{ _csi.loading=false; _csi.duringLoad=[]; }
@@ -31614,8 +31675,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _csiRenderChronic(chronic);
     _csiRenderProducts(P,cur);
     _csiRenderCats(P,cur);
+    _csiRenderRates();
     _csiRenderTrend(P);
-    _csiRenderTeams(P,cur,chronic);
     _csiRenderReport(chronic);
   }
   function _csiRenderKpis(P,cur,prev,chronic){
@@ -31748,23 +31809,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <td class="nw">${_csiReqTag(x)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
   }
-  function _csiRenderTeams(P,cur,chronic){
-    const el=document.getElementById('csiTeams');
-    const chr=new Set(chronic.map(x=>x.key));
-    const selfN=cur.filter(r=>_csiTeamOf(r)==='cs').length;
-    const cards=CSI_TEAMS.filter(t=>t.key!=='cs').map(t=>{
-      const rows=cur.filter(r=>_csiTeamOf(r)===t.key);
-      if(t.key==='mkt' && !rows.length) return '';
-      const groups=_csiGroups(rows);
-      const list=groups.slice(0,6).map(gp=>{
-        const opt=_csiTopOpt(gp.opts);
-        return `<li><b>${_esc(gp.product)}</b> <span class="csi-muted">${_esc(_csi.brand||!gp.brand?'':_csiBrandLabel(gp.brand))}</span><br>${_esc(gp.label)} <span class="n">${gp.n}건</span>${opt?` <span class="csi-muted">(${_esc(opt)})</span>`:''}${_csiSevChip(gp.code)}${chr.has(gp.key)?' <span class="csi-warn-chip">⚠ 고질</span>':''}</li>`;
-      }).join('');
-      return `<div class="csi-team"><div class="csi-team-head"><span class="csi-team-name">${_esc(t.label)}</span><span class="csi-team-count">${_csiN(rows.length)}건</span></div>
-        ${groups.length ? `<ul class="csi-team-list">${list}</ul>${groups.length>6?`<div class="csi-muted" style="margin-top:6px">그 외 ${groups.length-6}가지</div>`:''}` : '<div class="csi-empty-line" style="padding:12px 0">이 기간에 전달할 내용이 없어요</div>'}</div>`;
-    }).join('');
-    el.innerHTML=`<div class="csi-sec-title">팀별 전달 사항<span>${_csiPeriodDesc(P)} · 같은 상품 · 같은 VOC 코드끼리 묶음 · 원인을 고르면 원인 기준, 아니면 VOC 코드 기본 팀${selfN?` · CS에서 처리 ${_csiN(selfN)}건`:''}</span></div><div class="csi-teams">${cards}</div>`;
-  }
   function _csiReportText(chronic){
     const d=_csi.date||_csiToday(), y=_csiAdd(d,-1);
     const tag=[_csi.brand?_csiBrandLabel(_csi.brand):'', _csi.channel||''].filter(Boolean).join(' · ');
@@ -31791,17 +31835,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const top=_csiProdRank(week).slice(0,3);
     if(top.length) top.forEach((x,i)=>L.push(`${i+1}. ${brand(x.brand)}${x.product} — ${x.n}건 (${_csiSubsText(x.subs,3)})`));
     else L.push('· 없음');
-    let any=false;
-    for(const t of CSI_TEAMS){
-      if(t.key==='cs') continue;
-      const gs=_csiGroups(day.filter(r=>_csiTeamOf(r)===t.key));
-      if(!gs.length) continue;
-      any=true;
-      L.push(''); L.push(`▶ ${t.label} 전달 (오늘 ${gs.reduce((a,g)=>a+g.n,0)}건)`);
-      gs.slice(0,5).forEach(g=>{ const o=_csiTopOpt(g.opts); L.push(`· ${brand(g.brand)}${g.product} — ${g.label} ${g.n}건${o?` (${o})`:''}`); });
-      if(gs.length>5) L.push(`· 그 외 ${gs.length-5}가지`);
-    }
-    if(!any){ L.push(''); L.push('▶ 팀별 전달: 오늘 들어온 건은 없어요'); }
+    // 팀별 전달 줄은 2026-11-10 사용자 요청으로 뺐다 (분석 화면의 팀별 전달 사항과 함께) — 전달은 고질 문제 · 개선 요청으로
+    const rl=_csiRateReportLines(brand);
+    if(rl.length){ L.push(''); L.push(...rl); }
     const note=(_csi.note.date===d ? _csi.note.text : '').trim();
     if(note){ L.push(''); L.push('💬 CS 코멘트'); L.push(note); }
     return L.join('\n');
@@ -31866,7 +31902,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const CSI_DRAFT_LS='csi_drafts_v1';
   // [칸, 머리글, 폭(px)] — 브랜드 칸은 전체 탭에서만
   const CSI_SHEET_COLS=[['st','',50],['issue_date','날짜',124],['brand','브랜드',112],['channel','채널',100],['product','상품명',230],['option_text','옵션',124],
-    ['kind','접수 구분',100],['code','VOC 코드',214],['cause','원인',126],['action','처리',112],['detail','내용',290],['team','전달',76],['photo_url','사진 링크',120],['del','',40]];
+    ['kind','접수 구분',100],['code','VOC 코드',214],['cause','원인',126],['action','처리',112],['detail','내용',290],['team','전달',76],['photo','사진',124],['del','',40]];
 
   /* 고치는 중인 줄 — 저장된 줄은 키가 id, 새 줄은 'n1' 같은 키. v = 지금 칸 값, dirty = 아직 저장 못 한 칸 */
   function _csiRowVals(r){
@@ -31980,6 +32016,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!e.id){
         _csiEdRekey(e, saved.id); _csiDraftsSave();
         _csi.lastFormCh=v.channel; _csi.lastFormKind=v.kind; _csi.lastFormBrand=v.brand; _csiSavePrefs();
+        // 저장 전에 넣어 둔 사진 — 줄이 저장됐으니 올린다
+        if(e.photos && e.photos.length){ const ps=e.photos; e.photos=[]; _csiPhotoUpload(saved.id, ps); }
       }
       // 보내는 사이 또 고친 칸은 dirty 로 남긴다 · 잘못된 사진 링크도 고칠 때까지 남긴다
       for(const f of fields) if(e.v[f]===sent[f] && !(f==='photo_url' && !_csiOkPhoto(e.v.photo_url))) e.dirty.delete(f);
@@ -32332,7 +32370,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       +sel('action','처리',_csiListOpts(CSI_ACTIONS, v.action))
       +inp('detail','내용',' maxlength="1000" autocomplete="off"'+(draft?' placeholder="어떤 상황인지 한두 줄"':''))
       +'<td class="c-team"></td>'
-      +inp('photo_url','사진 링크',' type="url" maxlength="500" autocomplete="off" placeholder="https://"')
+      +'<td class="c-photo"><button type="button" class="csi-ph" data-act="ph-open" title="사진 보기 · 지우기 · 더 넣기" hidden></button><button type="button" class="csi-ph-add" data-act="ph-add" title="사진 넣기 — 이 줄에 끌어다 놓거나 칸에서 Ctrl+V 로 붙여넣어도 돼요" aria-label="사진 넣기">＋</button></td>'
       +'<td class="c-del"><button type="button" class="csi-del" data-act="del" title="이 줄 지우기" aria-label="이 줄 지우기">🗑</button></td></tr>';
   }
   function _csiSheetBusy(){ const a=document.activeElement, t=document.getElementById('csiSheet'); return !!(a && t && t.contains(a) && a.classList.contains('cell')); }
@@ -32386,7 +32424,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const k=tr.dataset.k, e=_csi.ed.get(k), v=_csiRowView(k); if(!v) return;
     const draft=!!(e && !e.id), miss=_csiMissing(v), content=_csiHasContent(v);
     for(const f of CSI_REQ){ const td=tr.querySelector(`td.c-${f}`); if(td) td.classList.toggle('miss', miss.includes(f) && (!draft || content)); }
-    const ph=tr.querySelector('td.c-photo_url'); if(ph){ const bad=!_csiOkPhoto(v.photo_url); ph.classList.toggle('bad', bad); ph.title=bad?'사진 링크는 http:// 나 https:// 로 시작해야 저장돼요':''; }
+    _csiPhotoCell(tr);
     const dt=tr.querySelector('td.c-issue_date'); if(dt) dt.classList.toggle('bad', !_csiOkDate(v.issue_date));
     const c=CSI_CODE[v.code];
     const team=tr.querySelector('td.c-team'); if(team) team.textContent = c ? (CSI_TEAM_LABEL[_csiTeamOf({code:c.code, category:c.cat, cause:v.cause})]||'CS팀') : '';
@@ -32440,7 +32478,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }else L.push('<span class="csi-muted">VOC 코드를 고르면 판단 기준 · 기본 처리 · 전달 팀이 나와요</span> · <button type="button" class="csi-linkbtn" onclick="csiOpenCodes()">📖 VOC 코드표</button>');
     const meta=[];
     if(r){ if(r.created_by) meta.push(`적은 사람 ${_esc(r.created_by)}`); if(r.updated_by && r.updated_by!==r.created_by) meta.push(`고친 사람 ${_esc(r.updated_by)}`); const w=_csiWhen(r.updated_at||r.created_at); if(w) meta.push(w); }
-    const ph=_csiSafeUrl(String(v.photo_url||'').trim()); if(ph) meta.push(`<a class="csi-photo" href="${_esc(ph)}" target="_blank" rel="noopener noreferrer">📷 사진 열기</a>`);
+    const pn=_csiPhotoCount(k); if(pn) meta.push(`<button type="button" class="csi-linkbtn" data-act="ph-info" data-k="${_esc(k)}">📷 사진 ${pn}장 보기</button>`);
+    const ph=_csiSafeUrl(String(v.photo_url||'').trim()); if(ph) meta.push(`<a class="csi-photo" href="${_esc(ph)}" target="_blank" rel="noopener noreferrer">🔗 사진 링크</a>`);
     if(meta.length) L.push(`<span class="csi-muted">${meta.join(' · ')}</span>`);
     el.innerHTML=L.join('<br>');
   }
@@ -33004,6 +33043,331 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const done=all.filter(q=>q.status==='완료' && q.action_on).map(q=>({q, ef:_csiReqEffect(_csiReqVals(q))})).filter(x=>x.ef.done);
     done.slice(-3).forEach(({q,ef})=>L.push(`· 효과 ${q.req_no} ${q.product||'전체'}: 조치 전 30일 ${ef.before}건 → 후 ${ef.after}건 (${ef.eff})`));
     return L;
+  }
+
+  /* ── 📉 상품별 반품 · 불량률 (월별) — 'VOC 관리' 시트의 '상품별 반품률' (2026-11-10) ──
+     · 판매 수량은 그달 전 채널 판매 합계를 직접 넣는다 (cs_sales_qty: 월 · 브랜드 · 상품). 오피스에 상품별 월 판매량 자료가 없어서.
+     · 반품 · 교환 · 제품 불량 · 회사 귀책 · 고객 사유 건수는 CS 기록(접수일 기준)에서 센다 — 채널 거르기와 상관없이 전 채널.
+     · 줄 = 그달 CS 기록이 있는 상품 + 판매 수량을 넣은 상품 + 직접 더한 상품. 비율이 높은 순. */
+  _csi.sq={month:'', byKey:new Map(), loaded:new Set(), loading:new Set(), err:'', timers:new Map(), extra:[], stale:false};
+  function _csiSqMonths(){
+    const t=_csiToday(), out=[]; let y=+t.slice(0,4), m=+t.slice(5,7);
+    for(let i=0;i<6;i++){ out.push(`${y}-${String(m).padStart(2,'0')}`); if(--m<1){ m=12; y--; } }
+    return out;
+  }
+  function _csiSqMonth(){ const ms=_csiSqMonths(); if(!ms.includes(_csi.sq.month)) _csi.sq.month=ms[0]; return _csi.sq.month; }
+  async function _csiSqLoad(month, force){
+    if(!force && (_csi.sq.loaded.has(month) || _csi.sq.loading.has(month))) return;
+    _csi.sq.loading.add(month);
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/cs_sales_qty?month=eq.${month}&select=id,month,brand,product,product_key,qty,updated_by,updated_at&limit=5000`,{headers:_sbHeaders(),cache:'no-cache'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      for(const x of await r.json()) _csi.sq.byKey.set(x.month+'|'+x.brand+'|'+x.product_key, x);
+      _csi.sq.loaded.add(month); _csi.sq.err='';
+    }catch(e){ _csi.sq.err=e.message||String(e); }
+    finally{ _csi.sq.loading.delete(month); }
+    if(_csi.tab==='insight' && _csi.loaded) _csiRenderRates();
+  }
+  function _csiSqRows(month){
+    const b=_csi.brand, from=month+'-01', to=month+'-31', m=new Map();
+    const get=(brand, product)=>{
+      const k=brand+'|'+_csiKeyName(product);
+      let x=m.get(k);
+      if(!x){ x={brand, product:_csiNormName(product), ret:0, exc:0, def:0, co:0, cu:0, all:0, qty:null}; m.set(k,x); }
+      return x;
+    };
+    for(const r of _csi.rows){
+      if(r.issue_date<from || r.issue_date>to || (b && r.brand!==b) || !_csiKeyName(r.product)) continue;
+      const x=get(r.brand, r.product);
+      x.all++;
+      if(r.kind==='반품') x.ret++; else if(r.kind==='교환') x.exc++;
+      if(r.category==='Q') x.def++;
+      if(CSI_COMPANY.has(r.category)) x.co++; else x.cu++;
+    }
+    for(const s of _csi.sq.byKey.values()) if(s.month===month && (!b || s.brand===b) && (s.qty!=null || m.has(s.brand+'|'+s.product_key))) get(s.brand, s.product).qty=s.qty;
+    for(const e of _csi.sq.extra) if(e.month===month && (!b || e.brand===b)) get(e.brand, e.product);
+    const rows=[...m.values()];
+    for(const x of rows){ x.rx = x.qty>0 ? (x.ret+x.exc)/x.qty : null; x.dx = x.qty>0 ? x.def/x.qty : null; }
+    rows.sort((a,c)=> (c.rx!=null)-(a.rx!=null) || (c.rx||0)-(a.rx||0) || c.all-a.all || a.product.localeCompare(c.product,'ko'));
+    return rows;
+  }
+  const _csiPct=v=>v==null ? '—' : (v*100).toFixed(v<0.1 ? 1 : 0)+'%';
+  function _csiRatesBusy(){ const a=document.activeElement, el=document.getElementById('csiRates'); return !!(a && el && el.contains(a) && (a.tagName==='INPUT' || a.tagName==='SELECT')); }
+  function _csiRenderRates(force){
+    const el=document.getElementById('csiRates'); if(!el) return;
+    const month=_csiSqMonth();
+    if(!_csi.sq.loaded.has(month)) _csiSqLoad(month);
+    if(!force && _csiRatesBusy()){ _csi.sq.stale=true; return; }
+    _csi.sq.stale=false;
+    const rows=_csiSqRows(month), b=_csi.brand, hasBrand=!b, withQty=rows.filter(x=>x.qty>0);
+    const maxR=Math.max(1e-9,...withQty.map(x=>x.rx||0)), maxD=Math.max(1e-9,...withQty.map(x=>x.dx||0));
+    const bar=(v,max,cls)=>v==null ? `<td class="n r ${cls}">—</td>` : `<td class="n r ${cls}" style="--w:${Math.min(1,v/max).toFixed(3)}"><span>${_csiPct(v)}</span></td>`;
+    const t=_csiToday(), cur=t.slice(0,7)===month, mm=+month.slice(5,7);
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">📉 상품별 반품 · 불량률</div>`
+      +`<div class="csi-card-sub">${mm}월${cur?` (1일 ~ ${+t.slice(8,10)}일, 진행 중)`:''} · ${b?_esc(_csiBrandLabel(b))+' · ':''}전 채널 · 판매 수량은 그달 전 채널 판매 합계를 직접 넣어요 · 반품 · 교환 · 불량 건수는 CS 기록에서 세요</div></div>`
+      +`<label class="csi-field">월 <select id="csiRateMonth" aria-label="월">${_csiSqMonths().map(m=>`<option value="${m}"${m===month?' selected':''}>${m.slice(0,4)}년 ${+m.slice(5,7)}월</option>`).join('')}</select></label></div>`;
+    const cols=(hasBrand?1:0)+10;
+    const body=rows.map(x=>`<tr data-b="${_esc(x.brand)}" data-p="${_esc(x.product)}" data-re="${x.ret+x.exc}" data-df="${x.def}">`
+        +(hasBrand?`<td class="nw">${_esc(_csiBrandLabel(x.brand))}</td>`:'')
+        +`<td><b>${_esc(x.product)}</b></td>`
+        +`<td class="n"><input class="csi-qty" type="number" min="0" step="1" inputmode="numeric" value="${x.qty==null?'':x.qty}" placeholder="넣기" aria-label="${_esc(x.product)} 판매 수량"></td>`
+        +`<td class="n">${x.ret||''}</td><td class="n">${x.exc||''}</td><td class="n"><b>${(x.ret+x.exc)||''}</b></td>`+bar(x.rx,maxR,'rr')
+        +`<td class="n">${x.def||''}</td>`+bar(x.dx,maxD,'rd')
+        +`<td class="n">${x.co||''}</td><td class="n">${x.cu||''}</td></tr>`).join('');
+    const add=`<tr class="csi-rate-add">${hasBrand?`<td><select id="csiRateAddBrand" aria-label="더할 상품의 브랜드">${_csiBrandOpts(_csi.lastFormBrand||'')}</select></td>`:''}`
+      +`<td><input id="csiRateAddName" list="csiReqProducts" maxlength="200" autocomplete="off" placeholder="＋ 상품 더하기 (이달 CS 가 없는 상품)" aria-label="더할 상품 이름"></td>`
+      +`<td colspan="${cols-(hasBrand?2:1)}" class="csi-muted">이름을 넣고 Enter → 판매 수량 칸에 숫자를 넣으면 저장돼요 · 반품 · 교환율 = (반품 + 교환) ÷ 판매 수량</td></tr>`;
+    el.innerHTML=head
+      +(!rows.length ? '<div class="csi-empty-line">이달에는 CS 기록이 있는 상품이 없어요 — 아래에서 상품을 더해 판매 수량을 넣을 수 있어요</div>' : '')
+      +`<div class="csi-scroll"><table class="csi-tbl csi-tbl-rate"><thead><tr>${hasBrand?'<th>브랜드</th>':''}<th>상품</th><th class="n">판매 수량</th><th class="n">반품</th><th class="n">교환</th><th class="n">반품 · 교환</th><th class="n">반품 · 교환율</th><th class="n">제품 불량</th><th class="n">불량률</th><th class="n">회사 귀책</th><th class="n">고객 사유 · 문의</th></tr></thead><tbody>${body}${add}</tbody></table></div>`
+      +(_csi.sq.err ? `<div class="csi-f-msg">판매 수량을 불러오지 못했어요 (${_esc(_csi.sq.err)}) — ↻ 로 다시</div>` : '');
+  }
+  // 판매 수량 칸 — 0.6초 쉬면 저장 (월 · 브랜드 · 상품이 같으면 덮어쓴다), 비우면 없앰
+  function _csiSqQueue(input){
+    const tr=input.closest('tr[data-p]'); if(!tr) return;
+    const month=_csiSqMonth(), brand=tr.dataset.b, product=tr.dataset.p, k=month+'|'+brand+'|'+_csiKeyName(product);
+    clearTimeout(_csi.sq.timers.get(k));
+    _csi.sq.timers.set(k, setTimeout(()=>{ _csi.sq.timers.delete(k); _csiSqSave(month, brand, product, input); }, 600));
+    _csiRateRowUpdate(tr);
+  }
+  async function _csiSqSave(month, brand, product, input){
+    const raw=String(input.value||'').trim(), qty = raw==='' ? null : Math.round(Number(raw));
+    if(raw!=='' && !(qty>=0 && qty<=1e8)){ input.classList.add('bad'); return; }
+    input.classList.remove('bad');
+    const body={month, brand, product:_csiNormName(product).slice(0,200), product_key:_csiKeyName(product).slice(0,200), qty, updated_by:_csiMe()};
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/cs_sales_qty?on_conflict=month,brand,product_key&select=id,month,brand,product,product_key,qty,updated_by,updated_at`,
+        {method:'POST',headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(body)});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const x=(await r.json())[0];
+      if(x) _csi.sq.byKey.set(x.month+'|'+x.brand+'|'+x.product_key, x);
+      input.classList.add('ok'); setTimeout(()=>input.classList.remove('ok'), 900);
+      _csi.sq.stale=true;   // 순서 · 막대는 칸에서 나가면 다시 그린다
+      if(_csi.tab==='insight') _csiRenderReport();   // 리포트의 '반품 · 교환율 높은 상품'
+    }catch(e){ input.classList.add('bad'); toast('판매 수량을 저장하지 못했어요 ('+(e.message||e)+')','err'); }
+  }
+  // 그 줄의 비율만 바로 (막대 · 순서는 다시 그릴 때)
+  function _csiRateRowUpdate(tr){
+    const q=Number(tr.querySelector('.csi-qty').value), re=+tr.dataset.re, df=+tr.dataset.df;
+    const rr=tr.querySelector('td.rr'), rd=tr.querySelector('td.rd');
+    if(rr) rr.innerHTML = q>0 ? `<span>${_csiPct(re/q)}</span>` : '—';
+    if(rd) rd.innerHTML = q>0 ? `<span>${_csiPct(df/q)}</span>` : '—';
+  }
+  function _csiSqAddProduct(){
+    const inp=document.getElementById('csiRateAddName'), name=_csiNormName(inp && inp.value); if(!name) return;
+    const bs=document.getElementById('csiRateAddBrand'), brand=_csi.brand || (bs ? bs.value : '');
+    if(!brand){ toast('더할 상품의 브랜드를 골라 주세요','err'); if(bs) bs.focus(); return; }
+    const month=_csiSqMonth();
+    if(!_csi.sq.extra.some(x=>x.month===month && x.brand===brand && _csiKeyName(x.product)===_csiKeyName(name))) _csi.sq.extra.push({month, brand, product:name});
+    _csiRenderRates(true);
+    const tr=[...document.querySelectorAll('#csiRates tr[data-p]')].find(t=>t.dataset.b===brand && _csiKeyName(t.dataset.p)===_csiKeyName(name));
+    if(tr){ const i=tr.querySelector('.csi-qty'); tr.scrollIntoView({block:'nearest'}); i.focus(); }
+  }
+  function _csiRatesInit(){
+    const el=document.getElementById('csiRates');
+    el.addEventListener('change',ev=>{ if(ev.target.id==='csiRateMonth'){ _csi.sq.month=ev.target.value; _csiRenderRates(true); } });
+    el.addEventListener('input',ev=>{ if(ev.target.classList.contains('csi-qty')) _csiSqQueue(ev.target); });
+    el.addEventListener('focusin',ev=>{
+      if(ev.target.id==='csiRateAddName'){ const bs=document.getElementById('csiRateAddBrand'); _csiReqFillProducts(_csi.brand || (bs ? bs.value : '')); }
+    });
+    el.addEventListener('keydown',ev=>{
+      const t=ev.target; if(ev.isComposing || ev.keyCode===229) return;
+      if(t.id==='csiRateAddName' && ev.key==='Enter'){ ev.preventDefault(); _csiSqAddProduct(); return; }
+      if(t.classList.contains('csi-qty') && ev.key==='Enter'){
+        ev.preventDefault();
+        const all=[...el.querySelectorAll('.csi-qty')], nx=all[all.indexOf(t)+(ev.shiftKey?-1:1)];
+        if(nx){ nx.focus(); nx.select(); } else t.blur();
+      }
+    });
+    el.addEventListener('focusout',()=>{ setTimeout(()=>{ if(_csi.sq.stale && !_csiRatesBusy() && !_csi.sq.timers.size) _csiRenderRates(); },200); });
+  }
+  // 리포트 — 판매 수량을 넣은 상품 중 반품 · 교환율 높은 상품
+  function _csiRateReportLines(brandFn){
+    const mo=_csiSqMonth(), rr=_csiSqRows(mo).filter(x=>x.qty>0 && (x.ret+x.exc)>0).slice(0,3);
+    if(!rr.length) return [];
+    return [`▶ 반품 · 교환율 높은 상품 (${+mo.slice(5,7)}월 · 판매 수량을 넣은 상품)`].concat(rr.map((x,i)=>`${i+1}. ${brandFn(x.brand)}${x.product} — 판매 ${_csiN(x.qty)}개 중 반품·교환 ${x.ret+x.exc}건 (${(x.rx*100).toFixed(1)}%)${x.def?`, 제품 불량 ${x.def}건 (${(x.dx*100).toFixed(1)}%)`:''}`));
+  }
+
+  /* ── 📷 CS 기록 사진 (2026-11-10) — Supabase cs_issue_photos (줄여서 JPEG base64 + 목록용 작은 사진), cs_issues.photo_count 는 트리거가 맞춘다 ──
+     · 넣기: 사진 칸의 ＋ 로 고르기 · 표의 줄에 끌어다 놓기 · 그 줄의 칸에서 Ctrl+V(캡처 · 카톡 사진 복사). 저장 전 새 줄은 저장되면 같이 올린다.
+     · 보기: 📷 n 을 누르면 사진 창 — 크게 보기(새 탭) · 지우기 · 더 넣기 · 예전 방식의 사진 링크. */
+  const CSI_PH_MAX=1600, CSI_PH_THUMB=240, CSI_PH_FILE_MAX=30*1024*1024;
+  _csi.ph={k:'', id:null, list:[], busy:new Map(), open:false, target:'', urls:[]};
+  function _csiB64(buf){ const a=new Uint8Array(buf); let s=''; for(let i=0;i<a.length;i+=0x8000) s+=String.fromCharCode.apply(null, a.subarray(i,i+0x8000)); return btoa(s); }
+  async function _csiShrinkImg(file, max, q){
+    const img=await createImageBitmap(file);   // 휴대폰 사진 방향(EXIF)은 브라우저가 맞춰 준다
+    const k=Math.min(1, max/Math.max(img.width, img.height));
+    const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(img.width*k)); c.height=Math.max(1,Math.round(img.height*k));
+    const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(img,0,0,c.width,c.height);
+    if(img.close) img.close();
+    const blob=await new Promise((res,rej)=>c.toBlob(b=>b ? res(b) : rej(new Error('사진을 줄이지 못했어요')),'image/jpeg',q));
+    return {b64:_csiB64(await blob.arrayBuffer()), w:c.width, h:c.height, size:blob.size};
+  }
+  function _csiPhotoFiles(list){ return [...(list||[])].filter(f=>f && /^image\//.test(f.type||'')); }
+  function _csiPhotoCount(k){
+    const e=_csi.ed.get(k), id=e ? e.id : +k, r=id ? _csi.byId.get(id) : null;
+    return (r ? (r.photo_count||0) : 0) + (e && e.photos ? e.photos.length : 0);
+  }
+  // 사진 칸 표시 — 📷 장수 (저장 전 새 줄은 들고 있는 장수), 예전 사진 링크는 🔗, 올리는 중은 …
+  function _csiPhotoCell(tr){
+    const k=tr.dataset.k, td=tr.querySelector('td.c-photo'); if(!td) return;
+    const e=_csi.ed.get(k), id=e ? e.id : +k, n=_csiPhotoCount(k), v=_csiRowView(k)||{}, link=_csiSafeUrl(String(v.photo_url||'').trim());
+    const busy=id && _csi.ph.busy.get(id);
+    const b=td.querySelector('[data-act="ph-open"]');
+    if(b){
+      b.textContent = busy ? `📷 ${busy}장 올리는 중…` : n ? `📷 ${n}${e && !e.id ? ' (저장 전)' : ''}` : link ? '🔗 링크' : '';
+      b.hidden = !(busy || n || link);
+    }
+  }
+  // 줄(k)에 사진 넣기 — 저장 전 새 줄이면 저장될 때까지 들고 있다
+  async function _csiPhotoAdd(k, files){
+    files=_csiPhotoFiles(files);
+    if(!files.length){ toast('사진 파일만 넣을 수 있어요 (JPG · PNG · 캡처)','err'); return; }
+    let e=_csi.ed.get(k);
+    if(e && !e.id){
+      e.photos=(e.photos||[]).concat(files);
+      const tr=document.querySelector(`#csiSheet tr[data-k="${k}"]`); if(tr) _csiPhotoCell(tr);
+      toast(`📷 ${files.length}장 — 필수 칸이 다 차서 줄이 저장되면 같이 올라가요`,'ok');
+      if(_csi.ph.open && _csi.ph.k===k) _csiPhotoRender();
+      return;
+    }
+    const id=e ? e.id : +k;
+    if(!id || !_csi.byId.get(id)){ toast('그 기록을 찾지 못했어요 — 새로고침해 주세요','err'); return; }
+    await _csiPhotoUpload(id, files);
+  }
+  async function _csiPhotoUpload(id, files){
+    const me=_csiMe(); let ok=0, fail=0;
+    _csi.ph.busy.set(id, (_csi.ph.busy.get(id)||0)+files.length); _csiPhotoPaint(id);
+    for(const f of files){
+      try{
+        if(f.size>CSI_PH_FILE_MAX) throw new Error('30MB 넘는 파일');
+        const big=await _csiShrinkImg(f, CSI_PH_MAX, .82), th=await _csiShrinkImg(f, CSI_PH_THUMB, .72);
+        const r=await fetch(`${SUPABASE_URL}/rest/v1/cs_issue_photos?select=id`,{method:'POST',headers:_sbHeaders({'Prefer':'return=representation'}),
+          body:JSON.stringify({issue_id:id, file_name:String(f.name||'사진').slice(0,200), mime:'image/jpeg', width:big.w, height:big.h, size:big.size, thumb_b64:th.b64, image_b64:big.b64, created_by:me})});
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        ok++;
+      }catch(err){ fail++; console.warn('사진 넣기', f && f.name, err); }
+      finally{ const left=(_csi.ph.busy.get(id)||1)-1; if(left>0) _csi.ph.busy.set(id,left); else _csi.ph.busy.delete(id); _csiPhotoPaint(id); }
+    }
+    await _csiIssueRefetch(id);   // 사진 장수(photo_count)가 바뀐 줄을 다시 받는다
+    if(ok && !fail) toast(`📷 사진 ${ok}장을 넣었어요`,'ok');
+    else toast(ok ? `📷 ${ok}장은 넣었고 ${fail}장은 못 넣었어요 (아이폰 HEIC 는 JPG 로 바꿔서)` : '사진을 넣지 못했어요 — 아이폰 HEIC 는 JPG 로 바꿔서, 인터넷 연결도 확인해 주세요','err');
+    if(_csi.ph.open && _csi.ph.id===id) _csiPhotoLoad();
+  }
+  async function _csiIssueRefetch(id){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/cs_issues?id=eq.${id}&select=${CSI_SELECT}`,{headers:_sbHeaders(),cache:'no-cache'});
+      if(r.ok){ const x=(await r.json())[0]; if(x){ _csiPutLocal(x); _csiRebuild(); } }
+    }catch(e){}
+    _csiPhotoPaint(id);
+  }
+  function _csiPhotoPaint(id){ const tr=document.querySelector(`#csiSheet tr[data-k="${id}"]`); if(tr) _csiPhotoCell(tr); if(_csi.focusK===String(id)) _csiSheetInfo(_csi.focusK); }
+
+  /* 사진 창 */
+  function csiOpenPhotos(k){
+    k=String(k||_csi.focusK||''); if(!k) return;
+    const e=_csi.ed.get(k), id=e ? e.id : +k, v=_csiRowView(k); if(!v) return;
+    _csi.ph.k=k; _csi.ph.id=id||null; _csi.ph.open=true; _csi.ph.list=[];
+    document.getElementById('csiPhTitle').textContent=`📷 사진 — ${v.product||'(상품명 없음)'}${v.option_text?' · '+v.option_text:''}`;
+    document.getElementById('csiPhSub').textContent=`${_csiMd(v.issue_date)} · ${v.brand?_csiBrandLabel(v.brand)+' · ':''}${CSI_CODE[v.code]?CSI_CODE[v.code].label:'VOC 코드 없음'}${id?'':' · 아직 저장 전인 새 줄 — 줄이 저장되면 사진도 올라가요'}`;
+    document.getElementById('csiPhLink').value=v.photo_url||'';
+    document.getElementById('csiPhotoModal').classList.add('show');
+    _csiPhotoRender();
+    if(id) _csiPhotoLoad();
+  }
+  function csiClosePhotos(){
+    document.getElementById('csiPhotoModal').classList.remove('show');
+    _csi.ph.open=false; _csi.ph.list=[];
+    for(const u of _csi.ph.urls) URL.revokeObjectURL(u); _csi.ph.urls=[];
+    document.getElementById('csiPhGrid').innerHTML='';
+  }
+  async function _csiPhotoLoad(){
+    const id=_csi.ph.id; if(!id) return;
+    const grid=document.getElementById('csiPhGrid');
+    if(!_csi.ph.list.length) grid.innerHTML='<div class="csi-empty-line">사진을 불러오는 중…</div>';
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/cs_issue_photos?issue_id=eq.${id}&deleted_at=is.null&select=id,file_name,width,height,image_b64,created_by,created_at&order=id.asc`,{headers:_sbHeaders(),cache:'no-cache'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const a=await r.json();
+      if(_csi.ph.id!==id || !_csi.ph.open) return;
+      _csi.ph.list=a; _csiPhotoRender();
+    }catch(e){ if(_csi.ph.open) grid.innerHTML=`<div class="csi-f-msg">사진을 불러오지 못했어요 (${_esc(e.message||e)})</div>`; }
+  }
+  function _csiPhotoRender(){
+    const grid=document.getElementById('csiPhGrid'); if(!grid) return;
+    const e=_csi.ed.get(_csi.ph.k);
+    for(const u of _csi.ph.urls) URL.revokeObjectURL(u); _csi.ph.urls=[];
+    const pend=(e && e.photos ? e.photos : []).map((f,i)=>{ const u=URL.createObjectURL(f); _csi.ph.urls.push(u); return `<figure class="csi-ph-item is-pend"><img src="${u}" alt="${_esc(f.name||'사진')}"><figcaption>저장 전 · ${_esc(f.name||'사진')}</figcaption><button type="button" class="csi-ph-del" data-pend="${i}" title="빼기" aria-label="이 사진 빼기">✕</button></figure>`; });
+    const busy=_csi.ph.id ? (_csi.ph.busy.get(_csi.ph.id)||0) : 0;
+    const saved=_csi.ph.list.map(p=>`<figure class="csi-ph-item"><img src="data:image/jpeg;base64,${p.image_b64}" alt="${_esc(p.file_name||'사진')}" data-ph="${p.id}" title="누르면 크게 (새 탭)"><figcaption>${_esc(p.created_by||'')}${p.created_by?' · ':''}${_esc(_csiWhen(p.created_at))}</figcaption><button type="button" class="csi-ph-del" data-del="${p.id}" title="이 사진 지우기" aria-label="이 사진 지우기">🗑</button></figure>`);
+    grid.innerHTML = (saved.length || pend.length || busy) ? saved.concat(pend).join('')+(busy?`<div class="csi-ph-item is-busy">올리는 중… ${busy}장</div>`:'') : '<div class="csi-empty-line">아직 사진이 없어요 — 아래에서 넣어 주세요</div>';
+  }
+  async function _csiPhotoDelete(pid){
+    if(!confirm('이 사진을 지울까요? (필요하면 관리자가 되살릴 수 있어요)')) return;
+    const me=_csiMe(), id=_csi.ph.id;
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/cs_issue_photos?id=eq.${pid}`,{method:'PATCH',headers:_sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({deleted_at:new Date().toISOString(), deleted_by:me})});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      _csi.ph.list=_csi.ph.list.filter(p=>p.id!==pid); _csiPhotoRender();
+      if(id) await _csiIssueRefetch(id);
+      toast('사진을 지웠어요','ok');
+    }catch(e){ toast('지우지 못했어요 ('+(e.message||e)+')','err'); }
+  }
+  // 크게 보기 — 새 탭에 원본 크기로
+  function _csiPhotoBig(pid){
+    const p=_csi.ph.list.find(x=>x.id===pid); if(!p) return;
+    const bin=atob(p.image_b64), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i);
+    const u=URL.createObjectURL(new Blob([a],{type:'image/jpeg'}));
+    window.open(u,'_blank','noopener'); setTimeout(()=>URL.revokeObjectURL(u), 60000);
+  }
+  function _csiPhotoInit(){
+    const tbl=document.getElementById('csiSheet'), modal=document.getElementById('csiPhotoModal'), pick=document.getElementById('csiPhFile');
+    // 사진 칸 — ＋(고르기) · 📷(사진 창)
+    tbl.addEventListener('click',ev=>{
+      const a=ev.target.closest('[data-act="ph-add"],[data-act="ph-open"]'); if(!a) return;
+      const tr=a.closest('tr[data-k]'); if(!tr) return;
+      if(a.dataset.act==='ph-open') csiOpenPhotos(tr.dataset.k);
+      else{ _csi.ph.target=tr.dataset.k; pick.value=''; pick.click(); }
+    });
+    pick.addEventListener('change',()=>{ const k=_csi.ph.target || _csi.ph.k; if(k && pick.files && pick.files.length) _csiPhotoAdd(k, pick.files); _csi.ph.target=''; });
+    // 줄의 칸에서 Ctrl+V — 사진이 있을 때만 가로챈다 (글자 붙여넣기는 그대로)
+    tbl.addEventListener('paste',ev=>{
+      const files=_csiPhotoFiles(ev.clipboardData && ev.clipboardData.files); if(!files.length) return;
+      const tr=ev.target.closest && ev.target.closest('tr[data-k]'); if(!tr) return;
+      ev.preventDefault(); _csiPhotoAdd(tr.dataset.k, files);
+    });
+    // 줄에 끌어다 놓기
+    const hasFiles=ev=>ev.dataTransfer && [...(ev.dataTransfer.types||[])].includes('Files');
+    tbl.addEventListener('dragover',ev=>{ if(!hasFiles(ev)) return; const tr=ev.target.closest('tr[data-k]'); if(!tr) return; ev.preventDefault(); tbl.querySelectorAll('tr.is-drop').forEach(t=>{ if(t!==tr) t.classList.remove('is-drop'); }); tr.classList.add('is-drop'); });
+    tbl.addEventListener('dragleave',ev=>{ const tr=ev.target.closest && ev.target.closest('tr[data-k]'); if(tr && !tr.contains(ev.relatedTarget)) tr.classList.remove('is-drop'); });
+    tbl.addEventListener('drop',ev=>{ if(!hasFiles(ev)) return; const tr=ev.target.closest('tr[data-k]'); tbl.querySelectorAll('tr.is-drop').forEach(t=>t.classList.remove('is-drop')); if(!tr) return; ev.preventDefault(); _csiPhotoAdd(tr.dataset.k, ev.dataTransfer.files); });
+    // 사진 창 — 크게 · 지우기 · 저장 전 사진 빼기 · 고르기 · 끌어다 놓기 · 붙여넣기 · 사진 링크
+    const grid=document.getElementById('csiPhGrid');
+    grid.addEventListener('click',ev=>{
+      const img=ev.target.closest('img[data-ph]'); if(img){ _csiPhotoBig(+img.dataset.ph); return; }
+      const d=ev.target.closest('[data-del]'); if(d){ _csiPhotoDelete(+d.dataset.del); return; }
+      const p=ev.target.closest('[data-pend]');
+      if(p){ const e=_csi.ed.get(_csi.ph.k); if(e && e.photos){ e.photos.splice(+p.dataset.pend,1); _csiPhotoRender(); const tr=document.querySelector(`#csiSheet tr[data-k="${_csi.ph.k}"]`); if(tr) _csiPhotoCell(tr); } }
+    });
+    const pick2=document.getElementById('csiPhFile2');
+    pick2.addEventListener('change',()=>{ if(pick2.files && pick2.files.length) _csiPhotoAdd(_csi.ph.k, pick2.files); pick2.value=''; });
+    const drop=document.getElementById('csiPhDrop');
+    drop.addEventListener('dragover',ev=>{ if(hasFiles(ev)){ ev.preventDefault(); drop.classList.add('over'); } });
+    drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+    drop.addEventListener('drop',ev=>{ ev.preventDefault(); drop.classList.remove('over'); _csiPhotoAdd(_csi.ph.k, ev.dataTransfer && ev.dataTransfer.files); });
+    modal.addEventListener('paste',ev=>{ const files=_csiPhotoFiles(ev.clipboardData && ev.clipboardData.files); if(files.length){ ev.preventDefault(); _csiPhotoAdd(_csi.ph.k, files); } });
+    modal.addEventListener('keydown',ev=>{ if(ev.key==='Escape'){ ev.preventDefault(); csiClosePhotos(); } });
+    let lt=null;
+    document.getElementById('csiPhLink').addEventListener('input',ev=>{
+      clearTimeout(lt); const val=ev.target.value;
+      lt=setTimeout(()=>{
+        const k=_csi.ph.k, e=_csi.ed.get(k) || _csiEntry(k, true); if(!e) return;
+        e.v.photo_url=val; e.dirty.add('photo_url'); _csiEdQueue(e, 0);
+        const tr=document.querySelector(`#csiSheet tr[data-k="${k}"]`); if(tr) _csiPhotoCell(tr);
+      },600);
+    });
+    // 표 아래 안내의 '📷 사진 보기'
+    document.getElementById('csiSheetInfo').addEventListener('click',ev=>{ const a=ev.target.closest('[data-act="ph-info"]'); if(a) csiOpenPhotos(a.dataset.k); });
   }
 
   /* ── 📖 VOC 코드표 — 코드 뜻 · 판단 기준 · 기본 처리 / 원인별 전달 팀 / 처리 기준 · 심각도 ── */
