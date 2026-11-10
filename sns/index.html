@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SNS 자동 게시 · 브라이트비드 오피스</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="robots" content="noindex,nofollow">
+<script>
+  /* 오피스 잠금 연동 — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음 (컨텐츠 스튜디오와 같은 방식) */
+  (function () {
+    try { if (localStorage.getItem('brightbeed_unlocked') !== '1') location.replace('../?from=sns'); } catch (e) { /* noop */ }
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<!--
+  SNS 자동 게시 — 계정 연결 · 토큰 붙여넣기 · 연결 시험 (전승훈 · 전수빈만)
+  서버: Supabase 엣지 함수 "sns" (원본 supabase/functions/sns/index.ts), 표 public.sns_accounts (서버만 읽음)
+  토큰은 이 화면 → 서버로만 가고, 저장된 값은 화면에 다시 나오지 않는다.
+-->
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#fff; --ink:#18202f; --sub:#5b6577; --line:#e3e8f0;
+    --accent:#4f7fcf; --accent-ink:#fff; --ok:#16a34a; --ok-bg:#e9f8ef; --warn:#b45309; --warn-bg:#fff4e0;
+    --bad:#dc2626; --bad-bg:#fdecec; --ig:#c13584; --th:#111;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f141c; --card:#171e29; --ink:#e8edf5; --sub:#9aa6b8; --line:#273142;
+      --ok-bg:#12301f; --warn-bg:#3a2a10; --bad-bg:#3a1515; --th:#e8edf5; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,'Malgun Gothic',system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}
+  .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .back{display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:var(--sub);font-size:14px;font-weight:600}
+  .top h1{margin:0;font-size:17px;font-weight:800;letter-spacing:-.01em}
+  .tag{font-size:12px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 8px}
+  main{max-width:760px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .card h2{margin:0 0 4px;font-size:16px;font-weight:800}
+  .card .lead{margin:0 0 14px;color:var(--sub);font-size:13.5px}
+  .acc{display:grid;gap:10px;border:1px solid var(--line);border-radius:12px;padding:14px}
+  .acc + .acc{margin-top:10px}
+  .acc-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .plat{font-size:12px;font-weight:800;color:#fff;border-radius:6px;padding:2px 7px}
+  .plat.instagram{background:var(--ig)} .plat.threads{background:#111}
+  .uname{font-weight:800;font-size:15.5px}
+  .note{color:var(--sub);font-size:12.5px}
+  .pill{font-size:12.5px;font-weight:700;border-radius:999px;padding:3px 10px}
+  .pill.ok{color:var(--ok);background:var(--ok-bg)} .pill.warn{color:var(--warn);background:var(--warn-bg)} .pill.bad{color:var(--bad);background:var(--bad-bg)}
+  .err{font-size:13px;color:var(--bad);background:var(--bad-bg);border-radius:8px;padding:8px 10px;word-break:break-all}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;font-weight:700;font-size:14px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:9px 14px;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  label{font-size:13px;font-weight:700;color:var(--sub)}
+  select,input[type=password]{font:inherit;font-size:14.5px;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+  .field{display:grid;gap:6px;margin-bottom:12px}
+  .msg{font-size:13.5px;border-radius:10px;padding:10px 12px;margin-top:12px}
+  .msg.ok{color:var(--ok);background:var(--ok-bg)} .msg.bad{color:var(--bad);background:var(--bad-bg)} .msg.info{color:var(--sub);background:var(--bg)}
+  .steps{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13.5px}
+  .steps li{display:flex;gap:8px;align-items:baseline}
+  .steps .d{color:var(--sub);word-break:break-all}
+  .help ol{margin:8px 0 0;padding-left:20px;font-size:13.5px;display:grid;gap:6px}
+  .help summary{cursor:pointer;font-weight:800}
+  .small{font-size:12.5px;color:var(--sub)}
+  .lock{text-align:center;padding:40px 18px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="../" title="오피스로 돌아가기">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    오피스
+  </a>
+  <h1>SNS 자동 게시</h1>
+  <span class="tag">인스타 · 스레드</span>
+</header>
+
+<main id="app" hidden>
+  <section class="card">
+    <h2>연결된 계정</h2>
+    <p class="lead">토큰을 저장하면 서버가 인스타·스레드에 직접 확인해요. 토큰은 서버에만 보관되고 이 화면에 다시 나오지 않아요.</p>
+    <div id="accounts"><div class="msg info">불러오는 중…</div></div>
+  </section>
+
+  <section class="card">
+    <h2>토큰 붙여넣기</h2>
+    <p class="lead">Meta 개발자 화면에서 받은 토큰을 <b>여기에만</b> 붙여넣어 주세요. 채팅·메신저로 보내지 마세요.</p>
+    <form id="tokenForm" autocomplete="off">
+      <div class="field">
+        <label for="tokAccount">계정</label>
+        <select id="tokAccount"></select>
+      </div>
+      <div class="field">
+        <label for="tokValue">토큰</label>
+        <input id="tokValue" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="IGAA… 로 시작하는 긴 값">
+      </div>
+      <div class="row">
+        <button id="tokSave" type="submit">저장</button>
+        <span class="small">저장 전에 그 계정 토큰이 맞는지 확인해요. 남의 토큰은 저장되지 않아요.</span>
+      </div>
+      <div id="tokMsg" class="msg" hidden></div>
+    </form>
+  </section>
+
+  <section class="card help">
+    <details>
+      <summary>토큰 받는 법</summary>
+      <ol>
+        <li><b>인스타</b>: <a href="https://developers.facebook.com/apps/823708450647728/use_cases/customize/API-Setup/?business_id=4058266254498135&amp;use_case_enum=INSTAGRAM_BUSINESS" target="_blank" rel="noopener">for_ins 인스타 설정 화면</a> → <b>2. 액세스 토큰 생성</b> → 계정 옆 <b>토큰 생성</b> → 뜬 창에서 확인 후 토큰 복사</li>
+        <li><b>스레드</b>: <a href="https://developers.facebook.com/apps/823708450647728/use_cases/customize/settings/?business_id=4058266254498135&amp;use_case_enum=THREADS_API" target="_blank" rel="noopener">for_ins 스레드 설정 화면</a> → 아래 <b>사용자 토큰 생성기</b> → 계정 옆 <b>액세스 토큰 생성</b> (스레드 프로필이 공개여야 해요)</li>
+        <li>위 <b>토큰 붙여넣기</b>에 계정을 고르고 붙여넣은 뒤 <b>저장</b> → 계정 카드의 <b>올리기 직전까지 시험</b>을 눌러 확인</li>
+      </ol>
+      <p class="small">토큰은 60일짜리예요. 매일 새벽 4시 20분에 확인해서 7일마다 자동으로 다시 60일로 연장돼요.</p>
+    </details>
+  </section>
+</main>
+
+<div id="lock" class="lock" hidden>
+  <h2>대표 전용 화면이에요</h2>
+  <p class="small">전승훈 · 전수빈만 열 수 있어요. <a href="../">오피스로 돌아가기</a></p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var FN = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns';
+  var ALLOWED = ['전승훈', '전수빈']; // 오피스 EXEC_ALLOWED 와 같게
+  var me = '';
+  try { me = (localStorage.getItem('brightbeed_diary_me') || '').trim(); } catch (e) { /* noop */ }
+  if (ALLOWED.indexOf(me) < 0) { document.getElementById('lock').hidden = false; return; }
+  document.getElementById('app').hidden = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var accounts = [];
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(iso));
+    } catch (e) { return iso.slice(0, 10); }
+  }
+  function daysLeft(iso) { return iso ? Math.floor((Date.parse(iso) - Date.now()) / 864e5) : null; }
+
+  async function api(path, body) {
+    var res = await fetch(FN + path, body === undefined
+      ? { method: 'GET', cache: 'no-store' }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    var j = {};
+    try { j = await res.json(); } catch (e) { /* noop */ }
+    if (!res.ok && !j.error) j.error = '서버 응답 ' + res.status;
+    return j;
+  }
+
+  function renderAccounts() {
+    var box = $('accounts');
+    box.textContent = '';
+    if (!accounts.length) { box.appendChild(el('div', 'msg info', '연결된 계정이 없어요.')); return; }
+    accounts.forEach(function (a) {
+      var card = el('div', 'acc');
+      var head = el('div', 'acc-head');
+      head.appendChild(el('span', 'plat ' + a.platform, a.platform === 'threads' ? '스레드' : '인스타'));
+      head.appendChild(el('span', 'uname', '@' + a.username));
+      var d = daysLeft(a.token_expires_at);
+      var pill;
+      if (!a.has_token) pill = el('span', 'pill warn', '토큰 필요');
+      else if (d != null && d < 0) pill = el('span', 'pill bad', '토큰 만료됨');
+      else if (d != null && d <= 10) pill = el('span', 'pill warn', '곧 만료 · ' + fmtDate(a.token_expires_at));
+      else pill = el('span', 'pill ok', '연결됨 · ' + fmtDate(a.token_expires_at) + '까지');
+      head.appendChild(pill);
+      card.appendChild(head);
+      if (a.note) card.appendChild(el('div', 'note', a.note));
+      if (a.last_error) card.appendChild(el('div', 'err', a.last_error));
+
+      var row = el('div', 'row');
+      var btn = el('button', 'ghost', '올리기 직전까지 시험');
+      btn.type = 'button';
+      btn.disabled = !a.has_token;
+      btn.title = a.has_token ? '시험 사진 2장으로 카드뉴스 형식 준비까지만 해 봐요 (실제 게시 안 함)' : '먼저 토큰을 저장해 주세요';
+      var out = el('div', '');
+      btn.addEventListener('click', function () { runTest(a, btn, out); });
+      row.appendChild(btn);
+      row.appendChild(el('span', 'small', '실제로 올리지 않아요 · 1분에 한 번'));
+      card.appendChild(row);
+      card.appendChild(out);
+      box.appendChild(card);
+    });
+
+    var sel = $('tokAccount');
+    var keep = sel.value;
+    sel.textContent = '';
+    accounts.forEach(function (a) {
+      var o = el('option', null, (a.platform === 'threads' ? '스레드' : '인스타') + ' · @' + a.username + (a.has_token ? ' (다시 저장)' : ''));
+      o.value = String(a.id);
+      sel.appendChild(o);
+    });
+    if (keep) sel.value = keep;
+  }
+
+  async function load() {
+    var j = await api('/accounts').catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+    if (!j.ok) { $('accounts').textContent = ''; $('accounts').appendChild(el('div', 'msg bad', j.error || '불러오지 못했어요.')); return; }
+    accounts = j.accounts || [];
+    renderAccounts();
+  }
+
+  async function runTest(a, btn, out) {
+    btn.disabled = true;
+    out.textContent = '';
+    var wait = el('div', 'msg info', '시험 중… 인스타가 사진을 받아 가는 데 10~30초쯤 걸려요.');
+    out.appendChild(wait);
+    var j = await api('/test', { account_id: a.id }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+    out.textContent = '';
+    if (j.steps && j.steps.length) {
+      var ul = el('ul', 'steps');
+      j.steps.forEach(function (s) {
+        var li = el('li');
+        li.appendChild(el('span', null, s.ok ? '✅' : '❌'));
+        li.appendChild(el('span', null, s.name));
+        if (s.detail) li.appendChild(el('span', 'd', '— ' + s.detail));
+        ul.appendChild(li);
+      });
+      var wrap = el('div', 'msg ' + (j.ok ? 'ok' : 'bad'));
+      wrap.appendChild(el('div', null, j.ok ? '연결 정상이에요. 이제 이 계정으로 자동 게시를 붙일 수 있어요.' : '시험이 중간에 멈췄어요. 아래 단계를 확인해 주세요.'));
+      wrap.appendChild(ul);
+      out.appendChild(wrap);
+    } else {
+      out.appendChild(el('div', 'msg bad', j.error || '시험하지 못했어요.'));
+    }
+    setTimeout(function () { btn.disabled = false; }, 60000);
+    load();
+  }
+
+  $('tokenForm').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var input = $('tokValue');
+    var token = input.value.trim();
+    var id = Number($('tokAccount').value);
+    var msg = $('tokMsg');
+    msg.hidden = false;
+    if (!id || !token) { msg.className = 'msg bad'; msg.textContent = '계정을 고르고 토큰을 붙여넣어 주세요.'; return; }
+    $('tokSave').disabled = true;
+    msg.className = 'msg info';
+    msg.textContent = '확인 중…';
+    var j = await api('/token', { account_id: id, token: token }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+    input.value = '';
+    token = '';
+    $('tokSave').disabled = false;
+    if (j.ok) {
+      msg.className = 'msg ok';
+      msg.textContent = '저장했어요 — @' + j.username + (j.account_type ? ' (' + j.account_type + ')' : '') + ', ' + fmtDate(j.token_expires_at) + '까지. 계정 카드에서 시험을 눌러 보세요.';
+    } else {
+      msg.className = 'msg bad';
+      msg.textContent = j.error || '저장하지 못했어요.';
+    }
+    load();
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

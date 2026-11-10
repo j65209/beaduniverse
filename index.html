@@ -4837,6 +4837,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-studio {--m-color:#ff2e93;--m-border:rgba(255,46,147,.45)}
   .sub-module.m-studio .sub-module-icon{color:#ff2e93}
   .sub-module.m-studio .sub-module-tag{color:#ff2e93;border-color:rgba(255,46,147,.5);border-style:solid}
+  .sub-module.m-sns {--m-color:#c13584;--m-border:rgba(193,53,132,.45)}
+  .sub-module.m-sns .sub-module-icon{color:#c13584}
+  .sub-module.m-sns .sub-module-tag{color:#c13584;border-color:rgba(193,53,132,.5);border-style:solid}
   .sub-module.m-mailer {--m-color:#f97316;--m-border:rgba(249,115,22,.45)}
   .sub-module.m-mailer .sub-module-icon{color:#f97316}
   .sub-module.m-mailer .sub-module-tag{color:#ea580c;border-color:rgba(249,115,22,.5);border-style:solid}
@@ -10759,6 +10762,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-icon">🎬</div>
           <div class="sub-module-title">광고 컨텐츠 스튜디오</div>
           <div class="sub-module-sub">릴스·스토리 9:16 · 사진+텍스트 후가공 · UI 가림 시뮬레이션 · 대량 제작</div>
+          <div class="sub-module-tag">NEW</div>
+        </div>
+        <div class="sub-module m-sns" id="snsCard" onclick="openSnsPage()" hidden>
+          <div class="sub-module-icon">📲</div>
+          <div class="sub-module-title">SNS 자동 게시</div>
+          <div class="sub-module-sub">인스타·스레드 계정 연결 · 토큰 보관 · 연결 시험 · 전수빈 · 전승훈만</div>
           <div class="sub-module-tag">NEW</div>
         </div>
         <div class="sub-module m-mailer" onclick="openMailer()">
@@ -17033,6 +17042,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 메일 발송 — mailer/ 별도 페이지 (보내는 계정의 구글 Apps Script 웹 앱으로 한 통씩 발송) */
   function openMailer(){ const w=window.open('mailer/','bbMailer'); if(!w) location.href='mailer/'; }
   window.openMailer=openMailer;
+  /* SNS 자동 게시 — sns/ 별도 페이지 (인스타·스레드 토큰 연결 · 시험, 서버는 Supabase 엣지 함수 sns). 카드는 EXEC_ALLOWED 만 보임 */
+  function openSnsPage(){ const w=window.open('sns/','bbSns'); if(!w) location.href='sns/'; }
+  window.openSnsPage=openSnsPage;
   window.triggerTopping=triggerTopping;
   // goHome: 서브뷰면 history.back() — 브라우저 뒤로가기와 동일 경로로 빠짐 (iOS 엣지 스와이프와 일관됨).
   function goHome(){
@@ -30776,6 +30788,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ok=execHasAccess();
     const card=document.getElementById('execVaultCard');
     if(card) card.hidden=!ok;
+    const snsCard=document.getElementById('snsCard');
+    if(snsCard) snsCard.hidden=!ok;
     if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
     if(!ok){
       execLock();
