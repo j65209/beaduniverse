@@ -1269,7 +1269,9 @@
         var pub = twoStep('지금 발행', '정말 지금 올릴까요? 바로 공개돼요', function () { return apiDev('/queue/publish', { id: q.id, now: true }); }, clearIfEditing);
         if (comp.draftId === q.id) { pub.disabled = true; pub.title = '고치는 중인 글은 위에서 올리기·예약을 눌러 주세요'; }
         right.appendChild(pub);
-        right.appendChild(twoStep('삭제', '지울까요?', function () { return apiDev('/queue/cancel', { id: q.id }); }, clearIfEditing));
+        right.appendChild(twoStep('삭제', '지울까요?', function () { return apiDev('/queue/cancel', { id: q.id }); }, function () {
+          if (comp.draftId === q.id) { resetComposer(); postMsg('info', '임시저장 #' + q.id + ' 지웠어요.'); } // 고치던 글을 지우면 위 화면도 비운다
+        }));
       }
       if (q.status === 'scheduled') right.appendChild(twoStep('예약 취소', '취소할까요?', function () { return apiDev('/queue/cancel', { id: q.id }); }));
       if (q.status === 'failed' || q.status === 'partial') right.appendChild(twoStep('다시 시도', '지금 다시 올릴까요?', function () { return apiDev('/queue/retry', { id: q.id }); }));
