@@ -31981,7 +31981,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           items.push({id, name, st:(!p.status||p.status==='판매중') ? '' : p.status==='품절' ? '품절' : '판매중지', opts});
         }
         Object.assign(ent,{status:'ok', at:Date.now(), fetchedAt:String(data.fetchedAt||''), items, err:''});
-        try{ localStorage.setItem(CSI_CAT_LS+brand, JSON.stringify({at:ent.at, fetchedAt:ent.fetchedAt, items})); }catch(e){}
+        // 이 브라우저에 보관 — j65209.github.io 의 다른 앱과 저장 공간을 나눠 쓰니, 옵션이 아주 많아 크면 보관하지 않고 매번 받는다
+        try{
+          const s=JSON.stringify({at:ent.at, fetchedAt:ent.fetchedAt, items});
+          if(s.length<=300000) localStorage.setItem(CSI_CAT_LS+brand, s); else localStorage.removeItem(CSI_CAT_LS+brand);
+        }catch(e){}
       }catch(e){
         Object.assign(ent,{status:'err', err:String(e&&e.message||e).slice(0,120), errAt:Date.now()});
       }
