@@ -23,7 +23,9 @@
       · /queue/update (임시저장 고치기) · /queue/publish (임시저장 → 발행) · /queue/cancel · /queue/retry · /device/*
   토큰은 이 화면 → 서버로만 가고, 저장된 값은 화면에 다시 나오지 않는다.
   ?demo=1 → 예시 숫자로 화면 미리보기 (서버에 아무것도 보내지 않음)
-  차트 색: dataviz 기본 팔레트 1번(파랑)=인스타, 2번(주황)=스레드 — 이 화면 카드 바탕(#fff / #171e29)에서 검사 통과
+  차트 색: dataviz 기본 팔레트 1번(파랑)=인스타, 2번(주황)=스레드, 3번(청록)=X — 이 화면 카드 바탕(#fff / #171e29)에서 세 색 모두 검사 통과
+    (밝은 화면 청록은 바탕 대비 2.82 → 범례·표가 같이 있어서 허용)
+  X: 계정 칸의 'X 연결' → POST /x/start → X 허용 화면 → /x/callback → 이 화면 ?x=ok|err&m=… (토큰 붙여넣기 없음)
 -->
 <style>
   :root{
@@ -32,6 +34,7 @@
     --ok:#006300; --ok-bg:#e9f8ef; --warn:#8a5a00; --warn-bg:#fff4e0; --bad:#b42323; --bad-bg:#fdecec;
     --grid:#e1e0d9; --axis:#c3c2b7;
     --ig:#2a78d6; --th:#eb6834; --ig-wash:rgba(42,120,214,.10); --th-wash:rgba(235,104,52,.10);
+    --x:#1baf7a; --x-wash:rgba(27,175,122,.10);
     --demo:#fff7d6; --demo-ink:#6b5300;
   }
   @media (prefers-color-scheme: dark){
@@ -40,6 +43,7 @@
       --ok:#0ca30c; --ok-bg:#12301f; --warn:#fab219; --warn-bg:#3a2a10; --bad:#ff8a8a; --bad-bg:#3a1515;
       --grid:#2c2c2a; --axis:#383835;
       --ig:#3987e5; --th:#d95926; --ig-wash:rgba(57,135,229,.12); --th-wash:rgba(217,89,38,.12);
+      --x:#199e70; --x-wash:rgba(25,158,112,.12);
       --demo:#3a3210; --demo-ink:#f3d77a;
     }
   }
@@ -48,6 +52,7 @@
     --ok:#0ca30c; --ok-bg:#12301f; --warn:#fab219; --warn-bg:#3a2a10; --bad:#ff8a8a; --bad-bg:#3a1515;
     --grid:#2c2c2a; --axis:#383835;
     --ig:#3987e5; --th:#d95926; --ig-wash:rgba(57,135,229,.12); --th-wash:rgba(217,89,38,.12);
+    --x:#199e70; --x-wash:rgba(25,158,112,.12);
     --demo:#3a3210; --demo-ink:#f3d77a;
   }
   *{box-sizing:border-box}
@@ -58,7 +63,9 @@
   button.chip{border-color:var(--line);background:var(--card);color:var(--sub);font-weight:600;padding:6px 11px;border-radius:999px}
   button.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:transparent}
   button:disabled{opacity:.45;cursor:not-allowed}
-  select,input[type=password]{font:inherit;font-size:14px;width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+  select,input[type=password],input[type=text]{font:inherit;font-size:14px;width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+  .xconn{display:grid;gap:6px}
+  .xconn .row input{flex:1 1 200px;width:auto;min-width:0}
   label{font-size:12.5px;font-weight:700;color:var(--sub)}
   [hidden]{display:none!important}
 
@@ -93,7 +100,7 @@
   .legend{display:flex;gap:14px;font-size:12.5px;color:var(--sub);align-items:center}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
   .legend i.line{width:14px;height:2px;border-radius:2px;vertical-align:3px}
-  .sw-ig{background:var(--ig)} .sw-th{background:var(--th)}
+  .sw-ig{background:var(--ig)} .sw-th{background:var(--th)} .sw-x{background:var(--x)}
 
   .chart{position:relative;margin-top:8px}
   .chart svg{display:block;width:100%;overflow:visible}
@@ -202,13 +209,14 @@
     오피스
   </a>
   <h1>🐷 꿀꿀집 마케팅 회사</h1>
-  <span class="handle">@ggul.ggul.zip · 인스타 · 스레드</span>
+  <span class="handle">@ggul.ggul.zip · 인스타 · 스레드 · X @ggulggulzip</span>
 </header>
 
 <main id="app" hidden>
   <div id="demoBanner" class="demo-banner" hidden>예시 숫자로 보는 미리보기예요 — 실제 꿀꿀집 숫자가 아니에요. <a href="./">실제 화면으로 돌아가기</a></div>
 
   <div id="devBanner" class="banner" hidden></div>
+  <div id="xReturn" class="banner" hidden></div>
 
   <section class="card" id="composer">
     <div class="card-head">
@@ -237,10 +245,16 @@
         <div class="count" id="cntTh"></div>
       </div>
     </div>
+    <div class="field" id="xField" hidden>
+      <label for="capX">X 문구</label>
+      <textarea id="capX" maxlength="2000" style="min-height:80px" placeholder="비워 두면 인스타 문구 앞부분을 X 길이(한글 약 140자)에 맞춰 잘라 써요. 링크를 넣으면 이 글 요금이 약 290원이에요(없으면 약 20원)."></textarea>
+      <div class="count" id="cntX"></div>
+    </div>
     <div class="opts">
       <span class="small">올릴 곳</span>
       <label><input type="checkbox" id="pIg" checked> 인스타 <span id="igHint" class="small"></span></label>
       <label><input type="checkbox" id="pTh"> 스레드 <span id="thHint" class="small"></span></label>
+      <label><input type="checkbox" id="pX"> X <span id="xHint" class="small"></span></label>
       <span class="sep" aria-hidden="true"></span>
       <span class="small">언제</span>
       <label><input type="radio" name="when" value="now" checked> 지금 바로</label>
@@ -276,6 +290,7 @@
     <button class="chip" type="button" data-platform="all">전체</button>
     <button class="chip" type="button" data-platform="instagram">인스타</button>
     <button class="chip" type="button" data-platform="threads">스레드</button>
+    <button class="chip" type="button" data-platform="x">X</button>
     <span class="grow"></span>
     <span id="collectMeta" class="meta"></span>
     <button id="refreshBtn" class="ghost" type="button">지금 새로고침</button>
@@ -339,7 +354,7 @@
   <section class="two">
     <section class="card">
       <h2>계정 연결</h2>
-      <p class="lead">토큰을 저장하면 서버가 인스타·스레드에 직접 확인해요. 토큰은 서버에만 보관되고 이 화면에 다시 나오지 않아요.</p>
+      <p class="lead">토큰을 저장하면 서버가 인스타·스레드에 직접 확인해요. 토큰은 서버에만 보관되고 이 화면에 다시 나오지 않아요. X 는 토큰 붙여넣기 없이 X 칸의 <b>X 연결</b> 버튼으로 연결해요.</p>
       <div id="accounts"><div class="msg info">불러오는 중…</div></div>
     </section>
     <section class="card">
@@ -389,7 +404,8 @@
 
   var DEMO = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
   var DAY = 864e5;
-  var PL = { instagram: { name: '인스타', color: 'var(--ig)', wash: 'var(--ig-wash)' }, threads: { name: '스레드', color: 'var(--th)', wash: 'var(--th-wash)' } };
+  var PL = { instagram: { name: '인스타', color: 'var(--ig)', wash: 'var(--ig-wash)' }, threads: { name: '스레드', color: 'var(--th)', wash: 'var(--th-wash)' }, x: { name: 'X', color: 'var(--x)', wash: 'var(--x-wash)' } };
+  var PLATFORMS = ['instagram', 'threads', 'x'];
   var state = { accounts: [], posts: [], followers: [], period: 30, platform: 'all', sel: null };
   var $ = function (id) { return document.getElementById(id); };
   var SVGNS = 'http://www.w3.org/2000/svg';
@@ -429,14 +445,14 @@
     return { top: Math.ceil(max / step) * step, step: step };
   }
 
-  // 플랫폼마다 이름이 다른 통계를 한 줄로 맞춘다 — 스레드 '공유' = 리포스트 + 인용 + 공유
+  // 플랫폼마다 이름이 다른 통계를 한 줄로 맞춘다 — 스레드 '공유' = 리포스트 + 인용 + 공유, X '공유' = 리포스트 + 인용, X '저장' = 북마크
   function norm(p) {
-    var m = p.metrics || {}; var th = p.platform === 'threads';
-    var likes = num(m.likes), comments = num(th ? m.replies : m.comments), saved = th ? null : num(m.saved);
-    var shares = th ? sum(m.reposts, m.quotes, m.shares) : num(m.shares);
-    var views = num(m.views), reach = th ? null : num(m.reach);
+    var m = p.metrics || {}; var th = p.platform === 'threads', xx = p.platform === 'x';
+    var likes = num(m.likes), comments = num(th || xx ? m.replies : m.comments), saved = th ? null : num(xx ? m.bookmarks : m.saved);
+    var shares = th ? sum(m.reposts, m.quotes, m.shares) : xx ? sum(m.reposts, m.quotes) : num(m.shares);
+    var views = num(m.views), reach = th || xx ? null : num(m.reach);
     var inter = sum(likes, comments, saved, shares);
-    var base = th ? views : (reach != null ? reach : views);
+    var base = th || xx ? views : (reach != null ? reach : views);
     return { views: views, reach: reach, likes: likes, comments: comments, saved: saved, shares: shares, inter: inter, er: base && inter != null ? inter / base : null };
   }
   function inPeriod(p, from, to) { var t = Date.parse(p.posted_at || ''); return t && t >= from && t < to; }
@@ -502,24 +518,28 @@
     var cur = visible().map(norm);
     var prevPosts = state.period === 'all' ? [] : state.posts.filter(function (p) { return (state.platform === 'all' || p.platform === state.platform) && inPeriod(p, w.from - span, w.from); }).map(norm);
     var agg = function (list, f) { return list.reduce(function (s, n) { return n[f] == null ? s : (s || 0) + n[f]; }, null); };
-    var ig = visible().filter(function (p) { return p.platform === 'instagram'; }).length, th = visible().length - ig;
+    var mix = platformMix(visible());
     var dPosts = deltaText(cur.length, prevPosts.length), dViews = deltaText(agg(cur, 'views'), agg(prevPosts, 'views'));
-    box.appendChild(tile('게시물', fmtN(cur.length), (state.platform === 'all' ? '인스타 ' + ig + ' · 스레드 ' + th : '') + (dPosts ? (state.platform === 'all' ? ' · ' : '') + dPosts.text : ''), dPosts && dPosts.cls));
+    box.appendChild(tile('게시물', fmtN(cur.length), (state.platform === 'all' ? mix : '') + (dPosts ? (state.platform === 'all' && mix ? ' · ' : '') + dPosts.text : ''), dPosts && dPosts.cls));
     box.appendChild(tile('조회', fmtN(agg(cur, 'views')), dViews && dViews.text, dViews && dViews.cls));
     box.appendChild(tile('좋아요', fmtN(agg(cur, 'likes'))));
     box.appendChild(tile('댓글 · 답글', fmtN(agg(cur, 'comments'))));
-    box.appendChild(tile('저장', fmtN(agg(cur, 'saved')), '인스타만'));
-    box.appendChild(tile('공유', fmtN(agg(cur, 'shares')), '스레드는 리포스트·인용 포함'));
-    box.appendChild(tile('평균 참여율', fmtPct(mean(cur.map(function (n) { return n.er; }))), '반응 ÷ 도달(스레드는 조회)'));
+    box.appendChild(tile('저장', fmtN(agg(cur, 'saved')), '인스타 저장 · X 북마크'));
+    box.appendChild(tile('공유', fmtN(agg(cur, 'shares')), '스레드·X는 리포스트·인용 포함'));
+    box.appendChild(tile('평균 참여율', fmtPct(mean(cur.map(function (n) { return n.er; }))), '반응 ÷ 도달(스레드·X는 조회)'));
     var f = state.accounts.filter(function (a) { return a.profile && a.profile.followers_count != null && (state.platform === 'all' || a.platform === state.platform); });
     box.appendChild(tile('팔로워', f.length ? fmtN(f.reduce(function (s, a) { return s + a.profile.followers_count; }, 0)) : '—', f.map(function (a) { return PL[a.platform].name + ' ' + fmtN(a.profile.followers_count); }).join(' · ')));
   }
 
   function legendInto(box, kinds, line) {
     box.textContent = '';
-    kinds.forEach(function (k) { var s = el('span'); var i = el('i', (line ? 'line ' : '') + (k === 'threads' ? 'sw-th' : 'sw-ig')); s.appendChild(i); s.appendChild(document.createTextNode(PL[k].name)); box.appendChild(s); });
+    kinds.forEach(function (k) { var s = el('span'); var i = el('i', (line ? 'line ' : '') + 'sw-' + (k === 'threads' ? 'th' : k === 'x' ? 'x' : 'ig')); s.appendChild(i); s.appendChild(document.createTextNode(PL[k].name)); box.appendChild(s); });
   }
-  function platformsIn(list) { var s = {}; list.forEach(function (p) { s[p.platform] = 1; }); return ['instagram', 'threads'].filter(function (k) { return s[k]; }); }
+  function platformsIn(list) { var s = {}; list.forEach(function (p) { s[p.platform] = 1; }); return PLATFORMS.filter(function (k) { return s[k]; }); }
+  function platformMix(list) { // '인스타 3 · 스레드 2 · X 1'
+    var c = {}; list.forEach(function (p) { c[p.platform] = (c[p.platform] || 0) + 1; });
+    return PLATFORMS.filter(function (k) { return c[k]; }).map(function (k) { return PL[k].name + ' ' + c[k]; }).join(' · ');
+  }
 
   function showTip(box, tip, x, y, rows) {
     tip.textContent = '';
@@ -568,7 +588,7 @@
         box.classList.add('hovering'); bar.classList.add('on');
         showTip(box, tip, cx, top, [
           { value: '조회 ' + fmtN(n.views), label: PL[p.platform].name + ' · ' + fmtWhen(p.posted_at), key: PL[p.platform].color },
-          { label: '좋아요', value: fmtN(n.likes) }, { label: p.platform === 'threads' ? '답글' : '댓글', value: fmtN(n.comments) },
+          { label: '좋아요', value: fmtN(n.likes) }, { label: p.platform === 'instagram' ? '댓글' : '답글', value: fmtN(n.comments) },
           { label: '참여율', value: fmtPct(n.er) },
         ]);
       };
@@ -585,8 +605,7 @@
   function renderTable() {
     var box = $('postTable'); box.textContent = '';
     var list = visible().slice().sort(function (a, b) { return Date.parse(b.posted_at) - Date.parse(a.posted_at); });
-    var ig = list.filter(function (p) { return p.platform === 'instagram'; }).length;
-    $('listLead').textContent = list.length ? '이 범위 게시물 ' + list.length + '개 (인스타 ' + ig + ' · 스레드 ' + (list.length - ig) + '). 누르면 분석이 열려요.' : '게시물을 누르면 분석이 열려요.';
+    $('listLead').textContent = list.length ? '이 범위 게시물 ' + list.length + '개 (' + platformMix(list) + '). 누르면 분석이 열려요.' : '게시물을 누르면 분석이 열려요.';
     if (!list.length) { box.appendChild(el('div', 'empty', state.posts.length ? '이 범위에는 게시물이 없어요. 기간을 넓혀 보세요.' : '아직 모은 게시물이 없어요. 토큰을 저장하면 바로 모으고, 그 뒤로는 6시간마다 자동으로 모아요.')); return; }
     var tbl = el('table'); var head = el('tr');
     [['올린 때', 'l'], ['플랫폼', 'l'], ['게시물', 'l'], ['조회'], ['도달'], ['좋아요'], ['댓글'], ['저장'], ['공유'], ['참여율']].forEach(function (h) { head.appendChild(el('th', h[1] || '', h[0])); });
@@ -646,8 +665,8 @@
     head.appendChild(el('span', 'small', '올린 지 ' + fmtRel(p.posted_at).replace(' 전', '') + ' · 통계 ' + (p.metrics_at ? fmtRel(p.metrics_at) : '없음')));
     $('dCaption').textContent = p.caption || '(내용 없음)';
     var mb = $('dMetrics'); mb.textContent = '';
-    [['조회', n.views], ['도달', n.reach], ['좋아요', n.likes], [p.platform === 'threads' ? '답글' : '댓글', n.comments], ['저장', n.saved], ['공유', n.shares]].forEach(function (m) {
-      if (m[0] === '도달' && p.platform === 'threads') return; if (m[0] === '저장' && p.platform === 'threads') return;
+    [['조회', n.views], ['도달', n.reach], ['좋아요', n.likes], [p.platform === 'instagram' ? '댓글' : '답글', n.comments], [p.platform === 'x' ? '북마크' : '저장', n.saved], ['공유', n.shares]].forEach(function (m) {
+      if (m[0] === '도달' && p.platform !== 'instagram') return; if (m[0] === '저장' && p.platform === 'threads') return;
       var c = el('div'); c.appendChild(el('b', null, fmtN(m[1]))); c.appendChild(el('small', null, m[0])); mb.appendChild(c);
     });
     var erc = el('div'); erc.appendChild(el('b', null, fmtPct(n.er))); erc.appendChild(el('small', null, '참여율')); mb.appendChild(erc);
@@ -741,7 +760,7 @@
       svg.appendChild(sv('circle', { cx: X(e.t), cy: Y(e.v), r: 4, fill: PL[s.platform].color, stroke: 'var(--card)', 'stroke-width': 2 }));
       ends.push({ x: X(e.t), y: Y(e.v), v: e.v });
     });
-    var collide = ends.length === 2 && Math.abs(ends[0].y - ends[1].y) < 14; // 끝 숫자가 겹치면 범례 + 표에 맡긴다
+    var collide = ends.some(function (a, i) { return ends.some(function (b, j) { return j > i && Math.abs(a.y - b.y) < 14; }); }); // 끝 숫자가 겹치면 범례에 맡긴다
     if (!collide) ends.forEach(function (e) { var tx = sv('text', { x: e.x + 8, y: e.y + 4, class: 'endlbl' }); tx.textContent = fmtN(e.v); svg.appendChild(tx); });
     box.appendChild(svg);
   }
@@ -749,36 +768,77 @@
   function renderAccounts() {
     var box = $('accounts'); box.textContent = '';
     state.accounts.forEach(function (a) {
+      if (!PL[a.platform]) return;
+      var isX = a.platform === 'x';
       var card = el('div', 'acc'); var head = el('div', 'acc-head');
       var chip = el('span', 'pchip'); var dot = el('i'); dot.style.background = PL[a.platform].color; chip.appendChild(dot); chip.appendChild(document.createTextNode(PL[a.platform].name)); head.appendChild(chip);
       head.appendChild(el('span', 'uname', '@' + a.username));
       var dleft = a.token_expires_at ? Math.floor((Date.parse(a.token_expires_at) - Date.now()) / DAY) : null;
-      var pill = !a.has_token ? el('span', 'pill warn', '⚠ ' + (a.platform === 'threads' ? '프로필·토큰 필요' : '토큰 필요'))
+      // X 토큰은 2시간짜리라 날짜 대신 '자동 연장'
+      var pill = !a.has_token ? el('span', 'pill warn', '⚠ ' + (a.platform === 'threads' ? '프로필·토큰 필요' : isX ? '연결 필요' : '토큰 필요'))
+        : isX ? el('span', 'pill ok', '✓ 연결됨 · 자동 연장')
         : dleft != null && dleft < 0 ? el('span', 'pill bad', '✕ 토큰 만료')
         : el('span', 'pill ok', '✓ 연결됨 · ' + kst(a.token_expires_at, { month: 'numeric', day: 'numeric' }) + '까지');
       head.appendChild(pill); card.appendChild(head);
       if (a.profile && (a.profile.followers_count != null || a.profile.media_count != null)) card.appendChild(el('div', 'note', '팔로워 ' + fmtN(a.profile.followers_count) + (a.profile.media_count != null ? ' · 게시물 ' + fmtN(a.profile.media_count) : '') + (a.last_collect_at ? ' · 수집 ' + fmtRel(a.last_collect_at) : '')));
       else if (a.note) card.appendChild(el('div', 'note', a.note));
       if (a.last_error) card.appendChild(el('div', 'err', a.last_error));
+      if (isX) xConnectInto(card, a);
       var row = el('div', 'row'); var out = el('div');
-      var tb = el('button', 'ghost', '올리기 직전까지 시험'); tb.type = 'button'; tb.disabled = DEMO || !a.has_token;
+      // X 는 '올리기 직전' 단계가 없고 읽기가 유료라 버튼 이름에 요금을 적는다 (둘 다 등록된 브라우저만)
+      var tb = el('button', 'ghost', isX ? '연결 확인 (약 15원)' : '올리기 직전까지 시험'); tb.type = 'button'; tb.disabled = DEMO || !a.has_token;
       tb.addEventListener('click', function () { runTest(a, tb, out); });
-      var cb = el('button', 'ghost', '이 계정 지금 모으기'); cb.type = 'button'; cb.disabled = DEMO || !a.has_token;
+      var cb = el('button', 'ghost', isX ? '통계 지금 모으기 (1시간 1번 · 읽기 요금)' : '이 계정 지금 모으기'); cb.type = 'button'; cb.disabled = DEMO || !a.has_token;
       cb.addEventListener('click', function () { runCollect(a.id, cb, out); });
       row.appendChild(tb); row.appendChild(cb); card.appendChild(row); card.appendChild(out);
       box.appendChild(card);
     });
     var sel = $('tokAccount'); var keep = sel.value; sel.textContent = '';
-    state.accounts.forEach(function (a) { var o = el('option', null, PL[a.platform].name + ' · @' + a.username + (a.has_token ? ' (다시 저장)' : '')); o.value = String(a.id); sel.appendChild(o); });
+    state.accounts.filter(function (a) { return a.platform !== 'x' && PL[a.platform]; }).forEach(function (a) { var o = el('option', null, PL[a.platform].name + ' · @' + a.username + (a.has_token ? ' (다시 저장)' : '')); o.value = String(a.id); sel.appendChild(o); });
     if (keep) sel.value = keep;
     $('tokSave').disabled = DEMO;
   }
 
+  // X 연결 — 클라이언트 ID(공개 값)를 붙여넣고 'X 연결' → X 허용 화면 → 이 화면으로 돌아온다 (?x=ok|err)
+  function xConnectInto(card, a) {
+    var wrap = el('div', 'xconn'), needId = !a.has_client;
+    var input = el('input'); input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false; input.setAttribute('aria-label', 'X 클라이언트 ID');
+    input.placeholder = needId ? 'X 개발자 콘솔의 클라이언트 ID 붙여넣기' : '클라이언트 ID 저장돼 있어요 (바꿀 때만 붙여넣기)';
+    var btn = el('button', null, a.has_token ? 'X 다시 연결' : 'X 연결'); btn.type = 'button';
+    btn.disabled = DEMO || !canPost();
+    var hint = el('div', 'small', !canPost() ? '위에서 이 브라우저를 등록하면 연결할 수 있어요.'
+      : needId ? '① X 개발자 콘솔 › 앱 › Keys & Tokens › OAuth 2.0 키의 클라이언트 ID 를 복사해 붙여넣고(시크릿 말고) ② X 연결 → X 화면에서 허용'
+      : 'X 연결을 누르면 X 화면에서 허용만 누르면 돼요 (X 에 @' + a.username + ' 으로 로그인돼 있어야 해요).');
+    btn.addEventListener('click', async function () {
+      var id = input.value.trim();
+      if (needId && !id) { hint.textContent = '클라이언트 ID 를 먼저 붙여넣어 주세요.'; return; }
+      btn.disabled = true; hint.textContent = 'X 허용 화면으로 가는 중…';
+      var body = { return_to: location.origin + location.pathname }; if (id) body.client_id = id;
+      var j = await apiDev('/x/start', body).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+      input.value = '';
+      if (!j.ok || !j.url) { btn.disabled = false; hint.textContent = j.error || '시작하지 못했어요.'; return; }
+      location.href = j.url;
+    });
+    var r = el('div', 'row'); r.appendChild(input); r.appendChild(btn);
+    wrap.appendChild(r); wrap.appendChild(hint); card.appendChild(wrap);
+  }
+
+  // X 허용 화면에서 돌아왔을 때 (?x=ok | ?x=err&m=…) — 알려 주고 주소를 깨끗하게
+  function xReturnNotice() {
+    var q = new URLSearchParams(location.search), x = q.get('x');
+    if (!x) return;
+    var b = $('xReturn'); b.hidden = false; b.className = 'banner' + (x === 'ok' ? ' ok' : '');
+    b.textContent = x === 'ok' ? '✓ X 연결됐어요. 이제 카드뉴스 올릴 곳에서 X 를 고를 수 있어요.' : '✕ X 연결이 안 됐어요 — ' + (q.get('m') || '다시 해 주세요.');
+    q.delete('x'); q.delete('m'); var rest = q.toString();
+    try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); } catch (e) { /* noop */ }
+  }
+
   // ── 버튼 ───────────────────────────────────────────────────
+  // 시험·모으기는 등록된 브라우저 헤더를 같이 보낸다 (X 는 요금이 들어서 서버가 확인함)
   async function runTest(a, btn, out) {
     btn.disabled = true; out.textContent = '';
-    out.appendChild(el('div', 'msg info', '시험 중… 인스타·스레드가 사진을 받아 가는 데 10~30초쯤 걸려요.'));
-    var j = await api('/test', { account_id: a.id }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+    out.appendChild(el('div', 'msg info', a.platform === 'x' ? 'X 연결 확인 중…' : '시험 중… 인스타·스레드가 사진을 받아 가는 데 10~30초쯤 걸려요.'));
+    var j = await apiDev('/test', { account_id: a.id }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
     out.textContent = '';
     if (j.steps && j.steps.length) {
       var wrap = el('div', 'msg ' + (j.ok ? 'ok' : 'bad'));
@@ -793,10 +853,10 @@
     if (btn) btn.disabled = true;
     var msg = el('div', 'msg info', '게시물과 통계를 모으는 중… 게시물이 많으면 30초쯤 걸려요.');
     if (out) { out.textContent = ''; out.appendChild(msg); }
-    var j = await api('/collect', accountId ? { account_id: accountId } : {}).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+    var j = await apiDev('/collect', accountId ? { account_id: accountId } : {}).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
     var res = (j.results || []);
     var text = !j.ok ? (j.error || '모으지 못했어요.') : !res.length ? '모을 계정이 없어요 (토큰을 먼저 저장해 주세요).'
-      : res.map(function (r) { return PL[r.platform].name + ' @' + r.username + ': ' + (r.ok ? '게시물 ' + r.posts + '개 모음' : r.error); }).join(' · ');
+      : res.map(function (r) { return (PL[r.platform] ? PL[r.platform].name : r.platform) + ' @' + r.username + ': ' + (r.ok ? '게시물 ' + r.posts + '개 모음' : r.error); }).join(' · ');
     msg.className = 'msg ' + (j.ok && res.every(function (r) { return r.ok; }) && res.length ? 'ok' : 'bad'); msg.textContent = text;
     if (!out) { var top = $('collectMeta'); top.textContent = text; }
     if (btn) setTimeout(function () { btn.disabled = false; }, 3000);
@@ -826,7 +886,23 @@
 
   // ── 카드뉴스 올리기 · 예약 · 이 브라우저 등록 ─────────────────────────
   // 올리기·예약은 '등록된 브라우저'만 된다. 키는 이 브라우저 localStorage(ggul_device_key)에만 있고 서버엔 sha256 만.
-  var MAX_IMG = 10, IG_MAX = 2200, TH_MAX = 500, TAG_MAX = 30;
+  var MAX_IMG = 10, IG_MAX = 2200, TH_MAX = 500, TAG_MAX = 30, X_MAX = 280, X_IMG = 4;
+
+  // X 글자 수 (twitter-text v3) — 기본 2, 라틴·일부 기호는 1, 링크는 길이와 상관없이 23. 서버(sns 함수)와 같은 계산.
+  function xWeighted(text) {
+    var s = String(text || '').normalize('NFC').replace(/https?:\/\/\S+/gi, 'x'.repeat(23)), n = 0;
+    for (var ch of s) { var c = ch.codePointAt(0); n += c <= 0x10ff || (c >= 0x2000 && c <= 0x200d) || (c >= 0x2010 && c <= 0x201f) || (c >= 0x2032 && c <= 0x2037) ? 1 : 2; }
+    return n;
+  }
+  function xFit(text) { // 앞에서부터 X 길이에 맞게 — 넘치면 자르고 '…'
+    var t = String(text || '').trim();
+    if (!t || xWeighted(t) <= X_MAX) return t;
+    var chars = Array.from(t), lo = 0, hi = chars.length;
+    while (lo < hi) { var mid = Math.ceil((lo + hi) / 2); if (xWeighted(chars.slice(0, mid).join('').trimEnd() + '…') <= X_MAX) lo = mid; else hi = mid - 1; }
+    return chars.slice(0, lo).join('').trimEnd() + '…';
+  }
+  function xHasLink(text) { return /https?:\/\/\S+/i.test(text || ''); }
+  function xEffective() { return $('capX').value.trim() ? $('capX').value : xFit($('capIg').value.trim() || $('capTh').value.trim()); } // 실제로 올라갈 X 문구
   var dev = { status: 'none', code: '' }, pendingDevs = [];
   // draftId = 불러와서 고치는 중인 임시저장 · busy = 아직 준비 중(JPG 변환·불러오기)인 사진 수
   // saving = 올리기·임시저장·시험 진행 중 · gen = 화면을 비우거나 다른 글을 불러올 때마다 +1 (늦게 끝난 사진이 섞이지 않게)
@@ -914,16 +990,18 @@
       }
     }
     updateComposer();
+    renderAccounts(); // X 연결 버튼은 등록된 브라우저에서만 켜진다
   }
 
   function compTargets() {
     var ig = state.accounts.find(function (a) { return a.platform === 'instagram'; });
     var th = state.accounts.find(function (a) { return a.platform === 'threads'; });
-    return { ig: !!(ig && ig.has_token), th: !!(th && th.has_token), igId: ig && ig.id };
+    var xa = state.accounts.find(function (a) { return a.platform === 'x'; });
+    return { ig: !!(ig && ig.has_token), th: !!(th && th.has_token), x: !!(xa && xa.has_token), igId: ig && ig.id };
   }
   function fmtLocalInput(d) { var p = function (n) { return String(n).padStart(2, '0'); }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()); }
   function whenNow() { var r = document.querySelector('input[name="when"]:checked'); return !r || r.value === 'now'; }
-  function selectedPlatforms() { var out = []; if ($('pIg').checked && !$('pIg').disabled) out.push('instagram'); if ($('pTh').checked && !$('pTh').disabled) out.push('threads'); return out; }
+  function selectedPlatforms() { var out = []; if ($('pIg').checked && !$('pIg').disabled) out.push('instagram'); if ($('pTh').checked && !$('pTh').disabled) out.push('threads'); if ($('pX').checked && !$('pX').disabled) out.push('x'); return out; }
   function tagCount(s) { return (s.match(/#[^\s#]+/g) || []).length; }
   function ratioProblem(r) { if (r < 0.79) return '세로가 너무 길어요 (4:5보다 김)'; if (r > 1.92) return '가로가 너무 길어요'; return ''; }
 
@@ -932,8 +1010,11 @@
     $('pIg').disabled = !t.ig || !ok; $('igHint').textContent = t.ig ? '' : '(연결 필요)';
     $('pTh').disabled = !t.th || !ok; $('thHint').textContent = t.th ? '' : '(프로필·연결 필요)';
     if (!t.th) $('pTh').checked = false;
+    $('pX').disabled = !t.x || !ok; $('xHint').textContent = !t.x ? '(연결 필요)' : comp.items.length + comp.busy > X_IMG ? '(사진은 앞 ' + X_IMG + '장만)' : '';
+    if (!t.x) $('pX').checked = false;
+    $('xField').hidden = !t.x;
     var busy = comp.busy > 0 || comp.saving; // 사진 준비 중이거나 저장 중이면 버튼을 잠근다 (사진이 빠진 채로 저장되지 않게)
-    ['capIg', 'capTh'].forEach(function (id) { $(id).disabled = !ok; $(id).readOnly = comp.saving; });
+    ['capIg', 'capTh', 'capX'].forEach(function (id) { $(id).disabled = !ok; $(id).readOnly = comp.saving; });
     document.querySelectorAll('input[name="when"]').forEach(function (r) { r.disabled = !ok; });
     $('whenAt').disabled = !ok || whenNow();
     $('drop').setAttribute('aria-disabled', String(!ok || DEMO || comp.saving));
@@ -949,6 +1030,10 @@
     ci.className = 'count' + (ig.length > IG_MAX || tagCount(ig) > TAG_MAX ? ' over' : '');
     var ct = $('cntTh'); ct.textContent = th.trim() ? th.length + '/' + TH_MAX : '비우면 인스타 문구 앞 500자를 써요';
     ct.className = 'count' + (th.length > TH_MAX ? ' over' : '');
+    var xOwn = !!$('capX').value.trim(), xe = xEffective(), xn = xWeighted(xe), cx = $('cntX');
+    cx.textContent = (xOwn ? xn + '/' + X_MAX + ' (한글·이모지 2, 링크 23)' : xe ? '비워 두면 인스타 문구 앞부분 — ' + xn + '/' + X_MAX : '비우면 인스타 문구 앞부분을 X 길이에 맞춰 써요')
+      + (xHasLink(xe) ? ' · 링크가 있어 이 글은 약 290원' : '');
+    cx.className = 'count' + (xOwn && xn > X_MAX ? ' over' : '');
     $('postHint').textContent = DEMO ? '예시 화면에서는 올릴 수 없어요' : !ok ? '위에서 이 브라우저를 등록하면 켜져요' : comp.busy ? '사진 준비가 끝나면 켜져요' : Date.now() < dryUntil ? '시험은 1분에 한 번이에요' : '';
   }
 
@@ -959,7 +1044,12 @@
     var plats = selectedPlatforms(), dry = mode === 'dry';
     if (!dry && !plats.length) return '올릴 곳(인스타·스레드)을 골라 주세요.';
     if ((dry || plats.indexOf('instagram') >= 0) && !comp.items.length) return '사진을 1장 이상 넣어 주세요.';
-    if (!dry && !comp.items.length && !$('capIg').value.trim() && !$('capTh').value.trim()) return '스레드에 올릴 글이나 사진이 없어요.';
+    if (!dry && !comp.items.length && !$('capIg').value.trim() && !$('capTh').value.trim() && !$('capX').value.trim()) return '올릴 글이나 사진이 없어요.';
+    if (!dry && plats.indexOf('x') >= 0) {
+      var xo = $('capX').value.trim();
+      if (xo && xWeighted(xo) > X_MAX) return 'X 문구가 너무 길어요 (' + xWeighted(xo) + '/' + X_MAX + ' — 한글·이모지는 2, 링크는 23으로 세요).';
+      if (!comp.items.length && !xEffective().trim()) return 'X 에 올릴 글이나 사진이 없어요.';
+    }
     if (comp.items.length > MAX_IMG) return '사진은 ' + MAX_IMG + '장까지예요.';
     var bad = comp.items.map(function (it, i) { return ratioProblem(it.ratio) ? (i + 1) + '번 사진: ' + ratioProblem(it.ratio) : ''; }).filter(Boolean);
     if (bad.length) return bad.join(' · ') + ' — 인스타는 4:5 ~ 1.91:1 비율만 받아요.';
@@ -1057,12 +1147,13 @@
   function resetComposer() {
     comp.items.forEach(function (it) { if (it.blob) URL.revokeObjectURL(it.url); }); comp.items = []; comp.draftId = null;
     comp.gen++; comp.busy = 0;
-    $('capIg').value = ''; $('capTh').value = ''; renderThumbs(); updateComposer(); renderQueue();
+    $('capIg').value = ''; $('capTh').value = ''; $('capX').value = ''; renderThumbs(); updateComposer(); renderQueue();
   }
-  function composerDirty() { return comp.items.length > 0 || !!$('capIg').value.trim() || !!$('capTh').value.trim(); }
+  function composerDirty() { return comp.items.length > 0 || !!$('capIg').value.trim() || !!$('capTh').value.trim() || !!$('capX').value.trim(); }
   function composeBody(plats, paths) {
     var body = { platforms: plats, image_paths: paths, caption: $('capIg').value };
     if ($('capTh').value.trim()) body.threads_text = $('capTh').value;
+    if ($('capX').value.trim()) body.x_text = $('capX').value;
     return body;
   }
   function lockComposer() { comp.saving = true; updateComposer(); }
@@ -1084,9 +1175,12 @@
     comp.busy = paths.length; // 사진을 다 불러오기 전에는 저장·올리기를 잠근다 (사진이 빠진 채로 덮어쓰지 않게)
     if (!$('pIg').disabled) $('pIg').checked = plats.indexOf('instagram') >= 0;
     if (!$('pTh').disabled) $('pTh').checked = plats.indexOf('threads') >= 0;
+    if (!$('pX').disabled) $('pX').checked = plats.indexOf('x') >= 0;
     $('capIg').value = q.caption || '';
     // 스레드 문구를 비워 두고 저장하면 서버가 인스타 문구 앞 500자를 넣는다 → 그런 경우엔 다시 비워 둔다
     $('capTh').value = q.threads_text && q.threads_text !== (q.caption || '').slice(0, TH_MAX) ? q.threads_text : '';
+    // X 도 같다 — 인스타(없으면 스레드) 문구를 X 길이에 맞춘 것과 같으면 비워 둔다
+    $('capX').value = q.x_text && q.x_text !== xFit((q.caption || '').trim() || (q.threads_text || '').trim()) ? q.x_text : '';
     updateComposer(); renderQueue(); renderThumbs();
     postMsg('info', '임시저장 #' + q.id + ' 불러오는 중…');
     $('composer').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1193,8 +1287,8 @@
   drop.addEventListener('dragleave', function () { drop.classList.remove('over'); });
   drop.addEventListener('drop', function (e) { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer && e.dataTransfer.files); });
   $('fileIn').addEventListener('change', function () { addFiles(this.files); this.value = ''; });
-  ['capIg', 'capTh'].forEach(function (id) { $(id).addEventListener('input', updateComposer); });
-  ['pIg', 'pTh'].forEach(function (id) { $(id).addEventListener('change', updateComposer); });
+  ['capIg', 'capTh', 'capX'].forEach(function (id) { $(id).addEventListener('input', updateComposer); });
+  ['pIg', 'pTh', 'pX'].forEach(function (id) { $(id).addEventListener('change', updateComposer); });
   document.querySelectorAll('input[name="when"]').forEach(function (r) {
     r.addEventListener('change', function () {
       if (!whenNow() && !$('whenAt').value) { var d = new Date(Date.now() + 36e5); d.setMinutes(0, 0, 0); $('whenAt').value = fmtLocalInput(d); }
@@ -1251,7 +1345,7 @@
       var im = el('img'); im.alt = ''; im.loading = 'lazy'; if (q.image_urls && q.image_urls[0]) im.src = q.image_urls[0]; row.appendChild(im);
       var mid = el('div');
       mid.appendChild(el('div', 'qmeta', (draft ? fmtWhen(q.created_at) + ' 저장' : fmtWhen(q.scheduled_at)) + ' · ' + (q.platforms || []).map(function (p) { return PL[p] ? PL[p].name : p; }).join('·') + ' · 사진 ' + (q.image_paths || []).length + '장'));
-      mid.appendChild(el('div', 'qcap', (q.caption || q.threads_text || '(문구 없음)').split('\n')[0]));
+      mid.appendChild(el('div', 'qcap', (q.caption || q.threads_text || q.x_text || '(문구 없음)').split('\n')[0]));
       var res = el('div', 'qres');
       (q.platforms || []).forEach(function (p) {
         var r = (q.results || {})[p]; if (!r || !PL[p]) return;
@@ -1310,12 +1404,24 @@
       posts.push({ account_id: 2, media_id: 'demo-th-' + k, platform: 'threads', media_type: k % 3 ? 'TEXT_POST' : 'IMAGE', product_type: 'THREADS', caption: caps[(k + 3) % caps.length], permalink: null, thumbnail_url: null, posted_at: new Date(t2).toISOString(), metrics_at: new Date(now - 3 * 36e5).toISOString(),
         metrics: { views: views, likes: Math.round(views * (0.02 + rnd() * 0.05)), replies: Math.round(rnd() * 18), reposts: Math.round(rnd() * 9), quotes: Math.round(rnd() * 4), shares: Math.round(rnd() * 6) } });
     }
+    for (var q = 0; q < 6; q++) {
+      var t3 = now - (22 - q * 3.4) * DAY - rnd() * 6e6, imp = Math.round(200 + rnd() * 1400 + q * 90);
+      posts.push({ account_id: 3, media_id: 'demo-x-' + q, platform: 'x', media_type: q % 2 ? 'IMAGE' : 'TEXT_POST', product_type: 'X', caption: caps[(q + 5) % caps.length], permalink: null, thumbnail_url: null, posted_at: new Date(t3).toISOString(), metrics_at: new Date(now - 3 * 36e5).toISOString(),
+        metrics: { views: imp, likes: Math.round(imp * (0.01 + rnd() * 0.03)), replies: Math.round(rnd() * 8), reposts: Math.round(rnd() * 12), quotes: Math.round(rnd() * 3), bookmarks: Math.round(rnd() * 10) } });
+    }
     var followers = [];
-    for (var d = 0; d < 28; d += 1) { followers.push({ account_id: 1, captured_at: new Date(now - (28 - d) * DAY).toISOString(), followers: Math.round(40 + d * 9 + rnd() * 6) }); followers.push({ account_id: 2, captured_at: new Date(now - (28 - d) * DAY).toISOString(), followers: Math.round(15 + d * 4 + rnd() * 4) }); }
+    for (var d = 0; d < 28; d += 1) {
+      var at = new Date(now - (28 - d) * DAY).toISOString();
+      followers.push({ account_id: 1, captured_at: at, followers: Math.round(40 + d * 9 + rnd() * 6) });
+      followers.push({ account_id: 2, captured_at: at, followers: Math.round(15 + d * 4 + rnd() * 4) });
+      followers.push({ account_id: 3, captured_at: at, followers: Math.round(5 + d * 2 + rnd() * 3) });
+    }
+    var lastF = function (id) { return followers.filter(function (f) { return f.account_id === id; }).pop().followers; };
     return {
       accounts: [
-        { id: 1, platform: 'instagram', username: 'ggul.ggul.zip', has_token: true, token_expires_at: new Date(now + 50 * DAY).toISOString(), last_collect_at: new Date(now - 3 * 36e5).toISOString(), profile: { followers_count: followers[followers.length - 2].followers, media_count: 9 }, note: null, last_error: null },
-        { id: 2, platform: 'threads', username: 'ggul.ggul.zip', has_token: true, token_expires_at: new Date(now + 52 * DAY).toISOString(), last_collect_at: new Date(now - 3 * 36e5).toISOString(), profile: { followers_count: followers[followers.length - 1].followers }, note: null, last_error: null },
+        { id: 1, platform: 'instagram', username: 'ggul.ggul.zip', has_token: true, token_expires_at: new Date(now + 50 * DAY).toISOString(), last_collect_at: new Date(now - 3 * 36e5).toISOString(), profile: { followers_count: lastF(1), media_count: 9 }, note: null, last_error: null },
+        { id: 2, platform: 'threads', username: 'ggul.ggul.zip', has_token: true, token_expires_at: new Date(now + 52 * DAY).toISOString(), last_collect_at: new Date(now - 3 * 36e5).toISOString(), profile: { followers_count: lastF(2) }, note: null, last_error: null },
+        { id: 3, platform: 'x', username: 'ggulggulzip', has_token: true, has_client: true, token_expires_at: new Date(now + 36e5).toISOString(), last_collect_at: new Date(now - 5 * 36e5).toISOString(), profile: { followers_count: lastF(3), media_count: 6 }, note: null, last_error: null },
       ],
       posts: posts, followers: followers,
     };
@@ -1327,6 +1433,7 @@
   }
 
   if (DEMO) $('demoBanner').hidden = false;
+  xReturnNotice();
   load();
   loadDevice();
 })();

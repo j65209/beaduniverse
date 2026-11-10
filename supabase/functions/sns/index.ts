@@ -13,6 +13,9 @@
 //   POST /sns/token     {account_id, token} — 인스타/스레드에 물어서 그 계정 토큰이 맞을 때만 저장
 //   POST /sns/test      {account_id, image_paths?} — 고정 시험 사진(또는 올린 카드뉴스 사진)으로 '올리기 직전'(컨테이너)까지만. 계정마다 1분 1회
 //   POST /sns/collect   {account_id?, source?} — 게시물·통계·팔로워 모으기 (cron 6시간 · 화면 새로고침은 계정마다 2분 1회)
+//                       source:'cron' 은 헤더 x-ggul-cron 이 sns_settings.cron_key 와 맞을 때만 cron 으로 친다(pg_cron 이 표에서 읽어 보냄).
+//                       X 는 cron(하루 한 번) 또는 등록된 브라우저의 X 계정 버튼(1시간 1번)으로만 — 읽기가 유료라서.
+//   (POST /sns/test 도 X 계정은 등록된 브라우저만 — 사용자 조회 $0.010)
 //   POST /sns/refresh   매일 cron — 7일 지난 토큰을 60일로 연장
 //   POST /sns/publish-due         5분마다 cron — 예약 시각이 된(이미 등록된 브라우저가 만든) 게시물만 올린다
 //   GET  /sns/device/status       이 브라우저 등록 상태 (헤더 키)
@@ -27,6 +30,14 @@
 //   POST /sns/queue/publish       {id, now? | scheduled_at?} — 임시저장 → 발행(바로 또는 예약)
 //   POST /sns/queue/cancel        {id} — 예약 취소 · 임시저장 삭제
 //   POST /sns/queue/retry         {id} — 실패한 플랫폼만 다시 올림
+//   POST /sns/x/start             {client_id?, return_to} — X 연결 시작(OAuth 2.0 PKCE · 공개 클라이언트라 시크릿 없음) → {url}
+// X 가 돌려보내는 곳 (state 로 확인 · 10분 · 한 번만):
+//   GET  /sns/x/callback?code&state — 토큰을 받고 @계정이 맞는지 확인한 뒤 화면으로 돌려보냄 (?x=ok | ?x=err&m=…)
+//
+// X(트위터)는 종량제 — 글 1개 $0.015(링크가 있으면 $0.20) · 글 읽기 1개 $0.005 · 사용자 조회 $0.010.
+//   그래서 X 통계는 하루 한 번(cron KST 09:35 차례) 최근 7일 글만, 화면에서는 X 계정 버튼으로 1시간에 한 번만 모은다.
+//   올린 글은 읽지 않고 직접 sns_posts 에 기록. 액세스 토큰은 2시간 → 쓸 때 refresh_token 으로 새로 받는다
+//   (받을 때마다 refresh_token 도 바뀌어서 동시에 두 번 받지 않게 refreshing_at 으로 잠금).
 //
 // 표 (전부 RLS 켜짐 · 정책 없음 · anon/authenticated 권한 회수 — service role 만 접근):
 //   sns_accounts · sns_posts · sns_post_stats · sns_account_stats · sns_devices · sns_queue
@@ -53,6 +64,7 @@ const MAX_POSTS = 40; // 계정마다 최근 게시물 몇 개까지 볼지
 const INSIGHT_DAYS = 90; // 이보다 오래된 게시물은 통계(insights)를 다시 묻지 않는다
 
 const DEVICE_HEADER = 'x-ggul-device';
+const CRON_HEADER = 'x-ggul-cron'; // pg_cron 만 아는 열쇠 (public.sns_settings 'cron_key', 서버 전용)
 const BUCKET = 'sns-media';
 const MAX_IMAGES = 10; // 카드뉴스 한 번에 최대 장수
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 인스타 사진 한 장 한도
@@ -61,6 +73,19 @@ const IG_HASHTAG_MAX = 30;
 const TH_TEXT_MAX = 500;
 const MAX_SCHEDULE_DAYS = 75; // 토큰 만료(60일, 자동 연장) 너머로 너무 멀리 예약하지 않게
 const STALE_PUBLISHING_MS = 15 * 60_000; // '올리는 중'이 이보다 오래 멈춰 있으면 실패로 돌린다(중복 게시 막으려고 자동 재시도는 안 함)
+
+// X(트위터) — 개발자 콘솔 앱 33626420(네이티브 앱 = 공개 클라이언트 · PKCE). 클라이언트 ID 는 sns_accounts.client_id (화면에서 붙여넣음)
+const XAPI = 'https://api.x.com';
+const X_AUTHORIZE = 'https://x.com/i/oauth2/authorize';
+const X_SCOPES = 'tweet.read tweet.write users.read media.write offline.access';
+const X_CALLBACK = `${SUPABASE_URL}/functions/v1/sns/x/callback`; // X 콘솔에 똑같이 등록돼 있어야 함
+const X_RETURN_DEFAULT = 'https://j65209.github.io/beaduniverse/sns/';
+const X_TEXT_MAX = 280; // 가중치 글자 수 — 한글·이모지는 2, 링크는 길이와 상관없이 23
+const X_MAX_IMAGES = 4;
+const X_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const X_OAUTH_TTL_MS = 10 * 60_000;
+const X_STATS_DAYS = 7;
+const X_COLLECT_COOLDOWN_MS = 60 * 60_000;
 
 const IG_MEDIA_FIELDS = 'id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count';
 const TH_POST_FIELDS = 'id,media_product_type,media_type,media_url,permalink,text,timestamp,thumbnail_url,is_quote_post';
@@ -74,7 +99,7 @@ const sb = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-type Platform = 'instagram' | 'threads';
+type Platform = 'instagram' | 'threads' | 'x';
 type Account = {
   id: number;
   platform: Platform;
@@ -84,6 +109,7 @@ type Account = {
   last_check_at: string | null;
   last_collect_at: string | null;
   token_updated_at: string | null;
+  token_expires_at: string | null;
 };
 type Step = { name: string; ok: boolean; detail: string };
 type Metrics = Record<string, number>;
@@ -94,6 +120,7 @@ type QueueRow = {
   image_paths: string[];
   caption: string | null;
   threads_text: string | null;
+  x_text: string | null;
   scheduled_at: string;
   status: string;
   results: Record<string, any>;
@@ -102,7 +129,7 @@ type QueueRow = {
 
 class ApiError extends Error {}
 
-const label = (p: Platform) => (p === 'threads' ? '스레드' : '인스타');
+const label = (p: Platform) => (p === 'threads' ? '스레드' : p === 'x' ? 'X' : '인스타');
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const isPending = (id: string) => !id || id.startsWith('pending:');
 const publicUrl = (path: string) => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
@@ -153,7 +180,7 @@ async function whoAmI(platform: Platform, token: string) {
   return { id: String(j.user_id ?? j.id ?? ''), username: String(j.username ?? ''), type: (j.account_type ?? null) as string | null };
 }
 
-const ACCOUNT_FIELDS = 'id, platform, username, platform_user_id, access_token, last_check_at, last_collect_at, token_updated_at';
+const ACCOUNT_FIELDS = 'id, platform, username, platform_user_id, access_token, last_check_at, last_collect_at, token_updated_at, token_expires_at';
 
 async function getAccount(id: number): Promise<Account | null> {
   if (!Number.isFinite(id) || id <= 0) return null;
@@ -177,12 +204,13 @@ async function accountFor(platform: Platform): Promise<Account | null> {
 }
 
 const PUBLIC_ACCOUNT_FIELDS =
-  'id, platform, username, access_token, token_expires_at, token_updated_at, last_check_at, last_collect_at, last_error, note, profile, profile_at';
+  'id, platform, username, access_token, client_id, token_expires_at, token_updated_at, last_check_at, last_collect_at, last_error, note, profile, profile_at';
 
 async function publicAccounts() {
   const { data, error } = await sb.from('sns_accounts').select(PUBLIC_ACCOUNT_FIELDS).order('id');
   if (error) throw error;
-  return (data ?? []).map(({ access_token, ...a }) => ({ ...a, has_token: !!access_token }));
+  // 토큰 값은 내보내지 않고 있는지만 (X 클라이언트 ID 도 있는지만)
+  return (data ?? []).map(({ access_token, client_id, ...a }) => ({ ...a, has_token: !!access_token, has_client: !!client_id }));
 }
 
 async function listAccounts(req: Request) {
@@ -194,6 +222,7 @@ async function saveToken(req: Request) {
   const token = String(body?.token ?? '').trim();
   const acc = await getAccount(Number(body?.account_id));
   if (!acc) return reply(req, 404, { ok: false, error: '등록되지 않은 계정이에요.' });
+  if (acc.platform === 'x') return reply(req, 400, { ok: false, error: "X 는 계정 연결 칸의 'X 연결' 버튼으로 연결해요." });
   if (!token) return reply(req, 400, { ok: false, error: '토큰을 붙여넣어 주세요.' });
   if (token.length < 30 || token.length > 2048 || /\s/.test(token)) {
     return reply(req, 400, { ok: false, error: '토큰 모양이 아니에요. 복사한 값 전체를 그대로 붙여넣어 주세요.' });
@@ -256,10 +285,12 @@ async function dryRun(req: Request) {
   const acc = await getAccount(Number(body?.account_id));
   if (!acc) return reply(req, 404, { ok: false, error: '등록되지 않은 계정이에요.' });
   if (!acc.access_token) return reply(req, 400, { ok: false, error: '먼저 토큰을 저장해 주세요.' });
+  if (acc.platform === 'x' && !(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED); // X 확인은 요금이 들어서
   if (acc.last_check_at && Date.now() - Date.parse(acc.last_check_at) < TEST_COOLDOWN_MS) {
     return reply(req, 429, { ok: false, error: '시험은 1분에 한 번만 할 수 있어요. 잠시 뒤 다시 눌러 주세요.' });
   }
   await sb.from('sns_accounts').update({ last_check_at: new Date().toISOString() }).eq('id', acc.id);
+  if (acc.platform === 'x') return reply(req, 200, await xCheck(acc)); // X 는 '올리기 직전' 단계가 없어 연결 확인만
 
   const token = acc.access_token;
   const steps: Step[] = [];
@@ -428,7 +459,7 @@ async function collectThreads(acc: Account) {
 }
 
 async function collectOne(acc: Account) {
-  const got = acc.platform === 'threads' ? await collectThreads(acc) : await collectInstagram(acc);
+  const got = acc.platform === 'x' ? await collectX(acc) : acc.platform === 'threads' ? await collectThreads(acc) : await collectInstagram(acc);
   if (got.rows.length) {
     const { error: e1 } = await sb.from('sns_posts').upsert(got.rows, { onConflict: 'account_id,media_id' });
     if (e1) throw e1;
@@ -456,8 +487,9 @@ async function collectOne(acc: Account) {
 
 async function collect(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const fromCron = body?.source === 'cron';
+  const fromCron = body?.source === 'cron' && (await isCron(req)); // 열쇠 없는 'cron' 은 화면 요청으로 친다
   const onlyId = Number(body?.account_id) || null;
+  const devOk = !fromCron && onlyId ? !!(await approvedDevice(req)) : false;
   let q = sb.from('sns_accounts').select(ACCOUNT_FIELDS).not('access_token', 'is', null).order('id');
   if (onlyId) q = q.eq('id', onlyId);
   const { data, error } = await q;
@@ -466,6 +498,21 @@ async function collect(req: Request) {
   const results: { username: string; platform: Platform; ok: boolean; posts?: number; error?: string }[] = [];
   for (const acc of (data ?? []) as Account[]) {
     if (isPending(acc.platform_user_id)) continue;
+    if (acc.platform === 'x') {
+      // X 는 읽기도 돈이 든다 — cron 은 하루 한 번(UTC 0시 = KST 09:35 차례)만, 화면은 X 계정의 버튼으로만 1시간에 한 번
+      if (fromCron && new Date().getUTCHours() !== 0) continue;
+      if (!fromCron) {
+        if (onlyId !== acc.id) continue; // 화면 '지금 새로고침'(전체)에서는 X 를 뺀다
+        if (!devOk) {
+          results.push({ username: acc.username, platform: acc.platform, ok: false, error: 'X 통계 모으기는 등록된 브라우저에서만 돼요 (읽기 요금이 들어서).' });
+          continue;
+        }
+        if (acc.last_collect_at && Date.now() - Date.parse(acc.last_collect_at) < X_COLLECT_COOLDOWN_MS) {
+          results.push({ username: acc.username, platform: acc.platform, ok: false, error: 'X 통계는 읽을 때마다 요금이 들어서 1시간에 한 번만 모아요.' });
+          continue;
+        }
+      }
+    }
     if (!fromCron && acc.last_collect_at && Date.now() - Date.parse(acc.last_collect_at) < COLLECT_COOLDOWN_MS) {
       results.push({ username: acc.username, platform: acc.platform, ok: false, error: '방금 모았어요. 2분 뒤에 다시 눌러 주세요.' });
       continue;
@@ -529,6 +576,11 @@ async function refreshDue(req: Request) {
 
   const results: { username: string; ok: boolean }[] = [];
   for (const acc of (data ?? []) as Account[]) {
+    if (acc.platform === 'x') { // X 는 refresh_token 으로 — 오래 안 쓰면 끊길 수 있어 7일마다 한 번은 새로 받아 둔다
+      try { await xAccessToken(acc, true); results.push({ username: acc.username, ok: true }); }
+      catch { results.push({ username: acc.username, ok: false }); }
+      continue;
+    }
     const url = acc.platform === 'threads' ? `${TH}/refresh_access_token` : `${IG}/refresh_access_token`;
     const grant = acc.platform === 'threads' ? 'th_refresh_token' : 'ig_refresh_token';
     try {
@@ -575,6 +627,21 @@ async function approvedDevice(req: Request): Promise<Device | null> {
   if (!d?.row || d.row.status !== 'approved') return null;
   await sb.from('sns_devices').update({ last_seen_at: new Date().toISOString() }).eq('id', d.row.id);
   return d.row;
+}
+
+// pg_cron 이 보낸 요청인지 — 헤더 열쇠를 sns_settings.cron_key 와 비교 (함수가 살아 있는 동안 한 번만 읽음)
+let cronKey: string | null = null;
+async function isCron(req: Request) {
+  const got = req.headers.get(CRON_HEADER) ?? '';
+  if (got.length < 32) return false;
+  if (!cronKey) {
+    const { data } = await sb.from('sns_settings').select('value').eq('key', 'cron_key').maybeSingle();
+    cronKey = data?.value ?? null;
+  }
+  if (!cronKey || got.length !== cronKey.length) return false;
+  let diff = 0;
+  for (let i = 0; i < got.length; i++) diff |= got.charCodeAt(i) ^ cronKey.charCodeAt(i);
+  return diff === 0;
 }
 
 const NOT_APPROVED = { ok: false, error: '이 브라우저는 아직 올리기 권한이 없어요. 화면 위쪽에서 등록을 요청해 주세요.' };
@@ -655,7 +722,7 @@ async function queueList(req: Request) {
   if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
   const { data, error } = await sb
     .from('sns_queue')
-    .select('id, created_at, platforms, image_paths, caption, threads_text, scheduled_at, status, results, attempts, last_attempt_at, note')
+    .select('id, created_at, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts, last_attempt_at, note')
     .order('scheduled_at', { ascending: false })
     .limit(50);
   if (error) throw error;
@@ -663,12 +730,12 @@ async function queueList(req: Request) {
   return reply(req, 200, { ok: true, items });
 }
 
-type PostInput = { platforms: Platform[]; paths: string[]; caption: string; threadsText: string };
+type PostInput = { platforms: Platform[]; paths: string[]; caption: string; threadsText: string; xText: string };
 
 // 올릴 내용 검사 — 새로 만들 때 · 임시저장 고칠 때 같이 쓴다
 async function readPostInput(body: any): Promise<{ error: string } | PostInput> {
-  const platforms = [...new Set(((body?.platforms ?? []) as string[]).filter((p) => p === 'instagram' || p === 'threads'))] as Platform[];
-  if (!platforms.length) return { error: '올릴 곳(인스타·스레드)을 골라 주세요.' };
+  const platforms = [...new Set(((body?.platforms ?? []) as string[]).filter((p) => p === 'instagram' || p === 'threads' || p === 'x'))] as Platform[];
+  if (!platforms.length) return { error: '올릴 곳(인스타·스레드·X)을 골라 주세요.' };
   const paths = ((body?.image_paths ?? []) as string[]).map(String);
   if (paths.length > MAX_IMAGES) return { error: `사진은 ${MAX_IMAGES}장까지예요.` };
   if (paths.some((p) => !isQueuePath(p))) return { error: '사진 경로가 이상해요. 사진을 다시 올려 주세요.' };
@@ -677,10 +744,17 @@ async function readPostInput(body: any): Promise<{ error: string } | PostInput> 
   if (platforms.includes('instagram') && !paths.length) return { error: '인스타는 사진이 1장 이상 있어야 올릴 수 있어요.' };
   if ((caption.match(/#[^\s#]+/g) ?? []).length > IG_HASHTAG_MAX) return { error: `인스타 해시태그는 ${IG_HASHTAG_MAX}개까지예요.` };
   if (platforms.includes('threads') && !paths.length && !threadsText) return { error: '스레드에 올릴 글이나 사진이 없어요.' };
+  // X 문구 — 비우면 인스타(없으면 스레드) 문구 앞부분을 X 길이에 맞춰 자른다. 사진은 앞 4장만 올라간다.
+  const givenX = cleanText(body?.x_text, 2000);
+  if (givenX && xWeightedLength(givenX) > X_TEXT_MAX) {
+    return { error: `X 문구가 너무 길어요 (${xWeightedLength(givenX)}/${X_TEXT_MAX} — 한글·이모지는 2, 링크는 23으로 세요).` };
+  }
+  const xText = givenX || xFit(caption || threadsText);
+  if (platforms.includes('x') && !paths.length && !xText) return { error: 'X 에 올릴 글이나 사진이 없어요.' };
   for (const p of platforms) {
     if (!(await accountFor(p))) return { error: `${label(p)} 계정이 아직 연결되지 않았어요.` };
   }
-  return { platforms, paths, caption, threadsText };
+  return { platforms, paths, caption, threadsText, xText };
 }
 
 function readWhen(body: any): { error: string } | { when: number } {
@@ -697,6 +771,7 @@ const postFields = (v: PostInput) => ({
   image_paths: v.paths,
   caption: v.platforms.includes('instagram') ? v.caption : null,
   threads_text: v.platforms.includes('threads') ? v.threadsText : null,
+  x_text: v.platforms.includes('x') ? v.xText : null,
 });
 
 async function queueCreate(req: Request) {
@@ -844,7 +919,7 @@ async function publishOne(id: number) {
     .update({ status: 'publishing', last_attempt_at: new Date().toISOString() })
     .eq('id', id)
     .eq('status', 'scheduled')
-    .select('id, platforms, image_paths, caption, threads_text, scheduled_at, status, results, attempts')
+    .select('id, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts')
     .maybeSingle();
   if (error) throw error;
   if (!claimed) return { status: 'skipped', results: {} };
@@ -856,11 +931,15 @@ async function publishOne(id: number) {
     try {
       const acc = await accountFor(p);
       if (!acc) throw new ApiError(`${label(p)} 계정이 연결되어 있지 않아요.`);
-      const r = p === 'threads'
+      const r = p === 'x'
+        ? await publishX(acc, row.image_paths ?? [], row.x_text ?? '')
+        : p === 'threads'
         ? await publishThreads(acc, urls, row.threads_text ?? row.caption ?? '')
         : await publishInstagram(acc, urls, row.caption ?? '');
       results[p] = { ok: true, ...r, at: new Date().toISOString() };
-      try { await collectOne(acc); } catch { /* 통계는 다음 수집 때 */ }
+      // X 는 읽기가 유료라 올린 글을 다시 읽지 않고 직접 기록한다 (통계는 하루 한 번)
+      if (p === 'x') await recordXPost(acc, r.media_id, r.permalink, row.x_text ?? '', urls[0] ?? null, Math.min(urls.length, X_MAX_IMAGES));
+      else try { await collectOne(acc); } catch { /* 통계는 다음 수집 때 */ }
     } catch (e) {
       results[p] = { ok: false, error: errMsg(e), at: new Date().toISOString() };
     }
@@ -900,6 +979,332 @@ async function publishDue(req: Request) {
   return reply(req, 200, { ok: true, done });
 }
 
+// ── X(트위터) ─────────────────────────────────────────────────────────────
+
+function b64url(bytes: Uint8Array) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function randomB64url(n: number) {
+  const b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return b64url(b);
+}
+async function pkceChallenge(verifier: string) {
+  return b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+}
+
+// X 글자 수 (twitter-text v3) — 기본 2, 라틴·일부 기호는 1, 링크는 길이와 상관없이 23. 화면(sns/index.html)과 같은 계산.
+function xWeightedLength(text: string) {
+  const s = text.normalize('NFC').replace(/https?:\/\/\S+/gi, 'x'.repeat(23));
+  let n = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    n += c <= 0x10ff || (c >= 0x2000 && c <= 0x200d) || (c >= 0x2010 && c <= 0x201f) || (c >= 0x2032 && c <= 0x2037) ? 1 : 2;
+  }
+  return n;
+}
+// 앞에서부터 X 길이에 맞게 — 넘치면 자르고 '…'
+function xFit(text: string) {
+  const t = text.trim();
+  if (!t || xWeightedLength(t) <= X_TEXT_MAX) return t;
+  const chars = [...t];
+  let lo = 0, hi = chars.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (xWeightedLength(chars.slice(0, mid).join('').trimEnd() + '…') <= X_TEXT_MAX) lo = mid;
+    else hi = mid - 1;
+  }
+  return chars.slice(0, lo).join('').trimEnd() + '…';
+}
+
+function xErrorText(status: number, j: any) {
+  const raw = String(j?.detail || j?.title || j?.errors?.[0]?.message || j?.errors?.[0]?.detail || j?.error_description || j?.error || `HTTP ${status}`);
+  const all = JSON.stringify(j ?? {});
+  if (status === 402 || /credit|payment required/i.test(all)) return `X 크레딧이 없어요 — X 개발자 콘솔(console.x.com) › 크레딧에서 충전해 주세요 (${raw})`;
+  if (status === 401) return `X 로그인이 풀렸어요 — 계정 연결 칸에서 X 를 다시 연결해 주세요 (${raw})`;
+  if (status === 429) return `X 요청 한도에 걸렸어요 — 잠시 뒤 다시 해 주세요 (${raw})`;
+  if (/duplicate/i.test(all)) return `X 는 같은 글을 두 번 올릴 수 없어요 (${raw})`;
+  return raw;
+}
+
+// X API 호출 — 토큰은 Authorization 헤더로만 (로그에 남기지 않는다)
+async function xApi(method: 'GET' | 'POST', path: string, token: string, opts: { query?: Record<string, string>; json?: unknown; form?: FormData } = {}) {
+  const u = new URL(XAPI + path);
+  for (const [k, v] of Object.entries(opts.query ?? {})) u.searchParams.set(k, v);
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  let body: BodyInit | undefined;
+  if (opts.json !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(opts.json);
+  } else if (opts.form) body = opts.form;
+  const res = await fetch(u, { method, headers, body });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || (!j?.data && j?.errors?.length)) throw new ApiError(xErrorText(res.status, j));
+  return j;
+}
+
+async function xTokenRequest(params: Record<string, string>) {
+  const res = await fetch(`${XAPI}/2/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j?.access_token) throw new ApiError(xErrorText(res.status, j));
+  return j as { access_token: string; refresh_token?: string; expires_in?: number; scope?: string };
+}
+
+// 액세스 토큰(2시간) — 2분 넘게 남았으면 그대로, 아니면(또는 force) refresh_token 으로 새로 받는다.
+// refresh_token 은 받을 때마다 바뀌어서 두 곳이 동시에 받으면 한쪽이 끊긴다 → refreshing_at 으로 1분 잠금.
+async function xAccessToken(acc: Account, force = false): Promise<string> {
+  if (!force && acc.access_token && acc.token_expires_at && Date.parse(acc.token_expires_at) - Date.now() > 120_000) return acc.access_token;
+  const lockCut = new Date(Date.now() - 60_000).toISOString();
+  const { data: claimed, error } = await sb
+    .from('sns_accounts')
+    .update({ refreshing_at: new Date().toISOString() })
+    .eq('id', acc.id)
+    .or(`refreshing_at.is.null,refreshing_at.lt.${lockCut}`)
+    .select('id, refresh_token, client_id')
+    .maybeSingle();
+  if (error) throw error;
+  if (!claimed) { // 다른 곳이 지금 받는 중 — 끝나면 그 토큰을 쓴다
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const { data } = await sb.from('sns_accounts').select('access_token, token_expires_at, refreshing_at').eq('id', acc.id).maybeSingle();
+      if (data && !data.refreshing_at && data.access_token && Date.parse(data.token_expires_at ?? '') - Date.now() > 60_000) {
+        acc.access_token = data.access_token;
+        acc.token_expires_at = data.token_expires_at;
+        return data.access_token;
+      }
+    }
+    throw new ApiError('X 토큰을 새로 받는 중이에요. 잠시 뒤 다시 해 주세요.');
+  }
+  try {
+    if (!claimed.refresh_token || !claimed.client_id) throw new ApiError('X 연결 정보가 없어요 — 계정 연결 칸에서 X 를 다시 연결해 주세요.');
+    const j = await xTokenRequest({ grant_type: 'refresh_token', refresh_token: claimed.refresh_token, client_id: claimed.client_id });
+    const now = Date.now();
+    const expires = new Date(now + (Number(j.expires_in) > 0 ? Number(j.expires_in) : 7200) * 1000).toISOString();
+    const { error: e2 } = await sb
+      .from('sns_accounts')
+      .update({
+        access_token: j.access_token,
+        refresh_token: j.refresh_token || claimed.refresh_token,
+        token_expires_at: expires,
+        token_updated_at: new Date(now).toISOString(),
+        refreshing_at: null,
+        last_error: null,
+      })
+      .eq('id', acc.id);
+    if (e2) throw new ApiError(e2.message);
+    acc.access_token = j.access_token;
+    acc.token_expires_at = expires;
+    return j.access_token;
+  } catch (e) {
+    await sb.from('sns_accounts').update({ refreshing_at: null, last_error: `X 토큰 연장 실패: ${errMsg(e)}` }).eq('id', acc.id);
+    throw e;
+  }
+}
+
+// 화면의 'X 연결' — 클라이언트 ID 저장 + PKCE 값 만들어 두고 X 허용 화면 주소를 돌려준다
+async function xStart(req: Request) {
+  if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
+  const body = await req.json().catch(() => ({}));
+  const { data: acc, error } = await sb.from('sns_accounts').select('id, client_id').eq('platform', 'x').order('id').limit(1).maybeSingle();
+  if (error) throw error;
+  if (!acc) return reply(req, 404, { ok: false, error: 'X 계정 칸이 없어요.' });
+  const given = String(body?.client_id ?? '').trim();
+  // 클라이언트 ID 는 30자 남짓 — 50자짜리 '클라이언트 시크릿'을 잘못 붙이면 여기서 막는다
+  if (given && !/^[A-Za-z0-9_\-+/=]{20,45}$/.test(given)) {
+    return reply(req, 400, { ok: false, error: "클라이언트 ID 모양이 아니에요. X 개발자 콘솔 › 앱 › Keys & Tokens › OAuth 2.0 키의 '클라이언트 ID'를 복사해 주세요 (시크릿 말고요)." });
+  }
+  const clientId = given || acc.client_id;
+  if (!clientId) return reply(req, 400, { ok: false, error: '먼저 X 개발자 콘솔의 클라이언트 ID 를 붙여넣어 주세요.' });
+  let returnTo = X_RETURN_DEFAULT;
+  try {
+    const u = new URL(String(body?.return_to ?? ''));
+    if (ORIGINS.has(u.origin)) returnTo = u.origin + u.pathname;
+  } catch { /* 기본 주소로 */ }
+  const state = randomB64url(24), verifier = randomB64url(48);
+  const { error: e2 } = await sb
+    .from('sns_accounts')
+    .update({ client_id: clientId, oauth_state: state, oauth_verifier: verifier, oauth_return: returnTo, oauth_started_at: new Date().toISOString() })
+    .eq('id', acc.id);
+  if (e2) throw e2;
+  const q: Record<string, string> = {
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: X_CALLBACK,
+    scope: X_SCOPES,
+    state,
+    code_challenge: await pkceChallenge(verifier),
+    code_challenge_method: 'S256',
+  };
+  const url = X_AUTHORIZE + '?' + Object.entries(q).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+  return reply(req, 200, { ok: true, url });
+}
+
+// X 가 허용 뒤 돌려보내는 곳 — code 는 30초 안에 바꿔야 해서 바로 토큰으로 바꾼다
+async function xCallback(req: Request) {
+  const u = new URL(req.url);
+  const state = u.searchParams.get('state') ?? '', code = u.searchParams.get('code') ?? '', denied = u.searchParams.get('error');
+  const { data: acc } = state.length >= 20
+    ? await sb
+      .from('sns_accounts')
+      .select('id, username, platform_user_id, client_id, oauth_verifier, oauth_return, oauth_started_at')
+      .eq('platform', 'x')
+      .eq('oauth_state', state)
+      .maybeSingle()
+    : { data: null };
+  const back = (ok: boolean, msg = '') => {
+    let to: URL;
+    try { to = new URL(acc?.oauth_return || X_RETURN_DEFAULT); } catch { to = new URL(X_RETURN_DEFAULT); }
+    to.searchParams.set('x', ok ? 'ok' : 'err');
+    if (msg) to.searchParams.set('m', msg.slice(0, 300));
+    return new Response(null, { status: 302, headers: { Location: to.toString() + '#accounts', 'Cache-Control': 'no-store' } });
+  };
+  if (!acc) return back(false, '연결 요청을 찾지 못했어요. 화면에서 X 연결을 다시 눌러 주세요.');
+  await sb.from('sns_accounts').update({ oauth_state: null, oauth_verifier: null }).eq('id', acc.id); // 한 번만 쓰게
+  if (!acc.oauth_started_at || Date.now() - Date.parse(acc.oauth_started_at) > X_OAUTH_TTL_MS) return back(false, '연결 요청이 10분을 넘었어요. 다시 눌러 주세요.');
+  if (denied || !code) return back(false, denied === 'access_denied' ? 'X 화면에서 허용을 누르지 않았어요.' : `X 가 연결을 거절했어요 (${denied || '코드 없음'})`);
+  let tok: Awaited<ReturnType<typeof xTokenRequest>>;
+  try {
+    tok = await xTokenRequest({ code, grant_type: 'authorization_code', client_id: acc.client_id ?? '', redirect_uri: X_CALLBACK, code_verifier: acc.oauth_verifier ?? '' });
+  } catch (e) {
+    return back(false, `토큰을 받지 못했어요 — ${errMsg(e)}`);
+  }
+  let me: any;
+  try {
+    me = (await xApi('GET', '/2/users/me', tok.access_token, { query: { 'user.fields': 'public_metrics,profile_image_url' } }))?.data;
+  } catch (e) {
+    return back(false, `X 계정을 확인하지 못했어요 — ${errMsg(e)}`);
+  }
+  // 정한 계정(@ggulggulzip)일 때만 저장 — 다른 계정으로 허용하면 막는다
+  const same = isPending(acc.platform_user_id)
+    ? String(me?.username ?? '').toLowerCase() === String(acc.username).toLowerCase()
+    : String(me?.id ?? '') === acc.platform_user_id;
+  if (!same) return back(false, `@${me?.username ?? '?'} 계정으로 허용했어요. X 에서 @${acc.username} 으로 로그인한 뒤 다시 눌러 주세요.`);
+  const now = Date.now();
+  const pm = me?.public_metrics ?? {};
+  const { error } = await sb
+    .from('sns_accounts')
+    .update({
+      access_token: tok.access_token,
+      refresh_token: tok.refresh_token ?? null,
+      token_expires_at: new Date(now + (Number(tok.expires_in) > 0 ? Number(tok.expires_in) : 7200) * 1000).toISOString(),
+      token_updated_at: new Date(now).toISOString(),
+      platform_user_id: String(me.id),
+      username: String(me.username),
+      profile: { name: me.name ?? null, followers_count: pm.followers_count ?? null, media_count: pm.tweet_count ?? null, picture: me.profile_image_url ?? null },
+      profile_at: new Date(now).toISOString(),
+      last_error: tok.refresh_token ? null : 'X 가 refresh_token 을 주지 않았어요 — 2시간 뒤 끊겨요. 다시 연결해 주세요.',
+    })
+    .eq('id', acc.id);
+  if (error) return back(false, `저장하지 못했어요 — ${error.message}`);
+  await sb.from('sns_account_stats').insert({ account_id: acc.id, followers: pm.followers_count ?? null, media_count: pm.tweet_count ?? null });
+  return back(true);
+}
+
+// 계정 칸의 '연결 확인' — 토큰(필요하면 새로 받기) + 내 계정 조회($0.010)
+async function xCheck(acc: Account) {
+  const steps: Step[] = [];
+  try {
+    const token = await xAccessToken(acc);
+    steps.push({ name: '토큰 확인 (2시간짜리 — 필요하면 새로 받음)', ok: true, detail: '' });
+    const me = (await xApi('GET', '/2/users/me', token, { query: { 'user.fields': 'public_metrics' } }))?.data ?? {};
+    steps.push({ name: 'X 계정 확인', ok: true, detail: `@${me.username ?? acc.username} · 팔로워 ${me.public_metrics?.followers_count ?? '?'} (사용자 조회 1번 = $0.010)` });
+    await sb.from('sns_accounts').update({ last_error: null }).eq('id', acc.id);
+    return { ok: true, steps };
+  } catch (e) {
+    steps.push({ name: '오류', ok: false, detail: errMsg(e) });
+    await sb.from('sns_accounts').update({ last_error: `연결 확인 실패: ${errMsg(e)}` }).eq('id', acc.id);
+    return { ok: false, steps };
+  }
+}
+
+// 사진(앞 4장)을 X 에 올리고 글을 만든다 — 사진은 우리 저장소에서 바로 읽는다
+async function publishX(acc: Account, paths: string[], text: string) {
+  const token = await xAccessToken(acc);
+  const mediaIds: string[] = [];
+  for (const p of paths.slice(0, X_MAX_IMAGES)) {
+    const { data: blob, error } = await sb.storage.from(BUCKET).download(p);
+    if (error || !blob) throw new ApiError(`사진을 읽지 못했어요 (${p})`);
+    if (blob.size > X_IMAGE_MAX_BYTES) throw new ApiError('X 는 사진 한 장이 5MB 까지예요.');
+    const fd = new FormData();
+    fd.append('media', new File([blob], 'card.jpg', { type: 'image/jpeg' }));
+    fd.append('media_category', 'tweet_image');
+    const j = await xApi('POST', '/2/media/upload', token, { form: fd });
+    const id = String(j?.data?.id ?? '');
+    if (!id) throw new ApiError('X 가 사진을 받지 못했어요.');
+    mediaIds.push(id);
+  }
+  if (!text && !mediaIds.length) throw new ApiError('X 에 올릴 글이나 사진이 없어요.');
+  const post: Record<string, unknown> = {};
+  if (text) post.text = text;
+  if (mediaIds.length) post.media = { media_ids: mediaIds };
+  const j = await xApi('POST', '/2/tweets', token, { json: post });
+  const id = String(j?.data?.id ?? '');
+  if (!id) throw new ApiError('X 가 글을 만들지 못했어요.');
+  return { media_id: id, permalink: `https://x.com/${acc.username}/status/${id}` };
+}
+
+async function recordXPost(acc: Account, id: string, permalink: string | null, text: string, thumb: string | null, images: number) {
+  const now = new Date().toISOString();
+  const { error } = await sb.from('sns_posts').upsert({
+    account_id: acc.id,
+    media_id: id,
+    platform: 'x',
+    media_type: images ? 'IMAGE' : 'TEXT_POST',
+    product_type: 'X',
+    caption: text || null,
+    permalink,
+    thumbnail_url: thumb,
+    posted_at: now,
+    metrics: {},
+    metrics_at: now,
+    metrics_note: null,
+  }, { onConflict: 'account_id,media_id' });
+  if (error) console.error('x record', error.message);
+}
+
+// X 통계 — 우리가 올린 최근 7일 글만(글 1개 읽기 $0.005) + 내 계정 팔로워($0.010)
+async function collectX(acc: Account) {
+  const token = await xAccessToken(acc);
+  const me = (await xApi('GET', '/2/users/me', token, { query: { 'user.fields': 'public_metrics,profile_image_url' } }))?.data ?? {};
+  const since = new Date(Date.now() - X_STATS_DAYS * DAY_MS).toISOString();
+  const { data: mine, error } = await sb
+    .from('sns_posts')
+    .select('media_id, media_type, caption, permalink, thumbnail_url, posted_at')
+    .eq('account_id', acc.id)
+    .gte('posted_at', since)
+    .order('posted_at', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  const rows: PostRow[] = [];
+  if (mine?.length) {
+    const j = await xApi('GET', '/2/tweets', token, { query: { ids: mine.map((r) => r.media_id).join(','), 'tweet.fields': 'public_metrics,created_at' } });
+    const byId = new Map<string, any>((j?.data ?? []).map((t: any) => [String(t.id), t]));
+    const now = new Date().toISOString();
+    for (const r of mine) {
+      const t = byId.get(String(r.media_id));
+      if (!t) continue; // 지운 글 등
+      const pm = t.public_metrics ?? {};
+      const metrics: Metrics = {};
+      const put = (k: string, v: unknown) => { if (typeof v === 'number') metrics[k] = v; };
+      put('views', pm.impression_count); put('likes', pm.like_count); put('replies', pm.reply_count);
+      put('reposts', pm.retweet_count); put('quotes', pm.quote_count); put('bookmarks', pm.bookmark_count);
+      rows.push({
+        account_id: acc.id, media_id: String(r.media_id), platform: 'x', media_type: r.media_type, product_type: 'X',
+        caption: r.caption, permalink: r.permalink, thumbnail_url: r.thumbnail_url, posted_at: r.posted_at ?? t.created_at ?? null,
+        metrics, metrics_at: now, metrics_note: null,
+      });
+    }
+  }
+  const profile = { name: me.name ?? null, followers_count: me.public_metrics?.followers_count ?? null, media_count: me.public_metrics?.tweet_count ?? null, picture: me.profile_image_url ?? null };
+  return { rows, profile, followers: profile.followers_count as number | null, mediaCount: profile.media_count as number | null };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req) });
   const parts = new URL(req.url).pathname.split('/').filter(Boolean);
@@ -926,6 +1331,8 @@ Deno.serve(async (req) => {
     if (M === 'POST' && route === 'queue/publish') return await queuePublish(req);
     if (M === 'POST' && route === 'queue/cancel') return await queueCancel(req);
     if (M === 'POST' && route === 'queue/retry') return await queueRetry(req);
+    if (M === 'POST' && route === 'x/start') return await xStart(req);
+    if (M === 'GET' && route === 'x/callback') return await xCallback(req);
     return reply(req, 404, { ok: false, error: '없는 경로예요.' });
   } catch (e) {
     console.error('sns', route, errMsg(e));
