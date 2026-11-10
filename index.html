@@ -10765,9 +10765,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-tag">NEW</div>
         </div>
         <div class="sub-module m-sns" id="snsCard" onclick="openSnsPage()" hidden>
-          <div class="sub-module-icon">📲</div>
-          <div class="sub-module-title">SNS 자동 게시</div>
-          <div class="sub-module-sub">인스타·스레드 계정 연결 · 토큰 보관 · 연결 시험 · 전수빈 · 전승훈만</div>
+          <div class="sub-module-icon">🐷</div>
+          <div class="sub-module-title">꿀꿀집 마케팅 회사</div>
+          <div class="sub-module-sub">@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석 · 전승훈만</div>
           <div class="sub-module-tag">NEW</div>
         </div>
         <div class="sub-module m-mailer" onclick="openMailer()">
@@ -17042,7 +17042,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 메일 발송 — mailer/ 별도 페이지 (보내는 계정의 구글 Apps Script 웹 앱으로 한 통씩 발송) */
   function openMailer(){ const w=window.open('mailer/','bbMailer'); if(!w) location.href='mailer/'; }
   window.openMailer=openMailer;
-  /* SNS 자동 게시 — sns/ 별도 페이지 (인스타·스레드 토큰 연결 · 시험, 서버는 Supabase 엣지 함수 sns). 카드는 EXEC_ALLOWED 만 보임 */
+  /* 꿀꿀집 마케팅 회사 — sns/ 별도 페이지 (@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석, 서버는 Supabase 엣지 함수 sns). 카드는 SNS_OWNER(전승훈)만 보임 */
   function openSnsPage(){ const w=window.open('sns/','bbSns'); if(!w) location.href='sns/'; }
   window.openSnsPage=openSnsPage;
   window.triggerTopping=triggerTopping;
@@ -30760,6 +30760,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      암호·파생키·평문은 메모리에만 두고 localStorage 에는 ciphertext 만 캐시한다.
      diary_me 탭 게이트는 화면 가리기일 뿐이고 실제 기밀성은 암호에서 나온다. */
   const EXEC_ALLOWED=new Set(['전승훈','전수빈']);
+  const SNS_OWNER='전승훈'; // 업무용 툴 '꿀꿀집 마케팅 회사' 카드를 보는 단 한 사람
   const EXEC_PATH='data/notice-exec.json';
   const EXEC_RAW=`https://raw.githubusercontent.com/${PO_REPO}/${PO_BRANCH}/${EXEC_PATH}`;
   const EXEC_API=`https://api.github.com/repos/${PO_REPO}/contents/${EXEC_PATH}`;
@@ -30789,7 +30790,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const card=document.getElementById('execVaultCard');
     if(card) card.hidden=!ok;
     const snsCard=document.getElementById('snsCard');
-    if(snsCard) snsCard.hidden=!ok;
+    if(snsCard) snsCard.hidden=execGetMe()!==SNS_OWNER; // 꿀꿀집 마케팅 회사 — 전승훈 한 사람만 (sns/index.html OWNER 와 같게)
     if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
     if(!ok){
       execLock();
