@@ -10733,12 +10733,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-title">업무용 비밀번호 모음</div>
           <div class="sub-module-sub">아이디 · 비밀번호 · 토큰 관리</div>
         </div>
-        <div class="sub-module m-execvault" id="execVaultCard" onclick="triggerExecVault()" hidden>
-          <div class="sub-module-icon">🔒</div>
-          <div class="sub-module-title">대표 전용 금고</div>
-          <div class="sub-module-sub">암호화 저장 · 전수빈 · 전승훈만</div>
-          <div class="sub-module-tag">LOCK</div>
-        </div>
         <div class="sub-module m-namegen" onclick="triggerNamegen()">
           <div class="sub-module-icon">🌍</div>
           <div class="sub-module-title">제품명 생성기</div>
@@ -10804,7 +10798,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-sub">대표 일정·미팅·출장 (관리자 전용)</div>
           <div class="sub-module-tag">ADMIN</div>
         </div>
-        <!-- 아래 두 카드는 관리자 PIN 이면서 명단 안 PC 에만 노출 (snsRefreshAccess · yeRefreshAccess) -->
+        <!-- 아래 세 카드는 관리자 PIN 이면서 명단 안 PC 에만 노출 (execRefreshAccess · snsRefreshAccess · yeRefreshAccess) -->
+        <div class="sub-module m-execvault" id="execVaultCard" onclick="triggerExecVault()" hidden>
+          <div class="sub-module-icon">🔒</div>
+          <div class="sub-module-title">대표 전용 금고</div>
+          <div class="sub-module-sub">암호화 저장 · 전수빈 · 전승훈만</div>
+          <div class="sub-module-tag">LOCK</div>
+        </div>
         <div class="sub-module m-sns" id="snsCard" onclick="openSnsPage()" hidden>
           <div class="sub-module-icon">🐷</div>
           <div class="sub-module-title">꿀꿀집 마케팅 회사</div>
@@ -15913,8 +15913,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.body.classList.toggle('role-viewer',role!=='master');
     // 마스터 ↔ 뷰어 전환 시 홈의 업무일지 카드 노출 재판정
     if(typeof _diaryApplyHomeVisibility==='function') _diaryApplyHomeVisibility();
-    // '관리자 전용' 폴더의 명단 카드(꿀꿀집 · 송년회)도 관리자 PIN 여부로 다시 판정
-    if(typeof snsRefreshAccess==='function') snsRefreshAccess();
+    // '관리자 전용' 폴더의 명단 카드(대표 전용 금고 · 꿀꿀집 · 송년회)도 관리자 PIN 여부로 다시 판정 — 금고는 권한이 없어지면 잠근다
+    if(typeof execRefreshAccess==='function') execRefreshAccess();   // 안에서 snsRefreshAccess 도 부름
     if(typeof yeRefreshAccess==='function') yeRefreshAccess();
   }
   function requireMaster(action){
@@ -16327,6 +16327,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof adshEnsureLoaded==='function') adshEnsureLoaded();
     }
     if(id==='viewExecVault'){
+      // 보기 PIN · 명단 밖 접근 방어 (해시 직입력 등) — 예전엔 goHome()=history.back() 이라 첫 화면이 #vault 면 빈 금고 화면에 남았다
+      if(typeof execHasAccess==='function' && !execHasAccess()){
+        if(typeof execLock==='function') execLock();
+        toast('관리자 전용 화면입니다','err');
+        history.replaceState({view:'viewHome'},'',location.pathname+location.search);
+        applyView('viewHome');
+        return;
+      }
       if(typeof execRefreshAccess==='function') execRefreshAccess();
       if(typeof renderExecVault==='function') renderExecVault();
     }
@@ -30293,7 +30301,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const typeLabel = e.type==='custom' ? '사용자지정' : '로그인';
     const fieldsHtml=(e.fields||[]).map((f,i)=>renderCredField(e.id, i, f)).join('');
     const memoHtml=e.memo?`<div class="cred-card-memo">${credEscape(e.memo)}</div>`:'';
-    const editedHtml=(e.updatedAt && typeof execHasAccess==='function' && execHasAccess())
+    const editedHtml=(e.updatedAt && typeof execOnList==='function' && execOnList())
       ?`<div class="cred-card-edited">수정 ${credEscape(e.updatedBy||'이름 미선택')} · ${_credWhen(e.updatedAt)}</div>`:'';
     return `<div class="cred-card" data-id="${credEscape(e.id)}">
       <div class="cred-card-head">
@@ -30761,7 +30769,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      평문을 올리지 않는다 — 금고 암호에서 PBKDF2(SHA-256) 로 키를 파생해
      AES-GCM 으로 암호화한 ciphertext 만 커밋한다.
      암호·파생키·평문은 메모리에만 두고 localStorage 에는 ciphertext 만 캐시한다.
-     diary_me 탭 게이트는 화면 가리기일 뿐이고 실제 기밀성은 암호에서 나온다. */
+     diary_me 명단 · 관리자 PIN 게이트는 화면 가리기일 뿐이고 실제 기밀성은 암호에서 나온다.
+     카드는 홈 '관리자 전용' 폴더 — 관리자 PIN(isMaster) + EXEC_ALLOWED 일 때만 보이고 열린다 (execHasAccess). */
   const EXEC_ALLOWED=new Set(['전승훈','전수빈']);
   const SNS_OWNER='전승훈'; // '관리자 전용' 폴더의 '꿀꿀집 마케팅 회사' 카드를 보는 단 한 사람 (관리자 PIN 으로 들어왔을 때만)
   const EXEC_PATH='data/notice-exec.json';
@@ -30786,7 +30795,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _execB64d(str){const s=atob(String(str||''));const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b}
 
   function execGetMe(){try{return (localStorage.getItem('brightbeed_diary_me')||'').trim()}catch(e){return ''}}
-  function execHasAccess(){return EXEC_ALLOWED.has(execGetMe())}
+  function execOnList(){return EXEC_ALLOWED.has(execGetMe())}             // 명단만 — 업무용 비밀번호 모음의 '수정 기록' 표시에 씀 (PIN 무관, 예전 그대로)
+  function execHasAccess(){return isMaster() && execOnList()}             // 대표 전용 금고 — 관리자 PIN + 명단 ('관리자 전용' 폴더)
   function _execViewOpen(){const v=document.getElementById('viewExecVault'); return !!(v && !v.hidden)}
   function execRefreshAccess(){
     const ok=execHasAccess();
@@ -30829,7 +30839,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.execLock=execLock;
 
   function triggerExecVault(){
-    if(!execHasAccess()){try{toast('대표 전용 금고입니다','err')}catch(e){} return}
+    if(!execHasAccess()){try{toast('관리자 전용 화면입니다','err')}catch(e){} return}
     showView('viewExecVault');
   }
   window.triggerExecVault=triggerExecVault;
