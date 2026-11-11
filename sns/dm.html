@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>댓글 자동 DM · 꿀꿀집 마케팅 회사</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="robots" content="noindex,nofollow">
+<script>
+  /* 오피스 잠금 연동 — 오피스에서 PIN 을 넣은 브라우저만 (꿀꿀집 화면과 같은 방식) */
+  (function () {
+    try { if (localStorage.getItem('brightbeed_unlocked') !== '1') location.replace('../?from=sns'); } catch (e) { /* noop */ }
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<!--
+  꿀꿀집 댓글 자동 DM — 인스타 게시물에 댓글이 달리면 1분 안에 그 댓글에 비공개 답장(DM)으로 링크를 보낸다.
+  서버: Supabase 엣지 함수 "sns-dm" (원본 supabase/functions/sns-dm/index.ts)
+    GET /admin · POST /settings {enabled, text} · POST /check — 모두 '등록된 브라우저'(꿀꿀집 화면에서 등록 · 승인한 키, x-ggul-device)만
+  들어오는 조건: 꿀꿀집 화면과 같음 — 관리자 PIN(role=master) + 전승훈. 키는 꿀꿀집 화면이 만든 localStorage ggul_device_key 를 같이 쓴다(여기서 새로 만들지 않음).
+-->
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --ink:#18202f; --sub:#5b6577; --muted:#898781; --line:#e3e8f0;
+    --accent:#4f7fcf; --accent-ink:#fff;
+    --ok:#006300; --ok-bg:#e9f8ef; --warn:#8a5a00; --warn-bg:#fff4e0; --bad:#b42323; --bad-bg:#fdecec;
+    --honey:#ffc94a; --pink:#f3a39c;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])){
+      --bg:#0f141c; --card:#171e29; --ink:#e8edf5; --sub:#aab4c4; --muted:#898781; --line:#273142;
+      --ok:#0ca30c; --ok-bg:#12301f; --warn:#fab219; --warn-bg:#3a2a10; --bad:#ff8a8a; --bad-bg:#3a1515;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f141c; --card:#171e29; --ink:#e8edf5; --sub:#aab4c4; --muted:#898781; --line:#273142;
+    --ok:#0ca30c; --ok-bg:#12301f; --warn:#fab219; --warn-bg:#3a2a10; --bad:#ff8a8a; --bad-bg:#3a1515;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Pretendard,'Malgun Gothic',system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent)}
+  button{font:inherit;font-weight:700;font-size:13.5px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:8px 13px;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent)}
+  button.danger{border-color:var(--bad);background:var(--bad);color:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  textarea{font:inherit;font-size:14px;width:100%;min-height:110px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);resize:vertical}
+  [hidden]{display:none!important}
+  .top{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:11px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .back{display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:var(--sub);font-size:14px;font-weight:600;white-space:nowrap}
+  .top h1{margin:0;font-size:17px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
+  .handle{font-size:12.5px;font-weight:700;color:var(--sub)}
+  main{max-width:860px;margin:0 auto;padding:16px 16px 56px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+  main > *{min-width:0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card h2{margin:0;font-size:15.5px;font-weight:800}
+  .lead{margin:2px 0 12px;color:var(--sub);font-size:13px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .grow{flex:1}
+  .pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap}
+  .pill.ok{color:var(--ok);background:var(--ok-bg)} .pill.warn{color:var(--warn);background:var(--warn-bg)} .pill.bad{color:var(--bad);background:var(--bad-bg)} .pill.mute{color:var(--sub);background:var(--bg)}
+  .big{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .big .state{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+  @media (max-width:640px){ .facts{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  .facts div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+  .facts small{display:block;color:var(--sub);font-size:12px}
+  .facts b{font-size:14.5px;word-break:break-all}
+  .err{font-size:12.5px;color:var(--bad);background:var(--bad-bg);border-radius:8px;padding:7px 9px;word-break:break-all;margin-top:10px}
+  .banner{border-radius:12px;padding:10px 14px;font-size:13.5px;background:var(--warn-bg);color:var(--warn)}
+  .msg{font-size:13px;border-radius:10px;padding:9px 11px;margin-top:10px}
+  .msg.ok{color:var(--ok);background:var(--ok-bg)} .msg.bad{color:var(--bad);background:var(--bad-bg)} .msg.info{color:var(--sub);background:var(--bg)}
+  .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+  @media (max-width:640px){ .two{grid-template-columns:1fr} }
+  label{font-size:12.5px;font-weight:700;color:var(--sub)}
+  .count{font-size:12px;color:var(--sub);text-align:right}
+  .count.over{color:var(--bad);font-weight:700}
+  /* DM 미리보기 — 인스타 말풍선 느낌 */
+  .phone{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--bg);min-height:110px}
+  .bubble{max-width:92%;background:var(--card);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:9px 12px;font-size:13.5px;white-space:pre-wrap;word-break:break-all}
+  .bubble a{font-weight:700}
+  .who{font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:700}
+  .help{font-size:12.5px;color:var(--sub);margin-top:6px}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 4px}
+  .tablewrap{overflow-x:auto;margin-top:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap;vertical-align:top}
+  th{color:var(--sub);font-weight:700;font-size:12px}
+  td.why{white-space:normal;min-width:180px;color:var(--sub);font-size:12.5px}
+  .empty{color:var(--sub);font-size:13.5px;padding:18px 4px;text-align:center}
+  details summary{cursor:pointer;font-weight:800;font-size:14px}
+  details ol{margin:8px 0 0;padding-left:20px;font-size:13px;display:grid;gap:6px}
+  .lock{text-align:center;padding:40px 16px}
+  .small{font-size:12px;color:var(--sub)}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="./" title="꿀꿀집 화면으로">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+    꿀꿀집
+  </a>
+  <h1>💬 댓글 자동 DM</h1>
+  <span class="handle">@ggul.ggul.zip 인스타 · 댓글 달면 링크를 DM 으로</span>
+</header>
+
+<main id="app" hidden>
+  <div id="devBanner" class="banner" hidden></div>
+
+  <section class="card">
+    <div class="big">
+      <span id="stateText" class="state">불러오는 중…</span>
+      <span id="readyPill" class="pill mute">—</span>
+      <span class="grow"></span>
+      <button id="btnToggle" type="button" disabled>켜기</button>
+    </div>
+    <p id="stateLead" class="lead" style="margin-top:6px"></p>
+    <div class="facts">
+      <div><small>댓글 읽기 권한</small><b id="permC">—</b></div>
+      <div><small>메시지 보내기 권한</small><b id="permM">—</b></div>
+      <div><small>최근 7일 보낸 DM</small><b id="sentWeek">—</b></div>
+      <div><small>켠 시각 (이 뒤 댓글에만)</small><b id="since">—</b></div>
+      <div><small>마지막 확인</small><b id="lastRun">—</b></div>
+      <div><small>권한 확인</small><b id="permAt">—</b></div>
+    </div>
+    <div id="lastErr" class="err" hidden></div>
+    <div class="row" style="margin-top:10px">
+      <button id="btnCheck" class="ghost" type="button" disabled>권한 다시 확인</button>
+      <span id="checkMsg" class="small"></span>
+    </div>
+    <div id="toggleMsg" class="msg" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>DM 문구</h2>
+    <p class="lead"><code>{링크}</code> 자리에 그 게시물의 꿀꿀집 링크 모음 주소가, <code>{기준}</code> 자리에 그 게시물 딜을 모은 시각(예: 11월 11일 오후 2시 59분)이 들어가요. 시각을 모르면 <code>{기준}</code> 이 든 줄은 빠져요.</p>
+    <div class="two">
+      <div>
+        <label for="txt">보낼 문구</label>
+        <textarea id="txt" maxlength="600" disabled></textarea>
+        <div id="cnt" class="count">0 / 600</div>
+        <div class="row" style="margin-top:6px">
+          <button id="btnSave" type="button" disabled>문구 저장</button>
+          <button id="btnDefault" class="ghost" type="button" disabled>기본 문구로</button>
+        </div>
+        <div id="saveMsg" class="msg" hidden></div>
+      </div>
+      <div>
+        <label>미리보기 (댓글 단 사람에게 이렇게 가요)</label>
+        <div class="phone">
+          <div class="who">ggul.ggul.zip</div>
+          <div id="preview" class="bubble"></div>
+        </div>
+        <p class="help">인스타가 DM 아래에 댓글 단 게시물 링크를 자동으로 붙여요. 꿀꿀집을 팔로우 안 한 사람은 '메시지 요청'함으로 받아요.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2 class="grow">보낸 기록</h2><span class="small">최근 60개 · 30초마다 새로고침</span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>댓글 시각</th><th>계정</th><th>게시물</th><th>상태</th><th>이유</th></tr></thead>
+        <tbody id="log"></tbody>
+      </table>
+    </div>
+    <div id="logEmpty" class="empty" hidden>아직 보낸 DM 이 없어요.</div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>어떻게 돌아가요? · 처음 켜는 순서</summary>
+      <ol>
+        <li>1분마다 꿀꿀집 인스타 최근 게시물의 댓글 수를 보고, 늘어난 게시물만 새 댓글을 읽어요.</li>
+        <li>켠 뒤에 달린 댓글마다 그 댓글에 <b>비공개 답장</b>(DM)을 한 번 보내요. 같은 게시물에서는 한 사람에게 한 번만, 꿀꿀집이 단 댓글은 빼요.</li>
+        <li>인스타 규칙: 댓글 하나에 DM 한 번, 댓글이 달리고 7일 안에만 보낼 수 있어요.</li>
+        <li>처음엔 Meta 앱(for_ins)에 <code>instagram_business_manage_comments</code> · <code>instagram_business_manage_messages</code> 권한을 넣고, 인스타 토큰을 다시 받아 꿀꿀집 화면 토큰 칸에 붙여넣어야 해요.</li>
+        <li>그다음 여기서 '권한 다시 확인' → 둘 다 ✅ 면 '켜기'. 다른 인스타 계정으로 게시물에 댓글을 달아 1~2분 안에 DM 이 오는지 확인해요.</li>
+        <li>권한 · 토큰 문제가 생기면 보내지 않고 기다려요. 고치면 그동안 달린 댓글(7일 안)에도 보내요.</li>
+        <li>'켜짐 · 작동 중'일 때만 카드뉴스 제작 에이전트가 카드 · 문구에 '댓글 남기면 링크 자동 전달' 안내를 넣어요.</li>
+      </ol>
+    </details>
+  </section>
+</main>
+
+<div id="lock" class="lock" hidden>
+  <h2>관리자 전용 화면이에요</h2>
+  <p class="small">관리자 PIN 으로 들어온 승훈 님 브라우저에서만 열려요 · <a href="../">오피스로 돌아가기</a></p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var FN = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-dm';
+  var OWNER = '전승훈'; // 꿀꿀집 화면(sns/index.html)과 같은 조건
+  var me = '', role = '';
+  try {
+    me = (localStorage.getItem('brightbeed_diary_me') || '').trim();
+    role = localStorage.getItem('brightbeed_role') || '';
+  } catch (e) { /* noop */ }
+  if (me !== OWNER || role !== 'master') { document.getElementById('lock').hidden = false; return; }
+  document.getElementById('app').hidden = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function kst(iso, opt) { try { return new Intl.DateTimeFormat('ko-KR', Object.assign({ timeZone: 'Asia/Seoul' }, opt)).format(new Date(iso)); } catch (e) { return String(iso || '').slice(0, 16); } }
+  function fmtWhen(iso) { return iso ? kst(iso, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'; }
+  function ago(iso) {
+    if (!iso) return '—';
+    var s = Math.round((Date.now() - Date.parse(iso)) / 1000);
+    if (!isFinite(s)) return '—';
+    if (s < 90) return '방금';
+    if (s < 3600) return Math.round(s / 60) + '분 전';
+    if (s < 86400) return Math.round(s / 3600) + '시간 전';
+    return fmtWhen(iso);
+  }
+  function showMsg(node, kind, text) { node.className = 'msg ' + kind; node.textContent = text; node.hidden = !text; }
+
+  // 키는 꿀꿀집 화면이 만들어 등록 · 승인한 것을 같이 쓴다 — 여기서는 새로 만들지 않는다
+  var DEVKEY = '';
+  try { DEVKEY = localStorage.getItem('ggul_device_key') || ''; } catch (e) { /* noop */ }
+  var hasKey = /^[A-Za-z0-9_-]{32,128}$/.test(DEVKEY);
+
+  // ?demo=1 → 예시 숫자로 화면만 보기 (서버에 아무것도 보내지 않음)
+  var DEMO = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
+  function demoData() {
+    var t = Date.now(), iso = function (m) { return new Date(t - m * 60000).toISOString(); };
+    var tpl = '꿀꿀이 정보는 해당 링크에서 확인해주세요! 모두 모아놨어요 🐷\n📌 {기준} 기준\n👉 {링크}';
+    return {
+      ok: true, enabled: true, ready: true, reason: 'ok', text: tpl, default_text: tpl, since: iso(300),
+      link_example: { id: 6, url: 'https://brightbeed.kr/ggulggulzip/?s=6' }, link_base: 'https://brightbeed.kr/ggulggulzip/',
+      state: { last_run_at: iso(0.5), last_ok_at: iso(0.5), last_error: null, perm: { comments: 'ok', messages: 'ok', at: iso(40) } },
+      sent_week: 23,
+      log: [
+        { queue_id: 6, from_username: 'honey.shopper', comment_at: iso(2), status: 'sent', reason: null, permalink: 'https://www.instagram.com/' },
+        { queue_id: 6, from_username: 'honey.shopper', comment_at: iso(3), status: 'skipped', reason: '같은 게시물에서 이미 DM 을 받은 사람', permalink: 'https://www.instagram.com/' },
+        { queue_id: 5, from_username: 'deal_lover_92', comment_at: iso(55), status: 'sent', reason: null, permalink: 'https://www.instagram.com/' },
+        { queue_id: 4, from_username: 'old.comment', comment_at: iso(60 * 24 * 8), status: 'failed', reason: '답장할 수 있는 기간이 지났어요 (code 10/2534022)', permalink: null },
+      ],
+    };
+  }
+
+  async function api(path, body) {
+    if (DEMO) return { ok: false, error: '예시 화면이라 서버에 보내지 않았어요.' };
+    var h = { 'x-ggul-device': DEVKEY };
+    var opt = body === undefined ? { method: 'GET', cache: 'no-store', headers: h }
+      : { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: JSON.stringify(body) };
+    var res, j = {};
+    try { res = await fetch(FN + path, opt); } catch (e) { return { ok: false, error: '서버에 닿지 않아요 — 인터넷 연결을 확인해 주세요.' }; }
+    try { j = await res.json(); } catch (e) { /* noop */ }
+    if (!res.ok && !j.error) j.error = '서버 응답 ' + res.status;
+    j.status = res.status;
+    return j;
+  }
+
+  var data = null, armed = false, armTimer = null, dirty = false;
+
+  var REASON = {
+    ok: ['켜짐 · 작동 중', 'ok', '새 댓글에 1분 안에 DM 을 보내고 있어요.'],
+    stale: ['켜짐 · 확인 중', 'warn', '켠 직후엔 1~2분 안에 첫 확인을 해요. 계속 이러면 아래 오류를 봐 주세요.'],
+    permission: ['켜짐 · 권한 확인 필요', 'bad', '댓글 · 메시지 권한이 아직 없어서 보내지 않고 기다려요. 권한을 넣고 토큰을 다시 받은 뒤 \'권한 다시 확인\'을 눌러 주세요.'],
+    error: ['켜짐 · 오류', 'bad', '토큰 · 권한 문제로 멈춰 있어요. 아래 오류를 확인해 주세요. 고치면 그동안 달린 댓글(7일 안)에도 보내요.'],
+    off: ['꺼짐', 'mute', '꺼 둔 동안 달린 댓글에는 DM 을 보내지 않아요.'],
+  };
+  function permText(p) { return p === 'ok' ? '✅ 있음' : p === 'error' ? '❌ 없음' : '— 아직 모름'; }
+
+  function render() {
+    var d = data;
+    if (!d) return;
+    var r = REASON[d.enabled ? d.reason : 'off'] || REASON.off;
+    $('stateText').textContent = d.enabled ? '💬 켜짐' : '꺼짐';
+    $('readyPill').className = 'pill ' + r[1];
+    $('readyPill').textContent = r[0];
+    $('stateLead').textContent = r[2];
+    var st = d.state || {}, perm = st.perm || {};
+    $('permC').textContent = permText(perm.comments);
+    $('permM').textContent = permText(perm.messages);
+    $('sentWeek').textContent = (d.sent_week || 0).toLocaleString('ko-KR') + '개';
+    $('since').textContent = d.enabled && d.since ? fmtWhen(d.since) : '—';
+    $('lastRun').textContent = d.enabled ? ago(st.last_run_at) : '—';
+    $('permAt').textContent = perm.at ? ago(perm.at) : '—';
+    var errText = st.last_error || (perm.detail && (perm.comments === 'error' || perm.messages === 'error') ? perm.detail : '');
+    $('lastErr').hidden = !errText;
+    $('lastErr').textContent = errText ? '⚠ ' + errText : '';
+    disarm();
+    $('btnToggle').disabled = !hasKey;
+    $('btnCheck').disabled = !hasKey;
+    if (!dirty) $('txt').value = d.text || d.default_text || '';
+    $('txt').disabled = !hasKey;
+    $('btnSave').disabled = !hasKey;
+    $('btnDefault').disabled = !hasKey;
+    updateCount();
+    renderPreview();
+    renderLog(d.log || []);
+  }
+
+  function renderPreview() {
+    var d = data || {};
+    var link = (d.link_example && d.link_example.url) || d.link_base || 'https://brightbeed.kr/ggulggulzip/';
+    var t = ($('txt').value || d.default_text || '').replace(/\r\n?/g, '\n');
+    t = t.split('{기준}').join('11월 11일 오후 2시 59분');
+    if (t.indexOf('{링크}') >= 0) t = t.split('{링크}').join(link); else t = t.replace(/\s+$/, '') + '\n' + link;
+    // 링크만 a 로 — 나머지는 글자 그대로 (textContent)
+    var box = $('preview');
+    box.textContent = '';
+    var parts = t.split(link);
+    parts.forEach(function (p, i) {
+      box.appendChild(document.createTextNode(p));
+      if (i < parts.length - 1) { var a = el('a', null, link); a.href = link; a.target = '_blank'; a.rel = 'noopener'; box.appendChild(a); }
+    });
+  }
+  function updateCount() {
+    var n = $('txt').value.length;
+    $('cnt').textContent = n + ' / 600';
+    $('cnt').className = 'count' + (n > 600 ? ' over' : '');
+  }
+
+  var STATUS = { sent: ['보냄', 'ok'], failed: ['실패', 'bad'], skipped: ['건너뜀', 'mute'], sending: ['보내는 중', 'warn'] };
+  function renderLog(rows) {
+    var tb = $('log');
+    tb.textContent = '';
+    $('logEmpty').hidden = rows.length > 0;
+    rows.forEach(function (x) {
+      var tr = el('tr');
+      tr.appendChild(el('td', null, fmtWhen(x.comment_at || x.created_at)));
+      tr.appendChild(el('td', null, x.from_username ? '@' + x.from_username : '—'));
+      var tdp = el('td');
+      var label = x.queue_id ? '#' + x.queue_id : '게시물';
+      if (x.permalink) { var a = el('a', null, label + ' ↗'); a.href = x.permalink; a.target = '_blank'; a.rel = 'noopener'; tdp.appendChild(a); }
+      else tdp.textContent = label;
+      tr.appendChild(tdp);
+      var s = STATUS[x.status] || [x.status, 'mute'];
+      var tds = el('td'); tds.appendChild(el('span', 'pill ' + s[1], s[0])); tr.appendChild(tds);
+      tr.appendChild(el('td', 'why', x.status === 'sending' ? '보내다 끊겼을 수 있어요 — 중복을 막으려고 다시 보내지 않아요' : (x.reason || '')));
+      tb.appendChild(tr);
+    });
+  }
+
+  async function load() {
+    if (DEMO) {
+      hasKey = true;
+      $('devBanner').hidden = false;
+      $('devBanner').textContent = '예시 숫자로 보는 미리보기예요 — 실제 기록이 아니고, 버튼을 눌러도 서버에 보내지 않아요.';
+      data = demoData();
+      render();
+      return;
+    }
+    if (!hasKey) {
+      $('devBanner').hidden = false;
+      $('devBanner').textContent = '이 브라우저는 아직 꿀꿀집 올리기 권한이 없어요. 꿀꿀집 화면에서 이 브라우저를 등록 · 승인한 뒤 다시 열어 주세요.';
+      $('stateText').textContent = '—';
+      return;
+    }
+    var j = await api('/admin');
+    if (!j.ok) {
+      $('devBanner').hidden = false;
+      $('devBanner').textContent = j.status === 403 ? '이 브라우저는 아직 승인되지 않았어요 — 꿀꿀집 화면 위쪽 배너에서 등록 · 승인해 주세요.' : ('불러오지 못했어요: ' + (j.error || ''));
+      if (j.status === 403) hasKey = false;
+      if (!data) $('stateText').textContent = '—';
+      return;
+    }
+    $('devBanner').hidden = true;
+    data = j;
+    render();
+  }
+
+  function disarm() {
+    armed = false;
+    clearTimeout(armTimer);
+    var on = data && data.enabled;
+    var b = $('btnToggle');
+    b.textContent = on ? '끄기' : '켜기';
+    b.className = on ? 'ghost' : '';
+  }
+  $('btnToggle').addEventListener('click', async function () {
+    if (!data) return;
+    var turnOn = !data.enabled;
+    // 켜면 바깥 사람에게 DM 이 나가니 두 번 눌러야 켜진다
+    if (turnOn && !armed) {
+      armed = true;
+      this.textContent = '한 번 더 누르면 켜져요';
+      this.className = 'danger';
+      clearTimeout(armTimer);
+      armTimer = setTimeout(disarm, 5000);
+      return;
+    }
+    this.disabled = true;
+    var j = await api('/settings', { enabled: turnOn });
+    this.disabled = false;
+    if (!j.ok) { showMsg($('toggleMsg'), 'bad', j.error || '바꾸지 못했어요.'); disarm(); return; }
+    var p = j.perm;
+    if (turnOn && p && (p.comments !== 'ok' || p.messages !== 'ok')) showMsg($('toggleMsg'), 'bad', '켜졌지만 권한이 아직 없어 보내지 않고 기다려요 — ' + (p.detail || '댓글 · 메시지 권한을 확인해 주세요.'));
+    else showMsg($('toggleMsg'), 'ok', turnOn ? '켰어요. 지금부터 달리는 댓글에 1분 안에 DM 이 가요.' : '껐어요. 이제 DM 을 보내지 않아요.');
+    await load();
+  });
+
+  $('btnCheck').addEventListener('click', async function () {
+    this.disabled = true;
+    $('checkMsg').textContent = '확인 중…';
+    var j = await api('/check', {});
+    this.disabled = false;
+    if (!j.ok) { $('checkMsg').textContent = j.error || '확인하지 못했어요.'; return; }
+    var p = j.perm || {};
+    $('checkMsg').textContent = '댓글 ' + permText(p.comments) + ' · 메시지 ' + permText(p.messages);
+    await load();
+  });
+
+  $('txt').addEventListener('input', function () { dirty = true; updateCount(); renderPreview(); });
+  $('btnDefault').addEventListener('click', function () {
+    if (!data) return;
+    $('txt').value = data.default_text || '';
+    dirty = true; updateCount(); renderPreview();
+  });
+  $('btnSave').addEventListener('click', async function () {
+    var t = $('txt').value.trim();
+    if (!t) { showMsg($('saveMsg'), 'bad', '문구가 비었어요.'); return; }
+    if (t.length > 600) { showMsg($('saveMsg'), 'bad', '600자 안으로 써 주세요.'); return; }
+    this.disabled = true;
+    var j = await api('/settings', { text: t });
+    this.disabled = false;
+    if (!j.ok) { showMsg($('saveMsg'), 'bad', j.error || '저장하지 못했어요.'); return; }
+    dirty = false;
+    showMsg($('saveMsg'), 'ok', '저장했어요. 다음 DM 부터 이 문구로 가요.' + (t.indexOf('{링크}') < 0 ? ' ({링크} 가 없어서 링크는 맨 끝에 붙여요.)' : ''));
+    await load();
+  });
+
+  load();
+  if (!DEMO) setInterval(function () { if (!document.hidden && hasKey) load(); }, 30000);
+})();
+</script>
+</body>
+</html>
