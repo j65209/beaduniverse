@@ -37,7 +37,9 @@ function won(s) {
 const SHORT_HOSTS = /(^|\.)(link\.coupang\.com|coupa\.ng|onelink\.me|bit\.ly|naver\.me|me2\.do|han\.gl|url\.kr|vo\.la|t\.ly|tinyurl\.com|a\.co|amzn\.to|s\.click\.aliexpress\.com|a\.aliexpress\.com|app\.link)$/i;
 const isShort = (x) => SHORT_HOSTS.test(x.hostname) || /^al\./i.test(x.hostname); // al.wconcept.co.kr 같은 공유 단축 주소
 // 떼어 낼 꼬리표 (제휴 · 광고 추적 · 공유 추적) — 상품을 가리키는 값(goodsNo · itemId · goodscode …)은 남긴다
-const TRACK = /^(utm_[a-z_]+|airbridge[a-z_]*|lptag|subid|sub_id|affiliate[a-z_]*|aff_[a-z_]+|trackingcode|tracking_code|clickid|click_id|gclid|fbclid|igshid|napm|n_[a-z_]+|traceid|requestid|token|pagekey|addtag|ctag|wpcid|wref|wtime|sourcetype|clickeventid|short_id|client_id|event_uuid|referrer_timestamp|tracking_template_id|ref|referrer|src|channel)$/i;
+const TRACK = /^(utm_[a-z_]+|airbridge[a-z_]*|af_[a-z0-9_]+|jaehuid|ckwhere|lptag|subid|sub_id|affiliate[a-z_]*|aff_[a-z_]+|trackingcode|tracking_code|clickid|click_id|gclid|fbclid|igshid|napm|n_[a-z_]+|traceid|requestid|token|pagekey|addtag|ctag|wpcid|wref|wtime|sourcetype|clickeventid|short_id|client_id|event_uuid|referrer_timestamp|tracking_template_id|ref|referrer|src|channel)$/i;
+// AppsFlyer(onelink · 무신사 앱 공유) 꼬리표가 붙은 주소면 그 짝(pid · c · shortlink · deep_link_* …)도 뗀다 — pid 는 다른 쇼핑몰에선 상품 번호일 수 있어 이때만
+const APPSFLYER_PAIR = /^(pid|c|shortlink|is_retargeting|deep_link_value|deep_link_sub\d+)$/i;
 
 // 제휴 중계 주소(linkprice 등)는 안에 든 판매처 주소(tu · url · target)를 꺼낸다
 function unwrap(u) {
@@ -53,7 +55,9 @@ function unwrap(u) {
 function clean(u) {
   const x = new URL(u);
   x.hash = '';
-  for (const k of [...x.searchParams.keys()]) if (TRACK.test(k)) x.searchParams.delete(k);
+  const keys = [...x.searchParams.keys()];
+  const appsflyer = keys.some((k) => /^af_/i.test(k));
+  for (const k of keys) if (TRACK.test(k) || (appsflyer && APPSFLYER_PAIR.test(k))) x.searchParams.delete(k);
   if (/(^|\.)coupang\.com$/i.test(x.hostname)) { // 쿠팡 상품 주소는 상품 번호(경로) + 옵션(itemId · vendorItemId)만
     for (const k of [...x.searchParams.keys()]) if (!/^(itemId|vendorItemId)$/.test(k)) x.searchParams.delete(k);
   }
