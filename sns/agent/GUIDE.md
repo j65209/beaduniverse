@@ -14,7 +14,7 @@
 | `photos.mjs` | 고른 딜의 사진 후보: ① 판매처 상품 페이지 대표 이미지(og:image) · 판매처 정가 — **판매처 robots.txt 가 허용할 때만** ② 막혔으면 어미새 글에 첨부된 사진(대개 판매처 화면 캡처) → `img/` · `photos.json` |
 | `template.html` | 카드 디자인 (1080×1350, 크림 · 분홍 · 꿀색, Pretendard). 브라우저로 `template.html?demo=1` 열면 예시 |
 | `render.mjs` | `cards.json` → 헤드리스 Edge 로 `01.jpg` … 찍기 (`--ph 폴더` 면 카드에 보이는 제품 사진만 따로, `--debug` 면 글자 크기 출력) |
-| `links.mjs` | 카드에 넣은 딜(`ref`)의 판매처 원래 주소 · 가격 · 카드 제품 사진으로 링크 모음 페이지용 `links.json` 만들기 |
+| `links.mjs` | 카드에 넣은 딜 전부(`ref`)의 판매처 원래 주소(없으면 검색 결과) · 가격 · 카드 제품 사진으로 링크 모음 페이지용 `links.json` 만들기 |
 | `send.mjs` | JPG 들 + 문구 → 접수 창구로 보내기, `--links` 면 이어서 딜 링크도, `--auto` 면 그다음 바로 게시 (`--check-key` 열쇠만 확인, `--dry-run` 검사만, `--links-only --queue-id` 링크만, `--publish-only --queue-id` 남은 초안 게시) |
 
 이 PC 에서는 Node 가 PATH 에 없어서 포토샵에 딸린 Node 22 를 쓴다: `C:\Program Files\Adobe\Adobe Photoshop 2025\node.exe`.
@@ -189,9 +189,14 @@
 
 ## 딜 링크 → 꿀꿀집 링크 모음 페이지 (brightbeed.kr/ggulggulzip)
 
-- `node links.mjs --cards cards.json --deals deals.json --photos photos.json --ph ph --out links.json` — 카드의 `ref` 로 판매처 원래 주소를 찾아 만든다.
-- 판매처 원래 주소만 — 주소가 'https://www.coupang.com' 처럼 상품이 없거나, 남의 제휴 · 단축 링크(link.coupang · onelink · al.wconcept · bit.ly …)면 그 딜은 링크에서 빠진다.
-  정가 · 판매가는 확인된 숫자만 (할인율은 페이지가 계산).
+- `node links.mjs --cards cards.json --deals deals.json --photos photos.json --ph ph --out links.json` — 카드의 `ref` 로 판매처 주소를 찾아 만든다.
+- **카드(피드)에 넣은 딜은 전부 링크 모음에도 올린다 — 빼지 않는다** (2026-11-11 승훈 님 "피드 업로드된 거랑 사이트에 다 업로드 안 된 거 같은데?").
+  가격 · 정가 · 사진(→ 할인율)도 카드와 같게. 보고에서 링크 수가 카드 딜 수와 같은지 본다.
+- 주소는 판매처 원래 주소 (남의 수수료가 붙지 않게) — `links.mjs` 가 고른다:
+  1. 글의 상품 주소에서 제휴 · 추적 꼬리표(utm · lptag · airbridge · n_* …)를 뗀다.
+  2. 제휴 · 단축 주소(al.wconcept · link.coupang · naver.me · onelink …)는 그 주소의 robots.txt 가 허용할 때 한 번만 열어 넘겨주는 곳(Location)만 읽고 꼬리표를 뗀다 — 판매처 페이지는 열지 않는다.
+  3. 그래도 상품 주소가 없으면(예: 'https://www.coupang.com' 만 적힘) 그 판매처 검색 결과(쿠팡 · 11번가 · G마켓 · 옥션 · SSG), 그 밖은 네이버쇼핑 검색 — note 에 '검색 결과로 연결'.
+  정가 · 판매가는 카드에 쓴 숫자 그대로 (할인율은 페이지가 계산).
 - 사진: **카드에 넣은 그 제품 사진**을 `image` 로 같이 보낸다 — 받는 쪽(ggul-links v3)이 우리 저장소에 올려 링크 사진으로 쓴다 (2026-11-11 승훈 님 "카드에 넣은 제품 이미지를 그때 넣어 줘").
   자르지 않은 판매처 대표 이미지는 원본 파일, 자른 캡처는 `render.mjs --ph ph` 가 카드에서 찍어 둔 그 부분(카드에 보이는 그대로). 카드에 사진이 없는 딜은 사진 없음.
   `image_url`(판매처가 허용한 대표 이미지 주소)은 사진 올리기가 실패할 때 대신 쓰인다.
