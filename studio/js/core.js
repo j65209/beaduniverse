@@ -134,15 +134,18 @@ export const state = {
   linkEdit: false,
   hoverId: null,
   pageSel: [],
+  tool: 'select',          // select(선택) | hand(손 — 화면 이동)
   prefs: {
     exportFmt: 'jpg',
+    exportSize: 'orig',    // orig(사진 원본 화질) | 2x | 1x(1080×1920)
     jpgQuality: 0.95,
     alignText: true,       // 정렬할 때 텍스트 줄 정렬도 같이 맞추기
     alignRef: 'auto',      // auto | selection | page | safe
     stackGap: 24,
     snap: true,
     recentColors: [],
-    leftTab: 'add',
+    // 패널 접기 — fly: 왼쪽에 열린 패널(text·image·shape·templates·layers, null=접힘) · right: 세부 설정 · pages: 페이지 목록
+    ui: { fly: null, lastFly: 'text', right: false, pages: false, fold: {} },
   },
 };
 
@@ -172,6 +175,7 @@ export function setSel(ids) {
 /** 문서가 바뀌었을 때 알림. history:false 면 (드래그·슬라이더 중) 기록 안 함 */
 export function changed(opts = {}) {
   const o = Object.assign({ history: true, save: true }, opts);
+  bus.emit('pre-commit'); // 기록 전에 파생 위치 맞추기 (도형 안 글자 등 — render.js)
   if (o.history) history.commit();
   bus.emit('doc', o);
   bus.emit('render');
@@ -380,12 +384,35 @@ export function loadImg(url) {
     im.src = url;
   });
 }
-const MAX_IMG = 2560; // 1080×1920 결과물 + 확대 여유. 더 크면 메모리만 먹음
+/* 사진은 올린 파일을 줄이거나 다시 압축하지 않고 그대로 보관한다 → 내보낼 때 원본 화질.
+   긴 변이 PREVIEW_MAX 보다 큰 사진만 편집 화면용 작은 사본(preview)을 따로 만들어 가볍게 그린다.
+   (2026-11-11 전에 올린 사진은 이미 긴 변 2560px 로 줄어 있다 — 원본 화질이 필요하면 다시 올릴 것) */
+const PREVIEW_MAX = 2560;
+const KEEP_TYPES = /^image\/(png|jpeg|webp|gif|avif)$/;
+const EXT_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
+const hasAlpha = (t) => /png|webp|gif|avif/i.test(t || '');
+function drawToCanvas(img, w, h) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w));
+  c.height = Math.max(1, Math.round(h));
+  const cx = c.getContext('2d');
+  cx.imageSmoothingEnabled = true;
+  cx.imageSmoothingQuality = 'high';
+  cx.drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+const canvasBlob = (c, type, q) => new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('이미지 변환 실패'))), type, q));
+function makePreview(img, w, h, type) {
+  const s = PREVIEW_MAX / Math.max(w, h);
+  const c = drawToCanvas(img, w * s, h * s);
+  return hasAlpha(type) ? canvasBlob(c, 'image/webp', 0.9) : canvasBlob(c, 'image/jpeg', 0.9);
+}
 
 export const assets = {
   map: new Map(),
   get(id) { return id ? this.map.get(id) || null : null; },
   ready(id) { const a = this.map.get(id); return !!(a && a.img); },
+  /** 편집 화면용 이미지 불러오기 (큰 사진은 작은 사본) — a.w·a.h 는 늘 원본 크기 */
   load(id) {
     if (!id) return Promise.resolve(null);
     let a = this.map.get(id);
@@ -397,9 +424,10 @@ export const assets = {
     a.promise = (async () => {
       const rec = await db.get('assets', id);
       if (!rec) { a.status = 'missing'; return a; }
-      Object.assign(a, { name: rec.name, w: rec.w, h: rec.h, type: rec.type });
-      a.url = URL.createObjectURL(rec.blob);
+      Object.assign(a, { name: rec.name, w: rec.w, h: rec.h, type: rec.type, hasPreview: !!rec.preview });
+      a.url = URL.createObjectURL(rec.preview || rec.blob);
       a.img = await loadImg(a.url);
+      if (!a.w || !a.h) { a.w = a.img.naturalWidth; a.h = a.img.naturalHeight; }
       a.status = 'ready';
       bus.emit('asset-ready', id);
       return a;
@@ -409,50 +437,71 @@ export const assets = {
   async loadMany(ids) {
     await Promise.all([...new Set(ids)].filter(Boolean).map((id) => this.load(id)));
   },
-  /** 파일 → 에셋 저장 (긴 변 2560px 초과면 축소). id 반환 */
-  async addFile(file) {
-    const type = file.type || '';
-    const name = file.name || '이미지';
-    if (!/^image\//.test(type) && !/\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(name)) throw new Error('이미지 파일이 아니에요');
-    let url = URL.createObjectURL(file);
-    let img;
-    try {
-      img = await loadImg(url);
-    } catch (e) {
-      URL.revokeObjectURL(url);
-      throw new Error(/heic|heif/i.test(type + name) ? 'HEIC 사진은 JPG로 바꿔서 올려주세요' : `이미지를 열 수 없어요 (${name})`);
+  /** 내보내기용 원본 화질 이미지 — 작은 사본을 쓰는 사진만 원본 파일을 따로 연다 (끝나면 releaseFull) */
+  async full(id) {
+    const a = await this.load(id);
+    if (!a || !a.img) return null;
+    if (!a.hasPreview) return a.img;
+    if (a.fullImg) return a.fullImg;
+    const rec = await db.get('assets', id);
+    if (!rec || !rec.blob) return a.img;
+    const u = URL.createObjectURL(rec.blob);
+    try { a.fullImg = await loadImg(u); a.fullUrl = u; } catch (e) { URL.revokeObjectURL(u); return a.img; }
+    return a.fullImg;
+  },
+  releaseFull() {
+    for (const a of this.map.values()) {
+      if (!a.fullImg) continue;
+      URL.revokeObjectURL(a.fullUrl);
+      a.fullImg = null; a.fullUrl = null;
     }
-    let w = img.naturalWidth, h = img.naturalHeight, blob = file, outType = type;
-    const keepAlpha = /png|webp|gif|avif/i.test(type) || /\.(png|webp|gif|avif)$/i.test(name);
-    if (Math.max(w, h) > MAX_IMG || !/^image\/(png|jpeg|webp|gif)$/.test(type)) {
-      const s = Math.min(1, MAX_IMG / Math.max(w, h));
-      const c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(w * s));
-      c.height = Math.max(1, Math.round(h * s));
-      const cx = c.getContext('2d');
-      cx.imageSmoothingEnabled = true;
-      cx.imageSmoothingQuality = 'high';
-      cx.drawImage(img, 0, 0, c.width, c.height);
-      outType = keepAlpha ? 'image/png' : 'image/jpeg';
-      blob = await new Promise((r) => c.toBlob(r, outType, 0.92));
-      w = c.width; h = c.height;
-      URL.revokeObjectURL(url);
-      url = URL.createObjectURL(blob);
-      img = await loadImg(url);
+  },
+  /** blob(원본 그대로) 저장 + 큰 사진이면 편집용 사본 만들기. src = blob 을 이미 연 이미지(있으면 다시 안 엶) */
+  async _save(id, blob, name, src) {
+    let tmp = null;
+    if (!src) {
+      tmp = URL.createObjectURL(blob);
+      try { src = await loadImg(tmp); } catch (e) { URL.revokeObjectURL(tmp); throw e; }
     }
-    const id = uid('a');
-    await db.put('assets', { id, blob, w, h, name, type: blob.type || outType, createdAt: Date.now() });
-    this.map.set(id, { id, w, h, name, type: blob.type || outType, img, url, status: 'ready' });
+    const w = src.naturalWidth, h = src.naturalHeight;
+    const type = blob.type || 'image/png';
+    const preview = Math.max(w, h) > PREVIEW_MAX ? await makePreview(src, w, h, type).catch(() => null) : null;
+    if (tmp) URL.revokeObjectURL(tmp);
+    await db.put('assets', { id, blob, w, h, name, type, preview, createdAt: Date.now() });
+    const url = URL.createObjectURL(preview || blob);
+    const img = await loadImg(url);
+    this.map.set(id, { id, w, h, name, type, img, url, status: 'ready', hasPreview: !!preview });
     return id;
   },
-  /** dataURL/Blob 으로 에셋 등록 (프로젝트 파일 불러오기용) — 같은 id 유지 */
+  /** 파일 → 에셋 저장 (원본 크기·화질 그대로). id 반환 */
+  async addFile(file) {
+    let type = file.type || '';
+    const name = file.name || '이미지';
+    if (!/^image\//.test(type) && !/\.(png|jpe?g|webp|gif|avif|bmp)$/i.test(name)) throw new Error('이미지 파일이 아니에요');
+    const furl = URL.createObjectURL(file);
+    let img;
+    try {
+      img = await loadImg(furl);
+    } catch (e) {
+      URL.revokeObjectURL(furl);
+      throw new Error(/heic|heif/i.test(type + name) ? 'HEIC 사진은 JPG로 바꿔서 올려주세요' : `이미지를 열 수 없어요 (${name})`);
+    }
+    try {
+      let blob = file;
+      if (!type) { // 형식 정보가 빠진 파일 — 확장자로 알아냄
+        const t = EXT_TYPES[(name.match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase()];
+        if (t) { type = t; blob = new Blob([file], { type }); }
+      }
+      // png·jpg·webp·gif·avif 는 파일 그대로. 그 밖(bmp·heic 등)은 같은 크기 PNG(무손실)로만 바꿈
+      if (!KEEP_TYPES.test(type)) blob = await canvasBlob(drawToCanvas(img, img.naturalWidth, img.naturalHeight), 'image/png');
+      return await this._save(uid('a'), blob, name, img);
+    } finally {
+      URL.revokeObjectURL(furl);
+    }
+  },
+  /** Blob 으로 에셋 등록 (프로젝트 파일 불러오기용) — 같은 id 유지 */
   async putBlob(id, blob, meta = {}) {
-    const url = URL.createObjectURL(blob);
-    const img = await loadImg(url);
-    const rec = { id, blob, w: img.naturalWidth, h: img.naturalHeight, name: meta.name || '이미지', type: blob.type, createdAt: Date.now() };
-    await db.put('assets', rec);
-    this.map.set(id, { id, w: rec.w, h: rec.h, name: rec.name, type: rec.type, img, url, status: 'ready' });
-    return id;
+    return this._save(id, blob, meta.name || '이미지');
   },
 };
 

@@ -16,30 +16,30 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
-<link rel="stylesheet" href="studio.css?v=5">
+<link rel="stylesheet" href="studio.css?v=6">
 <!-- 배포할 때마다 v 숫자를 올린다: 모듈이 브라우저 캐시(최대 10분)에 섞여 남지 않게 (css · main.js · 아래 목록 전부) -->
 <script type="importmap">
 {
  "imports": {
-  "./js/actions.js": "./js/actions.js?v=5",
-  "./js/bulk.js": "./js/bulk.js?v=5",
-  "./js/core.js": "./js/core.js?v=5",
-  "./js/editor.js": "./js/editor.js?v=5",
-  "./js/exporter.js": "./js/exporter.js?v=5",
-  "./js/fonts.js": "./js/fonts.js?v=5",
-  "./js/modal.js": "./js/modal.js?v=5",
-  "./js/overlay.js": "./js/overlay.js?v=5",
-  "./js/pages.js": "./js/pages.js?v=5",
-  "./js/panels.js": "./js/panels.js?v=5",
-  "./js/render.js": "./js/render.js?v=5",
-  "./js/templates.js": "./js/templates.js?v=5",
-  "./js/tpl-fashion-living.js": "./js/tpl-fashion-living.js?v=5",
-  "./js/tpl-jewelry.js": "./js/tpl-jewelry.js?v=5",
-  "./js/tpl-kit.js": "./js/tpl-kit.js?v=5",
-  "./js/tpl-more.js": "./js/tpl-more.js?v=5",
-  "./js/tpl-sale.js": "./js/tpl-sale.js?v=5",
-  "./js/tpl-sns.js": "./js/tpl-sns.js?v=5",
-  "./js/ui.js": "./js/ui.js?v=5"
+  "./js/actions.js": "./js/actions.js?v=6",
+  "./js/bulk.js": "./js/bulk.js?v=6",
+  "./js/core.js": "./js/core.js?v=6",
+  "./js/editor.js": "./js/editor.js?v=6",
+  "./js/exporter.js": "./js/exporter.js?v=6",
+  "./js/fonts.js": "./js/fonts.js?v=6",
+  "./js/modal.js": "./js/modal.js?v=6",
+  "./js/overlay.js": "./js/overlay.js?v=6",
+  "./js/pages.js": "./js/pages.js?v=6",
+  "./js/panels.js": "./js/panels.js?v=6",
+  "./js/render.js": "./js/render.js?v=6",
+  "./js/templates.js": "./js/templates.js?v=6",
+  "./js/tpl-fashion-living.js": "./js/tpl-fashion-living.js?v=6",
+  "./js/tpl-jewelry.js": "./js/tpl-jewelry.js?v=6",
+  "./js/tpl-kit.js": "./js/tpl-kit.js?v=6",
+  "./js/tpl-more.js": "./js/tpl-more.js?v=6",
+  "./js/tpl-sale.js": "./js/tpl-sale.js?v=6",
+  "./js/tpl-sns.js": "./js/tpl-sns.js?v=6",
+  "./js/ui.js": "./js/ui.js?v=6"
  }
 }
 </script>
@@ -59,6 +59,17 @@
     </div>
     <span id="saveStatus" class="tb-save" data-s="saved">저장됨</span>
     <span class="tb-spacer"></span>
+    <div class="tb-panels" role="group" aria-label="패널 펴기 · 접기">
+      <button id="tgFly" class="tb-pn" type="button" title="왼쪽 패널 펴기 · 접기 (Tab = 모든 패널)">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path class="pn-fill" d="M3.9 4.9h4.2v14.2H3.9z"/></svg>
+      </button>
+      <button id="tgPages" class="tb-pn" type="button" title="아래 페이지 목록 펴기 · 접기">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18"/><path class="pn-fill" d="M3.9 15.9h16.2v3.2H3.9z"/></svg>
+      </button>
+      <button id="tgRight" class="tb-pn" type="button" title="오른쪽 세부 설정 펴기 · 접기">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path class="pn-fill" d="M15.9 4.9h4.2v14.2h-4.2z"/></svg>
+      </button>
+    </div>
     <button id="undoBtn" class="tb-ic" type="button" title="되돌리기 (Ctrl/⌘+Z)" disabled>
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
     </button>
@@ -80,41 +91,61 @@
     <button id="helpBtn" class="tb-ic" type="button" title="단축키 (?)">?</button>
   </header>
 
-  <aside class="left">
-    <nav class="tabs" role="tablist">
-      <button type="button" data-tab="add" class="on">추가</button>
-      <button type="button" data-tab="layers">레이어 <span class="tab-n" id="layersCount">0</span></button>
-      <button type="button" data-tab="templates">템플릿</button>
-    </nav>
-    <div class="tab-pane on" id="pane-add"></div>
-    <div class="tab-pane" id="pane-layers">
+  <!-- 선택한 요소 설정 (상단 설정 바) — panels.js 가 채움 -->
+  <div class="ctxbar" id="ctxbar" role="toolbar" aria-label="선택한 요소 설정"></div>
+
+  <!-- 왼쪽 도구 막대 — 누르면 옆에 패널이 열리고, 한 번 더 누르면 접힘 -->
+  <nav class="toolbar" id="toolbar" aria-label="도구">
+    <button type="button" class="tl tl-mode on" data-tool="select" title="선택 도구 (V)">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5.5 3.5l13 6.3-5.7 1.6-2.4 5.9z"/><path d="M12.8 11.4l5 5" stroke-linecap="round"/></svg>
+      <span>선택</span>
+    </button>
+    <button type="button" class="tl tl-mode" data-tool="hand" title="손 도구 — 끌어서 화면 이동 (H · 또는 Space 누른 채 드래그)">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0"/><path d="M14 10V4a2 2 0 0 0-4 0v2"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.3l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg>
+      <span>손</span>
+    </button>
+    <i class="tl-sep"></i>
+    <button type="button" class="tl" data-fly="text" title="텍스트 — 스타일 골라 추가 (T = 바로 추가)">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>
+      <span>텍스트</span>
+    </button>
+    <button type="button" class="tl" data-fly="image" title="사진 — 올리기 · 올린 사진 (I = 바로 올리기)">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg>
+      <span>사진</span>
+    </button>
+    <button type="button" class="tl" data-fly="shape" title="도형 · 스티커 · 오버레이">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="11" width="9.5" height="9.5" rx="1.6"/><circle cx="16.5" cy="7.5" r="4.5"/></svg>
+      <span>도형</span>
+    </button>
+    <button type="button" class="tl" data-fly="templates" title="템플릿 — 고르면 새 페이지">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="10" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="5.5" rx="1.5"/><rect x="13.5" y="11.5" width="7.5" height="9.5" rx="1.5"/><rect x="3" y="16" width="7.5" height="5" rx="1.5"/></svg>
+      <span>템플릿</span>
+    </button>
+    <i class="tl-sep"></i>
+    <button type="button" class="tl" data-fly="layers" title="레이어 목록 — 순서 · 숨기기 · 잠금">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3L3 8l9 5 9-5z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 16.5l9 5 9-5"/></svg>
+      <span>레이어</span><b class="tl-n" id="layersCount">0</b>
+    </button>
+  </nav>
+
+  <aside class="fly" id="fly" aria-label="도구 패널">
+    <div class="fly-h">
+      <b id="flyTitle"></b>
+      <button id="flyClose" class="fly-x" type="button" title="패널 접기 (Esc · Tab = 모든 패널)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 18l-6-6 6-6M18 18l-6-6 6-6"/></svg>
+      </button>
+    </div>
+    <div class="fly-pane" id="fly-text"></div>
+    <div class="fly-pane" id="fly-image"></div>
+    <div class="fly-pane" id="fly-shape"></div>
+    <div class="fly-pane" id="fly-templates"></div>
+    <div class="fly-pane" id="fly-layers">
       <p class="hint pad">위가 앞쪽이에요. 끌어서 순서 변경 · 더블클릭으로 이름 변경</p>
       <div id="layersList" class="layers"></div>
     </div>
-    <div class="tab-pane" id="pane-templates"></div>
   </aside>
 
   <main class="center">
-    <div class="canvas-bar">
-      <label class="cb-sel" title="어느 지면 기준으로 가림 영역을 볼지">
-        <span>지면</span>
-        <select id="placementSel"></select>
-      </label>
-      <button id="uiToggle" class="cb-tog" type="button" title="릴스·스토리 UI(프로필·캡션·CTA 버튼 등) 시뮬레이션 (U)">
-        <i class="cb-dot"></i>UI 가림 보기
-      </button>
-      <input id="uiOpacity" class="cb-op" type="range" min="10" max="100" step="5" title="UI 시뮬레이션 불투명도">
-      <button id="safeToggle" class="cb-tog" type="button" title="안전영역 빗금 표시 (G)">
-        <i class="cb-dot"></i>안전영역
-      </button>
-      <span class="spacer"></span>
-      <div class="cb-zoom">
-        <button id="zoomOut" type="button" title="축소 (Ctrl/⌘ -)">−</button>
-        <button id="zoomLabel" type="button" title="화면에 맞추기">100%</button>
-        <button id="zoomIn" type="button" title="확대 (Ctrl/⌘ +)">+</button>
-        <button id="zoomFit" type="button" title="화면에 맞추기 (Ctrl/⌘ 0)">맞춤</button>
-      </div>
-    </div>
     <div class="stage" id="stage">
       <canvas id="pageCanvas" class="page-canvas"></canvas>
       <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
@@ -125,14 +156,43 @@
         <button id="pvClose" type="button" class="pv-close" title="편집으로 돌아가기 (Esc)">편집으로</button>
       </div>
     </div>
-    <div class="status-bar" id="statusBar"></div>
+    <div class="status-bar">
+      <div class="st-msg" id="statusBar"></div>
+      <div class="st-view">
+        <label class="cb-sel" title="어느 지면 기준으로 가림 영역을 볼지">
+          <span>지면</span>
+          <select id="placementSel"></select>
+        </label>
+        <button id="uiToggle" class="cb-tog" type="button" title="릴스·스토리 UI(프로필·캡션·CTA 버튼 등) 시뮬레이션 (U)">
+          <i class="cb-dot"></i><span class="cb-lb">UI 가림</span>
+        </button>
+        <input id="uiOpacity" class="cb-op" type="range" min="10" max="100" step="5" title="UI 시뮬레이션 불투명도">
+        <button id="safeToggle" class="cb-tog" type="button" title="안전영역 빗금 표시 (G)">
+          <i class="cb-dot"></i><span class="cb-lb">안전영역</span>
+        </button>
+        <div class="cb-zoom">
+          <button id="zoomOut" type="button" title="축소 (Ctrl/⌘ -)">−</button>
+          <button id="zoomLabel" type="button" title="화면에 맞추기">100%</button>
+          <button id="zoomIn" type="button" title="확대 (Ctrl/⌘ +)">+</button>
+          <button id="zoomFit" type="button" title="화면에 맞추기 (Ctrl/⌘ 0)">맞춤</button>
+        </div>
+      </div>
+    </div>
   </main>
 
-  <aside class="right" id="props"></aside>
+  <aside class="right" id="props" aria-label="세부 설정"></aside>
 
   <footer class="pages">
     <div class="pages-head">
+      <button id="pagesToggle" type="button" class="pg-tog" title="페이지 목록 펴기 · 접기">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
       <b>페이지</b>
+      <div class="pg-nav">
+        <button id="pgPrev" type="button" title="이전 페이지 (PageUp)">‹</button>
+        <span id="pgNow">1 / 1</span>
+        <button id="pgNext" type="button" title="다음 페이지 (PageDown)">›</button>
+      </div>
       <span id="pagesCount" class="pages-count"></span>
       <button id="addPageBtn" type="button" class="btn btn-ghost btn-xs" title="빈 페이지 추가">＋ 새 페이지</button>
       <button id="dupPageBtn" type="button" class="btn btn-ghost btn-xs" title="지금 페이지 복제">복제</button>
@@ -149,6 +209,6 @@
 </div>
 <div id="modalRoot"></div>
 <div id="toastRoot" class="toasts" aria-live="polite"></div>
-<script type="module" src="js/main.js?v=5"></script>
+<script type="module" src="js/main.js?v=6"></script>
 </body>
 </html>

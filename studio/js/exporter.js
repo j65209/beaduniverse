@@ -1,8 +1,8 @@
 /* =========================================================================
-   내보내기 — 1080×1920 PNG/JPG · 여러 장은 ZIP (외부 라이브러리 없이 직접 묶음)
+   내보내기 — PNG/JPG (9:16 · 크기: 사진 원본 화질 / 2배 / 1080×1920) · 여러 장은 ZIP (외부 라이브러리 없이 직접 묶음)
    ========================================================================= */
-import { state, h, toast, sanitizeName, assets, deepClone } from './core.js';
-import { renderPageCanvas } from './render.js';
+import { W, H, state, h, toast, sanitizeName, assets, deepClone, clamp } from './core.js';
+import { renderPageCanvas, nativeScale } from './render.js';
 import { findViolations } from './overlay.js';
 import { openModal, confirmBox } from './modal.js';
 
@@ -92,11 +92,40 @@ function fileName(pg) {
   const i = p.pages.indexOf(pg);
   return `${sanitizeName(p.name, 30)}_${String(i + 1).padStart(2, '0')}_${sanitizeName(pg.name, 24)}.${ext()}`;
 }
-async function pageBlob(pg) {
-  const c = await renderPageCanvas(pg, 1);
-  const png = state.prefs.exportFmt === 'png';
-  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('이미지 만들기 실패'))), png ? 'image/png' : 'image/jpeg', png ? undefined : state.prefs.jpgQuality || 0.95));
+
+/** 저장 크기 — orig: 페이지에서 가장 큰 사진의 해상도 그대로 (최대 MAX_SCALE배) */
+export const MAX_SCALE = 4; // 4320 × 7680
+export const SIZE_OPTS = [
+  { v: 'orig', label: '원본 화질', title: '사진 해상도 그대로 — 사진을 줄이지 않아요 (최대 4320×7680)' },
+  { v: '2x', label: '2배', title: '2160 × 3840' },
+  { v: '1x', label: '1080×1920', title: '메타 릴스·스토리 권장 최소 크기 (가장 가벼움)' },
+];
+function exportScale(pg) {
+  const k = state.prefs.exportSize || 'orig';
+  if (k === '1x') return 1;
+  if (k === '2x') return 2;
+  return clamp(nativeScale(pg), 1, MAX_SCALE);
 }
+/** 한 페이지 → { blob, w, h }. 사진은 원본 파일로 그린다 (편집 화면용 작은 사본 X) */
+async function pageBlob(pg) {
+  const png = state.prefs.exportFmt === 'png';
+  await assets.loadMany(pg.layers.filter((l) => l.type === 'image' && !l.hidden).map((l) => l.asset)); // 배율 계산에 사진 크기가 필요
+  let s = exportScale(pg);
+  try {
+    for (;;) {
+      const c = await renderPageCanvas(pg, s, { full: true });
+      const w = c.width, hh = c.height;
+      const b = await new Promise((res) => c.toBlob(res, png ? 'image/png' : 'image/jpeg', png ? undefined : state.prefs.jpgQuality || 0.95));
+      c.width = 0; c.height = 0; // 큰 캔버스 메모리 바로 반납
+      if (b) return { blob: b, w, h: hh };
+      if (s <= 1.001) throw new Error('이미지 만들기 실패');
+      s = Math.max(1, s / 1.5); // 브라우저가 못 만들 만큼 크면 줄여서 다시
+    }
+  } finally {
+    assets.releaseFull();
+  }
+}
+const mb = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
 function stamp() {
   const d = new Date();
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
@@ -128,7 +157,8 @@ export async function exportPages(pages, { zip } = {}) {
       bar.firstChild.style.width = `${Math.round((i / pages.length) * 100)}%`;
       // 렌더 중 문서가 바뀌어도 영향 없게 복사본으로
       const copy = deepClone(pages[i]);
-      files.push({ name: fileName(pages[i]), blob: await pageBlob(copy) });
+      const out = await pageBlob(copy);
+      files.push({ name: fileName(pages[i]), blob: out.blob, w: out.w, h: out.h });
       await new Promise((r) => setTimeout(r, 0));
     }
     bar.firstChild.style.width = '100%';
@@ -141,7 +171,12 @@ export async function exportPages(pages, { zip } = {}) {
     let saved = true;
     if (zipBlob) saved = await download(zipBlob, `${sanitizeName(p.name, 30)}_${files.length}장_${stamp()}.zip`);
     else for (const f of files) saved = (await download(f.blob, f.name)) && saved;
-    if (saved) toast(`${files.length}장 저장 완료 · 1080×1920 ${ext().toUpperCase()}${useZip ? ' (ZIP)' : ''}`, 'ok', 3200);
+    if (saved) {
+      const sizes = [...new Set(files.map((f) => `${f.w}×${f.h}`))];
+      const dims = sizes.length === 1 ? sizes[0] : `${Math.min(...files.map((f) => f.w))}~${Math.max(...files.map((f) => f.w))}px 폭`;
+      const total = files.reduce((n, f) => n + f.blob.size, 0);
+      toast(`${files.length}장 저장 완료 · ${dims} ${ext().toUpperCase()} · ${mb(total)}${useZip ? ' (ZIP)' : ''}`, 'ok', 3600);
+    }
   } catch (e) {
     console.error(e);
     toast('저장 중 문제가 생겼어요: ' + (e.message || e), 'err', 5000);
@@ -167,14 +202,19 @@ function dataURLToBlob(u) {
 export async function exportProjectFile(collectIds, dbGet) {
   const p = state.project;
   const ids = [...collectIds(p)];
-  const out = { format: 'bb-content-studio', v: 1, exportedAt: Date.now(), project: deepClone(p), assets: [] };
+  // 사진(원본 파일)이 커도 문자열 하나로 합치지 않고 조각째 Blob 으로 묶는다 (메모리 아끼기)
+  const parts = [`{"format":"bb-content-studio","v":1,"exportedAt":${Date.now()},"project":`, JSON.stringify(deepClone(p)), ',"assets":['];
+  let n = 0;
   for (const id of ids) {
     const rec = await dbGet('assets', id);
-    if (rec && rec.blob) out.assets.push({ id, name: rec.name, data: await blobToDataURL(rec.blob) });
+    if (!rec || !rec.blob) continue;
+    parts.push((n ? ',' : '') + JSON.stringify({ id, name: rec.name, data: await blobToDataURL(rec.blob) }));
+    n++;
   }
-  const blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
+  parts.push(']}');
+  const blob = new Blob(parts, { type: 'application/json' });
   const ok = await download(blob, `${sanitizeName(p.name, 40)}.bbstudio${inClaude() ? '.json' : ''}`);
-  if (ok) toast(`프로젝트 파일 저장 (이미지 ${out.assets.length}장 포함) — 다른 컴퓨터에서 '파일 불러오기'로 열 수 있어요`, 'ok', 4200);
+  if (ok) toast(`프로젝트 파일 저장 (이미지 ${n}장 원본 포함 · ${mb(blob.size)}) — 다른 컴퓨터에서 '파일 불러오기'로 열 수 있어요`, 'ok', 4200);
 }
 export async function readProjectFile(file) {
   const text = await file.text();

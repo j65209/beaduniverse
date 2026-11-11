@@ -4,9 +4,12 @@
    ========================================================================= */
 import {
   W, H, state, bus, curPage, findLayer, selLayers, setSel, changed, newLayer, newPage, clonePage,
-  deepClone, mergeDeep, toast, assets, luminance, debounce, uid,
+  deepClone, mergeDeep, toast, assets, luminance, debounce, uid, clamp, MOD,
 } from './core.js';
-import { syncText, aabb, unionBox, isBackdrop, hitLayer } from './render.js';
+import {
+  syncText, aabb, unionBox, isBackdrop, isPassive, hitLayer, layoutText,
+  syncAttached, attachedShape, attachedTexts, placeInShape, shapeTextRect, canHoldText, defaultShapePad,
+} from './render.js';
 import { safeRect } from './overlay.js';
 
 /* ---------- 공통 ---------- */
@@ -35,6 +38,7 @@ export function propagate(ids) {
         const keep = {};
         for (const k of [...NO_COPY.common, ...(NO_COPY[S.type] || [])]) keep[k] = T[k];
         Object.assign(T, deepClone(S), keep);
+        if (!S.inShape) delete T.inShape; // 도형에서 뗀 것도 같이
         if (T.type === 'text') syncText(T);
         n++;
       }
@@ -62,8 +66,106 @@ export function setProps(ids, patch, { live = false } = {}) {
     mergeDeep(L, patch);
     if (L.type === 'text') syncText(L, onlyBg ? [0.5, 0.5] : undefined);
   }
+  syncAttached(page); // 도형을 바꿨으면 안에 든 글자도 바로 따라가게
   if (live) { bus.emit('doc', { history: false, live: true }); bus.emit('render'); }
   else commitLayers(ids);
+}
+
+/* ---------- 도형 + 안에 든 글자 = 한 덩어리 ---------- */
+/** 선택에 도형이 있으면 그 안에 든 글자도 같이 (복제·복사·순서 바꾸기용) */
+export function withAttached(Ls, page = curPage()) {
+  const out = [...Ls];
+  const ids = new Set(out.map((l) => l.id));
+  for (const L of Ls) {
+    if (L.type !== 'shape') continue;
+    for (const T of attachedTexts(L, page)) if (!ids.has(T.id)) { ids.add(T.id); out.push(T); }
+  }
+  return out;
+}
+/** 도형 안 글자는 그 도형으로 바꿔서 (옮기기·정렬용 — 글자 위치는 도형에서 정해짐) */
+export function proxyLayers(Ls, page = curPage()) {
+  const out = [], seen = new Set();
+  for (const L of Ls) {
+    const X = attachedShape(L, page) || L;
+    if (!seen.has(X.id)) { seen.add(X.id); out.push(X); }
+  }
+  return out;
+}
+/** 글자 가운데 아래에 있는 도형 (글자를 넣을 수 있는 것 중 맨 위) */
+export function shapeUnder(T, page = curPage()) {
+  if (!T || T.type !== 'text' || !page) return null;
+  const cx = T.x + T.w / 2, cy = T.y + T.h / 2;
+  for (let i = page.layers.length - 1; i >= 0; i--) {
+    const S = page.layers[i];
+    if (S === T || S.hidden || !canHoldText(S) || (S.blur || 0) > 0 || isPassive(S) || isBackdrop(S)) continue;
+    if (hitLayer(S, cx, cy)) return S;
+  }
+  return null;
+}
+/** 글자를 도형 바로 위 순서로 */
+function keepAbove(page, T, S) {
+  const ti = page.layers.indexOf(T), si = page.layers.indexOf(S);
+  if (ti < 0 || si < 0 || ti > si) return;
+  page.layers.splice(ti, 1);
+  page.layers.splice(page.layers.indexOf(S) + 1, 0, T);
+}
+/** 있는 글자를 도형 안에 넣기 (가로·세로 가운데) */
+export function attachText(textId, shapeId) {
+  const page = curPage();
+  const T = findLayer(textId, page), S = findLayer(shapeId, page);
+  if (!T || !S || T.type !== 'text' || !canHoldText(S)) return;
+  if (T.locked) { toast('잠긴 글자예요 — 잠금을 풀고 넣어 주세요', 'warn'); return; }
+  T.inShape = { key: S.key, ay: 'middle', pad: defaultShapePad(S) };
+  T.align = 'center';
+  // 도형보다 크면 도형 안에 맞게 줄어들도록 (자동 축소)
+  if (!T.fit || !T.fit.on) T.fit = { on: true, maxLines: 8, min: Math.min(14, T.size) };
+  keepAbove(page, T, S);
+  placeInShape(T, S);
+  setSel([T.id]);
+  commitLayers([T.id]);
+  toast('도형 안에 넣었어요 — 도형을 옮기거나 크기를 바꾸면 글자도 따라가요', 'ok', 2600);
+}
+export function detachText(textId) {
+  const T = findLayer(textId);
+  if (!T || !T.inShape) return;
+  delete T.inShape;
+  commitLayers([T.id]);
+  bus.emit('sel');
+  toast('도형에서 뗐어요 — 이제 따로 움직여요', 'info', 1800);
+}
+/** 도형 안 글자 위치 바꾸기 — align: left|center|right (가로 = 줄 정렬), ay: top|middle|bottom, pad: 여백 */
+export function setInShape(id, { align, ay, pad, live = false } = {}) {
+  const T = findLayer(id);
+  if (!T || !T.inShape) return;
+  const patch = {};
+  if (align) patch.align = align;
+  const ins = {};
+  if (ay) ins.ay = ay;
+  if (pad != null && Number.isFinite(+pad)) ins.pad = Math.max(0, +pad);
+  if (Object.keys(ins).length) patch.inShape = ins;
+  if (Object.keys(patch).length) setProps([id], patch, { live });
+}
+/** 도형 안에 새 글자 넣고 바로 입력 */
+export function addTextInShape(shapeId) {
+  const page = curPage();
+  const S = findLayer(shapeId, page);
+  if (!S || !canHoldText(S)) { toast('이 도형에는 글자를 넣을 수 없어요', 'warn'); return null; }
+  const f = S.fill || {};
+  const dark = (f.alpha ?? 1) > 0.35 && luminance(f.color || '#ffffff') < 0.55;
+  const L = newLayer('text', { name: '도형 글자', text: '텍스트 입력', weight: 800, size: 60, color: dark ? '#ffffff' : '#111111', align: 'center', autoW: false, fit: { on: true, maxLines: 4, min: 12 } });
+  const pad = defaultShapePad(S);
+  const r = shapeTextRect(S);
+  const iw = Math.max(20, r.w - 2 * pad), ih = Math.max(20, r.h - 2 * pad);
+  // 한 줄이 안쪽 높이의 절반쯤, 너비엔 네댓 글자 — 문구가 길면 자동 축소로 도형 안에 맞춰짐
+  L.size = Math.round(clamp(Math.min(ih * 0.36, (iw * 0.9) / 4.5), 16, 120));
+  L.inShape = { key: S.key, ay: 'middle', pad };
+  const above = attachedTexts(S, page).reduce((m, t) => Math.max(m, page.layers.indexOf(t)), page.layers.indexOf(S));
+  page.layers.splice(above + 1, 0, L);
+  placeInShape(L, S);
+  setSel([L.id]);
+  changed();
+  bus.emit('edit-text', L.id, true);
+  return L;
 }
 
 function isLightPage(page) {
@@ -111,16 +213,19 @@ export function addText(preset = {}, { at, edit = true } = {}) {
   const ay = at ? at.y : nextTextY(page);
   page.layers.push(L);
   placeText(L, ax, ay);
+  if (at && at.center) L.y -= L.h / 2; // 끌어다 놓은 곳이 글자 가운데가 되게
   setSel([L.id]);
   changed();
   if (edit) bus.emit('edit-text', L.id, true);
   return L;
 }
 
-export function addShape(preset = {}) {
+export function addShape(preset = {}, { at } = {}) {
   const page = curPage();
   const L = newLayer('shape', deepClone(preset.props || {}));
-  if (!preset.props || preset.props.x == null) { L.x = (W - L.w) / 2; L.y = (H - L.h) / 2; }
+  const full = L.w >= W * 0.98 && L.h >= H * 0.35; // 화면 전체 오버레이는 늘 제자리
+  if (at && !full) { L.x = Math.round(at.x - L.w / 2); L.y = Math.round(at.y - L.h / 2); }
+  else if (!preset.props || preset.props.x == null) { L.x = (W - L.w) / 2; L.y = (H - L.h) / 2; }
   let index;
   if (preset.back) {
     // 그라데이션·어둡게 같은 오버레이는 배경 이미지 바로 위, 글자 아래에
@@ -251,48 +356,66 @@ export function selectAll() {
 
 export function deleteSel() {
   const page = curPage();
-  const ids = new Set(selLayers().filter((l) => !l.locked).map((l) => l.id));
+  const picked = selLayers().filter((l) => !l.locked);
+  // 도형을 지우면 안에 든 글자도 같이 (잠근 글자는 떼어서 남김)
+  const all = withAttached(picked).filter((l) => !l.locked);
+  const ids = new Set(all.map((l) => l.id));
   if (!ids.size) return;
+  const withText = all.length - picked.length;
   const keys = new Set(page.layers.filter((l) => ids.has(l.id)).map((l) => l.key));
   page.layers = page.layers.filter((l) => !ids.has(l.id));
+  const unlink = (pg) => { for (const l of pg.layers) if (l.inShape && keys.has(l.inShape.key)) delete l.inShape; };
+  unlink(page);
   let other = 0;
   if (state.linkEdit) {
     for (const pg of state.project.pages) {
       if (pg === page) continue;
       const before = pg.layers.length;
       pg.layers = pg.layers.filter((l) => !keys.has(l.key));
+      unlink(pg);
       other += before - pg.layers.length;
     }
   }
   setSel([]);
   changed();
   if (other) { bus.emit('pages-dirty'); toast(`다른 페이지의 같은 요소 ${other}개도 지웠어요`, 'info'); }
+  else if (withText) toast(`도형 안 글자 ${withText}개도 같이 지웠어요 (되돌리기 ${MOD}+Z)`, 'info', 2200);
 }
 
-function cloneLayers(Ls, { dx = 0, dy = 0, keepKey = false } = {}) {
-  return Ls.map((L) => {
+/** 레이어 복사본 — 같이 복사된 도형·글자 사이 연결은 새 key 로 이어 주고, 도형 없이 복사된 글자는 뗀다 */
+export function cloneLayers(Ls, { dx = 0, dy = 0, keepKey = false } = {}) {
+  const keyMap = new Map();
+  const out = Ls.map((L) => {
     const c = deepClone(L);
     c.id = uid('l');
     if (!keepKey) c.key = c.id;
+    keyMap.set(L.key, c.key);
     c.x += dx; c.y += dy;
     return c;
   });
+  for (const c of out) {
+    if (!c.inShape) continue;
+    const nk = keyMap.get(c.inShape.key);
+    if (nk) c.inShape.key = nk; else if (!keepKey) delete c.inShape;
+  }
+  return out;
 }
 
 export function duplicateSel() {
   const page = curPage();
-  const Ls = selLayers();
+  const Ls = withAttached(selLayers());
   if (!Ls.length) return;
   const copies = cloneLayers(Ls, { dx: 24, dy: 24 });
   const top = Math.max(...Ls.map((l) => page.layers.indexOf(l)));
   page.layers.splice(top + 1, 0, ...copies);
-  setSel(copies.map((c) => c.id));
+  const picked = new Set(state.sel);
+  setSel(copies.filter((c, i) => picked.has(Ls[i].id)).map((c) => c.id));
   changed();
 }
 
 const CLIP_MARK = 'bb-studio-layers:';
 export function copySel(e) {
-  const Ls = selLayers();
+  const Ls = withAttached(selLayers());
   if (!Ls.length) return false;
   state.clipboard = { pageId: state.pageId, layers: deepClone(Ls) };
   try { if (e && e.clipboardData) { e.clipboardData.setData('text/plain', CLIP_MARK + JSON.stringify(state.clipboard)); e.preventDefault(); } } catch (err) { /* noop */ }
@@ -341,11 +464,14 @@ export function pasteStyle() {
   toast(`${ids.length}개에 스타일을 붙였어요`, 'ok', 1400);
 }
 
-const nudgeCommit = debounce(() => commitLayers([...state.sel]), 400);
+let nudged = [];
+const nudgeCommit = debounce(() => commitLayers(nudged), 400);
 export function nudge(dx, dy) {
-  const Ls = selLayers().filter((l) => !l.locked);
+  const Ls = proxyLayers(selLayers()).filter((l) => !l.locked);
   if (!Ls.length) return;
   for (const L of Ls) { L.x += dx; L.y += dy; }
+  nudged = Ls.map((l) => l.id);
+  syncAttached(curPage());
   bus.emit('doc', { history: false, live: true });
   bus.emit('render');
   nudgeCommit();
@@ -353,7 +479,7 @@ export function nudge(dx, dy) {
 
 export function reorder(where) {
   const page = curPage();
-  const ids = new Set(state.sel);
+  const ids = new Set(withAttached(selLayers()).map((l) => l.id)); // 도형을 옮기면 안의 글자도 같이
   if (!ids.size) return;
   const L = page.layers;
   if (where === 'front') page.layers = [...L.filter((l) => !ids.has(l.id)), ...L.filter((l) => ids.has(l.id))];
@@ -373,8 +499,11 @@ export function moveLayerTo(id, toIndex) {
 export function toggleHidden(id) {
   const L = findLayer(id); if (!L) return;
   L.hidden = !L.hidden;
-  if (L.hidden) setSel(state.sel.filter((x) => x !== id));
-  commitLayers([id]);
+  const inner = L.type === 'shape' ? attachedTexts(L, curPage()) : []; // 도형 안 글자도 같이 숨기기·보이기
+  for (const T of inner) T.hidden = L.hidden;
+  const gone = new Set([id, ...inner.map((t) => t.id)]);
+  if (L.hidden) setSel(state.sel.filter((x) => !gone.has(x)));
+  commitLayers([id, ...inner.map((t) => t.id)]);
 }
 export function toggleLocked(id) {
   const L = findLayer(id); if (!L) return;
@@ -396,11 +525,26 @@ export function alignRefBox(Ls) {
 }
 
 export function align(mode) {
-  const Ls = selLayers().filter((l) => !l.locked);
+  const page = curPage();
+  const picked = selLayers();
+  // 도형 안 글자만 (또는 그 도형과 같이) 고르고 맞추면 → 글자를 도형 안에서 맞춤 (도형은 그대로).
+  // 기준을 「캔버스 · 안전영역」으로 골랐을 때만 도형째 움직인다.
+  if (state.prefs.alignRef === 'auto' || state.prefs.alignRef === 'selection') {
+    const texts = picked.filter((l) => l.type === 'text' && !l.locked && attachedShape(l, page));
+    const holders = new Set(texts.map((t) => attachedShape(t, page)));
+    if (texts.length && picked.every((l) => texts.includes(l) || holders.has(l))) {
+      const [ha, va] = { left: ['left'], hcenter: ['center'], right: ['right'], top: [null, 'top'], vmiddle: [null, 'middle'], bottom: [null, 'bottom'] }[mode] || [];
+      for (const t of texts) { if (ha) t.align = ha; if (va) t.inShape.ay = va; }
+      syncAttached(page);
+      commitLayers(texts.map((t) => t.id));
+      return;
+    }
+  }
+  const Ls = proxyLayers(picked).filter((l) => !l.locked);
   if (!Ls.length) return;
   if (state.prefs.alignText && (mode === 'left' || mode === 'hcenter' || mode === 'right')) {
     const a = mode === 'hcenter' ? 'center' : mode;
-    for (const L of Ls) if (L.type === 'text' && L.align !== a) L.align = a;
+    for (const L of picked) if (L.type === 'text' && !L.locked && !attachedShape(L, page) && L.align !== a) L.align = a;
   }
   const ref = alignRefBox(Ls);
   for (const L of Ls) {
@@ -418,7 +562,7 @@ export function align(mode) {
 }
 
 export function distribute(axis) {
-  const Ls = selLayers().filter((l) => !l.locked);
+  const Ls = proxyLayers(selLayers()).filter((l) => !l.locked);
   if (Ls.length < 3) { toast('3개 이상 선택하면 간격을 똑같이 맞출 수 있어요', 'warn'); return; }
   const horiz = axis === 'h';
   const items = Ls.map((L) => ({ L, b: aabb(L) })).sort((a, b) => (horiz ? a.b.x - b.b.x : a.b.y - b.b.y));
@@ -437,7 +581,7 @@ export function distribute(axis) {
 
 /** 위에서부터 차례로 쌓기 (간격 px 고정) */
 export function stack(axis, gap) {
-  const Ls = selLayers().filter((l) => !l.locked);
+  const Ls = proxyLayers(selLayers()).filter((l) => !l.locked);
   if (Ls.length < 2) { toast('2개 이상 선택하세요', 'warn'); return; }
   const horiz = axis === 'h';
   const items = Ls.map((L) => ({ L, b: aabb(L) })).sort((a, b) => (horiz ? a.b.x - b.b.x : a.b.y - b.b.y));
@@ -535,7 +679,7 @@ export function applyBgToAll() {
 /** 선택한 요소를 다른 모든 페이지에도 넣기 (같은 key → 일괄 수정 연결) */
 export function copyToAllPages() {
   const page = curPage();
-  const Ls = selLayers();
+  const Ls = withAttached(selLayers());
   if (!Ls.length) return;
   let n = 0;
   for (const pg of state.project.pages) {

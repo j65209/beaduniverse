@@ -3,7 +3,7 @@
    · 인라인 텍스트 편집 · 이미지 위치(크롭) 조정 · 파일 드롭
    ========================================================================= */
 import { W, H, state, bus, curPage, findLayer, selLayers, setSel, clamp, modKey, assets, deepClone, uid, history, debounce, AD_PREVIEW } from './core.js';
-import { drawPage, aabb, unionBox, hitLayer, layoutText, resizeKeepAnchor, imgDrawRect, isBackdrop, isPassive, syncPageText } from './render.js';
+import { drawPage, aabb, unionBox, hitLayer, layoutText, resizeKeepAnchor, imgDrawRect, isBackdrop, isPassive, syncPageText, syncAttached, attachedShape } from './render.js';
 import { drawMockUI, drawSafeZones, safeRect, findViolations } from './overlay.js';
 import { familyOf, nearestWeight, FALLBACK } from './fonts.js';
 import * as act from './actions.js';
@@ -58,7 +58,7 @@ export function initEditor() {
 
 function syncAll() {
   let any = false;
-  for (const pg of state.project.pages) if (syncPageText(pg)) any = true;
+  for (const pg of state.project.pages) { if (syncPageText(pg)) any = true; if (syncAttached(pg)) any = true; }
   return any;
 }
 const fontRebase = debounce(() => { history.rebase(); bus.emit('save-request'); }, 500);
@@ -125,8 +125,16 @@ export function zoomTo(z, sx = view.w / 2, sy = view.h / 2) {
 }
 export function setSpace(on) {
   spaceDown = on;
-  if (stage) stage.classList.toggle('space', on);
+  if (stage) stage.classList.toggle('space', on || state.tool === 'hand');
 }
+/** 도구 바꾸기 — select(선택) · hand(손: 끌어서 화면 이동) */
+export function setTool(t) {
+  state.tool = t === 'hand' ? 'hand' : 'select';
+  if (stage) stage.classList.toggle('space', spaceDown || state.tool === 'hand');
+  if (state.tool === 'hand' && state.hoverId) { state.hoverId = null; requestRender(); }
+  bus.emit('tool');
+}
+const panning = () => spaceDown || state.tool === 'hand';
 
 function toDesign(e) {
   const r = stage.getBoundingClientRect();
@@ -147,6 +155,7 @@ function renderNow() {
   pctx.setTransform(1, 0, 0, 1, 0, 0);
   pctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
   pctx.setTransform(bs, 0, 0, bs, 0, 0);
+  syncAttached(pg);
   drawPage(pctx, pg, { px: bs, editingId: state.editingId });
   const st = state.project.settings;
   violations = st.showSafe || st.showUI ? findViolations(pg, st.placement) : [];
@@ -202,11 +211,14 @@ const HANDLE_ORDER = ['nw', 'ne', 'se', 'sw', 'n', 'e', 's', 'w'];
 function handleLocal(L, hnd) {
   return { nw: [0, 0], n: [L.w / 2, 0], ne: [L.w, 0], e: [L.w, L.h / 2], se: [L.w, L.h], s: [L.w / 2, L.h], sw: [0, L.h], w: [0, L.h / 2] }[hnd];
 }
+/** 도형 안 글자 — 위치·너비·회전은 도형을 따라가서 글자 크기(모서리)만 조절 */
+const inShapeOf = (L) => attachedShape(L, curPage());
 function handlesOf(L) {
   if (L.locked) return [];
-  if (L.type === 'text') return ['nw', 'ne', 'se', 'sw', 'e', 'w'];
+  if (L.type === 'text') return inShapeOf(L) ? ['nw', 'ne', 'se', 'sw'] : ['nw', 'ne', 'se', 'sw', 'e', 'w'];
   return HANDLE_ORDER;
 }
+const hasRot = (L) => !L.locked && !inShapeOf(L);
 function rotHandle(L) { return localToWorld(L, L.w / 2, -30 / state.zoom); }
 
 function drawSelection(L) {
@@ -214,16 +226,20 @@ function drawSelection(L) {
   outline(L, SEL, 1.5);
   if (L.locked) { const b = aabb(L); screenTag('🔒 잠김', (b.x + b.x2) / 2, b.y2, { dy: 8, bg: '#4b5563' }); return; }
   if (state.cropId === L.id) return;
+  const holder = inShapeOf(L);
+  if (holder) outline(holder, SEL, 1, [4, 3]); // 글자가 든 도형도 점선으로
   octx.save();
   // 회전 손잡이
-  const top = localToWorld(L, L.w / 2, 0);
-  const rh = rotHandle(L);
-  octx.strokeStyle = SEL;
-  octx.lineWidth = 1 / z;
-  octx.beginPath(); octx.moveTo(top[0], top[1]); octx.lineTo(rh[0], rh[1]); octx.stroke();
-  octx.fillStyle = '#fff';
-  octx.lineWidth = 1.5 / z;
-  octx.beginPath(); octx.arc(rh[0], rh[1], 5.5 / z, 0, Math.PI * 2); octx.fill(); octx.stroke();
+  if (hasRot(L)) {
+    const top = localToWorld(L, L.w / 2, 0);
+    const rh = rotHandle(L);
+    octx.strokeStyle = SEL;
+    octx.lineWidth = 1 / z;
+    octx.beginPath(); octx.moveTo(top[0], top[1]); octx.lineTo(rh[0], rh[1]); octx.stroke();
+    octx.fillStyle = '#fff';
+    octx.lineWidth = 1.5 / z;
+    octx.beginPath(); octx.arc(rh[0], rh[1], 5.5 / z, 0, Math.PI * 2); octx.fill(); octx.stroke();
+  }
   // 크기 손잡이
   const hs = 8 / z;
   for (const hnd of handlesOf(L)) {
@@ -249,7 +265,7 @@ function drawSelection(L) {
   let label = `${Math.round(L.w)} × ${Math.round(L.h)}`;
   if (L.type === 'text') {
     const lay = layoutText(L);
-    label = `${Math.round(lay.size * 10) / 10}px${lay.shrunk ? ' (자동축소)' : ''} · ${lay.lines.length}줄`;
+    label = `${holder ? '도형 안 · ' : ''}${Math.round(lay.size * 10) / 10}px${lay.shrunk ? ' (자동축소)' : ''} · ${lay.lines.length}줄`;
   }
   if (L.rot) label += ` · ${Math.round(L.rot)}°`;
   screenTag(label, (b.x + b.x2) / 2, b.y2, { dy: 10 });
@@ -373,7 +389,18 @@ function renderOverlay(pg, st) {
     octx.strokeRect(marquee.x, marquee.y, marquee.x2 - marquee.x, marquee.y2 - marquee.y);
     octx.restore();
   }
-  if (dropState) {
+  if (dropState && dropState.preset) {
+    octx.save();
+    octx.strokeStyle = '#22c55e';
+    octx.lineWidth = 2 / z;
+    const r = 14 / z;
+    octx.beginPath();
+    octx.moveTo(dropState.x - r, dropState.y); octx.lineTo(dropState.x + r, dropState.y);
+    octx.moveTo(dropState.x, dropState.y - r); octx.lineTo(dropState.x, dropState.y + r);
+    octx.stroke();
+    screenTag('놓으면 여기에 추가', dropState.x, dropState.y, { bg: '#16a34a', dy: 14 });
+    octx.restore();
+  } else if (dropState) {
     octx.save();
     if (dropState.target) {
       outline(dropState.target, '#22c55e', 3);
@@ -396,9 +423,11 @@ function handleAt(sx, sy) {
   if (Ls.length !== 1 || state.editingId) return null;
   const L = Ls[0];
   if (L.locked || state.cropId === L.id) return null;
-  const rh = rotHandle(L);
-  const [rx, ry] = toScreen(rh[0], rh[1]);
-  if (Math.hypot(sx - rx, sy - ry) <= 9) return 'rot';
+  if (hasRot(L)) {
+    const rh = rotHandle(L);
+    const [rx, ry] = toScreen(rh[0], rh[1]);
+    if (Math.hypot(sx - rx, sy - ry) <= 9) return 'rot';
+  }
   for (const hnd of handlesOf(L)) {
     const [wx, wy] = localToWorld(L, ...handleLocal(L, hnd));
     const [hx, hy] = toScreen(wx, wy);
@@ -463,7 +492,7 @@ function snapBox(b, exclude, axes = { x: true, y: true }) {
 /* ---------- 포인터 ---------- */
 function onDown(e) {
   if (ta && e.target === ta) return;
-  if (e.button === 1 || (e.button === 0 && spaceDown)) {
+  if (e.button === 1 || (e.button === 0 && panning())) {
     e.preventDefault();
     drag = { mode: 'pan', sx: e.clientX, sy: e.clientY, l0: view.left, t0: view.top };
     stage.classList.add('panning');
@@ -495,10 +524,12 @@ function onDown(e) {
       if (wasSel) { setSel(state.sel.filter((id) => id !== L.id)); return; }
       setSel([...state.sel, L.id]);
     } else if (!wasSel) setSel([L.id]);
-    const movers = selLayers().filter((l) => !l.locked);
+    // 도형 안 글자를 끌면 도형째 움직인다 (글자는 도형을 따라감)
+    const movers = act.proxyLayers(selLayers()).filter((l) => !l.locked);
     drag = {
       mode: 'move', start: p, movers, orig: movers.map((l) => ({ x: l.x, y: l.y })), moved: false,
       alt: e.altKey, box0: movers.length ? unionBox(movers.map(aabb)) : null, clickId: L.id, wasSel, shift: e.shiftKey,
+      exclude: moverSet(movers),
     };
     return;
   }
@@ -506,9 +537,14 @@ function onDown(e) {
   if (!e.shiftKey) setSel([]);
 }
 
+/** 스냅 계산에서 뺄 것: 움직이는 요소 + 그 도형 안 글자 (같이 움직이니까) */
+function moverSet(movers) {
+  return new Set(act.withAttached(movers).map((l) => l.id));
+}
+
 function hover(e) {
   if (!stage || state.preview || !state.project) return;
-  if (!stage.contains(e.target) || e.target === ta) {
+  if (!stage.contains(e.target) || e.target === ta || state.tool === 'hand') {
     if (state.hoverId) { state.hoverId = null; requestRender(); }
     return;
   }
@@ -549,6 +585,7 @@ function onMove(e) {
   else if (drag.mode === 'resize') doResize(p, e);
   else if (drag.mode === 'rotate') doRotate(p, e);
   else if (drag.mode === 'crop') doCrop(p);
+  syncAttached(curPage()); // 도형 안 글자가 바로 따라오게
   requestRender();
   bus.emit('doc', { history: false, live: true });
 }
@@ -578,11 +615,15 @@ function onUp(e) {
 
 function altDuplicate() {
   const pg = curPage();
-  const copies = drag.movers.map((L) => { const c = deepClone(L); c.id = uid('l'); c.key = c.id; return c; });
-  const top = Math.max(...drag.movers.map((l) => pg.layers.indexOf(l)));
+  const src = act.withAttached(drag.movers); // 도형을 복제하면 안의 글자도 같이
+  const copies = act.cloneLayers(src);
+  const top = Math.max(...src.map((l) => pg.layers.indexOf(l)));
   pg.layers.splice(top + 1, 0, ...copies);
-  drag.movers = copies;
-  state.sel = copies.map((c) => c.id);
+  const of = new Map(src.map((l, i) => [l.id, copies[i]]));
+  drag.movers = drag.movers.map((l) => of.get(l.id));
+  drag.exclude = moverSet(drag.movers);
+  const sel = state.sel.map((id) => of.get(id)).filter(Boolean).map((c) => c.id);
+  state.sel = sel.length ? sel : drag.movers.map((c) => c.id);
   bus.emit('sel');
 }
 
@@ -598,7 +639,7 @@ function doMove(p, e) {
   if (state.prefs.snap && !modKey(e)) {
     const b = drag.box0;
     const moved = { x: b.x + dx, y: b.y + dy, x2: b.x2 + dx, y2: b.y2 + dy };
-    const s = snapBox(moved, new Set(drag.movers.map((l) => l.id)), axes);
+    const s = snapBox(moved, drag.exclude || new Set(drag.movers.map((l) => l.id)), axes);
     dx += s.dx; dy += s.dy;
     guides = s.guides;
   }
@@ -746,7 +787,7 @@ function onWheel(e) {
 }
 
 function onDbl(e) {
-  if (state.preview) return;
+  if (state.preview || state.tool === 'hand') return;
   const p = toDesign(e);
   const L = topHit(p);
   if (!L) return;
@@ -754,17 +795,22 @@ function onDbl(e) {
   else if (L.type === 'image') { if (L.asset) enterCrop(L.id); else bus.emit('pick-image', L.id); }
 }
 
-function hasDragFiles(e) {
+/** 끌어 온 것: preset(왼쪽 패널의 글자·도형) · image(사진 파일·올린 사진) · null */
+function dragKind(e) {
   const t = [...((e.dataTransfer && e.dataTransfer.types) || [])];
-  return t.includes('Files') || t.includes('application/x-bb-asset');
+  if (t.includes('application/x-bb-preset')) return 'preset';
+  if (t.includes('Files') || t.includes('application/x-bb-asset')) return 'image';
+  return null;
 }
 function onDragOver(e) {
-  if (!hasDragFiles(e)) return;
+  const kind = dragKind(e);
+  if (!kind) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'copy';
   const p = toDesign(e);
+  if (kind === 'preset') { dropState = { preset: true, x: p.x, y: p.y }; requestRender(); return; }
   const target = act.imageLayerAt(p);
-  if (!dropState || dropState.target !== target) { dropState = { target }; requestRender(); }
+  if (!dropState || dropState.preset || dropState.target !== target) { dropState = { target }; requestRender(); }
 }
 function onDragLeave(e) {
   if (e.relatedTarget && stage.contains(e.relatedTarget)) return;
@@ -772,10 +818,18 @@ function onDragLeave(e) {
   requestRender();
 }
 function onDrop(e) {
-  if (!hasDragFiles(e)) return;
+  const kind = dragKind(e);
+  if (!kind) return;
   e.preventDefault();
   dropState = null;
   const p = toDesign(e);
+  if (kind === 'preset') {
+    let d = null;
+    try { d = JSON.parse(e.dataTransfer.getData('application/x-bb-preset') || 'null'); } catch (err) { d = null; }
+    if (d) bus.emit('drop-preset', Object.assign(d, { at: { x: p.x, y: p.y, center: true } }));
+    requestRender();
+    return;
+  }
   const files = [...((e.dataTransfer && e.dataTransfer.files) || [])];
   const assetId = e.dataTransfer.getData('application/x-bb-asset');
   bus.emit('drop-images', { files, assetId, at: p, alt: e.altKey });

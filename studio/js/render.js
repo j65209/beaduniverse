@@ -2,7 +2,7 @@
    렌더링 엔진 — 텍스트 레이아웃 · 레이어 그리기 · 기하 계산
    편집 화면과 내보내기가 같은 함수로 그려서 보이는 그대로 저장된다.
    ========================================================================= */
-import { W, H, assets, clamp, rgba } from './core.js';
+import { W, H, assets, clamp, rgba, state, bus } from './core.js';
 import { cssFont, textFontReady, fontEpoch, waitTextFonts } from './fonts.js';
 
 const mcanvas = document.createElement('canvas');
@@ -289,8 +289,10 @@ const layoutCache = new Map();
 function layoutKey(L) {
   return [fontEpoch(), L.text, L.font, L.weight, L.italic ? 1 : 0, L.size, L.lh, L.tracking, L.autoW ? 1 : 0,
     L.autoW ? 0 : Math.round(L.w * 100), L.bg ? L.bg.mode : '', L.bg ? L.bg.padX : 0, L.bg ? L.bg.padY : 0,
-    L.fit && L.fit.on ? `${L.fit.maxLines},${L.fit.min}` : '-'].join('\u0001');
+    L.fit && L.fit.on ? `${L.fit.maxLines},${L.fit.min},${maxHOf(L)}` : '-'].join('\u0001');
 }
+/** 도형 안 글자는 도형 안쪽 높이를 넘지 않게 (자동 축소가 켜져 있을 때) */
+const maxHOf = (L) => (L.inShape && L.inShape.maxH > 0 ? Math.round(L.inShape.maxH) : 0);
 
 export function layoutText(L) {
   const key = layoutKey(L);
@@ -302,7 +304,9 @@ export function layoutText(L) {
   let shrunk = false;
   if (!L.autoW && L.fit && L.fit.on) {
     const maxLines = Math.max(1, (L.fit.maxLines | 0) || 1);
-    const tooBig = (r) => r.lines.length > maxLines || r.lines.some((li) => li.w > maxContentW + 0.5);
+    const maxH = maxHOf(L);
+    const tooBig = (r) => r.lines.length > maxLines || r.lines.some((li) => li.w > maxContentW + 0.5)
+      || (maxH > 0 && Math.max(1, r.lines.length) * r.size * (+L.lh || 1.2) + 2 * py > maxH + 0.5);
     if (tooBig(res)) {
       let lo = Math.max(6, Math.min(+L.fit.min || 12, L.size));
       let hi = L.size;
@@ -358,6 +362,77 @@ export function syncPageText(page) {
   for (const L of page.layers) if (L.type === 'text' && syncText(L)) any = true;
   return any;
 }
+
+/* ---------- 도형 안 글자 ----------
+   글자 레이어에 inShape = { key: 도형 key, ay: top|middle|bottom, pad } 가 있으면
+   그 도형의 글자 영역 안에 놓인다 — 너비 = 도형 안쪽 너비(줄바꿈), 가로 = 글자 줄 정렬, 세로 = ay, 회전 = 도형 회전.
+   위치는 도형에서 계산되는 값이라 도형을 옮기거나 크기를 바꾸면 따라간다. */
+export const LINE_SHAPES = new Set(['arrow', 'scribble', 'squiggle', 'corners']);
+export function canHoldText(S) {
+  return !!S && S.type === 'shape' && !LINE_SHAPES.has(S.shape) && S.shape !== 'grain';
+}
+/** 도형 안에서 글자가 들어갈 영역 (도형 기준 좌표) — 원·별·말풍선 등은 모양 안쪽으로 */
+export function shapeTextRect(S) {
+  const w = S.w, h = S.h;
+  const mid = (fw, fh) => ({ x: (w - w * fw) / 2, y: (h - h * fh) / 2, w: w * fw, h: h * fh });
+  switch (S.shape || 'rect') {
+    case 'ellipse': return mid(Math.SQRT1_2, Math.SQRT1_2);
+    case 'star': { const f = clamp((S.inner == null ? 0.5 : S.inner) * 0.78, 0.2, 0.86); return mid(f, f); }
+    case 'sparkle': return mid(0.36, 0.3);
+    case 'flower': return mid(0.48, 0.48);
+    case 'heart': return { x: w * 0.18, y: h * 0.14, w: w * 0.64, h: h * 0.52 };
+    case 'bubble': { const th = Math.max(8, Math.min(h * 0.24, 48)); return { x: 0, y: 0, w, h: h - th }; }
+    case 'ticket': { const nr = Math.max(1, Math.min(h * 0.16, w * 0.1, 46)); return { x: nr, y: 0, w: w - 2 * nr, h }; }
+    case 'arch': { const top = Math.min(h, w / 2) * 0.32; return { x: 0, y: top, w, h: h - top }; }
+    default: return { x: 0, y: 0, w, h };
+  }
+}
+export function defaultShapePad(S) {
+  return Math.round(clamp(Math.min(S.w, S.h) * 0.08, 6, 40));
+}
+export function attachedShape(T, page) {
+  if (!T || T.type !== 'text' || !T.inShape || !page) return null;
+  const S = page.layers.find((l) => l.key === T.inShape.key && l.type === 'shape');
+  return S && S !== T ? S : null;
+}
+export function attachedTexts(S, page) {
+  if (!S || !page) return [];
+  return page.layers.filter((l) => l.type === 'text' && l.inShape && l.inShape.key === S.key);
+}
+/** 글자를 도형 안 자리에 놓기. 바뀌었으면 true */
+export function placeInShape(T, S) {
+  const o = T.inShape;
+  const r = shapeTextRect(S);
+  const pad = clamp(+o.pad || 0, 0, Math.max(0, Math.min(r.w, r.h) / 2 - 4));
+  const tw = Math.max(8, r.w - 2 * pad);
+  T.autoW = false;
+  T.w = tw;
+  o.maxH = Math.max(8, r.h - 2 * pad);
+  const lay = layoutText(T);
+  const th = lay.boxH;
+  const ay = o.ay || 'middle';
+  const ly = ay === 'top' ? r.y + pad : ay === 'bottom' ? r.y + r.h - pad - th : r.y + (r.h - th) / 2;
+  const dx = r.x + pad + tw / 2 - S.w / 2, dy = ly + th / 2 - S.h / 2;
+  const rot = S.rot || 0, rad = rot * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad);
+  const nx = S.x + S.w / 2 + dx * c - dy * s - tw / 2;
+  const ny = S.y + S.h / 2 + dx * s + dy * c - th / 2;
+  const moved = Math.abs(nx - T.x) > 0.01 || Math.abs(ny - T.y) > 0.01 || Math.abs(th - (T.h || 0)) > 0.01 || (T.rot || 0) !== rot;
+  T.x = nx; T.y = ny; T.h = th; T.rot = rot;
+  return moved;
+}
+/** 페이지의 도형 안 글자를 모두 제자리로 */
+export function syncAttached(page) {
+  if (!page) return false;
+  let any = false;
+  for (const T of page.layers) {
+    if (T.type !== 'text' || !T.inShape) continue;
+    const S = attachedShape(T, page);
+    if (S && placeInShape(T, S)) any = true;
+  }
+  return any;
+}
+// 기록·저장 직전에 모든 페이지를 맞춰 둔다 (일괄 수정으로 다른 페이지 도형이 바뀐 경우 포함)
+bus.on('pre-commit', () => { const p = state.project; if (p) for (const pg of p.pages) syncAttached(pg); });
 
 /* ---------- 기하 ---------- */
 export function corners(L) {
@@ -496,7 +571,7 @@ function drawPlaceholder(ctx, L, a, thumb) {
   ctx.restore();
 }
 
-function paintImage(c, L, a, r) {
+function paintImage(c, L, img, r) {
   c.save();
   c.beginPath();
   maskPath(c, L);
@@ -507,8 +582,8 @@ function paintImage(c, L, a, r) {
   }
   c.imageSmoothingEnabled = true;
   c.imageSmoothingQuality = 'high';
-  if (L.flipX) { c.translate(L.w, 0); c.scale(-1, 1); c.drawImage(a.img, L.w - r.x - r.w, r.y, r.w, r.h); }
-  else c.drawImage(a.img, r.x, r.y, r.w, r.h);
+  if (L.flipX) { c.translate(L.w, 0); c.scale(-1, 1); c.drawImage(img, L.w - r.x - r.w, r.y, r.w, r.h); }
+  else c.drawImage(img, r.x, r.y, r.w, r.h);
   c.restore();
 }
 
@@ -520,24 +595,25 @@ function drawImageLayer(ctx, L, o) {
     return;
   }
   const iw = a.w || a.img.naturalWidth, ih = a.h || a.img.naturalHeight;
+  const img = (o.export && a.fullImg) || a.img; // 내보낼 땐 원본 화질, 편집 화면은 가벼운 사본
   const r = imgDrawRect(L, iw, ih);
   const px = o.px || 1;
   if (L.shadow && L.shadow.on) {
     const ow = Math.max(1, Math.ceil(L.w * px)), oh = Math.max(1, Math.ceil(L.h * px));
-    if (ow * oh > 40e6) { paintImage(ctx, L, a, r); }
+    if (ow * oh > 40e6) { paintImage(ctx, L, img, r); }
     else {
       const off = getScratch(ow, oh);
       const oc = off.getContext('2d');
       oc.setTransform(1, 0, 0, 1, 0, 0);
       oc.clearRect(0, 0, ow + 2, oh + 2);
       oc.setTransform(px, 0, 0, px, 0, 0);
-      paintImage(oc, L, a, r);
+      paintImage(oc, L, img, r);
       ctx.save();
       applyShadow(ctx, L.shadow, px);
       ctx.drawImage(off, 0, 0, ow, oh, 0, 0, ow / px, oh / px);
       ctx.restore();
     }
-  } else paintImage(ctx, L, a, r);
+  } else paintImage(ctx, L, img, r);
   if (L.stroke && L.stroke.on && L.stroke.width > 0) {
     ctx.save();
     ctx.beginPath();
@@ -809,15 +885,18 @@ export function drawPage(ctx, page, o = {}) {
   ctx.restore();
 }
 
-/** 내보내기·썸네일 전에 이미지·글꼴을 모두 준비 */
-export async function preparePage(page) {
-  await assets.loadMany(page.layers.filter((l) => l.type === 'image' && !l.hidden).map((l) => l.asset));
+/** 내보내기·썸네일 전에 이미지·글꼴을 모두 준비. full = 원본 화질 사진까지 */
+export async function preparePage(page, { full = false } = {}) {
+  const ids = page.layers.filter((l) => l.type === 'image' && !l.hidden).map((l) => l.asset).filter(Boolean);
+  await assets.loadMany(ids);
+  if (full) await Promise.all([...new Set(ids)].map((id) => assets.full(id)));
   await waitTextFonts(page.layers);
   syncPageText(page);
+  syncAttached(page);
 }
 
-export async function renderPageCanvas(page, scale = 1) {
-  await preparePage(page);
+export async function renderPageCanvas(page, scale = 1, { full = false } = {}) {
+  await preparePage(page, { full });
   const c = document.createElement('canvas');
   c.width = Math.round(W * scale);
   c.height = Math.round(H * scale);
@@ -825,6 +904,23 @@ export async function renderPageCanvas(page, scale = 1) {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   drawPage(ctx, page, { px: scale, export: true });
   return c;
+}
+
+/** 원본 화질 배율 — 화면을 가장 많이 차지하는 사진의 픽셀 하나가 결과물 픽셀 하나가 되는 배율 (1 이상).
+ *  예: 3024×4032 사진을 배경으로 꽉 채우면 약 2.1배 → 2268×4032 */
+export function nativeScale(page) {
+  let best = null, bestArea = 0;
+  for (const L of page.layers) {
+    if (L.type !== 'image' || L.hidden || !L.asset || (L.opacity ?? 1) <= 0) continue;
+    const a = assets.get(L.asset);
+    if (!a || !a.w || !a.h) continue;
+    const b = aabb(L);
+    const vis = Math.max(0, Math.min(b.x2, W) - Math.max(b.x, 0)) * Math.max(0, Math.min(b.y2, H) - Math.max(b.y, 0));
+    if (vis > bestArea) { bestArea = vis; best = { L, a }; }
+  }
+  if (!best || bestArea < W * H * 0.04) return 1; // 작은 사진만 있으면 기본 크기
+  const r = imgDrawRect(best.L, best.a.w, best.a.h);
+  return Math.max(1, best.a.w / Math.max(1, r.w));
 }
 
 /** 바로 그리는 썸네일 (글꼴 로딩 기다리지 않음) */

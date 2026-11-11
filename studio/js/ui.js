@@ -1,21 +1,21 @@
 /* =========================================================================
-   화면 구성 — 상단 바 · 왼쪽 탭(추가/레이어/템플릿) · 캔버스 바 · 상태 줄
-   · 단축키 · 복사/붙여넣기 · 사진 드롭 · 프로젝트 관리 · 미리보기
+   화면 구성 — 상단 바 · 왼쪽 도구 막대 + 접히는 패널(텍스트·사진·도형·템플릿·레이어)
+   · 패널 접기(Tab) · 상태 줄(지면·확대) · 단축키 · 복사/붙여넣기 · 사진 드롭 · 프로젝트 관리 · 미리보기
    ========================================================================= */
 import {
-  state, bus, curPage, selLayers, setSel, h, $, $$, toast, history, changed, db, setMeta, savePrefs,
+  W, H, state, bus, curPage, selLayers, setSel, h, $, $$, toast, history, changed, db, setMeta, savePrefs,
   newProject, newPage, deepClone, uid, assets, collectAssetIds, fmtTime, debounce, modKey, MOD, ALT,
   layerLabel, DEFAULT_SETTINGS, TEXT_DEFAULTS, IMAGE_DEFAULTS, SHAPE_DEFAULTS, isPlainObj,
-  AD_PREVIEW,
+  AD_PREVIEW, clamp,
 } from './core.js';
-import { drawThumb } from './render.js';
+import { drawThumb, nativeScale } from './render.js';
 import { PLACEMENTS } from './overlay.js';
 import { TEMPLATES, TEMPLATE_CATS, TEXT_PRESETS, SHAPE_PRESETS } from './templates.js';
 import * as act from './actions.js';
-import { fitView, zoomTo, startTextEdit, finishTextEdit, enterCrop, exitCrop, setSpace, currentViolations } from './editor.js';
+import { fitView, zoomTo, startTextEdit, finishTextEdit, enterCrop, exitCrop, setSpace, setTool, currentViolations } from './editor.js';
 import { pickFile } from './panels.js';
 import { openBulk } from './bulk.js';
-import { exportPages, exportProjectFile, readProjectFile } from './exporter.js';
+import { exportPages, exportProjectFile, readProjectFile, SIZE_OPTS, MAX_SCALE } from './exporter.js';
 import { openModal, confirmBox, choiceBox, openMenu, closeMenu, topModal } from './modal.js';
 import { addFontFiles } from './fonts.js';
 
@@ -99,7 +99,7 @@ export async function openProject(proj) {
   setSaveStatus('saved');
   setMeta('lastProject', proj.id);
   const empty = proj.pages.length === 1 && !proj.pages[0].layers.length;
-  switchTab(empty ? 'templates' : (state.prefs.leftTab === 'templates' ? 'add' : state.prefs.leftTab || 'add'));
+  if (empty) { state.prefs.ui.fly = 'templates'; applyPanels(); } // 빈 프로젝트는 템플릿부터
 }
 async function newProjectFlow() {
   await saveNow();
@@ -175,16 +175,36 @@ function updateUndo() {
 function undo() { finishTextEdit(); exitCrop(true); if (!history.undo()) toast('더 되돌릴 게 없어요', 'info', 1200); }
 function redo() { finishTextEdit(); exitCrop(true); if (!history.redo()) toast('다시 할 게 없어요', 'info', 1200); }
 
+/** 지금 페이지를 고른 크기로 저장하면 몇 px 인지 */
+function exportSizeNote() {
+  const k = state.prefs.exportSize || 'orig';
+  const s = k === '1x' ? 1 : k === '2x' ? 2 : clamp(nativeScale(curPage()), 1, MAX_SCALE);
+  const dims = `${Math.round(W * s)} × ${Math.round(H * s)}`;
+  if (k === 'orig') return s > 1.001 ? `지금 페이지 ${dims}px — 사진 해상도 그대로` : `지금 페이지 ${dims}px — 사진이 작거나 없어서 기본 크기`;
+  return `${dims}px` + (k === '1x' ? ' · 메타 릴스/스토리 권장 최소 크기' : '');
+}
+function chipRow(opts, key, onPick) {
+  const row = h('div', { class: 'menu-fmt' });
+  for (const o of opts) {
+    row.append(h('button', {
+      type: 'button', class: 'chip' + (state.prefs[key] === o.v ? ' on' : ''), title: o.title || '',
+      onclick: (e) => { state.prefs[key] = o.v; savePrefs(); row.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === e.currentTarget)); if (onPick) onPick(); },
+    }, o.label));
+  }
+  return row;
+}
 function openExportMenu(anchor) {
   const p = state.project;
   const n = p.pages.length;
   const sel = state.pageSel.length;
-  const fmt = h('div', { class: 'menu-fmt' }, ['jpg', 'png'].map((f) => h('button', {
-    type: 'button', class: 'chip' + (state.prefs.exportFmt === f ? ' on' : ''),
-    onclick: (e) => { state.prefs.exportFmt = f; savePrefs(); fmt.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === e.currentTarget)); },
-  }, f === 'jpg' ? 'JPG · 가벼움' : 'PNG · 가장 선명')));
+  const note = h('div', { class: 'menu-note' }, exportSizeNote());
+  const size = chipRow(SIZE_OPTS, 'exportSize', () => { note.textContent = exportSizeNote(); });
+  const fmt = chipRow([{ v: 'jpg', label: 'JPG · 가벼움' }, { v: 'png', label: 'PNG · 무손실' }], 'exportFmt');
   openMenu(0, 0, [
-    { node: h('div', { class: 'menu-head' }, '1080 × 1920 · 메타 릴스/스토리 권장') },
+    { node: h('div', { class: 'menu-head' }, '크기') },
+    { node: size },
+    { node: note },
+    { node: h('div', { class: 'menu-head' }, '형식') },
     { node: fmt },
     '-',
     { label: '지금 페이지 저장', hint: `${MOD}+E`, onClick: () => exportPages([curPage()]) },
@@ -222,13 +242,100 @@ function initTopbar() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveSoon.flush(); });
 }
 
-/* ---------- 왼쪽 탭 ---------- */
-function switchTab(t) {
-  state.prefs.leftTab = t;
+/* ---------- 패널 접기 — 왼쪽(도구별 패널) · 오른쪽(세부 설정) · 아래(페이지 목록) ---------- */
+const FLY_TITLES = { text: '텍스트', image: '사진', shape: '도형 · 오버레이', templates: '템플릿', layers: '레이어' };
+function uiPrefs() {
+  const u = state.prefs.ui || (state.prefs.ui = {});
+  if (!u.fold) u.fold = {};
+  return u;
+}
+export function applyPanels() {
+  const u = uiPrefs();
+  if (u.fly && !FLY_TITLES[u.fly]) u.fly = null;
+  const app = $('#app');
+  app.classList.toggle('fly-open', !!u.fly);
+  app.classList.toggle('right-open', !!u.right);
+  app.classList.toggle('pages-open', !!u.pages);
+  $$('.toolbar [data-fly]').forEach((b) => { const on = b.dataset.fly === u.fly; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  $$('.fly-pane').forEach((p) => p.classList.toggle('on', p.id === 'fly-' + u.fly));
+  $('#flyTitle').textContent = FLY_TITLES[u.fly] || '';
+  $('#tgFly').classList.toggle('on', !!u.fly);
+  $('#tgPages').classList.toggle('on', !!u.pages);
+  $('#tgRight').classList.toggle('on', !!u.right);
+  if (u.fly === 'templates' && (!tplBuilt || flyShown !== 'templates')) buildTemplates();
+  flyShown = u.fly;
+  bus.emit('panels');
+}
+let flyShown = null;
+function setPanel(k, v) {
+  const u = uiPrefs();
+  u[k] = v;
+  if (k === 'fly' && v) u.lastFly = v;
+  u.saved = null;
   savePrefs();
-  $$('.tabs [data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  $$('.tab-pane').forEach((p) => p.classList.toggle('on', p.id === 'pane-' + t));
-  if (t === 'templates') buildTemplates();
+  applyPanels();
+}
+function toggleFly(name) { setPanel('fly', uiPrefs().fly === name ? null : name); }
+/** Tab — 열린 패널을 모두 접기 / 다시 펴기 */
+function toggleAllPanels() {
+  const u = uiPrefs();
+  const ae = document.activeElement;
+  if (ae && ae !== document.body && ae.blur) ae.blur(); // 마지막에 누른 버튼에 테두리가 남지 않게
+  if (u.fly || u.right || u.pages) {
+    u.saved = { fly: u.fly, right: u.right, pages: u.pages };
+    u.fly = null; u.right = false; u.pages = false;
+    toast('패널을 모두 접었어요 — Tab 을 한 번 더 누르면 다시 펴져요', 'info', 1600);
+  } else {
+    const s = u.saved || { fly: u.lastFly || 'text', right: true, pages: true };
+    u.fly = s.fly; u.right = s.right; u.pages = s.pages;
+    u.saved = null;
+  }
+  savePrefs();
+  applyPanels();
+}
+function syncTools() {
+  $$('.toolbar [data-tool]').forEach((b) => { const on = b.dataset.tool === state.tool; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+}
+
+/** 접는 묶음 (왼쪽 패널 안 — 텍스트 스타일·도형 종류 등) */
+function foldGroup(key, title, kids, { open = true, hint } = {}) {
+  const fold = uiPrefs().fold;
+  const isOpen = fold['g-' + key] ?? open;
+  const head = h('button', { type: 'button', class: 'grp-h', 'aria-expanded': isOpen ? 'true' : 'false' },
+    h('span', { class: 'chev' }, '▾'), h('span', { class: 'grp-t' }, title), hint ? h('span', { class: 'pane-k' }, hint) : null);
+  const g = h('section', { class: 'grp' + (isOpen ? '' : ' closed') }, head, h('div', { class: 'grp-b' }, kids));
+  head.addEventListener('click', () => {
+    const closed = g.classList.toggle('closed');
+    head.setAttribute('aria-expanded', closed ? 'false' : 'true');
+    fold['g-' + key] = !closed;
+    savePrefs();
+  });
+  return g;
+}
+/** 패널의 글자·도형 견본을 캔버스로 끌어다 놓기 */
+function draggablePreset(btn, k, id) {
+  btn.draggable = true;
+  btn.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('application/x-bb-preset', JSON.stringify({ k, id }));
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+  return btn;
+}
+const TEXT_GROUPS = [
+  { key: 'tx-basic', title: '기본', ids: ['h1', 'h2', 'body'] },
+  { key: 'tx-point', title: '강조 · 가격', ids: ['box', 'line', 'pill', 'price', 'percent', 'stars', 'strike'] },
+  { key: 'tx-style', title: '스타일 · 자막', ids: ['eng', 'hand', 'outline', 'tiktok', 'capcut', 'neon', 'hollow', 'chrome'] },
+];
+const SHAPE_GROUPS = [
+  { key: 'sh-basic', title: '기본 도형', ids: ['rect', 'round', 'pill', 'circle', 'arch', 'divider'] },
+  { key: 'sh-sticker', title: '스티커 · 말풍선', ids: ['burst', 'star', 'heart', 'ticket', 'bubble', 'sparkle', 'flower'] },
+  { key: 'sh-overlay', title: '오버레이 · 블러', ids: ['gradB', 'gradT', 'dim', 'aura', 'leak', 'grain'] },
+  { key: 'sh-deco', title: '손그림 · 무늬', ids: ['arrow', 'scribble', 'squiggle', 'corners', 'film', 'checker', 'stripes', 'barcode'] },
+];
+/** 묶음에 없는 새 견본은 마지막 묶음으로 */
+function grouped(list, groups) {
+  const used = new Set(groups.flatMap((g) => g.ids));
+  return groups.map((g, i) => ({ ...g, items: [...g.ids.map((id) => list.find((x) => x.id === id)).filter(Boolean), ...(i === groups.length - 1 ? list.filter((x) => !used.has(x.id)) : [])] }));
 }
 function presetSample(pr) {
   const p = Object.assign({}, TEXT_DEFAULTS, pr.props);
@@ -248,11 +355,32 @@ function presetSample(pr) {
   }
   return inner;
 }
-function buildAddPane() {
-  const pane = $('#pane-add');
+function buildFlyText() {
+  const pane = $('#fly-text');
   pane.innerHTML = '';
-  pane.append(h('div', { class: 'pane-h' }, '텍스트', h('span', { class: 'pane-k' }, 'T')),
-    h('div', { class: 'tp-grid' }, TEXT_PRESETS.map((pr) => h('button', { type: 'button', class: 'tp tp-' + pr.id, title: `${pr.label} 추가`, onclick: () => act.addText(pr) }, presetSample(pr)))));
+  pane.append(h('p', { class: 'hint fly-hint' }, '누르면 추가 · 캔버스로 끌어다 놓으면 그 자리에 · T 키 = 바로 추가'));
+  for (const g of grouped(TEXT_PRESETS, TEXT_GROUPS)) {
+    pane.append(foldGroup(g.key, g.title, h('div', { class: 'tp-grid' }, g.items.map((pr) => draggablePreset(
+      h('button', { type: 'button', class: 'tp tp-' + pr.id, title: `${pr.label} — 누르면 추가 · 끌어서 원하는 곳에`, onclick: () => act.addText(pr) }, presetSample(pr)), 'text', pr.id)))));
+  }
+  pane.append(foldGroup('tx-font', '브랜드 폰트', [
+    h('button', { type: 'button', class: 'btn btn-ghost btn-sm full', onclick: () => pickFile('.ttf,.otf,.woff,.woff2', true, (files) => addFontFiles(files)) }, '＋ 내 폰트 올리기 (TTF · OTF · WOFF)'),
+    h('p', { class: 'hint' }, '올린 폰트는 이 브라우저에 저장되고, 글꼴 목록 「내 폰트」에 나와요. 파일명이 「이름-Bold」처럼 되어 있으면 굵기도 자동 인식해요.'),
+  ], { open: false }));
+}
+function buildFlyShape() {
+  const pane = $('#fly-shape');
+  pane.innerHTML = '';
+  pane.append(h('p', { class: 'hint fly-hint' }, '누르면 추가 · 끌어다 놓으면 그 자리에 · 도형을 고르고 「글자 넣기」를 누르면 도형 안 가운데에 글자가 들어가요'));
+  for (const g of grouped(SHAPE_PRESETS, SHAPE_GROUPS)) {
+    pane.append(foldGroup(g.key, g.title, h('div', { class: 'sp-grid' }, g.items.map((sp) => draggablePreset(
+      h('button', { type: 'button', class: 'sp', title: `${sp.label} — 누르면 추가 · 끌어서 원하는 곳에`, onclick: () => act.addShape(sp) },
+        h('span', { class: 'sp-i sp-' + sp.id }), h('span', { class: 'sp-l' }, sp.label)), 'shape', sp.id)))));
+  }
+}
+function buildFlyImage() {
+  const pane = $('#fly-image');
+  pane.innerHTML = '';
   const lib = h('div', { class: 'lib' });
   const renderLib = () => {
     lib.innerHTML = '';
@@ -276,22 +404,16 @@ function buildAddPane() {
   bus.on('library', renderLib);
   bus.on('asset-ready', debounce(renderLib, 150));
   bus.on('project', renderLib);
-  pane.append(h('div', { class: 'pane-h' }, '사진', h('span', { class: 'pane-k' }, 'I')),
+  pane.append(
     h('button', { type: 'button', class: 'btn btn-primary btn-sm full', onclick: () => pickFile('image/*', true, (files) => handleImages(files, {})) }, '＋ 사진 올리기 (여러 장 가능)'),
-    h('p', { class: 'hint' }, '캔버스로 바로 끌어다 놓아도 돼요. 여러 장이면 페이지로 나눠 드려요.'),
-    lib);
-  pane.append(h('div', { class: 'pane-h' }, '도형 · 오버레이'),
-    h('div', { class: 'sp-grid' }, SHAPE_PRESETS.map((sp) => h('button', { type: 'button', class: 'sp', title: sp.label, onclick: () => act.addShape(sp) },
-      h('span', { class: 'sp-i sp-' + sp.id }), h('span', { class: 'sp-l' }, sp.label)))));
-  pane.append(h('div', { class: 'pane-h' }, '브랜드 폰트'),
-    h('button', { type: 'button', class: 'btn btn-ghost btn-sm full', onclick: () => pickFile('.ttf,.otf,.woff,.woff2', true, (files) => addFontFiles(files)) }, '＋ 내 폰트 올리기 (TTF · OTF · WOFF)'),
-    h('p', { class: 'hint' }, '올린 폰트는 이 브라우저에 저장되고, 글꼴 목록 「내 폰트」에 나와요. 파일명이 「이름-Bold」처럼 되어 있으면 굵기도 자동 인식해요.'));
+    h('p', { class: 'hint' }, '캔버스로 바로 끌어다 놓아도 돼요. 여러 장이면 페이지로 나눠 드려요.\n올린 사진은 원본 크기·화질 그대로 보관돼요.'),
+    foldGroup('img-lib', '올린 사진', lib));
   renderLib();
 }
 let tplBuilt = false;
 /** 템플릿 갤러리 — 분류 칩 + 보이는 카드만 썸네일 그리기 (템플릿이 많아도 가볍게) */
 function buildTemplates() {
-  const pane = $('#pane-templates');
+  const pane = $('#fly-templates');
   if (tplBuilt) { // 글꼴이 늦게 받아지면 이미 그린 썸네일만 다시
     pane.querySelectorAll('canvas[data-tpl][data-drawn]').forEach((c) => { const t = TEMPLATES.find((x) => x.id === c.dataset.tpl); if (t && t._page) drawThumb(c, t._page, 120); });
     return;
@@ -337,11 +459,23 @@ function buildTemplates() {
     chips, grid);
   drawChips();
   drawGrid();
-  bus.on('fonts', debounce(() => { if (state.prefs.leftTab === 'templates') buildTemplates(); }, 300));
+  bus.on('fonts', debounce(() => { if (uiPrefs().fly === 'templates') buildTemplates(); }, 300));
 }
 function initLeft() {
-  $$('.tabs [data-tab]').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-  buildAddPane();
+  $$('.toolbar [data-fly]').forEach((b) => b.addEventListener('click', () => toggleFly(b.dataset.fly)));
+  $$('.toolbar [data-tool]').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  $('#flyClose').addEventListener('click', () => setPanel('fly', null));
+  $('#tgFly').addEventListener('click', () => toggleFly(uiPrefs().fly || uiPrefs().lastFly || 'text'));
+  $('#tgPages').addEventListener('click', () => setPanel('pages', !uiPrefs().pages));
+  $('#tgRight').addEventListener('click', () => setPanel('right', !uiPrefs().right));
+  $('#pagesToggle').addEventListener('click', () => setPanel('pages', !uiPrefs().pages));
+  bus.on('toggle-right', () => setPanel('right', !uiPrefs().right));
+  bus.on('tool', syncTools);
+  buildFlyText();
+  buildFlyImage();
+  buildFlyShape();
+  syncTools();
+  applyPanels();
 }
 
 /* ---------- 캔버스 바 · 상태 줄 ---------- */
@@ -398,7 +532,7 @@ function renderStatus() {
     }, '🔗 일괄 수정 켜짐 · 끄기'));
   }
   el.append(h('span', { class: 'spacer' }));
-  el.append(h('span', { class: 'st-hint' }, `더블클릭 수정 · Shift 다중선택 · ${MOD} 스냅 끄기 · ? 단축키`));
+  el.append(h('span', { class: 'st-hint' }, `더블클릭 수정 · Shift 다중선택 · Tab 패널 접기 · ? 단축키`));
 }
 
 /* ---------- 미리보기 ---------- */
@@ -441,6 +575,7 @@ function openHelp() {
     ['앞으로 / 뒤로', `${MOD}+] / ${MOD}+[`], ['맨 앞 / 맨 뒤', `${MOD}+Shift+] / [`], ['되돌리기 / 다시', `${MOD}+Z / ${MOD}+Shift+Z`],
     ['UI 시뮬레이션 켜고 끄기', 'U'], ['안전영역 켜고 끄기', 'G'], ['미리보기 (실제처럼)', 'P'], ['페이지 넘기기', 'PageUp / PageDown'],
     ['확대 / 축소 / 화면 맞춤', `${MOD}+ + / ${MOD}+ - / ${MOD}+0`], ['화면 이동', 'Space+드래그 · 휠'], ['지금 페이지 저장', `${MOD}+E`],
+    ['선택 도구', 'V'], ['손 도구 (끌어서 화면 이동)', 'H'], ['패널 모두 접기 / 펴기', 'Tab'], ['왼쪽 패널 접기', 'Esc (선택 없을 때)'],
   ];
   openModal({
     title: '단축키', cls: 'modal-md',
@@ -550,10 +685,13 @@ function onKey(e) {
     if (map[code]) { e.preventDefault(); if (state.sel.length) act.align(map[code]); return; }
   }
   if (k === 'Delete' || k === 'Backspace') { if (state.sel.length) { e.preventDefault(); act.deleteSel(); } return; }
+  if (k === 'Tab' && !m && !e.altKey) { e.preventDefault(); toggleAllPanels(); return; }
   if (k === 'Escape') {
     if (state.cropId) exitCrop();
+    else if (state.tool === 'hand') setTool('select');
     else if (state.sel.length) setSel([]);
     else if (state.pageSel.length) { state.pageSel = []; bus.emit('page-sel'); }
+    else if (uiPrefs().fly) setPanel('fly', null);
     return;
   }
   if (k === 'Enter') {
@@ -575,6 +713,8 @@ function onKey(e) {
   if (m || e.altKey) return;
   if (code === 'KeyT') { e.preventDefault(); act.addText(TEXT_PRESETS[0]); }
   else if (code === 'KeyI') { e.preventDefault(); pickFile('image/*', true, (files) => handleImages(files, {})); }
+  else if (code === 'KeyV') setTool('select');
+  else if (code === 'KeyH') setTool('hand');
   else if (code === 'KeyU') toggleSetting('showUI');
   else if (code === 'KeyG') toggleSetting('showSafe');
   else if (code === 'KeyP') togglePreview(true);
@@ -620,7 +760,14 @@ export function initUI() {
   initKeys();
   $('#addPageBtn').addEventListener('click', () => act.addPage());
   $('#dupPageBtn').addEventListener('click', () => act.duplicatePage());
+  $('#pgPrev').addEventListener('click', () => goPage(-1));
+  $('#pgNext').addEventListener('click', () => goPage(1));
   $('#bulkBtn').addEventListener('click', () => openBulk());
+  // 패널의 글자·도형 견본을 캔버스에 끌어다 놓음
+  bus.on('drop-preset', ({ k, id, at }) => {
+    if (k === 'text') { const pr = TEXT_PRESETS.find((x) => x.id === id); if (pr) act.addText(pr, { at }); }
+    else if (k === 'shape') { const sp = SHAPE_PRESETS.find((x) => x.id === id); if (sp) act.addShape(sp, { at }); }
+  });
   $('#exportAllBtn').addEventListener('click', () => exportPages(state.pageSel.length > 1 ? state.project.pages.filter((p) => state.pageSel.includes(p.id)) : state.project.pages));
   const syncExportAll = () => { $('#exportAllBtn').textContent = state.pageSel.length > 1 ? `고른 ${state.pageSel.length}장 저장` : '전체 저장'; };
   bus.on('page-sel', syncExportAll);

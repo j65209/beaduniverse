@@ -97,13 +97,24 @@ function scrollToCurrent(list) {
 }
 function updateCount() {
   const cnt = document.getElementById('pagesCount');
-  if (cnt) cnt.textContent = `${state.project.pages.length}페이지` + (state.pageSel.length ? ` · ${state.pageSel.length}개 고름` : '');
+  if (cnt) cnt.textContent = state.pageSel.length ? `${state.pageSel.length}개 고름` : '';
+  const now = document.getElementById('pgNow');
+  if (now) {
+    const ps = state.project.pages;
+    now.textContent = `${Math.max(1, ps.findIndex((x) => x.id === state.pageId) + 1)} / ${ps.length}`;
+  }
 }
+
+/** 페이지 목록이 접혀 있으면 썸네일을 그리지 않고, 펼칠 때 한 번에 그린다 */
+const listOpen = () => !!(state.prefs.ui && state.prefs.ui.pages);
+let listDirty = true;
 
 /** 페이지 목록 다시 만들기. full=true 면 썸네일도 전부 새로 그림 (되돌리기·프로젝트 열기) */
 export function renderPages(opts) {
   const list = document.getElementById('pagesList');
   if (!list || !state.project) return;
+  if (!listOpen()) { listDirty = true; updateCount(); return; }
+  if (listDirty) { listDirty = false; opts = { full: true }; }
   const prev = !(opts && opts.full) && shownProj === state.project.id ? new Map(canvases) : null;
   const sx = list.scrollLeft;
   list.innerHTML = '';
@@ -120,6 +131,7 @@ export function renderPages(opts) {
 function markCurrent() {
   const list = document.getElementById('pagesList');
   if (!list || !state.project) return;
+  if (!listOpen()) { updateCount(); return; }
   const ids = state.project.pages.map((p) => p.id);
   const items = [...list.querySelectorAll('.pg')];
   if (shownProj !== state.project.id || items.length !== ids.length || items.some((el, i) => el.dataset.id !== ids[i])) { renderPages(); return; }
@@ -132,6 +144,7 @@ function markCurrent() {
 }
 
 function refreshOne(id) {
+  if (!listOpen()) { listDirty = true; return; }
   const cv = canvases.get(id);
   const pg = state.project.pages.find((x) => x.id === id);
   if (!cv || !pg) return;
@@ -151,7 +164,8 @@ const refreshCurrent = debounce(() => refreshOne(state.pageId), 120);
 const refreshAll = debounce(() => { for (const id of canvases.keys()) refreshOne(id); }, 200);
 
 export function initPages() {
-  bus.on('project', () => { shownProj = null; });
+  bus.on('project', () => { shownProj = null; listDirty = true; });
+  bus.on('panels', () => { if (listOpen() && listDirty) renderPages({ full: true }); });
   bus.on('pages', () => renderPages());
   bus.on('page', markCurrent);
   bus.on('page-sel', markCurrent);

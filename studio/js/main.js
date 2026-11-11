@@ -11,7 +11,11 @@ import { initUI, openProject, saveNow } from './ui.js';
 async function boot() {
   await db.open();
   const prefs = await getMeta('prefs');
+  const uiDefault = state.prefs.ui;
   if (prefs) Object.assign(state.prefs, prefs);
+  // 패널 접기 상태 — 예전 설정에 없던 값은 기본값(전부 접힘)으로
+  state.prefs.ui = Object.assign({}, uiDefault, (prefs && prefs.ui) || {});
+  if (!state.prefs.ui.fold || typeof state.prefs.ui.fold !== 'object') state.prefs.ui.fold = {};
   initEditor();
   initPanels();
   initPages();
