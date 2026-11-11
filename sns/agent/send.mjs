@@ -1,0 +1,111 @@
+// 꿀꿀집 카드뉴스 — 다 만든 카드를 '꿀꿀집 마케팅 회사' 접수 창구로 보낸다 (Node 18+, 의존성 없음)
+//
+//   node send.mjs --dir 카드폴더 --caption caption.txt [--x x.txt] [--platforms instagram,x]
+//                 [--key-file 열쇠파일] [--history 기록.json --used fs:123,os:456] [--dry-run]
+//
+// 받는 곳: Supabase 엣지 함수 sns-tg 의 POST /intake (헤더 x-ggul-agent = 에이전트 열쇠).
+//   접수되면 꿀꿀집 화면의 임시저장(🤖 제작 에이전트)으로 들어가고, 텔레그램이 연결돼 있으면 단톡방에 미리보기가 간다.
+//   여기서는 절대 게시하지 않는다 — 발행은 사람이 텔레그램이나 화면에서 승인할 때만.
+// 열쇠: 꿀꿀집 화면 '🤖 카드뉴스 제작 에이전트 열쇠 → 열쇠 만들기' 로 만든 값을 이 PC 의
+//   %USERPROFILE%\.ggul\agent-key.txt 에 붙여넣어 둔다 (레포 · 채팅에 넣지 않는다).
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const INTAKE = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/intake';
+const MAX_IMAGES = 10;
+const MAX_BYTES = 5 * 1024 * 1024; // X 는 5MB 넘는 사진을 못 올린다 (인스타는 8MB)
+const CAPTION_MAX = 2200;
+const HASHTAG_MAX = 30;
+const X_MAX = 280;
+
+const args = Object.fromEntries(
+  process.argv.slice(2).reduce((a, v, i, all) => (v.startsWith('--') ? [...a, [v.slice(2), all[i + 1]?.startsWith('--') || all[i + 1] === undefined ? '1' : all[i + 1]]] : a), []),
+);
+
+// X 글자 수 — sns · sns-tg 함수와 같은 계산 (한글 · 이모지 2, 링크 23)
+function xWeightedLength(text) {
+  const s = text.normalize('NFC').replace(/https?:\/\/\S+/gi, 'x'.repeat(23));
+  let n = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0);
+    n += c <= 0x10ff || (c >= 0x2000 && c <= 0x200d) || (c >= 0x2010 && c <= 0x201f) || (c >= 0x2032 && c <= 0x2037) ? 1 : 2;
+  }
+  return n;
+}
+
+function fail(msg) { console.error('보내기 실패: ' + msg); process.exit(1); }
+
+async function main() {
+  if (!args.dir || !args.caption) fail('--dir 카드폴더 와 --caption 문구파일 이 필요해요.');
+  const dir = path.resolve(args.dir);
+  const files = fs.readdirSync(dir).filter((f) => /\.jpe?g$/i.test(f)).sort();
+  if (!files.length) fail(`${dir} 에 JPG 가 없어요.`);
+  if (files.length > MAX_IMAGES) fail(`사진은 ${MAX_IMAGES}장까지예요 (지금 ${files.length}장).`);
+  const images = files.map((f) => {
+    const buf = fs.readFileSync(path.join(dir, f));
+    if (buf.length < 1024 || buf.length > MAX_BYTES) fail(`${f} 크기가 이상해요 (1KB~5MB).`);
+    if (!(buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)) fail(`${f} 는 JPG 가 아니에요.`);
+    return 'data:image/jpeg;base64,' + buf.toString('base64');
+  });
+
+  const caption = fs.readFileSync(path.resolve(args.caption), 'utf8').replace(/\r\n/g, '\n').trim();
+  if (!caption) fail('문구가 비어 있어요.');
+  if (caption.length > CAPTION_MAX) fail(`인스타 문구가 ${caption.length}자예요 (${CAPTION_MAX}자까지).`);
+  const tags = (caption.match(/#[^\s#]+/g) ?? []).length;
+  if (tags > HASHTAG_MAX) fail(`해시태그가 ${tags}개예요 (${HASHTAG_MAX}개까지).`);
+  const xText = args.x ? fs.readFileSync(path.resolve(args.x), 'utf8').replace(/\r\n/g, '\n').trim() : '';
+  if (xText && xWeightedLength(xText) > X_MAX) fail(`X 문구가 ${xWeightedLength(xText)}/${X_MAX} 이에요 (한글 2 · 링크 23으로 세요).`);
+  if (/https?:\/\//i.test(xText)) console.error('⚠ X 문구에 링크가 있어요 — 링크 있는 글은 1개에 $0.20 이에요.');
+  const platforms = args.platforms ? String(args.platforms).split(',').map((s) => s.trim()).filter(Boolean) : null;
+
+  const summary = { images: files.length, bytes: images.reduce((n, s) => n + s.length, 0), caption_chars: caption.length, hashtags: tags, x_weighted: xText ? xWeightedLength(xText) : null, platforms: platforms ?? '연결된 곳 전부' };
+  if (args['dry-run']) { console.log(JSON.stringify({ ok: true, dry_run: true, ...summary }, null, 2)); return; }
+
+  const keyFile = path.resolve(args['key-file'] ?? path.join(os.homedir(), '.ggul', 'agent-key.txt'));
+  if (!fs.existsSync(keyFile)) fail(`열쇠 파일이 없어요: ${keyFile} — 꿀꿀집 화면에서 '열쇠 만들기'로 만든 값을 붙여넣어 주세요.`);
+  const key = fs.readFileSync(keyFile, 'utf8').trim();
+  if (key.length < 20 || /\s/.test(key)) fail(`열쇠 파일 내용이 이상해요: ${keyFile} — 열쇠 한 줄만 들어 있어야 해요.`);
+
+  const post = async (payload, ms) => {
+    const res = await fetch(INTAKE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(ms),
+    });
+    return { status: res.status, j: await res.json().catch(() => ({})) };
+  };
+  // 1) 열쇠부터 작은 요청으로 확인 — 사진 11장(빈 값)은 창구가 열쇠 확인 다음에 '10장까지'로 바로 거절해서 아무것도 만들지 않는다.
+  //    (열쇠가 틀리면 401. 큰 본문을 보낸 채로 401 을 받으면 한참 기다리다 503 이 나서 먼저 확인한다)
+  let pre;
+  try { pre = await post({ images: new Array(11).fill(''), caption: '' }, 30_000); } catch (e) { fail(`접수 창구에 연결하지 못했어요 — ${e.message}`); }
+  if (pre.status === 401) fail(`열쇠가 맞지 않아요 (${keyFile}) — 꿀꿀집 화면에서 열쇠를 새로 만들어 붙여넣어 주세요.`);
+  if (pre.status >= 500) fail(`접수 창구 오류 HTTP ${pre.status} — ${pre.j.error ?? '잠시 뒤 다시 해 주세요'}`);
+
+  // 2) 진짜 보내기
+  const body = { images, caption, ...(xText ? { x_text: xText } : {}), ...(platforms ? { platforms } : {}) };
+  let r;
+  try { r = await post(body, 180_000); } catch (e) { fail(`보내는 중 끊겼어요 — ${e.message} (임시저장 목록에 들어갔는지 화면에서 확인해 주세요)`); }
+  const j = r.j;
+  if (r.status !== 200 || !j.ok) fail(`HTTP ${r.status} — ${j.error ?? '응답을 읽지 못했어요'}`);
+
+  // 같은 글을 다음에 또 쓰지 않게 기록 (어미새 글 번호)
+  if (args.history && args.used) {
+    const hp = path.resolve(args.history);
+    let h = { used: [] };
+    try { if (fs.existsSync(hp)) h = JSON.parse(fs.readFileSync(hp, 'utf8')); } catch { h = { used: [] }; }
+    const at = new Date().toISOString();
+    for (const u of String(args.used).split(',').map((s) => s.trim()).filter(Boolean)) {
+      const [board, id] = u.split(':');
+      if (board && id) (h.used ??= []).push({ board, id, at, queue_id: j.id });
+    }
+    h.used = h.used.slice(-500);
+    fs.mkdirSync(path.dirname(hp), { recursive: true });
+    fs.writeFileSync(hp, JSON.stringify(h, null, 1));
+  }
+  console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary }, null, 2));
+}
+
+main().catch((e) => fail(e.message));
