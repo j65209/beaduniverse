@@ -37,6 +37,12 @@
 // 텔레그램 컨펌(함수 sns-tg)은 cron 열쇠(x-ggul-cron)로 /queue(임시저장만) · /queue/publish · /queue/retry 를 부른다.
 //   텔레그램으로 보낸 것(sns_queue.tg)은 올린 뒤 sns-tg /notify 로 결과를 그 메시지에 적는다.
 //
+// 릴스(2026-11-11 승훈 님 "카드뉴스 여러 장을 릴스 영상으로 … 릴스도 업로드되게"):
+//   올릴 곳 'reels' = 인스타 계정으로 올리는 9:16 영상(sns_queue.video_path = sns-media/posts/YYYY-MM/<uuid>.mp4, 제작 에이전트 reel.mjs 가 만듦).
+//   인스타가 영상을 처리하는 데 시간이 걸려서 게시할 때 릴스 컨테이너를 맨 먼저 만들고, 다른 곳을 올린 뒤 잠깐 기다려 끝나 있으면 바로 게시한다.
+//   아직이면 그 행은 'publishing' + reel_container 로 남고 publish-due(5분 cron)가 마무리 → sns-tg /notify {id, event:'reel'}.
+//   POST /sns/test 에 video_path 를 주면(인스타 계정) 릴스도 '올리기 직전'(컨테이너 처리 완료)까지만 시험한다.
+//
 // X(트위터)는 종량제 — 글 1개 $0.015(링크가 있으면 $0.20) · 글 읽기 1개 $0.005 · 사용자 조회 $0.010.
 //   그래서 X 통계는 하루 한 번(cron KST 09:35 차례) 최근 7일 글만, 화면에서는 X 계정 버튼으로 1시간에 한 번만 모은다.
 //   올린 글은 읽지 않고 직접 sns_posts 에 기록. 액세스 토큰은 2시간 → 쓸 때 refresh_token 으로 새로 받는다
@@ -76,6 +82,9 @@ const IG_HASHTAG_MAX = 30;
 const TH_TEXT_MAX = 500;
 const MAX_SCHEDULE_DAYS = 75; // 토큰 만료(60일, 자동 연장) 너머로 너무 멀리 예약하지 않게
 const STALE_PUBLISHING_MS = 15 * 60_000; // '올리는 중'이 이보다 오래 멈춰 있으면 실패로 돌린다(중복 게시 막으려고 자동 재시도는 안 함)
+const REEL_INLINE_BUDGET_MS = 95_000; // 게시 요청 하나가 릴스 처리를 기다리는 한도(요청 시작부터) — 엣지 함수 150초 안에 답하려고
+const REEL_TIMEOUT_MS = 20 * 60_000; // 인스타가 이보다 오래 영상을 처리 중이면 릴스만 실패로
+const REEL_LOCK_MS = 3 * 60_000; // 한 요청이 릴스를 마무리하는 동안 다른 요청(cron)은 손대지 않는다
 
 // X(트위터) — 개발자 콘솔 앱 33626420(네이티브 앱 = 공개 클라이언트 · PKCE). 클라이언트 ID 는 sns_accounts.client_id (화면에서 붙여넣음)
 const XAPI = 'https://api.x.com';
@@ -103,6 +112,7 @@ const sb = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 });
 
 type Platform = 'instagram' | 'threads' | 'x';
+type Target = Platform | 'reels'; // 올릴 곳 — 'reels' 는 인스타 계정으로 올리는 영상
 type Account = {
   id: number;
   platform: Platform;
@@ -119,8 +129,9 @@ type Metrics = Record<string, number>;
 type Device = { id: number; status: string; code: string; label: string | null };
 type QueueRow = {
   id: number;
-  platforms: Platform[];
+  platforms: Target[];
   image_paths: string[];
+  video_path: string | null;
   caption: string | null;
   threads_text: string | null;
   x_text: string | null;
@@ -132,7 +143,9 @@ type QueueRow = {
 
 class ApiError extends Error {}
 
-const label = (p: Platform) => (p === 'threads' ? '스레드' : p === 'x' ? 'X' : '인스타');
+const label = (p: Target) => (p === 'threads' ? '스레드' : p === 'x' ? 'X' : p === 'reels' ? '릴스' : '인스타');
+const accountOf = (t: Target): Platform => (t === 'reels' ? 'instagram' : t); // 릴스는 인스타 계정으로
+const isVideoPath = (p: string) => /^posts\/\d{4}-\d{2}\/[0-9a-f-]{36}\.mp4$/.test(p);
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const isPending = (id: string) => !id || id.startsWith('pending:');
 const publicUrl = (path: string) => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
@@ -292,6 +305,10 @@ async function dryRun(req: Request) {
   if (!acc) return reply(req, 404, { ok: false, error: '등록되지 않은 계정이에요.' });
   if (!acc.access_token) return reply(req, 400, { ok: false, error: '먼저 토큰을 저장해 주세요.' });
   if (acc.platform === 'x' && !(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED); // X 확인은 요금이 들어서
+  const videoPath = String(body?.video_path ?? '');
+  if (videoPath && (acc.platform !== 'instagram' || !isVideoPath(videoPath))) {
+    return reply(req, 400, { ok: false, error: '릴스 시험은 인스타 계정 + 올려 둔 영상(mp4)으로만 돼요.' });
+  }
   if (acc.last_check_at && Date.now() - Date.parse(acc.last_check_at) < TEST_COOLDOWN_MS) {
     return reply(req, 429, { ok: false, error: '시험은 1분에 한 번만 할 수 있어요. 잠시 뒤 다시 눌러 주세요.' });
   }
@@ -304,6 +321,25 @@ async function dryRun(req: Request) {
   try {
     const who = await whoAmI(acc.platform, token);
     step('토큰 확인', true, `@${who.username}${who.type ? ` · ${who.type}` : ''}`);
+
+    // 릴스 시험 — 올려 둔 영상으로 릴스 컨테이너를 만들고 인스타 처리가 끝날 때까지만 (게시 안 함)
+    if (videoPath) {
+      const t0 = Date.now();
+      const container = await startReel(acc, publicUrl(videoPath), '[연결 시험] 릴스 — 실제로 올리지 않음');
+      step('릴스 영상 보내기', true);
+      let code = 'IN_PROGRESS', detail = '';
+      while (Date.now() - t0 < 100_000) {
+        const j = await graph('GET', `${IG}/${IG_VER}/${container}`, token, { fields: 'status_code,status' });
+        code = String(j.status_code ?? 'IN_PROGRESS');
+        detail = String(j.status ?? code);
+        if (code === 'FINISHED' || code === 'ERROR' || code === 'EXPIRED') break;
+        await new Promise((r) => setTimeout(r, 4000));
+      }
+      const ok = code === 'FINISHED', sec = Math.round((Date.now() - t0) / 1000);
+      step('인스타 영상 처리', ok, ok ? `올리기 직전까지 성공 (${sec}초) — 실제 게시는 하지 않았어요` : `${code === 'IN_PROGRESS' ? '100초 안에 안 끝남' : code} · ${detail}`);
+      await sb.from('sns_accounts').update({ last_error: ok ? null : `릴스 시험 실패: ${detail}` }).eq('id', acc.id);
+      return reply(req, 200, { ok, steps, seconds: sec });
+    }
 
     const uid = who.id || acc.platform_user_id;
     const endpoint = acc.platform === 'threads' ? `${TH}/${TH_VER}/${uid}/threads` : `${IG}/${IG_VER}/${uid}/media`;
@@ -733,23 +769,27 @@ async function queueList(req: Request) {
   if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
   const { data, error } = await sb
     .from('sns_queue')
-    .select('id, created_at, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts, last_attempt_at, note, tg, source')
+    .select('id, created_at, platforms, image_paths, video_path, caption, threads_text, x_text, scheduled_at, status, results, attempts, last_attempt_at, note, tg, source')
     .order('scheduled_at', { ascending: false })
     .limit(50);
   if (error) throw error;
-  const items = (data ?? []).map((q: any) => ({ ...q, image_urls: (q.image_paths ?? []).map(publicUrl) }));
+  const items = (data ?? []).map((q: any) => ({ ...q, image_urls: (q.image_paths ?? []).map(publicUrl), video_url: q.video_path ? publicUrl(q.video_path) : null }));
   return reply(req, 200, { ok: true, items });
 }
 
-type PostInput = { platforms: Platform[]; paths: string[]; caption: string; threadsText: string; xText: string };
+type PostInput = { platforms: Target[]; paths: string[]; caption: string; threadsText: string; xText: string; videoPath: string };
 
 // 올릴 내용 검사 — 새로 만들 때 · 임시저장 고칠 때 같이 쓴다
 async function readPostInput(body: any): Promise<{ error: string } | PostInput> {
-  const platforms = [...new Set(((body?.platforms ?? []) as string[]).filter((p) => p === 'instagram' || p === 'threads' || p === 'x'))] as Platform[];
-  if (!platforms.length) return { error: '올릴 곳(인스타·스레드·X)을 골라 주세요.' };
+  const TARGETS = ['instagram', 'threads', 'x', 'reels'];
+  const platforms = [...new Set(((body?.platforms ?? []) as string[]).filter((p) => TARGETS.includes(p)))] as Target[];
+  if (!platforms.length) return { error: '올릴 곳(인스타·스레드·X·릴스)을 골라 주세요.' };
   const paths = ((body?.image_paths ?? []) as string[]).map(String);
   if (paths.length > MAX_IMAGES) return { error: `사진은 ${MAX_IMAGES}장까지예요.` };
   if (paths.some((p) => !isQueuePath(p))) return { error: '사진 경로가 이상해요. 사진을 다시 올려 주세요.' };
+  const videoPath = String(body?.video_path ?? '');
+  if (videoPath && !isVideoPath(videoPath)) return { error: '영상 경로가 이상해요. 영상을 다시 올려 주세요.' };
+  if (platforms.includes('reels') && !videoPath) return { error: '릴스는 영상이 있어야 올릴 수 있어요.' };
   const caption = cleanText(body?.caption, IG_CAPTION_MAX);
   const threadsText = cleanText(body?.threads_text ?? caption, TH_TEXT_MAX);
   if (platforms.includes('instagram') && !paths.length) return { error: '인스타는 사진이 1장 이상 있어야 올릴 수 있어요.' };
@@ -763,9 +803,9 @@ async function readPostInput(body: any): Promise<{ error: string } | PostInput> 
   const xText = givenX || xFit(caption || threadsText);
   if (platforms.includes('x') && !paths.length && !xText) return { error: 'X 에 올릴 글이나 사진이 없어요.' };
   for (const p of platforms) {
-    if (!(await accountFor(p))) return { error: `${label(p)} 계정이 아직 연결되지 않았어요.` };
+    if (!(await accountFor(accountOf(p)))) return { error: `${label(p)} 계정이 아직 연결되지 않았어요.` };
   }
-  return { platforms, paths, caption, threadsText, xText };
+  return { platforms, paths, caption, threadsText, xText, videoPath };
 }
 
 function readWhen(body: any): { error: string } | { when: number } {
@@ -780,9 +820,10 @@ function readWhen(body: any): { error: string } | { when: number } {
 const postFields = (v: PostInput) => ({
   platforms: v.platforms,
   image_paths: v.paths,
-  caption: v.platforms.includes('instagram') ? v.caption : null,
+  caption: v.platforms.includes('instagram') || v.platforms.includes('reels') ? v.caption : null, // 릴스도 인스타 문구
   threads_text: v.platforms.includes('threads') ? v.threadsText : null,
   x_text: v.platforms.includes('x') ? v.xText : null,
+  video_path: v.videoPath || null, // 릴스를 빼도 영상은 남겨 둔다 (다시 넣을 수 있게)
 });
 
 // 등록된 브라우저 또는 내부 요청(sns-tg — 제작 에이전트가 보낸 카드뉴스·텔레그램 버튼)
@@ -828,9 +869,11 @@ async function queueUpdate(req: Request) {
   const body = await req.json().catch(() => ({}));
   const v = await readPostInput(body);
   if ('error' in v) return reply(req, 400, { ok: false, error: v.error });
+  const fields: Record<string, unknown> = postFields(v);
+  if (body?.video_path === undefined) delete fields.video_path; // 영상 칸을 모르는 화면이 고쳐도 영상은 그대로 둔다
   const { data, error } = await sb
     .from('sns_queue')
-    .update({ ...postFields(v), updated_at: new Date().toISOString() })
+    .update({ ...fields, updated_at: new Date().toISOString() })
     .eq('id', Number(body?.id))
     .eq('status', 'draft')
     .select('id')
@@ -934,15 +977,88 @@ async function publishThreads(acc: Account, urls: string[], text: string) {
   return { media_id: String(pub.id), permalink };
 }
 
+// ── 릴스 (영상) ──────────────────────────────────────────────────────────
+// 컨테이너 만들기 — 인스타가 video_url 의 영상을 받아 처리하기 시작한다 (처리는 몇십 초 ~ 몇 분)
+async function startReel(acc: Account, videoUrl: string, caption: string) {
+  const j = await graph('POST', `${IG}/${IG_VER}/${acc.platform_user_id}/media`, acc.access_token!, {
+    media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: 'true', thumb_offset: '0', // 첫 장면(표지 카드)이 썸네일
+  });
+  return String(j.id);
+}
+
+// 처리가 끝나기를 budget 동안 기다렸다가 게시 — 아직 처리 중이면 null (다음 차례에 다시)
+async function finishReel(acc: Account, container: string, budgetMs: number) {
+  const token = acc.access_token!;
+  const until = Date.now() + budgetMs;
+  for (;;) {
+    const j = await graph('GET', `${IG}/${IG_VER}/${container}`, token, { fields: 'status_code,status' });
+    const code = String(j.status_code ?? 'IN_PROGRESS');
+    if (code === 'FINISHED') break;
+    if (code === 'ERROR' || code === 'EXPIRED') return { ok: false, error: `인스타가 영상을 처리하지 못했어요 (${j.status ?? code})`, at: new Date().toISOString() };
+    if (Date.now() + 4000 > until) return null;
+    await new Promise((r) => setTimeout(r, 4000));
+  }
+  const pub = await graph('POST', `${IG}/${IG_VER}/${acc.platform_user_id}/media_publish`, token, { creation_id: container });
+  let permalink: string | null = null;
+  try { permalink = (await graph('GET', `${IG}/${IG_VER}/${pub.id}`, token, { fields: 'permalink' })).permalink ?? null; } catch { /* 링크는 다음 수집 때 */ }
+  return { ok: true, media_id: String(pub.id), permalink, at: new Date().toISOString() };
+}
+
+const finalStatus = (row: { platforms: Target[] }, results: Record<string, any>) => {
+  const oks = row.platforms.filter((p) => results[p]?.ok).length;
+  return oks === row.platforms.length ? 'published' : oks ? 'partial' : 'failed';
+};
+
+// 처리 중이던 릴스 마무리 (publish-due · 5분 cron) — 다른 요청이 같은 행의 릴스를 보고 있으면(잠금 3분) 건너뛴다
+async function settleReel(id: number) {
+  const now = new Date().toISOString();
+  const { data, error } = await sb
+    .from('sns_queue')
+    .update({ reel_lock_at: now })
+    .eq('id', id)
+    .eq('status', 'publishing')
+    .not('reel_container', 'is', null)
+    .or(`reel_lock_at.is.null,reel_lock_at.lt.${new Date(Date.now() - REEL_LOCK_MS).toISOString()}`)
+    .select('id, platforms, results, tg, reel_container, reel_started_at')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const row = data as any;
+  const results: Record<string, any> = { ...(row.results ?? {}) };
+  let fin: Record<string, any> | null = null;
+  let acc: Account | null = null;
+  try {
+    acc = await accountFor('instagram');
+    if (!acc) throw new ApiError('인스타 계정이 연결되어 있지 않아요.');
+    fin = await finishReel(acc, String(row.reel_container), 20_000);
+    if (!fin && Date.now() - Date.parse(row.reel_started_at ?? now) > REEL_TIMEOUT_MS) {
+      fin = { ok: false, error: `인스타가 영상을 ${Math.round(REEL_TIMEOUT_MS / 60_000)}분 넘게 처리하지 못했어요 — 다시 시도해 주세요`, at: new Date().toISOString() };
+    }
+  } catch (e) {
+    fin = { ok: false, error: errMsg(e), at: new Date().toISOString() };
+  }
+  if (!fin) { // 아직 처리 중 — 잠금만 풀고 다음 차례에
+    await sb.from('sns_queue').update({ reel_lock_at: null }).eq('id', id);
+    return 'publishing';
+  }
+  results.reels = fin;
+  const status = finalStatus(row, results);
+  await sb.from('sns_queue').update({ status, results, reel_container: null, reel_lock_at: null }).eq('id', id);
+  if (fin.ok && acc) try { await collectOne(acc); } catch { /* 통계는 다음 수집 때 */ }
+  if (row.tg?.card_id || row.tg?.auto) await notifyTelegram(id, 'reel');
+  return status;
+}
+
 // 한 건 올리기 — 'scheduled' 인 것을 'publishing' 으로 바꾼 쪽만 진행(동시에 두 번 올라가지 않게).
 // 이미 성공한 플랫폼은 건너뛴다(다시 시도 때).
 async function publishOne(id: number) {
+  const startedAt = Date.now();
   const { data: claimed, error } = await sb
     .from('sns_queue')
     .update({ status: 'publishing', last_attempt_at: new Date().toISOString() })
     .eq('id', id)
     .eq('status', 'scheduled')
-    .select('id, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts, tg')
+    .select('id, platforms, image_paths, video_path, caption, threads_text, x_text, scheduled_at, status, results, attempts, tg')
     .maybeSingle();
   if (error) throw error;
   if (!claimed) return { status: 'skipped', results: {} };
@@ -950,8 +1066,26 @@ async function publishOne(id: number) {
   const row = claimed as QueueRow;
   const results: Record<string, any> = { ...(row.results ?? {}) };
   const urls = (row.image_paths ?? []).map(publicUrl);
+
+  // 릴스는 인스타가 영상을 처리하는 동안 다른 곳을 올리려고 맨 먼저 컨테이너만 만들어 둔다
+  let reel: { acc: Account; container: string } | null = null;
+  if (row.platforms.includes('reels') && !results.reels?.ok) {
+    try {
+      const acc = await accountFor('instagram');
+      if (!acc) throw new ApiError('인스타 계정이 연결되어 있지 않아요.');
+      if (!row.video_path) throw new ApiError('릴스 영상이 없어요.');
+      const container = await startReel(acc, publicUrl(row.video_path), row.caption ?? '');
+      reel = { acc, container };
+      results.reels = { ok: false, pending: true, container_id: container, at: new Date().toISOString() };
+      const at = new Date().toISOString(); // 이 요청이 기다리는 동안 cron 이 손대지 않게 잠가 둔다
+      await sb.from('sns_queue').update({ reel_container: container, reel_started_at: at, reel_lock_at: at, results }).eq('id', id);
+    } catch (e) {
+      results.reels = { ok: false, error: errMsg(e), at: new Date().toISOString() };
+    }
+  }
+
   for (const p of row.platforms) {
-    if (results[p]?.ok) continue;
+    if (p === 'reels' || results[p]?.ok) continue;
     try {
       const acc = await accountFor(p);
       if (!acc) throw new ApiError(`${label(p)} 계정이 연결되어 있지 않아요.`);
@@ -968,22 +1102,37 @@ async function publishOne(id: number) {
       results[p] = { ok: false, error: errMsg(e), at: new Date().toISOString() };
     }
   }
-  const oks = row.platforms.filter((p) => results[p]?.ok).length;
-  const status = oks === row.platforms.length ? 'published' : oks ? 'partial' : 'failed';
-  await sb.from('sns_queue').update({ status, results, attempts: (row.attempts ?? 0) + 1 }).eq('id', id);
+
+  // 릴스 마무리 — 이 요청 안에서 기다릴 수 있는 만큼만. 아직이면 'publishing' 으로 두고 publish-due 가 마무리한다
+  let reelPending = false;
+  if (reel) {
+    try {
+      const fin = await finishReel(reel.acc, reel.container, Math.max(5_000, startedAt + REEL_INLINE_BUDGET_MS - Date.now()));
+      if (fin) results.reels = fin;
+      else reelPending = true;
+    } catch (e) {
+      results.reels = { ok: false, error: errMsg(e), at: new Date().toISOString() };
+    }
+  }
+  const status = reelPending ? 'publishing' : finalStatus(row, results);
+  await sb.from('sns_queue').update({
+    status, results, attempts: (row.attempts ?? 0) + 1,
+    ...(reel ? (reelPending ? { reel_lock_at: null } : { reel_container: null, reel_lock_at: null }) : {}),
+  }).eq('id', id);
   if (tgCard?.card_id) await notifyTelegram(id);
-  return { status, results };
+  return { status, results, ...(reelPending ? { reel_pending: true } : {}) };
 }
 
 // 텔레그램 미리보기 메시지에 결과(링크·실패 이유)를 적어 달라고 sns-tg 에 알린다
-async function notifyTelegram(id: number) {
+// event 'reel' = 나중에 끝난 릴스 결과 (바로 올리기 행 tg.auto 도 — sns-tg 가 한 줄로 알린다)
+async function notifyTelegram(id: number, event?: 'reel') {
   try {
     const key = await loadCronKey();
     if (!key) return;
     await fetch(`${SUPABASE_URL}/functions/v1/sns-tg/notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', [CRON_HEADER]: key },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify(event ? { id, event } : { id }),
     });
   } catch (e) {
     console.error('notify telegram', id, errMsg(e));
@@ -991,12 +1140,32 @@ async function notifyTelegram(id: number) {
 }
 
 async function publishDue(req: Request) {
+  const done: { id: number; status: string }[] = [];
+  // 인스타가 처리 중이던 릴스부터 마무리 (끝났으면 게시 · 너무 오래면 릴스만 실패)
+  const { data: reels, error: rerr } = await sb
+    .from('sns_queue')
+    .select('id')
+    .eq('status', 'publishing')
+    .not('reel_container', 'is', null)
+    .order('reel_started_at')
+    .limit(5);
+  if (rerr) throw rerr;
+  for (const q of reels ?? []) {
+    try {
+      const st = await settleReel(Number(q.id));
+      if (st) done.push({ id: Number(q.id), status: st });
+    } catch (e) {
+      console.error('settle-reel', q.id, errMsg(e));
+    }
+  }
   // '올리는 중'에서 멈춘 것(함수가 중간에 끊김)은 실패로 표시만 한다 — 실제로 올라갔을 수 있어 자동 재시도는 하지 않음
+  // (릴스 처리를 기다리는 행은 위에서 따로 마무리하니 뺀다)
   const stale = new Date(Date.now() - STALE_PUBLISHING_MS).toISOString();
   await sb
     .from('sns_queue')
     .update({ status: 'failed', note: '올리는 중에 멈췄어요 — 인스타·스레드에 올라갔는지 확인하고 필요하면 다시 시도하세요' })
     .eq('status', 'publishing')
+    .is('reel_container', null)
     .lt('last_attempt_at', stale);
   const { data, error } = await sb
     .from('sns_queue')
@@ -1006,7 +1175,6 @@ async function publishDue(req: Request) {
     .order('scheduled_at')
     .limit(5);
   if (error) throw error;
-  const done: { id: number; status: string }[] = [];
   for (const q of data ?? []) {
     try {
       const r = await publishOne(Number(q.id));
