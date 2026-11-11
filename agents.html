@@ -566,8 +566,31 @@ const CHARACTERS = [
       {label:'전문 분야', cmd:'전문 분야'},
     ],
   },
+  /* 2026-11-11 — 꿀꿀집 마케팅 회사 카드뉴스 담당. 꿀꿀집은 대표·관리자만 보는 일이라 masterOnly (보기 전용 화면에선 안 보임).
+     예약 작업(이 PC Claude 앱)이라 launchd 상태가 없다 → agentIds 비움 · manual */
+  {
+    id:'ggul', name:'마케터', team:'꿀꿀집', masterOnly:true,
+    hairColor:'#3b2416', cloth:'#f3a39c',
+    agentIds:[], manual:true,
+    taskLabel:'꿀꿀집 카드뉴스 업무', scheduleLabel:'평일 08:30 카드뉴스 · 텔레그램 컨펌 후 업로드',
+    role:'카드뉴스 제작 · 텔레그램 컨펌 · 인스타·X 업로드 담당',
+    knows:[
+      '평일 아침 08:30 세일 정보로 \'오늘의 꿀딜\' 카드뉴스를 만들어 임시저장',
+      '만든 카드뉴스는 텔레그램 단톡방 \'꿀꿀집 카드뉴스\'로 미리보기 — 올리기·예약·버리기는 승훈 님만',
+      '승인되면 인스타 @ggul.ggul.zip · X @ggulggulzip 에 올리고 결과 링크를 같은 메시지에 붙임',
+      '확인 안 된 최저가·역대급 문구와 정보 출처는 쓰지 않음',
+    ],
+    quick:[
+      {label:'업무 보고', cmd:'업무 보고'},
+      {label:'텔레그램 연결', cmd:'텔레그램 연결 확인'},
+      {label:'꿀꿀집 화면', cmd:'꿀꿀집 화면 열어줘'},
+      {label:'전문 분야', cmd:'전문 분야'},
+    ],
+  },
 ];
 const charById = id => CHARACTERS.find(c => c.id === id);
+// 관리자 전용 직원(masterOnly)은 마스터 권한일 때만 책상·인원 수에 나온다
+const visibleChars = () => CHARACTERS.filter(c => !c.masterOnly || isMaster());
 
 /* sixshop admin 인벤토리 페이지 자동화로 저장 (proxy /sx/update-brand-stock) — 옛 식스샵 상점만 된다.
    코페리 · 아페티는 식스샵 프로로 옮겨서 옛 상점에 저장해 봐야 판매 재고가 안 바뀐다 → 저장을 막는다. */
@@ -914,11 +937,11 @@ function deskSvg(c){
 const _TEAM_ORDER = {
   '본부':0,
   '물류팀':1, '재고팀':2, '벤더팀':3, '엠디1팀':2,   // 2026-10-27 엠디팀 4명 → 엠디1팀(미루·노아) · 엠디2팀(자스민·오스카)
-  '매출팀':4, '마케팅팀':4, '엠디2팀':4, '광고팀':5, '플랫폼광고팀':5, '리포트팀':6, '기획팀':7,
+  '매출팀':4, '마케팅팀':4, '엠디2팀':4, '광고팀':5, '플랫폼광고팀':5, '리포트팀':6, '기획팀':7, '꿀꿀집':8,
 };
 function _teamsInOrder(){
   const seen = new Map();
-  CHARACTERS.forEach(c => {
+  visibleChars().forEach(c => {
     const label = displayTeam(c);
     if(!seen.has(label)){
       seen.set(label, {label, members:[], order: _TEAM_ORDER[c.team] ?? 50});
@@ -1011,7 +1034,7 @@ function updateCells(){
   const now = new Date();
   let running = 0;
   const chats = loadChats();
-  CHARACTERS.forEach(c => {
+  visibleChars().forEach(c => {
     const cell = document.querySelector(`.cell[data-id="${c.id}"]`);
     if(!cell) return;
     const status = deriveCharStatus(c, now);
@@ -1045,7 +1068,7 @@ function updateCells(){
     if(status === 'running') running++;
   });
   $('running-n').textContent = running;
-  $('total-n').textContent = CHARACTERS.length;
+  $('total-n').textContent = visibleChars().length;
 }
 
 function updateClock(){
@@ -1246,6 +1269,8 @@ async function handle(c, text){
   if(c.id === 'vendor' && has(t, ['벤더','마진','원가','gccal'])){ await vendorData(c); return; }
   if(c.id === 'logistics' && has(t, ['배송','운송장','주문','콰이디'])){ await kdOrders(c); return; }
   if(c.id === 'planning' && has(t, ['브랜드','리포트','분석','리오더'])){ await brandReport(c); return; }
+  if(c.id === 'ggul' && has(t, ['텔레그램','단톡','컨펌','연결'])){ await ggulTelegram(c); return; }
+  if(c.id === 'ggul' && has(t, ['화면','열어','꿀꿀집'])){ ggulOpen(); return; }
 
   /* 규칙 흐름이 잡지 못한 대화 → 인격 에이전트(Gemini)에게 넘김.
      규칙이 처리하는 안전한 side-effect (재고 저장 등) 는 여기서 안 실행되고,
@@ -1298,6 +1323,35 @@ async function reportStatus(c){
       ? '재확인 결과에서도 멈춤 상태입니다. 서버 PC와 로그를 확인해 주세요.'
       : '재확인 결과 이상 없습니다.';
   });
+}
+
+/* ---- 꿀꿀집 마케터: 텔레그램 컨펌 연결 · 꿀꿀집 화면 ----
+   sns-tg/status 는 비밀값 없는 공개 상태(봇 이름 · 단톡방 · 승인자 · 열쇠 유무)만 준다. */
+const GGUL_TG_STATUS = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/status';
+async function ggulTgStatus(){
+  const r = await fetch(GGUL_TG_STATUS, {cache:'no-store'});
+  if(!r.ok) throw new Error('상태 ' + r.status);
+  return r.json();
+}
+async function ggulTelegram(c){
+  let s;
+  try{ s = await ggulTgStatus(); }
+  catch(e){ say('agent', `텔레그램 연결 상태를 못 읽었어요. 잠시 뒤 다시 물어봐 주세요. (${e.message||e})`, {kind:'err'}); return; }
+  say('agent', [
+    s.bot ? `봇: @${s.bot}` : '봇: 아직 없음 — 꿀꿀집 화면 텔레그램 칸에 봇 토큰을 저장해 주세요',
+    s.linked ? `단톡방: ${s.chat_title || '연결됨'} · 올리기 버튼은 ${s.approver || '승인자'} 님만` : '단톡방: 아직 연결 전',
+    `제작 에이전트 열쇠: ${s.agent_key ? '있음' : '없음'}`,
+  ].join('\n'));
+  await doubleCheck('연결 재확인', async () => {
+    const s2 = await ggulTgStatus();
+    return (s2.bot && s2.linked)
+      ? '재확인 결과 텔레그램 컨펌이 정상 연결돼 있습니다.'
+      : '재확인 결과 아직 연결이 덜 됐습니다. 꿀꿀집 화면 텔레그램 칸을 확인해 주세요.';
+  });
+}
+function ggulOpen(){
+  window.open('./sns/', '_blank', 'noopener');
+  say('agent', '꿀꿀집 마케팅 화면을 새 탭으로 열었어요. 임시저장 · 예약 · 성과는 거기서 볼 수 있어요.');
 }
 
 /* ---- 마케팅: 베스트셀러 ---- */
