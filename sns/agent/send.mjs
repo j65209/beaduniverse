@@ -1,11 +1,15 @@
 // 꿀꿀집 카드뉴스 — 다 만든 카드를 '꿀꿀집 마케팅 회사' 접수 창구로 보낸다 (Node 18+, 의존성 없음)
 //
 //   node send.mjs --dir 카드폴더 --caption caption.txt [--x x.txt] [--platforms instagram,x]
-//                 [--key-file 열쇠파일] [--history 기록.json --used fs:123,os:456] [--dry-run]
+//                 [--links links.json] [--auto] [--key-file 열쇠파일] [--history 기록.json --used fs:123,os:456] [--dry-run]
+//   node send.mjs --publish-only --queue-id 7      (이미 접수된 초안을 지금 발행 — 자동 발행이 실패했을 때)
 //
 // 받는 곳: Supabase 엣지 함수 sns-tg 의 POST /intake (헤더 x-ggul-agent = 에이전트 열쇠).
-//   접수되면 꿀꿀집 화면의 임시저장(🤖 제작 에이전트)으로 들어가고, 텔레그램이 연결돼 있으면 단톡방에 미리보기가 간다.
-//   여기서는 절대 게시하지 않는다 — 발행은 사람이 텔레그램이나 화면에서 승인할 때만.
+//   접수되면 꿀꿀집 화면의 임시저장(🤖 제작 에이전트)으로 들어간다.
+//   --auto 없음: 예전처럼 초안만 — 단톡방에 승인 미리보기가 가고 사람이 승인해야 게시.
+//   --auto 있음 (2026-11-11 사용자 "컨펌 안 받고 바로바로 업로드, 텔레그램은 업로드 완료만"):
+//     접수(미리보기 없이) → 딜 링크 → POST /sns-tg/agent-publish 로 바로 게시. 단톡방에는 받는 쪽이 '업로드 완료'만 보낸다.
+//     게시가 실패하면 초안으로 남는다 (지우지 않음).
 // 열쇠: 꿀꿀집 화면 '🤖 카드뉴스 제작 에이전트 열쇠 → 열쇠 만들기' 로 만든 값을 이 PC 의
 //   %USERPROFILE%\.ggul\agent-key.txt 에 붙여넣어 둔다 (레포 · 채팅에 넣지 않는다).
 
@@ -17,6 +21,8 @@ const INTAKE = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/int
 const CHECK = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/agent-check'; // 열쇠만 확인 (200 ok · 401)
 // 꿀꿀집 링크 모음 페이지(brightbeed.kr/ggulggulzip)에 이번 카드의 딜 링크를 넘기는 곳 — 같은 열쇠, 게시된 뒤에만 페이지에 보임
 const LINKS = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/ggul-links/agent-set';
+// 자동 발행 (2026-11-11 사용자 "컨펌 안 받고 바로바로 업로드") — 받는 쪽 세션이 만드는 경로. 접수 · 링크 다음에 부른다(사이트가 먼저 뜨게)
+const PUBLISH = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/agent-publish';
 const MAX_IMAGES = 10;
 const MAX_BYTES = 5 * 1024 * 1024; // X 는 5MB 넘는 사진을 못 올린다 (인스타는 8MB)
 const CAPTION_MAX = 2200;
@@ -73,7 +79,27 @@ async function sendLinks(key, queueId) {
   } catch (e) { return { ok: false, error: e.message }; }
 }
 
+// 접수된 초안을 바로 게시 — POST /sns-tg/agent-publish {id}. 실패해도 초안은 그대로 남는다
+async function publish(key, id) {
+  try {
+    const res = await fetch(PUBLISH, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key }, body: JSON.stringify({ id }), signal: AbortSignal.timeout(120_000) });
+    const pj = await res.json().catch(() => ({}));
+    if (res.ok && pj.ok) return { ok: true, ...(pj.status ? { status: pj.status } : {}), ...(pj.results ? { results: pj.results } : {}) };
+    return { ok: false, error: `HTTP ${res.status} ${pj.error ?? ''}`.trim(), ...(pj.results ? { results: pj.results } : {}) };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
 async function main() {
+  if (args['publish-only']) { // 이미 접수된 초안(임시저장 번호)을 지금 게시
+    const qid = Number(args['queue-id']);
+    if (!Number.isInteger(qid) || qid <= 0) fail('--publish-only 는 --queue-id 번호 가 필요해요.');
+    const { key, keyFile } = readKey();
+    await checkKey(key, keyFile);
+    const r = await publish(key, qid);
+    console.log(JSON.stringify({ queue_id: qid, published: r }, null, 2));
+    if (!r.ok) process.exitCode = 1;
+    return;
+  }
   if (args['links-only']) { // 이미 보낸 카드(임시저장 번호)의 딜 링크만 보내기 · 다시 보내면 그 묶음을 통째로 바꿈
     const qid = Number(args['queue-id']);
     if (!Number.isInteger(qid) || qid <= 0 || !args.links) fail('--links-only 는 --queue-id 번호 와 --links 파일 이 필요해요.');
@@ -130,7 +156,8 @@ async function main() {
   await checkKey(key, keyFile);
 
   // 2) 진짜 보내기
-  const body = { images, caption, ...(xText ? { x_text: xText } : {}), ...(platforms ? { platforms } : {}) };
+  // --auto: 단톡방 승인 미리보기 없이 접수 → 링크 → 바로 발행
+  const body = { images, caption, ...(xText ? { x_text: xText } : {}), ...(platforms ? { platforms } : {}), ...(args.auto ? { auto: true } : {}) };
   let r;
   try { r = await post(body, 180_000); } catch (e) { fail(`보내는 중 끊겼어요 — ${e.message} (임시저장 목록에 들어갔는지 화면에서 확인해 주세요)`); }
   const j = r.j;
@@ -152,7 +179,13 @@ async function main() {
   }
   const links = await sendLinks(key, j.id);
   if (links && !links.ok) console.error(`⚠ 딜 링크 보내기 실패 (카드는 보냄): ${links.error}`);
-  console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary, ...(links ? { links } : {}) }, null, 2));
+  // 자동 발행 — 링크를 보낸 뒤에 (실패하면 초안으로 남는다)
+  let published = null;
+  if (args.auto) {
+    published = await publish(key, j.id);
+    if (!published.ok) { console.error(`⚠ 자동 발행 실패 (초안 #${j.id} 로 남음): ${published.error}`); process.exitCode = 2; }
+  }
+  console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary, ...(links ? { links } : {}), ...(published ? { published } : {}) }, null, 2));
 }
 
 main().catch((e) => fail(e.message));
