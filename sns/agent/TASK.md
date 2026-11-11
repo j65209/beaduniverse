@@ -38,7 +38,8 @@
 
 - 이미 작업 폴더 안에서 시작한다 — `cd` 하지 않는다.
 - 명령은 `node 스크립트.mjs …` 꼴 그대로만 쓴다 (`"$N"` · 경로 · 따옴표로 감싼 이름 · `cd` · `&&` 없이). 쓸 수 있는 건
-  `node eomisae.mjs` · `node photos.mjs` · `node render.mjs` · `node links.mjs` · `node send.mjs` · `date` 뿐이다.
+  `node eomisae.mjs` · `node photos.mjs` · `node render.mjs` · `node reel.mjs` · `node links.mjs` · `node send.mjs` · `date` 뿐이다.
+  (릴스 영상은 `node reel.mjs --dir cards --out reel.mp4` — 맥은 크롬으로 만든다. 실패하면 --video 없이 보낸다)
   다른 명령 · 웹 열기 · 작업 폴더 밖 파일 쓰기 · 숨김 파일 읽기는 막혀 있다 — 막히면 우회하지 말고 note 에 적는다.
 - 기록 파일은 작업 폴더의 `history.json` → `"$G/history.json"` 대신 `history.json` (실행기가 맥의 기록과 합쳐 둔다).
 - 10(DM 안내): `curl` 대신 작업 폴더의 `dm-status.json` 에 `"ready":true` 가 있을 때만.

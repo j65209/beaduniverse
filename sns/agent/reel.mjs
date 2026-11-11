@@ -306,7 +306,10 @@ async function main() {
   const proc = spawn(findBrowser(), [
     '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--disable-sync', '--mute-audio',
-    '--autoplay-policy=no-user-gesture-required', 'about:blank',
+    '--autoplay-policy=no-user-gesture-required',
+    // 맥미니 무인 실행: 크롬이 키체인 암호 창을 띄우면 아무도 못 눌러 멈춘다 → 가짜 키체인 (render.mjs 와 같게)
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain', '--password-store=basic'] : []),
+    'about:blank',
   ], { stdio: 'ignore', windowsHide: true });
   const cleanup = () => {
     try {
