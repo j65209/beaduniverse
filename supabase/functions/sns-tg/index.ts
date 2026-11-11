@@ -11,6 +11,7 @@
 //   POST /sns-tg/send {id}         임시저장을 단톡방에 미리보기로 보내기 (등록된 브라우저만)
 //   POST /sns-tg/agent-key         카드뉴스 제작 에이전트 열쇠 새로 만들기 — 한 번만 보여 줌 (등록된 브라우저만)
 //   POST /sns-tg/intake            제작 에이전트가 카드뉴스를 보내는 곳 (헤더 x-ggul-agent) → 임시저장 + 미리보기
+//   GET  /sns-tg/agent-check       열쇠만 확인 (헤더 x-ggul-agent) → {ok:true} 또는 401 — 큰 본문을 보내기 전에
 //   POST /sns-tg/notify {id}       sns 함수가 올린 뒤 결과 알림 (헤더 x-ggul-cron = sns_settings.cron_key)
 //   POST /sns-tg/webhook           텔레그램 (헤더 X-Telegram-Bot-Api-Secret-Token)
 // 올리기·예약·다시 시도는 sns 함수(/queue/publish · /queue/retry · /queue)를 cron 열쇠로 불러서 한다 — 검사·게시 코드는 sns 한 곳에만.
@@ -301,8 +302,17 @@ async function loadImage(src: unknown): Promise<Uint8Array> {
   return bytes;
 }
 
+// 열쇠만 확인 — 제작 에이전트가 큰 본문을 보내기 전에 부른다
+async function agentCheck(req: Request) {
+  await req.arrayBuffer().catch(() => {});
+  return (await agentOk(req)) ? reply(req, 200, { ok: true }) : reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+}
+
 async function intake(req: Request) {
-  if (!(await agentOk(req))) return reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  if (!(await agentOk(req))) {
+    await req.arrayBuffer().catch(() => {}); // 큰 본문(사진 base64)을 다 받은 뒤 답해야 연결이 안 끊긴다(안 비우면 503)
+    return reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  }
   const body = await req.json().catch(() => ({}));
   const images = Array.isArray(body?.images) ? body.images : [];
   if (images.length > MAX_IMAGES) return reply(req, 400, { ok: false, error: `사진은 ${MAX_IMAGES}장까지예요.` });
@@ -492,6 +502,7 @@ Deno.serve(async (req) => {
     if (M === 'POST' && route === 'send') return await send(req);
     if (M === 'POST' && route === 'agent-key') return await agentKey(req);
     if (M === 'POST' && route === 'intake') return await intake(req);
+    if ((M === 'GET' || M === 'POST') && route === 'agent-check') return await agentCheck(req);
     if (M === 'POST' && route === 'notify') return await notify(req);
     return reply(req, 404, { ok: false, error: '없는 경로예요.' });
   } catch (e) {
