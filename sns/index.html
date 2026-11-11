@@ -442,7 +442,7 @@
 
   var DEMO = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
   var DAY = 864e5;
-  var PL = { instagram: { name: '인스타', color: 'var(--ig)', wash: 'var(--ig-wash)' }, threads: { name: '스레드', color: 'var(--th)', wash: 'var(--th-wash)' }, x: { name: 'X', color: 'var(--x)', wash: 'var(--x-wash)' } };
+  var PL = { instagram: { name: '인스타', color: 'var(--ig)', wash: 'var(--ig-wash)' }, threads: { name: '스레드', color: 'var(--th)', wash: 'var(--th-wash)' }, x: { name: 'X', color: 'var(--x)', wash: 'var(--x-wash)' }, reels: { name: '릴스', color: 'var(--ig)', wash: 'var(--ig-wash)' } }; // 릴스 = 인스타 계정으로 올리는 영상 (제작 에이전트가 만든 것만, 화면에선 고르지 않음)
   var PLATFORMS = ['instagram', 'threads', 'x'];
   var state = { accounts: [], posts: [], followers: [], period: 30, platform: 'all', sel: null };
   var $ = function (id) { return document.getElementById(id); };
@@ -957,7 +957,7 @@
   var dev = { status: 'none', code: '' }, pendingDevs = [];
   // draftId = 불러와서 고치는 중인 임시저장 · busy = 아직 준비 중(JPG 변환·불러오기)인 사진 수
   // saving = 올리기·임시저장·시험 진행 중 · gen = 화면을 비우거나 다른 글을 불러올 때마다 +1 (늦게 끝난 사진이 섞이지 않게)
-  var comp = { items: [], draftId: null, busy: 0, saving: false, gen: 0 };
+  var comp = { items: [], draftId: null, busy: 0, saving: false, gen: 0, video: null, reels: false }; // video = 불러온 임시저장의 릴스 영상(path) — 고쳐 저장해도 그대로 둔다
   var armed = false, armTimer = null, dryUntil = 0;
   state.queue = []; state.showGone = false;
 
@@ -1055,7 +1055,7 @@
   }
   function fmtLocalInput(d) { var p = function (n) { return String(n).padStart(2, '0'); }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()); }
   function whenNow() { var r = document.querySelector('input[name="when"]:checked'); return !r || r.value === 'now'; }
-  function selectedPlatforms() { var out = []; if ($('pIg').checked && !$('pIg').disabled) out.push('instagram'); if ($('pTh').checked && !$('pTh').disabled) out.push('threads'); if ($('pX').checked && !$('pX').disabled) out.push('x'); return out; }
+  function selectedPlatforms() { var out = []; if ($('pIg').checked && !$('pIg').disabled) out.push('instagram'); if ($('pTh').checked && !$('pTh').disabled) out.push('threads'); if ($('pX').checked && !$('pX').disabled) out.push('x'); if (comp.video && comp.reels && out.indexOf('instagram') >= 0) out.push('reels'); return out; }
   function tagCount(s) { return (s.match(/#[^\s#]+/g) || []).length; }
   function ratioProblem(r) { if (r < 0.79) return '세로가 너무 길어요 (4:5보다 김)'; if (r > 1.92) return '가로가 너무 길어요'; return ''; }
 
@@ -1199,7 +1199,7 @@
   }
 
   function resetComposer() {
-    comp.items.forEach(function (it) { if (it.blob) URL.revokeObjectURL(it.url); }); comp.items = []; comp.draftId = null;
+    comp.items.forEach(function (it) { if (it.blob) URL.revokeObjectURL(it.url); }); comp.items = []; comp.draftId = null; comp.video = null; comp.reels = false;
     comp.gen++; comp.busy = 0;
     $('capIg').value = ''; $('capTh').value = ''; $('capX').value = ''; renderThumbs(); updateComposer(); renderQueue();
   }
@@ -1208,6 +1208,7 @@
     var body = { platforms: plats, image_paths: paths, caption: $('capIg').value };
     if ($('capTh').value.trim()) body.threads_text = $('capTh').value;
     if ($('capX').value.trim()) body.x_text = $('capX').value;
+    if (comp.video) body.video_path = comp.video; // 릴스 영상은 불러온 그대로
     return body;
   }
   function lockComposer() { comp.saving = true; updateComposer(); }
@@ -1225,6 +1226,7 @@
   async function loadDraft(q) {
     resetComposer();
     comp.draftId = q.id;
+    comp.video = q.video_path || null; comp.reels = (q.platforms || []).indexOf('reels') >= 0; // 릴스는 인스타를 켜 둘 때만 같이 올라간다
     var gen = comp.gen, plats = q.platforms || [], paths = q.image_paths || [], urls = q.image_urls || [];
     comp.busy = paths.length; // 사진을 다 불러오기 전에는 저장·올리기를 잠근다 (사진이 빠진 채로 덮어쓰지 않게)
     if (!$('pIg').disabled) $('pIg').checked = plats.indexOf('instagram') >= 0;
@@ -1256,7 +1258,8 @@
       if (r.ok) {
         line.appendChild(document.createTextNode('✓ ' + PL[p].name + ' 게시됨 '));
         if (r.permalink) { var a = el('a', null, '보기 ↗'); a.href = r.permalink; a.target = '_blank'; a.rel = 'noopener'; line.appendChild(a); }
-      } else line.textContent = '✕ ' + PL[p].name + ': ' + r.error;
+      } else if (r.pending) line.textContent = '⏳ ' + PL[p].name + ': 인스타가 영상 처리 중 — 몇 분 안에 올라가요';
+      else line.textContent = '✕ ' + PL[p].name + ': ' + r.error;
       return line;
     });
   }
@@ -1398,7 +1401,7 @@
       var draft = q.status === 'draft', row = el('div', 'qrow');
       var im = el('img'); im.alt = ''; im.loading = 'lazy'; if (q.image_urls && q.image_urls[0]) im.src = q.image_urls[0]; row.appendChild(im);
       var mid = el('div');
-      mid.appendChild(el('div', 'qmeta', (draft ? fmtWhen(q.created_at) + ' 저장' : fmtWhen(q.scheduled_at)) + ' · ' + (q.platforms || []).map(function (p) { return PL[p] ? PL[p].name : p; }).join('·') + ' · 사진 ' + (q.image_paths || []).length + '장'));
+      mid.appendChild(el('div', 'qmeta', (draft ? fmtWhen(q.created_at) + ' 저장' : fmtWhen(q.scheduled_at)) + ' · ' + (q.platforms || []).map(function (p) { return PL[p] ? PL[p].name : p; }).join('·') + ' · 사진 ' + (q.image_paths || []).length + '장' + (q.video_path ? ' + 🎬 영상' : '')));
       mid.appendChild(el('div', 'qcap', (q.caption || q.threads_text || q.x_text || '(문구 없음)').split('\n')[0]));
       var res = el('div', 'qres');
       (q.platforms || []).forEach(function (p) {
@@ -1406,7 +1409,8 @@
         if (r.ok) {
           if (r.permalink) { var a = el('a', null, '✓ ' + PL[p].name + ' 보기 ↗'); a.href = r.permalink; a.target = '_blank'; a.rel = 'noopener'; res.appendChild(a); }
           else res.appendChild(el('span', null, '✓ ' + PL[p].name));
-        } else res.appendChild(el('span', 'bad', '✕ ' + PL[p].name + ': ' + r.error));
+        } else if (r.pending) res.appendChild(el('span', null, '⏳ ' + PL[p].name + ' 처리 중'));
+        else res.appendChild(el('span', 'bad', '✕ ' + PL[p].name + ': ' + r.error));
       });
       if (q.source === 'agent') res.appendChild(el('span', null, '🤖 제작 에이전트'));
       if (q.tg && q.tg.card_id) res.appendChild(el('span', null, '📨 텔레그램 미리보기 보냄'));

@@ -21,8 +21,13 @@
 //   POST /sns-tg/agent-job/finish {id, ok, note?, queue_id?} 긴급 작업 끝 → 단톡방의 그 /긴급 메시지에 결과로 답장
 //   단톡방 명령(연결된 방의 승인자만): /긴급 <지시> (또는 /urgent · @봇 긴급 …) → ggul_agent_jobs 에 넣고 접수 답장 · /긴급 상태 · /긴급 취소
 //   에이전트 열쇠는 두 개까지 받는다: sns_settings.agent_key_hash(이 PC) · agent_key_hash_2(맥서버) — 둘 다 sha256 hex 만 저장
-//   POST /sns-tg/notify {id}       sns 함수가 올린 뒤 결과 알림 (헤더 x-ggul-cron = sns_settings.cron_key)
+//   POST /sns-tg/notify {id, event?} sns 함수가 올린 뒤 결과 알림 (헤더 x-ggul-cron = sns_settings.cron_key)
+//                                  event 'reel' = 나중에 끝난 릴스 — 바로 올리기 행(tg.auto)은 단톡방에 한 줄, 미리보기 행은 그 메시지를 고친다
+//   POST /sns-tg/agent-video       릴스 영상 올리기 (x-ggul-agent, 본문 = MP4 그대로 · 50MB 까지) → {path} — intake 의 video_path 로 넘긴다
 //   POST /sns-tg/webhook           텔레그램 (헤더 X-Telegram-Bot-Api-Secret-Token)
+// 릴스(2026-11-11 승훈 님 "카드뉴스 여러 장을 릴스 영상으로 … 릴스도 업로드되게"): intake 에 video_path 가 있으면 올릴 곳에 'reels' 를 더한다
+//   (platforms 를 안 정했을 때). 인스타가 영상을 처리하는 동안 sns 는 'publishing' + results.reels.pending 으로 답할 수 있다 —
+//   다른 곳이 끝났으면 '업로드 완료'로 보고, 릴스는 sns 가 마무리한 뒤 /notify event 'reel' 로 한 줄 더.
 // 올리기·예약·다시 시도는 sns 함수(/queue/publish · /queue/retry · /queue)를 cron 열쇠로 불러서 한다 — 검사·게시 코드는 sns 한 곳에만.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -37,11 +42,12 @@ const BUCKET = 'sns-media';
 const DAY_MS = 86_400_000;
 const MAX_IMAGES = 10;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 릴스 영상 (sns-media 버킷 한도와 같게)
 const LINK_TTL_MS = 15 * 60_000;
 const JOB_STALE_MS = 90 * 60_000;
 const JOB_STATE: Record<string, string> = { pending: '대기 중', running: '맥서버가 만드는 중', done: '끝남', failed: '실패', canceled: '취소됨' };
-const NAMES: Record<string, string> = { instagram: '인스타', threads: '스레드', x: 'X' };
-const QFIELDS = 'id, status, source, platforms, image_paths, caption, threads_text, x_text, results, tg, scheduled_at, note';
+const NAMES: Record<string, string> = { instagram: '인스타', threads: '스레드', x: 'X', reels: '릴스' };
+const QFIELDS = 'id, status, source, platforms, image_paths, video_path, caption, threads_text, x_text, results, tg, scheduled_at, note';
 const SETTING_KEYS = ['tg_bot_token', 'tg_bot_username', 'tg_webhook_secret', 'tg_chat_id', 'tg_chat_title', 'tg_approver_id', 'tg_approver_name', 'tg_link_code', 'tg_link_expires', 'tg_auto_publish'];
 
 const sb = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -50,7 +56,7 @@ const sb = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 type Settings = Record<string, string | undefined>;
 type Row = {
-  id: number; status: string; source: string | null; platforms: string[]; image_paths: string[]; caption: string | null; threads_text: string | null;
+  id: number; status: string; source: string | null; platforms: string[]; image_paths: string[]; video_path?: string | null; caption: string | null; threads_text: string | null;
   // tg: 미리보기를 보냈으면 {chat_id, card_id, …} · 바로 올리기를 시작했으면 {auto:true, at} (card_id 없음)
   x_text: string | null; results: Record<string, any> | null; tg: { chat_id: string; card_id: number; media_ids?: number[]; auto?: boolean } | null;
   scheduled_at: string | null; note: string | null;
@@ -191,7 +197,7 @@ function nextKst(hour: number) {
 function cardText(row: Row) {
   const plats = row.platforms ?? [];
   const n = (row.image_paths ?? []).length;
-  const out = [`📝 카드뉴스 #${row.id} · ${plats.map((p) => NAMES[p] ?? p).join('·')} · 사진 ${n}장${plats.includes('x') && n > 4 ? ' (X 는 앞 4장)' : ''}`];
+  const out = [`📝 카드뉴스 #${row.id} · ${plats.map((p) => NAMES[p] ?? p).join('·')} · 사진 ${n}장${plats.includes('x') && n > 4 ? ' (X 는 앞 4장)' : ''}${plats.includes('reels') && row.video_path ? ' + 🎬 릴스 영상' : ''}`];
   if (plats.includes('instagram') && row.caption) out.push('', '— 인스타 —', clip(row.caption, 1500));
   if (plats.includes('threads') && row.threads_text && row.threads_text !== (row.caption ?? '').slice(0, 500)) out.push('', '— 스레드 —', clip(row.threads_text, 500));
   if (plats.includes('x') && row.x_text) out.push('', `— X (${xWeightedLength(row.x_text)}/280) —`, row.x_text);
@@ -199,7 +205,9 @@ function cardText(row: Row) {
 }
 function resultLines(row: Row) {
   const r = row.results ?? {};
-  return (row.platforms ?? []).map((p) => (r[p]?.ok ? `✓ ${NAMES[p] ?? p}${r[p].permalink ? ' ' + r[p].permalink : ''}` : `✕ ${NAMES[p] ?? p}: ${r[p]?.error ?? '결과 없음'}`)).join('\n');
+  return (row.platforms ?? []).map((p) => (r[p]?.ok ? `✓ ${NAMES[p] ?? p}${r[p].permalink ? ' ' + r[p].permalink : ''}`
+    : r[p]?.pending ? `⏳ ${NAMES[p] ?? p}: 인스타가 영상 처리 중 — 끝나면 여기 고쳐 드려요`
+    : `✕ ${NAMES[p] ?? p}: ${r[p]?.error ?? '결과 없음'}`)).join('\n');
 }
 const stateText = (row: Row) => ({ draft: '아직 임시저장이에요.', scheduled: '이미 예약됐어요.', publishing: '지금 올리는 중이에요.', published: '이미 올라갔어요.', partial: '일부만 올라갔어요.', failed: '올리지 못한 상태예요.', canceled: '버린 카드뉴스예요.' } as Record<string, string>)[row.status] ?? row.status;
 
@@ -221,6 +229,12 @@ async function sendPreview(row: Row, s: Settings) {
   } else if (urls.length === 1) {
     const m = await tg(token, 'sendPhoto', { chat_id: chatId, photo: urls[0], caption: `카드뉴스 #${row.id}` });
     mediaIds.push(m.message_id);
+  }
+  if ((row.platforms ?? []).includes('reels') && row.video_path) { // 릴스 영상도 같이 (못 보내도 미리보기는 계속)
+    try {
+      const v = await tg(token, 'sendVideo', { chat_id: chatId, video: publicUrl(row.video_path), caption: `릴스 #${row.id}`, supports_streaming: true });
+      mediaIds.push(v.message_id);
+    } catch (e) { console.error('preview video', errMsg(e)); }
   }
   const who = s.tg_approver_name ? `${s.tg_approver_name} 님` : '승인자';
   const card = await tg(token, 'sendMessage', {
@@ -316,6 +330,23 @@ async function loadImage(src: unknown): Promise<Uint8Array> {
   return bytes;
 }
 
+// 릴스 영상 올리기 — 본문 = MP4 그대로 (base64 로 부풀리지 않게 intake 와 따로). 받은 path 를 intake 의 video_path 로
+const isVideoPath = (p: string) => /^posts\/\d{4}-\d{2}\/[0-9a-f-]{36}\.mp4$/.test(p);
+async function agentVideo(req: Request) {
+  if (!(await agentOk(req))) {
+    await req.arrayBuffer().catch(() => {});
+    return reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  }
+  const bytes = new Uint8Array(await req.arrayBuffer());
+  if (bytes.length < 10 * 1024 || bytes.length > MAX_VIDEO_BYTES) return reply(req, 400, { ok: false, error: '영상 크기가 이상해요 (10KB~50MB).' });
+  const isMp4 = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) === 'ftyp';
+  if (!isMp4) return reply(req, 415, { ok: false, error: 'MP4 영상만 받아요.' });
+  const path = `posts/${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.mp4`;
+  const { error } = await sb.storage.from(BUCKET).upload(path, bytes, { contentType: 'video/mp4', upsert: false });
+  if (error) return reply(req, 400, { ok: false, error: `영상을 저장하지 못했어요 — ${errMsg(error)}` });
+  return reply(req, 200, { ok: true, path, url: publicUrl(path), bytes: bytes.length });
+}
+
 // 열쇠만 확인 — 제작 에이전트가 큰 본문을 보내기 전에 부른다
 async function agentCheck(req: Request) {
   await req.arrayBuffer().catch(() => {});
@@ -340,13 +371,21 @@ async function intake(req: Request) {
       paths.push(path);
     }
   } catch (e) { return reply(req, 400, { ok: false, error: errMsg(e) }); }
+  // 릴스 영상 — 먼저 /agent-video 로 올린 path. 저장소에 정말 있는지 확인한다
+  const videoPath = body?.video_path ? String(body.video_path) : '';
+  if (videoPath) {
+    if (!isVideoPath(videoPath)) return reply(req, 400, { ok: false, error: '영상 경로가 이상해요 (/agent-video 가 준 path 를 그대로).' });
+    const head = await fetch(publicUrl(videoPath), { method: 'HEAD' }).catch(() => null);
+    if (!head?.ok) return reply(req, 400, { ok: false, error: '올린 영상을 찾지 못했어요 — /agent-video 로 다시 올려 주세요.' });
+  }
   let platforms: string[] = Array.isArray(body?.platforms) ? body.platforms.map(String) : [];
-  if (!platforms.length) { // 안 정하면 연결된 곳 전부
+  if (!platforms.length) { // 안 정하면 연결된 곳 전부 (+ 영상이 있으면 인스타 계정으로 릴스)
     const { data } = await sb.from('sns_accounts').select('platform, platform_user_id').not('access_token', 'is', null);
     platforms = [...new Set((data ?? []).filter((a: any) => !String(a.platform_user_id ?? '').startsWith('pending:')).map((a: any) => String(a.platform)))];
+    if (videoPath && platforms.includes('instagram')) platforms.push('reels');
   }
   const j = await callSns('/queue', {
-    draft: true, source: 'agent', platforms, image_paths: paths,
+    draft: true, source: 'agent', platforms, image_paths: paths, ...(videoPath ? { video_path: videoPath } : {}),
     caption: body?.caption ?? '', ...(body?.threads_text ? { threads_text: body.threads_text } : {}), ...(body?.x_text ? { x_text: body.x_text } : {}),
   });
   if (!j?.ok) return reply(req, 400, { ok: false, error: j?.error || '임시저장하지 못했어요.' });
@@ -378,16 +417,23 @@ async function cardTitle(row: Row) {
   return { title: clip(String(data?.title ?? '').trim() || first || `카드뉴스 #${row.id}`, 40), site: !!data };
 }
 function resultSummary(plats: string[], res: Record<string, any>) {
-  return Object.fromEntries(plats.map((p) => [p, res[p]?.ok ? { ok: true, permalink: res[p].permalink ?? null } : { ok: false, error: String(res[p]?.error ?? '결과 없음') }]));
+  return Object.fromEntries(plats.map((p) => [p, res[p]?.ok ? { ok: true, permalink: res[p].permalink ?? null }
+    : res[p]?.pending ? { ok: false, pending: true } : { ok: false, error: String(res[p]?.error ?? '결과 없음') }]));
 }
+// 릴스만 인스타가 처리 중이고 나머지는 결과가 나왔는지 (sns 가 'publishing' 으로 답한 경우)
+const reelWaiting = (plats: string[], res: Record<string, any>) =>
+  !!res?.reels?.pending && plats.filter((p) => p !== 'reels').every((p) => res[p]?.ok || res[p]?.error);
 function doneLine(plats: string[], res: Record<string, any>, title: string) {
-  const bad = plats.filter((p) => !res[p]?.ok);
+  const wait = plats.filter((p) => !res[p]?.ok && res[p]?.pending);
+  const bad = plats.filter((p) => !res[p]?.ok && !res[p]?.pending);
   const why = bad.map((p) => {
     const n = NAMES[p] ?? p, e = firstPart(res[p]?.error ?? '결과 없음');
     return e.startsWith(n) ? e : `${n} ${e}`;
   }).join(' · ');
+  const later = wait.length ? ` · 🎬 ${wait.map((p) => NAMES[p] ?? p).join('·')}는 처리 중 — 끝나면 알려 드려요` : '';
   if (bad.length === plats.length) return `❌ 업로드 실패 · ${title} — ${why}`;
-  return `✅ 업로드 완료 · ${title}${bad.length ? ` (못 올림: ${why})` : ''}`;
+  if (bad.length + wait.length === plats.length) return `⏳ 업로드 중 · ${title}${later}${bad.length ? ` (못 올림: ${why})` : ''}`;
+  return `✅ 업로드 완료 · ${title}${bad.length ? ` (못 올림: ${why})` : ''}${later}`;
 }
 
 async function autoPublish(row: Row, s: Settings, quiet: boolean): Promise<Record<string, unknown>> {
@@ -403,7 +449,7 @@ async function autoPublish(row: Row, s: Settings, quiet: boolean): Promise<Recor
     let status = String(j?.status ?? ''), res: Record<string, any> = j?.results ?? {};
     if (!j?.ok || status === 'skipped') { // 시작부터 막혔거나 응답만 못 받음(예약 처리가 먼저 집어 갔거나 늦음) — 지금 상태로 판단
       let cur = await loadRow(row.id);
-      while (cur && (cur.status === 'publishing' || cur.status === 'scheduled') && Date.now() - t0 < 110_000) {
+      while (cur && (cur.status === 'publishing' || cur.status === 'scheduled') && !reelWaiting(plats, cur.results ?? {}) && Date.now() - t0 < 110_000) {
         await new Promise((r) => setTimeout(r, 5000)); // 끝날 때까지 조금 기다린다 (함수 시간 안에서)
         cur = await loadRow(row.id);
       }
@@ -411,9 +457,10 @@ async function autoPublish(row: Row, s: Settings, quiet: boolean): Promise<Recor
       res = cur?.results ?? {};
     }
     const now = new Date().toISOString();
-    if (status === 'published' || status === 'partial') {
+    const reelWait = status === 'publishing' && reelWaiting(plats, res); // 다른 곳은 끝났고 릴스만 처리 중 → sns 가 마무리하며 /notify event 'reel'
+    if (status === 'published' || status === 'partial' || reelWait) {
       line = doneLine(plats, res, title);
-      out = { ok: true, id: row.id, status, results: resultSummary(plats, res) };
+      out = { ok: true, id: row.id, status, results: resultSummary(plats, res), ...(reelWait ? { reel_pending: true } : {}) };
     } else if (status === 'failed') { // 전부 못 올림 → 임시저장으로 되돌려 다시 부를 수 있게
       line = doneLine(plats, res, title);
       await sb.from('sns_queue').update({ status: 'draft', tg: null, note: `바로 올리기 실패 — ${clip(line, 180)}`, updated_at: now }).eq('id', row.id).eq('status', 'failed');
@@ -632,10 +679,21 @@ async function notify(req: Request) {
   if (!(await isInternal(req))) return reply(req, 403, { ok: false });
   const body = await req.json().catch(() => ({}));
   const row = await loadRow(Number(body?.id));
-  const s = await getSettings(['tg_bot_token']);
+  const s = await getSettings(['tg_bot_token', 'tg_chat_id']);
+  // 바로 올리기 행의 릴스가 나중에 끝남 → 단톡방에 한 줄 ('업로드 완료' 줄은 이미 보냈으니)
+  if (body?.event === 'reel' && row?.tg?.auto && !row.tg.card_id) {
+    if (!s.tg_bot_token || !s.tg_chat_id) return reply(req, 200, { ok: true, skipped: true });
+    let title = `카드뉴스 #${row.id}`;
+    try { ({ title } = await cardTitle(row)); } catch { /* 기본 제목 */ }
+    const r = row.results?.reels;
+    const line = r?.ok ? `🎬 릴스도 업로드 완료 · ${title}` : `❌ 릴스 업로드 실패 · ${title} — ${firstPart(r?.error ?? '결과 없음')}`;
+    await tg(s.tg_bot_token, 'sendMessage', { chat_id: s.tg_chat_id, text: line, link_preview_options: { is_disabled: true } });
+    return reply(req, 200, { ok: true, line });
+  }
   if (!row?.tg?.card_id || !s.tg_bot_token) return reply(req, 200, { ok: true, skipped: true });
-  const head = row.status === 'published' ? '✅ 올라갔어요' : row.status === 'partial' ? '⚠ 일부만 올라갔어요' : '✕ 못 올렸어요';
-  const kb = row.status === 'published' ? null : [[btn('🔁 못 올라간 곳 다시 올리기', `rt:${row.id}`)]];
+  const head = row.status === 'published' ? '✅ 올라갔어요' : row.status === 'partial' ? '⚠ 일부만 올라갔어요'
+    : row.status === 'publishing' ? '⏳ 릴스만 처리 중이에요' : '✕ 못 올렸어요';
+  const kb = row.status === 'published' || row.status === 'publishing' ? null : [[btn('🔁 못 올라간 곳 다시 올리기', `rt:${row.id}`)]];
   await editCard(s.tg_bot_token, row.tg.chat_id, row.tg.card_id, `${cardText(row)}\n\n${head}\n${resultLines(row)}`, kb);
   return reply(req, 200, { ok: true });
 }
@@ -789,6 +847,7 @@ Deno.serve(async (req) => {
     if (M === 'POST' && route === 'send') return await send(req);
     if (M === 'POST' && route === 'agent-key') return await agentKey(req);
     if (M === 'POST' && route === 'intake') return await intake(req);
+    if (M === 'POST' && route === 'agent-video') return await agentVideo(req);
     if (M === 'POST' && route === 'agent-publish') return await agentPublish(req);
     if (M === 'POST' && route === 'agent-cancel') return await agentCancel(req);
     if (M === 'POST' && route === 'agent-job/claim') return await jobClaim(req);

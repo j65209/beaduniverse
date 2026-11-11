@@ -1,7 +1,9 @@
 // 꿀꿀집 카드뉴스 — 다 만든 카드를 '꿀꿀집 마케팅 회사' 접수 창구로 보낸다 (Node 18+, 의존성 없음)
 //
 //   node send.mjs --dir 카드폴더 --caption caption.txt [--x x.txt] [--platforms instagram,x]
-//                 [--links links.json] [--auto] [--key-file 열쇠파일] [--history 기록.json --used fs:123,os:456] [--dry-run]
+//                 [--links links.json] [--auto] [--video reel.mp4] [--key-file 열쇠파일] [--history 기록.json --used fs:123,os:456] [--dry-run]
+//   --video: reel.mjs 가 만든 9:16 영상 → 먼저 /sns-tg/agent-video 로 올리고 intake 에 video_path — 받는 쪽이 인스타 릴스로도 올린다
+//     (--platforms 를 안 주면 'reels' 가 저절로 붙는다). 영상 올리기가 실패하면 카드뉴스만 보낸다 (이유는 video.error).
 //   node send.mjs --publish-only --queue-id 7      (이미 접수된 초안을 지금 발행 — 자동 발행이 실패했을 때)
 //
 // 받는 곳: Supabase 엣지 함수 sns-tg 의 POST /intake (헤더 x-ggul-agent = 에이전트 열쇠).
@@ -23,6 +25,9 @@ const CHECK = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/agen
 const LINKS = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/ggul-links/agent-set';
 // 자동 발행 (2026-11-11 사용자 "컨펌 안 받고 바로바로 업로드") — 받는 쪽 세션이 만드는 경로. 접수 · 링크 다음에 부른다(사이트가 먼저 뜨게)
 const PUBLISH = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/agent-publish';
+// 릴스 영상 (2026-11-11 승훈 님 "카드뉴스 여러 장을 릴스 영상으로 … 릴스도 업로드되게") — 본문 = MP4 그대로
+const VIDEO = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/agent-video';
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_IMAGES = 10;
 const MAX_BYTES = 5 * 1024 * 1024; // X 는 5MB 넘는 사진을 못 올린다 (인스타는 8MB)
 const CAPTION_MAX = 2200;
@@ -97,6 +102,7 @@ async function publish(key, id) {
     const keep = {
       ...(pj.status ? { status: pj.status } : {}), ...(pj.results ? { results: pj.results } : {}),
       ...(pj.site !== undefined ? { site: pj.site } : {}), ...(pj.telegram !== undefined ? { telegram: pj.telegram } : {}),
+      ...(pj.reel_pending ? { reel_pending: true } : {}), // 다른 곳은 끝났고 릴스만 인스타가 처리 중 — 받는 쪽이 몇 분 안에 마무리하고 단톡방에 한 줄
     };
     if (res.ok && pj.ok) return { ok: true, ...keep };
     if (pj.pending) return { ok: false, pending: true, ...keep, error: '받는 쪽이 아직 올리는 중이에요 (응답만 늦음) — 다시 부르지 않음' };
@@ -157,8 +163,18 @@ async function main() {
   if (xText && xWeightedLength(xText) > X_MAX) fail(`X 문구가 ${xWeightedLength(xText)}/${X_MAX} 이에요 (한글 2 · 링크 23으로 세요).`);
   if (/https?:\/\//i.test(xText)) console.error('⚠ X 문구에 링크가 있어요 — 링크 있는 글은 1개에 $0.20 이에요.');
   const platforms = args.platforms ? String(args.platforms).split(',').map((s) => s.trim()).filter(Boolean) : null;
+  let video = null; // 릴스 영상 (reel.mjs) — 모양만 먼저 검사
+  if (args.video) {
+    const vf = path.resolve(args.video);
+    if (!fs.existsSync(vf)) fail(`영상 파일이 없어요: ${vf}`);
+    const vb = fs.readFileSync(vf);
+    if (vb.length < 10 * 1024 || vb.length > MAX_VIDEO_BYTES) fail(`영상 크기가 이상해요 (10KB~50MB, 지금 ${(vb.length / 1048576).toFixed(1)}MB).`);
+    if (vb.toString('latin1', 4, 8) !== 'ftyp') fail(`${path.basename(vf)} 는 MP4 가 아니에요.`);
+    video = { file: vf, bytes: vb };
+    if (platforms && !platforms.includes('reels')) console.error("⚠ --platforms 에 reels 가 없어서 영상은 올라가지 않아요.");
+  }
 
-  const summary = { images: files.length, bytes: images.reduce((n, s) => n + s.length, 0), caption_chars: caption.length, hashtags: tags, x_weighted: xText ? xWeightedLength(xText) : null, platforms: platforms ?? '연결된 곳 전부' };
+  const summary = { images: files.length, bytes: images.reduce((n, s) => n + s.length, 0), caption_chars: caption.length, hashtags: tags, x_weighted: xText ? xWeightedLength(xText) : null, platforms: platforms ?? (video ? '연결된 곳 전부 + 릴스' : '연결된 곳 전부'), ...(video ? { video_mb: +(video.bytes.length / 1048576).toFixed(2) } : {}) };
   if (args['dry-run']) { console.log(JSON.stringify({ ok: true, dry_run: true, ...summary }, null, 2)); return; }
 
   const { key, keyFile } = readKey();
@@ -175,9 +191,24 @@ async function main() {
   // 1) 열쇠부터 확인 (GET /sns-tg/agent-check — 아무것도 만들지 않음)
   await checkKey(key, keyFile);
 
-  // 2) 진짜 보내기
+  // 2) 릴스 영상 먼저 올리기 (실패하면 카드뉴스만 — 이유는 결과의 video.error)
+  let videoRes = null;
+  if (video) {
+    try {
+      const res = await fetch(VIDEO, { method: 'POST', headers: { 'Content-Type': 'video/mp4', 'x-ggul-agent': key }, body: video.bytes, signal: AbortSignal.timeout(120_000) });
+      const vj = await res.json().catch(() => ({}));
+      videoRes = res.ok && vj.ok && vj.path ? { ok: true, path: vj.path, mb: +(video.bytes.length / 1048576).toFixed(2) }
+        : { ok: false, error: res.status === 404 ? '받는 쪽에 영상 받는 경로가 아직 없어요 (배포 전)' : `HTTP ${res.status} ${vj.error ?? ''}`.trim() };
+    } catch (e) { videoRes = { ok: false, error: `영상을 올리지 못했어요 — ${e.message}` }; }
+    if (!videoRes.ok) console.error(`⚠ 릴스 영상 올리기 실패 — 카드뉴스만 보내요: ${videoRes.error}`);
+  }
+
+  // 3) 진짜 보내기
   // --auto: 단톡방 승인 미리보기 없이 접수 → 링크 → 바로 발행
-  const body = { images, caption, ...(xText ? { x_text: xText } : {}), ...(platforms ? { platforms } : {}), ...(args.auto ? { auto: true } : {}) };
+  const body = {
+    images, caption, ...(xText ? { x_text: xText } : {}), ...(platforms ? { platforms } : {}), ...(args.auto ? { auto: true } : {}),
+    ...(videoRes?.ok ? { video_path: videoRes.path } : {}),
+  };
   let r;
   try { r = await post(body, 180_000); } catch (e) { fail(`보내는 중 끊겼어요 — ${e.message} (임시저장 목록에 들어갔는지 화면에서 확인해 주세요)`); }
   const j = r.j;
@@ -205,14 +236,16 @@ async function main() {
   if (args.auto) {
     published = await publish(key, j.id);
     // 종료 코드: 0 = 게시됨(일부 포함) · 승인 미리보기로 감 / 2 = 초안으로 남음 / 3 = 결과 모름(올리는 중) — 2 · 3 모두 다시 보내지 않는다
-    if (published.ok && published.status === 'partial') {
-      const miss = Object.entries(published.results ?? {}).filter(([, v]) => v && !v.ok).map(([k, v]) => `${k}: ${v.error ?? '실패'}`);
+    const miss = Object.entries(published.results ?? {}).filter(([, v]) => v && !v.ok && !v.pending).map(([k, v]) => `${k}: ${v.error ?? '실패'}`);
+    if (published.ok && published.reel_pending) {
+      console.error(`🎬 #${j.id}: 릴스는 인스타가 영상 처리 중 — 몇 분 안에 올라가고 단톡방에 한 줄 알려요${miss.length ? ` (못 올린 곳: ${miss.join(' / ')})` : ''}`);
+    } else if (published.ok && published.status === 'partial') {
       console.error(`⚠ 일부만 게시됨 (#${j.id}) — ${miss.join(' / ') || '못 올린 곳 있음'}`);
     } else if (published.mode === 'confirm') console.error(`⚠ #${j.id}: ${published.error}`);
     else if (published.pending || published.unknown || published.already) { console.error(`⚠ #${j.id}: ${published.error}`); process.exitCode = 3; }
     else if (!published.ok) { console.error(`⚠ 자동 발행 실패 (초안 #${j.id} 로 남음): ${published.error}`); process.exitCode = 2; }
   }
-  console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary, ...(links ? { links } : {}), ...(published ? { published } : {}) }, null, 2));
+  console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary, ...(videoRes ? { video: videoRes } : {}), ...(links ? { links } : {}), ...(published ? { published } : {}) }, null, 2));
 }
 
 main().catch((e) => fail(e.message));

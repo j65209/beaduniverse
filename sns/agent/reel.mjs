@@ -36,7 +36,7 @@ const OPT = {
   top: 300, // 카드 위쪽 (위 220px 쯤은 릴스 화면 제목이 덮는다)
   bitrate: Math.round(num(args.mbps, 6, 2, 20) * 1_000_000),
 };
-const MAX_BYTES = 100 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024; // 받는 쪽(sns-media 버킷 · agent-video) 한도
 
 const dir = path.resolve(args.dir);
 const outFile = path.resolve(args.out);

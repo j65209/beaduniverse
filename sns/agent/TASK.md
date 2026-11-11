@@ -24,7 +24,7 @@
    14일 지난 실행 폴더는 지운다: `find "$G/runs" -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec rm -rf {} +`
    이 폴더와 `$G` 말고는 파일을 만들지 않는다.
 4. 최신 스크립트 받기:
-   `for f in GUIDE.md eomisae.mjs photos.mjs links.mjs template.html render.mjs send.mjs; do curl -fsSL "https://raw.githubusercontent.com/j65209/beaduniverse/main/sns/agent/$f" -o "$W/$f" || exit 1; done`
+   `for f in GUIDE.md eomisae.mjs photos.mjs links.mjs template.html render.mjs reel.mjs send.mjs; do curl -fsSL "https://raw.githubusercontent.com/j65209/beaduniverse/main/sns/agent/$f" -o "$W/$f" || exit 1; done`
 5. 열쇠 확인: `cd "$W" && "$N" send.mjs --check-key` — 실패하면(파일 없음 · 틀린 열쇠) 아무것도 만들지 말고 그 안내를 그대로 보고하고 끝낸다.
    열쇠 값은 읽거나 출력하지 않는다.
 6. `"$W/GUIDE.md"` 를 끝까지 읽는다.
@@ -46,11 +46,16 @@
 12. `"$N" render.mjs --data cards.json --out cards --ph ph` — `cards` 는 올릴 카드, `ph` 는 카드에 보이는 제품 사진만 따로(링크 모음 사진용, 카드 폴더에 섞지 않는다).
 13. **보내기 전 마지막 점검** (GUIDE 같은 이름 절, 하나도 빼지 않는다): `cards` 폴더의 JPG 를 Read 로 모두 열어 글자 잘림 · 오타 · 가격 · 할인율 · 판매처 · 사진(그 상품인지) ·
     끝난 딜 · 출처 표기를 확인한다. 걸리는 딜은 빼고 `cards.json` · 문구를 고쳐 12부터. 3개가 안 남으면 보내지 않고 끝낸다.
-    `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --dry-run` 으로 검사까지 통과해야 14로 간다.
+    점검을 통과하면 릴스 영상: `"$N" reel.mjs --dir cards --out reel.mp4` — 카드를 9:16(1080×1920) 영상으로 (약 30초, 2026-11-11 승훈 님 "릴스도 업로드되게").
+    실패하면 영상 없이(--video 빼고) 진행하고 이유만 보고한다. 카드를 고쳐 12부터 다시 했으면 영상도 다시 만든다.
+    `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --video reel.mp4 --dry-run` 으로 검사까지 통과해야 14로 간다 (영상이 없으면 --video 빼고).
 14. 딜 링크: `"$N" links.mjs --cards cards.json --deals deals.json --photos photos.json --ph ph --out links.json` (GUIDE '딜 링크' — 카드에 넣은 제품 사진도 같이 간다).
-    `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --links links.json --auto --history "$G/history.json" --used <카드에 쓴 board:id 쉼표로>`
+    `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --video reel.mp4 --links links.json --auto --history "$G/history.json" --used <카드에 쓴 board:id 쉼표로>`
+    (영상이 없으면 --video 빼고. 영상은 받는 쪽이 인스타 릴스로 따로 올린다 — 캐러셀 + 릴스 둘 다)
     — 접수(미리보기 없이) → 링크 모음 페이지 → 바로 게시(최대 200초 기다림). 한 번만 부른다.
     - 게시됨: `published.status` 'published' = 전부, 'partial' = 일부(못 올린 곳과 이유를 보고 — 예: X 크레딧 없음).
+    - `published.reel_pending:true`: 캐러셀 · X 는 끝났고 릴스만 인스타가 영상 처리 중 — 받는 쪽이 몇 분 안에 마무리하고 단톡방에 한 줄 보낸다. 다시 부르지 말고 그대로 보고.
+    - `video.ok:false`: 릴스 영상만 못 올림(카드뉴스는 그대로) — 이유만 보고.
     - `published.mode:'confirm'`: 받는 쪽 자동 게시가 꺼져 있어 단톡방 승인 미리보기로 갔다 — 그대로 보고.
     - 링크만 실패: 게시는 그대로, 이유만 보고.
     - 게시 실패(종료 코드 2): 초안으로 남는다. 다시 보내지 말고 "초안 #번호 로 남음 + 이유"를 보고.
@@ -68,7 +73,7 @@
 
 ## 보고
 
-- 성공: 번호(id), 게시 결과(published — 인스타 · X 각각), 넣은 딜(상품 · 가격 · 판매처 · 사진: 판매처/캡처 자름/없음), DM 안내 넣었는지,
+- 성공: 번호(id), 게시 결과(published — 인스타 · X · 릴스 각각, 릴스가 처리 중이면 '처리 중'), 릴스 영상(초 · MB, 못 만들었으면 이유), 넣은 딜(상품 · 가격 · 판매처 · 사진: 판매처/캡처 자름/없음), DM 안내 넣었는지,
   링크 모음(보낸 링크 수 · 사진 붙은 수 · page_url, 빠진 딜과 이유, 사진 경고), 뺀 후보와 이유 한 줄씩.
 - 실패: 어느 단계에서 왜 (게시 실패면 남은 초안 번호).
 
