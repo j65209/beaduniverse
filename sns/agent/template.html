@@ -81,8 +81,13 @@
   .was b{color:var(--ink)}
   .was em{font-style:normal;color:var(--hot);font-weight:900}
   /* 제품 사진 (판매처 대표 이미지) — 있으면 딜 카드 위쪽에 */
-  .photo{height:360px;background:#fff;border:3px solid var(--ink);border-radius:36px;box-shadow:10px 10px 0 var(--ink);margin-bottom:30px;display:grid;place-items:center;overflow:hidden;padding:22px}
+  .photo{position:relative;height:360px;background:#fff;border:3px solid var(--ink);border-radius:36px;box-shadow:10px 10px 0 var(--ink);margin-bottom:30px;overflow:hidden}
+  .photo .ph{position:absolute;inset:18px;display:grid;place-items:center;overflow:hidden;border-radius:20px}
   .photo img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  .photo img.cropped{position:absolute;max-width:none;max-height:none}
+  /* 딜마다 재치 있는 한 줄 제목 (친근한 말투, 2026-11-11 사용자 예시) */
+  .hook{font-size:40px;font-weight:900;color:var(--hot);letter-spacing:-1px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:200px}
+  .has-photo .hook{font-size:36px;margin-bottom:6px;padding-right:0}
   .has-photo .dname{font-size:84px;max-height:189px;margin-bottom:24px;letter-spacing:-3px}
   .has-photo .dbrand{font-size:36px;margin-bottom:4px}
   .has-photo .pricebox{padding:22px 40px 20px;margin-bottom:24px}
@@ -104,6 +109,8 @@
   .acts{display:flex;gap:22px;margin-bottom:56px}
   .acts div{flex:1;background:var(--paper);border:3px solid var(--ink);border-radius:30px;padding:30px 0;text-align:center;font-size:38px;font-weight:800;box-shadow:7px 7px 0 var(--ink)}
   .acts div span{display:block;font-size:64px;margin-bottom:10px}
+  .cta{background:var(--honey);border:3px solid var(--ink);border-radius:32px;padding:30px 38px;font-size:42px;font-weight:900;line-height:1.32;letter-spacing:-1px;white-space:pre-line;box-shadow:8px 8px 0 var(--ink);margin-bottom:48px;max-height:250px;overflow:hidden}
+  .cta mark{background:linear-gradient(transparent 58%,#fff 58%,#fff 92%,transparent 92%)}
   .handle{align-self:flex-start;background:var(--ink);color:var(--cream);border-radius:999px;padding:16px 36px;font-size:44px;font-weight:800;margin-bottom:30px}
   .warn{font-size:30px;color:var(--sub);line-height:1.5;font-weight:600}
   .bigpig{position:absolute;right:60px;bottom:150px;font-size:230px;line-height:1;transform:rotate(-8deg)}
@@ -135,7 +142,9 @@
   }
   // 아래 줄 — 왼쪽 계정, 오른쪽 짧은 안내 (정보 출처는 넣지 않는다 — 2026-11-11 사용자 결정)
   function foot(d, noHandle, note) {
-    return '<div class="foot"><span><b>' + (noHandle ? '' : esc(d.handle || '@ggul.ggul.zip')) + '</b></span><span>' + esc(note == null ? (d.footNote || '가격 · 재고는 수시로 바뀌어요') : note) + '</span></div>';
+    // 수집 시각이 있으면 '오후 5시 기준 가격이에요' (사용자 요청 2026-11-11 '현재 시각 기준으로')
+    var def = d.footNote || (d.asOfLabel ? d.asOfLabel + ' 가격이에요' : '가격 · 재고는 수시로 바뀌어요');
+    return '<div class="foot"><span><b>' + (noHandle ? '' : esc(d.handle || '@ggul.ggul.zip')) + '</b></span><span>' + esc(note == null ? def : note) + '</span></div>';
   }
   // '20%' 처럼 숫자만 온 할인율은 '20%↓' 로
   var offText = function (s) { s = String(s || '').trim(); return /^\d+(\.\d+)?%$/.test(s) ? s + '↓' : s; };
@@ -165,7 +174,7 @@
     }).join('');
     return '<section class="slide">' + top(0, n) +
       '<div class="kicker">' + esc(c.kicker || '🍯 오늘의 꿀딜') + '</div>' +
-      '<div class="date">' + esc(d.dateLabel || '') + '</div>' +
+      '<div class="date">' + esc(d.dateLabel || '') + (d.asOfLabel ? ' · ' + esc(d.asOfLabel) : '') + '</div>' +
       '<h1 class="ctitle" data-fit="70">' + rich(c.title || '') + '</h1>' +
       (c.sub ? '<p class="csub">' + esc(c.sub) + '</p>' : '') +
       '<div class="clist">' + rows + '</div>' +
@@ -187,7 +196,10 @@
       (x.flag ? '<div class="flag" data-fit="26">' + esc(x.flag) + '</div>' : '') +
       '<div class="dhead"><span class="num">' + String(k + 1).padStart(2, '0') + '</span><span class="cat">' + esc((x.emoji ? x.emoji + ' ' : '') + (x.category || '')) + '</span></div>' +
       '<div class="dbody">' +
-      (x.image ? '<div class="photo"><img alt="" src="' + esc(x.image) + '"></div>' : '') +
+      (x.image ? '<div class="photo"><div class="ph"><img alt="" src="' + esc(x.image) + '"' +
+        (Array.isArray(x.imageCrop) && x.imageCrop.length === 4 ? ' data-crop="' + x.imageCrop.map(Number).join(',') + '"' : '') +
+        ' onload="window.applyCrop && window.applyCrop(this)"></div></div>' : '') +
+      (x.hook ? '<div class="hook">' + esc(x.hook) + '</div>' : '') +
       // 브랜드가 상품 이름과 같으면(만석닭강정 같은) 한 번만
       (x.brand && x.brand.replace(/\s/g, '') !== plain(x.name).replace(/\s/g, '') ? '<div class="dbrand">' + esc(x.brand) + '</div>' : '') +
       '<h2 class="dname" data-fit="56">' + rich(x.name || '') + '</h2>' +
@@ -198,6 +210,23 @@
       (x.tip ? '<div class="tip"><span class="pig">🐷</span><p>' + rich(x.tip) + '</p></div>' : '') +
       '</div>' + foot(d) + '</section>';
   }
+
+  // 판매처 화면 캡처에서 상품 사진 부분만 보여 주기 — imageCrop = [왼, 위, 오른, 아래] (0~1 비율)
+  window.applyCrop = function (img) {
+    var c = (img.getAttribute('data-crop') || '').split(',').map(Number);
+    var box = img.parentNode;
+    if (c.length !== 4 || c.some(isNaN) || !img.naturalWidth || !box.clientWidth) return;
+    var W = img.naturalWidth, H = img.naturalHeight, bw = box.clientWidth, bh = box.clientHeight;
+    var cw = Math.max(1, (c[2] - c[0]) * W), ch = Math.max(1, (c[3] - c[1]) * H);
+    var s = Math.min(bw / cw, bh / ch);
+    img.classList.add('cropped');
+    img.style.width = W * s + 'px'; img.style.height = H * s + 'px';
+    img.style.left = (bw - cw * s) / 2 - c[0] * W * s + 'px';
+    img.style.top = (bh - ch * s) / 2 - c[1] * H * s + 'px';
+    // 자른 범위 밖(앱 버튼 · 가격표)이 옆으로 보이지 않게 가린다
+    img.style.clipPath = 'inset(' + c[1] * H * s + 'px ' + (1 - c[2]) * W * s + 'px ' + (1 - c[3]) * H * s + 'px ' + c[0] * W * s + 'px)';
+  };
+  window.applyCrops = function () { document.querySelectorAll('img[data-crop]').forEach(function (im) { if (im.complete) window.applyCrop(im); }); };
 
   // 딜 카드에 글이 많아 아래가 넘치면 상품명 → 한마디 → 가격 글자 순으로 줄이고, 그래도 넘치면 덧붙인 정보 줄을 뺀다
   function squeeze(slide) {
@@ -221,11 +250,14 @@
       if (ps > 96) { price.style.fontSize = (ps - 8) + 'px'; continue; }
       var rows = slide.querySelectorAll('.info div');
       if (rows.length > 1) { rows[rows.length - 1].remove(); continue; }
-      // 사진 카드는 한마디를 빼고, 그래도 넘치면 사진 칸을 낮춘다
-      var tipBox = slide.querySelector('.tip');
-      if (tipBox && slide.querySelector('.photo')) { tipBox.remove(); tip = null; continue; }
+      // 사진 카드: 한마디 빼기 → 사진 칸 300px 까지 낮추기 → 한 줄 제목 빼기 → 사진 칸 240px 까지
       var ph = slide.querySelector('.photo');
-      if (ph && ph.offsetHeight > 260) { ph.style.height = (ph.offsetHeight - 20) + 'px'; continue; }
+      var tipBox = slide.querySelector('.tip');
+      if (tipBox && ph) { tipBox.remove(); tip = null; continue; }
+      if (ph && ph.offsetHeight > 300) { ph.style.height = (ph.offsetHeight - 20) + 'px'; continue; }
+      var hookEl = slide.querySelector('.has-photo .hook');
+      if (hookEl) { hookEl.remove(); continue; }
+      if (ph && ph.offsetHeight > 240) { ph.style.height = (ph.offsetHeight - 20) + 'px'; continue; }
       break;
     }
   }
@@ -235,9 +267,11 @@
     return '<section class="slide">' + top(n - 1, n) +
       '<h2 class="otitle">' + rich(o.title || '오늘의 꿀딜은\n여기까지!') + '</h2>' +
       '<p class="osub">' + esc(o.sub || '매일 아침 세일 정보를 모아 드려요') + '</p>' +
-      '<div class="acts"><div><span>🔖</span>저장</div><div><span>💌</span>공유</div><div><span>🐷</span>팔로우</div></div>' +
+      // 댓글 → 링크 DM 이 실제로 될 때만(cta 를 줄 때만) 저장 · 공유 · 팔로우 자리에 안내 상자
+      (d.cta ? '<div class="cta">' + rich(d.cta) + '</div>'
+        : '<div class="acts"><div><span>🔖</span>저장</div><div><span>💌</span>공유</div><div><span>🐷</span>팔로우</div></div>') +
       '<div class="handle">' + esc(d.handle || '@ggul.ggul.zip') + '</div>' +
-      '<p class="warn">가격 · 재고 · 쿠폰은 수시로 바뀌어요.<br>구매 전에 판매처에서 꼭 확인하세요!</p>' +
+      '<p class="warn">' + (d.asOfLabel ? esc(d.asOfLabel) + ' 가격이에요. ' : '') + '가격 · 재고 · 쿠폰은 수시로 바뀌어요.<br>구매 전에 판매처에서 꼭 확인하세요!</p>' +
       '<div class="bigpig">🐷</div>' +
       foot(d, true, '') + '</section>';
   }

@@ -29,6 +29,14 @@ if (data) {
     if (d.image && !/^(https?|file|data):/i.test(d.image)) d.image = pathToFileURL(path.resolve(base, d.image)).href;
   }
 }
+// 수집 시각(asOf = deals.json 의 collected_at) → '오후 5시 2분 기준' (한국 시각) — 카드 날짜 줄 · 아래 줄에 쓴다
+if (data?.asOf && !data.asOfLabel) {
+  const t = Date.parse(data.asOf);
+  if (Number.isFinite(t)) {
+    const k = new Date(t + 9 * 3_600_000), h = k.getUTCHours(), m = k.getUTCMinutes();
+    data.asOfLabel = `${h < 12 ? '오전' : '오후'} ${((h + 11) % 12) + 1}시${m ? ` ${m}분` : ''} 기준`;
+  }
+}
 // 날짜 칸을 비워 두면 오늘(한국 시각)로 — 요일을 손으로 쓰다 틀리지 않게
 if (data && !data.dateLabel) {
   const k = new Date(Date.now() + 9 * 3_600_000);
@@ -136,7 +144,8 @@ async function main() {
         window.only(${i});
         await document.fonts.ready;
         const imgs = [...document.querySelectorAll('.slide')[${i}].querySelectorAll('img')];
-        await Promise.all(imgs.map((im) => im.complete ? null : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 15000); })));
+        await Promise.all(imgs.map((im) => im.complete ? null : new Promise((r) => { im.addEventListener('load', r); im.addEventListener('error', r); setTimeout(r, 15000); })));
+        if (window.applyCrops) window.applyCrops(); // 숨겨져 있을 때 뜬 사진은 자르기가 안 돼서 보일 때 다시
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         return imgs.filter((im) => !im.naturalWidth).length;
       })()`);
