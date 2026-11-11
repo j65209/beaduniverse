@@ -15,7 +15,8 @@
 // 표(서버 전용): sns_comment_dms(댓글마다 한 줄 · 실패 이유) · sns_dm_media(게시물별 본 댓글 수)
 // 설정(sns_settings): dm_enabled('on'|'off') · dm_text · dm_since · dm_link_base · dm_link_post('?s={id}') · dm_state(JSON)
 //
-//   GET  /sns-dm/status        공개 — {enabled, ready} (제작 에이전트가 '댓글 남기면 링크 자동 전달' 안내를 넣을지 정할 때)
+//   GET  /sns-dm/status        공개 — {enabled, ready, reason} (제작 에이전트가 '댓글 남기면 링크 자동 전달' 안내를 넣을지 정할 때)
+//                              ready = 켜짐 + 댓글 · 메시지 권한 + 15분 안 정상 실행 + 실제 DM 1건 이상 성공 + 최근 3건 연속 실패 아님
 //   POST /sns-dm/tick          pg_cron (헤더 x-ggul-cron = sns_settings.cron_key) — 새 댓글 → DM
 //   GET  /sns-dm/admin         등록된 브라우저 (헤더 x-ggul-device) — 설정 · 상태 · 보낸 기록
 //   POST /sns-dm/settings      등록된 브라우저 — {enabled?: boolean, text?: string}
@@ -36,6 +37,7 @@ const MIN = 60_000;
 const DAY_MS = 86_400_000;
 const REPLY_WINDOW_MS = 7 * DAY_MS - 10 * MIN; // 인스타 비공개 답장은 댓글 뒤 7일 안
 const MEDIA_LIMIT = 25; // 최근 게시물 몇 개의 댓글 수를 볼지
+const FAIL_STREAK_MAX = 3; // 최근 DM 이 이만큼 연달아 실패하면 ready 를 내린다 (카드에 안내를 넣지 않게)
 const MAX_MEDIA_PER_TICK = 6;
 const MAX_DMS_PER_TICK = 20;
 const COMMENT_PAGES = 4; // 게시물 하나에서 댓글을 몇 쪽(50개씩)까지 읽을지
@@ -245,12 +247,13 @@ function linkFor(s: Settings, queueId: number | null) {
   return base + post;
 }
 
-// 링크 모음 사이트 쪽 표에서 그 게시물 딜의 기준 시각 — 표가 아직 없거나 칸이 다르면 조용히 비운다
+// 링크 모음 사이트 쪽 표에서 그 게시물 딜의 기준 시각 — 공개 중(active)인 묶음만 (꺼진 묶음이면 페이지가 전체 모음을 보여 줘서
+// DM 에 그 묶음 시각을 쓰면 어긋난다). 표가 없거나 칸이 다르면 조용히 비운다
 async function asOfFor(queueIds: number[]): Promise<Map<number, string>> {
   const out = new Map<number, string>();
   if (!queueIds.length) return out;
   try {
-    const { data, error } = await sb.from('ggul_sets').select('queue_id, as_of').in('queue_id', queueIds);
+    const { data, error } = await sb.from('ggul_sets').select('queue_id, as_of').in('queue_id', queueIds).eq('active', true);
     if (error) return out;
     for (const r of data ?? []) if ((r as any).as_of) out.set(Number((r as any).queue_id), String((r as any).as_of));
   } catch { /* 없음 */ }
@@ -301,12 +304,30 @@ async function checkPerm(acc: IgAccount): Promise<PermState> {
 }
 const permGood = (p: PermState | null | undefined) => !!p && p.messages === 'ok' && p.comments !== 'error';
 
-function readyOf(s: Settings, st: State) {
+type Health = { sentEver: boolean; failing: boolean };
+
+// 실제로 DM 이 나가는지 — 권한이 있어도 개발 모드 · 계정 제한으로 막힐 수 있어서,
+// 한 번도 안 나갔거나 최근 3건이 모두 실패면 카드에 안내를 넣지 않는다 (읽기 오류도 '안 됨' 쪽으로)
+async function dmHealth(): Promise<Health> {
+  const { data: last } = await sb.from('sns_comment_dms').select('status').in('status', ['sent', 'failed'])
+    .order('id', { ascending: false }).limit(FAIL_STREAK_MAX);
+  const recent = (last ?? []).map((x: any) => String(x.status));
+  let sentEver = recent.includes('sent');
+  if (!sentEver) {
+    const { count } = await sb.from('sns_comment_dms').select('id', { count: 'exact', head: true }).eq('status', 'sent');
+    sentEver = (count ?? 0) > 0;
+  }
+  return { sentEver, failing: recent.length >= FAIL_STREAK_MAX && recent.every((x) => x === 'failed') };
+}
+
+function readyOf(s: Settings, st: State, h: Health) {
   if (s.dm_enabled !== 'on') return { ready: false, reason: 'off' };
   if (!st.perm || st.perm.comments !== 'ok' || st.perm.messages !== 'ok') return { ready: false, reason: 'permission' };
   if (st.fatal) return { ready: false, reason: 'error' };
   const okAt = Date.parse(st.last_ok_at ?? '');
   if (!Number.isFinite(okAt) || Date.now() - okAt > 15 * MIN) return { ready: false, reason: 'stale' };
+  if (h.failing) return { ready: false, reason: 'failing' };
+  if (!h.sentEver) return { ready: false, reason: 'unverified' };
   return { ready: true, reason: 'ok' };
 }
 
@@ -451,7 +472,7 @@ async function tick(req: Request) {
 
 async function status(req: Request) {
   const s = await getSettings(DM_KEYS);
-  const r = readyOf(s, parseState(s.dm_state));
+  const r = readyOf(s, parseState(s.dm_state), await dmHealth());
   return reply(req, 200, { ok: true, enabled: s.dm_enabled === 'on', ready: r.ready, reason: r.reason });
 }
 
@@ -472,7 +493,7 @@ async function admin(req: Request) {
   const { data: posts } = await sb.from('sns_posts').select('media_id, permalink').eq('platform', 'instagram');
   const links = new Map((posts ?? []).map((p: any) => [String(p.media_id), p.permalink]));
   const latest = Math.max(0, ...(await queueByMedia()).values()); // 가장 최근에 올라간 글 번호 (링크 예시용)
-  const r = readyOf(s, st);
+  const r = readyOf(s, st, await dmHealth());
   return reply(req, 200, {
     ok: true,
     enabled: s.dm_enabled === 'on',
