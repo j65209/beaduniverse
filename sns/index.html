@@ -776,7 +776,7 @@
       var dleft = a.token_expires_at ? Math.floor((Date.parse(a.token_expires_at) - Date.now()) / DAY) : null;
       // X 토큰은 2시간짜리라 날짜 대신 '자동 연장'
       var pill = !a.has_token ? el('span', 'pill warn', '⚠ ' + (a.platform === 'threads' ? '프로필·토큰 필요' : isX ? '연결 필요' : '토큰 필요'))
-        : isX ? el('span', 'pill ok', '✓ 연결됨 · 자동 연장')
+        : isX ? (a.verified === false ? el('span', 'pill warn', '⚠ 허용됨 · 계정 확인 대기') : el('span', 'pill ok', '✓ 연결됨 · 자동 연장'))
         : dleft != null && dleft < 0 ? el('span', 'pill bad', '✕ 토큰 만료')
         : el('span', 'pill ok', '✓ 연결됨 · ' + kst(a.token_expires_at, { month: 'numeric', day: 'numeric' }) + '까지');
       head.appendChild(pill); card.appendChild(head);
@@ -799,7 +799,15 @@
     $('tokSave').disabled = DEMO;
   }
 
-  // X 연결 — 클라이언트 ID(공개 값)를 붙여넣고 'X 연결' → X 허용 화면 → 이 화면으로 돌아온다 (?x=ok|err)
+  // X 개발자 콘솔에서 넘겨준 클라이언트 ID(공개 값, 주소 #xcid=…) — 칸에 채워 두기만 하고 연결은 버튼을 눌러야 시작
+  var xcidFromHash = (function () {
+    var m = /(?:^#|&)xcid=([^&]+)/.exec(location.hash || ''), v = '';
+    try { v = m ? decodeURIComponent(m[1]) : ''; } catch (e) { v = ''; }
+    if (m) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* noop */ } }
+    return /^[A-Za-z0-9_\-+/=]{20,45}$/.test(v) ? v : '';
+  })();
+
+  // X 연결 — 클라이언트 ID(공개 값)를 붙여넣고 'X 연결' → X 허용 화면 → 이 화면으로 돌아온다 (?x=ok|pending|err)
   function xConnectInto(card, a) {
     var wrap = el('div', 'xconn'), needId = !a.has_client;
     var input = el('input'); input.type = 'text'; input.autocomplete = 'off'; input.spellcheck = false; input.setAttribute('aria-label', 'X 클라이언트 ID');
@@ -808,9 +816,11 @@
     btn.disabled = DEMO || !canPost();
     var hint = el('div', 'small', !canPost() ? '위에서 이 브라우저를 등록하면 연결할 수 있어요.'
       : needId ? '① X 개발자 콘솔 › 앱 › Keys & Tokens › OAuth 2.0 키의 클라이언트 ID 를 복사해 붙여넣고(시크릿 말고) ② X 연결 → X 화면에서 허용'
+      : a.has_token && a.verified === false ? "허용까지 됐어요. X 크레딧을 충전한 뒤 아래 '연결 확인'을 누르면 연결이 끝나요."
       : 'X 연결을 누르면 X 화면에서 허용만 누르면 돼요 (X 에 @' + a.username + ' 으로 로그인돼 있어야 해요).');
+    if (xcidFromHash) { input.value = xcidFromHash; hint.textContent = "X 개발자 콘솔의 클라이언트 ID 를 채워 뒀어요. 'X 연결'을 누르세요."; }
     btn.addEventListener('click', async function () {
-      var id = input.value.trim();
+      var id = input.value.trim(); xcidFromHash = '';
       if (needId && !id) { hint.textContent = '클라이언트 ID 를 먼저 붙여넣어 주세요.'; return; }
       btn.disabled = true; hint.textContent = 'X 허용 화면으로 가는 중…';
       var body = { return_to: location.origin + location.pathname }; if (id) body.client_id = id;
@@ -828,7 +838,9 @@
     var q = new URLSearchParams(location.search), x = q.get('x');
     if (!x) return;
     var b = $('xReturn'); b.hidden = false; b.className = 'banner' + (x === 'ok' ? ' ok' : '');
-    b.textContent = x === 'ok' ? '✓ X 연결됐어요. 이제 카드뉴스 올릴 곳에서 X 를 고를 수 있어요.' : '✕ X 연결이 안 됐어요 — ' + (q.get('m') || '다시 해 주세요.');
+    b.textContent = x === 'ok' ? '✓ X 연결됐어요. 이제 카드뉴스 올릴 곳에서 X 를 고를 수 있어요.'
+      : x === 'pending' ? "⚠ X 허용까지 끝났어요. X 크레딧을 충전한 뒤 계정 연결의 X 칸에서 '연결 확인'을 누르면 연결이 마무리돼요." + (q.get('m') ? ' (' + q.get('m') + ')' : '')
+      : '✕ X 연결이 안 됐어요 — ' + (q.get('m') || '다시 해 주세요.');
     q.delete('x'); q.delete('m'); var rest = q.toString();
     try { history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash); } catch (e) { /* noop */ }
   }
@@ -846,6 +858,7 @@
       var ul = el('ul', 'steps'); j.steps.forEach(function (s) { var li = el('li', null, (s.ok ? '✅ ' : '❌ ') + s.name); if (s.detail) li.appendChild(el('span', 'd', ' — ' + s.detail)); ul.appendChild(li); });
       wrap.appendChild(ul); out.appendChild(wrap);
     } else out.appendChild(el('div', 'msg bad', j.error || '시험하지 못했어요.'));
+    if (a.platform === 'x' && j.ok && a.verified === false) load(); // 계정 확인이 끝나면 '연결됨'으로 바뀐다
     setTimeout(function () { btn.disabled = false; }, 60000);
   }
 
@@ -997,7 +1010,8 @@
     var ig = state.accounts.find(function (a) { return a.platform === 'instagram'; });
     var th = state.accounts.find(function (a) { return a.platform === 'threads'; });
     var xa = state.accounts.find(function (a) { return a.platform === 'x'; });
-    return { ig: !!(ig && ig.has_token), th: !!(th && th.has_token), x: !!(xa && xa.has_token), igId: ig && ig.id };
+    // X 는 크레딧 없이 '허용'만 해 둔 동안(verified=false)은 올릴 수 없다
+    return { ig: !!(ig && ig.has_token), th: !!(th && th.has_token), x: !!(xa && xa.has_token && xa.verified !== false), xPending: !!(xa && xa.has_token && xa.verified === false), igId: ig && ig.id };
   }
   function fmtLocalInput(d) { var p = function (n) { return String(n).padStart(2, '0'); }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()); }
   function whenNow() { var r = document.querySelector('input[name="when"]:checked'); return !r || r.value === 'now'; }
@@ -1010,7 +1024,7 @@
     $('pIg').disabled = !t.ig || !ok; $('igHint').textContent = t.ig ? '' : '(연결 필요)';
     $('pTh').disabled = !t.th || !ok; $('thHint').textContent = t.th ? '' : '(프로필·연결 필요)';
     if (!t.th) $('pTh').checked = false;
-    $('pX').disabled = !t.x || !ok; $('xHint').textContent = !t.x ? '(연결 필요)' : comp.items.length + comp.busy > X_IMG ? '(사진은 앞 ' + X_IMG + '장만)' : '';
+    $('pX').disabled = !t.x || !ok; $('xHint').textContent = !t.x ? (t.xPending ? '(크레딧 충전 후 연결 확인)' : '(연결 필요)') : comp.items.length + comp.busy > X_IMG ? '(사진은 앞 ' + X_IMG + '장만)' : '';
     if (!t.x) $('pX').checked = false;
     $('xField').hidden = !t.x;
     var busy = comp.busy > 0 || comp.saving; // 사진 준비 중이거나 저장 중이면 버튼을 잠근다 (사진이 빠진 채로 저장되지 않게)

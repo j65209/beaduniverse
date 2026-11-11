@@ -33,6 +33,7 @@
 //   POST /sns/x/start             {client_id?, return_to} — X 연결 시작(OAuth 2.0 PKCE · 공개 클라이언트라 시크릿 없음) → {url}
 // X 가 돌려보내는 곳 (state 로 확인 · 10분 · 한 번만):
 //   GET  /sns/x/callback?code&state — 토큰을 받고 @계정이 맞는지 확인한 뒤 화면으로 돌려보냄 (?x=ok | ?x=err&m=…)
+//     크레딧이 없어 계정 확인(users/me)이 막히면 토큰만 '확인 대기'로 두고 ?x=pending — 충전 뒤 '연결 확인'(/test)이 마무리
 //
 // X(트위터)는 종량제 — 글 1개 $0.015(링크가 있으면 $0.20) · 글 읽기 1개 $0.005 · 사용자 조회 $0.010.
 //   그래서 X 통계는 하루 한 번(cron KST 09:35 차례) 최근 7일 글만, 화면에서는 X 계정 버튼으로 1시간에 한 번만 모은다.
@@ -204,13 +205,16 @@ async function accountFor(platform: Platform): Promise<Account | null> {
 }
 
 const PUBLIC_ACCOUNT_FIELDS =
-  'id, platform, username, access_token, client_id, token_expires_at, token_updated_at, last_check_at, last_collect_at, last_error, note, profile, profile_at';
+  'id, platform, username, platform_user_id, access_token, client_id, token_expires_at, token_updated_at, last_check_at, last_collect_at, last_error, note, profile, profile_at';
 
 async function publicAccounts() {
   const { data, error } = await sb.from('sns_accounts').select(PUBLIC_ACCOUNT_FIELDS).order('id');
   if (error) throw error;
   // 토큰 값은 내보내지 않고 있는지만 (X 클라이언트 ID 도 있는지만)
-  return (data ?? []).map(({ access_token, client_id, ...a }) => ({ ...a, has_token: !!access_token, has_client: !!client_id }));
+  // verified = 계정 확인까지 끝남 (X 를 크레딧 없이 허용만 해 둔 동안은 false)
+  return (data ?? []).map(({ access_token, client_id, platform_user_id, ...a }) => ({
+    ...a, has_token: !!access_token, has_client: !!client_id, verified: !isPending(String(platform_user_id ?? '')),
+  }));
 }
 
 async function listAccounts(req: Request) {
@@ -1157,10 +1161,10 @@ async function xCallback(req: Request) {
       .eq('oauth_state', state)
       .maybeSingle()
     : { data: null };
-  const back = (ok: boolean, msg = '') => {
+  const back = (ok: boolean | 'pending', msg = '') => {
     let to: URL;
     try { to = new URL(acc?.oauth_return || X_RETURN_DEFAULT); } catch { to = new URL(X_RETURN_DEFAULT); }
-    to.searchParams.set('x', ok ? 'ok' : 'err');
+    to.searchParams.set('x', ok === 'pending' ? 'pending' : ok ? 'ok' : 'err');
     if (msg) to.searchParams.set('m', msg.slice(0, 300));
     return new Response(null, { status: 302, headers: { Location: to.toString() + '#accounts', 'Cache-Control': 'no-store' } });
   };
@@ -1178,7 +1182,24 @@ async function xCallback(req: Request) {
   try {
     me = (await xApi('GET', '/2/users/me', tok.access_token, { query: { 'user.fields': 'public_metrics,profile_image_url' } }))?.data;
   } catch (e) {
-    return back(false, `X 계정을 확인하지 못했어요 — ${errMsg(e)}`);
+    // 크레딧이 없으면 계정 확인(users/me, $0.010)부터 막힌다 → 토큰만 '확인 대기'로 보관.
+    // platform_user_id 가 pending 인 동안 accountFor 가 이 계정을 안 써서 X 에 올라가지 않고,
+    // 충전 뒤 계정 칸의 '연결 확인'(xCheck)이 @계정을 확인해 연결을 마무리한다(다른 계정이면 토큰을 지움).
+    const reason = errMsg(e);
+    const now = Date.now();
+    const { error } = await sb
+      .from('sns_accounts')
+      .update({
+        access_token: tok.access_token,
+        refresh_token: tok.refresh_token ?? null,
+        token_expires_at: new Date(now + (Number(tok.expires_in) > 0 ? Number(tok.expires_in) : 7200) * 1000).toISOString(),
+        token_updated_at: new Date(now).toISOString(),
+        platform_user_id: `pending:${acc.username}`,
+        last_error: `계정 확인 대기 — X 크레딧을 충전한 뒤 '연결 확인'을 눌러 주세요 (${reason})`,
+      })
+      .eq('id', acc.id);
+    if (error) return back(false, `저장하지 못했어요 — ${error.message}`);
+    return back('pending', reason);
   }
   // 정한 계정(@ggulggulzip)일 때만 저장 — 다른 계정으로 허용하면 막는다
   const same = isPending(acc.platform_user_id)
@@ -1212,9 +1233,28 @@ async function xCheck(acc: Account) {
   try {
     const token = await xAccessToken(acc);
     steps.push({ name: '토큰 확인 (2시간짜리 — 필요하면 새로 받음)', ok: true, detail: '' });
-    const me = (await xApi('GET', '/2/users/me', token, { query: { 'user.fields': 'public_metrics' } }))?.data ?? {};
-    steps.push({ name: 'X 계정 확인', ok: true, detail: `@${me.username ?? acc.username} · 팔로워 ${me.public_metrics?.followers_count ?? '?'} (사용자 조회 1번 = $0.010)` });
-    await sb.from('sns_accounts').update({ last_error: null }).eq('id', acc.id);
+    const me = (await xApi('GET', '/2/users/me', token, { query: { 'user.fields': 'public_metrics,profile_image_url' } }))?.data ?? {};
+    // '확인 대기'(크레딧 없이 허용만 해 둔 것)면 여기서 @계정을 확인해 연결을 마무리한다
+    const pending = isPending(acc.platform_user_id);
+    const same = pending ? String(me.username ?? '').toLowerCase() === String(acc.username).toLowerCase() : String(me.id ?? '') === acc.platform_user_id;
+    if (!same) {
+      await sb.from('sns_accounts').update({
+        access_token: null, refresh_token: null, token_expires_at: null, platform_user_id: `pending:${acc.username}`,
+        last_error: `@${me.username ?? '?'} 계정으로 허용돼 있었어요 — X 에서 @${acc.username} 으로 로그인한 뒤 다시 연결해 주세요.`,
+      }).eq('id', acc.id);
+      steps.push({ name: 'X 계정 확인', ok: false, detail: `@${me.username ?? '?'} — @${acc.username} 이 아니라서 연결을 지웠어요` });
+      return { ok: false, steps };
+    }
+    const pm = me.public_metrics ?? {};
+    await sb.from('sns_accounts').update({
+      last_error: null,
+      ...(pending ? {
+        platform_user_id: String(me.id), username: String(me.username), profile_at: new Date().toISOString(),
+        profile: { name: me.name ?? null, followers_count: pm.followers_count ?? null, media_count: pm.tweet_count ?? null, picture: me.profile_image_url ?? null },
+      } : {}),
+    }).eq('id', acc.id);
+    if (pending) await sb.from('sns_account_stats').insert({ account_id: acc.id, followers: pm.followers_count ?? null, media_count: pm.tweet_count ?? null });
+    steps.push({ name: pending ? 'X 계정 확인 — 연결 마무리' : 'X 계정 확인', ok: true, detail: `@${me.username ?? acc.username} · 팔로워 ${pm.followers_count ?? '?'} (사용자 조회 1번 = $0.010)` });
     return { ok: true, steps };
   } catch (e) {
     steps.push({ name: '오류', ok: false, detail: errMsg(e) });
