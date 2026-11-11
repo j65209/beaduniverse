@@ -9,8 +9,10 @@
 //   POST /ggul-links/save-set        묶음 추가 · 수정 {id?, title, subtitle?, as_of?, active?, sort?} — 등록된 브라우저
 //   POST /ggul-links/save-link       링크 추가 · 수정 {id?, set_id?, slug?, title, url, image_url?, price?, original_price?, label?, note?, sort?, active?}
 //   POST /ggul-links/delete          {type:'set'|'link', id} — 등록된 브라우저
-//   POST /ggul-links/agent-set       제작 에이전트(x-ggul-agent): {queue_id, title?, subtitle?, as_of?, links:[{title, url, price?, original_price?, image_url?, label?, note?}]}
+//   POST /ggul-links/agent-set       제작 에이전트(x-ggul-agent): {queue_id, title?, subtitle?, as_of?, links:[{title, url, price?, original_price?, image_url?, image?, label?, note?}]}
 //                                    → queue_id 묶음을 새로 쓰고(예전 링크는 지움) 짧은 주소를 돌려준다. 그 게시물을 올리기 시작하면 공개된다.
+//                                    image = 카드에 넣은 그 제품 사진(base64 JPG · PNG · WebP, 3MB 이하) → sns-media/links/ 에 올려 image_url 로 씀
+//                                    (사용자 요청 2026-11-11 "카드뉴스에 제품이미지 추가할 때 그때 불러와서 넣어줘")
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -25,6 +27,8 @@ const SLUG_ABC = 'abcdefghjkmnpqrstuvwxyz23456789'; // 헷갈리는 i · l · o 
 const MAX_LINKS_PER_SET = 30;
 // 사용자 요청(2026-11-11 "배포 직전에 먼저 사이트에 올려줘"): sns 가 올리기를 시작하며 status='publishing' 으로 바꾸는 순간 공개
 const LIVE_STATUSES = new Set(['publishing', 'published', 'partial']);
+const IMG_MAX = 3 * 1024 * 1024;
+const BUCKET = 'sns-media'; // 공개 버킷 (카드뉴스 사진과 같은 곳)
 const BOT_RE = /bot|crawl|spider|facebookexternalhit|kakaotalk-scrap|daumoa|yeti|slurp|preview|embedly|whatsapp|telegram|discord|slack|skype|line\/|headless/i;
 const LINK_ADMIN = 'id, set_id, slug, title, url, image_url, price, original_price, label, note, sort, active, clicks, last_click_at, created_at, updated_at';
 const SET_ADMIN = 'id, queue_id, title, subtitle, as_of, active, sort, source, created_at, updated_at';
@@ -252,6 +256,28 @@ async function remove(req: Request, body: any) {
 }
 
 // ── 제작 에이전트 ───────────────────────────────────────────────────────────────
+function sniffImage(b: Uint8Array): { ext: string; type: string } | null {
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { ext: 'jpg', type: 'image/jpeg' };
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { ext: 'png', type: 'image/png' };
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return { ext: 'webp', type: 'image/webp' };
+  return null;
+}
+// 카드에 넣은 제품 사진을 우리 저장소에 올리고 공개 주소를 돌려준다 (판매처 서버에 매달리지 않게)
+async function storeImage(data: unknown): Promise<string> {
+  const s = String(data ?? '').replace(/^data:image\/[\w.+-]+;base64,/, '').replace(/\s/g, '');
+  let bin: string;
+  try { bin = atob(s); } catch { throw new Error('사진 데이터가 base64 가 아니에요.'); }
+  if (bin.length < 512 || bin.length > IMG_MAX) throw new Error('사진 크기가 이상해요 (3MB 이하).');
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const kind = sniffImage(bytes);
+  if (!kind) throw new Error('JPG · PNG · WebP 사진만 받아요.');
+  const path = `links/${new Date().toISOString().slice(0, 7)}/${crypto.randomUUID()}.${kind.ext}`;
+  const { error } = await sb.storage.from(BUCKET).upload(path, bytes, { contentType: kind.type, upsert: false });
+  if (error) throw error;
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path}`;
+}
+
 async function agentSet(req: Request, body: any) {
   const queueId = Number(body?.queue_id);
   if (!(queueId > 0)) return reply(req, 400, { ok: false, error: 'queue_id(임시저장 번호)가 필요해요.' });
@@ -262,6 +288,13 @@ async function agentSet(req: Request, body: any) {
   if (items.length > MAX_LINKS_PER_SET) return reply(req, 400, { ok: false, error: `링크는 ${MAX_LINKS_PER_SET}개까지예요.` });
   let rows: Record<string, unknown>[];
   try { rows = items.map((l: any) => linkRow(l, true)); } catch (e) { return reply(req, 400, { ok: false, error: errMsg(e) }); }
+  // 사진을 같이 보냈으면 우리 저장소에 올려 그 주소를 쓴다. 사진 하나가 잘못돼도 링크는 그대로 저장(경고만).
+  const warnings: string[] = [];
+  for (let i = 0; i < items.length; i++) {
+    if (!items[i]?.image) continue;
+    try { rows[i].image_url = await storeImage(items[i].image); }
+    catch (e) { warnings.push(`${rows[i].title}: 사진을 못 올렸어요 — ${errMsg(e)}`); }
+  }
 
   const now = new Date().toISOString();
   const asOf = body?.as_of && Number.isFinite(Date.parse(body.as_of)) ? new Date(Date.parse(body.as_of)).toISOString() : now;
@@ -274,11 +307,12 @@ async function agentSet(req: Request, body: any) {
   if (de) throw de;
   const withSlugs = [];
   for (let i = 0; i < rows.length; i++) withSlugs.push({ ...rows[i], set_id: set.id, sort: i, slug: await freeSlug() });
-  const { data: saved, error: ie } = await sb.from('ggul_links').insert(withSlugs).select('slug, title');
+  const { data: saved, error: ie } = await sb.from('ggul_links').insert(withSlugs).select('slug, title, image_url');
   if (ie) throw ie;
   return reply(req, 200, {
     ok: true, set_id: set.id, page_url: `${PAGE_URL}?s=${queueId}`,
-    links: (saved ?? []).map((l: any) => ({ title: l.title, slug: l.slug, short_url: PAGE_URL + l.slug })),
+    links: (saved ?? []).map((l: any) => ({ title: l.title, slug: l.slug, short_url: PAGE_URL + l.slug, image: !!l.image_url })),
+    ...(warnings.length ? { warnings } : {}),
     note: '게시물을 올리기 시작하면(publishing) 인스타 · X 보다 먼저 링크 모음 페이지에 보여요.',
   });
 }
