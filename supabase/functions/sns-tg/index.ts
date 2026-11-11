@@ -1,16 +1,21 @@
 // 꿀꿀집 마케팅 회사 / 텔레그램 컨펌 (Supabase 엣지 함수 "sns-tg")
 // 흐름: 카드뉴스(임시저장) → 단톡방에 미리보기(사진 + 문구 + 버튼) → 승인자(승훈 님)만 버튼 →
 //       sns 함수가 인스타·X·스레드에 올림 → sns 가 /notify 로 알려 주면 같은 메시지에 결과(링크·실패 이유)
+// 바로 올리기(2026-11-11~ 승훈 님 요청 "컨펌 안 받고 바로 업로드 · 텔레그램은 업로드 완료만"):
+//       제작 에이전트가 intake{auto:true}(미리보기 없음) → 링크 모음(ggul-links /agent-set) → /agent-publish →
+//       sns 가 올림 → 단톡방에 한 줄(✅ 업로드 완료 / ❌ 업로드 실패). sns_settings.tg_auto_publish 가 'on' 이 아니면 올리지 않고 미리보기(승인)로.
 //
 // 배포: Supabase MCP deploy_edge_function, 프로젝트 ckyjkxbqsyjoqpuqwoce, verify_jwt=false (텔레그램이 부르는 주소라서)
 // 비밀값(봇 토큰·웹훅 비밀·에이전트 열쇠 해시)은 public.sns_settings(서버 전용)에만. 응답·로그로 내보내지 않는다.
 //
-//   GET  /sns-tg/status            봇·단톡방 연결 상태 (비밀값 없음)
+//   GET  /sns-tg/status            봇·단톡방 연결 상태 · 바로 올리기 켜짐(auto) (비밀값 없음)
 //   POST /sns-tg/setup {token}     봇 토큰 저장 + 웹훅 연결 (등록된 브라우저만 · 토큰은 화면에서 승훈 님이 붙여넣음)
 //   POST /sns-tg/link-code         단톡방 연결 코드(15분) — 단톡방에서 /link@봇 코드 를 보낸 사람이 승인자가 된다 (등록된 브라우저만)
 //   POST /sns-tg/send {id}         임시저장을 단톡방에 미리보기로 보내기 (등록된 브라우저만)
 //   POST /sns-tg/agent-key         카드뉴스 제작 에이전트 열쇠 새로 만들기 — 한 번만 보여 줌 (등록된 브라우저만)
-//   POST /sns-tg/intake            제작 에이전트가 카드뉴스를 보내는 곳 (헤더 x-ggul-agent) → 임시저장 + 미리보기
+//   POST /sns-tg/intake            제작 에이전트가 카드뉴스를 보내는 곳 (헤더 x-ggul-agent) → 임시저장 + 미리보기 (auto:true 면 미리보기 없이 임시저장만)
+//   POST /sns-tg/agent-publish {id} 에이전트 임시저장을 컨펌 없이 바로 올리기 (x-ggul-agent · 시험은 x-ggul-cron + quiet) → 단톡방에 한 줄
+//   POST /sns-tg/agent-cancel {id, reason?} 에이전트 임시저장 버리기 (x-ggul-agent 또는 x-ggul-cron) → 미리보기가 있으면 버튼 끄고 '버렸어요'
 //   GET  /sns-tg/agent-check       열쇠만 확인 (헤더 x-ggul-agent) → {ok:true} 또는 401 — 큰 본문을 보내기 전에
 //   POST /sns-tg/notify {id}       sns 함수가 올린 뒤 결과 알림 (헤더 x-ggul-cron = sns_settings.cron_key)
 //   POST /sns-tg/webhook           텔레그램 (헤더 X-Telegram-Bot-Api-Secret-Token)
@@ -30,8 +35,8 @@ const MAX_IMAGES = 10;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const LINK_TTL_MS = 15 * 60_000;
 const NAMES: Record<string, string> = { instagram: '인스타', threads: '스레드', x: 'X' };
-const QFIELDS = 'id, status, platforms, image_paths, caption, threads_text, x_text, results, tg, scheduled_at, note';
-const SETTING_KEYS = ['tg_bot_token', 'tg_bot_username', 'tg_webhook_secret', 'tg_chat_id', 'tg_chat_title', 'tg_approver_id', 'tg_approver_name', 'tg_link_code', 'tg_link_expires'];
+const QFIELDS = 'id, status, source, platforms, image_paths, caption, threads_text, x_text, results, tg, scheduled_at, note';
+const SETTING_KEYS = ['tg_bot_token', 'tg_bot_username', 'tg_webhook_secret', 'tg_chat_id', 'tg_chat_title', 'tg_approver_id', 'tg_approver_name', 'tg_link_code', 'tg_link_expires', 'tg_auto_publish'];
 
 const sb = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -39,8 +44,9 @@ const sb = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 type Settings = Record<string, string | undefined>;
 type Row = {
-  id: number; status: string; platforms: string[]; image_paths: string[]; caption: string | null; threads_text: string | null;
-  x_text: string | null; results: Record<string, any> | null; tg: { chat_id: string; card_id: number; media_ids?: number[] } | null;
+  id: number; status: string; source: string | null; platforms: string[]; image_paths: string[]; caption: string | null; threads_text: string | null;
+  // tg: 미리보기를 보냈으면 {chat_id, card_id, …} · 바로 올리기를 시작했으면 {auto:true, at} (card_id 없음)
+  x_text: string | null; results: Record<string, any> | null; tg: { chat_id: string; card_id: number; media_ids?: number[]; auto?: boolean } | null;
   scheduled_at: string | null; note: string | null;
 };
 
@@ -223,8 +229,8 @@ async function sendPreview(row: Row, s: Settings) {
 // ── 화면에서 부르는 곳 ─────────────────────────────────────────────────────
 
 async function status(req: Request) {
-  const s = await getSettings(['tg_bot_username', 'tg_chat_id', 'tg_chat_title', 'tg_approver_name', 'agent_key_hash']);
-  return reply(req, 200, { ok: true, bot: s.tg_bot_username ?? null, linked: !!s.tg_chat_id, chat_title: s.tg_chat_title ?? null, approver: s.tg_approver_name ?? null, agent_key: !!s.agent_key_hash });
+  const s = await getSettings(['tg_bot_username', 'tg_chat_id', 'tg_chat_title', 'tg_approver_name', 'agent_key_hash', 'tg_auto_publish']);
+  return reply(req, 200, { ok: true, bot: s.tg_bot_username ?? null, linked: !!s.tg_chat_id, chat_title: s.tg_chat_title ?? null, approver: s.tg_approver_name ?? null, agent_key: !!s.agent_key_hash, auto: s.tg_auto_publish === 'on' });
 }
 
 async function setup(req: Request) {
@@ -281,8 +287,9 @@ async function agentKey(req: Request) {
 }
 
 // ── 제작 에이전트가 보내는 곳 ───────────────────────────────────────────────
-// 본문: { images: ['https://… .jpg' 또는 base64 JPEG], caption, threads_text?, x_text?, platforms? }
+// 본문: { images: ['https://… .jpg' 또는 base64 JPEG], caption, threads_text?, x_text?, platforms?, auto? }
 // → 사진을 sns-media 에 올리고 sns 의 /queue(draft) 로 임시저장(검사·X 길이 맞추기는 sns 가) → 단톡방 미리보기
+//   auto:true 면 미리보기 없이 임시저장만 — 링크 모음을 올린 뒤 /agent-publish 로 올린다
 
 async function loadImage(src: unknown): Promise<Uint8Array> {
   const s = String(src ?? '');
@@ -336,6 +343,7 @@ async function intake(req: Request) {
     caption: body?.caption ?? '', ...(body?.threads_text ? { threads_text: body.threads_text } : {}), ...(body?.x_text ? { x_text: body.x_text } : {}),
   });
   if (!j?.ok) return reply(req, 400, { ok: false, error: j?.error || '임시저장하지 못했어요.' });
+  if (body?.auto === true) return reply(req, 200, { ok: true, id: j.id, telegram: false, auto: true });
   const s = await getSettings(SETTING_KEYS);
   let telegram = false;
   if (s.tg_bot_token && s.tg_chat_id) {
@@ -343,6 +351,154 @@ async function intake(req: Request) {
     if (row) { try { await sendPreview(row, s); telegram = true; } catch (e) { console.error('intake preview', errMsg(e)); } }
   }
   return reply(req, 200, { ok: true, id: j.id, telegram });
+}
+
+// ── 바로 올리기 (컨펌 없음) ─────────────────────────────────────────────────
+// 제작 에이전트가 링크 모음(ggul-links /agent-set)을 먼저 올린 뒤 부른다 — 게시물이 '올리는 중'이 되는 순간 사이트에 공개된다.
+// 응답: 전부·일부 올라감 {ok:true, id, status, results, telegram, line} · 못 올림 {ok:false, error, …} (못 올리면 임시저장으로 남긴다)
+// 같은 id 를 두 번 받아도 한 번만 올린다(tg 칸에 먼저 표시한 쪽만). 응답은 다 올라간 뒤(보통 1분) — 연결이 끊겨도 뒤에서 끝까지 한다.
+
+const AUTO_NOTE = '바로 올리기 (컨펌 없음)';
+const firstPart = (e: unknown) => clip(String(e ?? '').split(' — ')[0].trim() || '알 수 없는 오류', 70);
+
+async function agentCaller(req: Request) {
+  if (await isInternal(req)) return 'internal';
+  return (await agentOk(req)) ? 'agent' : null;
+}
+async function cardTitle(row: Row) {
+  const { data } = await sb.from('ggul_sets').select('title').eq('queue_id', row.id).maybeSingle();
+  const first = String(row.caption || row.x_text || '').split('\n')[0].trim();
+  return { title: clip(String(data?.title ?? '').trim() || first || `카드뉴스 #${row.id}`, 40), site: !!data };
+}
+function resultSummary(plats: string[], res: Record<string, any>) {
+  return Object.fromEntries(plats.map((p) => [p, res[p]?.ok ? { ok: true, permalink: res[p].permalink ?? null } : { ok: false, error: String(res[p]?.error ?? '결과 없음') }]));
+}
+function doneLine(plats: string[], res: Record<string, any>, title: string) {
+  const bad = plats.filter((p) => !res[p]?.ok);
+  const why = bad.map((p) => {
+    const n = NAMES[p] ?? p, e = firstPart(res[p]?.error ?? '결과 없음');
+    return e.startsWith(n) ? e : `${n} ${e}`;
+  }).join(' · ');
+  if (bad.length === plats.length) return `❌ 업로드 실패 · ${title} — ${why}`;
+  return `✅ 업로드 완료 · ${title}${bad.length ? ` (못 올림: ${why})` : ''}`;
+}
+
+async function autoPublish(row: Row, s: Settings, quiet: boolean): Promise<Record<string, unknown>> {
+  const t0 = Date.now();
+  const plats = row.platforms ?? [];
+  let title = `카드뉴스 #${row.id}`, site = false;
+  try { ({ title, site } = await cardTitle(row)); } catch { /* 제목은 기본값 */ }
+  let out: Record<string, unknown>;
+  let line: string | null = null;
+  try {
+    let j: any;
+    try { j = await callSns('/queue/publish', { id: row.id, now: true }); } catch (e) { j = { ok: false, error: errMsg(e) }; }
+    let status = String(j?.status ?? ''), res: Record<string, any> = j?.results ?? {};
+    if (!j?.ok || status === 'skipped') { // 시작부터 막혔거나 응답만 못 받음(예약 처리가 먼저 집어 갔거나 늦음) — 지금 상태로 판단
+      let cur = await loadRow(row.id);
+      while (cur && (cur.status === 'publishing' || cur.status === 'scheduled') && Date.now() - t0 < 110_000) {
+        await new Promise((r) => setTimeout(r, 5000)); // 끝날 때까지 조금 기다린다 (함수 시간 안에서)
+        cur = await loadRow(row.id);
+      }
+      status = cur?.status ?? 'draft';
+      res = cur?.results ?? {};
+    }
+    const now = new Date().toISOString();
+    if (status === 'published' || status === 'partial') {
+      line = doneLine(plats, res, title);
+      out = { ok: true, id: row.id, status, results: resultSummary(plats, res) };
+    } else if (status === 'failed') { // 전부 못 올림 → 임시저장으로 되돌려 다시 부를 수 있게
+      line = doneLine(plats, res, title);
+      await sb.from('sns_queue').update({ status: 'draft', tg: null, note: `바로 올리기 실패 — ${clip(line, 180)}`, updated_at: now }).eq('id', row.id).eq('status', 'failed');
+      out = { ok: false, id: row.id, status: 'draft', results: resultSummary(plats, res), error: line };
+    } else if (status === 'draft') { // sns 가 시작 전에 막음(검사 등) → 표시를 지워 다시 부를 수 있게
+      const why = firstPart(j?.error ?? '알 수 없는 오류');
+      line = `❌ 업로드 실패 · ${title} — ${why}`;
+      await sb.from('sns_queue').update({ tg: null, note: `바로 올리기 실패 — ${why}`, updated_at: now }).eq('id', row.id).eq('status', 'draft');
+      out = { ok: false, id: row.id, status: 'draft', error: j?.error ?? why };
+    } else if (status === 'publishing' || status === 'scheduled') { // 응답이 늦음 — 올리기는 계속되는 중
+      line = `⏳ 아직 올리는 중 · ${title} — 결과는 오피스 꿀꿀집 화면에서 확인해 주세요`;
+      out = { ok: false, id: row.id, status, pending: true, error: '올리는 중인데 응답이 늦어요. 다시 부르지 말고 오피스 화면에서 결과를 확인해 주세요.' };
+    } else {
+      out = { ok: false, id: row.id, status, error: stateText({ ...row, status }) };
+    }
+  } catch (e) {
+    console.error('auto publish', row.id, errMsg(e));
+    out = { ok: false, id: row.id, error: errMsg(e) };
+  }
+  let telegram = false;
+  if (line && !quiet && s.tg_bot_token && s.tg_chat_id) {
+    try {
+      await tg(s.tg_bot_token, 'sendMessage', { chat_id: s.tg_chat_id, text: line.slice(0, 1000), link_preview_options: { is_disabled: true } });
+      telegram = true;
+    } catch (e) { console.error('auto publish notice', errMsg(e)); }
+  }
+  return { ...out, telegram, line, site };
+}
+
+async function agentPublish(req: Request) {
+  const who = await agentCaller(req);
+  if (!who) {
+    await req.arrayBuffer().catch(() => {});
+    return reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  }
+  const body = await req.json().catch(() => ({}));
+  const quiet = who === 'internal' && body?.quiet === true; // 시험용 — 단톡방에 안 보내고 보낼 문장만 돌려준다
+  const row = await loadRow(Number(body?.id));
+  if (!row || row.source !== 'agent') return reply(req, 404, { ok: false, error: '제작 에이전트가 만든 카드뉴스가 아니에요.' });
+  if (row.status !== 'draft') return reply(req, 409, { ok: false, id: row.id, status: row.status, error: stateText(row) });
+  const s = await getSettings(SETTING_KEYS);
+  if (s.tg_auto_publish !== 'on') { // 승인 모드 — 올리지 않고 미리보기로
+    let telegram = !!row.tg?.card_id;
+    if (!telegram && s.tg_bot_token && s.tg_chat_id) {
+      try { await sendPreview(row, s); telegram = true; } catch (e) { console.error('agent-publish preview', errMsg(e)); }
+    }
+    return reply(req, 200, {
+      ok: false, id: row.id, status: 'draft', mode: 'confirm', telegram,
+      error: telegram ? '지금은 승인 모드라 단톡방 미리보기로 보냈어요 (승인하면 올라가요).' : '지금은 승인 모드인데 단톡방에 미리보기를 보내지 못했어요.',
+    });
+  }
+  const now = new Date().toISOString();
+  const { data: claimed, error } = await sb.from('sns_queue')
+    .update({ tg: { auto: true, at: now }, note: AUTO_NOTE, updated_at: now })
+    .eq('id', row.id).eq('status', 'draft').is('tg', null)
+    .select('id').maybeSingle();
+  if (error) throw error;
+  if (!claimed) {
+    return reply(req, 409, {
+      ok: false, id: row.id, status: row.status,
+      error: row.tg?.card_id ? '텔레그램 미리보기로 보낸 카드뉴스예요 — 단톡방 버튼으로 올려 주세요.' : '이미 올리기를 시작한 카드뉴스예요.',
+    });
+  }
+  const job = autoPublish(row, s, quiet);
+  background(job);
+  return reply(req, 200, { ...(await job), mode: 'auto' });
+}
+
+async function agentCancel(req: Request) {
+  if (!(await agentCaller(req))) {
+    await req.arrayBuffer().catch(() => {});
+    return reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  }
+  const body = await req.json().catch(() => ({}));
+  const row = await loadRow(Number(body?.id));
+  if (!row || row.source !== 'agent') return reply(req, 404, { ok: false, error: '제작 에이전트가 만든 카드뉴스가 아니에요.' });
+  const why = clip(String(body?.reason ?? '').trim(), 80);
+  const { data } = await sb.from('sns_queue')
+    .update({ status: 'canceled', note: why ? `버림 — ${why}` : '제작 에이전트가 버림', updated_at: new Date().toISOString() })
+    .eq('id', row.id).eq('status', 'draft').select('id').maybeSingle();
+  if (!data) return reply(req, 409, { ok: false, id: row.id, status: row.status, error: stateText(row) });
+  let telegram = false;
+  if (row.tg?.card_id) {
+    const s = await getSettings(['tg_bot_token']);
+    if (s.tg_bot_token) {
+      try {
+        await editCard(s.tg_bot_token, row.tg.chat_id, row.tg.card_id, `${cardText(row)}\n\n🗑 버렸어요${why ? ` — ${why}` : ''}.`, null);
+        telegram = true;
+      } catch (e) { console.error('agent-cancel card', errMsg(e)); }
+    }
+  }
+  return reply(req, 200, { ok: true, id: row.id, status: 'canceled', telegram });
 }
 
 // ── sns 함수가 올린 뒤 알려 주는 곳 ─────────────────────────────────────────
@@ -502,6 +658,8 @@ Deno.serve(async (req) => {
     if (M === 'POST' && route === 'send') return await send(req);
     if (M === 'POST' && route === 'agent-key') return await agentKey(req);
     if (M === 'POST' && route === 'intake') return await intake(req);
+    if (M === 'POST' && route === 'agent-publish') return await agentPublish(req);
+    if (M === 'POST' && route === 'agent-cancel') return await agentCancel(req);
     if ((M === 'GET' || M === 'POST') && route === 'agent-check') return await agentCheck(req);
     if (M === 'POST' && route === 'notify') return await notify(req);
     return reply(req, 404, { ok: false, error: '없는 경로예요.' });
