@@ -10728,13 +10728,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <span class="folder-meta"><b id="subModulesCount">—</b> 도구</span>
       </div>
       <div class="sub-modules">
-        <!-- 2026 송년회 — 전승훈 · 전수빈 PC 에만 노출 (yeRefreshAccess) -->
-        <div class="sub-module m-yearend" id="yearEndCard" onclick="triggerYearEnd()" hidden>
-          <div class="sub-module-icon">🎉</div>
-          <div class="sub-module-title">2026 송년회</div>
-          <div class="sub-module-sub">챕터형 팀 대항전 · 전승훈 · 전수빈만</div>
-          <div class="sub-module-tag">EVENT</div>
-        </div>
         <div class="sub-module m-notice" onclick="triggerNotice()">
           <div class="sub-module-icon">🔐</div>
           <div class="sub-module-title">업무용 비밀번호 모음</div>
@@ -10762,12 +10755,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-icon">🎬</div>
           <div class="sub-module-title">광고 컨텐츠 스튜디오</div>
           <div class="sub-module-sub">릴스·스토리 9:16 · 사진+텍스트 후가공 · UI 가림 시뮬레이션 · 대량 제작</div>
-          <div class="sub-module-tag">NEW</div>
-        </div>
-        <div class="sub-module m-sns" id="snsCard" onclick="openSnsPage()" hidden>
-          <div class="sub-module-icon">🐷</div>
-          <div class="sub-module-title">꿀꿀집 마케팅 회사</div>
-          <div class="sub-module-sub">@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석 · 전승훈만</div>
           <div class="sub-module-tag">NEW</div>
         </div>
         <div class="sub-module m-mailer" onclick="openMailer()">
@@ -10816,6 +10803,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-title">대표 캘린더</div>
           <div class="sub-module-sub">대표 일정·미팅·출장 (관리자 전용)</div>
           <div class="sub-module-tag">ADMIN</div>
+        </div>
+        <!-- 아래 두 카드는 관리자 PIN 이면서 명단 안 PC 에만 노출 (snsRefreshAccess · yeRefreshAccess) -->
+        <div class="sub-module m-sns" id="snsCard" onclick="openSnsPage()" hidden>
+          <div class="sub-module-icon">🐷</div>
+          <div class="sub-module-title">꿀꿀집 마케팅 회사</div>
+          <div class="sub-module-sub">@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석 · 전승훈만</div>
+          <div class="sub-module-tag">NEW</div>
+        </div>
+        <div class="sub-module m-yearend" id="yearEndCard" onclick="triggerYearEnd()" hidden>
+          <div class="sub-module-icon">🎉</div>
+          <div class="sub-module-title">2026 송년회</div>
+          <div class="sub-module-sub">챕터형 팀 대항전 · 전승훈 · 전수빈만</div>
+          <div class="sub-module-tag">EVENT</div>
         </div>
       </div>
     </div>
@@ -15913,6 +15913,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.body.classList.toggle('role-viewer',role!=='master');
     // 마스터 ↔ 뷰어 전환 시 홈의 업무일지 카드 노출 재판정
     if(typeof _diaryApplyHomeVisibility==='function') _diaryApplyHomeVisibility();
+    // '관리자 전용' 폴더의 명단 카드(꿀꿀집 · 송년회)도 관리자 PIN 여부로 다시 판정
+    if(typeof snsRefreshAccess==='function') snsRefreshAccess();
+    if(typeof yeRefreshAccess==='function') yeRefreshAccess();
   }
   function requireMaster(action){
     if(!isMaster()){toast(`마스터 권한이 필요합니다${action?` (${action})`:''}`,'err');return false}
@@ -16387,9 +16390,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof stratInit==='function') stratInit();
     }
     if(id==='viewYearEnd'){
-      // 명단 밖 접근 방어 (해시 직입력 등)
+      // 보기 PIN · 명단 밖 접근 방어 (해시 직입력 등)
       if(typeof yeHasAccess==='function' && !yeHasAccess()){
-        toast('대표 전용 화면입니다','err');
+        toast('관리자 전용 화면입니다','err');
         history.replaceState({view:'viewHome'},'',location.pathname+location.search);
         applyView('viewHome');
         return;
@@ -17042,7 +17045,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 메일 발송 — mailer/ 별도 페이지 (보내는 계정의 구글 Apps Script 웹 앱으로 한 통씩 발송) */
   function openMailer(){ const w=window.open('mailer/','bbMailer'); if(!w) location.href='mailer/'; }
   window.openMailer=openMailer;
-  /* 꿀꿀집 마케팅 회사 — sns/ 별도 페이지 (@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석, 서버는 Supabase 엣지 함수 sns). 카드는 SNS_OWNER(전승훈)만 보임 */
+  /* 꿀꿀집 마케팅 회사 — sns/ 별도 페이지 (@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석, 서버는 Supabase 엣지 함수 sns). 카드는 '관리자 전용' 폴더 — 관리자 PIN 이면서 SNS_OWNER(전승훈)일 때만 보임 (snsRefreshAccess) */
   function openSnsPage(){ const w=window.open('sns/','bbSns'); if(!w) location.href='sns/'; }
   window.openSnsPage=openSnsPage;
   window.triggerTopping=triggerTopping;
@@ -30760,7 +30763,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      암호·파생키·평문은 메모리에만 두고 localStorage 에는 ciphertext 만 캐시한다.
      diary_me 탭 게이트는 화면 가리기일 뿐이고 실제 기밀성은 암호에서 나온다. */
   const EXEC_ALLOWED=new Set(['전승훈','전수빈']);
-  const SNS_OWNER='전승훈'; // 업무용 툴 '꿀꿀집 마케팅 회사' 카드를 보는 단 한 사람
+  const SNS_OWNER='전승훈'; // '관리자 전용' 폴더의 '꿀꿀집 마케팅 회사' 카드를 보는 단 한 사람 (관리자 PIN 으로 들어왔을 때만)
   const EXEC_PATH='data/notice-exec.json';
   const EXEC_RAW=`https://raw.githubusercontent.com/${PO_REPO}/${PO_BRANCH}/${EXEC_PATH}`;
   const EXEC_API=`https://api.github.com/repos/${PO_REPO}/contents/${EXEC_PATH}`;
@@ -30789,13 +30792,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ok=execHasAccess();
     const card=document.getElementById('execVaultCard');
     if(card) card.hidden=!ok;
-    const snsCard=document.getElementById('snsCard');
-    if(snsCard) snsCard.hidden=execGetMe()!==SNS_OWNER; // 꿀꿀집 마케팅 회사 — 전승훈 한 사람만 (sns/index.html OWNER 와 같게)
+    snsRefreshAccess();
     if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
     if(!ok){
       execLock();
       if(_execViewOpen()) goHome();
     }
+  }
+  // 꿀꿀집 마케팅 회사 — 관리자 PIN + 전승훈 한 사람만 (sns/index.html 잠금과 같게). 로그인 · 이름 바뀔 때 다시 부른다 (applyRole)
+  function snsRefreshAccess(){
+    const c=document.getElementById('snsCard');
+    if(c) c.hidden=!(isMaster() && execGetMe()===SNS_OWNER);
+    if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
   }
   window.execRefreshAccess=execRefreshAccess;
 
@@ -43739,13 +43747,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   stratRefreshAccess();
 
   /* ===== 2026 송년회 (viewYearEnd) — 챕터형 팀 대항전 =====
-     접근: diary_me ∈ YE_ALLOWED. 카드 노출 · 화면 진입 모두 이 명단으로 판정 (마스터여도 명단 밖이면 숨김).
-     본체는 yearend/yearend.js · yearend.css — 명단 안의 PC 에서만 불러온다. 고치면 YE_BUILD 를 올릴 것.
-     직원에게 열 때는 YE_ALLOWED 에 이름을 넣으면 된다. 진행 상황은 app_kv 'yearend_2026'. */
+     접근: 관리자 PIN(isMaster) + diary_me ∈ YE_ALLOWED. 카드('관리자 전용' 폴더) 노출 · 화면 진입 모두 이 둘로 판정
+     (관리자여도 명단 밖이면, 명단 안이어도 보기 PIN 이면 숨김). TV 노트북 · 진행 휴대폰도 관리자 PIN 으로 들어와야 열린다.
+     본체는 yearend/yearend.js · yearend.css — 이 조건이 맞는 PC 에서만 불러온다. 고치면 YE_BUILD 를 올릴 것.
+     직원(보기 PIN)에게 열려면 카드를 '업무용 툴' 폴더로 옮기고 isMaster() 조건을 뺀 뒤 YE_ALLOWED 에 이름을 넣는다. 진행 상황은 app_kv 'yearend_2026'. */
   const YE_ALLOWED=new Set(['전승훈','전수빈']);
   const YE_BUILD='2026110902';
   let _yeLoading=null;
-  function yeHasAccess(){ return YE_ALLOWED.has(String(_diaryGetMe()||'').trim()); }
+  function yeHasAccess(){ return isMaster() && YE_ALLOWED.has(String(_diaryGetMe()||'').trim()); }
   function yeRefreshAccess(){
     const ok=yeHasAccess();
     const card=document.getElementById('yearEndCard');
@@ -43784,7 +43793,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
   }
   function triggerYearEnd(){
-    if(!yeHasAccess()){ toast('대표 전용 화면입니다','err'); return; }
+    if(!yeHasAccess()){ toast('관리자 전용 화면입니다','err'); return; }
     showView('viewYearEnd');
   }
   window.triggerYearEnd=triggerYearEnd;
