@@ -3,14 +3,14 @@
 //
 // 배포: Supabase MCP deploy_edge_function, 프로젝트 ckyjkxbqsyjoqpuqwoce, verify_jwt=false (공개 페이지 · 짧은 링크가 부르는 주소)
 //
-//   GET  /ggul-links                 공개 목록 — 켜진 묶음 중 '게시물이 올라간 것'(또는 화면에서 직접 만든 것) + 따로 링크
+//   GET  /ggul-links                 공개 목록 — 켜진 묶음 중 '게시물을 올리기 시작한 것'(publishing · published · partial, 또는 화면에서 직접 만든 것) + 따로 링크
 //   GET  /ggul-links/go/<slug>       짧은 링크 → 판매처로 302 (클릭 1 — 미리보기 봇은 안 셈)
 //   GET  /ggul-links/admin           전체(숨긴 것 · 클릭 수 포함) — 등록된 브라우저(x-ggul-device)
 //   POST /ggul-links/save-set        묶음 추가 · 수정 {id?, title, subtitle?, as_of?, active?, sort?} — 등록된 브라우저
 //   POST /ggul-links/save-link       링크 추가 · 수정 {id?, set_id?, slug?, title, url, image_url?, price?, original_price?, label?, note?, sort?, active?}
 //   POST /ggul-links/delete          {type:'set'|'link', id} — 등록된 브라우저
 //   POST /ggul-links/agent-set       제작 에이전트(x-ggul-agent): {queue_id, title?, subtitle?, as_of?, links:[{title, url, price?, original_price?, image_url?, label?, note?}]}
-//                                    → queue_id 묶음을 새로 쓰고(예전 링크는 지움) 짧은 주소를 돌려준다. 게시물이 올라가야 공개된다.
+//                                    → queue_id 묶음을 새로 쓰고(예전 링크는 지움) 짧은 주소를 돌려준다. 그 게시물을 올리기 시작하면 공개된다.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -23,6 +23,8 @@ const ORIGINS = new Set([
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,30}$/;
 const SLUG_ABC = 'abcdefghjkmnpqrstuvwxyz23456789'; // 헷갈리는 i · l · o · 0 · 1 뺌
 const MAX_LINKS_PER_SET = 30;
+// 사용자 요청(2026-11-11 "배포 직전에 먼저 사이트에 올려줘"): sns 가 올리기를 시작하며 status='publishing' 으로 바꾸는 순간 공개
+const LIVE_STATUSES = new Set(['publishing', 'published', 'partial']);
 const BOT_RE = /bot|crawl|spider|facebookexternalhit|kakaotalk-scrap|daumoa|yeti|slurp|preview|embedly|whatsapp|telegram|discord|slack|skype|line\/|headless/i;
 const LINK_ADMIN = 'id, set_id, slug, title, url, image_url, price, original_price, label, note, sort, active, clicks, last_click_at, created_at, updated_at';
 const SET_ADMIN = 'id, queue_id, title, subtitle, as_of, active, sort, source, created_at, updated_at';
@@ -140,9 +142,10 @@ async function publicList(req: Request) {
   if (qids.length) {
     const { data: qs, error: qe } = await sb.from('sns_queue').select('id, status').in('id', qids);
     if (qe) throw qe;
-    for (const q of qs ?? []) if (q.status === 'published' || q.status === 'partial') live.add(q.id);
+    for (const q of qs ?? []) if (LIVE_STATUSES.has(q.status)) live.add(q.id);
   }
-  // 게시물에 묶인 건 올라간 뒤에만, 화면에서 직접 만든 건 바로. 게시물이 지워져 queue_id 가 빈 에이전트 묶음은 숨김.
+  // 게시물에 묶인 건 올리기 시작하는 순간(publishing)부터 — 인스타 · X 보다 사이트가 먼저. 화면에서 직접 만든 건 바로.
+  // 게시물이 지워져 queue_id 가 빈 에이전트 묶음 · 올리기에 완전히 실패한 묶음(failed)은 숨김.
   const visible = (sets ?? []).filter((s: any) => (s.queue_id ? live.has(s.queue_id) : s.source === 'screen'));
   const ids = visible.map((s: any) => s.id);
   let q = sb.from('ggul_links').select('set_id, slug, title, url, image_url, price, original_price, label, note, sort')
@@ -276,7 +279,7 @@ async function agentSet(req: Request, body: any) {
   return reply(req, 200, {
     ok: true, set_id: set.id, page_url: `${PAGE_URL}?s=${queueId}`,
     links: (saved ?? []).map((l: any) => ({ title: l.title, slug: l.slug, short_url: PAGE_URL + l.slug })),
-    note: '게시물이 올라가면(published · partial) 링크 모음 페이지에 보여요.',
+    note: '게시물을 올리기 시작하면(publishing) 인스타 · X 보다 먼저 링크 모음 페이지에 보여요.',
   });
 }
 
