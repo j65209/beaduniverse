@@ -17,6 +17,10 @@
 //   POST /sns-tg/agent-publish {id} 에이전트 임시저장을 컨펌 없이 바로 올리기 (x-ggul-agent · 시험은 x-ggul-cron + quiet) → 단톡방에 한 줄
 //   POST /sns-tg/agent-cancel {id, reason?} 에이전트 임시저장 버리기 (x-ggul-agent 또는 x-ggul-cron) → 미리보기가 있으면 버튼 끄고 '버렸어요'
 //   GET  /sns-tg/agent-check       열쇠만 확인 (헤더 x-ggul-agent) → {ok:true} 또는 401 — 큰 본문을 보내기 전에
+//   POST /sns-tg/agent-job/claim   맥서버가 긴급 작업 하나 집기 (x-ggul-agent) → {job:{id, kind, instruction, created_at}} 또는 {job:null}
+//   POST /sns-tg/agent-job/finish {id, ok, note?, queue_id?} 긴급 작업 끝 → 단톡방의 그 /긴급 메시지에 결과로 답장
+//   단톡방 명령(연결된 방의 승인자만): /긴급 <지시> (또는 /urgent · @봇 긴급 …) → ggul_agent_jobs 에 넣고 접수 답장 · /긴급 상태 · /긴급 취소
+//   에이전트 열쇠는 두 개까지 받는다: sns_settings.agent_key_hash(이 PC) · agent_key_hash_2(맥서버) — 둘 다 sha256 hex 만 저장
 //   POST /sns-tg/notify {id}       sns 함수가 올린 뒤 결과 알림 (헤더 x-ggul-cron = sns_settings.cron_key)
 //   POST /sns-tg/webhook           텔레그램 (헤더 X-Telegram-Bot-Api-Secret-Token)
 // 올리기·예약·다시 시도는 sns 함수(/queue/publish · /queue/retry · /queue)를 cron 열쇠로 불러서 한다 — 검사·게시 코드는 sns 한 곳에만.
@@ -34,6 +38,8 @@ const DAY_MS = 86_400_000;
 const MAX_IMAGES = 10;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const LINK_TTL_MS = 15 * 60_000;
+const JOB_STALE_MS = 90 * 60_000;
+const JOB_STATE: Record<string, string> = { pending: '대기 중', running: '맥서버가 만드는 중', done: '끝남', failed: '실패', canceled: '취소됨' };
 const NAMES: Record<string, string> = { instagram: '인스타', threads: '스레드', x: 'X' };
 const QFIELDS = 'id, status, source, platforms, image_paths, caption, threads_text, x_text, results, tg, scheduled_at, note';
 const SETTING_KEYS = ['tg_bot_token', 'tg_bot_username', 'tg_webhook_secret', 'tg_chat_id', 'tg_chat_title', 'tg_approver_id', 'tg_approver_name', 'tg_link_code', 'tg_link_expires', 'tg_auto_publish'];
@@ -118,11 +124,12 @@ async function isInternal(req: Request) {
   const key = await loadCronKey();
   return !!key && safeEq(req.headers.get('x-ggul-cron') ?? '', key);
 }
-async function agentOk(req: Request) {
+async function agentOk(req: Request) { // 열쇠 두 개까지 — agent_key_hash(이 PC) · agent_key_hash_2(맥서버)
   const got = req.headers.get('x-ggul-agent') ?? '';
   if (got.length < 20) return false;
-  const { agent_key_hash } = await getSettings(['agent_key_hash']);
-  return !!agent_key_hash && safeEq(await sha256hex(got), agent_key_hash);
+  const s = await getSettings(['agent_key_hash', 'agent_key_hash_2']);
+  const h = await sha256hex(got);
+  return [s.agent_key_hash, s.agent_key_hash_2].some((x) => !!x && safeEq(h, x));
 }
 // sns 함수 부르기 — 검사·게시는 그쪽에 (cron 열쇠로 '내부 요청' 표시)
 async function callSns(path: string, body: unknown) {
@@ -229,8 +236,8 @@ async function sendPreview(row: Row, s: Settings) {
 // ── 화면에서 부르는 곳 ─────────────────────────────────────────────────────
 
 async function status(req: Request) {
-  const s = await getSettings(['tg_bot_username', 'tg_chat_id', 'tg_chat_title', 'tg_approver_name', 'agent_key_hash', 'tg_auto_publish']);
-  return reply(req, 200, { ok: true, bot: s.tg_bot_username ?? null, linked: !!s.tg_chat_id, chat_title: s.tg_chat_title ?? null, approver: s.tg_approver_name ?? null, agent_key: !!s.agent_key_hash, auto: s.tg_auto_publish === 'on' });
+  const s = await getSettings(['tg_bot_username', 'tg_chat_id', 'tg_chat_title', 'tg_approver_name', 'agent_key_hash', 'agent_key_hash_2', 'tg_auto_publish']);
+  return reply(req, 200, { ok: true, bot: s.tg_bot_username ?? null, linked: !!s.tg_chat_id, chat_title: s.tg_chat_title ?? null, approver: s.tg_approver_name ?? null, agent_key: !!s.agent_key_hash, mac_key: !!s.agent_key_hash_2, auto: s.tg_auto_publish === 'on' });
 }
 
 async function setup(req: Request) {
@@ -501,6 +508,124 @@ async function agentCancel(req: Request) {
   return reply(req, 200, { ok: true, id: row.id, status: 'canceled', telegram });
 }
 
+// ── 긴급 작업 (단톡방 /긴급 → 맥서버가 claim → 카드뉴스 만들어 바로 올리기 → finish) ─────────────
+
+type Job = { id: number; chat_id?: string | null; message_id?: number | null };
+
+// 단톡방의 그 /긴급 메시지에 답장 (없으면 연결된 방에)
+async function jobSay(job: Job, text: string) {
+  const s = await getSettings(['tg_bot_token', 'tg_chat_id']);
+  const chat = job.chat_id || s.tg_chat_id;
+  if (!s.tg_bot_token || !chat) return false;
+  try {
+    await tg(s.tg_bot_token, 'sendMessage', {
+      chat_id: chat, text: text.slice(0, 1000), link_preview_options: { is_disabled: true },
+      ...(job.message_id ? { reply_parameters: { message_id: job.message_id, allow_sending_without_reply: true } } : {}),
+    });
+    return true;
+  } catch (e) { console.error('job notice', job.id, errMsg(e)); return false; }
+}
+
+async function jobClaim(req: Request) {
+  if (!(await agentCaller(req))) {
+    await req.arrayBuffer().catch(() => {});
+    return reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  }
+  await req.arrayBuffer().catch(() => {});
+  const now = new Date().toISOString();
+  const { data: dead } = await sb.from('ggul_agent_jobs')
+    .update({ status: 'failed', finished_at: now, note: '90분 넘게 끝나지 않아 실패로 처리했어요' })
+    .eq('status', 'running').lt('claimed_at', new Date(Date.now() - JOB_STALE_MS).toISOString())
+    .select('id, chat_id, message_id');
+  for (const d of (dead ?? []) as Job[]) await jobSay(d, `❌ 긴급 #${d.id} 실패 — 90분 넘게 끝나지 않아 멈춘 것으로 처리했어요. 다시 하려면 /긴급 지시를 새로 보내 주세요.`);
+  const { data: running } = await sb.from('ggul_agent_jobs').select('id').eq('status', 'running').limit(1);
+  if (running?.length) return reply(req, 200, { ok: true, job: null, running: running[0].id });
+  const { data: next } = await sb.from('ggul_agent_jobs').select('id').eq('status', 'pending').order('created_at').limit(1);
+  if (!next?.length) return reply(req, 200, { ok: true, job: null });
+  const { data: job, error } = await sb.from('ggul_agent_jobs')
+    .update({ status: 'running', claimed_at: now })
+    .eq('id', next[0].id).eq('status', 'pending')
+    .select('id, kind, instruction, created_at, requested_by').maybeSingle();
+  if (error) throw error;
+  return reply(req, 200, { ok: true, job: job ?? null });
+}
+
+async function jobFinish(req: Request) {
+  const who = await agentCaller(req);
+  if (!who) {
+    await req.arrayBuffer().catch(() => {});
+    return reply(req, 401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  }
+  const body = await req.json().catch(() => ({}));
+  const quiet = who === 'internal' && body?.quiet === true; // 시험용 — 단톡방에 안 보내고 보낼 문장만 돌려준다
+  const ok = body?.ok === true;
+  const note = String(body?.note ?? '').trim().slice(0, 500);
+  const qid = Number(body?.queue_id);
+  const q = Number.isInteger(qid) && qid > 0 ? await loadRow(qid) : null;
+  const { data: job, error } = await sb.from('ggul_agent_jobs')
+    .update({ status: ok ? 'done' : 'failed', finished_at: new Date().toISOString(), note: note || null, queue_id: q?.id ?? null })
+    .eq('id', Number(body?.id)).eq('status', 'running')
+    .select('id, chat_id, message_id').maybeSingle();
+  if (error) throw error;
+  if (!job) return reply(req, 409, { ok: false, error: '진행 중인 긴급 작업이 아니에요 (이미 끝났거나 90분이 지나 실패로 처리됐어요).' });
+  const r = q?.results ?? {};
+  const links = (q?.platforms ?? []).filter((p) => r[p]?.ok && r[p]?.permalink).map((p) => `${NAMES[p] ?? p} ${r[p].permalink}`);
+  const text = ok
+    ? [`✅ 긴급 #${job.id} 끝났어요`, ...links, note].filter(Boolean).join('\n')
+    : `❌ 긴급 #${job.id} 못 했어요 — ${note || '이유를 받지 못했어요'}`;
+  const telegram = quiet ? false : await jobSay(job as Job, text);
+  return reply(req, 200, { ok: true, id: job.id, status: ok ? 'done' : 'failed', telegram, ...(quiet ? { text } : {}) });
+}
+
+// '/긴급 지시' · '/긴급@봇 지시' · '/urgent 지시' · '@봇 긴급 지시' → 지시(빈 글자일 수 있음), 긴급 명령이 아니면 null
+function parseUrgent(text: string, bot: string): string | null {
+  const m = /^\/(?:긴급|urgent)(?:@(\w+))?([\s\S]*)$/i.exec(text);
+  if (m) return m[1] && m[1].toLowerCase() !== bot.toLowerCase() ? null : m[2].trim();
+  const at = /^@(\w+)\s+긴급([\s\S]*)$/i.exec(text);
+  if (at && bot && at[1].toLowerCase() === bot.toLowerCase()) return at[2].trim();
+  return null;
+}
+
+async function onUrgent(s: Settings, msg: any, instruction: string) {
+  const say = (text: string) => tg(s.tg_bot_token!, 'sendMessage', {
+    chat_id: msg.chat.id, text, link_preview_options: { is_disabled: true },
+    reply_parameters: { message_id: msg.message_id, allow_sending_without_reply: true },
+  });
+  const active = async () => {
+    const { data } = await sb.from('ggul_agent_jobs').select('id, status, instruction').in('status', ['pending', 'running']).order('id').limit(1);
+    return (data?.[0] ?? null) as { id: number; status: string; instruction: string } | null;
+  };
+  if (!instruction) {
+    await say('사용법: /긴급 지시 — 맥서버가 긴급 카드뉴스를 만들어 바로 올려요.\n예) /긴급 지금 무신사 블프 특가 3개만 빨리 올려줘\n· /긴급 상태 — 지금 진행 상황\n· /긴급 취소 — 대기 중인 긴급 취소');
+    return;
+  }
+  if (instruction === '상태') {
+    const a = await active();
+    await say(a ? `🚨 긴급 #${a.id} · ${JOB_STATE[a.status] ?? a.status} — ${clip(a.instruction, 60)}` : '지금 대기·진행 중인 긴급 작업이 없어요.');
+    return;
+  }
+  if (instruction === '취소') {
+    const { data } = await sb.from('ggul_agent_jobs')
+      .update({ status: 'canceled', finished_at: new Date().toISOString(), note: '단톡방에서 취소' })
+      .eq('status', 'pending').select('id');
+    if (data?.length) { await say(`🗑 긴급 #${data.map((d: any) => d.id).join(', #')} 취소했어요.`); return; }
+    const a = await active();
+    await say(a ? `맥서버가 이미 만들고 있어서 취소할 수 없어요 (긴급 #${a.id}).` : '취소할 긴급 작업이 없어요.');
+    return;
+  }
+  const name = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') || msg.from?.username || String(msg.from?.id);
+  const { data, error } = await sb.from('ggul_agent_jobs')
+    .insert({ kind: 'urgent', instruction: instruction.slice(0, 1000), requested_by: String(name).slice(0, 80), chat_id: String(msg.chat.id), message_id: msg.message_id })
+    .select('id').single();
+  if (error) {
+    if ((error as any).code !== '23505') throw error;
+    const a = await active(); // 대기·진행 중은 하나만
+    await say(`이미 진행 중인 긴급이 있어요 — #${a?.id ?? '?'} (${JOB_STATE[a?.status ?? 'pending']}). 끝나면 다시 보내 주세요. 진행 상황: /긴급 상태`);
+    return;
+  }
+  await say(`🚨 긴급 접수 #${data.id} — 맥서버가 1~2분 안에 시작해요. 끝나면 여기로 알려 드릴게요.`);
+}
+
 // ── sns 함수가 올린 뒤 알려 주는 곳 ─────────────────────────────────────────
 
 async function notify(req: Request) {
@@ -538,6 +663,12 @@ async function onMessage(s: Settings, msg: any) {
       tg_link_code: null, tg_link_expires: null,
     });
     await tg(token, 'sendMessage', { chat_id: msg.chat.id, text: `✅ 꿀꿀집 마케팅 봇이 이 방에 연결됐어요.\n카드뉴스 미리보기가 여기로 와요. 올리기 버튼은 ${name} 님만 누를 수 있어요.` });
+    return;
+  }
+  const urgent = parseUrgent(text, String(s.tg_bot_username ?? ''));
+  if (urgent !== null) {
+    if (String(msg.chat?.id) !== s.tg_chat_id || !s.tg_approver_id || String(msg.from?.id) !== s.tg_approver_id) return; // 연결된 방의 승인자만
+    await onUrgent(s, msg, urgent);
     return;
   }
   if (/^\/start\b/.test(text) && msg?.chat?.type === 'private') {
@@ -660,6 +791,8 @@ Deno.serve(async (req) => {
     if (M === 'POST' && route === 'intake') return await intake(req);
     if (M === 'POST' && route === 'agent-publish') return await agentPublish(req);
     if (M === 'POST' && route === 'agent-cancel') return await agentCancel(req);
+    if (M === 'POST' && route === 'agent-job/claim') return await jobClaim(req);
+    if (M === 'POST' && route === 'agent-job/finish') return await jobFinish(req);
     if ((M === 'GET' || M === 'POST') && route === 'agent-check') return await agentCheck(req);
     if (M === 'POST' && route === 'notify') return await notify(req);
     return reply(req, 404, { ok: false, error: '없는 경로예요.' });

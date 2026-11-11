@@ -74,11 +74,12 @@ async function approvedDevice(req: Request) { // sns · sns-tg 와 같은 방식
   await sb.from('sns_devices').update({ last_seen_at: new Date().toISOString() }).eq('id', data.id);
   return true;
 }
-async function agentOk(req: Request) { // sns-tg 의 제작 에이전트 열쇠와 같은 것
+async function agentOk(req: Request) { // sns-tg 의 제작 에이전트 열쇠와 같은 것 — 두 개까지(agent_key_hash 이 PC · agent_key_hash_2 맥서버)
   const got = req.headers.get('x-ggul-agent') ?? '';
   if (got.length < 20) return false;
-  const { data } = await sb.from('sns_settings').select('value').eq('key', 'agent_key_hash').maybeSingle();
-  return !!data?.value && safeEq(await sha256hex(got), data.value);
+  const { data } = await sb.from('sns_settings').select('value').in('key', ['agent_key_hash', 'agent_key_hash_2']);
+  const h = await sha256hex(got);
+  return (data ?? []).some((r: any) => !!r.value && safeEq(h, r.value));
 }
 
 // ── 값 다듬기 ───────────────────────────────────────────────────────────────────
