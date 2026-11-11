@@ -8,7 +8,7 @@
 // 웹훅을 안 쓰는 이유: 인스타 댓글 웹훅은 앱 검수(Advanced Access)가 필요하다. 그래서 pg_cron 이 1분마다 /tick 을 부르고
 //   (dm_enabled='on' 일 때만), /me/media 한 번으로 댓글 수(comments_count)가 바뀐 게시물만 댓글을 읽는다 — 작은 계정은 호출 한도가 낮다.
 // 비공개 답장 규칙(인스타): 댓글 하나에 한 번만, 댓글이 달리고 7일 안에만. 상대가 꿀꿀집을 팔로우 안 했으면 '메시지 요청'으로 간다.
-// 이 함수는 켠 뒤(dm_since)에 달린 댓글에만, 같은 게시물에서는 한 사람에게 한 번만 보낸다. 꿀꿀집이 단 댓글은 뺀다.
+// 이 함수는 켠 뒤(dm_since)에 달린 댓글에만, 같은 글(캐러셀 · 릴스를 합쳐 sns_queue 한 줄)에서는 한 사람에게 한 번만 보낸다. 꿀꿀집이 단 댓글은 뺀다.
 //
 // 배포: Supabase MCP deploy_edge_function, 프로젝트 ckyjkxbqsyjoqpuqwoce, verify_jwt=false (경로마다 자체 확인)
 // 인스타 토큰은 sns_accounts(instagram) 에서 매번 새로 읽기만 한다 — 저장 · 연장은 sns 함수가 한다.
@@ -264,14 +264,19 @@ async function queueByMedia(): Promise<Map<string, number>> {
   const { data, error } = await sb
     .from('sns_queue')
     .select('id, results')
-    .in('status', ['published', 'partial'])
+    // 릴스는 인스타 처리가 늦으면 몇 분간 'publishing' 으로 남는다 (캐러셀은 이미 올라간 상태)
+    .in('status', ['published', 'partial', 'publishing'])
     .order('id', { ascending: false })
     .limit(80);
   if (error) throw error;
   const m = new Map<string, number>();
   for (const r of data ?? []) {
-    const mid = (r as any)?.results?.instagram?.media_id;
-    if (mid) m.set(String(mid), Number((r as any).id));
+    const res = (r as any)?.results ?? {};
+    // 캐러셀(instagram)과 릴스(reels)는 같은 글 — 둘 다 같은 글 번호로
+    for (const key of ['instagram', 'reels']) {
+      const mid = res?.[key]?.media_id;
+      if (mid) m.set(String(mid), Number((r as any).id));
+    }
   }
   return m;
 }
@@ -397,10 +402,12 @@ async function pollOnce(acc: IgAccount, s: Settings) {
       const rowId = ins?.[0]?.id;
       if (!rowId) continue; // 다른 실행이 먼저 잡았다
       if (who) {
-        const { count } = await sb.from('sns_comment_dms').select('id', { count: 'exact', head: true })
-          .eq('media_id', m.id).eq('from_id', who).eq('status', 'sent');
+        // 같은 글(캐러셀 · 릴스 합쳐 글 번호 하나)에서는 한 사람에게 한 번만 — 글 번호를 모르면 게시물 기준
+        let dup = sb.from('sns_comment_dms').select('id', { count: 'exact', head: true }).eq('from_id', who).eq('status', 'sent');
+        dup = qid ? dup.eq('queue_id', qid) : dup.eq('media_id', m.id);
+        const { count } = await dup;
         if ((count ?? 0) > 0) {
-          await sb.from('sns_comment_dms').update({ status: 'skipped', reason: '같은 게시물에서 이미 DM 을 받은 사람' }).eq('id', rowId);
+          await sb.from('sns_comment_dms').update({ status: 'skipped', reason: '같은 글에서 이미 DM 을 받은 사람' }).eq('id', rowId);
           stat.skipped++;
           continue;
         }
