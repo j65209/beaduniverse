@@ -46,6 +46,21 @@ function xWeightedLength(text) {
 
 function fail(msg) { console.error('보내기 실패: ' + msg); process.exit(1); }
 
+// 공개 글에 비밀 값(토큰 · 열쇠 · 'KEY=값' 줄)이 섞이면 보내지 않는다 — 맥미니 무인 실행에서 남의 글에 속아
+// 비밀을 옮겨 적는 일을 막는 마지막 그물 (2026-11-11). 상품명 · 해시태그 · 가격에는 걸리지 않는다.
+const SECRET = [
+  /\b(?:ghp|gho|ghs|ghu|github_pat|sk-ant|sk-proj|xox[abprs]|AKIA|AIza)[A-Za-z0-9_-]{10,}/,
+  /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, // JWT
+  /\b[0-9a-f]{32,}\b/i,                          // 긴 16진수 (열쇠 · 해시)
+  /[A-Za-z0-9+_-]{40,}/,                         // 띄어쓰기 없는 긴 덩어리 (base64 같은 것)
+  /^\s*[A-Z][A-Z0-9_]{2,}\s*=\s*\S/m,           // .env 줄
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+];
+function secretHit(s) {
+  for (const re of SECRET) { const m = String(s ?? '').match(re); if (m) return m[0].slice(0, 4) + '…'; }
+  return null;
+}
+
 function readKey() {
   const keyFile = path.resolve(args['key-file'] ?? path.join(os.homedir(), '.ggul', 'agent-key.txt'));
   if (!fs.existsSync(keyFile)) fail(`열쇠 파일이 없어요: ${keyFile} — 꿀꿀집 화면에서 '열쇠 만들기'로 만든 값을 붙여넣어 주세요.`);
@@ -68,7 +83,11 @@ async function sendLinks(key, queueId) {
   if (!args.links) return null;
   let spec;
   try { spec = JSON.parse(fs.readFileSync(path.resolve(args.links), 'utf8')); } catch (e) { return { ok: false, error: `links 파일을 읽지 못했어요 — ${e.message}` }; }
-  const links = (spec.links ?? []).filter((l) => l && l.title && /^https?:\/\//.test(String(l.url ?? ''))).slice(0, 30);
+  const links = (spec.links ?? []).filter((l) => l && l.title && /^https?:\/\//.test(String(l.url ?? ''))).filter((l) => {
+    const hit = secretHit(`${l.title}\n${l.note ?? ''}`);
+    if (hit) console.error(`⚠ 링크 뺌 (비밀 값 같은 글자 ${hit}): ${String(l.title).slice(0, 30)}`);
+    return !hit;
+  }).slice(0, 30);
   if (!links.length) return { ok: false, error: '보낼 딜 링크가 없어요 (판매처 원래 주소가 있는 딜이 없음)' };
   const body = { queue_id: queueId, ...(spec.title ? { title: spec.title } : {}), ...(spec.subtitle ? { subtitle: spec.subtitle } : {}), ...(spec.as_of ? { as_of: spec.as_of } : {}), links };
   try { // 카드 제품 사진(image, base64)을 같이 올리면 받는 쪽이 저장소에 하나씩 올리느라 오래 걸릴 수 있다
@@ -156,6 +175,8 @@ async function main() {
   const xText = args.x ? fs.readFileSync(path.resolve(args.x), 'utf8').replace(/\r\n/g, '\n').trim() : '';
   if (xText && xWeightedLength(xText) > X_MAX) fail(`X 문구가 ${xWeightedLength(xText)}/${X_MAX} 이에요 (한글 2 · 링크 23으로 세요).`);
   if (/https?:\/\//i.test(xText)) console.error('⚠ X 문구에 링크가 있어요 — 링크 있는 글은 1개에 $0.20 이에요.');
+  const leak = secretHit(caption) ?? secretHit(xText);
+  if (leak) fail(`문구에 비밀 값 같은 글자가 있어요 (${leak}) — 보내지 않아요. 문구를 확인해 주세요.`);
   const platforms = args.platforms ? String(args.platforms).split(',').map((s) => s.trim()).filter(Boolean) : null;
 
   const summary = { images: files.length, bytes: images.reduce((n, s) => n + s.length, 0), caption_chars: caption.length, hashtags: tags, x_weighted: xText ? xWeightedLength(xText) : null, platforms: platforms ?? '연결된 곳 전부' };
