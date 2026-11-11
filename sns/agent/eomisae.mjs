@@ -113,7 +113,10 @@ function parseDetail(html, item) {
   };
 }
 
-const ENDED = /종료|마감|품절|끝났|만료|sold\s*out/i;
+// 끝난 딜 — '[마감]' 같은 머리표와 '품절 · 종료' (단, '품절 임박 · 종료 예정 · 마감세일' 은 살린다)
+const ENDED = /\[(종료|마감|품절|매진|완료)\]|종료(?!\s*(예정|임박))|품절(?!\s*임박)|매진|끝났|만료|sold\s*out/i;
+// 특가 문구 근거 — 카드 만드는 쪽이 '긴급 특가!' 같은 말을 붙일 때 이 단서가 있어야 한다
+const URGENT = /오늘까지|오늘만|금일|자정까지|\d{1,2}\s*시\s*까지|마감\s*임박|선착|한정|타임\s*딜|타임특가|재입고|품절\s*임박|소진|수량/;
 
 async function main() {
   const used = new Set();
@@ -137,11 +140,16 @@ async function main() {
   const score = (x) => x.likes * 3 + x.comments + x.views / 300;
   fresh.sort((a, b) => score(b) - score(a));
   const items = [];
-  for (const x of fresh.slice(0, DETAIL)) {
+  for (const [i, x] of fresh.slice(0, DETAIL).entries()) {
     try {
       const d = parseDetail(await get(`/${x.board}/${x.id}`), x);
       if (ENDED.test(d.notes)) continue;
-      items.push({ ...d, score: Math.round(score(d) * 10) / 10 });
+      const age = d.posted_at ? (Date.now() - Date.parse(d.posted_at)) / 3_600_000 : null;
+      const hints = [];
+      if (age != null && age <= 12) hints.push('NEW');      // 올라온 지 12시간 안 → '지금 바로 뜬 특가'
+      if (i < 3) hints.push('HOT');                          // 점수 상위 3 → '어제 제일 핫했던'
+      if (URGENT.test(`${d.title}\n${d.notes}\n${d.body}`)) hints.push('URGENT'); // 마감 · 수량 · 재입고 단서 → '긴급 특가'
+      items.push({ ...d, rank: i + 1, age_h: age == null ? null : Math.round(age * 10) / 10, hints, score: Math.round(score(d) * 10) / 10 });
     } catch (e) { errors.push(`${x.url}: ${e.message}`); }
   }
   const out = {

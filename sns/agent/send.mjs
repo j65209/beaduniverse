@@ -14,6 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const INTAKE = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/intake';
+const CHECK = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/agent-check'; // 열쇠만 확인 (200 ok · 401)
 const MAX_IMAGES = 10;
 const MAX_BYTES = 5 * 1024 * 1024; // X 는 5MB 넘는 사진을 못 올린다 (인스타는 8MB)
 const CAPTION_MAX = 2200;
@@ -37,7 +38,30 @@ function xWeightedLength(text) {
 
 function fail(msg) { console.error('보내기 실패: ' + msg); process.exit(1); }
 
+function readKey() {
+  const keyFile = path.resolve(args['key-file'] ?? path.join(os.homedir(), '.ggul', 'agent-key.txt'));
+  if (!fs.existsSync(keyFile)) fail(`열쇠 파일이 없어요: ${keyFile} — 꿀꿀집 화면에서 '열쇠 만들기'로 만든 값을 붙여넣어 주세요.`);
+  const key = fs.readFileSync(keyFile, 'utf8').trim();
+  if (key.length < 20 || /\s/.test(key)) fail(`열쇠 파일 내용이 이상해요: ${keyFile} — 열쇠 한 줄만 들어 있어야 해요.`);
+  return { key, keyFile };
+}
+
+// 열쇠가 맞는지만 서버에 물어본다 (아무것도 만들지 않음)
+async function checkKey(key, keyFile) {
+  let res;
+  try { res = await fetch(CHECK, { headers: { 'x-ggul-agent': key }, signal: AbortSignal.timeout(30_000) }); } catch (e) { fail(`접수 창구에 연결하지 못했어요 — ${e.message}`); }
+  const j = await res.json().catch(() => ({}));
+  if (res.status === 401) fail(`열쇠가 맞지 않아요 (${keyFile}) — 꿀꿀집 화면에서 열쇠를 새로 만들어 붙여넣어 주세요.`);
+  if (res.status !== 200 || !j.ok) fail(`열쇠 확인 실패 — HTTP ${res.status} ${j.error ?? ''}`);
+}
+
 async function main() {
+  if (args['check-key']) { // 예약 작업이 수집 전에 먼저 부른다
+    const { key, keyFile } = readKey();
+    await checkKey(key, keyFile);
+    console.log(JSON.stringify({ ok: true, key: 'valid' }));
+    return;
+  }
   if (!args.dir || !args.caption) fail('--dir 카드폴더 와 --caption 문구파일 이 필요해요.');
   const dir = path.resolve(args.dir);
   const files = fs.readdirSync(dir).filter((f) => /\.jpe?g$/i.test(f)).sort();
@@ -63,10 +87,7 @@ async function main() {
   const summary = { images: files.length, bytes: images.reduce((n, s) => n + s.length, 0), caption_chars: caption.length, hashtags: tags, x_weighted: xText ? xWeightedLength(xText) : null, platforms: platforms ?? '연결된 곳 전부' };
   if (args['dry-run']) { console.log(JSON.stringify({ ok: true, dry_run: true, ...summary }, null, 2)); return; }
 
-  const keyFile = path.resolve(args['key-file'] ?? path.join(os.homedir(), '.ggul', 'agent-key.txt'));
-  if (!fs.existsSync(keyFile)) fail(`열쇠 파일이 없어요: ${keyFile} — 꿀꿀집 화면에서 '열쇠 만들기'로 만든 값을 붙여넣어 주세요.`);
-  const key = fs.readFileSync(keyFile, 'utf8').trim();
-  if (key.length < 20 || /\s/.test(key)) fail(`열쇠 파일 내용이 이상해요: ${keyFile} — 열쇠 한 줄만 들어 있어야 해요.`);
+  const { key, keyFile } = readKey();
 
   const post = async (payload, ms) => {
     const res = await fetch(INTAKE, {
@@ -77,12 +98,8 @@ async function main() {
     });
     return { status: res.status, j: await res.json().catch(() => ({})) };
   };
-  // 1) 열쇠부터 작은 요청으로 확인 — 사진 11장(빈 값)은 창구가 열쇠 확인 다음에 '10장까지'로 바로 거절해서 아무것도 만들지 않는다.
-  //    (열쇠가 틀리면 401. 큰 본문을 보낸 채로 401 을 받으면 한참 기다리다 503 이 나서 먼저 확인한다)
-  let pre;
-  try { pre = await post({ images: new Array(11).fill(''), caption: '' }, 30_000); } catch (e) { fail(`접수 창구에 연결하지 못했어요 — ${e.message}`); }
-  if (pre.status === 401) fail(`열쇠가 맞지 않아요 (${keyFile}) — 꿀꿀집 화면에서 열쇠를 새로 만들어 붙여넣어 주세요.`);
-  if (pre.status >= 500) fail(`접수 창구 오류 HTTP ${pre.status} — ${pre.j.error ?? '잠시 뒤 다시 해 주세요'}`);
+  // 1) 열쇠부터 확인 (GET /sns-tg/agent-check — 아무것도 만들지 않음)
+  await checkKey(key, keyFile);
 
   // 2) 진짜 보내기
   const body = { images, caption, ...(xText ? { x_text: xText } : {}), ...(platforms ? { platforms } : {}) };

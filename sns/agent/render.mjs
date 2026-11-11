@@ -126,6 +126,15 @@ async function main() {
     const files = [];
     for (let i = 0; i < n; i++) {
       await js(`(async () => { window.only(${i}); await document.fonts.ready; await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); return true; })()`);
+      if (args.debug) { // 글자 크기 · 아래 줄 위치 확인용
+        console.error(`#${i + 1}`, JSON.stringify(await js(`(() => {
+          const s = document.querySelectorAll('.slide')[${i}];
+          const fs = (q) => { const e = s.querySelector(q); return e ? getComputedStyle(e).fontSize : null; };
+          const f = s.querySelector('.foot');
+          return { name: fs('.dname'), price: fs('.price'), tip: fs('.tip p'), info: s.querySelectorAll('.info div').length,
+            footBottom: f && Math.round(f.getBoundingClientRect().bottom), slideBottom: Math.round(s.getBoundingClientRect().bottom) };
+        })()`)));
+      }
       const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality, clip: { x: 0, y: 0, width: W, height: H, scale: 1 }, captureBeyondViewport: false, fromSurface: true });
       const buf = Buffer.from(shot.data, 'base64');
       if (buf.length > MAX_BYTES) throw new Error(`${i + 1}번 카드가 5MB 를 넘어요 — --quality 를 낮춰 주세요.`);
