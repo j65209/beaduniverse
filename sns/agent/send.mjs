@@ -71,10 +71,13 @@ async function sendLinks(key, queueId) {
   const links = (spec.links ?? []).filter((l) => l && l.title && /^https?:\/\//.test(String(l.url ?? ''))).slice(0, 30);
   if (!links.length) return { ok: false, error: '보낼 딜 링크가 없어요 (판매처 원래 주소가 있는 딜이 없음)' };
   const body = { queue_id: queueId, ...(spec.title ? { title: spec.title } : {}), ...(spec.subtitle ? { subtitle: spec.subtitle } : {}), ...(spec.as_of ? { as_of: spec.as_of } : {}), links };
-  try {
-    const res = await fetch(LINKS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
+  try { // 카드 제품 사진(image, base64)을 같이 올리면 받는 쪽이 저장소에 하나씩 올리느라 오래 걸릴 수 있다
+    const res = await fetch(LINKS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key }, body: JSON.stringify(body), signal: AbortSignal.timeout(120_000) });
     const j = await res.json().catch(() => ({}));
-    if (res.ok && j.ok) return { ok: true, page_url: j.page_url, count: (j.links ?? []).length };
+    if (res.ok && j.ok) {
+      const saved = j.links ?? [];
+      return { ok: true, page_url: j.page_url, count: saved.length, photos: saved.filter((l) => l.image).length, ...(j.warnings?.length ? { warnings: j.warnings } : {}) };
+    }
     return { ok: false, error: `HTTP ${res.status} ${j.error ?? ''}`.trim() };
   } catch (e) { return { ok: false, error: e.message }; }
 }
@@ -85,6 +88,7 @@ async function publish(key, id) {
     const res = await fetch(PUBLISH, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key }, body: JSON.stringify({ id }), signal: AbortSignal.timeout(120_000) });
     const pj = await res.json().catch(() => ({}));
     if (res.ok && pj.ok) return { ok: true, ...(pj.status ? { status: pj.status } : {}), ...(pj.results ? { results: pj.results } : {}) };
+    if (res.status === 404 && /없는 경로/.test(pj.error ?? '')) return { ok: false, error: '자동 게시 경로가 아직 없어요 (받는 쪽 배포 전) — 초안으로 남김, 단톡방 · 화면에서 승인하면 게시' };
     return { ok: false, error: `HTTP ${res.status} ${pj.error ?? ''}`.trim(), ...(pj.results ? { results: pj.results } : {}) };
   } catch (e) { return { ok: false, error: e.message }; }
 }
@@ -179,6 +183,7 @@ async function main() {
   }
   const links = await sendLinks(key, j.id);
   if (links && !links.ok) console.error(`⚠ 딜 링크 보내기 실패 (카드는 보냄): ${links.error}`);
+  for (const w of links?.warnings ?? []) console.error(`⚠ 링크 사진: ${w}`);
   // 자동 발행 — 링크를 보낸 뒤에 (실패하면 초안으로 남는다)
   let published = null;
   if (args.auto) {

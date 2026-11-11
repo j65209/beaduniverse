@@ -194,7 +194,8 @@
     // 정가 줄: '정가 83,900원 → 판매가 67,120원 (20%↓)'. 정가를 모르면 줄 자체를 안 그린다
     var wasLine = dc ? '<div class="was">정가 <s>' + fmtWon(dc.was) + '</s> → ' + esc(x.nowLabel || '판매가') + ' <b>' + fmtWon(dc.now) + '</b> <em>(' + dc.pct + '%↓)</em></div>'
       : (x.was ? '<div class="was">정가 <s>' + esc(String(x.was).replace(/^정가\s*/, '')) + '</s></div>' : '');
-    return '<section class="slide' + (x.image ? ' has-photo' : '') + '">' + top(k + 1, n) +
+    // data-ref(어미새 글 board:id) — render.mjs --ph 가 이 카드의 제품 사진만 따로 찍어 링크 모음 사진으로 보낼 때 쓴다
+    return '<section class="slide' + (x.image ? ' has-photo' : '') + '"' + (x.ref ? ' data-ref="' + esc(x.ref) + '"' : '') + '>' + top(k + 1, n) +
       (x.flag ? '<div class="flag" data-fit="26">' + esc(x.flag) + '</div>' : '') +
       '<div class="dhead"><span class="num">' + String(k + 1).padStart(2, '0') + '</span><span class="cat">' + esc((x.emoji ? x.emoji + ' ' : '') + (x.category || '')) + '</span></div>' +
       '<div class="dbody">' +

@@ -1,7 +1,11 @@
 // 꿀꿀집 카드뉴스 — 카드 데이터(JSON) → 1080×1350 JPG 여러 장 (Node 22+, 의존성 없음)
 //
-//   node render.mjs --data cards.json --out 폴더 [--quality 90]
+//   node render.mjs --data cards.json --out 폴더 [--ph 사진폴더] [--quality 90]
 //   node render.mjs --data demo --out 폴더          (template.html 의 예시 데이터)
+//
+// --ph: 딜 카드에 보이는 제품 사진 부분만(자른 그대로) 따로 찍어 사진폴더/<board>-<id>.jpg 로 저장 —
+//   links.mjs --ph 가 링크 모음 페이지 사진(image)으로 보낸다 (2026-11-11 승훈 님 "카드에 넣은 제품 이미지를 그때 넣어 줘").
+//   카드 폴더와 따로 둔다 (send.mjs 는 카드 폴더의 JPG 를 전부 올린다).
 //
 // 같은 폴더의 template.html 을 헤드리스 Edge(없으면 Chrome)로 열고 DevTools 프로토콜로 한 장씩 찍는다.
 // 띄운 브라우저는 따로 만든 임시 프로필을 쓰고, 끝나면 그 프로세스만 닫는다 (사용자 브라우저는 건드리지 않음).
@@ -43,6 +47,8 @@ if (data && !data.dateLabel) {
   data.dateLabel = `${k.getUTCMonth() + 1}월 ${k.getUTCDate()}일 ${'일월화수목금토'[k.getUTCDay()]}요일`;
 }
 const outDir = path.resolve(args.out);
+const phDir = args.ph ? path.resolve(args.ph) : null;
+if (phDir && phDir === outDir) { console.error('--ph 는 카드 폴더(--out)와 다른 폴더로 주세요.'); process.exit(1); }
 const quality = Math.min(100, Math.max(60, Number(args.quality ?? 90)));
 const W = 1080, H = 1350;
 const MAX_BYTES = 5 * 1024 * 1024; // X 는 5MB 넘는 사진을 못 올린다
@@ -138,7 +144,7 @@ async function main() {
     const fontOk = await js(`document.fonts.check('900 40px Pretendard', '꿀딜')`);
     if (!fontOk) console.error('⚠ Pretendard 글꼴을 못 불러왔어요 — 기본 글꼴로 찍혀요 (인터넷 연결 확인).');
 
-    const files = [];
+    const files = [], photos = [];
     for (let i = 0; i < n; i++) {
       const broken = await js(`(async () => {
         window.only(${i});
@@ -165,9 +171,36 @@ async function main() {
       const file = path.join(outDir, String(i + 1).padStart(2, '0') + '.jpg');
       fs.writeFileSync(file, buf);
       files.push(file);
+
+      // 제품 사진만 따로 — 카드에 보이는 범위(자른 부분) 그대로, 위에 겹친 글자 · 스티커는 잠깐 숨기고 찍는다
+      if (phDir) {
+        const ph = await js(`(() => {
+          const s = document.querySelectorAll('.slide')[${i}];
+          const ref = s && s.getAttribute('data-ref');
+          const box = s && s.querySelector('.photo .ph'), img = box && box.querySelector('img');
+          if (!ref || !img || !img.naturalWidth) return null;
+          const b = box.getBoundingClientRect(), r = img.getBoundingClientRect();
+          let x = r.left, y = r.top, w = r.width, h = r.height;
+          const c = (img.getAttribute('data-crop') || '').split(',').map(Number);
+          if (img.classList.contains('cropped') && c.length === 4 && !c.some(isNaN)) { x = r.left + c[0] * r.width; y = r.top + c[1] * r.height; w = (c[2] - c[0]) * r.width; h = (c[3] - c[1]) * r.height; }
+          const x0 = Math.max(x, b.left), y0 = Math.max(y, b.top), x1 = Math.min(x + w, b.right), y1 = Math.min(y + h, b.bottom);
+          if (x1 - x0 < 40 || y1 - y0 < 40) return null;
+          s.style.visibility = 'hidden'; box.style.visibility = 'visible'; box.style.borderRadius = '0'; // 둥근 모서리 없이
+          return { ref, x: Math.ceil(x0), y: Math.ceil(y0), w: Math.floor(x1 - Math.ceil(x0)), h: Math.floor(y1 - Math.ceil(y0)) };
+        })()`);
+        if (ph) {
+          await js(`new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`);
+          const pshot = await send('Page.captureScreenshot', { format: 'jpeg', quality, clip: { x: ph.x, y: ph.y, width: ph.w, height: ph.h, scale: 1 }, captureBeyondViewport: false, fromSurface: true });
+          await js(`(() => { const s = document.querySelectorAll('.slide')[${i}], b = s.querySelector('.photo .ph'); s.style.visibility = ''; b.style.visibility = ''; b.style.borderRadius = ''; })()`);
+          fs.mkdirSync(phDir, { recursive: true });
+          const pfile = path.join(phDir, ph.ref.replace(/[^\w-]+/g, '-') + '.jpg');
+          fs.writeFileSync(pfile, Buffer.from(pshot.data, 'base64'));
+          photos.push({ ref: ph.ref, file: pfile, size: `${ph.w}x${ph.h}` });
+        }
+      }
     }
     ws.close();
-    console.log(JSON.stringify({ ok: true, count: files.length, files }, null, 2));
+    console.log(JSON.stringify({ ok: true, count: files.length, files, ...(phDir ? { photos } : {}) }, null, 2));
   } finally {
     cleanup();
   }

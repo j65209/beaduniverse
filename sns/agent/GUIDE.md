@@ -13,8 +13,8 @@
 | `eomisae.mjs` | 어미새 `/fs`(인기정보) · `/os`(패션정보) 첫 페이지 → 오늘·어제 글을 점수순으로 → 상위 글 상세(구매처 · 기타 사항 · 본문 일부 · 올라온 지 몇 시간 · 특가 단서) → `deals.json`. `--urgent` 면 오늘 글만 최신순 |
 | `photos.mjs` | 고른 딜의 사진 후보: ① 판매처 상품 페이지 대표 이미지(og:image) · 판매처 정가 — **판매처 robots.txt 가 허용할 때만** ② 막혔으면 어미새 글에 첨부된 사진(대개 판매처 화면 캡처) → `img/` · `photos.json` |
 | `template.html` | 카드 디자인 (1080×1350, 크림 · 분홍 · 꿀색, Pretendard). 브라우저로 `template.html?demo=1` 열면 예시 |
-| `render.mjs` | `cards.json` → 헤드리스 Edge 로 `01.jpg` … 찍기 (`--debug` 면 글자 크기 출력) |
-| `links.mjs` | 카드에 넣은 딜(`ref`)의 판매처 원래 주소 · 가격으로 링크 모음 페이지용 `links.json` 만들기 |
+| `render.mjs` | `cards.json` → 헤드리스 Edge 로 `01.jpg` … 찍기 (`--ph 폴더` 면 카드에 보이는 제품 사진만 따로, `--debug` 면 글자 크기 출력) |
+| `links.mjs` | 카드에 넣은 딜(`ref`)의 판매처 원래 주소 · 가격 · 카드 제품 사진으로 링크 모음 페이지용 `links.json` 만들기 |
 | `send.mjs` | JPG 들 + 문구 → 접수 창구로 보내기, `--links` 면 이어서 딜 링크도, `--auto` 면 그다음 바로 게시 (`--check-key` 열쇠만 확인, `--dry-run` 검사만, `--links-only --queue-id` 링크만, `--publish-only --queue-id` 남은 초안 게시) |
 
 이 PC 에서는 Node 가 PATH 에 없어서 포토샵에 딸린 Node 22 를 쓴다: `C:\Program Files\Adobe\Adobe Photoshop 2025\node.exe`.
@@ -189,9 +189,12 @@
 
 ## 딜 링크 → 꿀꿀집 링크 모음 페이지 (brightbeed.kr/ggulggulzip)
 
-- `node links.mjs --cards cards.json --deals deals.json --photos photos.json --out links.json` — 카드의 `ref` 로 판매처 원래 주소를 찾아 만든다.
+- `node links.mjs --cards cards.json --deals deals.json --photos photos.json --ph ph --out links.json` — 카드의 `ref` 로 판매처 원래 주소를 찾아 만든다.
 - 판매처 원래 주소만 — 주소가 'https://www.coupang.com' 처럼 상품이 없거나, 남의 제휴 · 단축 링크(link.coupang · onelink · al.wconcept · bit.ly …)면 그 딜은 링크에서 빠진다.
-  사진(`image_url`)은 판매처가 허용한 대표 이미지만(어미새 캡처는 안 넣음), 정가 · 판매가는 확인된 숫자만 (할인율은 페이지가 계산).
+  정가 · 판매가는 확인된 숫자만 (할인율은 페이지가 계산).
+- 사진: **카드에 넣은 그 제품 사진**을 `image` 로 같이 보낸다 — 받는 쪽(ggul-links v3)이 우리 저장소에 올려 링크 사진으로 쓴다 (2026-11-11 승훈 님 "카드에 넣은 제품 이미지를 그때 넣어 줘").
+  자르지 않은 판매처 대표 이미지는 원본 파일, 자른 캡처는 `render.mjs --ph ph` 가 카드에서 찍어 둔 그 부분(카드에 보이는 그대로). 카드에 사진이 없는 딜은 사진 없음.
+  `image_url`(판매처가 허용한 대표 이미지 주소)은 사진 올리기가 실패할 때 대신 쓰인다.
 - `send.mjs … --links links.json` 이 접수 성공 뒤 바로 `POST /ggul-links/agent-set` 으로 보낸다. 페이지에는 그 게시물이 올라간 뒤에만 보인다.
   실패해도 카드는 이미 갔으니 이유만 보고. 이미 보낸 카드는 `send.mjs --links-only --queue-id 번호 --links links.json` (같은 번호로 다시 보내면 통째로 바뀜).
 

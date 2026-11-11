@@ -43,11 +43,11 @@
     캡션 맨 위는 "제일 탐나는 꿀딜은 댓글로 알려 주세요!", '다음 꿀딜도 놓치지 마세요 … 시에 찾아와요' 줄은 쓰지 않는다,
     정보 출처('어미새')는 어디에도 쓰지 않는다, `dateLabel` 은 비워 두고 `asOf` 에 deals.json 의 `collected_at`,
     `caption.txt` 첫 줄 · ⏰ 줄에 그 시각(한국 시각, "11월 11일 오후 5시 2분 기준").
-12. `"$N" render.mjs --data cards.json --out cards`
+12. `"$N" render.mjs --data cards.json --out cards --ph ph` — `cards` 는 올릴 카드, `ph` 는 카드에 보이는 제품 사진만 따로(링크 모음 사진용, 카드 폴더에 섞지 않는다).
 13. **보내기 전 마지막 점검** (GUIDE 같은 이름 절, 하나도 빼지 않는다): `cards` 폴더의 JPG 를 Read 로 모두 열어 글자 잘림 · 오타 · 가격 · 할인율 · 판매처 · 사진(그 상품인지) ·
     끝난 딜 · 출처 표기를 확인한다. 걸리는 딜은 빼고 `cards.json` · 문구를 고쳐 12부터. 3개가 안 남으면 보내지 않고 끝낸다.
     `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --dry-run` 으로 검사까지 통과해야 14로 간다.
-14. 딜 링크: `"$N" links.mjs --cards cards.json --deals deals.json --photos photos.json --out links.json` (GUIDE '딜 링크').
+14. 딜 링크: `"$N" links.mjs --cards cards.json --deals deals.json --photos photos.json --ph ph --out links.json` (GUIDE '딜 링크' — 카드에 넣은 제품 사진도 같이 간다).
     `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --links links.json --auto --history "$G/history.json" --used <카드에 쓴 board:id 쉼표로>`
     — 접수(미리보기 없이) → 링크 모음 페이지 → 바로 게시. 한 번만 부른다.
     - 링크만 실패: 게시는 그대로, 이유만 보고.
@@ -66,7 +66,7 @@
 ## 보고
 
 - 성공: 번호(id), 게시 결과(published — 인스타 · X 각각), 넣은 딜(상품 · 가격 · 판매처 · 사진: 판매처/캡처 자름/없음), DM 안내 넣었는지,
-  링크 모음(보낸 링크 수 · page_url, 빠진 딜과 이유), 뺀 후보와 이유 한 줄씩.
+  링크 모음(보낸 링크 수 · 사진 붙은 수 · page_url, 빠진 딜과 이유, 사진 경고), 뺀 후보와 이유 한 줄씩.
 - 실패: 어느 단계에서 왜 (게시 실패면 남은 초안 번호).
 
 ## 하지 말 것
