@@ -572,8 +572,8 @@ const CHARACTERS = [
     id:'ggul', name:'마케터', team:'꿀꿀집', masterOnly:true,
     hairColor:'#3b2416', cloth:'#f3a39c',
     agentIds:[], manual:true,
-    taskLabel:'꿀꿀집 카드뉴스 업무', scheduleLabel:'매일 8 · 11 · 17 · 20시 카드뉴스 · 텔레그램 컨펌 후 업로드',
-    role:'카드뉴스 제작 · 텔레그램 컨펌 · 인스타·X 업로드 담당',
+    taskLabel:'꿀꿀집 카드뉴스 업무', scheduleLabel:'매일 8 · 11 · 17 · 20시 카드뉴스 · 바로 업로드 · 단톡방엔 완료만',
+    role:'카드뉴스 제작 · 인스타·X 바로 업로드 · 단톡방 /긴급 지시 담당',
     knows:[
       '매일 8 · 11 · 17 · 20시 세일 정보로 \'오늘의 꿀딜\' 카드뉴스를 만들어 임시저장 (급한 특가는 긴급 실행)',
       '판매처 대표 사진은 사이트가 허용할 때만 · 할인율은 정가와 판매가가 둘 다 확인될 때만',
@@ -1326,8 +1326,8 @@ async function reportStatus(c){
   });
 }
 
-/* ---- 꿀꿀집 마케터: 텔레그램 컨펌 연결 · 꿀꿀집 화면 ----
-   sns-tg/status 는 비밀값 없는 공개 상태(봇 이름 · 단톡방 · 승인자 · 열쇠 유무)만 준다. */
+/* ---- 꿀꿀집 마케터: 텔레그램 연결(바로 올리기 · /긴급) · 꿀꿀집 화면 ----
+   sns-tg/status 는 비밀값 없는 공개 상태(봇 이름 · 단톡방 · 승인자 · 열쇠 유무 · 바로 올리기 켜짐)만 준다. */
 const GGUL_TG_STATUS = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/status';
 async function ggulTgStatus(){
   const r = await fetch(GGUL_TG_STATUS, {cache:'no-store'});
@@ -1340,13 +1340,14 @@ async function ggulTelegram(c){
   catch(e){ say('agent', `텔레그램 연결 상태를 못 읽었어요. 잠시 뒤 다시 물어봐 주세요. (${e.message||e})`, {kind:'err'}); return; }
   say('agent', [
     s.bot ? `봇: @${s.bot}` : '봇: 아직 없음 — 꿀꿀집 화면 텔레그램 칸에 봇 토큰을 저장해 주세요',
-    s.linked ? `단톡방: ${s.chat_title || '연결됨'} · 올리기 버튼은 ${s.approver || '승인자'} 님만` : '단톡방: 아직 연결 전',
-    `제작 에이전트 열쇠: ${s.agent_key ? '있음' : '없음'}`,
-  ].join('\n'));
+    s.linked ? `단톡방: ${s.chat_title || '연결됨'} · ${s.auto ? '컨펌 없이 바로 올리고 완료만 알려요' : `올리기 버튼은 ${s.approver || '승인자'} 님만`}` : '단톡방: 아직 연결 전',
+    s.linked ? `긴급: 단톡방에 /긴급 지시 (${s.approver || '승인자'} 님만) → 맥서버가 만들어 바로 올려요` : '',
+    `제작 에이전트 열쇠: ${s.agent_key ? '있음' : '없음'} · 맥서버 열쇠: ${s.mac_key ? '있음' : '없음'}`,
+  ].filter(Boolean).join('\n'));
   await doubleCheck('연결 재확인', async () => {
     const s2 = await ggulTgStatus();
     return (s2.bot && s2.linked)
-      ? '재확인 결과 텔레그램 컨펌이 정상 연결돼 있습니다.'
+      ? '재확인 결과 텔레그램이 정상 연결돼 있습니다.'
       : '재확인 결과 아직 연결이 덜 됐습니다. 꿀꿀집 화면 텔레그램 칸을 확인해 주세요.';
   });
 }
