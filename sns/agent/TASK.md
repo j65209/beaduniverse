@@ -39,7 +39,7 @@
 - 이미 작업 폴더 안에서 시작한다 — `cd` 하지 않는다.
 - 명령은 `node 스크립트.mjs …` 꼴 그대로만 쓴다 (`"$N"` · 경로 · 따옴표로 감싼 이름 · `cd` · `&&` 없이). 쓸 수 있는 건
   `node eomisae.mjs` · `node photos.mjs` · `node render.mjs` · `node reel.mjs` · `node links.mjs` · `node send.mjs` · `date` 뿐이다.
-  (릴스 영상은 `node reel.mjs --dir cards --out reel.mp4` — 맥은 크롬으로 만든다. 실패하면 --video 없이 보낸다)
+  (릴스 영상은 `node reel.mjs --dir cards --out reel.mp4 --data cards.json --media auto` — 맥은 크롬으로 만든다. 실패하면 --video 없이 보낸다)
   다른 명령 · 웹 열기 · 작업 폴더 밖 파일 쓰기 · 숨김 파일 읽기는 막혀 있다 — 막히면 우회하지 말고 note 에 적는다.
 - 기록 파일은 작업 폴더의 `history.json` → `"$G/history.json"` 대신 `history.json` (실행기가 맥의 기록과 합쳐 둔다).
 - 10(DM 안내): `curl` 대신 작업 폴더의 `dm-status.json` 에 `"ready":true` 가 있을 때만.
@@ -67,7 +67,9 @@
 12. `"$N" render.mjs --data cards.json --out cards --ph ph` — `cards` 는 올릴 카드, `ph` 는 카드에 보이는 제품 사진만 따로(링크 모음 사진용, 카드 폴더에 섞지 않는다).
 13. **보내기 전 마지막 점검** (GUIDE 같은 이름 절, 하나도 빼지 않는다): `cards` 폴더의 JPG 를 Read 로 모두 열어 글자 잘림 · 오타 · 가격 · 할인율 · 판매처 · 사진(그 상품인지) ·
     끝난 딜 · 출처 표기를 확인한다. 걸리는 딜은 빼고 `cards.json` · 문구를 고쳐 12부터. 3개가 안 남으면 보내지 않고 끝낸다.
-    점검을 통과하면 릴스 영상: `"$N" reel.mjs --dir cards --out reel.mp4` — 카드를 9:16(1080×1920) 영상으로 (약 30초, 2026-11-11 승훈 님 "릴스도 업로드되게").
+    점검을 통과하면 릴스 영상: `"$N" reel.mjs --dir cards --out reel.mp4 --data cards.json --media auto` — 9:16(1080×1920) 영상 (약 30초 걸림,
+    2026-11-11 승훈 님 "피드 올릴 때 릴스도 같이, 만들어서 바로바로"): 매그내픽 꿀꿀이 인트로 2초(위에 표지 kicker · title) → 표지 카드는 빼고 바로 제품 카드 → 마지막 장,
+    배경음악 포함. 인트로 · 음악은 레포 `sns/agent/assets/` 에서 시각마다 돌려 가며 받는다(매그내픽을 따로 부르지 않는다, 크레딧 안 듦).
     실패하면 영상 없이(--video 빼고) 진행하고 이유만 보고한다. 카드를 고쳐 12부터 다시 했으면 영상도 다시 만든다.
     `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --video reel.mp4 --dry-run` 으로 검사까지 통과해야 14로 간다 (영상이 없으면 --video 빼고).
 14. 딜 링크: `"$N" links.mjs --cards cards.json --deals deals.json --photos photos.json --ph ph --out links.json` (GUIDE '딜 링크' — 카드에 넣은 제품 사진도 같이 간다).

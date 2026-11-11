@@ -1,9 +1,14 @@
 // 꿀꿀집 카드뉴스 → 릴스 영상 (Node 22+, 의존성 없음)
 //
-//   node reel.mjs --dir cards --out reel.mp4 [--sec 3] [--cover-sec 2.5] [--last-sec 2] [--fps 30] [--mbps 6]
+//   node reel.mjs --dir cards --out reel.mp4 [--intro intro.mp4] [--music music.mp3] [--data cards.json]
+//                 [--sec 3] [--cover-sec 2.5] [--last-sec 2] [--intro-sec 5] [--volume 0.8] [--fps 30] [--mbps 6]
 //
 // render.mjs 가 만든 카드 JPG(1080×1350, 이름순)를 1080×1920(9:16) 영상으로 — 카드를 옆으로 넘기듯 바뀌고,
-// 위쪽 줄(스토리처럼)이 몇 번째 카드인지 보여 준다. 소리는 무음(인스타가 소리 트랙이 없는 영상을 거절할 때가 있어 넣는다).
+// 위쪽 줄(스토리처럼)이 몇 번째 카드인지 보여 준다. 소리가 없으면 무음 트랙(인스타가 소리 트랙 없는 영상을 거절할 때가 있어서).
+// 2026-11-11 승훈 님 "매그내픽으로 … 자연스럽게 릴스" → 매그내픽 AI 로 만든
+//   --intro  인트로 영상(꿀꿀이 캐릭터 5초, 9:16) — 맨 앞에 붙이고, 그 위 빈 곳에 표지 제목(--data cards.json 의 cover.kicker · title)을 얹는다.
+//            첫 장면이 릴스 썸네일이 되므로 제목은 처음부터 보인다. 끝 0.5초는 표지 카드로 겹쳐 바뀐다.
+//   --music  배경음악(mp3 · wav · m4a) — 영상 길이에 맞춰 자르고 처음 0.25초 · 끝 1.5초를 줄여 넣는다(모자라면 반복).
 //
 // 헤드리스 Edge(없으면 Chrome)의 WebCodecs 로 H.264 · AAC 를 만들고, MP4 는 이 스크립트가 직접 묶는다
 //   (moov 를 앞에 · 편집 목록 없음 — 인스타 릴스 규격). 다 만든 뒤 같은 브라우저로 재생해 보고 길이 · 크기를 확인한다.
@@ -35,7 +40,52 @@ const OPT = {
   scale: 0.88, // 카드 크기 (1080 → 950) — 아래 문구 · 오른쪽 버튼에 덜 가리게
   top: 300, // 카드 위쪽 (위 220px 쯤은 릴스 화면 제목이 덮는다)
   bitrate: Math.round(num(args.mbps, 6, 2, 20) * 1_000_000),
+  introSec: num(args['intro-sec'], 2, 1, 10), // 인트로 길이 (2026-11-11 승훈 님 "인트로가 너무 길다, 바로바로 제품 소개로") — 영상 앞부분만 쓴다
+  xfade: 0.4, // 인트로 → 첫 카드로 넘기는 시간
+  volume: num(args.volume, 0.8, 0.05, 1), // 배경음악 크기
+  hook: null, // 인트로 위 제목 {kicker, title}
 };
+// 표지 제목 — cards.json 의 cover (== 강조 == 는 꿀색 밑줄)
+if (args.data && args.data !== '1') {
+  try {
+    const d = JSON.parse(fs.readFileSync(path.resolve(args.data), 'utf8'));
+    if (d?.cover?.title) OPT.hook = { kicker: String(d.cover.kicker ?? '').slice(0, 40), title: String(d.cover.title).slice(0, 80) };
+  } catch (e) { console.error(`⚠ ${args.data} 를 읽지 못했어요 — 인트로 제목 없이 만들어요 (${e.message})`); }
+}
+const readMedia = (p, what) => {
+  if (!p || p === '1') return null;
+  const f = path.resolve(p);
+  if (!fs.existsSync(f)) { console.error(`⚠ ${what} 파일이 없어요: ${f} — 빼고 만들어요.`); return null; }
+  const b = fs.readFileSync(f);
+  if (b.length > 60 * 1024 * 1024) { console.error(`⚠ ${what} 파일이 너무 커요 — 빼고 만들어요.`); return null; }
+  return b;
+};
+let INTRO = readMedia(args.intro, '인트로 영상');
+let MUSIC = readMedia(args.music, '배경음악');
+let MUSIC_NAME = args.music ?? '';
+const MEDIA = { intro: args.intro ? path.basename(args.intro) : null, music: args.music ? path.basename(args.music) : null };
+const mime = (p) => (/\.wav$/i.test(p) ? 'audio/wav' : /\.(m4a|mp4|aac)$/i.test(p) ? 'audio/mp4' : 'audio/mpeg');
+
+// --media auto : 매그내픽으로 미리 만든 인트로 · 배경음악 목록(레포 sns/agent/assets/assets.json)에서 시각마다 돌려 가며 고른다
+//   (맥미니 · 예약 작업에서 매그내픽을 직접 부르지 않아도 되게). 못 받으면 인트로 · 음악 없이 만든다.
+// --media <폴더> : 그 폴더의 assets.json 으로 (시험용)
+const ASSET_BASE = 'https://raw.githubusercontent.com/j65209/beaduniverse/main/sns/agent/assets/';
+async function loadMedia(spec) {
+  const local = spec !== 'auto' && spec !== '1';
+  const get = async (name) => {
+    if (local) return fs.readFileSync(path.join(path.resolve(spec), name));
+    const res = await fetch(ASSET_BASE + encodeURIComponent(name), { signal: AbortSignal.timeout(60_000) });
+    if (!res.ok) throw new Error(`${name} HTTP ${res.status}`);
+    return Buffer.from(await res.arrayBuffer());
+  };
+  try {
+    const list = JSON.parse((await get('assets.json')).toString('utf8'));
+    const hour = Math.floor(Date.now() / 3_600_000); // 실행 시각마다 다른 조합
+    const intros = (list.intros ?? []).filter(Boolean), musics = (list.music ?? []).filter(Boolean);
+    if (!INTRO && intros.length) { const n = intros[hour % intros.length]; INTRO = await get(n); MEDIA.intro = n; }
+    if (!MUSIC && musics.length) { const n = musics[(hour * 7 + 3) % musics.length]; MUSIC = await get(n); MUSIC_NAME = n; MEDIA.music = n; }
+  } catch (e) { console.error(`⚠ 인트로 · 배경음악을 받지 못했어요 (${e.message}) — 없이 만들어요.`); }
+}
 const MAX_BYTES = 50 * 1024 * 1024; // 받는 쪽(sns-media 버킷 · agent-video) 한도
 
 const dir = path.resolve(args.dir);
@@ -61,18 +111,31 @@ function findBrowser() {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── 브라우저 쪽: 그림 그리기 · 인코딩 (WebCodecs 는 보안 출처에서만 돼서 file:// 페이지로 연다) ─────────────
-const PAGE = String.raw`<!doctype html><meta charset="utf-8"><title>reel</title><body style="margin:0;background:#f8f1e7">
+const PAGE = String.raw`<!doctype html><meta charset="utf-8"><title>reel</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<body style="margin:0;background:#f8f1e7">
 <video id="v" muted playsinline style="display:none"></video>
+<video id="iv" muted playsinline preload="auto" style="display:none"></video>
 <script>
 window.cards = [];
 window.addCard = async (src) => { const bmp = await createImageBitmap(await (await fetch(src)).blob()); cards.push(bmp); return [bmp.width, bmp.height]; };
+// 인트로 영상 — blob 주소로 열어야 캔버스가 '오염'되지 않는다 (file:// 영상은 VideoFrame 이 막힘)
+window.setIntro = (src) => new Promise(async (res, rej) => {
+  const v = document.getElementById('iv');
+  v.onloadeddata = () => res({ duration: v.duration, w: v.videoWidth, h: v.videoHeight });
+  v.onerror = () => rej(new Error('인트로 영상을 열지 못했어요 (' + (v.error && v.error.code) + ')'));
+  v.src = URL.createObjectURL(await (await fetch(src)).blob());
+});
+window.setMusic = async (src) => { window.musicBuf = await (await fetch(src)).arrayBuffer(); return musicBuf.byteLength; };
 
 window.build = async (o) => {
   const W = ${W}, H = ${H}, FPS = o.fps, n = cards.length, T = o.trans;
   const holds = cards.map((_, i) => (i === 0 ? o.coverSec : i === n - 1 ? o.lastSec : o.sec));
   const starts = []; let t = 0;
   for (let i = 0; i < n; i++) { starts.push(t); t += holds[i] + (i < n - 1 ? T : 0); }
-  const total = t, frames = Math.round(total * FPS);
+  const iv = document.getElementById('iv');
+  const introDur = iv.src ? Math.min(o.introSec, Math.floor(iv.duration * FPS) / FPS - 1 / FPS) : 0; // 마지막 프레임은 빼고
+  const slideTotal = t, total = introDur + slideTotal, frames = Math.round(total * FPS);
 
   // 배경 — 카드와 같은 크림 · 분홍 · 꿀 (한 번만 그려 둔다)
   const bg = new OffscreenCanvas(W, H), b = bg.getContext('2d');
@@ -126,6 +189,60 @@ window.build = async (o) => {
     }
   };
 
+  // ── 인트로: AI 영상(꽉 채움) + 위쪽 빈 곳에 표지 제목, 끝에서 표지 카드로 겹쳐 바뀜 ──
+  const first = new OffscreenCanvas(W, H); // 카드 영상 첫 장면 (겹쳐 바뀔 때 씀)
+  draw(0); first.getContext('2d').drawImage(cv, 0, 0);
+  if (introDur && o.hook) await document.fonts.load('900 100px Pretendard', (o.hook.kicker || '') + o.hook.title).catch(() => null);
+  const hookFont = (px) => px + 'px Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  const drawHook = () => {
+    if (!o.hook) return;
+    const left = 84, maxW = W - left * 2;
+    let y = 290;
+    ctx.save();
+    ctx.textBaseline = 'alphabetic';
+    if (o.hook.kicker) { // 꿀색 알약
+      ctx.font = '900 ' + hookFont(44);
+      const kw = Math.min(maxW, ctx.measureText(o.hook.kicker).width + 60);
+      ctx.fillStyle = '#ffc94a'; ctx.beginPath(); ctx.roundRect(left, y - 54, kw, 76, 18); ctx.fill();
+      ctx.fillStyle = '#3a2c25'; ctx.fillText(o.hook.kicker, left + 30, y, maxW - 60);
+      y += 70;
+    }
+    // 제목 — 줄마다 글자 크기를 맞추고 == 사이는 꿀색 밑줄
+    const lines = o.hook.title.split('\n').slice(0, 3);
+    let size = 108;
+    const plain = (s) => s.replace(/==/g, '');
+    ctx.font = '900 ' + hookFont(size);
+    while (size > 64 && lines.some((l) => ctx.measureText(plain(l)).width > maxW)) { size -= 4; ctx.font = '900 ' + hookFont(size); }
+    for (const line of lines) {
+      y += size * 1.14;
+      let x = left;
+      line.split(/(==[^=]+==)/).filter(Boolean).forEach((part) => {
+        const hi = /^==.*==$/.test(part), text = hi ? part.slice(2, -2) : part, w = ctx.measureText(text).width;
+        if (hi) { ctx.fillStyle = '#ffc94a'; ctx.fillRect(x - 4, y - size * 0.32, w + 8, size * 0.36); }
+        ctx.fillStyle = '#3a2c25'; ctx.fillText(text, x, y);
+        x += w;
+      });
+    }
+    ctx.restore();
+  };
+  const seekTo = (s) => new Promise((res) => {
+    if (Math.abs(iv.currentTime - s) < 1e-6 && iv.readyState >= 2) return res();
+    const done = () => { iv.removeEventListener('seeked', done); res(); };
+    iv.addEventListener('seeked', done); iv.currentTime = s;
+  });
+  // 끝 0.5초는 카드 넘기듯 — 인트로가 왼쪽으로 나가고 표지 카드 화면이 오른쪽에서 들어온다 (글자가 겹쳐 보이지 않게)
+  const drawIntro = async (time) => {
+    await seekTo(time);
+    const p = time > introDur - o.xfade ? ease(Math.min(1, (time - (introDur - o.xfade)) / o.xfade)) : 0;
+    const vw = iv.videoWidth, vh = iv.videoHeight, k = Math.max(W / vw, H / vh); // 꽉 채움 (넘치는 쪽은 잘림)
+    ctx.save();
+    ctx.translate(-p * W, 0);
+    ctx.drawImage(iv, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k);
+    drawHook();
+    ctx.restore();
+    if (p > 0) ctx.drawImage(first, (1 - p) * W, 0);
+  };
+
   // 영상 (H.264 High, 가변 비트레이트, 2초마다 키프레임)
   let err = null, avcC = null, asc = null;
   const vch = [], ach = [];
@@ -139,7 +256,8 @@ window.build = async (o) => {
   venc.configure(vcfg);
   for (let f = 0; f < frames; f++) {
     if (err) throw err;
-    draw(f / FPS);
+    const time = f / FPS;
+    if (time < introDur) await drawIntro(time); else draw(time - introDur);
     const fr = new VideoFrame(cv, { timestamp: Math.round((f * 1e6) / FPS), duration: Math.round(1e6 / FPS) });
     venc.encode(fr, { keyFrame: f % (FPS * 2) === 0 });
     fr.close();
@@ -150,10 +268,25 @@ window.build = async (o) => {
   if (!avcC) throw new Error('H.264 설정값(avcC)을 못 받았어요');
   for (let i = 1; i < vch.length; i++) if (vch[i].t <= vch[i - 1].t) throw new Error('프레임 순서가 뒤섞였어요 (B 프레임) — 지원하지 않는 인코더');
 
-  // 소리 (AAC-LC 48kHz 스테레오, 무음)
-  let audio = null;
+  // 소리 (AAC-LC 48kHz 스테레오) — 배경음악이 있으면 길이에 맞춰 섞고, 없으면 무음
+  let audio = null, music = null;
   try {
     const SR = 48000, total_s = Math.round(total * SR);
+    let pcm = null; // [왼쪽, 오른쪽] Float32Array
+    if (window.musicBuf) {
+      try {
+        const off = new OfflineAudioContext(2, total_s, SR);
+        const buf = await off.decodeAudioData(musicBuf.slice(0)); // 48kHz 로 바꿔 준다
+        const src = off.createBufferSource(); src.buffer = buf; src.loop = buf.duration < total;
+        const g = off.createGain(), end = total, vol = o.volume;
+        g.gain.setValueAtTime(0, 0); g.gain.linearRampToValueAtTime(vol, 0.25);
+        g.gain.setValueAtTime(vol, Math.max(0.3, end - 1.5)); g.gain.linearRampToValueAtTime(0, end);
+        src.connect(g).connect(off.destination); src.start(0);
+        const r = await off.startRendering();
+        pcm = [r.getChannelData(0), r.getChannelData(1)];
+        music = { seconds: +buf.duration.toFixed(2), looped: src.loop };
+      } catch (e) { music = { error: String(e && e.message || e) }; }
+    }
     const aenc = new AudioEncoder({
       output: (c, m) => { const d = new Uint8Array(c.byteLength); c.copyTo(d); ach.push(d); if (!asc && m?.decoderConfig?.description) asc = copyDesc(m.decoderConfig.description); },
       error: (e) => { err = err || e; },
@@ -162,8 +295,9 @@ window.build = async (o) => {
     if (!(await AudioEncoder.isConfigSupported(acfg)).supported) throw new Error('AAC 인코딩을 못 해요');
     aenc.configure(acfg);
     for (let s = 0; s < total_s; s += 1024) {
-      const nf = Math.min(1024, total_s - s);
-      aenc.encode(new AudioData({ format: 'f32-planar', sampleRate: SR, numberOfFrames: nf, numberOfChannels: 2, timestamp: Math.round((s * 1e6) / SR), data: new Float32Array(nf * 2) }));
+      const nf = Math.min(1024, total_s - s), data = new Float32Array(nf * 2);
+      if (pcm) { data.set(pcm[0].subarray(s, s + nf), 0); data.set(pcm[1].subarray(s, s + nf), nf); } // planar: 왼쪽 다음 오른쪽
+      aenc.encode(new AudioData({ format: 'f32-planar', sampleRate: SR, numberOfFrames: nf, numberOfChannels: 2, timestamp: Math.round((s * 1e6) / SR), data }));
     }
     await aenc.flush(); aenc.close();
     if (err) throw err;
@@ -177,7 +311,7 @@ window.build = async (o) => {
   for (const p of parts) { buf.set(p, off); off += p.length; }
   window.outBuf = buf;
   return {
-    fps: FPS, frames, total, cards: n, bytes: size,
+    fps: FPS, frames, total, cards: n, bytes: size, intro: introDur ? +introDur.toFixed(2) : 0, music,
     avcC: [...avcC], vSizes: vch.map((c) => c.d.length), vKeys: vch.map((c, i) => (c.k ? i : -1)).filter((i) => i >= 0),
     audio,
   };
@@ -298,6 +432,7 @@ function mux(meta, data) {
 }
 
 async function main() {
+  if (args.media) await loadMedia(args.media); // 인트로 · 배경음악 고르기 (--intro · --music 을 직접 주면 그게 먼저)
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ggul-reel-'));
   const profile = path.join(tmp, 'profile');
   const pageFile = path.join(tmp, 'reel.html');
@@ -355,14 +490,27 @@ async function main() {
     await loaded;
     if (!(await js('isSecureContext && typeof VideoEncoder === "function"'))) throw new Error('이 브라우저는 WebCodecs(VideoEncoder)를 못 써요.');
 
-    for (const f of files) {
+    let introOk = false;
+    if (INTRO) { // 매그내픽 인트로 — 못 열면 인트로 없이
+      try {
+        const iv = await js(`setIntro(${JSON.stringify('data:video/mp4;base64,' + INTRO.toString('base64'))})`);
+        if (!(iv.duration >= 1)) throw new Error(`길이 ${iv.duration}초`);
+        introOk = true;
+      } catch (e) { console.error(`⚠ 인트로 영상을 못 써요 (${e.message}) — 인트로 없이 만들어요.`); await js(`document.getElementById('iv').removeAttribute('src'), true`); }
+    }
+    // 인트로가 있으면 표지 카드(01)는 빼고 바로 제품 카드부터 — 표지 제목은 인트로 위에 얹었으니 (--keep-cover 면 남김)
+    const use = introOk && !args['keep-cover'] && files.length > 2 ? files.slice(1) : files;
+    for (const f of use) {
       const b64 = fs.readFileSync(path.join(dir, f)).toString('base64');
       const [w, h] = await js(`addCard(${JSON.stringify('data:image/jpeg;base64,' + b64)})`);
       if (w !== 1080 || h !== 1350) console.error(`⚠ ${f} 크기가 ${w}×${h} 예요 (1080×1350 기준으로 늘이거나 줄여 넣음).`);
     }
+    if (use.length !== files.length) OPT.coverSec = OPT.sec; // 첫 장도 제품 카드라 같은 시간
+    if (MUSIC) await js(`setMusic(${JSON.stringify(`data:${mime(MUSIC_NAME)};base64,` + MUSIC.toString('base64'))})`);
     const t0 = Date.now();
     const meta = await js(`build(${JSON.stringify(OPT)})`);
     if (meta.audio?.error) console.error(`⚠ 소리 트랙을 못 만들었어요 (${meta.audio.error}) — 영상만 넣어요. 인스타가 거절하면 이게 원인일 수 있어요.`);
+    if (meta.music?.error) console.error(`⚠ 배경음악을 못 넣었어요 (${meta.music.error}) — 무음으로 만들어요.`);
     // 데이터 받기 (4MB 씩)
     const parts = [];
     for (let at = 0; at < meta.bytes; at += 4 * 1024 * 1024) parts.push(Buffer.from(await js(`slice(${at}, ${4 * 1024 * 1024})`), 'base64'));
@@ -383,6 +531,8 @@ async function main() {
     console.log(JSON.stringify({
       ok: true, file: outFile, bytes: mp4.length, mb: +(mp4.length / 1048576).toFixed(2), seconds: +(movieMs / 1000).toFixed(2),
       size: `${W}x${H}`, fps: meta.fps, frames: meta.frames, cards: meta.cards, audio: !!meta.audio?.sizes, keyframes: meta.vKeys.length,
+      intro_s: meta.intro, music: meta.music && !meta.music.error ? meta.music : false, hook: !!(meta.intro && OPT.hook),
+      media: { intro: meta.intro ? MEDIA.intro : null, music: meta.music && !meta.music.error ? MEDIA.music : null },
       took_s: Math.round((Date.now() - t0) / 1000),
     }, null, 2));
   } finally {
