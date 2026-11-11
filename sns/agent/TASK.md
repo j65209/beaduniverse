@@ -23,7 +23,7 @@
    14일 지난 실행 폴더는 지운다: `find "$G/runs" -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec rm -rf {} +`
    이 폴더와 `$G` 말고는 파일을 만들지 않는다.
 4. 최신 스크립트 받기:
-   `for f in GUIDE.md eomisae.mjs photos.mjs template.html render.mjs send.mjs; do curl -fsSL "https://raw.githubusercontent.com/j65209/beaduniverse/main/sns/agent/$f" -o "$W/$f" || exit 1; done`
+   `for f in GUIDE.md eomisae.mjs photos.mjs links.mjs template.html render.mjs send.mjs; do curl -fsSL "https://raw.githubusercontent.com/j65209/beaduniverse/main/sns/agent/$f" -o "$W/$f" || exit 1; done`
 5. 열쇠 확인: `cd "$W" && "$N" send.mjs --check-key` — 실패하면(파일 없음 · 틀린 열쇠) 아무것도 만들지 말고 그 안내를 그대로 보고하고 끝낸다.
    열쇠 값은 읽거나 출력하지 않는다.
 6. `"$W/GUIDE.md"` 를 끝까지 읽는다.
@@ -38,12 +38,15 @@
      글쓴이 개인 사진 · 사이즈 표뿐이면 쓰지 않는다. 쓸 사진이 없으면 글자 카드.
 10. DM 안내: `curl -s --max-time 10 https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-dm/status` 에 `"ready":true` 가 있을 때만 GUIDE '댓글 → 링크 DM 안내'를 넣는다 (404 · 오류 · false 면 안 넣음).
 11. 표지는 시각에 맞춘다 (GUIDE '시각별 표지'): 08시 '어제 제일 핫했던' · 11시 '오전에 뜬' · 17시 '퇴근길' · 20시 '오늘 밤 놓치면 끝'.
-    `cards.json` · `caption.txt` · `x.txt` 를 UTF-8 로 쓴다 — **친근한 말투**(GUIDE '말투'), 딜마다 `hook`, 특가 문구는 '특가 문구' 표 근거대로,
+    `cards.json` · `caption.txt` · `x.txt` 를 UTF-8 로 쓴다 — **친근한 말투**(GUIDE '말투'), 딜마다 `hook` 과 `ref`(어미새 글 board:id), 특가 문구는 '특가 문구' 표 근거대로,
+    캡션 맨 위는 "제일 탐나는 꿀딜은 댓글로 알려 주세요!", '다음 꿀딜도 놓치지 마세요 … 시에 찾아와요' 줄은 쓰지 않는다,
     정보 출처('어미새')는 어디에도 쓰지 않는다, `dateLabel` 은 비워 두고 `asOf` 에 deals.json 의 `collected_at`,
     `caption.txt` 첫 줄 · ⏰ 줄에 그 시각(한국 시각, "11월 11일 오후 5시 2분 기준").
 12. `"$N" render.mjs --data cards.json --out cards`
 13. `cards` 폴더의 JPG 를 Read 로 모두 열어 글자 잘림 · 오타 · 가격 · 판매처 · 사진(엉뚱한 사진 아닌지)을 확인한다. 고칠 게 있으면 `cards.json` 을 고치고 12부터.
-14. `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --history "$G/history.json" --used <카드에 쓴 board:id 쉼표로>`
+14. 딜 링크: `"$N" links.mjs --cards cards.json --deals deals.json --photos photos.json --out links.json` (GUIDE '딜 링크').
+    `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --links links.json --history "$G/history.json" --used <카드에 쓴 board:id 쉼표로>`
+    — 카드 접수 뒤 바로 링크 모음 페이지에도 보낸다. 링크만 실패하면 카드는 이미 간 것이니 이유만 보고한다.
     실패하면 다시 보내지 말고 이유를 보고한다. 보내는 중 끊겼다면 꿀꿀집 화면 임시저장 목록에 들어갔는지 먼저 확인해 달라고 쓴다.
 
 ## 긴급 실행 (승훈 님이 "긴급으로 올리자")
@@ -57,7 +60,8 @@
 
 ## 보고
 
-- 성공: 임시저장 번호(id), 단톡방 미리보기(telegram) 여부, 넣은 딜(상품 · 가격 · 판매처 · 사진: 판매처/캡처 자름/없음), DM 안내 넣었는지, 뺀 후보와 이유 한 줄씩.
+- 성공: 임시저장 번호(id), 단톡방 미리보기(telegram) 여부, 넣은 딜(상품 · 가격 · 판매처 · 사진: 판매처/캡처 자름/없음), DM 안내 넣었는지,
+  링크 모음(보낸 링크 수 · page_url, 빠진 딜과 이유), 뺀 후보와 이유 한 줄씩.
 - 실패: 어느 단계에서 왜.
 
 ## 하지 말 것

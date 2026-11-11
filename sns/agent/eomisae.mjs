@@ -92,11 +92,15 @@ function parseDetail(html, item) {
   const posted = html.match(/fa-clock-o"\s*><\/span>\s*<span\s*>(\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?)<\/span>/)?.[1] ?? null;
   const extra = {};
   const table = html.match(/<caption[^>]*>\s*Extra Form\s*<\/caption>([\s\S]*?)<\/table>/i)?.[1] ?? '';
+  let href = null;
   for (const r of table.matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)) {
     const k = text(r[1].replace(/<i[\s\S]*?<\/i>/gi, '')).slice(0, 20);
     if (k) extra[k] = text(r[2]).slice(0, 400);
+    // 화면 글자는 긴 주소를 '…'로 줄여 보여 준다 → 실제 주소는 a 의 href 에서
+    if (k === '링크') href = decode(r[2].match(/<a[^>]+href="([^"]+)"/i)?.[1] ?? '') || null;
   }
-  const link = extra['링크'] && /^https?:\/\//.test(extra['링크']) ? extra['링크'].split(/\s/)[0] : null;
+  const shown = extra['링크'] && /^https?:\/\//.test(extra['링크']) ? extra['링크'].split(/\s/)[0] : null;
+  const link = href && /^https?:\/\//.test(href) ? href : shown;
   // 본문 = '<div class="document_글번호_회원번호 … xe_content">' 부터 '<!--AfterDocument' 앞까지 (댓글 div 는 class 가 comment_ 로 시작)
   const ci = html.search(/<div\s+class="document_\d+_\d+[^"]*xe_content[^"]*"[^>]*>/);
   const ce = ci >= 0 ? html.indexOf('<!--AfterDocument', ci) : -1;
@@ -138,7 +142,8 @@ async function main() {
     seen.add(k);
     return days.has(x.date) && !used.has(`${x.board}:${x.id}`) && !ENDED.test(x.title);
   });
-  const score = (x) => x.likes * 3 + x.comments + x.views / 300;
+  // 조회수 · 댓글 많은 순 (2026-11-11 사용자 요청) — 댓글 1개를 조회 100번만큼 친다
+  const score = (x) => x.views + x.comments * 100;
   // 정기: 점수순 · 긴급: 최신순(글 번호가 클수록 최근)
   if (URGENT_MODE) fresh.sort((a, b) => Number(b.id) - Number(a.id));
   else fresh.sort((a, b) => score(b) - score(a));

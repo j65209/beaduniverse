@@ -87,7 +87,7 @@
   .photo img.cropped{position:absolute;max-width:none;max-height:none}
   /* 딜마다 재치 있는 한 줄 제목 (친근한 말투, 2026-11-11 사용자 예시) */
   .hook{font-size:40px;font-weight:900;color:var(--hot);letter-spacing:-1px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:200px}
-  .has-photo .hook{font-size:36px;margin-bottom:6px;padding-right:0}
+  .has-photo .hook{font-size:38px;margin-bottom:16px;padding-right:0}
   .has-photo .dname{font-size:84px;max-height:189px;margin-bottom:24px;letter-spacing:-3px}
   .has-photo .dbrand{font-size:36px;margin-bottom:4px}
   .has-photo .pricebox{padding:22px 40px 20px;margin-bottom:24px}
@@ -112,8 +112,9 @@
   .cta{background:var(--honey);border:3px solid var(--ink);border-radius:32px;padding:30px 38px;font-size:42px;font-weight:900;line-height:1.32;letter-spacing:-1px;white-space:pre-line;box-shadow:8px 8px 0 var(--ink);margin-bottom:48px;max-height:250px;overflow:hidden}
   .cta mark{background:linear-gradient(transparent 58%,#fff 58%,#fff 92%,transparent 92%)}
   .handle{align-self:flex-start;background:var(--ink);color:var(--cream);border-radius:999px;padding:16px 36px;font-size:44px;font-weight:800;margin-bottom:30px}
-  .warn{font-size:30px;color:var(--sub);line-height:1.5;font-weight:600}
-  .bigpig{position:absolute;right:60px;bottom:150px;font-size:230px;line-height:1;transform:rotate(-8deg)}
+  .warn{font-size:30px;color:var(--sub);line-height:1.5;font-weight:600;max-width:640px}
+  /* 마지막 장 돼지 — 글자를 가리지 않게 작게, 안내 글 오른쪽 빈자리에 (2026-11-11 사용자 "돼지가 텍스트 가린다") */
+  .bigpig{position:absolute;right:70px;bottom:120px;font-size:170px;line-height:1;transform:rotate(-8deg);z-index:0}
 </style>
 </head>
 <body>
@@ -168,7 +169,8 @@
   function cover(d, n) {
     var c = d.cover || {};
     var rows = (d.deals || []).slice(0, 6).map(function (x, k) {
-      var dc = discount(x), tag = x.tag || (dc ? dc.pct + '%↓' : ''); // 태그가 없으면 정가 대비 할인율
+      // 표지 목록 표: 정가 대비 할인율만 (2026-11-11 사용자 "뉴 없애고 다 몇퍼 할인인지") — 할인율을 모르면 글에 적힌 off, 그것도 없으면 비움
+      var dc = discount(x), tag = dc ? dc.pct + '%↓' : (x.off ? offText(x.off) : '');
       return '<div><span class="n">' + String(k + 1).padStart(2, '0') + '</span><span class="t">' + esc(plain(x.short || x.name)) + '</span>' +
         (tag ? '<span class="g">' + esc(tag) + '</span>' : '') + '<span class="p">' + esc(x.price || '') + '</span></div>';
     }).join('');
@@ -196,10 +198,11 @@
       (x.flag ? '<div class="flag" data-fit="26">' + esc(x.flag) + '</div>' : '') +
       '<div class="dhead"><span class="num">' + String(k + 1).padStart(2, '0') + '</span><span class="cat">' + esc((x.emoji ? x.emoji + ' ' : '') + (x.category || '')) + '</span></div>' +
       '<div class="dbody">' +
+      // 한 줄 제목은 제품 사진 위에 (2026-11-11 사용자 요청)
+      (x.hook ? '<div class="hook">' + esc(x.hook) + '</div>' : '') +
       (x.image ? '<div class="photo"><div class="ph"><img alt="" src="' + esc(x.image) + '"' +
         (Array.isArray(x.imageCrop) && x.imageCrop.length === 4 ? ' data-crop="' + x.imageCrop.map(Number).join(',') + '"' : '') +
         ' onload="window.applyCrop && window.applyCrop(this)"></div></div>' : '') +
-      (x.hook ? '<div class="hook">' + esc(x.hook) + '</div>' : '') +
       // 브랜드가 상품 이름과 같으면(만석닭강정 같은) 한 번만
       (x.brand && x.brand.replace(/\s/g, '') !== plain(x.name).replace(/\s/g, '') ? '<div class="dbrand">' + esc(x.brand) + '</div>' : '') +
       '<h2 class="dname" data-fit="56">' + rich(x.name || '') + '</h2>' +

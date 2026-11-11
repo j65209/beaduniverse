@@ -15,6 +15,8 @@ import path from 'node:path';
 
 const INTAKE = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/intake';
 const CHECK = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/sns-tg/agent-check'; // 열쇠만 확인 (200 ok · 401)
+// 꿀꿀집 링크 모음 페이지(brightbeed.kr/ggulggulzip)에 이번 카드의 딜 링크를 넘기는 곳 — 같은 열쇠, 게시된 뒤에만 페이지에 보임
+const LINKS = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/ggul-links/agent-set';
 const MAX_IMAGES = 10;
 const MAX_BYTES = 5 * 1024 * 1024; // X 는 5MB 넘는 사진을 못 올린다 (인스타는 8MB)
 const CAPTION_MAX = 2200;
@@ -55,7 +57,33 @@ async function checkKey(key, keyFile) {
   if (res.status !== 200 || !j.ok) fail(`열쇠 확인 실패 — HTTP ${res.status} ${j.error ?? ''}`);
 }
 
+// links.json(links.mjs 가 만든 것) → POST /ggul-links/agent-set. 실패해도 카드 전송은 그대로 둔다 (이유만 알림)
+async function sendLinks(key, queueId) {
+  if (!args.links) return null;
+  let spec;
+  try { spec = JSON.parse(fs.readFileSync(path.resolve(args.links), 'utf8')); } catch (e) { return { ok: false, error: `links 파일을 읽지 못했어요 — ${e.message}` }; }
+  const links = (spec.links ?? []).filter((l) => l && l.title && /^https?:\/\//.test(String(l.url ?? ''))).slice(0, 30);
+  if (!links.length) return { ok: false, error: '보낼 딜 링크가 없어요 (판매처 원래 주소가 있는 딜이 없음)' };
+  const body = { queue_id: queueId, ...(spec.title ? { title: spec.title } : {}), ...(spec.subtitle ? { subtitle: spec.subtitle } : {}), ...(spec.as_of ? { as_of: spec.as_of } : {}), links };
+  try {
+    const res = await fetch(LINKS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok && j.ok) return { ok: true, page_url: j.page_url, count: (j.links ?? []).length };
+    return { ok: false, error: `HTTP ${res.status} ${j.error ?? ''}`.trim() };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
 async function main() {
+  if (args['links-only']) { // 이미 보낸 카드(임시저장 번호)의 딜 링크만 보내기 · 다시 보내면 그 묶음을 통째로 바꿈
+    const qid = Number(args['queue-id']);
+    if (!Number.isInteger(qid) || qid <= 0 || !args.links) fail('--links-only 는 --queue-id 번호 와 --links 파일 이 필요해요.');
+    const { key, keyFile } = readKey();
+    await checkKey(key, keyFile);
+    const r = await sendLinks(key, qid);
+    console.log(JSON.stringify({ queue_id: qid, links: r }, null, 2));
+    if (!r?.ok) process.exitCode = 1;
+    return;
+  }
   if (args['check-key']) { // 예약 작업이 수집 전에 먼저 부른다
     const { key, keyFile } = readKey();
     await checkKey(key, keyFile);
@@ -122,7 +150,9 @@ async function main() {
     fs.mkdirSync(path.dirname(hp), { recursive: true });
     fs.writeFileSync(hp, JSON.stringify(h, null, 1));
   }
-  console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary }, null, 2));
+  const links = await sendLinks(key, j.id);
+  if (links && !links.ok) console.error(`⚠ 딜 링크 보내기 실패 (카드는 보냄): ${links.error}`);
+  console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary, ...(links ? { links } : {}) }, null, 2));
 }
 
 main().catch((e) => fail(e.message));
