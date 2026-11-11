@@ -191,6 +191,19 @@
   .qrow{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
   .qrow:last-child{border-bottom:0}
   .qrow img{width:56px;height:70px;object-fit:cover;border-radius:8px;background:var(--bg)}
+  .lkset{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px}
+  .lkset-head{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap}
+  .lkset-head b{font-size:14px}
+  .lkrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:8px 0;border-top:1px dashed var(--line)}
+  .lkrow .t{font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lkrow .m{font-size:12px;color:var(--sub);overflow-wrap:anywhere}
+  .lkrow.off .t,.lkrow.off .m{opacity:.5}
+  .lkrow button{padding:5px 9px;font-size:12.5px}
+  .lkform{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+  .lkform .full{grid-column:1/-1}
+  .lkform label{display:grid;gap:3px;font-size:12px;color:var(--sub)}
+  .lkform label[hidden]{display:none}
+  @media (max-width:560px){.lkform{grid-template-columns:1fr}.lkrow{grid-template-columns:1fr}}
   .qmeta{font-size:12.5px;color:var(--sub)}
   .qcap{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .qres{font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;color:var(--sub)}
@@ -290,6 +303,17 @@
       </div>
     </div>
     <div id="tgBody"><div class="msg info">불러오는 중…</div></div>
+  </section>
+
+  <section class="card" id="linkCard">
+    <div class="card-head">
+      <div>
+        <h2>🔗 링크 모음 <span class="small">brightbeed.kr/ggulggulzip</span></h2>
+        <p class="lead">고객이 들어와 꿀딜 링크를 타고 가는 공개 페이지예요. 링크마다 짧은 주소(…/ggulggulzip/코드)와 누른 수가 남아요. 카드뉴스에 묶인 링크는 그 게시물이 올라간 뒤에 공개돼요.</p>
+      </div>
+      <button id="lkOpen" class="ghost" type="button">페이지 열기</button>
+    </div>
+    <div id="linkBody"><div class="msg info">불러오는 중…</div></div>
   </section>
 
   <div class="filters" role="toolbar" aria-label="보기 범위">
@@ -1019,6 +1043,7 @@
     updateComposer();
     renderAccounts(); // X 연결 버튼은 등록된 브라우저에서만 켜진다
     renderTg();
+    if (canPost() && !lk.loaded) loadLinks(); else renderLinks();
   }
 
   function compTargets() {
@@ -1513,6 +1538,178 @@
     line0.appendChild(keyBtn);
     wrap.appendChild(line0); wrap.appendChild(keyBox); box.appendChild(wrap);
   }
+
+  // ── 링크 모음 (함수 ggul-links · 공개 페이지 brightbeed.kr/ggulggulzip) ────────────────
+  // 묶음 = 카드뉴스 1건(제작 에이전트가 queue_id 로 보냄) 또는 여기서 직접 만든 묶음. 링크는 묶음 안 또는 '따로'.
+  var FNLK = FN.replace(/\/sns$/, '/ggul-links');
+  var LINK_PAGE = 'https://brightbeed.kr/ggulggulzip/';
+  var lk = { loaded: false, sets: [], links: [], error: null, edit: null };
+  async function apiLk(path, body) {
+    var opt = body === undefined ? { method: 'GET', cache: 'no-store', headers: { 'x-ggul-device': DEVKEY } }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-device': DEVKEY }, body: JSON.stringify(body) };
+    var res = await fetch(FNLK + path, opt); var j = {};
+    try { j = await res.json(); } catch (e) { /* noop */ }
+    if (!res.ok && !j.error) j.error = '서버 응답 ' + res.status;
+    return j;
+  }
+  async function loadLinks() {
+    if (DEMO) {
+      lk = { loaded: true, edit: null, error: null,
+        sets: [{ id: 1, queue_id: 4, title: '오늘의 꿀딜', as_of: new Date().toISOString(), active: true, source: 'agent', queue_status: 'published' }],
+        links: [{ id: 1, set_id: 1, slug: 'hk7wq', title: '호카 마하6 러닝화', url: 'https://example.com/hoka', price: 62900, original_price: 159000, label: 'HOT', clicks: 12, active: true },
+          { id: 2, set_id: null, slug: 'insta', title: '꿀꿀집 인스타그램', url: 'https://www.instagram.com/ggul.ggul.zip/', clicks: 3, active: true }] };
+      renderLinks(); return;
+    }
+    if (!canPost()) { renderLinks(); return; }
+    var j = await apiLk('/admin').catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+    lk.loaded = true; lk.error = j.ok ? null : (j.error || '불러오지 못했어요.');
+    if (j.ok) { lk.sets = j.sets || []; lk.links = j.links || []; }
+    renderLinks();
+  }
+  function lkWon(n) { return n == null ? '' : Number(n).toLocaleString('ko-KR') + '원'; }
+  function lkSetState(s) {
+    if (!s.active) return ['mute', '숨김'];
+    if (!s.queue_id) return ['ok', '공개 중'];
+    if (s.queue_status === 'published' || s.queue_status === 'partial') return ['ok', '공개 중 · #' + s.queue_id];
+    if (s.queue_status === 'deleted') return ['mute', '게시물 지워짐'];
+    return ['warn', '게시 전 · #' + s.queue_id + ' 올라가면 공개'];
+  }
+  function lkCopy(text, say) {
+    try { navigator.clipboard.writeText(text).then(function () { say('ok', '복사했어요: ' + text); }, function () { say('info', text); }); } catch (e) { say('info', text); }
+  }
+  function lkArmed(btn, label, armedLabel, fn) { // 지우기는 두 번 눌러야(확인 창 없이)
+    btn.addEventListener('click', function () {
+      if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = armedLabel; setTimeout(function () { btn.dataset.armed = ''; btn.textContent = label; }, 4000); return; }
+      btn.dataset.armed = ''; fn();
+    });
+  }
+  function renderLinks() {
+    var box = $('linkBody'); if (!box) return; box.textContent = '';
+    if (!canPost()) { box.appendChild(el('div', 'empty', '이 브라우저를 등록하면 링크를 관리할 수 있어요.')); return; }
+    if (lk.error) box.appendChild(el('div', 'err', lk.error));
+    var out = el('div', 'msg', ''); out.hidden = true;
+    var say = function (kind, text) { out.hidden = false; out.className = 'msg ' + kind; out.textContent = text; };
+    var total = lk.links.reduce(function (a, l) { return a + (l.clicks || 0); }, 0);
+    var head = el('div', 'acc-head');
+    head.appendChild(el('span', 'pill info', '링크 ' + lk.links.length + '개 · 누른 수 ' + total.toLocaleString('ko-KR')));
+    head.appendChild(el('span', 'note', '짧은 주소는 인스타 문구 · DM · 스토리에 그대로 붙여 쓰면 돼요.'));
+    box.appendChild(head);
+
+    var groups = lk.sets.map(function (s) { return { set: s, links: lk.links.filter(function (l) { return l.set_id === s.id; }) }; });
+    var loose = lk.links.filter(function (l) { return !l.set_id; });
+    if (loose.length) groups.push({ set: null, links: loose });
+    if (!groups.length) box.appendChild(el('div', 'empty', '아직 링크가 없어요. 아래에서 추가하거나, 제작 에이전트가 카드뉴스와 함께 보내면 여기에 쌓여요.'));
+    groups.forEach(function (g) {
+      var wrap = el('div', 'lkset');
+      var gh = el('div', 'lkset-head');
+      if (g.set) {
+        var st = lkSetState(g.set);
+        gh.appendChild(el('b', null, g.set.title || '오늘의 꿀딜'));
+        gh.appendChild(el('span', 'pill ' + st[0], st[1]));
+        gh.appendChild(el('span', 'note', fmtWhen(g.set.as_of) + ' 기준' + (g.set.source === 'agent' ? ' · 🤖 제작 에이전트' : '')));
+        var grow = el('span'); grow.style.flex = '1'; gh.appendChild(grow);
+        if (g.set.queue_id) gh.appendChild(tgButton('게시물 주소', 'ghost', function () { lkCopy(LINK_PAGE + '?s=' + g.set.queue_id, say); }));
+        gh.appendChild(tgButton(g.set.active ? '숨기기' : '보이기', 'ghost', async function () {
+          var j = await apiLk('/save-set', { id: g.set.id, title: g.set.title, subtitle: g.set.subtitle, active: !g.set.active }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+          if (!j.ok) { say('bad', j.error || '바꾸지 못했어요.'); return; } loadLinks();
+        }));
+        var del = el('button', 'ghost', '묶음 지우기'); del.type = 'button'; del.disabled = DEMO;
+        lkArmed(del, '묶음 지우기', '안 링크까지 지워요 · 다시 누르기', async function () {
+          var j = await apiLk('/delete', { type: 'set', id: g.set.id }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+          if (!j.ok) { say('bad', j.error || '지우지 못했어요.'); return; } loadLinks();
+        });
+        gh.appendChild(del);
+      } else {
+        gh.appendChild(el('b', null, '따로 링크'));
+        gh.appendChild(el('span', 'note', '묶음 없이 페이지 아래 \'꿀꿀집 추천 링크\'에 보여요.'));
+      }
+      wrap.appendChild(gh);
+      g.links.forEach(function (l) {
+        var row = el('div', 'lkrow' + (l.active ? '' : ' off'));
+        var left = el('div'); left.style.minWidth = '0';
+        var t = el('div', 't', (l.label ? '[' + l.label + '] ' : '') + l.title); t.title = l.title; left.appendChild(t);
+        var off = l.original_price > l.price && l.price != null ? Math.floor((l.original_price - l.price) / l.original_price * 100) : 0;
+        var meta = [l.price != null ? lkWon(l.price) + (off > 0 ? ' (' + off + '%↓, 정가 ' + lkWon(l.original_price) + ')' : '') : '', '👆 ' + (l.clicks || 0), 'brightbeed.kr/ggulggulzip/' + l.slug, l.active ? '' : '숨김'].filter(Boolean).join(' · ');
+        left.appendChild(el('div', 'm', meta));
+        row.appendChild(left);
+        var btns = el('div', 'row');
+        btns.appendChild(tgButton('복사', 'ghost', function () { lkCopy(LINK_PAGE + l.slug, say); }));
+        btns.appendChild(tgButton('수정', 'ghost', function () { lk.edit = l; renderLinks(); $('lkTitle').focus(); }));
+        btns.appendChild(tgButton(l.active ? '숨기기' : '보이기', 'ghost', async function () {
+          var j = await apiLk('/save-link', Object.assign({}, l, { active: !l.active })).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+          if (!j.ok) { say('bad', j.error || '바꾸지 못했어요.'); return; } loadLinks();
+        }));
+        var d = el('button', 'ghost', '지우기'); d.type = 'button'; d.disabled = DEMO;
+        lkArmed(d, '지우기', '다시 누르면 지워요', async function () {
+          var j = await apiLk('/delete', { type: 'link', id: l.id }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+          if (!j.ok) { say('bad', j.error || '지우지 못했어요.'); return; } loadLinks();
+        });
+        btns.appendChild(d);
+        row.appendChild(btns);
+        wrap.appendChild(row);
+      });
+      box.appendChild(wrap);
+    });
+
+    // 추가 · 수정 칸
+    var e = lk.edit || {};
+    var form = el('div', 'lkform'); form.style.borderTop = '1px solid var(--line)'; form.style.paddingTop = '12px'; form.style.marginTop = '14px';
+    form.appendChild(el('div', 'full small', e.id ? '✏️ 링크 고치기 — ' + e.title : '➕ 링크 추가 (제목과 판매처 주소만 있어도 돼요)'));
+    function field(label, id, value, opts) {
+      var lb = el('label', opts && opts.full ? 'full' : null, label);
+      var inp = el('input'); inp.type = 'text'; inp.id = id; inp.value = value == null ? '' : String(value);
+      if (opts && opts.ph) inp.placeholder = opts.ph;
+      if (opts && opts.mode) inp.inputMode = opts.mode;
+      lb.appendChild(inp); form.appendChild(lb); return inp;
+    }
+    var fTitle = field('제목 *', 'lkTitle', e.title, { full: true, ph: '예: 호카 마하6 러닝화' });
+    var fUrl = field('판매처 주소 *', 'lkUrl', e.url, { full: true, ph: 'https://…', mode: 'url' });
+    var fPrice = field('판매가 (원)', 'lkPrice', e.price, { ph: '62900', mode: 'numeric' });
+    var fOrig = field('정가 (원) — 있으면 할인율 표시', 'lkOrig', e.original_price, { ph: '159000', mode: 'numeric' });
+    var fImg = field('사진 주소 (https, 없으면 비움)', 'lkImg', e.image_url, { full: true, ph: 'https://…jpg', mode: 'url' });
+    var lbLabel = el('label', null, '스티커'); var fLabel = el('select'); fLabel.id = 'lkLabel';
+    ['', 'HOT', 'NEW', '긴급'].forEach(function (v) { var o = el('option', null, v || '없음'); o.value = v; if ((e.label || '') === v) o.selected = true; fLabel.appendChild(o); });
+    if (e.label && ['HOT', 'NEW', '긴급'].indexOf(e.label) < 0) { var o2 = el('option', null, e.label); o2.value = e.label; o2.selected = true; fLabel.appendChild(o2); }
+    lbLabel.appendChild(fLabel); form.appendChild(lbLabel);
+    var lbSet = el('label', null, '묶음'); var fSet = el('select'); fSet.id = 'lkSet';
+    var oNone = el('option', null, '따로 (묶음 없음)'); oNone.value = ''; fSet.appendChild(oNone);
+    lk.sets.forEach(function (s) { var o = el('option', null, (s.title || '오늘의 꿀딜') + ' · ' + fmtWhen(s.as_of)); o.value = String(s.id); if (e.set_id === s.id) o.selected = true; fSet.appendChild(o); });
+    var oNew = el('option', null, '+ 새 묶음 만들기'); oNew.value = 'new'; fSet.appendChild(oNew);
+    lbSet.appendChild(fSet); form.appendChild(lbSet);
+    var fSetName = field('새 묶음 이름', 'lkSetName', '오늘의 꿀딜', { full: true });
+    fSetName.parentNode.hidden = true;
+    fSet.addEventListener('change', function () { fSetName.parentNode.hidden = fSet.value !== 'new'; if (fSet.value === 'new') fSetName.focus(); });
+    var fNote = field('한 줄 메모 (예: 쿠폰가 · 오늘 자정 마감)', 'lkNote', e.note, { full: true });
+    var fSlug = field('짧은 주소 (비우면 자동, 영어 소문자 · 숫자 · -)', 'lkSlug', e.slug, { full: true, ph: '예: hoka' });
+    var actions = el('div', 'row full');
+    var saveBtn = tgButton(e.id ? '고친 내용 저장' : '링크 추가', null, async function () {
+      var setId = fSet.value;
+      saveBtn.disabled = true;
+      try {
+        if (setId === 'new') {
+          var name = fSetName.value.trim();
+          if (!name) { say('bad', '새 묶음 이름을 적어 주세요.'); return; }
+          var js = await apiLk('/save-set', { title: name });
+          if (!js.ok) { say('bad', js.error || '묶음을 만들지 못했어요.'); return; }
+          setId = String(js.set.id);
+        }
+        var body = { title: fTitle.value, url: fUrl.value, price: fPrice.value, original_price: fOrig.value, image_url: fImg.value, label: fLabel.value, note: fNote.value, slug: fSlug.value, set_id: setId || null };
+        if (e.id) { body.id = e.id; body.active = e.active; }
+        var j = await apiLk('/save-link', body);
+        if (!j.ok) { say('bad', j.error || '저장하지 못했어요.'); return; }
+        lk.edit = null;
+        await loadLinks();
+        $('linkBody').appendChild(out); say('ok', (e.id ? '고쳤어요' : '추가했어요') + ' — 짧은 주소 ' + LINK_PAGE + j.link.slug);
+      } catch (err) { say('bad', '서버에 연결하지 못했어요.'); }
+      finally { saveBtn.disabled = false; }
+    });
+    actions.appendChild(saveBtn);
+    if (e.id) actions.appendChild(tgButton('취소', 'ghost', function () { lk.edit = null; renderLinks(); }));
+    form.appendChild(actions);
+    box.appendChild(form);
+    box.appendChild(out);
+  }
+  $('lkOpen').addEventListener('click', function () { window.open(LINK_PAGE, '_blank', 'noopener'); });
 
   function demoQueue() {
     var now = Date.now();
