@@ -20,7 +20,8 @@ const DELAY_MS = 5200;
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((a, v, i, all) => (v.startsWith('--') ? [...a, [v.slice(2), all[i + 1]?.startsWith('--') || all[i + 1] === undefined ? '1' : all[i + 1]]] : a), []),
 );
-const DAYS = Math.max(1, Number(args.days ?? 2)); // 오늘 포함 며칠 안 글만
+const URGENT_MODE = !!args.urgent; // 긴급 실행 — 오늘 글만, 점수 대신 최신 순으로 자세히 읽는다
+const DAYS = URGENT_MODE ? 1 : Math.max(1, Number(args.days ?? 2)); // 오늘 포함 며칠 안 글만
 const DETAIL = Math.max(1, Math.min(20, Number(args.detail ?? 10))); // 자세히 읽을 글 수
 
 let last = 0;
@@ -138,7 +139,9 @@ async function main() {
     return days.has(x.date) && !used.has(`${x.board}:${x.id}`) && !ENDED.test(x.title);
   });
   const score = (x) => x.likes * 3 + x.comments + x.views / 300;
-  fresh.sort((a, b) => score(b) - score(a));
+  // 정기: 점수순 · 긴급: 최신순(글 번호가 클수록 최근)
+  if (URGENT_MODE) fresh.sort((a, b) => Number(b.id) - Number(a.id));
+  else fresh.sort((a, b) => score(b) - score(a));
   const items = [];
   for (const [i, x] of fresh.slice(0, DETAIL).entries()) {
     try {
@@ -147,13 +150,14 @@ async function main() {
       const age = d.posted_at ? (Date.now() - Date.parse(d.posted_at)) / 3_600_000 : null;
       const hints = [];
       if (age != null && age <= 12) hints.push('NEW');      // 올라온 지 12시간 안 → '지금 바로 뜬 특가'
-      if (i < 3) hints.push('HOT');                          // 점수 상위 3 → '어제 제일 핫했던'
+      if (!URGENT_MODE && i < 3) hints.push('HOT');          // 점수 상위 3 → '어제 제일 핫했던'
       if (URGENT.test(`${d.title}\n${d.notes}\n${d.body}`)) hints.push('URGENT'); // 마감 · 수량 · 재입고 단서 → '긴급 특가'
       items.push({ ...d, rank: i + 1, age_h: age == null ? null : Math.round(age * 10) / 10, hints, score: Math.round(score(d) * 10) / 10 });
     } catch (e) { errors.push(`${x.url}: ${e.message}`); }
   }
   const out = {
     source: '어미새',
+    mode: URGENT_MODE ? 'urgent' : 'regular',
     collected_at: new Date().toISOString(),
     days: [...days],
     boards: BOARDS.map((b) => `${BASE}/${b.id}`),

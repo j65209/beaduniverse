@@ -76,7 +76,20 @@
   .prow{display:flex;align-items:flex-end;gap:24px;flex-wrap:nowrap}
   .price{font-size:128px;line-height:1;font-weight:900;letter-spacing:-4px;white-space:nowrap;background:linear-gradient(transparent 62%,var(--honey) 62%,var(--honey) 94%,transparent 94%);padding:0 6px}
   .off{flex:none;background:var(--pink2);color:#fff;font-size:44px;font-weight:900;border-radius:18px;padding:8px 18px;margin-bottom:14px}
-  .was{font-size:34px;color:var(--mute);text-decoration:line-through;margin-top:16px;font-weight:600}
+  .was{font-size:32px;color:var(--sub);margin-top:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .was s{color:var(--mute);font-weight:600}
+  .was b{color:var(--ink)}
+  .was em{font-style:normal;color:var(--hot);font-weight:900}
+  /* 제품 사진 (판매처 대표 이미지) — 있으면 딜 카드 위쪽에 */
+  .photo{height:360px;background:#fff;border:3px solid var(--ink);border-radius:36px;box-shadow:10px 10px 0 var(--ink);margin-bottom:30px;display:grid;place-items:center;overflow:hidden;padding:22px}
+  .photo img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  .has-photo .dname{font-size:84px;max-height:189px;margin-bottom:24px;letter-spacing:-3px}
+  .has-photo .dbrand{font-size:36px;margin-bottom:4px}
+  .has-photo .pricebox{padding:22px 40px 20px;margin-bottom:24px}
+  .has-photo .plabel{font-size:32px;margin-bottom:4px}
+  .has-photo .price{font-size:104px}
+  .has-photo .was{margin-top:10px;font-size:30px}
+  .has-photo .info{margin-bottom:20px}
   .info{display:flex;flex-direction:column;gap:14px;margin-bottom:28px}
   .info div{font-size:36px;font-weight:700;display:flex;gap:14px;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .info i{font-style:normal;flex:none;width:52px;text-align:center}
@@ -126,12 +139,29 @@
   }
   // '20%' 처럼 숫자만 온 할인율은 '20%↓' 로
   var offText = function (s) { s = String(s || '').trim(); return /^\d+(\.\d+)?%$/.test(s) ? s + '↓' : s; };
+  // '62,900원' · '10.1만원' · '정가 83,900원' → 숫자. '18,000원~' 처럼 '부터' 가격이거나 모르면 null
+  function won(s) {
+    s = String(s || '').replace(/정가|판매가|\s/g, '');
+    if (!s || /[~～]|부터|최대|%/.test(s)) return null;
+    var m = s.match(/^([\d,.]+)만(\d{1,4})?원?$/);
+    if (m) return Math.round(parseFloat(m[1].replace(/,/g, '')) * 10000) + (m[2] ? Number(m[2]) : 0);
+    m = s.match(/^([\d,]+)원?$/);
+    return m ? Number(m[1].replace(/,/g, '')) : null;
+  }
+  var fmtWon = function (n) { return n.toLocaleString('ko-KR') + '원'; };
+  // 정가 대비 할인율 — 정가 · 판매가가 둘 다 숫자로 확인될 때만, 내림한 정수 (사용자 요청 2026-11-11)
+  function discount(x) {
+    var was = won(x.was), now = won(x.price);
+    if (!was || !now || now >= was) return null;
+    return { was: was, now: now, pct: Math.floor((was - now) / was * 100) };
+  }
 
   function cover(d, n) {
     var c = d.cover || {};
     var rows = (d.deals || []).slice(0, 6).map(function (x, k) {
+      var dc = discount(x), tag = x.tag || (dc ? dc.pct + '%↓' : ''); // 태그가 없으면 정가 대비 할인율
       return '<div><span class="n">' + String(k + 1).padStart(2, '0') + '</span><span class="t">' + esc(plain(x.short || x.name)) + '</span>' +
-        (x.tag ? '<span class="g">' + esc(x.tag) + '</span>' : '') + '<span class="p">' + esc(x.price || '') + '</span></div>';
+        (tag ? '<span class="g">' + esc(tag) + '</span>' : '') + '<span class="p">' + esc(x.price || '') + '</span></div>';
     }).join('');
     return '<section class="slide">' + top(0, n) +
       '<div class="kicker">' + esc(c.kicker || '🍯 오늘의 꿀딜') + '</div>' +
@@ -147,16 +177,23 @@
     var info = [];
     if (x.store) info.push(['🛒', x.store]);
     (x.info || []).slice(0, 2).forEach(function (t) { info.push([t.icon || '✔️', t.text || t]); });
-    return '<section class="slide">' + top(k + 1, n) +
+    var dc = discount(x);
+    // 할인율 배지: 정가로 계산되면 그 값, 아니면 직접 준 off
+    var offBadge = dc ? dc.pct + '%↓' : (x.off ? offText(x.off) : '');
+    // 정가 줄: '정가 83,900원 → 판매가 67,120원 (20%↓)'. 정가를 모르면 줄 자체를 안 그린다
+    var wasLine = dc ? '<div class="was">정가 <s>' + fmtWon(dc.was) + '</s> → ' + esc(x.nowLabel || '판매가') + ' <b>' + fmtWon(dc.now) + '</b> <em>(' + dc.pct + '%↓)</em></div>'
+      : (x.was ? '<div class="was">정가 <s>' + esc(String(x.was).replace(/^정가\s*/, '')) + '</s></div>' : '');
+    return '<section class="slide' + (x.image ? ' has-photo' : '') + '">' + top(k + 1, n) +
       (x.flag ? '<div class="flag" data-fit="26">' + esc(x.flag) + '</div>' : '') +
       '<div class="dhead"><span class="num">' + String(k + 1).padStart(2, '0') + '</span><span class="cat">' + esc((x.emoji ? x.emoji + ' ' : '') + (x.category || '')) + '</span></div>' +
       '<div class="dbody">' +
+      (x.image ? '<div class="photo"><img alt="" src="' + esc(x.image) + '"></div>' : '') +
       // 브랜드가 상품 이름과 같으면(만석닭강정 같은) 한 번만
       (x.brand && x.brand.replace(/\s/g, '') !== plain(x.name).replace(/\s/g, '') ? '<div class="dbrand">' + esc(x.brand) + '</div>' : '') +
       '<h2 class="dname" data-fit="56">' + rich(x.name || '') + '</h2>' +
       '<div class="pricebox"><div class="plabel">' + esc(x.priceLabel || '꿀딜가') + '</div>' +
-      '<div class="prow"><span class="price" data-fit="70">' + esc(x.price || '') + '</span>' + (x.off ? '<span class="off">' + esc(offText(x.off)) + '</span>' : '') + '</div>' +
-      (x.was ? '<div class="was">' + esc(x.was) + '</div>' : '') + '</div>' +
+      '<div class="prow"><span class="price" data-fit="70">' + esc(x.price || '') + '</span>' + (offBadge ? '<span class="off">' + esc(offBadge) + '</span>' : '') + '</div>' +
+      wasLine + '</div>' +
       '<div class="info">' + info.map(function (r) { return '<div><i>' + esc(r[0]) + '</i><span>' + esc(r[1]) + '</span></div>'; }).join('') + '</div>' +
       (x.tip ? '<div class="tip"><span class="pig">🐷</span><p>' + rich(x.tip) + '</p></div>' : '') +
       '</div>' + foot(d) + '</section>';
@@ -184,6 +221,11 @@
       if (ps > 96) { price.style.fontSize = (ps - 8) + 'px'; continue; }
       var rows = slide.querySelectorAll('.info div');
       if (rows.length > 1) { rows[rows.length - 1].remove(); continue; }
+      // 사진 카드는 한마디를 빼고, 그래도 넘치면 사진 칸을 낮춘다
+      var tipBox = slide.querySelector('.tip');
+      if (tipBox && slide.querySelector('.photo')) { tipBox.remove(); tip = null; continue; }
+      var ph = slide.querySelector('.photo');
+      if (ph && ph.offsetHeight > 260) { ph.style.height = (ph.offsetHeight - 20) + 'px'; continue; }
       break;
     }
   }

@@ -22,6 +22,13 @@ if (!args.data || !args.out) {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const template = path.resolve(args.template ?? path.join(here, 'template.html'));
 const data = args.data === 'demo' ? null : JSON.parse(fs.readFileSync(args.data, 'utf8'));
+// 제품 사진(deals[].image)이 파일 경로면 cards.json 이 있는 폴더 기준 file:// 주소로 바꾼다
+if (data) {
+  const base = path.dirname(path.resolve(args.data));
+  for (const d of data.deals ?? []) {
+    if (d.image && !/^(https?|file|data):/i.test(d.image)) d.image = pathToFileURL(path.resolve(base, d.image)).href;
+  }
+}
 // 날짜 칸을 비워 두면 오늘(한국 시각)로 — 요일을 손으로 쓰다 틀리지 않게
 if (data && !data.dateLabel) {
   const k = new Date(Date.now() + 9 * 3_600_000);
@@ -125,7 +132,15 @@ async function main() {
 
     const files = [];
     for (let i = 0; i < n; i++) {
-      await js(`(async () => { window.only(${i}); await document.fonts.ready; await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); return true; })()`);
+      const broken = await js(`(async () => {
+        window.only(${i});
+        await document.fonts.ready;
+        const imgs = [...document.querySelectorAll('.slide')[${i}].querySelectorAll('img')];
+        await Promise.all(imgs.map((im) => im.complete ? null : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 15000); })));
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        return imgs.filter((im) => !im.naturalWidth).length;
+      })()`);
+      if (broken) console.error(`⚠ ${i + 1}번 카드 제품 사진을 못 불러왔어요 — 빈 칸으로 찍혀요.`);
       if (args.debug) { // 글자 크기 · 아래 줄 위치 확인용
         console.error(`#${i + 1}`, JSON.stringify(await js(`(() => {
           const s = document.querySelectorAll('.slide')[${i}];
