@@ -1,6 +1,9 @@
 // 꿀꿀집 카드뉴스 제작 에이전트 — 어미새 세일 정보 모으기 (Node 18+, 의존성 없음)
 //
-//   node eomisae.mjs [--out 파일] [--history 파일] [--days 2] [--detail 10]
+//   node eomisae.mjs [--out 파일] [--history 파일] [--days 2] [--detail 10] [--urgent] [--ids fs:123,os:456] [--match "다이소|daiso"]
+//
+// --ids   : 긴급 지시로 콕 집은 글 — 날짜 · 이미 쓴 글과 상관없이 맨 앞에 넣는다 (hints PICK, 끝났으면 ended:true, 예전에 썼으면 used_before:true)
+// --match : 긴급 지시의 주제 — 제목이 맞는 글을 먼저 자세히 읽고 match:true 를 붙인다 (정규식, 대소문자 무시)
 //
 // 어미새 robots.txt 를 지킨다: 쿼리 없는 게시판 첫 페이지와 글 주소(/게시판/번호)만, 요청 사이 5초 (Crawl-delay: 5).
 // 펨코(fmkorea) 핫딜은 robots.txt 가 일반 수집기·AI 수집기를 막아 두어서 넣지 않는다.
@@ -21,8 +24,11 @@ const args = Object.fromEntries(
   process.argv.slice(2).reduce((a, v, i, all) => (v.startsWith('--') ? [...a, [v.slice(2), all[i + 1]?.startsWith('--') || all[i + 1] === undefined ? '1' : all[i + 1]]] : a), []),
 );
 const URGENT_MODE = !!args.urgent; // 긴급 실행 — 오늘 글만, 점수 대신 최신 순으로 자세히 읽는다
-const DAYS = URGENT_MODE ? 1 : Math.max(1, Number(args.days ?? 2)); // 오늘 포함 며칠 안 글만
+const DAYS = Math.max(1, Math.min(3, Number(args.days ?? (URGENT_MODE ? 1 : 2)))); // 오늘 포함 며칠 안 글만 (긴급은 오늘만, 주제 지시면 --days 2)
 const DETAIL = Math.max(1, Math.min(20, Number(args.detail ?? 10))); // 자세히 읽을 글 수
+const PICK = [...new Set(String(args.ids ?? '').split(',').map((s) => s.trim()).filter((s) => /^[a-z]{1,10}:\d{1,12}$/.test(s)))].slice(0, 5);
+let MATCH = null;
+try { if (args.match && args.match !== '1') MATCH = new RegExp(String(args.match).slice(0, 200), 'i'); } catch { MATCH = null; }
 
 let last = 0;
 async function get(path) {
@@ -122,6 +128,8 @@ function parseDetail(html, item) {
 const ENDED = /\[(종료|마감|품절|매진|완료)\]|종료(?!\s*(예정|임박))|품절(?!\s*임박)|매진|끝났|만료|sold\s*out/i;
 // 특가 문구 근거 — 카드 만드는 쪽이 '긴급 특가!' 같은 말을 붙일 때 이 단서가 있어야 한다
 const URGENT = /오늘까지|오늘만|금일|자정까지|\d{1,2}\s*시\s*까지|마감\s*임박|선착|한정|타임\s*딜|타임특가|재입고|품절\s*임박|소진|수량/;
+// 조회수 · 댓글 많은 순 (2026-11-11 사용자 요청) — 댓글 1개를 조회 100번만큼 친다
+const score = (x) => x.views + x.comments * 100;
 
 async function main() {
   const used = new Set();
@@ -131,6 +139,25 @@ async function main() {
   const days = new Set(Array.from({ length: DAYS }, (_, i) => kstDay(i)));
   const list = [];
   const errors = [];
+  const items = [];
+  // 콕 집은 글 먼저 (긴급 지시의 어미새 글 주소) — 글 주소는 robots.txt 가 허용
+  for (const ref of PICK) {
+    const [board, id] = ref.split(':');
+    try {
+      const html = await get(`/${board}/${id}`);
+      const title = text(html.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? '').replace(/\s+-\s+[^-]+\s+-\s+어미새\s*$/, '');
+      const base = { board, board_name: BOARDS.find((b) => b.id === board)?.name ?? board, id, url: `${BASE}/${board}/${id}`, title, category: '', date: '', views: 0, comments: 0, likes: 0 };
+      const d = parseDetail(html, base);
+      const age = d.posted_at ? (Date.now() - Date.parse(d.posted_at)) / 3_600_000 : null;
+      const hints = ['PICK'];
+      if (age != null && age <= 12) hints.push('NEW');
+      if (URGENT.test(`${d.title}\n${d.notes}\n${d.body}`)) hints.push('URGENT');
+      items.push({
+        ...d, rank: 0, age_h: age == null ? null : Math.round(age * 10) / 10, hints, score: Math.round(score(d) * 10) / 10,
+        ...(ENDED.test(d.title) || ENDED.test(d.notes) ? { ended: true } : {}), ...(used.has(ref) ? { used_before: true } : {}),
+      });
+    } catch (e) { errors.push(`${BASE}/${board}/${id}: ${e.message}`); }
+  }
   for (const b of BOARDS) {
     try { list.push(...parseList(await get('/' + b.id), b)); } catch (e) { errors.push(`${b.name}: ${e.message}`); }
   }
@@ -140,14 +167,13 @@ async function main() {
     const k = x.id;
     if (seen.has(k)) return false;
     seen.add(k);
-    return days.has(x.date) && !used.has(`${x.board}:${x.id}`) && !ENDED.test(x.title);
+    return days.has(x.date) && !used.has(`${x.board}:${x.id}`) && !ENDED.test(x.title) && !PICK.includes(`${x.board}:${x.id}`);
   });
-  // 조회수 · 댓글 많은 순 (2026-11-11 사용자 요청) — 댓글 1개를 조회 100번만큼 친다
-  const score = (x) => x.views + x.comments * 100;
   // 정기: 점수순 · 긴급: 최신순(글 번호가 클수록 최근)
   if (URGENT_MODE) fresh.sort((a, b) => Number(b.id) - Number(a.id));
   else fresh.sort((a, b) => score(b) - score(a));
-  const items = [];
+  // 주제 지시: 제목이 맞는 글을 앞으로 (안정 정렬이라 그 안의 순서는 그대로)
+  if (MATCH) fresh.sort((a, b) => Number(MATCH.test(b.title)) - Number(MATCH.test(a.title)));
   for (const [i, x] of fresh.slice(0, DETAIL).entries()) {
     try {
       const d = parseDetail(await get(`/${x.board}/${x.id}`), x);
@@ -157,12 +183,14 @@ async function main() {
       if (age != null && age <= 12) hints.push('NEW');      // 올라온 지 12시간 안 → '지금 바로 뜬 특가'
       if (!URGENT_MODE && i < 3) hints.push('HOT');          // 점수 상위 3 → '어제 제일 핫했던'
       if (URGENT.test(`${d.title}\n${d.notes}\n${d.body}`)) hints.push('URGENT'); // 마감 · 수량 · 재입고 단서 → '긴급 특가'
-      items.push({ ...d, rank: i + 1, age_h: age == null ? null : Math.round(age * 10) / 10, hints, score: Math.round(score(d) * 10) / 10 });
+      items.push({ ...d, rank: i + 1, age_h: age == null ? null : Math.round(age * 10) / 10, hints, score: Math.round(score(d) * 10) / 10, ...(MATCH && MATCH.test(d.title) ? { match: true } : {}) });
     } catch (e) { errors.push(`${x.url}: ${e.message}`); }
   }
   const out = {
     source: '어미새',
     mode: URGENT_MODE ? 'urgent' : 'regular',
+    ...(PICK.length ? { picked: PICK } : {}),
+    ...(MATCH ? { match: String(args.match) } : {}),
     collected_at: new Date().toISOString(),
     days: [...days],
     boards: BOARDS.map((b) => `${BASE}/${b.id}`),

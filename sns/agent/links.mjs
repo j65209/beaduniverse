@@ -76,8 +76,8 @@ function main() {
     if (!d.image) return null; // 글자 카드면 사진 없음
     const local = !/^(https?|data|file):/i.test(d.image) ? path.resolve(base, d.image) : null;
     const cropped = Array.isArray(d.imageCrop) && d.imageCrop.length === 4;
-    // WebP 원본은 받는 쪽 저장소가 거절해서(2026-11-11 #10 "mime type image/webp is not supported") 카드에서 찍은 JPG 로 보낸다
-    if (local && !cropped) { const u = asDataUrl(local); if (u && !u.startsWith('data:image/webp')) return u; }
+    // 자르지 않은 원본(JPG · PNG · WebP)이 더 선명 — 받는 쪽 저장소가 2026-11-11 저녁부터 WebP · PNG 도 받음 (#10 땐 WebP 거절)
+    if (local && !cropped) { const u = asDataUrl(local); if (u) return u; }
     if (!args.ph || !d.ref) return null;
     return asDataUrl(path.join(path.resolve(args.ph), String(d.ref).replace(/[^\w-]+/g, '-') + '.jpg'));
   };

@@ -76,7 +76,10 @@ async function main() {
   const proc = spawn(findBrowser(), [
     '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--disable-sync',
-    '--hide-scrollbars', '--mute-audio', '--force-device-scale-factor=1', `--window-size=${W},${H}`, 'about:blank',
+    '--hide-scrollbars', '--mute-audio', '--force-device-scale-factor=1', `--window-size=${W},${H}`,
+    // 맥미니 무인 실행: 크롬이 키체인 암호 창을 띄우면 아무도 못 눌러 멈춘다 → 가짜 키체인
+    ...(process.platform === 'darwin' ? ['--use-mock-keychain', '--password-store=basic'] : []),
+    'about:blank',
   ], { stdio: 'ignore', windowsHide: true });
 
   const cleanup = () => {
