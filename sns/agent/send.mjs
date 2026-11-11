@@ -82,15 +82,31 @@ async function sendLinks(key, queueId) {
   } catch (e) { return { ok: false, error: e.message }; }
 }
 
-// 접수된 초안을 바로 게시 — POST /sns-tg/agent-publish {id}. 실패해도 초안은 그대로 남는다
+// 접수된 초안을 바로 게시 — POST /sns-tg/agent-publish {id} (받는 쪽 sns-tg v3, 2026-11-11).
+// 다 올라간 뒤 답한다(보통 1분, 받는 쪽 요청 "150초 넘게 기다려 달라") → 200초.
+//   ok:true          → status 'published'(전부) · 'partial'(일부, 예: X 크레딧 없음). 단톡방 '업로드 완료' 한 줄은 받는 쪽이 보냄
+//   pending:true     → 응답만 늦은 것 (받는 쪽이 올리는 중) — 다시 부르지 않는다
+//   mode 'confirm'   → 받는 쪽 자동 게시(tg_auto_publish)가 꺼져 있어 단톡방 승인 미리보기로 감
+//   409              → 이미 올리기를 시작한 카드 — 같은 id 는 한 번만 올라간다
+//   그 밖의 ok:false → 초안(draft)으로 남음 — --publish-only 로 다시 불러도 된다
+//   응답 없음(시간 초과 · 끊김) → 받는 쪽은 올리는 중일 수 있으니 다시 부르지 않는다
 async function publish(key, id) {
   try {
-    const res = await fetch(PUBLISH, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key }, body: JSON.stringify({ id }), signal: AbortSignal.timeout(120_000) });
+    const res = await fetch(PUBLISH, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-agent': key }, body: JSON.stringify({ id }), signal: AbortSignal.timeout(200_000) });
     const pj = await res.json().catch(() => ({}));
-    if (res.ok && pj.ok) return { ok: true, ...(pj.status ? { status: pj.status } : {}), ...(pj.results ? { results: pj.results } : {}) };
-    if (res.status === 404 && /없는 경로/.test(pj.error ?? '')) return { ok: false, error: '자동 게시 경로가 아직 없어요 (받는 쪽 배포 전) — 초안으로 남김, 단톡방 · 화면에서 승인하면 게시' };
-    return { ok: false, error: `HTTP ${res.status} ${pj.error ?? ''}`.trim(), ...(pj.results ? { results: pj.results } : {}) };
-  } catch (e) { return { ok: false, error: e.message }; }
+    const keep = {
+      ...(pj.status ? { status: pj.status } : {}), ...(pj.results ? { results: pj.results } : {}),
+      ...(pj.site !== undefined ? { site: pj.site } : {}), ...(pj.telegram !== undefined ? { telegram: pj.telegram } : {}),
+    };
+    if (res.ok && pj.ok) return { ok: true, ...keep };
+    if (pj.pending) return { ok: false, pending: true, ...keep, error: '받는 쪽이 아직 올리는 중이에요 (응답만 늦음) — 다시 부르지 않음' };
+    if (pj.mode === 'confirm') return { ok: false, mode: 'confirm', ...keep, error: '받는 쪽 자동 게시가 꺼져 있어 단톡방 승인 미리보기로 갔어요' };
+    if (res.status === 409) return { ok: false, already: true, ...keep, error: pj.error || '이미 올리기를 시작한 카드뉴스예요' };
+    if (res.status === 404 && /없는 경로/.test(pj.error ?? '')) return { ok: false, ...keep, error: '자동 게시 경로가 없어요 — 초안으로 남김' };
+    return { ok: false, ...keep, error: `HTTP ${res.status} ${pj.error ?? ''}`.trim() };
+  } catch (e) {
+    return { ok: false, unknown: true, error: `게시 응답을 못 받았어요 (${e.message}) — 받는 쪽이 올리는 중일 수 있어 다시 부르지 않음, 꿀꿀집 화면 게시 목록에서 확인` };
+  }
 }
 
 async function main() {
@@ -188,7 +204,13 @@ async function main() {
   let published = null;
   if (args.auto) {
     published = await publish(key, j.id);
-    if (!published.ok) { console.error(`⚠ 자동 발행 실패 (초안 #${j.id} 로 남음): ${published.error}`); process.exitCode = 2; }
+    // 종료 코드: 0 = 게시됨(일부 포함) · 승인 미리보기로 감 / 2 = 초안으로 남음 / 3 = 결과 모름(올리는 중) — 2 · 3 모두 다시 보내지 않는다
+    if (published.ok && published.status === 'partial') {
+      const miss = Object.entries(published.results ?? {}).filter(([, v]) => v && !v.ok).map(([k, v]) => `${k}: ${v.error ?? '실패'}`);
+      console.error(`⚠ 일부만 게시됨 (#${j.id}) — ${miss.join(' / ') || '못 올린 곳 있음'}`);
+    } else if (published.mode === 'confirm') console.error(`⚠ #${j.id}: ${published.error}`);
+    else if (published.pending || published.unknown || published.already) { console.error(`⚠ #${j.id}: ${published.error}`); process.exitCode = 3; }
+    else if (!published.ok) { console.error(`⚠ 자동 발행 실패 (초안 #${j.id} 로 남음): ${published.error}`); process.exitCode = 2; }
   }
   console.log(JSON.stringify({ ok: true, id: j.id, telegram: !!j.telegram, ...summary, ...(links ? { links } : {}), ...(published ? { published } : {}) }, null, 2));
 }

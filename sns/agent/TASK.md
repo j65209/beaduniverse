@@ -49,9 +49,12 @@
     `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --dry-run` 으로 검사까지 통과해야 14로 간다.
 14. 딜 링크: `"$N" links.mjs --cards cards.json --deals deals.json --photos photos.json --ph ph --out links.json` (GUIDE '딜 링크' — 카드에 넣은 제품 사진도 같이 간다).
     `"$N" send.mjs --dir cards --caption caption.txt --x x.txt --links links.json --auto --history "$G/history.json" --used <카드에 쓴 board:id 쉼표로>`
-    — 접수(미리보기 없이) → 링크 모음 페이지 → 바로 게시. 한 번만 부른다.
+    — 접수(미리보기 없이) → 링크 모음 페이지 → 바로 게시(최대 200초 기다림). 한 번만 부른다.
+    - 게시됨: `published.status` 'published' = 전부, 'partial' = 일부(못 올린 곳과 이유를 보고 — 예: X 크레딧 없음).
+    - `published.mode:'confirm'`: 받는 쪽 자동 게시가 꺼져 있어 단톡방 승인 미리보기로 갔다 — 그대로 보고.
     - 링크만 실패: 게시는 그대로, 이유만 보고.
-    - 게시 실패(종료 코드 2, `published.ok:false`): 초안으로 남는다. 다시 보내지 말고 "초안 #번호 로 남음 + 이유"를 보고.
+    - 게시 실패(종료 코드 2): 초안으로 남는다. 다시 보내지 말고 "초안 #번호 로 남음 + 이유"를 보고.
+    - 결과 모름(종료 코드 3 — 받는 쪽이 올리는 중 · 응답 없음): 다시 부르지 말고 "#번호 올리는 중, 화면 게시 목록 확인 필요"로 보고.
     - 접수 실패 · 보내는 중 끊김: 다시 보내지 말고, 꿀꿀집 화면 임시저장 · 게시 목록에 들어갔는지 먼저 확인해 달라고 쓴다.
 
 ## 긴급 실행 (승훈 님이 "긴급으로 올리자")
