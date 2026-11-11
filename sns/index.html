@@ -1461,7 +1461,7 @@
         await loadTg();
       });
       var r = el('div', 'row xconn'); r.style.marginTop = '0'; var rr = el('div', 'row'); rr.appendChild(inp); rr.appendChild(save); r.appendChild(rr);
-      box.appendChild(r); box.appendChild(out); return;
+      box.appendChild(r); box.appendChild(out); appendAgentKey(box, say); return;
     }
     var head = el('div', 'acc-head');
     head.appendChild(el('span', 'pill ' + (tgState.linked ? 'ok' : 'warn'), tgState.linked ? '✓ 단톡방 연결됨' : '⚠ 단톡방 연결 필요'));
@@ -1483,29 +1483,34 @@
       codeBox.appendChild(line);
     });
     var row = el('div', 'row'); row.style.marginTop = '10px'; row.appendChild(mk);
-    // 3단계 — 카드뉴스 제작 에이전트 열쇠 (만들 때 한 번만 보여 줌)
-    if (tgState.linked) {
-      var keyBtn = tgButton(tgState.agent_key ? '제작 에이전트 열쇠 다시 만들기' : '제작 에이전트 열쇠 만들기', 'ghost', async function () {
-        if (tgState.agent_key && keyBtn.dataset.armed !== '1') { keyBtn.dataset.armed = '1'; keyBtn.textContent = '예전 열쇠는 못 쓰게 돼요. 다시 누르면 새로 만들어요'; return; }
-        keyBtn.disabled = true;
-        var j = await apiTg('/agent-key', {}).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
-        keyBtn.disabled = false; keyBtn.dataset.armed = '';
-        if (!j.ok) { say('bad', j.error || '만들지 못했어요.'); return; }
-        tgState.agent_key = true; codeBox.textContent = '';
-        codeBox.appendChild(el('div', 'small', '카드뉴스 제작 에이전트에 아래 두 값을 넣어 주세요. 열쇠는 지금 한 번만 보여요 (헤더 x-ggul-agent).'));
-        [['보내는 주소', j.intake_url], ['열쇠', j.key]].forEach(function (kv) {
-          var line = el('div', 'row'); line.style.marginTop = '6px';
-          line.appendChild(el('span', 'small', kv[0]));
-          var v = el('input'); v.type = 'text'; v.readOnly = true; v.value = kv[1]; v.style.cssText = 'flex:1 1 260px;width:auto';
-          line.appendChild(v);
-          line.appendChild(tgButton('복사', 'ghost', function () { try { navigator.clipboard.writeText(kv[1]); say('ok', kv[0] + ' 복사했어요.'); } catch (e) { v.select(); } }));
-          codeBox.appendChild(line);
-        });
-      });
-      row.appendChild(keyBtn);
-      row.appendChild(el('span', 'small', tgState.agent_key ? '제작 에이전트 열쇠: 만들어 둠' : '제작 에이전트 열쇠: 아직 없음'));
-    }
     box.appendChild(row); box.appendChild(codeBox); box.appendChild(out);
+    appendAgentKey(box, say);
+  }
+  // 카드뉴스 제작 에이전트 열쇠 — 텔레그램 연결과 따로(연결 전엔 임시저장만 생김). 만들 때 한 번만 보여 준다.
+  function appendAgentKey(box, say) {
+    var wrap = el('div'); wrap.style.cssText = 'margin-top:14px;padding-top:12px;border-top:1px solid var(--line)';
+    var line0 = el('div', 'row');
+    line0.appendChild(el('span', 'small', '🤖 카드뉴스 제작 에이전트 열쇠: ' + (tgState.agent_key ? '만들어 둠' : '아직 없음')));
+    var keyBox = el('div');
+    var keyBtn = tgButton(tgState.agent_key ? '열쇠 다시 만들기' : '열쇠 만들기', 'ghost', async function () {
+      if (tgState.agent_key && keyBtn.dataset.armed !== '1') { keyBtn.dataset.armed = '1'; keyBtn.textContent = '예전 열쇠는 못 쓰게 돼요. 다시 누르면 새로 만들어요'; return; }
+      keyBtn.disabled = true;
+      var j = await apiTg('/agent-key', {}).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+      keyBtn.disabled = false; keyBtn.dataset.armed = '';
+      if (!j.ok) { say('bad', j.error || '만들지 못했어요.'); return; }
+      tgState.agent_key = true; keyBox.textContent = '';
+      keyBox.appendChild(el('div', 'small', '제작 에이전트에 아래 두 값을 넣어 주세요 (열쇠는 C:\\Users\\j6520\\.ggul\\agent-key.txt 에). 열쇠는 지금 한 번만 보여요.'));
+      [['보내는 주소', j.intake_url], ['열쇠', j.key]].forEach(function (kv) {
+        var line = el('div', 'row'); line.style.marginTop = '6px';
+        line.appendChild(el('span', 'small', kv[0]));
+        var v = el('input'); v.type = 'text'; v.readOnly = true; v.value = kv[1]; v.style.cssText = 'flex:1 1 260px;width:auto';
+        line.appendChild(v);
+        line.appendChild(tgButton('복사', 'ghost', function () { try { navigator.clipboard.writeText(kv[1]); say('ok', kv[0] + ' 복사했어요.'); } catch (e) { v.select(); } }));
+        keyBox.appendChild(line);
+      });
+    });
+    line0.appendChild(keyBtn);
+    wrap.appendChild(line0); wrap.appendChild(keyBox); box.appendChild(wrap);
   }
 
   function demoQueue() {
