@@ -281,6 +281,16 @@
     <div id="queueList"></div>
   </section>
 
+  <section class="card" id="tgCard">
+    <div class="card-head">
+      <div>
+        <h2>📨 텔레그램 컨펌</h2>
+        <p class="lead">카드뉴스를 단톡방에 미리보기로 보내고, 승인자가 버튼을 누르면 인스타·X·스레드에 자동으로 올라가요. 결과 링크도 같은 메시지에 남아요.</p>
+      </div>
+    </div>
+    <div id="tgBody"><div class="msg info">불러오는 중…</div></div>
+  </section>
+
   <div class="filters" role="toolbar" aria-label="보기 범위">
     <button class="chip" type="button" data-period="7">7일</button>
     <button class="chip" type="button" data-period="30">30일</button>
@@ -1007,6 +1017,7 @@
     }
     updateComposer();
     renderAccounts(); // X 연결 버튼은 등록된 브라우저에서만 켜진다
+    renderTg();
   }
 
   function compTargets() {
@@ -1371,12 +1382,15 @@
           else res.appendChild(el('span', null, '✓ ' + PL[p].name));
         } else res.appendChild(el('span', 'bad', '✕ ' + PL[p].name + ': ' + r.error));
       });
+      if (q.source === 'agent') res.appendChild(el('span', null, '🤖 제작 에이전트'));
+      if (q.tg && q.tg.card_id) res.appendChild(el('span', null, '📨 텔레그램 미리보기 보냄'));
       if (q.note) res.appendChild(el('span', null, q.note));
       mid.appendChild(res); row.appendChild(mid);
       var right = el('div', 'row'); right.appendChild(statusPill(q.status));
       if (draft) {
         var clearIfEditing = function () { if (comp.draftId === q.id) resetComposer(); };
         right.appendChild(loadButton(q));
+        if (tgState.linked) right.appendChild(tgSendButton(q));
         var pub = twoStep('지금 발행', '정말 지금 올릴까요? 바로 공개돼요', function () { return apiDev('/queue/publish', { id: q.id, now: true }); }, clearIfEditing);
         if (comp.draftId === q.id) { pub.disabled = true; pub.title = '고치는 중인 글은 위에서 올리기·예약을 눌러 주세요'; }
         right.appendChild(pub);
@@ -1396,6 +1410,103 @@
   }
   $('qRefresh').addEventListener('click', loadQueue);
   setInterval(function () { if (!document.hidden && state.queue.some(function (q) { return q.status === 'scheduled' || q.status === 'publishing'; })) loadQueue(); }, 60000);
+
+  // ── 텔레그램 컨펌 (함수 sns-tg) ─────────────────────────────────────────
+  // 봇 토큰은 이 화면 → 서버로만 (다시 보여 주지 않음). 단톡방은 /link@봇 코드 를 보낸 사람이 승인자.
+  var FNTG = FN.replace(/\/sns$/, '/sns-tg');
+  var tgState = { bot: null, linked: false };
+  async function apiTg(path, body) {
+    var opt = body === undefined ? { method: 'GET', cache: 'no-store', headers: { 'x-ggul-device': DEVKEY } }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-ggul-device': DEVKEY }, body: JSON.stringify(body) };
+    var res = await fetch(FNTG + path, opt); var j = {};
+    try { j = await res.json(); } catch (e) { /* noop */ }
+    if (!res.ok && !j.error) j.error = '서버 응답 ' + res.status;
+    return j;
+  }
+  async function loadTg() {
+    if (DEMO) { tgState = { ok: true, bot: 'ggulggulzip_bot', linked: true, chat_title: '꿀꿀집 마케팅', approver: '전승훈', agent_key: false }; renderTg(); return; }
+    var j = await apiTg('/status').catch(function () { return { ok: false }; });
+    tgState = j.ok ? j : { bot: null, linked: false, error: j.error || '불러오지 못했어요.' };
+    renderTg(); renderQueue();
+  }
+  function tgButton(label, cls, fn) { var b = el('button', cls, label); b.type = 'button'; b.disabled = DEMO; b.addEventListener('click', fn); return b; }
+  function tgSendButton(q) {
+    var b = tgButton('📨 텔레그램', 'ghost', async function () {
+      b.disabled = true; b.textContent = '보내는 중…';
+      var j = await apiTg('/send', { id: q.id }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+      b.disabled = false; b.textContent = '📨 텔레그램';
+      postMsg(j.ok ? 'ok' : 'bad', j.ok ? '단톡방에 #' + q.id + ' 미리보기를 보냈어요. 승인 버튼은 텔레그램에서 눌러 주세요.' : (j.error || '보내지 못했어요.'));
+      if (j.ok) loadQueue();
+    });
+    b.title = q.tg && q.tg.card_id ? '고친 내용으로 다시 보내기 (예전 미리보기 버튼은 꺼져요)' : '단톡방에 미리보기 보내기';
+    return b;
+  }
+  function renderTg() {
+    var box = $('tgBody'); box.textContent = '';
+    if (!canPost()) { box.appendChild(el('div', 'empty', '이 브라우저를 등록하면 텔레그램을 연결할 수 있어요.')); return; }
+    if (tgState.error) box.appendChild(el('div', 'err', tgState.error));
+    var out = el('div', 'msg', ''); out.hidden = true;
+    var say = function (kind, text) { out.hidden = false; out.className = 'msg ' + kind; out.textContent = text; };
+    if (!tgState.bot) { // 1단계 — 봇 만들고 토큰 붙여넣기
+      var ol = el('ol'); ol.style.cssText = 'margin:0 0 10px;padding-left:20px;font-size:13px;display:grid;gap:4px';
+      ['텔레그램에서 @BotFather 와 대화 → /newbot', '봇 이름(예: 꿀꿀집 마케팅)과 아이디(…bot 으로 끝나게)를 정하면 토큰을 줘요', '그 토큰을 아래에만 붙여넣고 저장 (채팅·메신저로 보내지 마세요)'].forEach(function (t) { ol.appendChild(el('li', null, t)); });
+      box.appendChild(ol);
+      var inp = el('input'); inp.type = 'password'; inp.autocomplete = 'off'; inp.spellcheck = false; inp.placeholder = 'BotFather 가 준 봇 토큰'; inp.setAttribute('aria-label', '텔레그램 봇 토큰');
+      var save = tgButton('저장', null, async function () {
+        var token = inp.value.trim(); if (!token) { say('bad', '봇 토큰을 붙여넣어 주세요.'); return; }
+        save.disabled = true; say('info', '텔레그램에 확인하는 중…');
+        var j = await apiTg('/setup', { token: token }).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+        inp.value = ''; token = ''; save.disabled = false;
+        if (!j.ok) { say('bad', j.error || '저장하지 못했어요.'); return; }
+        await loadTg();
+      });
+      var r = el('div', 'row xconn'); r.style.marginTop = '0'; var rr = el('div', 'row'); rr.appendChild(inp); rr.appendChild(save); r.appendChild(rr);
+      box.appendChild(r); box.appendChild(out); return;
+    }
+    var head = el('div', 'acc-head');
+    head.appendChild(el('span', 'pill ' + (tgState.linked ? 'ok' : 'warn'), tgState.linked ? '✓ 단톡방 연결됨' : '⚠ 단톡방 연결 필요'));
+    head.appendChild(el('span', 'note', '봇 @' + tgState.bot + (tgState.linked ? ' · 방 「' + (tgState.chat_title || '') + '」 · 승인: ' + (tgState.approver || '') : '')));
+    box.appendChild(head);
+    // 2단계 — 단톡방 연결 코드
+    var codeBox = el('div'); codeBox.style.marginTop = '10px';
+    var mk = tgButton(tgState.linked ? '다른 방으로 다시 연결' : '연결 코드 만들기', tgState.linked ? 'ghost' : null, async function () {
+      mk.disabled = true;
+      var j = await apiTg('/link-code', {}).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+      mk.disabled = false; codeBox.textContent = '';
+      if (!j.ok) { say('bad', j.error || '코드를 만들지 못했어요.'); return; }
+      codeBox.appendChild(el('div', 'small', '① 미리보기를 받을 단톡방에 @' + j.bot + ' 을 초대  ② 승훈 님이 그 방에 아래 명령을 보내기 (15분 안, 보낸 사람이 승인자)'));
+      var line = el('div', 'row'); line.style.marginTop = '6px';
+      var code = el('code', null, j.command); code.style.cssText = 'font-size:14px;padding:6px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--line)';
+      line.appendChild(code);
+      line.appendChild(tgButton('복사', 'ghost', function () { try { navigator.clipboard.writeText(j.command); say('ok', '복사했어요. 단톡방에 붙여넣어 보내 주세요.'); } catch (e) { say('info', '직접 선택해서 복사해 주세요.'); } }));
+      line.appendChild(tgButton('연결됐는지 보기', 'ghost', loadTg));
+      codeBox.appendChild(line);
+    });
+    var row = el('div', 'row'); row.style.marginTop = '10px'; row.appendChild(mk);
+    // 3단계 — 카드뉴스 제작 에이전트 열쇠 (만들 때 한 번만 보여 줌)
+    if (tgState.linked) {
+      var keyBtn = tgButton(tgState.agent_key ? '제작 에이전트 열쇠 다시 만들기' : '제작 에이전트 열쇠 만들기', 'ghost', async function () {
+        if (tgState.agent_key && keyBtn.dataset.armed !== '1') { keyBtn.dataset.armed = '1'; keyBtn.textContent = '예전 열쇠는 못 쓰게 돼요. 다시 누르면 새로 만들어요'; return; }
+        keyBtn.disabled = true;
+        var j = await apiTg('/agent-key', {}).catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
+        keyBtn.disabled = false; keyBtn.dataset.armed = '';
+        if (!j.ok) { say('bad', j.error || '만들지 못했어요.'); return; }
+        tgState.agent_key = true; codeBox.textContent = '';
+        codeBox.appendChild(el('div', 'small', '카드뉴스 제작 에이전트에 아래 두 값을 넣어 주세요. 열쇠는 지금 한 번만 보여요 (헤더 x-ggul-agent).'));
+        [['보내는 주소', j.intake_url], ['열쇠', j.key]].forEach(function (kv) {
+          var line = el('div', 'row'); line.style.marginTop = '6px';
+          line.appendChild(el('span', 'small', kv[0]));
+          var v = el('input'); v.type = 'text'; v.readOnly = true; v.value = kv[1]; v.style.cssText = 'flex:1 1 260px;width:auto';
+          line.appendChild(v);
+          line.appendChild(tgButton('복사', 'ghost', function () { try { navigator.clipboard.writeText(kv[1]); say('ok', kv[0] + ' 복사했어요.'); } catch (e) { v.select(); } }));
+          codeBox.appendChild(line);
+        });
+      });
+      row.appendChild(keyBtn);
+      row.appendChild(el('span', 'small', tgState.agent_key ? '제작 에이전트 열쇠: 만들어 둠' : '제작 에이전트 열쇠: 아직 없음'));
+    }
+    box.appendChild(row); box.appendChild(codeBox); box.appendChild(out);
+  }
 
   function demoQueue() {
     var now = Date.now();
@@ -1453,6 +1564,7 @@
   xReturnNotice();
   load();
   loadDevice();
+  loadTg();
 })();
 </script>
 </body>

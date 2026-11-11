@@ -34,6 +34,8 @@
 // X 가 돌려보내는 곳 (state 로 확인 · 10분 · 한 번만):
 //   GET  /sns/x/callback?code&state — 토큰을 받고 @계정이 맞는지 확인한 뒤 화면으로 돌려보냄 (?x=ok | ?x=err&m=…)
 //     크레딧이 없어 계정 확인(users/me)이 막히면 토큰만 '확인 대기'로 두고 ?x=pending — 충전 뒤 '연결 확인'(/test)이 마무리
+// 텔레그램 컨펌(함수 sns-tg)은 cron 열쇠(x-ggul-cron)로 /queue(임시저장만) · /queue/publish · /queue/retry 를 부른다.
+//   텔레그램으로 보낸 것(sns_queue.tg)은 올린 뒤 sns-tg /notify 로 결과를 그 메시지에 적는다.
 //
 // X(트위터)는 종량제 — 글 1개 $0.015(링크가 있으면 $0.20) · 글 읽기 1개 $0.005 · 사용자 조회 $0.010.
 //   그래서 X 통계는 하루 한 번(cron KST 09:35 차례) 최근 7일 글만, 화면에서는 X 계정 버튼으로 1시간에 한 번만 모은다.
@@ -634,14 +636,19 @@ async function approvedDevice(req: Request): Promise<Device | null> {
 }
 
 // pg_cron 이 보낸 요청인지 — 헤더 열쇠를 sns_settings.cron_key 와 비교 (함수가 살아 있는 동안 한 번만 읽음)
+// 텔레그램 함수(sns-tg)도 이 열쇠로 '내부 요청'을 보낸다 (임시저장 만들기 · 발행 · 다시 시도)
 let cronKey: string | null = null;
-async function isCron(req: Request) {
-  const got = req.headers.get(CRON_HEADER) ?? '';
-  if (got.length < 32) return false;
+async function loadCronKey() {
   if (!cronKey) {
     const { data } = await sb.from('sns_settings').select('value').eq('key', 'cron_key').maybeSingle();
     cronKey = data?.value ?? null;
   }
+  return cronKey;
+}
+async function isCron(req: Request) {
+  const got = req.headers.get(CRON_HEADER) ?? '';
+  if (got.length < 32) return false;
+  await loadCronKey();
   if (!cronKey || got.length !== cronKey.length) return false;
   let diff = 0;
   for (let i = 0; i < got.length; i++) diff |= got.charCodeAt(i) ^ cronKey.charCodeAt(i);
@@ -726,7 +733,7 @@ async function queueList(req: Request) {
   if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
   const { data, error } = await sb
     .from('sns_queue')
-    .select('id, created_at, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts, last_attempt_at, note')
+    .select('id, created_at, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts, last_attempt_at, note, tg, source')
     .order('scheduled_at', { ascending: false })
     .limit(50);
   if (error) throw error;
@@ -778,10 +785,19 @@ const postFields = (v: PostInput) => ({
   x_text: v.platforms.includes('x') ? v.xText : null,
 });
 
-async function queueCreate(req: Request) {
+// 등록된 브라우저 또는 내부 요청(sns-tg — 제작 에이전트가 보낸 카드뉴스·텔레그램 버튼)
+async function deviceOrInternal(req: Request) {
   const dev = await approvedDevice(req);
-  if (!dev) return reply(req, 403, NOT_APPROVED);
+  if (dev) return { ok: true, dev, internal: false };
+  return { ok: await isCron(req), dev: null, internal: true };
+}
+
+async function queueCreate(req: Request) {
+  const who = await deviceOrInternal(req);
+  if (!who.ok) return reply(req, 403, NOT_APPROVED);
+  const dev = who.dev;
   const body = await req.json().catch(() => ({}));
+  if (who.internal && !body?.draft) return reply(req, 400, { ok: false, error: '내부 요청은 임시저장만 만들 수 있어요.' });
   const v = await readPostInput(body);
   if ('error' in v) return reply(req, 400, { ok: false, error: v.error });
   const draft = !!body?.draft;
@@ -793,7 +809,10 @@ async function queueCreate(req: Request) {
   }
   const { data, error } = await sb
     .from('sns_queue')
-    .insert({ device_id: dev.id, ...postFields(v), scheduled_at: new Date(when).toISOString(), status: draft ? 'draft' : 'scheduled' })
+    .insert({
+      device_id: dev?.id ?? null, ...postFields(v), scheduled_at: new Date(when).toISOString(), status: draft ? 'draft' : 'scheduled',
+      source: who.internal ? String(body?.source || 'agent').slice(0, 20) : 'screen',
+    })
     .select('id')
     .single();
   if (error) throw error;
@@ -821,9 +840,9 @@ async function queueUpdate(req: Request) {
   return reply(req, 200, { ok: true, id: data.id, status: 'draft' });
 }
 
-// 임시저장 → 발행 (now 면 바로, scheduled_at 이면 그 시각에)
+// 임시저장 → 발행 (now 면 바로, scheduled_at 이면 그 시각에) — 텔레그램 승인 버튼도 여기로(내부 요청)
 async function queuePublish(req: Request) {
-  if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
+  if (!(await deviceOrInternal(req)).ok) return reply(req, 403, NOT_APPROVED);
   const body = await req.json().catch(() => ({}));
   const id = Number(body?.id);
   const w = readWhen(body);
@@ -858,7 +877,7 @@ async function queueCancel(req: Request) {
 }
 
 async function queueRetry(req: Request) {
-  if (!(await approvedDevice(req))) return reply(req, 403, NOT_APPROVED);
+  if (!(await deviceOrInternal(req)).ok) return reply(req, 403, NOT_APPROVED);
   const body = await req.json().catch(() => ({}));
   const id = Number(body?.id);
   const { data, error } = await sb
@@ -923,10 +942,11 @@ async function publishOne(id: number) {
     .update({ status: 'publishing', last_attempt_at: new Date().toISOString() })
     .eq('id', id)
     .eq('status', 'scheduled')
-    .select('id, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts')
+    .select('id, platforms, image_paths, caption, threads_text, x_text, scheduled_at, status, results, attempts, tg')
     .maybeSingle();
   if (error) throw error;
   if (!claimed) return { status: 'skipped', results: {} };
+  const tgCard = (claimed as any).tg; // 텔레그램 미리보기로 승인된 것이면 끝나고 그 메시지에 결과를 알린다
   const row = claimed as QueueRow;
   const results: Record<string, any> = { ...(row.results ?? {}) };
   const urls = (row.image_paths ?? []).map(publicUrl);
@@ -951,7 +971,23 @@ async function publishOne(id: number) {
   const oks = row.platforms.filter((p) => results[p]?.ok).length;
   const status = oks === row.platforms.length ? 'published' : oks ? 'partial' : 'failed';
   await sb.from('sns_queue').update({ status, results, attempts: (row.attempts ?? 0) + 1 }).eq('id', id);
+  if (tgCard?.card_id) await notifyTelegram(id);
   return { status, results };
+}
+
+// 텔레그램 미리보기 메시지에 결과(링크·실패 이유)를 적어 달라고 sns-tg 에 알린다
+async function notifyTelegram(id: number) {
+  try {
+    const key = await loadCronKey();
+    if (!key) return;
+    await fetch(`${SUPABASE_URL}/functions/v1/sns-tg/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', [CRON_HEADER]: key },
+      body: JSON.stringify({ id }),
+    });
+  } catch (e) {
+    console.error('notify telegram', id, errMsg(e));
+  }
 }
 
 async function publishDue(req: Request) {
