@@ -10920,6 +10920,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-sub">이메일 붙여넣기 → 한 통씩 자동 발송 · 제목·본문·첨부 세팅 · 발송 기록</div>
           <div class="sub-module-tag">NEW</div>
         </div>
+        <div class="sub-module m-models" onclick="openModelsPage()">
+          <div class="sub-module-icon">📸</div>
+          <div class="sub-module-title">모델 지원자</div>
+          <div class="sub-module-sub" id="modelsSub">지원 메일 자동 정리 · 사진 · 정보 · 진행 상태</div>
+          <div class="sub-module-tag" id="modelsTag">NEW</div>
+        </div>
         <div class="sub-module m-badge" onclick="triggerBadge()">
           <div class="sub-module-icon">🏷️</div>
           <div class="sub-module-title">이미지 배지 합성</div>
@@ -18048,6 +18054,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 메일 발송 — mailer/ 별도 페이지 (보내는 계정의 구글 Apps Script 웹 앱으로 한 통씩 발송) */
   function openMailer(){ const w=window.open('mailer/','bbMailer'); if(!w) location.href='mailer/'; }
   window.openMailer=openMailer;
+  /* 모델 지원자 — models/ 별도 페이지. brightbeed@bead-uni.com 지원 메일 → 지메일 Apps Script(models/gmail-sync.gs) → 엣지 함수 model-apply → model_applicants. 전 직원 */
+  function openModelsPage(){ const w=window.open('models/','bbModels'); if(!w) location.href='models/'; }
+  window.openModelsPage=openModelsPage;
+  (function modelsCardCount(){ const MK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+    const run=()=>{ try{
+      fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/model_applicants?select=id&deleted_at=is.null&status=eq.'+encodeURIComponent('새 지원'),
+        {headers:{apikey:MK,Authorization:'Bearer '+MK,Prefer:'count=exact',Range:'0-0'}})
+      .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t) t.textContent=n?('새 지원 '+n):'NEW'; }).catch(()=>{});
+    }catch(_){} };
+    setTimeout(run,1500); setInterval(()=>{ if(!document.hidden) run(); },120000);
+  })();
   /* 꿀꿀집 마케팅 회사 — sns/ 별도 페이지 (@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석, 서버는 Supabase 엣지 함수 sns). 카드는 '관리자 전용' 폴더 — 관리자 PIN 이면서 SNS_OWNER(전승훈)일 때만 보임 (snsRefreshAccess) */
   function openSnsPage(){ const w=window.open('sns/','bbSns'); if(!w) location.href='sns/'; }
   window.openSnsPage=openSnsPage;
