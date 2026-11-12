@@ -4,6 +4,8 @@
 //                 [--links links.json] [--auto] [--video reel.mp4] [--key-file 열쇠파일] [--history 기록.json --used fs:123,os:456] [--dry-run]
 //   --video: reel.mjs 가 만든 9:16 영상 → 먼저 /sns-tg/agent-video 로 올리고 intake 에 video_path — 받는 쪽이 인스타 릴스로도 올린다
 //     (--platforms 를 안 주면 'reels' 가 저절로 붙는다). 영상 올리기가 실패하면 카드뉴스만 보낸다 (이유는 video.error).
+//   --platforms reels: 릴스로만 (2026-11-12 승훈 님 "피드 말고 릴스로만, 무조건 릴스") — --video 가 꼭 있어야 하고(--dry-run 도 검사),
+//     영상 올리기가 실패하면 접수 전에 멈춘다(종료 코드 1, 아무것도 안 올라감 — 다시 불러도 겹치지 않는다).
 //   node send.mjs --publish-only --queue-id 7      (이미 접수된 초안을 지금 발행 — 자동 발행이 실패했을 때)
 //
 // 받는 곳: Supabase 엣지 함수 sns-tg 의 POST /intake (헤더 x-ggul-agent = 에이전트 열쇠).
@@ -184,6 +186,8 @@ async function main() {
   const leak = secretHit(caption) ?? secretHit(xText);
   if (leak) fail(`문구에 비밀 값 같은 글자가 있어요 (${leak}) — 보내지 않아요. 문구를 확인해 주세요.`);
   const platforms = args.platforms ? String(args.platforms).split(',').map((s) => s.trim()).filter(Boolean) : null;
+  const reelsOnly = !!platforms?.length && platforms.every((p) => p === 'reels'); // 릴스로만 — 영상 없이는 보내지 않는다
+  if (platforms?.includes('reels') && !args.video) fail('--platforms 에 reels 가 있으면 --video 영상(reel.mjs 로 만든 reel.mp4)이 꼭 있어야 해요.');
   let video = null; // 릴스 영상 (reel.mjs) — 모양만 먼저 검사
   if (args.video) {
     const vf = path.resolve(args.video);
@@ -221,6 +225,7 @@ async function main() {
       videoRes = res.ok && vj.ok && vj.path ? { ok: true, path: vj.path, mb: +(video.bytes.length / 1048576).toFixed(2) }
         : { ok: false, error: res.status === 404 ? '받는 쪽에 영상 받는 경로가 아직 없어요 (배포 전)' : `HTTP ${res.status} ${vj.error ?? ''}`.trim() };
     } catch (e) { videoRes = { ok: false, error: `영상을 올리지 못했어요 — ${e.message}` }; }
+    if (!videoRes.ok && reelsOnly) fail(`릴스 영상을 올리지 못해 보내지 않았어요 — ${videoRes.error}`);
     if (!videoRes.ok) console.error(`⚠ 릴스 영상 올리기 실패 — 카드뉴스만 보내요: ${videoRes.error}`);
   }
 
