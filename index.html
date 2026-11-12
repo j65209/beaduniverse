@@ -11683,7 +11683,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             </select>
             <span id="arUpdated"></span>
             <span id="arCount">0건</span>
-            <button class="kd-refresh-btn master-only" id="arSyncBtn" onclick="syncOrdersFromDropbox()" title="서버 Dropbox 발주서 폴더를 즉시 재파싱해서 카탈로그 갱신 (자동 08:05 외 수동 트리거)">
+            <button class="kd-refresh-btn master-only" id="arSyncBtn" onclick="syncOrdersFromDropbox()" title="서버 PC 가 Dropbox 발주서 폴더를 다시 읽어 카탈로그를 갱신합니다 (자동 갱신 없음)">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               동기화
             </button>
@@ -27195,7 +27195,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     filterKDOrders(sb?sb.value:'');
   }
 
-  // 각 KD 행에 이전 발주 뱃지 부착 (렌더 후 또는 orders.json 로드 후 호출)
+  // 각 KD 행에 이전 발주 뱃지 부착 (렌더 후 또는 발주 상품 카탈로그 로드 후 호출)
   function attachKDHistoryChips(){
     const rows=document.querySelectorAll('#poBody tr.kd-row');
     rows.forEach(tr=>{
@@ -27386,7 +27386,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      scripts/parse_orders.py 가 xlsx 아이템 6천개를 link/img 기준 dedupe해서
      1,100+ 개 고유 상품으로 집계한 것을 3열 그리드로 렌더. */
   // arState는 브랜드 별로 두 벌 유지하고 브랜드 스위치 시 통째로 스왑한다.
-  // BB는 dropbox orders.json + product-name-overrides.json,
+  // BB는 dropbox 발주서 카탈로그(프록시 /orders-catalog) + product-name-overrides.json,
   // SB는 KD 실시간 orders(dedupe) + product-name-overrides-shinebeed.json.
   // 두 브랜드 모두 오버라이드 편집(제품명·이미지·삭제) 지원.
   let arState={all:[],filtered:[],q:'',sort:'recent',shown:60,overrides:{},autoOverrides:{},imgOverrides:{},deletedIds:{},brand:'brightbeed',readonly:false};
@@ -27405,15 +27405,31 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const AR_OVERRIDES_API=AR_OVERRIDES_APIS.brightbeed;
   function arEscape(s){return (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
   function arFmtInt(n){if(n==null||isNaN(n))return '—';return Math.round(n).toLocaleString('ko-KR');}
+  /* 발주 상품 카탈로그 JSON — 2026-11-12 공개 레포 data/orders.json 에서 빼서 맥미니 프록시가 내준다 (/orders-catalog, PIN).
+     1688 단가 · 수량이 있어 깃허브에 안 올린다 (서버 scripts/parse_orders.py → ~/server/brightbeed-proxy/out/orders.json).
+     없으면(404) null, 못 받으면 throw — metaAdsFetch 와 같은 규칙. gzip 으로 약 340KB. */
+  async function ordersCatalogFetch(){
+    const get=async(force)=>{
+      const base=await loadProxyBase(force);
+      if(!base) throw new Error('proxy unavailable');
+      return fetch(`${base}/orders-catalog?cb=${Date.now()}`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
+    };
+    let r=null;
+    try{ r=await get(false); }catch(e){}
+    if(!r || (r.status>=502 && r.status<=504)) r=await get(true);
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }
   async function loadArchive(opts){
     try{
-      // 브라우저 HTTP 캐시 활용 — GitHub Pages 가 ETag/Cache-Control 보내주므로
-      // 파일이 안 바뀌면 304 또는 캐시 히트로 3.4MB 재다운로드 방지.
-      // 사용자가 명시적으로 sync 버튼 눌렀을 때만 force reload.
-      const cacheMode = (opts&&opts.force) ? 'reload' : 'default';
-      const r=await fetch('data/orders.json',{cache:cacheMode});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const d=await r.json();
+      const d=await ordersCatalogFetch();
+      if(!d){
+        _arLoaded=false;   // 다음에 탭을 열 때 다시 받는다
+        const emp=document.getElementById('arEmpty');
+        if(emp){emp.querySelector('.po-empty-text').textContent='아직 카탈로그가 없습니다 — 🔄 동기화를 눌러 주세요';emp.style.display='block';}
+        return;
+      }
       arState.all=d.products||[];
       buildOfferHistoryIndex(d.orders||[]);
       const upd=document.getElementById('arUpdated');
@@ -27424,8 +27440,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       // 콰이디에어 최근 발주 테이블이 이미 렌더되었으면 이전 발주 뱃지 재부착
       if(typeof attachKDHistoryChips==='function') attachKDHistoryChips();
     }catch(e){
+      _arLoaded=false;   // 서버 PC · 터널이 잠깐 끊긴 것일 수 있다 — 다음에 탭을 열 때 다시 받는다
       const emp=document.getElementById('arEmpty');
-      if(emp){emp.querySelector('.po-empty-text').textContent='데이터 없음';emp.style.display='block';}
+      if(emp){emp.querySelector('.po-empty-text').textContent='서버 PC 연결 안 됨 — 잠시 뒤 탭을 다시 열어 주세요';emp.style.display='block';}
     }
   }
 
@@ -27927,9 +27944,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.loadArchive=loadArchive;
 
   /* ===== 발주 상품 카탈로그 수동 동기화 (서버 Dropbox 재파싱 트리거) =====
-     proxy /orders-parse → ~/.local/bin/brightbeed-orders-parse.sh
-     (git pull → parse_orders.py → orders.json diff 있으면 push).
-     자동 스케줄은 launchd KST 08:05. 물류팀이 발주서 새로 넣고 바로 반영하고 싶을 때 사용. */
+     proxy POST /orders-parse → 서버 scripts/parse_orders.py → ~/server/brightbeed-proxy/out/orders.json
+     (검증 · 직전본 비교 후 통째 교체, git 안 씀 — 2026-11-12). 자동 스케줄은 없음(08-24 사장님 요청으로 끔).
+     발주서를 Dropbox 에 새로 넣고 바로 반영하고 싶을 때 사용. */
   async function syncOrdersFromDropbox(){
     if(!requireMaster('발주 상품 동기화')) return;
     const btn=document.getElementById('arSyncBtn');
@@ -27949,19 +27966,38 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       let j={};
       try{ j=await r.json(); }catch{}
       if(!r.ok){
-        const detail=j.error||`HTTP ${r.status}`;
+        const detail=j.message||j.error||`HTTP ${r.status}`;
         toast('동기화 실패: '+detail,'err');
         return;
+      }
+      // 서버가 아직 읽는 중(202) — Dropbox 가 파일을 내려받느라 몇 분 걸릴 수 있고 터널은 100초에 응답을 끊는다.
+      // 끝날 때까지 5초마다 상태(GET /orders-parse)를 확인한다.
+      if(j.running){
+        if(btn) btn.innerHTML='<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> 서버가 발주서 읽는 중…';
+        const until=Date.now()+15*60*1000;
+        let done=null;
+        while(!done && Date.now()<until){
+          await new Promise(res=>setTimeout(res,5000));
+          try{
+            const b2=await loadProxyBase();
+            const s=await fetch(`${b2}/orders-parse?cb=${Date.now()}`,{headers:{'X-Brightbeed-PIN':PROXY_PIN_MASTER,'Accept':'application/json'},cache:'no-store'});
+            const st=s.ok ? await s.json() : null;
+            if(st && !st.running && st.result) done=st.result;
+          }catch(e){}
+        }
+        if(!done){ toast('동기화가 아직 안 끝났습니다 — 잠시 뒤 탭을 다시 열어 확인해 주세요','err'); return; }
+        j=done;
       }
       if(j.ok===false){
         const msg=j.message || j.reason || '알 수 없는 오류';
         toast('동기화 실패: '+msg,'err');
         return;
       }
-      await loadArchive({force:true});
+      await loadArchive();
       const cnt=Number(j.product_count)||0;
       const tag=j.changed===false ? ' (변경 없음)' : '';
-      toast(`✓ 동기화 완료 — ${cnt.toLocaleString()}개 상품${tag}`,'ok');
+      const warn=j.warning ? ` · ⚠️ ${j.warning}` : '';
+      toast(`✓ 동기화 완료 — ${cnt.toLocaleString()}개 상품${tag}${warn}`,'ok');
     }catch(e){
       toast('동기화 오류: '+e.message,'err');
     }finally{
@@ -27973,12 +28009,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window.syncOrdersFromDropbox=syncOrdersFromDropbox;
 
-  // orders.json (3.4MB) 는 발주 상품 리스트 탭을 실제로 열 때만 lazy 로 fetch.
-  // 다른 팀만 쓰는 사장님/직원한테는 평생 다운로드 안 나감.
+  // 카탈로그(약 340KB gzip)는 발주 상품 리스트 탭을 실제로 열 때만 lazy 로 fetch.
+  // 다른 팀만 쓰는 사장님/직원한테는 평생 다운로드 안 나감. 못 받으면 false 로 되돌려 다음에 다시 받는다.
   let _arLoaded=false;
 
   /* ===== 샤인비드 발주 상품 카탈로그 (KD orders → 클라이언트측 dedupe) =====
-     브라이트비드는 dropbox 발주서 xlsx 를 서버가 파싱한 data/orders.json 을 쓰는 반면,
+     브라이트비드는 dropbox 발주서 xlsx 를 서버가 파싱한 카탈로그(프록시 /orders-catalog)를 쓰는 반면,
      샤인비드는 콰이디에어 최근 60일 신청서만이 소스이므로 클라이언트에서 실시간 집계.
      dedupe key 우선순위: product_url → image_url → memo (전부 없으면 스킵). */
   function _shineNormId(it){
