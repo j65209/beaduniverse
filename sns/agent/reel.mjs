@@ -46,13 +46,33 @@ const OPT = {
   volume: num(args.volume, 0.8, 0.05, 1), // 배경음악 크기
   hook: null, // 인트로 위 제목 {kicker, title}
   count: null, // 인트로 위 '꿀딜 N개' 배지 — 첫 장면이 릴스 썸네일 (2026-11-12 승훈 님 "꿀딜 4개 5개 이런식으로 썸네일")
+  maxOff: null, // 배지 옆 '최대 N%↓' 스티커 — 카드와 같은 계산(정가 · 판매가), 10% 미만이면 안 붙임 (2026-11-12 "더 어그로 끌 수 있게")
+};
+// 카드(template.html won · discount)와 같은 할인율 계산 — 썸네일 숫자가 카드 숫자와 어긋나지 않게
+const won = (s) => {
+  s = String(s || '').replace(/정가|판매가|\s/g, '');
+  if (!s || /[~～]|부터|최대|%/.test(s)) return null;
+  let m = s.match(/^([\d,.]+)만(\d{1,4})?원?$/);
+  if (m) return Math.round(parseFloat(m[1].replace(/,/g, '')) * 10000) + (m[2] ? Number(m[2]) : 0);
+  m = s.match(/^([\d,]+)원?$/);
+  return m ? Number(m[1].replace(/,/g, '')) : null;
+};
+const pctOf = (x) => {
+  const was = won(x?.was), now = won(x?.price);
+  if (was && now && now < was) return Math.floor(((was - now) / was) * 100);
+  const off = /^(?:최대\s*)?(\d{1,2})\s*%/.exec(String(x?.off ?? '').trim()); // 정가 없이 '30%' 만 있는 딜 (카드 배지와 같은 값)
+  return off ? Number(off[1]) : null;
 };
 // 표지 제목 — cards.json 의 cover (== 강조 == 는 꿀색 밑줄) · 딜 수 (표지 목록처럼 6개까지)
 if (args.data && args.data !== '1') {
   try {
     const d = JSON.parse(fs.readFileSync(path.resolve(args.data), 'utf8'));
     if (d?.cover?.title) OPT.hook = { kicker: String(d.cover.kicker ?? '').slice(0, 40), title: String(d.cover.title).slice(0, 80) };
-    if (Array.isArray(d?.deals) && d.deals.length) OPT.count = Math.min(6, d.deals.length);
+    if (Array.isArray(d?.deals) && d.deals.length) {
+      OPT.count = Math.min(6, d.deals.length);
+      const best = Math.max(0, ...d.deals.slice(0, 6).map((x) => pctOf(x) ?? 0));
+      if (best >= 10 && best < 100) OPT.maxOff = best;
+    }
   } catch (e) { console.error(`⚠ ${args.data} 를 읽지 못했어요 — 인트로 제목 없이 만들어요 (${e.message})`); }
 }
 const readMedia = (p, what) => {
@@ -195,7 +215,7 @@ window.build = async (o) => {
   // ── 인트로: AI 영상(꽉 채움) + 위쪽 빈 곳에 표지 제목, 끝에서 표지 카드로 겹쳐 바뀜 ──
   const first = new OffscreenCanvas(W, H); // 카드 영상 첫 장면 (겹쳐 바뀔 때 씀)
   draw(0); first.getContext('2d').drawImage(cv, 0, 0);
-  if (introDur && (o.hook || o.count)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + '꿀딜 0123456789개').catch(() => null);
+  if (introDur && (o.hook || o.count)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + '꿀딜 0123456789개 최대%↓').catch(() => null);
   const hookFont = (px) => px + 'px Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const drawHook = () => {
     if (!o.hook && !o.count) return;
@@ -241,6 +261,19 @@ window.build = async (o) => {
       ctx.fillStyle = '#ffffff'; ctx.fillText(a, x, base); x += wa;
       ctx.fillStyle = '#ffc94a'; ctx.fillText(num, x, base); x += wn;
       ctx.fillStyle = '#ffffff'; ctx.fillText(b, x, base);
+      // '최대 N%↓' 꿀색 동그라미 스티커 — 배지 오른쪽 끝에 살짝 걸치게 (세로로 더 내려가지 않아 꿀꿀이를 안 가림)
+      if (o.maxOff) {
+        const dm = 236, cx = Math.min(W - dm / 2 - 24, left + bw + dm * 0.3), cy = top + bh / 2;
+        ctx.save();
+        ctx.translate(cx, cy); ctx.rotate(-0.12);
+        ctx.fillStyle = 'rgba(58,44,37,0.22)'; ctx.beginPath(); ctx.arc(6, 10, dm / 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffc94a'; ctx.beginPath(); ctx.arc(0, 0, dm / 2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.fillStyle = '#3a2c25'; ctx.textAlign = 'center';
+        ctx.font = '900 ' + hookFont(52); ctx.fillText('최대', 0, -26);
+        ctx.font = '900 ' + hookFont(80); ctx.fillText(o.maxOff + '%↓', 0, 56, dm - 36);
+        ctx.restore();
+      }
     }
     ctx.restore();
   };
@@ -553,6 +586,7 @@ async function main() {
       size: `${W}x${H}`, fps: meta.fps, frames: meta.frames, cards: meta.cards, audio: !!meta.audio?.sizes, keyframes: meta.vKeys.length,
       intro_s: meta.intro, music: meta.music && !meta.music.error ? meta.music : false, hook: !!(meta.intro && OPT.hook),
       thumb_count: meta.intro && OPT.count ? OPT.count : null, // 썸네일(첫 장면)의 '꿀딜 N개'
+      thumb_max_off: meta.intro && OPT.count && OPT.maxOff ? OPT.maxOff : null, // 그 옆 '최대 N%↓'
       media: { intro: meta.intro ? MEDIA.intro : null, music: meta.music && !meta.music.error ? MEDIA.music : null },
       took_s: Math.round((Date.now() - t0) / 1000),
     }, null, 2));
