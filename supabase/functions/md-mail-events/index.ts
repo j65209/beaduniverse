@@ -46,9 +46,9 @@ function cleanName(raw: string, platform: string): string {
     .replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '')
     .replace(/\[(중요\/)?\s*(w컨셉|29cm|코페리|아페티|코즈미)[^\]]*\]/gi, ' ')
     .replace(/\((회신|답변)[^)]*\)/g, ' ')
-    .replace(/\((코페리|아페티|코즈미|프로덕트피알|아코이하우스|아코이|야르|식스에이)\)/g, ' ')
+    .replace(/\((코페리|아페티|코즈미|프로덕트피알|아코이하우스|아코이|야르|식스에이|브랜드명)\)/g, ' ')
     .replace(/w컨셉|29cm/gi, ' ')
-    .replace(/\b(BAG|ACC)\b|잡화|공통/gi, ' ')
+    .replace(/\b(BAG|ACC)\b|(^|\s)(잡화|공통)(?=\s|$)/gi, ' ')
     .replace(/코페리|아페티|코즈미|프로덕트피알|아코이하우스|야르|식스에이/g, ' ')
     .replace(/\d+\s*(차|주차)(?=\s|$)/g, ' ')
     .replace(/(세일\s*리스트|참여\s*상품|파일|시트).*$/g, ' ')
@@ -77,6 +77,15 @@ export function parseRange(text: string, sentAt?: string): [string, string] | nu
   return lo ? [lo, hi] : null;
 }
 
+/** 기간이 적힌 줄만 골라서(신청 · 회신 · 접수 · 예시 줄 제외), 기획전 이름이 같이 적힌 줄이 있으면 그 줄만 */
+export function pickRange(text: string, name: string, sentAt?: string): [string, string] | null {
+  const lines = text.replace(/\r/g, '').split('\n').filter((l) => /\d\s*[\/.]\s*\d/.test(l) && !/신청|회신|접수|마감|예시|PIN/i.test(l) && parseRange(l, sentAt));
+  if (!lines.length) return null;
+  const core = name.replace(/^\d+월\s*/, '').replace(/\s+/g, '');
+  const named = core ? lines.filter((l) => l.replace(/[\s*]+/g, '').includes(core)) : [];
+  return parseRange((named.length ? named : lines).join('\n'), sentAt);
+}
+
 export function parseMail(m: Msg): MailEvent[] {
   const platform = platformOf(m);
   if (!platform) return [];
@@ -94,11 +103,11 @@ export function parseMail(m: Msg): MailEvent[] {
   else add(cleanName(m.subject ?? '', platform), '');
   const out: MailEvent[] = [];
   for (const g of groups.values()) {
-    // 기간: 첨부 엑셀 → 내 답장 본문 → (W컨셉) 인용된 원문 순서
-    let r: [string, string] | null = null;
-    for (const t of g.texts) { const x = parseRange(t, m.sentAt); if (x) r = r ? [x[0] < r[0] ? x[0] : r[0], x[1] > r[1] ? x[1] : r[1]] : x; }
-    if (!r) r = parseRange(own, m.sentAt);
-    if (!r && platform === 'wconcept') r = parseRange(body.slice(0, 4000), m.sentAt);
+    // 기간: 내 본문 → (29CM) 첨부 엑셀 '종료기간' → 인용된 원문.
+    // W컨셉 엑셀은 양식에 예시 날짜(1/5~1/8)가 있어 안 쓴다. 'PIN 신청기간' · 회신 기한 줄도 뺀다.
+    let r = pickRange(own, g.name, m.sentAt);
+    if (!r && platform === '29cm') for (const t of g.texts) { const x = pickRange(t, g.name, m.sentAt); if (x) r = r ? [x[0] < r[0] ? x[0] : r[0], x[1] > r[1] ? x[1] : r[1]] : x; }
+    if (!r) r = pickRange(body.slice(0, 8000), g.name, m.sentAt);
     const brand = brandOf(...(m.attachments ?? []).map((a) => a.name), m.subject ?? '', own);
     const label = PLATFORM_LABEL[platform];
     out.push({
@@ -120,7 +129,11 @@ async function checkKey(k: string) {
 
 async function upsert(evs: MailEvent[]) {
   for (const e of evs) {
-    const { data: ex } = await sb.from('md_mail_events').select('id, start_date, end_date, sent_at').eq('key', e.key).maybeSingle();
+    let { data: ex } = await sb.from('md_mail_events').select('id, start_date, end_date, sent_at').eq('key', e.key).maybeSingle();
+    // 브랜드를 못 찾은 메일(전달 등)은 같은 플랫폼 · 같은 이름의 기존 줄에 합친다
+    if (!ex && !e.brand) ex = (await sb.from('md_mail_events').select('id, start_date, end_date, sent_at').eq('platform', e.platform).eq('name', e.name).limit(1)).data?.[0] ?? null;
+    // 브랜드가 있는 메일이 먼저 '브랜드 없음' 줄을 만났으면 그 줄을 이 브랜드로
+    if (!ex && e.brand) { const nb = (await sb.from('md_mail_events').select('id').eq('key', `${e.platform}||${e.name}`).maybeSingle()).data; if (nb) { await sb.from('md_mail_events').update({ key: e.key, brand: e.brand }).eq('id', nb.id); ex = (await sb.from('md_mail_events').select('id, start_date, end_date, sent_at').eq('id', nb.id).single()).data; } }
     if (!ex) { await sb.from('md_mail_events').insert(e); continue; }
     // 같은 기획전을 여러 번 보냈으면(가격 수정 등) 기간이 있는 최신 메일 값으로
     const newer = !ex.sent_at || (e.sent_at && e.sent_at >= ex.sent_at);
