@@ -20,6 +20,8 @@
 //   POST /sns-tg/agent-job/claim   맥서버가 긴급 작업 하나 집기 (x-ggul-agent) → {job:{id, kind, instruction, created_at}} 또는 {job:null}
 //   POST /sns-tg/agent-job/finish {id, ok, note?, queue_id?} 긴급 작업 끝 → 단톡방의 그 /긴급 메시지에 결과로 답장
 //   단톡방 명령(연결된 방의 승인자만): /긴급 <지시> (또는 /urgent · @봇 긴급 …) → ggul_agent_jobs 에 넣고 접수 답장 · /긴급 상태 · /긴급 취소
+//   2026-11-12~ 텔레그램 웹훅은 문지기 함수 ggul-tg-gate 를 거쳐 온다 ('긴급' · '긴급 <지시>' 슬래시 없이 → '/긴급 …', 빈 지시 → '(지시 없음)').
+//     아래 /setup 을 다시 하면 웹훅이 이 함수로 바로 돌아가니, 그 뒤엔 ggul-tg-gate /install 을 한 번 다시 부른다. (이 줄은 주석만 — 다시 배포할 필요 없음)
 //   에이전트 열쇠는 두 개까지 받는다: sns_settings.agent_key_hash(이 PC) · agent_key_hash_2(맥서버) — 둘 다 sha256 hex 만 저장
 //   POST /sns-tg/notify {id, event?} sns 함수가 올린 뒤 결과 알림 (헤더 x-ggul-cron = sns_settings.cron_key)
 //                                  event 'reel' = 나중에 끝난 릴스 — 바로 올리기 행(tg.auto)은 단톡방에 한 줄, 미리보기 행은 그 메시지를 고친다
