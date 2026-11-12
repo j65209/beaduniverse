@@ -17,14 +17,14 @@ model: sonnet
 | `.env` | `FB_ACCESS_TOKEN`, `FB_AD_ACCOUNTS` (콤마 구분), `FB_API_VERSION`. **절대 커밋 금지** |
 | `insights.py` | Graph API `/act_.../insights` 호출. `--level {account,campaign,adset,ad}`, `--preset {yesterday,last_7d,last_30d,...}`, `--since/--until`. **캠페인/광고 상태 + 오늘·어제 총합도 자동 fetch** (campaigns_meta, ads_meta, today, yesterday 필드) |
 | `report.py` | JSON → 마크다운 (터미널 출력용, Claude가 대화에서 요약할 때 사용) |
-| `build_dashboard_report.py` | JSON → `~/projects/Brightbeed/data/meta-ads/{brand_id}.json` (대시보드용, 피드백 자동 생성). 캠페인 `effective_status` 병합, `active_ads` 리스트 첨부 |
-| `refresh_dashboard.sh` | 원샷: insights → build → git push. `bash refresh_dashboard.sh <preset> <brand_id>` |
+| `build_dashboard_report.py` | JSON → `~/server/brightbeed-proxy/out/meta-ads/{brand_id}.json` (대시보드용, 피드백 자동 생성 · **깃허브에 안 올림**). 캠페인 `effective_status` 병합, `active_ads` 리스트 첨부. 소재 사진만 `~/projects/Brightbeed-autopush/data/meta-ads/creatives/` |
+| `refresh_dashboard.sh` | 원샷: insights → build (+ 새 소재 사진만 git push). `bash refresh_dashboard.sh <preset> <brand_id>` |
 | `reports/` | 원본 JSON + MD (gitignore) |
 
-### 대시보드 (`~/projects/Brightbeed/`, GitHub auto-push)
+### 대시보드 (`~/projects/Brightbeed/`, GitHub auto-push — 화면 코드만. 리포트 데이터는 맥미니)
 | 파일 | 역할 |
 |---|---|
-| `data/meta-ads/{brand_id}.json` | 브랜드별 리포트 데이터 (build_dashboard_report.py 산출물) |
+| 맥미니 프록시 `/meta-ads/{brand_id}.json` (PIN) | 브랜드별 리포트 데이터 = `~/server/brightbeed-proxy/out/meta-ads/` (build_dashboard_report.py 산출물). 2026-11-12 공개 레포 `data/meta-ads/*.json` 에서 옮김 — 지출 · 구매액 · 공홈 매출이라 **공개 레포에 다시 올리지 말 것** |
 | `meta-ads/report.html` | 뷰어 (KPI 카드 + 피드백 + 캠페인 테이블). 브랜드 파라미터로 데이터 로드 |
 | `index.html` | 홈 폴더 "📱 메타 광고 분석 리포트" — 브랜드 타일 상태 체크 + 클릭 시 뷰어 오픈 |
 
@@ -49,7 +49,7 @@ bash ~/projects/fb-ads/refresh_dashboard.sh last_7d ct     # Cleartype 기본 �
 bash ~/projects/fb-ads/refresh_dashboard.sh yesterday ct   # 기본 어제
 bash ~/projects/fb-ads/refresh_dashboard.sh last_30d ct    # 기본 지난 30일
 ```
-→ 자동으로 push, 30초~1분 후 대시보드 반영. 완료되면 대시보드 URL 제시.
+→ 맥미니 폴더에 바로 써지고 프록시가 그대로 내준다 (push · 배포 대기 없음). 새 소재 사진이 있으면 그것만 push. 완료되면 대시보드 URL 제시.
 → **모든 5개 preset (today/yesterday/last_7d/last_30d/maximum) 을 매번 fetch** 해서 리포트 UI 기간 필터에 다 담김. 첫 인자는 초기 표시 preset만 결정.
 
 ### 2. 새 브랜드 활성화
@@ -142,7 +142,8 @@ bash ~/projects/fb-ads/refresh_dashboard.sh last_30d ct    # 기본 지난 30일
 **로직 변경 후엔 반드시 재빌드**:
 ```bash
 python3 ~/projects/fb-ads/build_dashboard_report.py ct
-cd ~/projects/Brightbeed && git add data/meta-ads/ meta-ads/ && git commit && git push
+# 데이터는 맥미니 out/meta-ads/ 에 바로 반영 (커밋 없음). 뷰어(report.html)를 고쳤을 때만:
+cd ~/projects/Brightbeed && git add meta-ads/report.html && git commit && git push
 ```
 
 ### 4. 대화 중 요약 (파일 저장 없이)
@@ -176,7 +177,7 @@ python3 insights.py --since 2026-08-01 --until 2026-08-17 --level ad
 ## ⚠️ 안전 규칙
 
 1. **토큰은 절대 대화·커밋에 노출 금지**. `.env` 는 `.gitignore` 처리됨. 만약 노출됐다면 즉시 사장님에게 알리고 재발급 요청.
-2. **Brightbeed는 auto-push**. `data/meta-ads/` 나 `meta-ads/report.html` 편집 후 반드시 커밋. `.claude/agents/` 도 동일.
+2. **Brightbeed는 auto-push**. `meta-ads/report.html` 편집 후 반드시 커밋. `.claude/agents/` 도 동일. 리포트 JSON 은 맥미니 `~/server/brightbeed-proxy/out/meta-ads/` 에만 있다 — `data/meta-ads/*.json` 을 공개 레포에 다시 만들지 말 것 (2026-11-12, 금액).
 3. **토큰 만료 시** (60일 or Meta 정책 변경): 사장님에게 "시스템 사용자에서 재발급 필요" 안내. 절대 임의로 해결 시도 X.
 4. **리포트 로직 변경은 신중히**: 피드백 규칙(임계값, 문구)은 사장님이 자주 조정할 수 있으니 변경 시 사장님에게 어떤 규칙을 어떻게 바꿨는지 명확히 설명.
 5. **계정 상태 코드**: 1=정상, 9=유예기간(현재 Cleartype), 2/100/101=문제. 뷰어 상단 배너 자동 표시.
@@ -208,3 +209,10 @@ python3 insights.py --since 2026-08-01 --until 2026-08-17 --level ad
 - `insights.py` 는 `reports/insights_{계정}_{레벨}_{기간}_latest.json` 을 덮어쓴다 (쌓지 않음). 계정 메타는 같은 실행 안에서 재사용 (`FB_ADS_META_TTL`, 300초).
 - 숫자가 그대로면 `build_dashboard_report.py` 가 1시간 안에는 브랜드 파일을 다시 쓰지 않는다 (`_same_report`) — 커밋 · 사이트 배포를 줄이려고.
 - 로그에 `한도 사용량` (`x-fb-ads-insights-throttle`) 이 브랜드마다 찍힌다. 높아지면 주기를 늘릴 것.
+
+## 저장 위치 (2026-11-12 공개 레포에서 옮김)
+
+- 리포트 JSON · `all-brands-scoreboard.json` → 맥미니 `~/server/brightbeed-proxy/out/meta-ads/`. 오피스는 프록시 `GET /meta-ads/{이름}.json` (PIN, gzip) 으로 받는다. 깃허브에 안 올린다 — 지출 · 구매액 · 공홈 매출(`md_sales`)이 들어 있다.
+- 스코어보드의 `cards` = 홈 카드 한 장에 쓰는 값만 (`build_all_brands_scoreboard.py` `card_of`). 홈은 브랜드 파일 대신 이것 하나만 읽는다.
+- 소재 사진은 공개 광고 이미지라 공개 레포 `data/meta-ads/creatives/` 그대로 (`-autopush` 클론에서 바뀐 것만 커밋).
+- 프록시 상태판 · AI 직원(오스카 · 자스민) 컨텍스트 · sixshop-collector 공홈 보고서 광고비 추정도 이 폴더를 읽는다 (`META_ADS_DIR`).
