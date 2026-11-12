@@ -12004,7 +12004,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- 브랜드별 광고 시트 — 일자별 입력 → 전주대비 요약·그래프 자동 생성. 데이터: data/ad-sheets/{brand}.json -->
+    <!-- 브랜드별 광고 시트 — 일자별 입력 → 전주대비 요약·그래프 자동 생성. 데이터: 비공개 brightbeed-reports office/ad-sheets/{brand}.json (프록시) -->
     <div class="po-wrap" style="padding-bottom:0">
       <div class="po-section adsh-section">
         <div class="po-section-head" style="padding:0 0 6px">
@@ -13986,6 +13986,34 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
   }
 
+  /* 메타 광고 리포트 JSON — 2026-11-12 공개 레포 data/meta-ads/ 에서 빼서 맥미니 프록시가 내준다 (/meta-ads/{이름}.json, PIN).
+     지출 · 구매액 · 공홈 매출이 들어 있어 깃허브에 안 올린다 (~/projects/fb-ads → ~/server/brightbeed-proxy/out/meta-ads/).
+     없으면(404) null, 못 받으면 throw — "없음"과 "못 읽음"을 화면에서 구분한다. 소재 사진은 공개 레포 data/meta-ads/creatives/ 그대로. */
+  async function metaAdsFetch(name){
+    const get=async(force)=>{
+      const base=await loadProxyBase(force);
+      if(!base) throw new Error('proxy unavailable');
+      return fetch(`${base}/meta-ads/${encodeURIComponent(name)}.json?cb=${Date.now()}`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
+    };
+    let r=null;
+    try{ r=await get(false); }catch(e){}
+    // 터널 재시작으로 주소가 바뀌었을 수 있음 — 한 번 다시 읽고 재시도 (ghFetch 와 같은 규칙)
+    if(!r || (r.status>=502 && r.status<=504)) r=await get(true);
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }
+  // 홈 카드(창을 바꿀 때마다) · 광고 순위판이 같은 스코어보드를 쓴다 — 1분 안에는 한 번만 받는다
+  let _metaSbPromise=null, _metaSbAt=0;
+  function metaAdsScoreboard(force){
+    if(!force && _metaSbPromise && Date.now()-_metaSbAt<60*1000) return _metaSbPromise;
+    _metaSbAt=Date.now();
+    const p=metaAdsFetch('all-brands-scoreboard');
+    _metaSbPromise=p;
+    p.catch(()=>{ if(_metaSbPromise===p) _metaSbPromise=null; });
+    return p;
+  }
+
   /* 에이전트 오피스 — 홈 최상단 카드에 실시간 근무 인원 반영.
      프록시 /agents/status (로그 mtime + 스케줄) 가 없거나 실패하면 조용히 skip.
      숫자는 agents.html 의 CHARACTERS 기준(사람=책상 단위)과 일치시킨다 — raw launchd job 수가 아니라
@@ -14624,9 +14652,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _signageBusy=true;
     if(btn) btn.classList.add('spin');
     try{
-      const r=await fetch('data/meta-ads/all-brands-scoreboard.json?v='+Date.now());
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      _signageData=await r.json();
+      // 2026-11-12 공개 레포에서 빼서 맥미니 프록시가 내준다 (metaAdsFetch 주석)
+      const sb=await metaAdsScoreboard(!!force);
+      if(!sb) throw new Error('scoreboard not found');
+      _signageData=sb;
       _signageLastFetch=Date.now();
       _sigApplyFilter();
       if(updEl) updEl.textContent='지난 7일 기준 · '+_sigTimeLabel(_signageData.generated_at);
@@ -15984,6 +16013,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.mdPromoSwitch=mdPromoSwitch;
 
   /* ===== 아코이 기획전 계산기 · 플랫폼별 정산 표 =====
+     저장: 비공개 brightbeed-reports office/promo/{brand}.json (프록시 경유). 원가가 들어 있어 2026-11-12 공개 레포
+           data/promo-*.json 에서 옮겼다 — 공개 경로로 되돌리지 말 것. 새로고침 안 한 옛 탭이 공개 경로에 다시 만들지
+           못하게 data/promo-{brand}.json 은 폴더로 막아 뒀다 (MOVED.txt). sixshop-collector 공홈 보고서가 아코이 원가를 읽는다.
      상품 마스터: {code, name, costUsd} · 자동 계산: 원가(원) = round(costUsd × ex / 100) × 100
      플랫폼 카드: {name, feeRate, rows: {code: {price, floor}, code+' 1+1': {price, floor}, ...}}
      자동 계산 (100원 단위 반올림):
@@ -16001,9 +16033,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const _akpHistLSKey   = (b)=>AKP_PREFIX+b+'.history';
   const _akpBackupLSKey = (b)=>AKP_PREFIX+b+'.backup';
   const _akpRemoteTsKey = (b)=>AKP_PREFIX+b+'.lastRemote';
-  const _akpRemotePath  = (b)=>'data/promo-'+b+'.json';
-  const _akpRemoteApi   = (b)=>'https://api.github.com/repos/j65209/beaduniverse/contents/'+_akpRemotePath(b);
-  const _akpRemoteRaw   = (b)=>'https://raw.githubusercontent.com/j65209/beaduniverse/main/'+_akpRemotePath(b);
+  const _akpRemotePath  = (b)=>'office/promo/'+b+'.json';
+  const _akpRemoteApi   = (b)=>'https://api.github.com/repos/j65209/brightbeed-reports/contents/'+_akpRemotePath(b);
   // 브랜드별 독립 상태
   const _akpStates={sixA:null, pp:null, akoi:null};
   const _akpInited={sixA:false, pp:false, akoi:false};
@@ -16012,6 +16043,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const _akpDirty={sixA:false, pp:false, akoi:false};   // 원격에 아직 못 올린 내 수정
   const _akpPulledAt={sixA:0, pp:0, akoi:0};            // 남의 수정을 마지막으로 받아온 시각
   const _akpRetry={sixA:0, pp:0, akoi:0};
+  const _akpSynced={sixA:false, pp:false, akoi:false};      // 이 창에서 서버본을 읽어 이 PC 표와 맞춰 봤다 — 그 전엔 올리지 않는다
+  const _akpReadFailed={sixA:false, pp:false, akoi:false};  // 마지막 서버 읽기 실패 (맥미니 · 프록시 꺼짐)
   const _akpEditingPlats={sixA:new Set(), pp:new Set(), akoi:new Set()};
   const _akpEditingMaster={sixA:false, pp:false, akoi:false};
   // 플랫폼 표 기본 컬럼 순서와 기본 이름 — pl.colLabels[key] 로 사장님이 이름 변경 가능
@@ -16024,27 +16057,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _akpActiveWrap(brand){ return document.querySelector('.akp-wrap[data-akp-brand="'+(brand||_akpBrand)+'"]'); }
 
   function _akpDefault(brand){
-    if(brand==='akoi'){
-      return {
-        items:[
-          {code:'001', name:'Butter Cloud Terry Room Shoes', costKrw:3800},
-          {code:'002', name:'Daisy · Vega Terry Room Shoes', costKrw:4300},
-          {code:'003', name:'Mallow EVA Room Shoes',        costKrw:4600},
-        ],
-        platforms:[
-          {name:'플랫폼 A (30%)', feeRate:30, rows:{
-            '001':{price:23000, floor:22000}, '001 1+1':{price:39000, floor:39000},
-            '002':{price:25000, floor:23000}, '002 1+1':{price:43000, floor:40500},
-            '003':{price:27000, floor:24000}, '003 1+1':{price:46000, floor:43300},
-          }},
-          {name:'플랫폼 B (23%)', feeRate:23, rows:{
-            '001':{price:21000, floor:17900}, '001 1+1':{price:37000, floor:35800},
-            '002':{price:23000, floor:20300}, '002 1+1':{price:39000, floor:40500},
-            '003':{price:23000, floor:21700}, '003 1+1':{price:40000, floor:43300},
-          }},
-        ]
-      };
-    }
+    // 아코이도 빈 표로 시작한다 — 예전엔 여기 아코이 원가 · 판매가 기본값을 적어 뒀는데 앱 소스가 공개라 지웠다 (2026-11-12).
+    // 실제 표는 서버(비공개 레포)에서 받는다.
     return {
       items:[{code:'001', name:'', costKrw:0}],
       platforms:[
@@ -16174,8 +16188,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!_akpIsValid(state)) return;
     if(typeof ghPut!=='function') return;
     if(_akpRemoteTimers[brand]){ clearTimeout(_akpRemoteTimers[brand]); _akpRemoteTimers[brand]=null; }
+    // 이 창에서 서버본을 아직 못 읽었으면 올리지 않는다 — 이 저장은 표 전체를 덮어써서, 맥미니가 꺼져
+    // 기본값 · 옛 사본 위에서 고친 표가 팀 최신본을 지울 수 있다. 먼저 읽고, 못 읽으면 나중에 다시.
+    if(!_akpSynced[brand]){
+      if(opts && opts.keepalive) return;   // 창을 닫는 중 — 수정은 이 PC 에 남아 있다
+      await _akpSyncFromRemote(brand);
+      if(!_akpSynced[brand]){ _akpScheduleRetry(brand); _akpUpdateStatus(brand); return; }
+      if(!_akpDirty[brand]){ _akpUpdateStatus(brand); return; }   // 서버본으로 바뀌어 올릴 게 없음
+    }
+    if(!_akpIsValid(_akpStates[brand])) return;
     try{
-      const payload={data:state, updatedAt:Date.now()};
+      const payload={data:_akpStates[brand], updatedAt:Date.now()};
       const jsonTxt=JSON.stringify(payload,null,2);
       const b64=btoa(unescape(encodeURIComponent(jsonTxt)));
       const r=await ghPut(_akpRemoteApi(brand), b64, 'chore: '+brand+' 기획전 자동 백업',
@@ -16206,24 +16229,39 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      편집 모드를 열어둔 동안에는 덮어쓰지 않고, 그 상태가 풀리면 다음 폴링에서 따라잡는다. */
   async function _akpSyncFromRemote(brand){
     brand=brand||_akpBrand;
-    if(typeof fetch!=='function') return;
+    if(typeof ghGetFile!=='function') return;
     try{
-      const r=await fetch(_akpRemoteRaw(brand)+'?cb='+Date.now(), {cache:'no-cache'});
-      if(!r.ok) return;
-      const remote=await r.json();
-      if(!remote || !_akpIsValid(remote.data)) return;
+      // 비공개 레포 (프록시 경유) — 404 는 "빈 표"가 아니라 못 읽은 것으로 본다 (비공개 레포는 권한이 없어도 404)
+      const f=await ghGetFile(_akpRemoteApi(brand));
+      let remote=null;
+      if(!f.error && f.sha && f.text){ try{ remote=JSON.parse(f.text) }catch(e){} }
+      if(!remote || !_akpIsValid(remote.data)){ _akpReadFailed[brand]=true; _akpUpdateStatus(brand); return; }
+      _akpReadFailed[brand]=false;
       const localRemoteTs = Number(localStorage.getItem(_akpRemoteTsKey(brand))||0);
       const remoteTs = Number(remote.updatedAt)||0;
-      if(remoteTs <= localRemoteTs) return;
-      if(_akpIsBusy(brand)){ _akpUpdateStatus(brand); return; }
+      if(remoteTs <= localRemoteTs){ _akpSynced[brand]=true; _akpUpdateStatus(brand); return; }
+      if(_akpIsBusy(brand)){
+        // 서버본을 한 번도 받은 적 없는 PC(기본값 · 옛 사본) 에서 고친 표는 올리지 않고 서버본을 띄운다 — 고친 표는 '이력'에 남아 있다.
+        // 서버본을 받은 적 있는 PC 는 예전처럼 내 수정이 다 올라간 뒤 따라잡는다.
+        const neverSynced=!localRemoteTs && !_akpSynced[brand];
+        const editing=_akpEditingMaster[brand] || (_akpEditingPlats[brand] && _akpEditingPlats[brand].size);
+        if(!neverSynced || !_akpDirty[brand] || editing){
+          if(!neverSynced) _akpSynced[brand]=true;
+          _akpUpdateStatus(brand); return;
+        }
+        if(_akpRemoteTimers[brand]){ clearTimeout(_akpRemoteTimers[brand]); _akpRemoteTimers[brand]=null; }
+        _akpDirty[brand]=false;
+        try{ toast('기획전 표를 서버 최신본으로 불러왔습니다 — 불러오기 전에 고친 표는 이력에 있습니다','info') }catch(e){}
+      }
       _akpStates[brand]=_akpMigrate(remote.data, brand);
       localStorage.setItem(_akpLSKey(brand), JSON.stringify(_akpStates[brand]));
       localStorage.setItem(_akpBackupLSKey(brand), JSON.stringify(_akpStates[brand]));
       localStorage.setItem(_akpRemoteTsKey(brand), String(remoteTs));
       _akpPulledAt[brand]=remoteTs;
+      _akpSynced[brand]=true;
       if(brand===_akpBrand) akpRender({noSave:true});
       _akpUpdateStatus(brand);
-    }catch(e){}
+    }catch(e){ _akpReadFailed[brand]=true; _akpUpdateStatus(brand); }
   }
   /* 아직 원격에 못 올린 내 수정이 있거나, 편집 모드를 열어둔 상태 */
   function _akpIsBusy(brand){
@@ -16280,12 +16318,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const localAgo=_akpTimeAgo(_akpLastLocalSave[brand]);
     const remoteAgo=remoteTs ? _akpTimeAgo(remoteTs) : '대기';
     const head=_akpDirty[brand]
-      ? '<span class="akp-status-warn">↑ 저장 중…</span>'
+      ? (_akpSynced[brand] ? '<span class="akp-status-warn">↑ 저장 중…</span>' : '<span class="akp-status-warn">↑ 서버 표를 먼저 확인한 뒤 저장</span>')
       : '<span class="akp-status-ok">💾 저장됨</span>';
+    const conn=_akpReadFailed[brand] ? ' · <span class="akp-status-warn">⚠ 서버 PC(맥미니) 연결 안 됨</span>' : '';
     const pulled=_akpPulledAt[brand]
       ? ' · <span class="akp-status-ok">↓ 팀 최신본 '+_akpTimeAgo(_akpPulledAt[brand])+'</span>'
       : '';
-    el.innerHTML=head+' · 로컬 '+localAgo+' · 원격 '+remoteAgo+pulled;
+    el.innerHTML=head+' · 로컬 '+localAgo+' · 원격 '+remoteAgo+pulled+conn;
   }
   function _akpNum(n){ if(typeof n==='string') n=n.replace(/[,\s]/g,''); n=Number(n); return Number.isFinite(n)?n:0; }
   function _akpFmt(n){ n=Math.round(_akpNum(n)); return n.toLocaleString('ko-KR'); }
@@ -28193,7 +28232,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===================================================== */
   /* ============ 브랜드별 광고 시트 (마케팅팀) ============ */
   /* =====================================================
-     브랜드마다 data/ad-sheets/{id}.json — {days:{'YYYY-MM-DD':{imp,clk,usd,krw,conv,rev,fx}}, updatedAt}
+     브랜드마다 비공개 brightbeed-reports office/ad-sheets/{id}.json — {days:{'YYYY-MM-DD':{imp,clk,usd,krw,conv,rev,fx}}, updatedAt}
+     (광고비 · 전환매출이라 2026-11-12 공개 레포 data/ad-sheets/ 에서 옮김. 프록시로만 읽고 쓴다 — 공개 경로로 되돌리지 말 것.
+      새로고침 안 한 옛 탭이 공개 경로에 다시 만들지 못하게 data/ad-sheets/{id}.json 은 폴더로 막아 뒀다 (MOVED.txt).
+      맥미니 ad_sheet_sync · ably_ads · zigzag_ads 도 같은 곳에 쓴다 — ably_ads.REPO · SHEET_DIR)
      공홈 브랜드 5개는 마케팅팀이 구글시트에 입력하고 서버 맥이 옮겨 온다 (source.type='google-sheet', 시트 주소는 서버에만)
      입력: 노출수·클릭수·광고비($ 또는 원 중 하나)·전환수·전환매출·환율(비우면 자동)
      환율: data/fx-usd.json — GHA fx-usd.yml 이 평일 09:00 KST 하나은행 매매기준율 기록.
@@ -28203,7 +28245,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
            이중 저장 방어 — ① dirty 는 localStorage 에 남아 새로고침·창닫기 뒤에도 재전송
                             ② 방금 올린 updatedAt 보다 옛 원격본(캐시 지연)은 무시해 되돌아감 방지 */
   const ADSH_FX_RAW=`https://raw.githubusercontent.com/${PO_REPO}/${PO_BRANCH}/data/fx-usd.json`;
-  const ADSH_API=(id)=>`https://api.github.com/repos/${PO_REPO}/contents/data/ad-sheets/${id}.json`;
+  const ADSH_REPO_API='https://api.github.com/repos/j65209/brightbeed-reports/contents/office/ad-sheets';
+  const ADSH_API=(id)=>`${ADSH_REPO_API}/${id}.json`;
   const ADSH_LS='brightbeed_adsh_';
   // 일자별 표 컬럼 (화면 순서 = 엑셀 붙여넣기 순서). in: 입력 칸, 나머지는 계산 칸.
   const ADSH_COLS=[
@@ -28259,12 +28302,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     plats:[], platOps:[], platPushedAt:0, platSaving:false, platTimer:null, platFail:0, platFormOpen:false};
 
   /* ----- 플랫폼 카드 목록 (광고 집행하는 플랫폼만 직접 추가·삭제) -----
-     data/ad-sheets/_platforms.json — {items:[{id, brand, platform}], updatedAt}. 전 직원 공유.
+     office/ad-sheets/_platforms.json (비공개) — {items:[{id, brand, platform}], updatedAt}. 전 직원 공유.
      id = {플랫폼키}-{브랜드} (예: ably-6a). 같은 브랜드·플랫폼을 다시 추가하면 같은 id → 지웠던 광고 데이터도 그대로 돌아온다.
-     삭제는 카드만 지우고 data/ad-sheets/{id}.json 은 남긴다.
+     삭제는 카드만 지우고 시트 파일 office/ad-sheets/{id}.json 은 남긴다.
      저장: 추가/삭제를 작업(op) 단위로 localStorage 에 쌓고 → 원격 최신 목록 위에 다시 적용해 PUT (동시 편집 보호)
            방금 올린 것보다 옛 원격본(캐시 지연)은 무시 → 지운 카드가 되살아나지 않음 */
-  const ADSH_PLATS_API=`https://api.github.com/repos/${PO_REPO}/contents/data/ad-sheets/_platforms.json`;
+  const ADSH_PLATS_API=`${ADSH_REPO_API}/_platforms.json`;
   const ADSH_PLAT_KEYS={'에이블리':'ably','지그재그':'zigzag','스마트스토어':'smartstore'};
   const ADSH_PLAT_DOTS={'ably':'#ff5a92','zigzag':'#ff2380','smartstore':'#03c75a'};
   const ADSH_PLAT_SUGGEST=['에이블리','지그재그','스마트스토어','무신사','29CM','W컨셉','쿠팡','브랜디','하이버','포스티','카카오톡 선물하기','오늘의집'];
@@ -28307,13 +28350,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function _adshPlatLoad(){
     let remote=null;
     const f=await ghGetFile(ADSH_PLATS_API);
-    if(!f.error){ try{ remote=f.text ? JSON.parse(f.text) : {items:[]} }catch(e){} }
-    else{
-      try{
-        const r=await fetch(`https://raw.githubusercontent.com/${PO_REPO}/${PO_BRANCH}/data/ad-sheets/_platforms.json?cb=${Date.now()}`,{cache:'no-cache'});
-        if(r.ok) remote=await r.json(); else if(r.status===404) remote={items:[]};
-      }catch(e){}
-    }
+    // 못 읽으면(프록시 꺼짐 · 404) 이 PC 에 남은 목록 그대로 — 비공개 레포는 권한이 없어도 404 라 빈 목록으로 치지 않는다
+    if(!f.error && f.sha){ try{ remote=f.text ? JSON.parse(f.text) : null }catch(e){} }
     if(!remote || !Array.isArray(remote.items)) return;
     // 방금 올린 것보다 옛 원격본이면 로컬 유지 (캐시 지연)
     if(_adsh.platPushedAt && (remote.updatedAt||0) < _adsh.platPushedAt) return;
@@ -28330,6 +28368,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         try{
           const f=await ghGetFile(ADSH_PLATS_API);
           if(f.error){ reason=f.error; break }
+          if(!f.sha){ reason='missing'; break }   // 목록 파일은 늘 있다 — 404 는 못 읽은 것 (비공개 레포). 새로 만들면 목록이 이번 카드만 남는다
           if(f.sha&&!f.text){ reason='read_empty'; break }   // 못 읽은 걸 빈 목록으로 합치지 않는다
           let remote={items:[]};
           if(f.text){ try{ remote=JSON.parse(f.text) }catch(e){ reason='parse'; break } }
@@ -28934,12 +28973,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const f=await ghGetFile(ADSH_API(id));
     if(!f.error){
       try{ remote=f.text ? JSON.parse(f.text) : {days:{}} }catch(e){}
+      if(_adsh.loadFailed){ _adsh.loadFailed=false; if(!_adshHasDirty() && !_adsh.saving) _adshSaveTag('실시간 자동 저장'); }
     }else{
-      // 프록시가 꺼져 있으면 공개 raw 로 읽기만 (몇 분 늦을 수 있음)
-      try{
-        const r=await fetch(`https://raw.githubusercontent.com/${PO_REPO}/${PO_BRANCH}/data/ad-sheets/${id}.json?cb=${Date.now()}`,{cache:'no-cache'});
-        if(r.ok) remote=await r.json(); else if(r.status===404) remote={days:{}};
-      }catch(e){}
+      // 프록시를 못 쓰면 이 PC 에 남은 값만 보인다 (공개 raw 대체는 2026-11-12 비공개로 옮기며 없앰)
+      _adsh.loadFailed=true;
+      _adshSaveTag('⚠ 서버 PC(맥미니) 연결 안 됨 — 이 PC 에 남은 값만 보입니다',true);
     }
     if(!remote) return;
     remote.days=remote.days||{};
@@ -30747,7 +30785,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   renderSalesUpdatedTag();
 
   /* ===== 메타 광고 분석 리포트 (Facebook Marketing API — 브랜드별 JSON 존재 여부 체크) =====
-     JSON 경로: data/meta-ads/{brand}.json (build_dashboard_report.py 로 생성)
+     JSON: 맥미니 프록시 /meta-ads/{brand}.json (fb-ads build_dashboard_report.py 가 ~/server/brightbeed-proxy/out/meta-ads/ 에 씀,
+           2026-11-12 공개 레포 data/meta-ads/ 에서 옮김). 카드는 스코어보드의 cards 요약만 읽는다 (metaAdsFetch 주석)
      뷰어 경로: meta-ads/report.html?brand={brand} */
   const METAADS_BRANDS = [
     {id:'6a',   name:'식스에이'},
@@ -30770,31 +30809,27 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(sameDay) return `오늘 ${hh}:${mm}`;
     return `${d.getMonth()+1}/${d.getDate()} ${hh}:${mm}`;
   }
-  function _metaadsJsonPath(brand){ return `data/meta-ads/${brand}.json`; }
-  function _metaadsRawUrl(brand, cb){
-    return `https://raw.githubusercontent.com/${PO_REPO}/${PO_BRANCH}/${_metaadsJsonPath(brand)}${cb?`?cb=${cb}`:''}`;
-  }
   function _metaadsViewerUrl(brand){
     return `meta-ads/report.html?brand=${brand}&cb=${Date.now()}`;
   }
 
-  async function _metaadsCheckOne(brand){
+  /* card: 스코어보드 cards[브랜드] (fb-ads build_all_brands_scoreboard.py card_of) · null = 그 브랜드 리포트 없음 · undefined = 못 받음 */
+  async function _metaadsCheckOne(brand, card){
     const subEl = document.getElementById(`metaadsSub_${brand}`);
     const tagEl = document.getElementById(`metaadsTag_${brand}`);
     const cardEl = document.querySelector(`.m-metaads-${brand}`);
     if(!subEl || !tagEl || !cardEl) return;
     try{
-      const r = await fetch(_metaadsRawUrl(brand, Date.now()), { cache:'no-cache' });
-      if(r.ok){
-        const data = await r.json();
+      if(card === undefined) throw new Error('scoreboard unavailable');   // 맥미니에서 못 받음
+      if(card){
+        const data = card;
         const genDate = data.generated_at ? new Date(data.generated_at) : null;
         const dateStr = _metaadsFmtDate(genDate) || '업로드됨';
-        const today = (data.summaries_by_period || {}).today || data.summary || {};
-        const yday  = (data.summaries_by_period || {}).yesterday || {};
+        const today = data.today || {};
+        const yday  = data.yesterday || {};
         const spend = today.spend ?? 0;
         const ydaySpend = yday.spend ?? 0;
-        const mdSales = data.md_sales || {};
-        const hasMdSales = !!(mdSales.source_file);
+        const hasMdSales = !!data.has_md_sales;
 
         // 오늘 ROAS 텍스트
         let todayPart;
@@ -30862,7 +30897,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         cardEl.dataset.ready = '0';
       }
     }catch(e){
-      _metaadsMeta[brand] = { ready:false };
+      _metaadsMeta[brand] = { ready:false, failed:true };
       subEl.textContent = '상태 확인 실패';
       subEl.style.color = '';
       tagEl.textContent = '—';
@@ -30887,7 +30922,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   async function checkMetaAdsStatus(){
-    await Promise.all(METAADS_BRANDS.map(b => _metaadsCheckOne(b.id)));
+    // 브랜드 파일(1~2MB) 7개 대신 스코어보드 요약 하나만 받는다 (2026-11-12, 맥미니 프록시)
+    let cards;   // undefined = 못 받음
+    try{ const sb = await metaAdsScoreboard(); cards = (sb && sb.cards) || {}; }catch(e){ cards = undefined; }
+    await Promise.all(METAADS_BRANDS.map(b => _metaadsCheckOne(b.id, cards ? (cards[b.id] || null) : undefined)));
     _metaadsRenderUpdated();
   }
   window.checkMetaAdsStatus = checkMetaAdsStatus;
@@ -30895,7 +30933,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function openMetaAdsReport(brand){
     const meta = _metaadsMeta[brand];
     if(!meta || !meta.ready){
-      toast('아직 메타 광고 리포트가 준비되지 않았습니다 (토큰 연결 필요)','err');
+      toast(meta && meta.failed ? '서버 PC(맥미니)에서 메타 광고 리포트를 받지 못했습니다 — 잠시 뒤 다시 시도해 주세요' : '아직 메타 광고 리포트가 준비되지 않았습니다 (토큰 연결 필요)','err');
       return;
     }
     window.open(_metaadsViewerUrl(brand), '_blank', 'noopener,noreferrer');

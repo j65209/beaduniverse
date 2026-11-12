@@ -594,8 +594,43 @@
 
 <script>
   const params = new URLSearchParams(location.search);
-  const brand = params.get('brand') || 'cleartype';
-  const dataUrl = `../data/meta-ads/${brand}.json?cb=${Date.now()}`;
+  const brandParam = params.get('brand') || 'cleartype';
+  const brand = /^[a-z0-9][a-z0-9-]{0,39}$/.test(brandParam) ? brandParam : '';
+
+  /* 리포트 JSON — 2026-11-12 공개 레포 data/meta-ads/ 에서 빼서 맥미니 프록시가 내준다 (/meta-ads/{brand}.json, PIN).
+     지출 · 구매액 · 공홈 매출이 들어 있어 깃허브에 안 올린다 (~/projects/fb-ads → ~/server/brightbeed-proxy/out/meta-ads/).
+     오피스앱에 로그인한 브라우저에서만 받는다. PIN 값은 index.html · agents.html 과 같게 둔다.
+     소재 사진은 공개 레포 data/meta-ads/creatives/ 그대로 (fixThumbPath). */
+  const PIN_VIEWER = '2580';
+  const PROXY_PIN_MASTER = '0000';   // 서버 Mac 프록시의 수정 권한 값 (index.html PROXY_PIN_MASTER 와 같은 값)
+  const TUNNEL_URL = 'https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json';
+  function reportError(message, kind){ const e = new Error(message); e.kind = kind; return e; }
+  async function proxyBase(){
+    const r = await fetch(`${TUNNEL_URL}?cb=${Date.now()}`, {cache:'no-cache'});
+    const j = r.ok ? await r.json() : null;
+    if(!j || typeof j.url !== 'string') throw reportError('서버 주소를 못 읽었어요', 'server');
+    return j.url.replace(/\/$/, '');
+  }
+  async function loadReport(){
+    let unlocked = false, master = false;
+    try{
+      unlocked = localStorage.getItem('brightbeed_unlocked') === '1';
+      master = localStorage.getItem('brightbeed_role') === 'master';
+    }catch(e){}
+    if(!unlocked) throw reportError('오피스앱에 로그인하지 않은 브라우저예요', 'login');
+    if(!brand) throw reportError('브랜드 주소가 올바르지 않아요', 'missing');
+    const get = async () => fetch(`${await proxyBase()}/meta-ads/${brand}.json?cb=${Date.now()}`, {
+      headers: {'X-Brightbeed-PIN': master ? PROXY_PIN_MASTER : PIN_VIEWER, 'Accept': 'application/json'},
+      cache: 'no-store'});
+    let r = null;
+    try{ r = await get(); }catch(e){}
+    if(!r || (r.status >= 502 && r.status <= 504)){   // 터널이 다시 떠서 주소가 바뀌었을 수 있다 — 한 번 더
+      try{ r = await get(); }catch(e){ throw reportError('서버 PC(맥미니)에 연결하지 못했어요', 'server'); }
+    }
+    if(r.status === 404) throw reportError('데이터 없음', 'missing');
+    if(!r.ok) throw reportError(`서버 PC(맥미니) 응답 오류 ${r.status}`, 'server');
+    return r.json();
+  }
   const el = id => document.getElementById(id);
 
   const fmt = {
@@ -1897,17 +1932,22 @@
     });
   }
 
-  fetch(dataUrl, { cache: 'no-cache' })
-    .then(r => { if (!r.ok) throw new Error('데이터 없음'); return r.json() })
+  loadReport()
     .then(render)
     .catch(err => {
+      const kind = err && err.kind;
+      const name = escapeHtml(brand || brandParam);
+      const title = kind === 'login' ? '오피스앱 로그인이 필요해요'
+        : kind === 'server' ? '서버 PC(맥미니)에서 리포트를 받지 못했어요'
+        : `아직 <b>${name}</b> 브랜드 리포트가 준비되지 않았어요`;
+      const hint = kind === 'login' ? '오피스앱에 PIN 으로 들어간 같은 브라우저에서 이 리포트를 다시 열어 주세요.'
+        : kind === 'server' ? '잠시 뒤 새로고침해 주세요. 계속되면 서버 PC 전원 · 인터넷을 확인해 주세요.'
+        : `서버에서 <code style="background:var(--panel);padding:2px 6px;border-radius:4px">python3 ~/projects/fb-ads/build_dashboard_report.py ${name}</code> 실행 후 다시 열어 주세요.`;
       el('content').innerHTML = `<div class="center">
-        <div style="font-size:36px;margin-bottom:12px">📭</div>
-        <div style="font-size:15px;color:var(--text);margin-bottom:6px">아직 <b>${brand}</b> 브랜드 리포트가 준비되지 않았어요</div>
-        <div style="font-size:12px;color:var(--muted)">${err.message}</div>
-        <div style="margin-top:20px;font-size:12px;color:var(--muted)">
-          서버에서 <code style="background:var(--panel);padding:2px 6px;border-radius:4px">python3 ~/projects/fb-ads/build_dashboard_report.py ${brand}</code> 실행 후 커밋/푸시하세요.
-        </div>
+        <div style="font-size:36px;margin-bottom:12px">${kind === 'login' ? '🔒' : '📭'}</div>
+        <div style="font-size:15px;color:var(--text);margin-bottom:6px">${title}</div>
+        <div style="font-size:12px;color:var(--muted)">${escapeHtml((err && err.message) || '')}</div>
+        <div style="margin-top:20px;font-size:12px;color:var(--muted)">${hint}</div>
       </div>`;
     });
 </script>
