@@ -2,7 +2,7 @@
  * 29CM · W컨셉 기획전 메일 → 오피스 MD팀 기획전 캘린더 (Apps Script)
  *
  * 설치: shinebead0@gmail.com 계정의 Apps Script 프로젝트 「오피스 기획전 메일 가져오기」 (2026-11-12).
- *   KEY 칸은 공개 레포라 비워서 커밋 — 붙여넣을 때만 채운다 (Supabase private_kv 'md_mail_key').
+ *   접속 키는 코드에 두지 않는다 — 프로젝트 설정 → 스크립트 속성 MD_MAIL_KEY (Supabase private_kv 'md_mail_key' 와 같은 값).
  *   새 버전을 붙여넣으면 setup 을 한 번 더 실행 → 최근 1년 메일을 훑고(5분씩 나눠서, 끝날 때까지 30분마다 이어서) 30분마다 sync.
  *
  * 하는 일: 29CM · W컨셉과 주고받은 메일을 찾아 제목 · 본문 · 첨부(엑셀은 안의 글자)를 Supabase 함수 md-mail-events 로 보낸다.
@@ -11,14 +11,15 @@
  *   기획전 이름 · 기간 · 브랜드를 뽑는 규칙은 함수 쪽에 있다 (고치면 함수에서 reparse).
  *   한 번 보낸 메일은 다시 안 보낸다 (스크립트 속성 m_<메일ID>). 뉴스레터 · 자동 발신 주소는 건너뛴다.
  */
-const KEY = '';
 const FN_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/md-mail-events';
 const DOMAINS = /wconcept\.co\.kr|29cm\.co\.kr/;
 const QUERY = '{to:wconcept.co.kr cc:wconcept.co.kr from:wconcept.co.kr to:29cm.co.kr cc:29cm.co.kr from:29cm.co.kr}';
 const SKIP_FROM = /unsubscribe|no-?reply|newsletter|mailer|notice@|news@/i;
 
+function key_() { return PropertiesService.getScriptProperties().getProperty('MD_MAIL_KEY') || ''; }
+
 function setup() {
-  if (!KEY) throw new Error('맨 위 KEY 칸에 접속 키를 넣고 저장한 뒤 다시 실행하세요.');
+  if (!key_()) throw new Error('접속 키가 없습니다 — 프로젝트 설정 → 스크립트 속성에 MD_MAIL_KEY 를 넣고 다시 실행하세요.');
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'sync') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('sync').timeBased().everyMinutes(30).create();
   PropertiesService.getScriptProperties().setProperty('backfill', '1');
@@ -37,6 +38,7 @@ function sync() {
 }
 
 function run_(range) {
+  const KEY = key_();
   const me = Session.getActiveUser().getEmail().toLowerCase();
   const props = PropertiesService.getScriptProperties();
   const started = Date.now();
@@ -65,7 +67,7 @@ function run_(range) {
             id: m.getId(), dir: dir, sentAt: m.getDate().toISOString(), subject: m.getSubject(), from: from, to: to, body: m.getPlainBody(), attachments: atts,
           } }),
         });
-        if (res.getResponseCode() === 401) throw new Error('접속 키가 틀립니다 — KEY 칸을 확인하세요.');
+        if (res.getResponseCode() === 401) throw new Error('접속 키가 틀립니다 — 스크립트 속성 MD_MAIL_KEY 를 확인하세요.');
         if (res.getResponseCode() === 200) { props.setProperty('m_' + m.getId(), '1'); sent++; }
       });
     });
