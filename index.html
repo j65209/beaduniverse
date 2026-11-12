@@ -2482,6 +2482,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .md-gantt-td-label-inner{display:flex;align-items:center;gap:0;min-width:0}
   .md-gantt-row-nested .md-gantt-td-label{padding-left:44px !important;font-size:12px !important;position:sticky}
   /* 정상확인 체크 버튼 (각 기획전 좌측) — 기본 빈칸, 체크하면 초록색 배경으로 */
+  /* 플랫폼 자동 일정 줄 (에이블리 등 셀러센터에서 가져옴) */
+  .md-gantt-auto{display:inline-flex;align-items:center;justify-content:center;height:18px;padding:0 6px;margin-right:8px;border-radius:5px;background:#eef2ff;color:#4338ca;font-size:10.5px;font-weight:800;vertical-align:middle;flex-shrink:0;letter-spacing:-.02em}
+  .md-gantt-auto-st{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:10.5px;font-weight:700;vertical-align:middle;white-space:nowrap}
+  .md-gantt-auto-st.is-on{background:#dcfce7;color:#15803d}
+  .md-gantt-auto-st.is-wait{background:#fef3c7;color:#92400e}
+  .md-gantt-row-nested.is-auto .md-gantt-fill{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
   .md-gantt-ckl-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;margin-right:8px;border:1.5px solid var(--line-2);background:#fff;color:transparent;border-radius:5px;cursor:pointer;vertical-align:middle;transition:all .12s ease;flex-shrink:0}
   .md-gantt-ckl-btn:hover{border-color:#059669;background:#f0fdf4}
   .md-gantt-ckl-btn.is-done{border-color:#059669;color:#fff;background:#059669}
@@ -35192,6 +35198,82 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return Array.from(out.values());
   }
 
+  /* ===== 플랫폼 기획전 자동 일정 (2026-11-12) =====
+     전략팀 일일 보고서(비공개 brightbeed-reports {플랫폼}/{브랜드}/daily/{날짜}.json, 프록시 ghFetch)의 events
+     — 셀러센터에서 신청 · 승인된 기획전 — 를 캘린더에 '자동' 줄로 같이 보여 준다.
+     md-events.json 에는 넣지 않는다 → 고치거나 지울 대상이 아니고, 수집기가 돌 때마다(맥미니 약 30분) 새로 맞춰진다.
+     지금 기획전을 모으는 곳: 에이블리 4개 마켓. 다른 플랫폼 수집기가 events 를 채우면 MD_AUTO_SOURCES 에 한 줄 추가. */
+  const MD_AUTO_SOURCES=[
+    {plat:'ably', brand:'kop', path:'ably/daily'},
+    {plat:'ably', brand:'6a',  path:'ably/6a/daily'},
+    {plat:'ably', brand:'apt', path:'ably/apt/daily'},
+    {plat:'ably', brand:'pp',  path:'ably/pp/daily'},
+  ];
+  const MD_AUTO_CACHE='brightbeed_md_auto_events_v1';
+  const _mdAuto={events:[], fetchedAt:0, loading:false, updatedAt:0};
+  try{ const c=JSON.parse(localStorage.getItem(MD_AUTO_CACHE)||'null'); if(c && Array.isArray(c.events)){ _mdAuto.events=c.events; _mdAuto.updatedAt=c.updatedAt||0; } }catch(e){}
+  function _mdAutoTitle(name){
+    return String(name||'')
+      .replace(/\p{Extended_Pictographic}|[☀-➿️★☆]/gu,'')
+      .replace(/\(\s*중요도[^)]*\)/g,'')
+      .replace(/[<>“”"‘’]/g,'')
+      .replace(/\s*(참여|신청)\s*안내\s*$/,'').replace(/\s*안내\s*$/,'')
+      .replace(/\s+/g,' ').trim();
+  }
+  function _mdAutoStatus(e){
+    if(e.applied_status==='pending_approval') return '승인 대기';
+    return String(e.state||'').replace('진행중','진행 중');
+  }
+  async function _mdAutoGet(path){
+    const gf=(typeof ghFetch==='function')?ghFetch:window.ghFetch;
+    const r=await gf('https://api.github.com/repos/j65209/brightbeed-reports/contents/'+path+'?ref=main',{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'});
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    if(j && typeof j.content==='string' && j.encoding==='base64'){
+      const bytes=Uint8Array.from(atob(j.content.replace(/\n/g,'')),c=>c.charCodeAt(0));
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+    return j;
+  }
+  async function mdAutoLoad(force){
+    if(_mdAuto.loading) return;
+    if(!force && Date.now()-_mdAuto.fetchedAt < 10*60*1000) return;
+    _mdAuto.loading=true;
+    try{
+      const kst=d=>new Date(d.getTime()+9*3600e3).toISOString().slice(0,10);
+      const today=kst(new Date()), yday=kst(new Date(Date.now()-864e5));
+      const out=[]; let okCount=0;
+      await Promise.all(MD_AUTO_SOURCES.map(async src=>{
+        try{
+          let rep=await _mdAutoGet(`${src.path}/${today}.json`);
+          if(!rep) rep=await _mdAutoGet(`${src.path}/${yday}.json`);
+          if(!rep) return;
+          okCount++;
+          (Array.isArray(rep.events)?rep.events:[]).forEach(e=>{
+            const start=String(e.start||'').slice(0,10), end=String(e.end||e.start||'').slice(0,10);
+            if(!start) return;
+            const pf=_mdPlatMap[src.plat], st=_mdAutoStatus(e);
+            const goods=Number(e.approved_goods||e.applied_goods||0);
+            out.push({
+              id:`auto:${src.plat}:${src.brand}:${e.sno||e.id||start+_mdAutoTitle(e.name)}`,
+              auto:true, title:`[${pf?pf.label:src.plat}] ${_mdAutoTitle(e.name)}`, rawTitle:e.name||'',
+              start, end, brands:[src.brand], platforms:[src.plat], color:'slate', status:st,
+              memo:`${pf?pf.label:src.plat}에서 자동으로 가져온 일정 · ${st}${goods?` · 상품 ${goods}개`:''}${rep.as_of?` · ${rep.date} ${rep.as_of} 기준`:''}`,
+            });
+          });
+        }catch(err){}
+      }));
+      _mdAuto.fetchedAt=Date.now();
+      if(okCount===0) return;   // 프록시가 꺼졌으면 지난 목록 유지
+      _mdAuto.events=out; _mdAuto.updatedAt=Date.now();
+      try{ localStorage.setItem(MD_AUTO_CACHE, JSON.stringify({events:out, updatedAt:_mdAuto.updatedAt})); }catch(e){}
+      renderMdCal();
+    }finally{ _mdAuto.loading=false; }
+  }
+  window.mdAutoLoad=mdAutoLoad;
+  const _mdIsAuto=id=>String(id||'').startsWith('auto:');
+
   function loadMdEvents(){
     try{
       const j=JSON.parse(localStorage.getItem(MD_EVENTS_KEY)||'null');
@@ -35227,6 +35309,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   async function syncMdEventsFromRemote(){
+    mdAutoLoad().catch(()=>{});
     if(_mdePushing) return;
     const remote=await fetchMdEventsFromRemote();
     if(remote===null || _mdePushing) return;
@@ -35446,7 +35529,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const todayIso=_mdIso(new Date());
     const wdShort=['일','월','화','수','목','금','토'];
 
-    const evs=(_mdCal.events||[]).filter(ev=>{
+    const evs=(_mdCal.events||[]).concat(_mdAuto.events||[]).filter(ev=>{
       if(!ev.start) return false;
       if(!_mdEventPassesFilter(ev)) return false;
       const e=ev.end || ev.start;
@@ -35515,9 +35598,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const chkClass = checked ? ' is-done' : '';
       const chkTitle = checked ? '정상확인 완료 (클릭하면 해제)' : '정상확인 체크';
       const chkBtnHtml = `<button type="button" class="md-gantt-ckl-btn${chkClass}" data-md-chk-toggle="${escapeHTML(ev.id||'')}" title="${escapeHTML(chkTitle)}" aria-label="정상확인" aria-pressed="${checked?'true':'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></button>`;
-      return `<tr class="md-gantt-row-nested" data-ev-id="${escapeHTML(ev.id||'')}">
-        <td class="md-gantt-td-label" title="${escapeHTML(ev.title||'')}">
-          ${chkBtnHtml}<span class="md-gantt-rowlabel-dot" style="background:${barColor}"></span><span class="md-gantt-rowlabel-title">${escapeHTML(ev.title||'')}</span><span class="md-gantt-rowlabel-range">${escapeHTML(range)}</span>
+      // 플랫폼에서 자동으로 가져온 일정 — 체크 대신 '자동' 표시, 상태(진행 중 · 예정 · 승인 대기) 같이
+      const lead = ev.auto ? `<span class="md-gantt-auto" title="플랫폼 셀러센터에서 자동으로 가져온 일정">자동</span>` : chkBtnHtml;
+      const stTag = ev.auto && ev.status ? `<span class="md-gantt-auto-st${ev.status==='승인 대기'?' is-wait':ev.status==='진행 중'?' is-on':''}">${escapeHTML(ev.status)}</span>` : '';
+      return `<tr class="md-gantt-row-nested${ev.auto?' is-auto':''}" data-ev-id="${escapeHTML(ev.id||'')}">
+        <td class="md-gantt-td-label" title="${escapeHTML(ev.auto ? (ev.rawTitle||ev.title||'')+'\n'+(ev.memo||'') : (ev.title||''))}">
+          ${lead}<span class="md-gantt-rowlabel-dot" style="background:${barColor}"></span><span class="md-gantt-rowlabel-title">${escapeHTML(ev.title||'')}</span>${stTag}<span class="md-gantt-rowlabel-range">${escapeHTML(range)}</span>
         </td>
         ${cellsHtml}
       </tr>`;
@@ -35582,6 +35668,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           return;
         }
         const id=tr.dataset.evId; if(!id) return;
+        if(_mdIsAuto(id)){ const a=(_mdAuto.events||[]).find(x=>x.id===id); toast((a&&a.memo)||'플랫폼에서 자동으로 가져온 일정이에요','info'); return; }
         mdCalOpenEdit(id);
       });
     });
