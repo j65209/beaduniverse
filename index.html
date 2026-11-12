@@ -2487,6 +2487,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .md-gantt-auto-st{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:10.5px;font-weight:700;vertical-align:middle;white-space:nowrap}
   .md-gantt-auto-st.is-on{background:#dcfce7;color:#15803d}
   .md-gantt-auto-st.is-wait{background:#fef3c7;color:#92400e}
+  .md-gantt-auto-st.is-applied{background:#e6eefa;color:#3b64a8}
+  .md-gantt-auto-st.is-offer{background:transparent;color:#64748b;border:1px dashed #cbd5e1}
   .md-gantt-row-nested.is-auto .md-gantt-fill{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
   .md-gantt-ckl-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;margin-right:8px;border:1.5px solid var(--line-2);background:#fff;color:transparent;border-radius:5px;cursor:pointer;vertical-align:middle;transition:all .12s ease;flex-shrink:0}
   .md-gantt-ckl-btn:hover{border-color:#059669;background:#f0fdf4}
@@ -35202,7 +35204,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      전략팀 일일 보고서(비공개 brightbeed-reports {플랫폼}/{브랜드}/daily/{날짜}.json, 프록시 ghFetch)의 events
      — 셀러센터에서 신청 · 승인된 기획전 — 를 캘린더에 '자동' 줄로 같이 보여 준다.
      md-events.json 에는 넣지 않는다 → 고치거나 지울 대상이 아니고, 수집기가 돌 때마다(맥미니 약 30분) 새로 맞춰진다.
-     지금 기획전을 모으는 곳: 에이블리 4개 마켓 · 지그재그 3개 스토어 · 29CM · W컨셉(메일로 신청한 것, 표 md_mail_events). 다른 플랫폼 수집기가 events 를 채우면 MD_AUTO_SOURCES 에 한 줄 추가. */
+     지금 기획전을 모으는 곳: 에이블리 4개 마켓 · 지그재그 3개 스토어 · 29CM · W컨셉(메일로 신청한 것 + 받은 제안, 표 md_mail_events). 다른 플랫폼 수집기가 events 를 채우면 MD_AUTO_SOURCES 에 한 줄 추가. */
   const MD_AUTO_SOURCES=[
     {plat:'ably', brand:'kop', path:'ably/daily'},
     {plat:'ably', brand:'6a',  path:'ably/6a/daily'},
@@ -35271,7 +35273,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           });
         }catch(err){}
       }).concat([(async()=>{
-        // 29CM · W컨셉 — 메일로 신청한 기획전 (shinebead0 보낸편지함 → Apps Script → 함수 md-mail-events → 표 md_mail_events)
+        // 29CM · W컨셉 — 메일 기획전 (shinebead0 지메일: 보낸 신청 메일 = '신청함', 받은 제안 메일 = '제안받음' → Apps Script → 함수 md-mail-events → 표 md_mail_events)
         try{
           const K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
           const r=await fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/md_mail_events?select=id,platform,brand,name,start_date,end_date,status,memo,subject&hidden=eq.false&start_date=not.is.null&limit=500',{headers:{apikey:K,Authorization:'Bearer '+K},cache:'no-store'});
@@ -35623,7 +35625,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const chkBtnHtml = `<button type="button" class="md-gantt-ckl-btn${chkClass}" data-md-chk-toggle="${escapeHTML(ev.id||'')}" title="${escapeHTML(chkTitle)}" aria-label="정상확인" aria-pressed="${checked?'true':'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></button>`;
       // 플랫폼에서 자동으로 가져온 일정 — 체크 대신 '자동' 표시, 상태(진행 중 · 예정 · 승인 대기) 같이
       const lead = ev.auto ? `<span class="md-gantt-auto" title="플랫폼 셀러센터에서 자동으로 가져온 일정">자동</span>` : chkBtnHtml;
-      const stTag = ev.auto && ev.status ? `<span class="md-gantt-auto-st${ev.status==='승인 대기'?' is-wait':ev.status==='진행 중'?' is-on':''}">${escapeHTML(ev.status)}</span>` : '';
+      const stTag = ev.auto && ev.status ? `<span class="md-gantt-auto-st${ev.status==='승인 대기'?' is-wait':ev.status==='진행 중'?' is-on':ev.status==='신청함'?' is-applied':ev.status==='제안받음'?' is-offer':''}">${escapeHTML(ev.status)}</span>` : '';
       return `<tr class="md-gantt-row-nested${ev.auto?' is-auto':''}" data-ev-id="${escapeHTML(ev.id||'')}">
         <td class="md-gantt-td-label" title="${escapeHTML(ev.auto ? (ev.rawTitle||ev.title||'')+'\n'+(ev.memo||'') : (ev.title||''))}">
           ${lead}<span class="md-gantt-rowlabel-dot" style="background:${barColor}"></span><span class="md-gantt-rowlabel-title">${escapeHTML(ev.title||'')}</span>${stTag}<span class="md-gantt-rowlabel-range">${escapeHTML(range)}</span>
