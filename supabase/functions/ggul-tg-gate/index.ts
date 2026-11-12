@@ -11,6 +11,8 @@
 //   POST /ggul-tg-gate/install     텔레그램 웹훅을 여기로 · /uninstall 은 sns-tg 로 되돌림 · ?dry=1 이면 바꾸지 않고 확인만
 //                                  (헤더 x-ggul-agent = 카드뉴스 에이전트 열쇠, sns-tg 와 같은 해시로 확인)
 //                                  → { webhook, changed, previous, reads_all_group_messages, bot_status, pending, last_error } (비밀값 없음)
+//   POST /ggul-tg-gate/alert {text}  맥미니 실행기가 정기 · 다시 하기 실패를 단톡방에 한 줄로 (헤더 x-ggul-agent, 900자까지)
+//                                  — 2026-11-12 정기가 실패한 채 하루 가까이 아무도 몰랐던 일 뒤에 붙임
 //   GET  /ggul-tg-gate/health
 // 단톡방의 보통 글('긴급 …', 슬래시 없음)은 봇이 방의 글을 다 받아야 온다 — reads_all_group_messages(BotFather 개인정보 모드 끔)
 //   또는 bot_status 'administrator'(방 관리자). sns-tg 의 /setup 을 다시 하면 웹훅이 sns-tg 로 돌아가니 그 뒤엔 /install 을 한 번 다시.
@@ -102,15 +104,18 @@ async function webhook(req: Request) {
   const s = await getSettings(['tg_webhook_secret', 'tg_bot_username']);
   if (!s.tg_webhook_secret || !safeEq(secret, s.tg_webhook_secret)) return new Response('forbidden', { status: 403 });
   const raw = await req.text();
-  let body = raw;
+  let body = raw, kind = 'other';
   try {
     const up = JSON.parse(raw);
     const msg = up?.message;
+    kind = up?.callback_query ? 'button' : up?.my_chat_member ? 'member' : msg ? (msg.migrate_to_chat_id ? 'migrate' : typeof msg.text === 'string' ? 'text' : 'message') : 'other';
     if (msg && typeof msg.text === 'string') {
       const fixed = rewrite(msg.text, String(s.tg_bot_username ?? ''));
-      if (fixed !== null && fixed !== msg.text) { msg.text = fixed; delete msg.entities; body = JSON.stringify(up); }
+      if (fixed !== null && fixed !== msg.text) { msg.text = fixed; delete msg.entities; body = JSON.stringify(up); kind = 'urgent(고침)'; }
+      else if (/^\/(긴급|urgent)/i.test(msg.text.trim())) kind = 'urgent';
     }
   } catch { /* 못 읽으면 그대로 넘긴다 */ }
+  console.log('ggul-tg-gate 받음', kind); // 글 내용은 남기지 않는다 — 종류만 (단톡방 글이 봇에게 오는지 확인용)
   try {
     const res = await fetch(SNS_TG_WEBHOOK, {
       method: 'POST',
@@ -140,15 +145,38 @@ async function install(req: Request, back: boolean, dry: boolean) {
     changed = true;
   }
   const me = await tg(token, 'getMe', {});
-  let bot_status: string | null = null;
+  let bot_status: string | null = null, chat: Record<string, unknown> | null = null, admins: unknown[] | null = null;
   if (s.tg_chat_id) {
-    try { bot_status = (await tg(token, 'getChatMember', { chat_id: s.tg_chat_id, user_id: me.id }))?.status ?? null; } catch { bot_status = null; }
+    try { bot_status = (await tg(token, 'getChatMember', { chat_id: s.tg_chat_id, user_id: me.id }))?.status ?? null; } catch (e) { bot_status = `오류: ${String((e as Error)?.message ?? e).slice(0, 120)}`; }
+    // 방 정보 · 관리자 목록 (이름 · 봇 여부만) — 일반 그룹이 슈퍼그룹으로 바뀌면 방 번호가 바뀐다(migrate_to_chat_id)
+    try {
+      const c = await tg(token, 'getChat', { chat_id: s.tg_chat_id });
+      chat = { type: c?.type ?? null, title: c?.title ?? null, same_id: String(c?.id) === String(s.tg_chat_id) };
+    } catch (e) { chat = { error: String((e as Error)?.message ?? e).slice(0, 160) }; }
+    try {
+      const a = await tg(token, 'getChatAdministrators', { chat_id: s.tg_chat_id });
+      admins = (a ?? []).map((m: any) => ({ name: [m?.user?.first_name, m?.user?.last_name].filter(Boolean).join(' ') || m?.user?.username || '?', bot: !!m?.user?.is_bot, me: m?.user?.id === me.id, status: m?.status }));
+    } catch (e) { admins = [{ error: String((e as Error)?.message ?? e).slice(0, 160) }]; }
   }
   return json(200, {
     ok: true, webhook: where(changed ? want : before), changed, previous: where(before), dry,
-    reads_all_group_messages: !!me?.can_read_all_group_messages, bot_status, linked: !!s.tg_chat_id,
+    reads_all_group_messages: !!me?.can_read_all_group_messages, bot_status, linked: !!s.tg_chat_id, chat, admins,
     pending: info?.pending_update_count ?? 0, last_error: info?.last_error_message ?? null,
   });
+}
+
+async function alert(req: Request) {
+  if (!(await agentOk(req))) {
+    await req.arrayBuffer().catch(() => {});
+    return json(401, { ok: false, error: '에이전트 열쇠가 맞지 않아요.' });
+  }
+  const body = await req.json().catch(() => ({}));
+  const text = String(body?.text ?? '').trim().slice(0, 900);
+  if (!text) return json(400, { ok: false, error: 'text 가 비었어요.' });
+  const s = await getSettings(['tg_bot_token', 'tg_chat_id']);
+  if (!s.tg_bot_token || !s.tg_chat_id) return json(400, { ok: false, error: '텔레그램 단톡방이 연결되지 않았어요.' });
+  await tg(s.tg_bot_token, 'sendMessage', { chat_id: s.tg_chat_id, text, link_preview_options: { is_disabled: true } });
+  return json(200, { ok: true });
 }
 
 Deno.serve(async (req) => {
@@ -161,6 +189,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && route === 'webhook') return await webhook(req);
     if (req.method === 'POST' && route === 'install') return await install(req, false, dry);
     if (req.method === 'POST' && route === 'uninstall') return await install(req, true, dry);
+    if (req.method === 'POST' && route === 'alert') return await alert(req);
     if (req.method === 'GET' && route === 'health') return json(200, { ok: true });
     return json(404, { ok: false, error: '없는 경로예요.' });
   } catch (e) {
