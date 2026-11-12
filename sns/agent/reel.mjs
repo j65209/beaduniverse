@@ -8,6 +8,7 @@
 // 2026-11-11 승훈 님 "매그내픽으로 … 자연스럽게 릴스" → 매그내픽 AI 로 만든
 //   --intro  인트로 영상(꿀꿀이 캐릭터 5초, 9:16) — 맨 앞에 붙이고, 그 위 빈 곳에 표지 제목(--data cards.json 의 cover.kicker · title)을 얹는다.
 //            첫 장면이 릴스 썸네일이 되므로 제목은 처음부터 보인다. 끝 0.5초는 표지 카드로 겹쳐 바뀐다.
+//            제목 아래에 '꿀딜 N개' 빨간 배지(N = cards.json 딜 수, 없으면 카드 수 - 2) — 2026-11-12 승훈 님 "꿀딜 4개 5개 이런식으로 썸네일".
 //   --music  배경음악(mp3 · wav · m4a) — 영상 길이에 맞춰 자르고 처음 0.25초 · 끝 1.5초를 줄여 넣는다(모자라면 반복).
 //
 // 헤드리스 Edge(없으면 Chrome)의 WebCodecs 로 H.264 · AAC 를 만들고, MP4 는 이 스크립트가 직접 묶는다
@@ -44,12 +45,14 @@ const OPT = {
   xfade: 0.4, // 인트로 → 첫 카드로 넘기는 시간
   volume: num(args.volume, 0.8, 0.05, 1), // 배경음악 크기
   hook: null, // 인트로 위 제목 {kicker, title}
+  count: null, // 인트로 위 '꿀딜 N개' 배지 — 첫 장면이 릴스 썸네일 (2026-11-12 승훈 님 "꿀딜 4개 5개 이런식으로 썸네일")
 };
-// 표지 제목 — cards.json 의 cover (== 강조 == 는 꿀색 밑줄)
+// 표지 제목 — cards.json 의 cover (== 강조 == 는 꿀색 밑줄) · 딜 수 (표지 목록처럼 6개까지)
 if (args.data && args.data !== '1') {
   try {
     const d = JSON.parse(fs.readFileSync(path.resolve(args.data), 'utf8'));
     if (d?.cover?.title) OPT.hook = { kicker: String(d.cover.kicker ?? '').slice(0, 40), title: String(d.cover.title).slice(0, 80) };
+    if (Array.isArray(d?.deals) && d.deals.length) OPT.count = Math.min(6, d.deals.length);
   } catch (e) { console.error(`⚠ ${args.data} 를 읽지 못했어요 — 인트로 제목 없이 만들어요 (${e.message})`); }
 }
 const readMedia = (p, what) => {
@@ -192,15 +195,15 @@ window.build = async (o) => {
   // ── 인트로: AI 영상(꽉 채움) + 위쪽 빈 곳에 표지 제목, 끝에서 표지 카드로 겹쳐 바뀜 ──
   const first = new OffscreenCanvas(W, H); // 카드 영상 첫 장면 (겹쳐 바뀔 때 씀)
   draw(0); first.getContext('2d').drawImage(cv, 0, 0);
-  if (introDur && o.hook) await document.fonts.load('900 100px Pretendard', (o.hook.kicker || '') + o.hook.title).catch(() => null);
+  if (introDur && (o.hook || o.count)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + '꿀딜 0123456789개').catch(() => null);
   const hookFont = (px) => px + 'px Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const drawHook = () => {
-    if (!o.hook) return;
+    if (!o.hook && !o.count) return;
     const left = 84, maxW = W - left * 2;
     let y = 290;
     ctx.save();
     ctx.textBaseline = 'alphabetic';
-    if (o.hook.kicker) { // 꿀색 알약
+    if (o.hook?.kicker) { // 꿀색 알약
       ctx.font = '900 ' + hookFont(44);
       const kw = Math.min(maxW, ctx.measureText(o.hook.kicker).width + 60);
       ctx.fillStyle = '#ffc94a'; ctx.beginPath(); ctx.roundRect(left, y - 54, kw, 76, 18); ctx.fill();
@@ -208,20 +211,36 @@ window.build = async (o) => {
       y += 70;
     }
     // 제목 — 줄마다 글자 크기를 맞추고 == 사이는 꿀색 밑줄
-    const lines = o.hook.title.split('\n').slice(0, 3);
-    let size = 108;
-    const plain = (s) => s.replace(/==/g, '');
-    ctx.font = '900 ' + hookFont(size);
-    while (size > 64 && lines.some((l) => ctx.measureText(plain(l)).width > maxW)) { size -= 4; ctx.font = '900 ' + hookFont(size); }
-    for (const line of lines) {
-      y += size * 1.14;
-      let x = left;
-      line.split(/(==[^=]+==)/).filter(Boolean).forEach((part) => {
-        const hi = /^==.*==$/.test(part), text = hi ? part.slice(2, -2) : part, w = ctx.measureText(text).width;
-        if (hi) { ctx.fillStyle = '#ffc94a'; ctx.fillRect(x - 4, y - size * 0.32, w + 8, size * 0.36); }
-        ctx.fillStyle = '#3a2c25'; ctx.fillText(text, x, y);
-        x += w;
-      });
+    if (o.hook) {
+      const lines = o.hook.title.split('\n').slice(0, 3);
+      let size = 108;
+      const plain = (s) => s.replace(/==/g, '');
+      ctx.font = '900 ' + hookFont(size);
+      while (size > 64 && lines.some((l) => ctx.measureText(plain(l)).width > maxW)) { size -= 4; ctx.font = '900 ' + hookFont(size); }
+      for (const line of lines) {
+        y += size * 1.14;
+        let x = left;
+        line.split(/(==[^=]+==)/).filter(Boolean).forEach((part) => {
+          const hi = /^==.*==$/.test(part), text = hi ? part.slice(2, -2) : part, w = ctx.measureText(text).width;
+          if (hi) { ctx.fillStyle = '#ffc94a'; ctx.fillRect(x - 4, y - size * 0.32, w + 8, size * 0.36); }
+          ctx.fillStyle = '#3a2c25'; ctx.fillText(text, x, y);
+          x += w;
+        });
+      }
+    }
+    // '꿀딜 N개' 배지 — 첫 장면이 릴스 썸네일이 되니 제목 아래 크게 (빨간 바탕 · 숫자는 꿀색, 프로필 3:4 · 1:1 잘림 안쪽)
+    if (o.count) {
+      const size = 132, padX = 54, bh = 190, top = y + 66;
+      const a = '꿀딜 ', num = String(o.count), b = '개';
+      ctx.font = '900 ' + hookFont(size);
+      const wa = ctx.measureText(a).width, wn = ctx.measureText(num).width, wb = ctx.measureText(b).width, bw = wa + wn + wb + padX * 2;
+      ctx.fillStyle = 'rgba(58,44,37,0.2)'; ctx.beginPath(); ctx.roundRect(left + 8, top + 12, bw, bh, 48); ctx.fill();
+      ctx.fillStyle = '#ef5d50'; ctx.beginPath(); ctx.roundRect(left, top, bw, bh, 48); ctx.fill();
+      const base = top + bh / 2 + size * 0.36;
+      let x = left + padX;
+      ctx.fillStyle = '#ffffff'; ctx.fillText(a, x, base); x += wa;
+      ctx.fillStyle = '#ffc94a'; ctx.fillText(num, x, base); x += wn;
+      ctx.fillStyle = '#ffffff'; ctx.fillText(b, x, base);
     }
     ctx.restore();
   };
@@ -506,6 +525,7 @@ async function main() {
       if (w !== 1080 || h !== 1350) console.error(`⚠ ${f} 크기가 ${w}×${h} 예요 (1080×1350 기준으로 늘이거나 줄여 넣음).`);
     }
     if (use.length !== files.length) OPT.coverSec = OPT.sec; // 첫 장도 제품 카드라 같은 시간
+    if (!OPT.count && files.length >= 3) OPT.count = Math.min(6, files.length - 2); // cards.json 이 없으면 표지 · 마무리 빼고 센다
     if (MUSIC) await js(`setMusic(${JSON.stringify(`data:${mime(MUSIC_NAME)};base64,` + MUSIC.toString('base64'))})`);
     const t0 = Date.now();
     const meta = await js(`build(${JSON.stringify(OPT)})`);
@@ -532,6 +552,7 @@ async function main() {
       ok: true, file: outFile, bytes: mp4.length, mb: +(mp4.length / 1048576).toFixed(2), seconds: +(movieMs / 1000).toFixed(2),
       size: `${W}x${H}`, fps: meta.fps, frames: meta.frames, cards: meta.cards, audio: !!meta.audio?.sizes, keyframes: meta.vKeys.length,
       intro_s: meta.intro, music: meta.music && !meta.music.error ? meta.music : false, hook: !!(meta.intro && OPT.hook),
+      thumb_count: meta.intro && OPT.count ? OPT.count : null, // 썸네일(첫 장면)의 '꿀딜 N개'
       media: { intro: meta.intro ? MEDIA.intro : null, music: meta.music && !meta.music.error ? MEDIA.music : null },
       took_s: Math.round((Date.now() - t0) / 1000),
     }, null, 2));
