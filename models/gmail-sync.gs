@@ -1,8 +1,8 @@
 /**
  * 모델 지원 메일 → 오피스 「모델 지원자」 (Apps Script)
  *
- * 어디에 붙이나: 지원 메일이 실제로 들어오는 지메일 계정 (brightbeed@bead-uni.com 메일은
- *   관리 콘솔 주소 매핑으로 brightbeed@gmail.com 에만 도착하므로 보통 brightbeed@gmail.com).
+ * 어디에 붙이나: brightbeed@bead-uni.com 계정 (2026-11-12 설치, 프로젝트 「오피스 모델 지원자 가져오기」).
+ *   관리 콘솔 주소 매핑이 「원본 위치로 전달: 사용」이라 받은 메일이 bead-uni 와 brightbeed@gmail.com 둘 다에 남는다.
  *   script.google.com → 새 프로젝트 → 이 코드 전체 붙여넣기 → 저장.
  *
  * 처음 한 번:
@@ -39,7 +39,7 @@ function backfillYear() { Logger.log(run_('newer_than:365d') + '통'); }
 
 function run_(range) {
   const props = PropertiesService.getScriptProperties();
-  const q = 'to:' + TO_ADDR + ' in:anywhere -in:trash -from:me -from:' + TO_ADDR + ' -from:mailer-daemon ' + range;
+  const q = 'to:' + TO_ADDR + ' in:anywhere -in:trash -from:me -from:' + TO_ADDR + ' -from:mailer-daemon -from:google.com -from:googlemail.com -from:noreply -from:no-reply ' + range;
   const threads = GmailApp.search(q, 0, 100);
   let sent = 0;
   const started = Date.now();
