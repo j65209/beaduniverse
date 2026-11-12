@@ -69,8 +69,8 @@ if (args.data && args.data !== '1') {
     const d = JSON.parse(fs.readFileSync(path.resolve(args.data), 'utf8'));
     if (d?.cover?.title) OPT.hook = { kicker: String(d.cover.kicker ?? '').slice(0, 40), title: String(d.cover.title).slice(0, 80) };
     if (Array.isArray(d?.deals) && d.deals.length) {
-      OPT.count = Math.min(6, d.deals.length);
-      const best = Math.max(0, ...d.deals.slice(0, 6).map((x) => pctOf(x) ?? 0));
+      OPT.count = Math.min(10, d.deals.length); // 카드와 같이 10개까지 (template.html render)
+      const best = Math.max(0, ...d.deals.slice(0, 10).map((x) => pctOf(x) ?? 0));
       if (best >= 10 && best < 100) OPT.maxOff = best;
     }
   } catch (e) { console.error(`⚠ ${args.data} 를 읽지 못했어요 — 인트로 제목 없이 만들어요 (${e.message})`); }
@@ -558,7 +558,7 @@ async function main() {
       if (w !== 1080 || h !== 1350) console.error(`⚠ ${f} 크기가 ${w}×${h} 예요 (1080×1350 기준으로 늘이거나 줄여 넣음).`);
     }
     if (use.length !== files.length) OPT.coverSec = OPT.sec; // 첫 장도 제품 카드라 같은 시간
-    if (!OPT.count && files.length >= 3) OPT.count = Math.min(6, files.length - 2); // cards.json 이 없으면 표지 · 마무리 빼고 센다
+    if (!OPT.count && files.length >= 3) OPT.count = Math.min(10, files.length - 2); // cards.json 이 없으면 표지 · 마무리 빼고 센다
     if (MUSIC) await js(`setMusic(${JSON.stringify(`data:${mime(MUSIC_NAME)};base64,` + MUSIC.toString('base64'))})`);
     const t0 = Date.now();
     const meta = await js(`build(${JSON.stringify(OPT)})`);

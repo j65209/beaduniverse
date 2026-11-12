@@ -164,9 +164,16 @@ async function main() {
     return;
   }
   if (!args.dir || !args.caption) fail('--dir 카드폴더 와 --caption 문구파일 이 필요해요.');
+  const platforms = args.platforms ? String(args.platforms).split(',').map((s) => s.trim()).filter(Boolean) : null;
+  const reelsOnly = !!platforms?.length && platforms.every((p) => p === 'reels'); // 릴스로만 — 영상 없이는 보내지 않는다
   const dir = path.resolve(args.dir);
-  const files = fs.readdirSync(dir).filter((f) => /\.jpe?g$/i.test(f)).sort();
+  let files = fs.readdirSync(dir).filter((f) => /\.jpe?g$/i.test(f)).sort();
   if (!files.length) fail(`${dir} 에 JPG 가 없어요.`);
+  if (files.length > MAX_IMAGES && reelsOnly) {
+    // 릴스로만이면 카드 JPG 는 화면 미리보기용 — 받는 쪽이 10장까지라 앞 10장만 (딜 10개 = 12장이어도 영상엔 전부 들어감, 2026-11-12 "꿀딜 5~10개")
+    console.error(`ℹ 카드 ${files.length}장 중 앞 ${MAX_IMAGES}장만 미리보기로 보내요 (릴스 영상엔 전부 들어 있어요).`);
+    files = files.slice(0, MAX_IMAGES);
+  }
   if (files.length > MAX_IMAGES) fail(`사진은 ${MAX_IMAGES}장까지예요 (지금 ${files.length}장).`);
   const images = files.map((f) => {
     const buf = fs.readFileSync(path.join(dir, f));
@@ -185,8 +192,6 @@ async function main() {
   if (/https?:\/\//i.test(xText)) console.error('⚠ X 문구에 링크가 있어요 — 링크 있는 글은 1개에 $0.20 이에요.');
   const leak = secretHit(caption) ?? secretHit(xText);
   if (leak) fail(`문구에 비밀 값 같은 글자가 있어요 (${leak}) — 보내지 않아요. 문구를 확인해 주세요.`);
-  const platforms = args.platforms ? String(args.platforms).split(',').map((s) => s.trim()).filter(Boolean) : null;
-  const reelsOnly = !!platforms?.length && platforms.every((p) => p === 'reels'); // 릴스로만 — 영상 없이는 보내지 않는다
   if (platforms?.includes('reels') && !args.video) fail('--platforms 에 reels 가 있으면 --video 영상(reel.mjs 로 만든 reel.mp4)이 꼭 있어야 해요.');
   let video = null; // 릴스 영상 (reel.mjs) — 모양만 먼저 검사
   if (args.video) {
