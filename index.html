@@ -35202,7 +35202,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      전략팀 일일 보고서(비공개 brightbeed-reports {플랫폼}/{브랜드}/daily/{날짜}.json, 프록시 ghFetch)의 events
      — 셀러센터에서 신청 · 승인된 기획전 — 를 캘린더에 '자동' 줄로 같이 보여 준다.
      md-events.json 에는 넣지 않는다 → 고치거나 지울 대상이 아니고, 수집기가 돌 때마다(맥미니 약 30분) 새로 맞춰진다.
-     지금 기획전을 모으는 곳: 에이블리 4개 마켓 · 지그재그 3개 스토어. 다른 플랫폼 수집기가 events 를 채우면 MD_AUTO_SOURCES 에 한 줄 추가. */
+     지금 기획전을 모으는 곳: 에이블리 4개 마켓 · 지그재그 3개 스토어 · 29CM · W컨셉(메일로 신청한 것, 표 md_mail_events). 다른 플랫폼 수집기가 events 를 채우면 MD_AUTO_SOURCES 에 한 줄 추가. */
   const MD_AUTO_SOURCES=[
     {plat:'ably', brand:'kop', path:'ably/daily'},
     {plat:'ably', brand:'6a',  path:'ably/6a/daily'},
@@ -35270,7 +35270,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             });
           });
         }catch(err){}
-      }));
+      }).concat([(async()=>{
+        // 29CM · W컨셉 — 메일로 신청한 기획전 (shinebead0 보낸편지함 → Apps Script → 함수 md-mail-events → 표 md_mail_events)
+        try{
+          const K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+          const r=await fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/md_mail_events?select=id,platform,brand,name,start_date,end_date,status,memo,subject&hidden=eq.false&start_date=not.is.null&limit=500',{headers:{apikey:K,Authorization:'Bearer '+K},cache:'no-store'});
+          if(!r.ok) return;
+          okCount++;
+          (await r.json()).forEach(e=>{
+            const pf=_mdPlatMap[e.platform];
+            out.push({
+              id:`auto:mail:${e.id}`, auto:true, title:`[${pf?pf.label:e.platform}] ${_mdAutoTitle(e.name)}`, rawTitle:e.subject||e.name,
+              start:e.start_date, end:e.end_date||e.start_date, brands:e.brand?[e.brand]:[], platforms:[e.platform], color:'slate',
+              status:e.status||'신청함', memo:e.memo||'',
+            });
+          });
+        }catch(err){}
+      })()]));
       _mdAuto.fetchedAt=Date.now();
       if(okCount===0) return;   // 프록시가 꺼졌으면 지난 목록 유지
       _mdAuto.events=out; _mdAuto.updatedAt=Date.now();
