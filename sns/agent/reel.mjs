@@ -47,6 +47,9 @@ const OPT = {
   hook: null, // 인트로 위 제목 {kicker, title}
   count: null, // 인트로 위 '꿀딜 N개' 배지 — 첫 장면이 릴스 썸네일 (2026-11-12 승훈 님 "꿀딜 4개 5개 이런식으로 썸네일")
   maxOff: null, // 배지 옆 '최대 N%↓' 스티커 — 카드와 같은 계산(정가 · 판매가), 10% 미만이면 안 붙임 (2026-11-12 "더 어그로 끌 수 있게")
+  // 제품 카드 내내 카드 아래 '💬 댓글 → 링크' 말풍선, 카드가 바뀔 때마다 톡 튀어나옴 (2026-11-12 승훈 님 "댓글 적어 주시면 링크 보내 드린다고 계속 팝업").
+  // cards.json 에 cta 가 있을 때만 = DM 이 실제로 될 때만 넣는 칸 (GUIDE '댓글 → 링크 DM 안내') — 안 되는데 띄우면 거짓 안내
+  dmPopup: null,
 };
 // 카드(template.html won · discount)와 같은 할인율 계산 — 썸네일 숫자가 카드 숫자와 어긋나지 않게
 const won = (s) => {
@@ -68,6 +71,7 @@ if (args.data && args.data !== '1') {
   try {
     const d = JSON.parse(fs.readFileSync(path.resolve(args.data), 'utf8'));
     if (d?.cover?.title) OPT.hook = { kicker: String(d.cover.kicker ?? '').slice(0, 40), title: String(d.cover.title).slice(0, 80) };
+    if (String(d?.cta ?? '').trim()) OPT.dmPopup = '💬 댓글 남겨 주시면 링크 바로 보내 드려요!';
     if (Array.isArray(d?.deals) && d.deals.length) {
       OPT.count = Math.min(10, d.deals.length); // 카드와 같이 10개까지 (template.html render)
       const best = Math.max(0, ...d.deals.slice(0, 10).map((x) => pctOf(x) ?? 0));
@@ -196,6 +200,29 @@ window.build = async (o) => {
       if (f > 0) { ctx.fillStyle = '#ef5d50'; ctx.beginPath(); ctx.roundRect(x, segY, Math.max(segH, segW * f), segH, segH / 2); ctx.fill(); }
     }
   };
+  // 💬 댓글 → 링크 말풍선 — 카드 아래 가운데에서 조금 왼쪽(오른쪽 좋아요 · 댓글 버튼 · 아래 글자에 덜 가리게),
+  // 카드가 자리 잡을 때마다 작게 시작해 톡 튀어나오고(0.45초) 그다음엔 그대로 떠 있다
+  const popFont = (px) => px + 'px Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+  if (o.dmPopup) await document.fonts.load('800 40px Pretendard', o.dmPopup).catch(() => null);
+  const popup = (since) => {
+    if (!o.dmPopup) return;
+    const x1 = Math.min(1, Math.max(0, since / 0.45)), c1 = 1.70158;
+    const s = 0.55 + 0.45 * (1 + (c1 + 1) * Math.pow(x1 - 1, 3) + c1 * Math.pow(x1 - 1, 2)); // 살짝 넘쳤다 돌아오기
+    ctx.save();
+    let size = 40; ctx.font = '800 ' + popFont(size);
+    while (size > 28 && ctx.measureText(o.dmPopup).width > 760) { size -= 2; ctx.font = '800 ' + popFont(size); }
+    const tw = ctx.measureText(o.dmPopup).width, bw = tw + 76, bh = size + 46;
+    const mx = W / 2 - 40, my = cy + ch + 40 + bh / 2; // 카드 아래
+    ctx.translate(mx, my); ctx.scale(s, s); ctx.rotate((1 - x1) * -0.05);
+    ctx.shadowColor = 'rgba(110,72,40,0.25)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 8;
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.beginPath(); ctx.moveTo(bw / 2 - 90, bh / 2 - 6); ctx.lineTo(bw / 2 - 40, bh / 2 + 26); ctx.lineTo(bw / 2 - 52, bh / 2 - 6); ctx.closePath(); ctx.fill(); // 꼬리
+    ctx.lineWidth = 6; ctx.strokeStyle = '#ffc94a'; ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.stroke();
+    ctx.fillStyle = '#3a2c25'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(o.dmPopup, 0, 2);
+    ctx.restore();
+  };
   const draw = (time) => {
     let i = n - 1;
     for (let k = 0; k < n; k++) if (time < starts[k] + holds[k] + (k < n - 1 ? T : 0)) { i = k; break; }
@@ -204,11 +231,13 @@ window.build = async (o) => {
     if (local <= holds[i] || i === n - 1) { // 머무는 중
       card(i, 0, 1 + o.zoom * Math.min(1, local / holds[i]));
       bars(i, Math.min(1, local / holds[i]));
+      popup(local);
     } else { // i → i+1 넘기는 중 (나가는 카드는 조금 작아지며 왼쪽으로, 들어오는 카드는 오른쪽에서)
       const p = ease(Math.min(1, (local - holds[i]) / T)), z0 = 1 + o.zoom;
       card(i, -p * W, z0 - (z0 - 0.94) * p);
       card(i + 1, (1 - p) * W, 0.94 + 0.06 * p);
       bars(i + 1, 0);
+      popup(99); // 넘기는 동안은 그대로 떠 있다
     }
   };
 
@@ -587,6 +616,7 @@ async function main() {
       intro_s: meta.intro, music: meta.music && !meta.music.error ? meta.music : false, hook: !!(meta.intro && OPT.hook),
       thumb_count: meta.intro && OPT.count ? OPT.count : null, // 썸네일(첫 장면)의 '꿀딜 N개'
       thumb_max_off: meta.intro && OPT.count && OPT.maxOff ? OPT.maxOff : null, // 그 옆 '최대 N%↓'
+      dm_popup: !!OPT.dmPopup, // 제품 카드 내내 '💬 댓글 → 링크' 말풍선 (cards.json cta 가 있을 때만)
       media: { intro: meta.intro ? MEDIA.intro : null, music: meta.music && !meta.music.error ? MEDIA.music : null },
       took_s: Math.round((Date.now() - t0) / 1000),
     }, null, 2));
