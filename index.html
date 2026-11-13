@@ -4838,6 +4838,79 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .cec-field-row{grid-template-columns:1fr}
   }
 
+  /* ===== 홈 입고 현황 (2026-11-13, 에이전트 오피스 모아 → ERP MASTER) ===== */
+  .home-rcv-card{max-width:1020px;margin:6px auto 18px;background:var(--bg-1);border:1px solid var(--line-2);border-radius:12px;padding:14px 18px 16px;box-shadow:0 4px 18px rgba(20,20,20,.05)}
+  .hrc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .hrc-title{font-size:15px;font-weight:800;color:var(--text-0);display:flex;align-items:baseline;gap:8px}
+  .hrc-sub{font-size:11.5px;font-weight:600;color:var(--text-3)}
+  .hrc-meta{font-size:11.5px;color:var(--text-3);margin-left:auto;font-variant-numeric:tabular-nums}
+  .hrc-meta.err{color:#b91c1c}
+  .hrc-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:999px;background:#0d9488;color:#fff;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+  .hrc-btn:hover{background:#0f766e}
+  .hrc-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .hrc-tile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);cursor:pointer;font-family:inherit;color:var(--text-1);min-width:0;transition:border-color .15s,box-shadow .15s}
+  .hrc-tile:hover{border-color:#0d9488;box-shadow:0 2px 10px rgba(13,148,136,.15)}
+  .hrc-tl{font-size:12px;font-weight:700;color:var(--text-3)}
+  .hrc-num{font-size:24px;font-weight:800;color:var(--text-0);font-variant-numeric:tabular-nums;line-height:1.15}
+  .hrc-num small{font-size:13px;font-weight:700;margin-left:2px;color:var(--text-2)}
+  .hrc-cnt{font-size:11.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+  .hrc-badges{display:flex;gap:4px;flex-wrap:wrap}
+  .hrc-badge{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--bg-3);color:var(--text-2)}
+  .hrc-badge.wait{background:#fef3c7;color:#92400e}
+  .hrc-badge.fail{background:#fee2e2;color:#991b1b}
+  .hrc-prev{list-style:none;margin:4px 0 0;padding:0;width:100%;font-size:12px;color:var(--text-1)}
+  .hrc-prev li{display:flex;gap:6px;justify-content:space-between;padding:1px 0;min-width:0}
+  .hrc-prev li span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .hrc-prev li b{font-variant-numeric:tabular-nums;color:#0f766e;white-space:nowrap}
+  .hrc-more{font-size:11.5px;font-weight:700;color:#0f766e;margin-top:2px}
+  .hrc-empty{font-size:12px;color:var(--text-3)}
+  @media (max-width:700px){
+    .home-rcv-card{margin:6px 8px 14px;padding:12px 14px 14px}
+    .hrc-tiles{grid-template-columns:1fr}
+    .hrc-meta{margin-left:0;width:100%;order:3}
+  }
+  .rcv-modal{position:fixed;inset:0;z-index:9000;background:rgba(10,12,16,.45);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
+  .rcv-modal[hidden]{display:none}
+  .rcv-panel{width:min(860px,100%);background:var(--bg-1);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.25);padding:16px 18px 14px;display:flex;flex-direction:column;gap:10px;max-height:90vh}
+  .rcv-phead{display:flex;align-items:center;gap:10px}
+  .rcv-ptitle{font-size:16px;font-weight:800;color:var(--text-0)}
+  .rcv-x{margin-left:auto;border:0;background:var(--bg-2);border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;color:var(--text-1)}
+  .rcv-tabs{display:flex;gap:6px}
+  .rcv-tabs button{border:1px solid var(--line-2);background:var(--bg-1);color:var(--text-1);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
+  .rcv-tabs button.on{background:#0d9488;border-color:#0d9488;color:#fff}
+  .rcv-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .rcv-tools input[type=search]{flex:1;min-width:180px;border:1px solid var(--line-2);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--bg-1);color:var(--text-1)}
+  .rcv-chk{font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:4px;white-space:nowrap}
+  .rcv-sum{font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+  .rcv-list{overflow-y:auto;min-height:120px;border-top:1px solid var(--line);padding-top:4px}
+  .rcv-day{font-size:12px;font-weight:800;color:var(--text-2);margin:10px 0 4px;display:flex;gap:8px;align-items:baseline}
+  .rcv-day span{font-weight:600;color:var(--text-3)}
+  .rcv-row{display:grid;grid-template-columns:46px minmax(0,1fr) 64px 104px 70px 108px;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--text-1)}
+  .rcv-row .t{color:var(--text-3);font-variant-numeric:tabular-nums}
+  .rcv-row .n{min-width:0}
+  .rcv-row .n b{font-weight:700}
+  .rcv-row .n i{font-style:normal;color:var(--text-3);font-size:11.5px;margin-left:4px}
+  .rcv-row .b{display:inline-block;font-size:10.5px;font-weight:700;color:#0f766e;background:rgba(13,148,136,.1);border-radius:4px;padding:0 5px;margin-right:5px}
+  .rcv-row .q{font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+  .rcv-row .q.in{color:#0f766e}
+  .rcv-row .q.out{color:#b45309}
+  .rcv-row .s{color:var(--text-2);font-variant-numeric:tabular-nums;text-align:right}
+  .rcv-row .w{color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rcv-row .st{font-size:11.5px;font-weight:700}
+  .rcv-row .st.ok{color:#047857}
+  .rcv-row .st.wait{color:#b45309}
+  .rcv-row .st.fail{color:#b91c1c}
+  .rcv-row .why{grid-column:2 / -1;font-size:11.5px;color:#b91c1c}
+  .rcv-none{padding:24px 4px;text-align:center;color:var(--text-3);font-size:12.5px}
+  .rcv-foot{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-3);flex-wrap:wrap}
+  .rcv-foot .hrc-btn{margin-left:auto}
+  @media (max-width:700px){
+    .rcv-modal{padding:0}
+    .rcv-panel{border-radius:0;max-height:none;min-height:100vh}
+    .rcv-row{grid-template-columns:42px minmax(0,1fr) 56px;row-gap:2px}
+    .rcv-row .s,.rcv-row .w,.rcv-row .st{grid-column:2 / -1;text-align:left}
+  }
+
   /* ===== 홈 대표 캘린더 위젯 (대표 두 분 로그인 PC 전용) ===== */
   .home-ceocal-card{
     max-width:1020px;margin:6px auto 18px;
@@ -10644,6 +10717,46 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <!-- ============ 홈 뷰 ============ -->
   <div class="view" id="viewHome">
 
+    <!-- 입고 현황 (2026-11-13) — 에이전트 오피스 물류팀 모아가 식스샵 ERP MASTER 에 반영한 입고 · 차감.
+         기록 원본은 ERP 시트 숨김 탭 '물류 입고기록' (서버 /erp/moves). 타일을 누르면 그 기간 내역 -->
+    <section id="homeRcvCard" class="home-rcv-card" aria-label="입고 현황">
+      <div class="hrc-head">
+        <div class="hrc-title">📦 <span>입고 현황</span><span class="hrc-sub">ERP MASTER 반영 기록</span></div>
+        <div class="hrc-meta" id="homeRcvMeta">불러오는 중…</div>
+        <a class="hrc-btn" href="./agents.html#chat=receive">+ 입고 입력</a>
+      </div>
+      <div class="hrc-tiles" id="homeRcvTiles">
+        <button type="button" class="hrc-tile" data-period="today" onclick="rcvModalOpen('today')"><span class="hrc-tl">오늘 입고</span><span class="hrc-num">–</span></button>
+        <button type="button" class="hrc-tile" data-period="week" onclick="rcvModalOpen('week')"><span class="hrc-tl">이번 주 입고</span><span class="hrc-num">–</span></button>
+        <button type="button" class="hrc-tile" data-period="month" onclick="rcvModalOpen('month')"><span class="hrc-tl">이번 달 입고</span><span class="hrc-num">–</span></button>
+      </div>
+    </section>
+
+    <!-- 입고 내역 창 -->
+    <div id="rcvModal" class="rcv-modal" hidden onclick="if(event.target===this) rcvModalClose()">
+      <div class="rcv-panel" role="dialog" aria-modal="true" aria-labelledby="rcvModalTitle">
+        <div class="rcv-phead">
+          <div class="rcv-ptitle" id="rcvModalTitle">입고 내역</div>
+          <button type="button" class="rcv-x" onclick="rcvModalClose()" aria-label="닫기">✕</button>
+        </div>
+        <div class="rcv-tabs" id="rcvModalTabs">
+          <button type="button" data-period="today" onclick="rcvModalPeriod('today')">오늘</button>
+          <button type="button" data-period="week" onclick="rcvModalPeriod('week')">이번 주</button>
+          <button type="button" data-period="month" onclick="rcvModalPeriod('month')">이번 달</button>
+        </div>
+        <div class="rcv-tools">
+          <input type="search" id="rcvModalQ" placeholder="상품명 · 브랜드 · 입력자 찾기" oninput="rcvModalSearch(this.value)" autocomplete="off">
+          <label class="rcv-chk"><input type="checkbox" id="rcvModalOut" checked onchange="rcvModalToggleOut(this.checked)"> 차감도 보기</label>
+        </div>
+        <div class="rcv-sum" id="rcvModalSum"></div>
+        <div class="rcv-list" id="rcvModalList"></div>
+        <div class="rcv-foot">
+          <span>남은 재고 칸 메모에 몇 시 몇 분 · 누가 넣었는지 남습니다. 원본: ERP MASTER 숨김 탭 '물류 입고기록'</span>
+          <a class="hrc-btn" href="./agents.html#chat=receive">+ 입고 입력</a>
+        </div>
+      </div>
+    </div>
+
     <!-- 대표 캘린더 홈 위젯 (대표 두 분 로그인 PC 에만 노출, 마스터 전용) -->
     <div id="homeCeoCalCard" class="home-ceocal-card" hidden>
       <div class="hcc-head">
@@ -14039,6 +14152,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const AGENTS_CHARACTERS = [
     {id:'chief',     name:'리안',   team:'본부',     taskLabel:'전 에이전트 자동업무 검수', schedule:'상시 감시',    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd']},
     {id:'logistics', name:'콜리',   team:'물류팀',   taskLabel:'콰이디에어 동기화',        schedule:'매 10분',       agentIds:['kd-brightbeed','kd-shinebeed']},
+    // 2026-11-13 물류팀 입고 담당 — 채팅으로 받은 입고 · 차감을 ERP MASTER 남은 재고에 반영 (agents.html '물류 입고 — 모아')
+    {id:'receive',   name:'모아',   team:'물류팀',   taskLabel:'ERP 입고 반영',            schedule:'상시 대응',     agentIds:[], alwaysOn:true},
     {id:'stock',     name:'미루',   team:'엠디1팀',   taskLabel:'식스샵 재고 관리',         schedule:'상시 대응',     agentIds:[], alwaysOn:true},
     {id:'vendor',    name:'노아',   team:'엠디1팀',   taskLabel:'벤더 마진 시트 · 출금 알림', schedule:'매 10분',       agentIds:['vendor-fetch','withdrawal-nag']},
     {id:'marketing', name:'자스민', team:'엠디2팀',   taskLabel:'매출 수집',               schedule:'매 30분',       agentIds:['pro-sales','admin-sales','platform-sales']},
@@ -14049,6 +14164,170 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 2026-11-11 꿀꿀집 마케터 — 관리자 전용(masterOnly), 예약 작업이라 launchd 상태 없음 → alwaysOn 으로 근무 카운트
     {id:'ggul',      name:'마케터', team:'꿀꿀집',   taskLabel:'꿀꿀집 카드뉴스',          schedule:'매일 8·11·17·20시', agentIds:[], alwaysOn:true, masterOnly:true},
   ];
+  /* ===== 홈 입고 현황 (2026-11-13) =====
+     에이전트 오피스 물류팀 모아가 식스샵 ERP MASTER 에 반영한 입고 · 차감.
+     서버 /erp/moves = ERP 시트 숨김 탭 '물류 입고기록' + 아직 반영 전인 대기 건 (맥미니 프록시 scripts/erp_moves.py).
+     타일(오늘 · 이번 주 · 이번 달)은 반영된 입고만 센다 — 반영 중 · 실패 · 차감은 배지. 누르면 그 기간 내역 창.
+     내역 창 검색칸은 다시 그리는 목록 밖에 있어서 1분 갱신이 입력을 지우지 않는다. */
+  const RCV_BRAND_LABEL = {apt:'아페티', kop:'코페리', koz:'코즈미', '6a':'식스에이', yar:'야르', pp:'프로덕트피알', akoi:'아코이하우스'};
+  const _rcvHome = {rows:[], at:0, loading:false, err:'', busy:[], period:'today', q:'', withOut:true, timer:null};
+  function _rcvStarts(){
+    const d0 = new Date(); d0.setHours(0,0,0,0);
+    const w = new Date(d0); w.setDate(w.getDate() - ((w.getDay() + 6) % 7));   // 이번 주 = 월요일부터
+    const m = new Date(d0); m.setDate(1);
+    return {today: d0.getTime(), week: w.getTime(), month: m.getTime()};
+  }
+  const _rcvAt = r => r.at || r.appliedAt || 0;
+  const _rcvEsc = v => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const _rcvN = n => (n == null ? '' : Number(n).toLocaleString('ko-KR'));
+  const _rcvHM = ms => { const d = new Date(ms); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  async function rcvHomeLoad(){
+    if(_rcvHome.loading) return;
+    _rcvHome.loading = true;
+    try{
+      const st = _rcvStarts();
+      const base = await loadProxyBase();
+      if(!base) throw new Error('서버 연결 안 됨');
+      const r = await fetch(`${base}/erp/moves?from=${Math.min(st.week, st.month)}`, {headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'}, cache:'no-store'});
+      const j = await r.json().catch(() => ({}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      _rcvHome.rows = j.moves || []; _rcvHome.at = Date.now(); _rcvHome.err = ''; _rcvHome.busy = j.busy || [];
+    }catch(e){ _rcvHome.err = (e && e.message) || String(e); }
+    finally{
+      _rcvHome.loading = false;
+      rcvHomeRender();
+      const m = document.getElementById('rcvModal');
+      if(m && !m.hidden) rcvModalRender();
+    }
+  }
+  function _rcvPeriodRows(p){ const st = _rcvStarts()[p]; return _rcvHome.rows.filter(r => _rcvAt(r) >= st); }
+  function _rcvStat(rows){
+    const ins = rows.filter(r => r.kind === 'in' && r.status === 'applied');
+    const outs = rows.filter(r => r.kind === 'out' && r.status === 'applied');
+    const wait = rows.filter(r => r.status === 'pending');
+    const fail = rows.filter(r => r.status === 'failed' || r.status === 'stuck');
+    const byItem = new Map();
+    ins.forEach(r => { const k = `${r.brand}::${r.product}::${r.option||''}`; const v = byItem.get(k) || {r, q:0}; v.q += r.qty||0; byItem.set(k, v); });
+    return {ins, outs, wait, fail,
+      qty: ins.reduce((a, r) => a + (r.qty||0), 0), outQty: outs.reduce((a, r) => a + (r.qty||0), 0),
+      items: [...byItem.values()].sort((a, b) => b.q - a.q)};
+  }
+  function rcvHomeRender(){
+    const card = document.getElementById('homeRcvCard');
+    if(!card) return;
+    const meta = document.getElementById('homeRcvMeta');
+    if(meta){
+      if(_rcvHome.err && !_rcvHome.at){ meta.textContent = `불러오지 못함 — ${_rcvHome.err}`; meta.classList.add('err'); }
+      else {
+        meta.classList.toggle('err', !!_rcvHome.err);
+        meta.textContent = _rcvHome.at
+          ? `${_rcvHM(_rcvHome.at)} 갱신${_rcvHome.err ? ' · 최근 갱신 실패' : ''}${(_rcvHome.busy||[]).length ? ' · ERP 송장 처리 중 — 끝나면 이어서 반영' : ''}`
+          : '불러오는 중…';
+      }
+    }
+    if(!_rcvHome.at) return;
+    const labels = {today:'오늘 입고', week:'이번 주 입고', month:'이번 달 입고'};
+    card.querySelectorAll('.hrc-tile').forEach(btn => {
+      const p = btn.dataset.period;
+      const s = _rcvStat(_rcvPeriodRows(p));
+      const badges = [];
+      if(s.wait.length) badges.push(`<span class="hrc-badge wait">반영 중 ${s.wait.length}</span>`);
+      if(s.fail.length) badges.push(`<span class="hrc-badge fail">실패 ${s.fail.length}</span>`);
+      if(s.outs.length) badges.push(`<span class="hrc-badge">차감 ${_rcvN(s.outQty)}개</span>`);
+      const prev = s.items.slice(0, 3).map(x => `<li><span>${_rcvEsc(RCV_BRAND_LABEL[x.r.brand] || x.r.brand)} · ${_rcvEsc(x.r.product)}${x.r.option ? ` (${_rcvEsc(x.r.option)})` : ''}</span><b>+${_rcvN(x.q)}</b></li>`).join('');
+      const more = s.items.length > 3 ? `<span class="hrc-more">+${s.items.length - 3}품목 더 · 전체 보기 ›</span>`
+        : ((s.ins.length || s.wait.length || s.fail.length || s.outs.length) ? '<span class="hrc-more">내역 보기 ›</span>' : '');
+      btn.innerHTML = `<span class="hrc-tl">${labels[p]}</span>`
+        + `<span class="hrc-num">${_rcvN(s.qty)}<small>개</small></span>`
+        + `<span class="hrc-cnt">${s.items.length}품목 · ${s.ins.length}건</span>`
+        + (badges.length ? `<span class="hrc-badges">${badges.join('')}</span>` : '')
+        + (prev ? `<ul class="hrc-prev">${prev}</ul>` : (s.ins.length ? '' : `<span class="hrc-empty">${p === 'today' ? '아직 오늘 입고가 없어요' : '기록 없음'}</span>`))
+        + more;
+    });
+  }
+  function rcvModalOpen(p){
+    _rcvHome.period = p || 'today';
+    const m = document.getElementById('rcvModal');
+    if(!m) return;
+    m.hidden = false;
+    document.body.style.overflow = 'hidden';
+    rcvModalRender();
+    if(Date.now() - _rcvHome.at > 20000) rcvHomeLoad();
+  }
+  function rcvModalClose(){
+    const m = document.getElementById('rcvModal');
+    if(m) m.hidden = true;
+    document.body.style.overflow = '';
+  }
+  function rcvModalPeriod(p){ _rcvHome.period = p; rcvModalRender(); }
+  function rcvModalSearch(v){ _rcvHome.q = v || ''; rcvModalRender(); }
+  function rcvModalToggleOut(on){ _rcvHome.withOut = !!on; rcvModalRender(); }
+  function rcvModalRender(){
+    const p = _rcvHome.period;
+    const d0 = new Date(_rcvStarts()[p]);
+    const title = {today:'오늘 입고 내역', week:'이번 주 입고 내역', month:'이번 달 입고 내역'}[p];
+    document.getElementById('rcvModalTitle').textContent = `${title} (${d0.getMonth()+1}/${d0.getDate()}${p === 'today' ? '' : ' ~ 오늘'})`;
+    document.querySelectorAll('#rcvModalTabs button').forEach(b => b.classList.toggle('on', b.dataset.period === p));
+    let rows = _rcvPeriodRows(p);
+    const s = _rcvStat(rows);
+    if(!_rcvHome.withOut) rows = rows.filter(r => r.kind === 'in');
+    const q = (_rcvHome.q || '').trim().toLowerCase();
+    if(q) rows = rows.filter(r => [RCV_BRAND_LABEL[r.brand], r.product, r.option, r.by, r.raw].join(' ').toLowerCase().includes(q));
+    document.getElementById('rcvModalSum').textContent =
+      `입고 ${_rcvN(s.qty)}개 · ${s.items.length}품목 · ${s.ins.length}건`
+      + (s.outs.length ? ` · 차감 ${_rcvN(s.outQty)}개 ${s.outs.length}건` : '')
+      + (s.wait.length ? ` · 반영 중 ${s.wait.length}건` : '') + (s.fail.length ? ` · 실패 ${s.fail.length}건` : '')
+      + (_rcvHome.at ? ` · ${_rcvHM(_rcvHome.at)} 기준` : (_rcvHome.err ? ` · 불러오지 못함 (${_rcvHome.err})` : ''));
+    const list = document.getElementById('rcvModalList');
+    if(!rows.length){
+      list.innerHTML = `<div class="rcv-none">${q ? '찾는 기록이 없어요.' : '이 기간 기록이 아직 없어요. [+ 입고 입력] 으로 모아에게 말씀하시면 여기 쌓입니다.'}</div>`;
+      return;
+    }
+    const W = ['일','월','화','수','목','금','토'];
+    let html = '', lastDay = '';
+    rows.forEach(r => {
+      const d = new Date(_rcvAt(r));
+      const day = `${d.getMonth()+1}월 ${d.getDate()}일 (${W[d.getDay()]})`;
+      if(day !== lastDay){
+        lastDay = day;
+        const same = rows.filter(x => new Date(_rcvAt(x)).toDateString() === d.toDateString());
+        const inQ = same.filter(x => x.kind === 'in' && x.status === 'applied').reduce((a, x) => a + (x.qty||0), 0);
+        html += `<div class="rcv-day">${day}<span>입고 ${_rcvN(inQ)}개 · ${same.length}건</span></div>`;
+      }
+      const stCls = r.status === 'applied' ? 'ok' : (r.status === 'pending' ? 'wait' : 'fail');
+      const stTxt = r.status === 'applied' ? `✅ 반영 ${r.appliedAt ? _rcvHM(r.appliedAt) : ''}` : (r.status === 'pending' ? '⏳ 반영 중' : '❌ 실패');
+      const stock = r.after != null ? `${r.before == null ? '빈칸' : _rcvN(r.before)} → ${_rcvN(r.after)}` : '';
+      html += `<div class="rcv-row">`
+        + `<span class="t">${_rcvHM(_rcvAt(r))}</span>`
+        + `<span class="n"><span class="b">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}</span>`
+        + `<span class="q ${r.kind === 'out' ? 'out' : 'in'}">${r.kind === 'out' ? '−' : '+'}${_rcvN(r.qty)}</span>`
+        + `<span class="s" title="남은 재고 (반영 전 → 후)">${stock}</span>`
+        + `<span class="w" title="입력자">${_rcvEsc(r.by || '–')}</span>`
+        + `<span class="st ${stCls}">${stTxt}</span>`
+        + (stCls === 'fail' && r.reason ? `<span class="why">${_rcvEsc(r.reason)}</span>` : '')
+        + `</div>`;
+    });
+    list.innerHTML = html;
+  }
+  function rcvHomeBoot(){
+    rcvHomeLoad();
+    if(_rcvHome.timer) return;
+    // 홈이 보일 때만 1분마다 (다른 화면 · 숨은 탭에서는 쉰다)
+    _rcvHome.timer = setInterval(() => {
+      const home = document.getElementById('viewHome');
+      if(document.visibilityState === 'visible' && home && !home.hidden) rcvHomeLoad();
+    }, 60000);
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible' && Date.now() - _rcvHome.at > 30000) rcvHomeLoad();
+    });
+    document.addEventListener('keydown', e => {
+      const m = document.getElementById('rcvModal');
+      if(e.key === 'Escape' && m && !m.hidden) rcvModalClose();
+    });
+  }
+  function rcvHomeRefresh(){ if(Date.now() - _rcvHome.at > 20000) rcvHomeLoad(); }
+  Object.assign(window, {rcvModalOpen, rcvModalClose, rcvModalPeriod, rcvModalSearch, rcvModalToggleOut, rcvHomeBoot, rcvHomeRefresh});
+
   async function loadAgentsMini(){
     const runN = document.getElementById('agentsRunningN');
     const totN = document.getElementById('agentsTotalN');
@@ -16981,6 +17260,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof phoneBoot==='function') phoneBoot();
     // 에이전트 오피스 실시간 인원 표시 (홈 카드)
     if(typeof loadAgentsMini==='function'){ loadAgentsMini(); setInterval(loadAgentsMini, 30000); }
+    // 홈 맨 위 입고 현황 (에이전트 오피스 모아 → ERP MASTER)
+    if(typeof rcvHomeBoot==='function') rcvHomeBoot();
   }
   function showLock(){app.classList.remove('show');lock.classList.add('show');setTimeout(()=>pin.focus(),50)}
 
@@ -17464,6 +17745,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof _diaryInitRealtime === 'function') _diaryInitRealtime();
       // 대표 캘린더 위젯 (전승훈/전수빈 PC + 마스터 에만 노출)
       if(typeof cecRenderHomeCard === 'function') cecRenderHomeCard();
+      // 입고 현황 — 홈으로 돌아올 때 20초 넘었으면 다시 읽음
+      if(typeof rcvHomeRefresh === 'function') rcvHomeRefresh();
       // 전략팀 카드 (전승훈/전수빈/김수민 PC 에만 노출)
       if(typeof stratRefreshAccess === 'function') stratRefreshAccess();
       // 2026 송년회 (전승훈/전수빈 PC 에만 노출)
