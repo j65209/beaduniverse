@@ -7035,12 +7035,73 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .csi-code-bar .csi-search{width:100%}
   }
 
-  /* ===== CS팀 ↩️ 반품·교환 (2026-11-13) — CS 이슈 분석과 같은 카드 · 막대 모양. 사유 색: 회사 사유 #eb6834 · 고객 사유 #0284c7 · 사유 없음/기타 #b3ac9a ===== */
+  /* ===== CS팀 ↩️ 반품·교환 분석 (2026-11-13, CS팀 메인 탭) — CS 이슈 분석과 같은 카드 · 표 모양.
+     사유 색: 회사 사유 #eb6834 · 고객 사유 #0284c7 · 사유 없음/기타 #b3ac9a (--csi-co · --csi-accent · --csi-other) ===== */
+  /* 숨긴 탭(📝 CS 기록 · 📊 이슈 분석) · CS 기록 전용 버튼 — .lg-tab · .csi-btn 의 display 가 hidden 을 이겨서 직접 숨김 */
+  #viewCs .lg-tab[hidden],#viewCs .csi-btn[hidden]{display:none !important}
   .clm-head{font-size:16px;font-weight:700;color:var(--text-0);letter-spacing:-.01em}
   .clm-head span{font-size:12.5px;font-weight:500;color:var(--text-3);margin-left:8px}
   .clm-alert{font-size:12.5px;line-height:1.55;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:9px 12px;margin-bottom:12px}
   .clm-alert b{font-weight:700}
   .clm-alert[hidden]{display:none}
+  /* 숫자 6칸 */
+  .clm-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+  .clm-kpi{padding:12px 14px}
+  .clm-kpi .csi-kpi-val{font-size:24px}
+  .clm-kpi .csi-kpi-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .clm-kpi .csi-delta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 통계 표 (비교 · 상품 · 처리 현황) */
+  .clm-stat{min-width:860px}
+  .clm-stat td{vertical-align:middle}
+  .clm-stat td .csi-muted{font-size:11.5px}
+  .clm-stat tbody tr[data-b],.clm-stat tbody tr[data-ch],.clm-heat tbody tr[data-b],.clm-heat tbody tr[data-ch]{cursor:pointer}
+  .clm-stat tbody tr[data-b]:hover td,.clm-stat tbody tr[data-ch]:hover td,.clm-heat tbody tr[data-b]:hover td:first-child,.clm-heat tbody tr[data-ch]:hover td:first-child{background:var(--bg-2)}
+  .clm-stat tbody tr:focus-visible,.clm-heat tbody tr:focus-visible{outline:2px solid var(--neon-cs);outline-offset:-2px}
+  .clm-stat .clm-total td,.clm-heat .clm-total td{border-top:1px solid var(--line-2);font-weight:700;background:#faf8f2}
+  .clm-ratebar{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+  .clm-ratebar b{display:block;width:64px;height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden;flex:none}
+  .clm-ratebar b i{display:block;height:100%;background:var(--csi-co);border-radius:4px}
+  .clm-ratebar span{font-weight:700;color:var(--text-0);font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
+  .clm-mix{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:110px;background:var(--bg-2)}
+  .clm-mix i{display:block;height:100%}
+  .clm-mix i.co{background:var(--csi-co)}
+  .clm-mix i.cu{background:var(--csi-accent)}
+  .clm-mix i.na{background:var(--csi-other)}
+  .clm-mix-td{min-width:120px}
+  .clm-note{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.5}
+  /* 사유 × 브랜드(채널) 표 */
+  .clm-heat{min-width:720px}
+  .clm-heat th,.clm-heat td{text-align:center}
+  .clm-heat th:first-child,.clm-heat td:first-child{text-align:left}
+  .clm-heat td.n{font-variant-numeric:tabular-nums;font-weight:600;color:var(--text-0)}
+  .clm-heat .clm-zero{color:#d6d0c2;font-weight:400}
+  .clm-heat .clm-total td .csi-muted{font-size:11px;font-weight:500}
+  /* 고객 목소리 */
+  .clm-voice{display:flex;flex-direction:column;gap:12px}
+  .clm-voice-h{font-size:13px;font-weight:700;color:var(--text-0);margin-bottom:6px}
+  .clm-quote{font-size:12.5px;color:var(--text-1);line-height:1.55;padding:6px 10px;border-left:3px solid var(--line-2);background:var(--bg-2);border-radius:0 6px 6px 0;margin-bottom:6px;word-break:break-word}
+  .clm-quote .csi-muted{margin-top:2px;font-size:11.5px}
+  /* 상품 분석 */
+  .clm-prod-tbl{min-width:1000px}
+  .clm-prod-tbl .clm-prod{min-width:180px;max-width:280px}
+  .clm-prod-tbl .clm-memo{min-width:180px;max-width:300px;color:var(--text-2);font-size:12px;line-height:1.5}
+  .clm-warn-row td{background:#fffbeb}
+  .clm-co-hot{color:#c2410c}
+  .clm-req-btn{padding:4px 10px;font-size:12px}
+  /* 추이 — 건수 막대 + 반품률 선 */
+  .clm-rate-line{fill:none;stroke:var(--text-0);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .clm-rate-dot{fill:var(--text-0)}
+  .csi-trend-svg text.clm-panel-t{font-size:11px;font-weight:700;fill:var(--text-2)}
+  .csi-legend i.clm-leg-line{width:14px;height:2px;border-radius:0;background:var(--text-0);vertical-align:3px}
+  /* 처리 현황 */
+  .clm-ops-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:18px;align-items:start}
+  .clm-ops{min-width:420px}
+  .clm-ops td.clm-late{color:#c2410c;font-weight:700;background:#fff7ed}
+  .clm-ops-h{font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:4px}
+  .clm-ops-row{font-size:12.5px;color:var(--text-1);padding:6px 0;border-bottom:1px solid #f1ede2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .clm-ops-row:last-child{border-bottom:0}
+  .clm-late-t{color:#c2410c}
+  /* 목록 · 공통 */
   .clm-tbl{min-width:900px}
   .clm-tbl td{vertical-align:top}
   .clm-tbl .clm-prod{min-width:200px;max-width:300px}
@@ -7065,7 +7126,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .clm-photo{font-size:11px;font-weight:600;color:var(--text-3);margin-left:6px;white-space:nowrap}
   .clm-foot{font-size:12px;color:var(--text-3);line-height:1.65;padding:2px 4px 6px}
   .clm-foot b{color:var(--text-2);font-weight:600}
+  @media (max-width:1280px){ .clm-kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (max-width:980px){ .clm-ops-grid{grid-template-columns:minmax(0,1fr)} }
   @media (max-width:600px){
+    .clm-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .clm-kpi .csi-kpi-val{font-size:21px}
     .clm-head span{display:block;margin:2px 0 0}
   }
 
@@ -11851,32 +11916,33 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
         홈
       </button>
-      <h1 class="view-title">CS팀<span class="view-title-sub">/ CS 기록 · 이슈 분석 · 업무 스케줄 · 고객 응대</span></h1>
+      <h1 class="view-title">CS팀<span class="view-title-sub">/ 반품 · 교환 분석 · 개선 요청 · 작업 보드</span></h1>
       <div class="dsg-head-actions" style="margin-left:auto">
         <span class="dsg-save-tag" id="csSaveTag" data-state="saved" title="현재 저장 상태">✓ 저장됨</span>
       </div>
     </div>
 
-    <!-- ============ CS팀 탭 (2026-11-10) — 📝 CS 기록(엑셀식 표) / 📊 이슈 분석 / 🛠 개선 요청 / 🗂 기존 작업 보드 · 메모장 · FAQ ============ -->
+    <!-- ============ CS팀 탭 — ↩️ 반품·교환 분석(메인) / 🛠 개선 요청 · 작업 보드 (2026-11-13 사장님: "반품 교환을 메인으로 · 기록 · 이슈 분석은 사실상 필요없음 ·
+         개선요청이랑 작업보드 메모 합쳐줘"). 📝 CS 기록 · 📊 이슈 분석은 걷어내지 않고 숨김 — 다시 쓰려면 버튼의 hidden 과 csiSwitchTab 의 CSI_TABS_HIDDEN 을 지운다 ============ -->
     <div class="lg-tabs csi-tabs" role="tablist" aria-label="CS팀 화면">
-      <button class="lg-tab active" type="button" data-csi-tab="sheet" role="tab" aria-selected="true" onclick="csiSwitchTab('sheet')">📝 CS 기록</button>
-      <button class="lg-tab" type="button" data-csi-tab="insight" role="tab" aria-selected="false" onclick="csiSwitchTab('insight')">📊 이슈 분석</button>
-      <button class="lg-tab" type="button" data-csi-tab="claims" role="tab" aria-selected="false" onclick="csiSwitchTab('claims')">↩️ 반품·교환</button>
-      <button class="lg-tab" type="button" data-csi-tab="req" role="tab" aria-selected="false" onclick="csiSwitchTab('req')">🛠 개선 요청</button>
-      <button class="lg-tab" type="button" data-csi-tab="work" role="tab" aria-selected="false" onclick="csiSwitchTab('work')">🗂 작업 보드 · 메모 · FAQ</button>
+      <button class="lg-tab active" type="button" data-csi-tab="claims" role="tab" aria-selected="true" onclick="csiSwitchTab('claims')">↩️ 반품·교환 분석</button>
+      <button class="lg-tab" type="button" data-csi-tab="req" role="tab" aria-selected="false" onclick="csiSwitchTab('req')">🛠 개선 요청 · 작업 보드</button>
+      <button class="lg-tab" type="button" data-csi-tab="sheet" role="tab" aria-selected="false" onclick="csiSwitchTab('sheet')" hidden>📝 CS 기록</button>
+      <button class="lg-tab" type="button" data-csi-tab="insight" role="tab" aria-selected="false" onclick="csiSwitchTab('insight')" hidden>📊 이슈 분석</button>
     </div>
 
     <!-- CS 기록 · 이슈 분석 — 데이터: Supabase cs_issues · cs_daily_notes · app_kv(cs_insight_settings). 브랜드 탭 · 기간 · 채널은 두 탭이 같이 쓴다 -->
-    <div class="csi-wrap" id="csiPane" data-csi-pane="sheet insight req">
+    <div class="csi-wrap" id="csiPane" data-csi-pane="sheet insight req" hidden>
       <div class="csi-toolbar">
         <div class="csi-toolbar-main">
-          <button class="csi-btn csi-btn-primary" type="button" onclick="csiAddRow()" title="CS 기록 표 맨 위에 새 줄을 만들어요">＋ 새 줄</button>
+          <!-- CS 기록을 숨겨(2026-11-13) 새 줄 · 전달 팀 설정 버튼도 숨김 — 개선 요청은 표 위 '＋ 개선 요청' -->
+          <button class="csi-btn csi-btn-primary" type="button" onclick="csiAddRow()" title="CS 기록 표 맨 위에 새 줄을 만들어요" hidden>＋ 새 줄</button>
           <button class="csi-btn csi-btn-ghost" type="button" onclick="csiOpenCodes()" title="VOC 코드 뜻 · 판단 기준 · 기본 처리 · 처리 기준">📖 VOC 코드표</button>
         </div>
         <div class="csi-toolbar-side">
           <span class="csi-sync" id="csiSync" aria-live="polite"></span>
           <button class="csi-btn csi-btn-ghost" type="button" onclick="csiLoad(true)" title="다시 불러오기" aria-label="다시 불러오기">↻</button>
-          <button class="csi-btn csi-btn-ghost master-only" type="button" onclick="csiOpenSettings()">⚙ 전달 팀 설정</button>
+          <button class="csi-btn csi-btn-ghost master-only" type="button" onclick="csiOpenSettings()" hidden>⚙ 전달 팀 설정</button>
         </div>
       </div>
 
@@ -11922,7 +11988,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </div>
         </div>
         <div class="csi-sheet-wrap" id="csiReqWrap"><table class="csi-sheet csi-req" id="csiReqSheet"></table></div>
-        <div class="csi-sheet-foot">상태: 등록 → 전달함(받는 팀에 보냄) → 검토 중 → 조치 중 → 완료 · 보류 · '완료'로 바꾸면 조치일이 오늘로 들어가요 · <b>조치 전 → 후 30일</b>은 조치일 앞뒤 30일 동안 같은 브랜드 · 상품 · VOC 코드로 들어온 CS 건수예요 (30일이 지나면 줄어듦 · 변화 없음 · 늘어남) · 상품을 비우면 브랜드 전체, VOC 코드는 앞자리로 묶을 수 있어요 (Q1 = Q11 · Q12) · 고질 문제 카드의 <b>🛠 요청 만들기</b>로 근거까지 채워서 바로 만들 수 있어요</div>
+        <div class="csi-sheet-foot">상태: 등록 → 전달함(받는 팀에 보냄) → 검토 중 → 조치 중 → 완료 · 보류 · '완료'로 바꾸면 조치일이 오늘로 들어가요 · <b>조치 전 → 후 30일</b>은 조치일 앞뒤 30일 동안 같은 브랜드 · 상품으로 들어온 반품 · 교환 건수예요 (↩️ 반품·교환 분석의 자동 수집 — VOC 대분류를 사유로 묶어 셈: Q 불량 · D 오배송/배송 · I 정보 다름 · S 사이즈 · C 변심/주문 실수 · O 품절. 30일이 지나면 줄어듦 · 변화 없음 · 늘어남) · 상품을 비우면 브랜드 전체 · ↩️ 반품·교환 분석의 <b>상품 분석</b>에서 회사 사유가 반복되는 상품은 <b>🛠 개선 요청</b>으로 근거까지 채워서 바로 만들 수 있어요</div>
         <datalist id="csiReqProducts"></datalist>
       </section>
 
@@ -12032,12 +12098,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- ↩️ 반품·교환 (2026-11-13) — 모든 플랫폼 · 공홈의 반품 · 교환과 사유. 맥미니 sixshop-collector claims-live 가 30분마다
-         플레이오토 · 식스샵 프로 · 지그재그 파트너센터에서 받아 비공개 brightbeed-reports claims/claims.json 에 올린 것을 읽기만 한다 -->
-    <div class="csi-wrap clm-wrap" id="clmPane" data-csi-pane="claims" hidden>
+    <!-- ↩️ 반품·교환 분석 (2026-11-13, CS팀 메인 탭) — 맥미니 sixshop-collector claims-live 가 30분마다 플레이오토 · 식스샵 프로 · 지그재그 · 에이블리에서
+         받아 비공개 brightbeed-reports claims/claims.json(반품 · 교환) · claims/sales.json(판매 수량)에 올린 것을 읽기만 한다 -->
+    <div class="csi-wrap clm-wrap" id="clmPane" data-csi-pane="claims">
       <div class="csi-toolbar">
         <div class="csi-toolbar-main">
-          <div class="clm-head">↩️ 반품 · 교환 <span>모든 플랫폼 · 공홈에서 자동으로 모아요</span></div>
+          <div class="clm-head">↩️ 반품 · 교환 분석 <span>모든 플랫폼 · 공홈 자동 수집 · 판매 대비 반품률</span></div>
         </div>
         <div class="csi-toolbar-side">
           <span class="csi-sync" id="clmSync" aria-live="polite"></span>
@@ -12047,7 +12113,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="clm-alert" id="clmAlert" role="status" hidden></div>
 
-      <!-- 브랜드 탭 — 숫자 = 지금 기간 · 채널 · 구분의 반품 · 교환 건수 -->
+      <!-- 브랜드 탭 — 숫자 = 지금 기간 · 채널 · 구분의 반품 · 교환 건수. 브랜드를 고르면 아래가 그 브랜드의 채널 · 상품 분석으로 바뀐다 -->
       <div class="csi-btabs" id="clmBrandTabs" role="tablist" aria-label="브랜드"></div>
 
       <div class="csi-filters" role="group" aria-label="기간 · 구분 · 채널">
@@ -12060,13 +12126,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="csi-card csi-empty-line csi-mb" id="clmFirst">반품 · 교환을 불러오는 중…</div>
 
       <div class="csi-main" id="clmMain" hidden>
-        <div class="csi-kpis" id="clmKpis"></div>
+        <div class="clm-kpis" id="clmKpis"></div>
+        <section class="csi-card csi-mb" id="clmCompare" aria-label="브랜드 · 채널 비교"></section>
+        <section class="csi-card csi-mb" id="clmMix" aria-label="사유 구성"></section>
         <div class="csi-grid2">
           <section class="csi-card" id="clmReasons" aria-label="사유별"></section>
-          <section class="csi-card" id="clmChannels" aria-label="채널별"></section>
+          <section class="csi-card" id="clmVoice" aria-label="고객 목소리"></section>
         </div>
-        <section class="csi-card csi-mb" id="clmProducts" aria-label="반품 · 교환 많은 상품"></section>
-        <section class="csi-card csi-mb" id="clmTrend" aria-label="일별 추이"></section>
+        <section class="csi-card csi-mb" id="clmProducts" aria-label="상품 분석"></section>
+        <section class="csi-card csi-mb" id="clmTrend" aria-label="추이"></section>
+        <section class="csi-card csi-mb" id="clmOps" aria-label="처리 현황"></section>
         <section class="csi-card csi-mb" id="clmList" aria-label="반품 · 교환 목록">
           <div class="csi-card-head">
             <div>
@@ -12085,7 +12154,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </div>
 
     <!-- 🗂 작업 보드 · 메모장 · FAQ (원래 CS팀 화면 그대로) -->
-    <div class="csi-workpane" data-csi-pane="work" hidden>
+    <div class="csi-workpane" data-csi-pane="req" hidden>
     <!-- ============ CS 작업 보드 — 노션 스타일 아웃라이너 (디자인팀 작업 보드와 동일) ============ -->
     <div class="dsg-pane" data-pane="board" style="padding:0 24px;max-width:1400px;margin:0 auto 26px">
       <div class="dsg-section-label">🗂 CS 작업 보드</div>
@@ -32783,7 +32852,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const CSI_SELECT='id,issue_date,channel,brand,kind,product,product_id,photo_count,option_text,category,code,sub,cause,detail,action,photo_url,source,created_by,created_at,updated_by,updated_at,deleted_at';
 
   const _csi={byId:new Map(), gone:new Map(), duringLoad:[], rows:[], loaded:false, loading:false, reloadAgain:false, loadedFrom:'', lastSync:'', err:'', syncedAt:0,
-    tab:'sheet', range:'7', date:'', dateTouched:false, brand:'', channel:'', q:'', listLimit:50, trendTable:false,
+    tab:'claims', range:'7', date:'', dateTouched:false, brand:'', channel:'', q:'', listLimit:50, trendTable:false,
     settings:{causeRouting:{}, chronicMin:3, chronicWeeks:2}, settingsLoaded:false,
     note:{date:'', text:'', by:'', at:'', dirty:false, saving:false, err:false}, noteTimer:null,
     pollTimer:null, inited:false, lastFormCh:'', lastFormBrand:'', lastFormKind:'',
@@ -32872,8 +32941,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _csiLoadNote();
     _csiStartPoll();
   }
+  // 숨긴 탭 (2026-11-13 사장님 "기록 · 이슈 분석은 사실상 필요없음") — 예전 설정 · 주소로 와도 반품·교환으로
+  const CSI_TABS_HIDDEN=new Set(['sheet','insight']);
   function csiSwitchTab(tab, silent){
-    _csi.tab = (tab==='work'||tab==='insight'||tab==='req'||tab==='claims') ? tab : 'sheet';
+    if(tab==='work') tab='req';   // 작업 보드 · 메모 · FAQ 는 개선 요청 탭 아래로 합침
+    if(CSI_TABS_HIDDEN.has(tab)) tab='claims';
+    _csi.tab = (tab==='req'||tab==='insight'||tab==='sheet') ? tab : 'claims';
     document.querySelectorAll('#viewCs [data-csi-tab]').forEach(b=>{
       const on=b.dataset.csiTab===_csi.tab; b.classList.toggle('active',on); b.setAttribute('aria-selected',on?'true':'false');
     });
@@ -32882,7 +32955,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(_csi.pk && _csi.pk.open) _csiPickClose();
     // ↩️ 반품·교환 — 자동 수집 파일만 읽는다 (CS 기록은 안 불러도 됨)
     if(_csi.tab==='claims'){ try{ clmShow(); }catch(e){ console.warn('반품·교환', e); } }
-    if(!silent){ _csiSavePrefs(); csiRender(); if(_csi.tab!=='work' && _csi.tab!=='claims') csiLoad(false); }
+    // 개선 요청의 '조치 전 → 후' 건수는 반품 · 교환 자동 수집에서 센다
+    if(_csi.tab==='req'){ try{ clmLoad(false); }catch(e){} }
+    if(!silent){ _csiSavePrefs(); csiRender(); if(_csi.tab!=='claims') csiLoad(false); }
   }
   function _csiInitControls(){
     document.getElementById('csiRange').innerHTML=CSI_RANGES.map(r=>`<button type="button" data-range="${r.key}" aria-pressed="false">${r.label}</button>`).join('');
@@ -33146,7 +33221,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!_csi.loaded){
       // 처음 불러오기 전 — 빈 표 · 그래프 대신 상태 한 줄
       first.hidden=false;
-      first.textContent=_csi.err ? `CS 기록을 불러오지 못했어요 (${_csi.err}) — 오른쪽 위 ↻ 를 눌러 다시 시도해 주세요` : 'CS 기록을 불러오는 중…';
+      const what=_csi.tab==='req' ? '개선 요청' : 'CS 기록';
+      first.textContent=_csi.err ? `${what}을 불러오지 못했어요 (${_csi.err}) — 오른쪽 위 ↻ 를 눌러 다시 시도해 주세요` : `${what}을 불러오는 중…`;
       sheet.hidden=true; ins.hidden=true; document.getElementById('csiReqCard').hidden=true;
       return;
     }
@@ -33383,26 +33459,43 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     window.addEventListener('scroll',hide,{passive:true});
   }
 
-  /* ── ↩️ 반품 · 교환 (2026-11-13 사장님 "모든 플랫폼, 공홈에서 반품 교환 들어오는걸 자동으로 다 불러와서 보고서같은걸") ──
-     데이터: 비공개 brightbeed-reports claims/claims.json — 맥미니 sixshop-collector claims-live 가 30분마다
-       플레이오토(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡) · 식스샵 프로(공홈 자사몰 + 네이버페이) · 지그재그 파트너센터(스토어 + 직진배송)
-       에서 받아 상품 줄마다 한 줄(lines[])로 올린다. 사유 분류 · 규칙은 sixshop-collector docs/CLAIMS.md — 여기서는 받기만 하고 기간 · 브랜드 · 채널을 바로 거른다.
-     날짜 = 접수일(KST). 공홈의 지난 완료 건은 접수일을 몰라 처리일. 철회 · 거부는 숫자에서 뺀다. 건 = 상품 줄 (한 주문에 상품이 여럿이면 여러 건). */
-  const CLM_PATH='claims/claims.json', CLM_TTL=5*60*1000, CLM_PREF='clm_prefs_v1';
+  /* ── ↩️ 반품 · 교환 분석 (2026-11-13, CS팀 메인 탭) ──
+     사장님 "모든 플랫폼, 공홈에서 반품 교환 들어오는걸 자동으로 다 불러와서 보고서같은걸" → 같은 날 "반품 교환을 메인으로 · 기록 · 이슈 분석은 필요없음
+     · 브랜드별로 심층적으로 · 통계식으로 깔끔하게".
+     데이터 (비공개 brightbeed-reports, 맥미니 sixshop-collector claims-live 30분마다 — 규칙은 그 레포 docs/CLAIMS.md). 여기서는 읽기만 한다:
+       claims/claims.json — 반품 · 교환 상품 줄(lines[]). 플레이오토(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡) · 식스샵 프로(공홈)
+         · 지그재그 파트너센터, 에이블리 사유는 셀러 API 로 다시 채움. 날짜 = 접수일(KST), 공홈의 지난 완료 건은 처리일. 철회 · 거부는 숫자에서 뺀다.
+       claims/sales.json — 결제일 · "브랜드|채널"마다 [주문 수, 판매 수량], 상품마다 수량 (반품 줄과 같은 상품 이름). coverage 보다 앞선 기간은
+         그 줄의 반품률을 내지 않는다 (공홈 코페리 10/20 · 아페티 10/22 · 야르 11/2 · 식스에이 11/3 부터).
+     반품률 = 반품 · 교환 수량 ÷ 같은 기간 판매 수량 — 판매 기록이 있는 브랜드 · 채널만 (반품된 것도 판매에 들어 있다).
+     건 = 상품 줄 (한 주문에 상품이 여럿이면 여러 건). 화면: 숫자 6칸 → 브랜드(채널) 비교 표 → 사유 × 브랜드(채널) 표 → 사유 · 고객 목소리
+       → 상품 분석(반품률 · 회사 사유, 🛠 개선 요청) → 추이(건수 · 반품률) → 처리 현황 → 목록. */
+  const CLM_PATH='claims/claims.json', CLM_SALES_PATH='claims/sales.json', CLM_TTL=5*60*1000, CLM_PREF='clm_prefs_v2';
   const CLM_RANGES=[{key:'7',label:'7일',days:7},{key:'30',label:'30일',days:30},{key:'90',label:'90일',days:90},{key:'month',label:'이번 달'},{key:'prev',label:'지난 달'}];
   const CLM_TYPES=[{key:'',label:'전체'},{key:'return',label:'반품'},{key:'exchange',label:'교환'}];
   const CLM_CHANNELS=[['home','공홈'],['smartstore','스마트스토어'],['ably','에이블리'],['zigzag','지그재그'],['29cm','29CM'],['wconcept','W컨셉'],['ohou','오늘의집'],['eql','EQL'],['coupang','쿠팡']];
   const CLM_CH_LABEL=Object.fromEntries(CLM_CHANNELS);
-  // 사유 → 고객 사유(cu) / 회사 사유(co) / 모름(na) — CS팀 VOC 코드표의 '고객 사유'와 같은 나눔
+  // 사유 → 고객 사유(cu) / 회사 사유(co) / 모름(na) — 수집기 claims-report.ts REASON_FAULT 와 같음
   const CLM_REASONS={
-    change:{label:'단순 변심',f:'cu'}, option:{label:'사이즈 · 색상',f:'cu'}, misorder:{label:'주문 실수',f:'cu'},
-    defect:{label:'불량 · 파손',f:'co'}, wrong:{label:'오배송 · 누락',f:'co'}, info:{label:'상품 정보와 다름',f:'co'}, delivery:{label:'배송 지연 · 분실',f:'co'},
-    soldout:{label:'품절',f:'co'}, seller:{label:'판매자 귀책',f:'co'}, etc:{label:'기타',f:'na'}, none:{label:'사유 없음',f:'na'},
+    change:{label:'단순 변심',short:'변심',f:'cu'}, option:{label:'사이즈 · 색상',short:'사이즈·색상',f:'cu'}, misorder:{label:'주문 실수',short:'주문 실수',f:'cu'},
+    defect:{label:'불량 · 파손',short:'불량',f:'co'}, wrong:{label:'오배송 · 누락',short:'오배송',f:'co'}, info:{label:'상품 정보와 다름',short:'정보 다름',f:'co'},
+    delivery:{label:'배송 지연 · 분실',short:'배송',f:'co'}, soldout:{label:'품절',short:'품절',f:'co'}, seller:{label:'판매자 귀책',short:'판매자',f:'co'},
+    etc:{label:'기타',short:'기타',f:'na'}, none:{label:'사유 없음',short:'없음',f:'na'},
   };
+  const CLM_REASON_KEYS=['change','option','misorder','defect','wrong','info','delivery','soldout','seller','etc','none'];
   const CLM_FAULT_LABEL={co:'회사 사유', cu:'고객 사유', na:'사유 없음 · 기타'};
   const CLM_STAGE={requested:'접수', collecting:'회수 중', collected:'회수 완료', held:'보류', done:'완료', rejected:'거부', withdrawn:'철회'};
-  const CLM_OPEN=new Set(['requested','collecting','collected','held']);
-  const _clm={data:null, at:0, loading:null, err:'', range:'30', type:'', channel:'', brand:'', q:'', limit:50, inited:false, listT:null, firstBatch:0};
+  const CLM_OPEN_STAGES=['requested','collecting','collected','held'];
+  const CLM_OPEN=new Set(CLM_OPEN_STAGES);
+  const CLM_AGES=[[0,2,'2일 안'],[3,6,'3~6일'],[7,13,'7~13일'],[14,30,'14~30일']];
+  const CLM_MIN_SOLD=10;   // 상품 반품률 순위 · 강조는 판매 10개 이상만 (적게 팔린 상품의 100% 같은 숫자에 끌려가지 않게)
+  const CLM_REPEAT_CO=3;   // 같은 상품 회사 사유가 이만큼이면 ⚠ 반복 — 🛠 개선 요청으로
+  // 공홈을 프로에서 모으기 시작한 날 — 그 전 기간과 비교하면 공홈이 빠져 늘어 보인다 (수집기 HOME_ORDER_SINCE 와 같음)
+  const CLM_HOME_SINCE={kop:'2026-10-20', apt:'2026-10-22', yar:'2026-11-02', '6a':'2026-11-03'};
+  // 회사 사유 → 개선 요청 VOC 코드 (앞자리 묶음) — 🛠 요청 만들기
+  const CLM_REASON_VOC={defect:'Q', wrong:'D1', delivery:'D2', info:'I', soldout:'O1'};
+  const _clm={data:null, sales:null, at:0, loading:null, err:'', salesErr:'', range:'30', type:'', channel:'', brand:'', q:'', limit:50,
+    inited:false, listT:null, firstBatch:0, cmp:'brand', psort:'n', plimit:15, prods:[]};
 
   const _clmReason=k=>CLM_REASONS[k]||CLM_REASONS.etc;
   const _clmFault=k=>_clmReason(k).f;
@@ -33411,25 +33504,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _clmReasonOrder(pairs){ const w=k=>k==='none'?2:k==='etc'?1:0; return pairs.slice().sort((a,b)=>w(a[0])-w(b[0]) || b[1]-a[1]) }
   // 막대 색 = 가장 많은 '뜻 있는' 사유의 쪽 (사유 없음이 많아도 아는 사유로 칠함)
   function _clmDomFault(pairs){ const k=_clmReasonOrder(pairs)[0]; return k ? _clmFault(k[0]) : 'na' }
-  /* 공홈을 프로에서 모으기 시작한 날 — 그 전 기간과 비교하면 공홈이 빠져 늘어 보인다 (수집기 HOME_ORDER_SINCE 와 같음) */
-  const CLM_HOME_SINCE={kop:'2026-10-20', apt:'2026-10-22', yar:'2026-11-02', '6a':'2026-11-03'};
-  // 앞 기간과 비교해도 되는지 — 안 되면 이유 글자
-  function _clmNoCompare(P){
-    const d=_clm.data; if(!d) return '';
-    const start=_csiAdd(String(d.updated_at||'').slice(0,10)||_csiToday(), -((d.keep_days||180)-1));
-    if(P.pfrom<start) return `${_csiMd(start)} 전 기록은 없어 비교 안 함`;
-    if(_clm.channel && _clm.channel!=='home') return '';
-    const late=(_clm.brand?[_clm.brand]:Object.keys(CLM_HOME_SINCE)).filter(b=>CLM_HOME_SINCE[b] && CLM_HOME_SINCE[b]>P.pfrom);
-    if(!late.length) return '';
-    return `공홈 ${late.slice(0,2).map(_csiBrandLabel).join(' · ')}${late.length>2?' 등':''}은 ${_csiMd(late.map(b=>CLM_HOME_SINCE[b]).sort()[0])}부터 모아 비교 안 함`;
-  }
   function _clmWon(n){
     n=Math.round(Number(n)||0);
     if(Math.abs(n)>=100000000) return (n/100000000).toFixed(1).replace(/\.0$/,'')+'억원';
     if(Math.abs(n)>=10000) return Math.round(n/10000).toLocaleString('ko-KR')+'만원';
     return n.toLocaleString('ko-KR')+'원';
   }
+  const _clmPct=(r,d)=> r==null || !isFinite(r) ? '—' : (r*100).toFixed(d==null?1:d).replace(/\.0$/,'')+'%';
   function _clmKstHm(iso){ const t=Date.parse(iso||''); if(!t) return ''; const s=new Date(t+9*3600e3).toISOString(); return `${+s.slice(5,7)}/${+s.slice(8,10)} ${s.slice(11,16)}` }
+  const _clmChLabel=k=>CLM_CH_LABEL[k]||k;
   function _clmLoadPrefs(){
     try{
       const p=JSON.parse(localStorage.getItem(CLM_PREF)||'{}');
@@ -33437,9 +33520,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(CLM_TYPES.some(t=>t.key===p.type)) _clm.type=p.type;
       if(p.channel==='' || CLM_CH_LABEL[p.channel]) _clm.channel=p.channel||'';
       if(typeof p.brand==='string' && (!p.brand || BRAND_SECTIONS.some(b=>b.id===p.brand))) _clm.brand=p.brand;
+      if(p.cmp==='brand'||p.cmp==='channel') _clm.cmp=p.cmp;
+      if(['n','rate','co'].includes(p.psort)) _clm.psort=p.psort;
     }catch(e){}
   }
-  function _clmSavePrefs(){ try{ localStorage.setItem(CLM_PREF, JSON.stringify({range:_clm.range, type:_clm.type, channel:_clm.channel, brand:_clm.brand})) }catch(e){} }
+  function _clmSavePrefs(){ try{ localStorage.setItem(CLM_PREF, JSON.stringify({range:_clm.range, type:_clm.type, channel:_clm.channel, brand:_clm.brand, cmp:_clm.cmp, psort:_clm.psort})) }catch(e){} }
 
   function _clmPeriod(){
     const t=_csiToday();
@@ -33450,15 +33535,110 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const len=_csiDiff(to,from)+1;
     return {from, to, len, label, pfrom:_csiAdd(from,-len), pto:_csiAdd(from,-1)};
   }
-  // 기간 · 구분 · 채널 · 브랜드로 거른 줄 (철회 · 거부 빼고). skipBrand: 브랜드 탭 숫자용
-  function _clmRows(from, to, skipBrand){
+  // 기간 · 구분 · 채널 · 브랜드로 거른 줄 (철회 · 거부 빼고). o.brand / o.channel 을 주면 그 값으로 (비교 표의 줄마다)
+  function _clmRows(from, to, o){
+    o=o||{};
+    const b=o.brand!==undefined?o.brand:_clm.brand, ch=o.channel!==undefined?o.channel:_clm.channel;
     const L=(_clm.data && _clm.data.lines) || [];
-    return L.filter(l=>l.date>=from && l.date<=to && _clmLive(l)
-      && (!_clm.type || l.type===_clm.type) && (!_clm.channel || l.channel===_clm.channel)
-      && (skipBrand || !_clm.brand || l.brand===_clm.brand));
+    return L.filter(l=>l.date>=from && l.date<=to && _clmLive(l) && (!_clm.type || l.type===_clm.type) && (!ch || l.channel===ch) && (!b || l.brand===b));
+  }
+  const _clmAge=l=>Math.max(0,_csiDiff(_csiToday(), String(l.requested_at||l.date).slice(0,10)));
+  // 처리 중으로 보는 기간 — 접수하고 이만큼 넘게 그대로인 줄은 몰 상태가 안 바뀐 것일 수 있어 '확인 필요'로 따로 (2026-11-13 첫 수집: 플레이오토 스마트스토어 '반품요청' 90일 넘은 줄 98개)
+  const CLM_OPEN_DAYS=30;
+  function _clmOpenAll(){
+    const L=(_clm.data && _clm.data.lines) || [];
+    return L.filter(l=>CLM_OPEN.has(l.stage) && (!_clm.type || l.type===_clm.type) && (!_clm.channel || l.channel===_clm.channel) && (!_clm.brand || l.brand===_clm.brand));
+  }
+  // 지금 처리 중인 줄 (날짜와 상관없이 — 브랜드 · 채널 · 구분만, 접수 30일 안)
+  function _clmOpenRows(){ return _clmOpenAll().filter(l=>_clmAge(l)<=CLM_OPEN_DAYS) }
+  function _clmStaleRows(){ return _clmOpenAll().filter(l=>_clmAge(l)>CLM_OPEN_DAYS) }
+
+  /* ── 판매 (반품률 분모) ── */
+  const _clmShownBrand=b=>BRAND_SECTIONS.some(x=>x.id===b);
+  /* 판매 합계 — brand · channel '' = 전체. 줄(브랜드|채널)마다 판매 기록이 있는 날부터만 더한다:
+     기간 중간에 기록이 시작된 줄(공홈 코페리 10/20 등)은 그날부터의 반품 · 판매로만 반품률에 넣고(from[k]) partial 에,
+     기간이 다 지나도록 기록이 없는 줄은 missing 에 */
+  function _clmSold(from, to, brand, channel){
+    const out={orders:0, qty:0, keys:new Set(), from:{}, missing:[], partial:[]};
+    const S=_clm.sales; if(!S || !S.daily) return out;
+    for(const k of Object.keys(S.daily)){
+      const [b,ch]=k.split('|');
+      if((brand && b!==brand) || (channel && ch!==channel) || !_clmShownBrand(b)) continue;
+      const c=S.coverage && S.coverage[k];
+      if(!c || c>to){ out.missing.push(k); continue; }
+      const f=c>from ? c : from;
+      if(c>from) out.partial.push(k);
+      out.keys.add(k); out.from[k]=f;
+      const d=S.daily[k];
+      for(const day in d) if(day>=f && day<=to){ out.orders+=d[day][0]; out.qty+=d[day][1]; }
+    }
+    return out;
+  }
+  // 정해진 줄들만의 판매 (반품률을 앞 기간과 같은 줄끼리 비교할 때) — 줄마다 기록이 있는 날부터
+  function _clmSoldFor(from, to, keys){
+    const out={orders:0, qty:0, keys:new Set(keys), from:{}, missing:[], partial:[]}, S=_clm.sales; if(!S || !S.daily) return out;
+    for(const k of keys){
+      const c=(S.coverage && S.coverage[k]) || from, f=c>from ? c : from;
+      out.from[k]=f;
+      const d=S.daily[k]||{}; for(const day in d) if(day>=f && day<=to){ out.orders+=d[day][0]; out.qty+=d[day][1]; }
+    }
+    return out;
+  }
+  // 반품률의 분자 — 판매 기록이 있는 줄 · 그 기록이 있는 날부터의 반품 · 교환 수량
+  function _clmRateQty(rows, sold){
+    let q=0;
+    for(const l of rows){ const k=l.brand+'|'+l.channel; if(sold.keys.has(k) && l.date>=(sold.from[k]||'')) q+=Number(l.qty)||1; }
+    return q;
+  }
+  // 반품률 — 반품 · 교환 수량 ÷ 판매 수량. 판매가 없으면 null
+  function _clmRate(rows, sold){ return sold && sold.qty ? _clmRateQty(rows, sold)/sold.qty : null }
+  function _clmMissingText(sold){
+    const nm=k=>{ const [b,ch]=k.split('|'); return `${_clmChLabel(ch)} ${_csiBrandLabel(b)}`; };
+    const out=[];
+    if(sold.partial.length) out.push(`${sold.partial.slice(0,4).map(k=>`${nm(k)} ${_csiMd(sold.from[k])}부터`).join(' · ')}${sold.partial.length>4?` 외 ${sold.partial.length-4}곳`:''}만 반품률에 넣었어요 (그 전은 판매 기록이 없어요)`);
+    if(sold.missing.length) out.push(`판매 기록이 없어 반품률에서 뺀 곳: ${[...new Set(sold.missing.map(nm))].slice(0,6).join(' · ')}`);
+    return out.join(' · ');
+  }
+  // 상품 판매 — (브랜드, 상품 이름 키) → 모든 채널의 [줄 키, 원래 이름]. 상품별 판매는 92일만 있다
+  function _clmProdIndex(){
+    const S=_clm.sales, idx=new Map();
+    if(!S || !S.products) return idx;
+    for(const [k,names] of Object.entries(S.products)){
+      const b=k.split('|')[0];
+      for(const n of Object.keys(names)){ const id=b+'|'+_csiKeyName(n); if(!idx.has(id)) idx.set(id,[]); idx.get(id).push([k,n]); }
+    }
+    return idx;
+  }
+  function _clmProdStart(){
+    const S=_clm.sales; if(!S) return '9999';
+    return _csiAdd(String(S.updated_at||'').slice(0,10)||_csiToday(), -((S.product_days||92)-1));
+  }
+  function _clmProdSold(entries, from, to, channel){
+    const S=_clm.sales;
+    if(!S || !entries || from<_clmProdStart()) return null;
+    let qty=0; const keys=new Set(), fromOf={};
+    for(const [k,n] of entries){
+      const c=S.coverage && S.coverage[k];
+      if((channel && k.split('|')[1]!==channel) || !c || c>to) continue;
+      const f=c>from ? c : from;
+      keys.add(k); fromOf[k]=f;
+      const d=S.products[k][n]; for(const day in d) if(day>=f && day<=to) qty+=d[day];
+    }
+    return keys.size ? {qty, keys, from:fromOf} : null;
   }
 
-  /* 탭을 열 때 — 처음 한 번 버튼을 만들고, 받은 지 5분 지났으면 다시 받는다 */
+  // 앞 기간과 비교해도 되는지 — 안 되면 이유 글자
+  function _clmNoCompare(P){
+    const d=_clm.data; if(!d) return '';
+    const start=_csiAdd(String(d.updated_at||'').slice(0,10)||_csiToday(), -((d.keep_days||180)-1));
+    if(P.pfrom<start) return `${_csiMd(start)} 전 기록은 없어 비교 안 함`;
+    if(_clm.channel && _clm.channel!=='home') return '';
+    const late=(_clm.brand?[_clm.brand]:Object.keys(CLM_HOME_SINCE)).filter(b=>CLM_HOME_SINCE[b] && CLM_HOME_SINCE[b]>P.pfrom && _clmShownBrand(b));
+    if(!late.length) return '';
+    return `공홈 ${late.slice(0,2).map(_csiBrandLabel).join(' · ')}${late.length>2?' 등':''}은 ${_csiMd(late.map(b=>CLM_HOME_SINCE[b]).sort()[0])}부터 모아 비교 안 함`;
+  }
+
+  /* ── 탭 열기 · 받기 ── */
   function clmShow(){
     if(!document.getElementById('clmPane')) return;
     if(!_clm.inited){
@@ -33470,6 +33650,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       document.getElementById('clmType').addEventListener('click',e=>{ const b=e.target.closest('[data-type]'); if(b) clmSetType(b.dataset.type) });
       document.getElementById('clmChannel').innerHTML=`<option value="">전체</option>`+CLM_CHANNELS.map(([k,v])=>`<option value="${k}">${_esc(v)}</option>`).join('');
       document.getElementById('clmBrandTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-b]'); if(b) clmSetBrand(b.dataset.b) });
+      // 비교 표 — 줄을 누르면 그 브랜드 · 채널로, 위 버튼은 브랜드별 / 채널별
+      const cmp=document.getElementById('clmCompare');
+      cmp.addEventListener('click',e=>{
+        const t=e.target.closest('[data-cmp]'); if(t){ _clm.cmp=t.dataset.cmp; _clmSavePrefs(); _clmRenderCompare(_clmPeriod()); return; }
+        const r=e.target.closest('tr[data-b]'); if(r){ clmSetBrand(r.dataset.b); return; }
+        const c=e.target.closest('tr[data-ch]'); if(c) clmSetChannel(c.dataset.ch);
+      });
+      cmp.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('tr[data-b],tr[data-ch]')){ e.preventDefault(); e.target.click(); } });
+      document.getElementById('clmMix').addEventListener('click',e=>{ const r=e.target.closest('tr[data-b]'); if(r) clmSetBrand(r.dataset.b); const c=e.target.closest('tr[data-ch]'); if(c) clmSetChannel(c.dataset.ch); });
+      document.getElementById('clmProducts').addEventListener('click',e=>{
+        const s=e.target.closest('[data-psort]'); if(s){ _clm.psort=s.dataset.psort; _clm.plimit=15; _clmSavePrefs(); _clmRenderProducts(_clmPeriod()); return; }
+        if(e.target.closest('[data-act="pmore"]')){ _clm.plimit+=20; _clmRenderProducts(_clmPeriod()); return; }
+        const q=e.target.closest('[data-act="req"]'); if(q) _clmMakeReq(+q.dataset.i);
+      });
       document.getElementById('clmListBody').addEventListener('click',e=>{ if(e.target.closest('[data-act="more"]')){ _clm.limit+=100; _clmRenderList(); } });
       _clmTipInit();
       let rt=null;
@@ -33479,28 +33673,38 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     clmRender();
     clmLoad(false);
   }
+  async function _clmGet(path){
+    const gf=(typeof ghFetch==='function')?ghFetch:window.ghFetch;
+    const r=await gf('https://api.github.com/repos/j65209/brightbeed-reports/contents/'+path+'?ref=main',{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'});
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    let j=await r.json();
+    if(j && typeof j.content==='string' && j.encoding==='base64'){
+      const bytes=Uint8Array.from(atob(j.content.replace(/\n/g,'')),c=>c.charCodeAt(0));
+      j=JSON.parse(new TextDecoder().decode(bytes));
+    }
+    return j;
+  }
   async function clmLoad(force){
     if(_clm.loading) return _clm.loading;
     if(!force && _clm.data && Date.now()-_clm.at<CLM_TTL) return;
     _clmSync('loading');
     _clm.loading=(async()=>{
       try{
-        const gf=(typeof ghFetch==='function')?ghFetch:window.ghFetch;
-        const r=await gf('https://api.github.com/repos/j65209/brightbeed-reports/contents/'+CLM_PATH+'?ref=main',{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'});
-        if(r.status===404) throw new Error('아직 수집 파일이 없어요');
-        if(!r.ok) throw new Error('HTTP '+r.status);
-        let j=await r.json();
-        if(j && typeof j.content==='string' && j.encoding==='base64'){
-          const bytes=Uint8Array.from(atob(j.content.replace(/\n/g,'')),c=>c.charCodeAt(0));
-          j=JSON.parse(new TextDecoder().decode(bytes));
-        }
-        if(!j || !Array.isArray(j.lines)) throw new Error('파일 모양이 달라요');
-        _clm.data=j; _clm.at=Date.now(); _clm.err='';
-        _clm.firstBatch=j.lines.reduce((m,l)=>{ const t=Date.parse(l.first_seen||''); return t && t<m ? t : m; }, Infinity);
+        // 판매 파일은 없어도(처음) · 못 읽어도 반품 · 교환은 보인다 — 반품률만 빈다
+        const [c, s]=await Promise.all([_clmGet(CLM_PATH), _clmGet(CLM_SALES_PATH).catch(e=>{ _clm.salesErr=(e&&e.message)||String(e); return undefined; })]);
+        if(!c) throw new Error('아직 수집 파일이 없어요');
+        if(!Array.isArray(c.lines)) throw new Error('파일 모양이 달라요');
+        _clm.data=c;
+        if(s!==undefined){ _clm.sales=s && s.daily ? s : null; _clm.salesErr=''; }
+        _clm.at=Date.now(); _clm.err='';
+        _clm.firstBatch=c.lines.reduce((m,l)=>{ const t=Date.parse(l.first_seen||''); return t && t<m ? t : m; }, Infinity);
         if(!isFinite(_clm.firstBatch)) _clm.firstBatch=0;
       }catch(e){ _clm.err=(e && e.message) || String(e); }
       finally{ _clm.loading=null; }
       clmRender();
+      // 🛠 개선 요청의 '조치 전 → 후' 건수도 이 데이터로 센다
+      try{ if(_csi.tab==='req') _csiRenderReq(true); }catch(e){}
     })();
     return _clm.loading;
   }
@@ -33512,10 +33716,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     el.textContent=_clm.data ? `${_clmKstHm(_clm.data.updated_at)} 기준 · 30분마다 자동 수집${_clm.err?' (방금 다시 받기는 실패)':''}` : '';
   }
 
-  function clmSetRange(k){ if(!CLM_RANGES.some(r=>r.key===k)) return; _clm.range=k; _clm.limit=50; _clmSavePrefs(); clmRender(); }
-  function clmSetType(k){ _clm.type=k||''; _clm.limit=50; _clmSavePrefs(); clmRender(); }
-  function clmSetChannel(k){ _clm.channel=CLM_CH_LABEL[k]?k:''; _clm.limit=50; _clmSavePrefs(); clmRender(); }
-  function clmSetBrand(k){ _clm.brand=k||''; _clm.limit=50; _clmSavePrefs(); clmRender(); }
+  function clmSetRange(k){ if(!CLM_RANGES.some(r=>r.key===k)) return; _clm.range=k; _clm.limit=50; _clm.plimit=15; _clmSavePrefs(); clmRender(); }
+  function clmSetType(k){ _clm.type=k||''; _clm.limit=50; _clm.plimit=15; _clmSavePrefs(); clmRender(); }
+  function clmSetChannel(k){ _clm.channel=CLM_CH_LABEL[k]?k:''; const s=document.getElementById('clmChannel'); if(s) s.value=_clm.channel; _clm.limit=50; _clm.plimit=15; _clmSavePrefs(); clmRender(); }
+  function clmSetBrand(k){ _clm.brand=k||''; _clm.limit=50; _clm.plimit=15; _clmSavePrefs(); clmRender(); const p=document.getElementById('clmBrandTabs'); if(p && p.getBoundingClientRect().top<0) p.scrollIntoView({block:'start'}); }
   function clmSetSearch(q){ _clm.q=String(q||''); _clm.limit=50; clearTimeout(_clm.listT); _clm.listT=setTimeout(_clmRenderList,150); }
 
   function clmRender(){
@@ -33536,15 +33740,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _clmRenderAlert();
     _clmRenderBrandTabs();
     _clmRenderKpis(P, cur, prev);
+    _clmRenderCompare(P);
+    _clmRenderMix(P);
     _clmRenderReasons(P, cur);
-    _clmRenderChannels(P, cur);
-    _clmRenderProducts(P, cur);
+    _clmRenderVoice(P, cur);
+    _clmRenderProducts(P);
     _clmRenderTrend(P);
+    _clmRenderOps();
     _clmRenderList();
-    _clmRenderFoot(P);
+    _clmRenderFoot();
   }
 
-  // 못 받은 출처 · 표에 없는 플레이오토 계정
+  // 못 받은 출처 · 표에 없는 플레이오토 계정 · 멈춘 수집
   function _clmRenderAlert(){
     const el=document.getElementById('clmAlert'); if(!el) return;
     const d=_clm.data; if(!d){ el.hidden=true; return; }
@@ -33553,9 +33760,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const bad=Object.entries(d.sources||{}).filter(([,s])=>s && s.ok===false);
     const lines=bad.map(([k,s])=>`<b>${_esc(name(k))}</b> — ${s.at?`${_esc(_clmKstHm(s.at))} 이후 새로 못 받았어요`:'아직 못 받았어요'}${s.note?` (${_esc(s.note)})`:''}`);
     for(const u of (d.unmapped||[])) lines.push(`플레이오토 ${u.login}번 아이디에 표에 없는 계정이 있어요: <b>${_esc(u.nick||u.shop_cd)}</b> (${u.n}건) — 수집기 계정 표에 넣어야 반품 · 교환이 잡혀요`);
-    // 30분마다 도는데 3시간 넘게 그대로면 수집이 멈춘 것
     const stale=Date.now()-Date.parse(d.updated_at||'')>3*3600e3;
     if(stale) lines.unshift(`<b>수집이 멈춘 것 같아요</b> — 마지막 갱신 ${_esc(_clmKstHm(d.updated_at))} (평소 30분마다)`);
+    if(_clm.salesErr) lines.push(`판매 수량을 못 불러와 반품률이 비어요 (${_esc(_clm.salesErr)})`);
     el.hidden=!lines.length;
     el.innerHTML=lines.length ? `⚠ ${lines.join('<br>')}<br><span class="csi-muted">못 받은 곳은 지난번까지 받은 줄을 그대로 보여 줘요</span>` : '';
   }
@@ -33564,7 +33771,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const el=document.getElementById('clmBrandTabs'); if(!el) return;
     const P=_clmPeriod(), cnt=new Map();
     let all=0;
-    if(_clm.data) for(const l of _clmRows(P.from, P.to, true)){ all++; cnt.set(l.brand,(cnt.get(l.brand)||0)+1); }
+    if(_clm.data) for(const l of _clmRows(P.from, P.to, {brand:''})){ all++; cnt.set(l.brand,(cnt.get(l.brand)||0)+1); }
     const tabs=[{id:'', label:'전체', dot:''}].concat(BRAND_SECTIONS.map(b=>({id:b.id, label:b.display, dot:b.dot||''})));
     el.innerHTML=tabs.map(t=>{
       const on=_clm.brand===t.id, n=t.id?(cnt.get(t.id)||0):all;
@@ -33574,35 +33781,144 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }).join('');
   }
 
-  function _clmDelta(a,b,P){
+  /* ── 숫자 6칸 ── */
+  function _clmDeltaN(a,b,P){
     const no=_clmNoCompare(P);
     if(no) return `<div class="csi-delta"><span>${_esc(no)}</span></div>`;
     if(!a && !b) return '<div class="csi-delta">&nbsp;</div>';
     const d=a-b, what=_clm.range==='month'||_clm.range==='prev' ? '지난 달' : `그 전 ${P.len}일`;
-    return `<div class="csi-delta ${d>0?'up':d<0?'down':''}">${d>0?'▲ '+d:d<0?'▼ '+(-d):'변화 없음'} <span>${what} ${_csiN(b)}건</span></div>`;
+    return `<div class="csi-delta ${d>0?'up':d<0?'down':''}">${d>0?'▲ '+_csiN(d):d<0?'▼ '+_csiN(-d):'변화 없음'} <span>${what} ${_csiN(b)}건</span></div>`;
   }
+  function _clmDeltaRate(r,pr,P){
+    if(r==null || pr==null) return `<div class="csi-delta"><span>${pr==null && r!=null ? '앞 기간 판매 기록이 없어 비교 안 함' : '&nbsp;'}</span></div>`;
+    const d=(r-pr)*100, what=_clm.range==='month'||_clm.range==='prev' ? '지난 달' : `그 전 ${P.len}일`;
+    return `<div class="csi-delta ${d>0.05?'up':d<-0.05?'down':''}">${Math.abs(d)<0.05?'변화 없음':(d>0?'▲ ':'▼ ')+Math.abs(d).toFixed(1)+'%p'} <span>${what} ${_clmPct(pr)}</span></div>`;
+  }
+  function _clmMedian(a){ if(!a.length) return null; const s=a.slice().sort((x,y)=>x-y), m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
   function _clmRenderKpis(P, cur, prev){
     const el=document.getElementById('clmKpis');
     const ret=cur.filter(l=>l.type==='return'), exc=cur.filter(l=>l.type==='exchange');
-    const orders=s=>new Set(s.map(l=>l.channel+'|'+l.order_no)).size;
-    const amt=ret.reduce((a,l)=>a+(Number(l.amount)||0),0);
-    const open=cur.filter(l=>CLM_OPEN.has(l.stage)), held=open.filter(l=>l.stage==='held').length;
+    const sold=_clmSold(P.from, P.to, _clm.brand, _clm.channel), psold=_clmSold(P.pfrom, P.pto, _clm.brand, _clm.channel);
+    const rate=_clmRate(cur, sold);
+    // 비교는 두 기간 모두 기록이 있는 같은 줄끼리 (공홈처럼 중간에 생긴 줄 때문에 늘어 보이지 않게)
+    const same=[...sold.keys].filter(k=>psold.keys.has(k));
+    const rNow=same.length ? _clmRate(cur, _clmSoldFor(P.from,P.to,same)) : null, rPrev=same.length ? _clmRate(prev, _clmSoldFor(P.pfrom,P.pto,same)) : null;
+    const rq=_clmRateQty(cur, sold);
     const co=cur.filter(l=>_clmFault(l.reason)==='co'), cu=cur.filter(l=>_clmFault(l.reason)==='cu'), known=co.length+cu.length;
-    const coPct=known ? Math.round(co.length/known*100) : null;
-    const coTop=_csiCountBy(co,l=>l.reason).slice(0,3).map(([k,n])=>`${_clmReason(k).label} ${n}`).join(' · ');
+    const coPct=known ? co.length/known : null;
+    const coTop=_csiCountBy(co,l=>l.reason).slice(0,3).map(([k,n])=>`${_clmReason(k).short} ${n}`).join(' · ');
+    const amt=ret.reduce((a,l)=>a+(Number(l.amount)||0),0);
+    const open=_clmOpenRows(), old=open.filter(l=>_clmAge(l)>=7).length, held=open.filter(l=>l.stage==='held').length, stale=_clmStaleRows().length;
+    const days=cur.filter(l=>l.stage==='done' && l.requested_at && l.done_at).map(l=>Math.max(0,_csiDiff(l.done_at.slice(0,10), l.requested_at.slice(0,10))));
+    const avg=days.length ? days.reduce((a,b)=>a+b,0)/days.length : null, med=_clmMedian(days);
+    const tile=(label,val,unit,sub,extra,cls,tip)=>`<div class="csi-kpi clm-kpi${cls?' '+cls:''}"${tip?` data-tip="${_esc(tip)}" tabindex="0"`:''}><div class="csi-kpi-label">${label}</div><div class="csi-kpi-val">${val}<small>${unit}</small></div><div class="csi-kpi-sub">${sub}</div>${extra||''}</div>`;
     el.innerHTML=
-      `<div class="csi-kpi"><div class="csi-kpi-label">반품</div><div class="csi-kpi-val">${_csiN(ret.length)}<small>건</small></div>
-        <div class="csi-kpi-sub">주문 ${_csiN(orders(ret))}개 · 금액 ${_clmWon(amt)}</div>${_clmDelta(ret.length, prev.filter(l=>l.type==='return').length, P)}</div>`
-      +`<div class="csi-kpi"><div class="csi-kpi-label">교환</div><div class="csi-kpi-val">${_csiN(exc.length)}<small>건</small></div>
-        <div class="csi-kpi-sub">주문 ${_csiN(orders(exc))}개</div>${_clmDelta(exc.length, prev.filter(l=>l.type==='exchange').length, P)}</div>`
-      +`<div class="csi-kpi${open.length?' is-warn':''}"><div class="csi-kpi-label">처리 중</div><div class="csi-kpi-val">${_csiN(open.length)}<small>건</small></div>
-        <div class="csi-kpi-sub">접수 · 회수 중 · 보류${held?` (보류 ${held}건 — 공홈 반품 배송비 대기 등)`:''}</div></div>`
-      +`<div class="csi-kpi${coPct!=null && coPct>=30?' is-warn':''}" data-tip="${_esc(`회사 사유 ${co.length}건 · 고객 사유 ${cu.length}건\n사유 없음 · 기타 ${cur.length-known}건은 빼고 계산\n회사 사유 = 불량 · 오배송 · 정보와 다름 · 배송 · 품절 · 판매자 귀책`)}" tabindex="0">
-        <div class="csi-kpi-label">회사 사유 비율</div><div class="csi-kpi-val">${coPct==null?'—':coPct}<small>${coPct==null?'':'%'}</small></div>
-        <div class="csi-kpi-sub">${co.length?_esc(coTop):'사유가 있는 것 중 회사 탓'}</div></div>`;
+      tile('반품 · 교환', _csiN(cur.length), '건', `반품 ${_csiN(ret.length)} · 교환 ${_csiN(exc.length)}`, _clmDeltaN(cur.length, prev.length, P), '',
+        `건 = 상품 줄 (한 주문에 상품이 여럿이면 여러 건)\n주문으로는 ${_csiN(new Set(cur.map(l=>l.channel+'|'+l.order_no)).size)}개`)
+      +tile('반품률', rate==null?'—':(rate*100).toFixed(1), rate==null?'':'%', sold.qty?`판매 ${_csiN(sold.qty)}개 중 ${_csiN(rq)}개`:'판매 기록 없음', _clmDeltaRate(rNow, rPrev, P), rate!=null && rate>=0.05?'is-warn':'',
+        `반품 · 교환 수량 ÷ 같은 기간 판매 수량 (결제일 기준, 반품된 것도 판매에 들어 있음)\n판매 기록이 있는 브랜드 · 채널만${sold.missing.length||sold.partial.length?`\n${_clmMissingText(sold)}`:''}`)
+      +tile('회사 사유', coPct==null?'—':Math.round(coPct*100), coPct==null?'':'%', co.length?_esc(coTop):'사유가 있는 것 중 회사 탓', '', coPct!=null && coPct>=0.3?'is-warn':'',
+        `회사 사유 ${co.length}건 · 고객 사유 ${cu.length}건 (사유 없음 · 기타 ${cur.length-known}건은 빼고)\n회사 사유 = 불량 · 오배송 · 정보 다름 · 배송 · 품절 · 판매자 귀책`)
+      +tile('반품 금액', _clmWon(amt).replace(/(만원|억원|원)$/,''), (_clmWon(amt).match(/(만원|억원|원)$/)||['원'])[0], ret.length?`건당 평균 ${_clmWon(amt/ret.length)}`:'반품 없음', '', '',
+        '반품한 상품의 결제 금액 합계 (배송비 빼고, 교환은 빼고)')
+      +tile('처리 중', _csiN(open.length), '건', `7일 넘음 ${_csiN(old)}건${held?` · 보류 ${held}`:''}`, stale?`<div class="csi-delta"><span>30일 넘게 그대로 ${_csiN(stale)}건은 따로 (확인 필요)</span></div>`:'', old?'is-warn':'',
+        `접수 30일 안에 아직 접수 · 회수 중 · 회수 완료 · 보류인 것 (기간과 상관없이)\n보류 = 공홈 네이버페이 반품 배송비 대기 등${stale?`\n30일 넘게 그대로인 ${stale}건은 몰 상태가 안 바뀐 것일 수 있어 처리 현황에 따로`:''}`)
+      +tile('처리 기간', avg==null?'—':avg.toFixed(1), avg==null?'':'일', med==null?'완료된 것 없음':`중앙값 ${med.toFixed(med%1?1:0)}일 · 완료 ${_csiN(days.length)}건`, '', '',
+        '접수일 → 완료일 (이 기간에 접수돼 끝난 것)');
   }
 
-  // 막대 한 줄 (CS 이슈 분석과 같은 모양) — fill: co · cu · na 색
+  /* ── 비교 표 — 전체: 브랜드별 / 채널별, 채널만 고르면 그 채널 안 브랜드별, 브랜드를 고르면 그 브랜드 안 채널별 ── */
+  const _clmByBrand=()=>!_clm.brand && (_clm.channel ? true : _clm.cmp==='brand');
+  function _clmStatRow(rows, sold){
+    const co=rows.filter(l=>_clmFault(l.reason)==='co').length, cu=rows.filter(l=>_clmFault(l.reason)==='cu').length, na=rows.length-co-cu;
+    const top=_clmReasonOrder(_csiCountBy(rows,l=>l.reason)).find(([k])=>k!=='none' && k!=='etc');
+    return {n:rows.length, ret:rows.filter(l=>l.type==='return').length, exc:rows.filter(l=>l.type==='exchange').length,
+      sold:sold.qty, rate:_clmRate(rows,sold), co, cu, na, coPct:(co+cu)?co/(co+cu):null, top:top?top[0]:'', topN:top?top[1]:0,
+      amt:rows.filter(l=>l.type==='return').reduce((a,l)=>a+(Number(l.amount)||0),0), open:rows.filter(l=>CLM_OPEN.has(l.stage) && _clmAge(l)<=CLM_OPEN_DAYS).length, soldInfo:sold};
+  }
+  function _clmMixBar(s){
+    const t=s.co+s.cu+s.na; if(!t) return '<span class="csi-muted">—</span>';
+    const w=v=>(v/t*100).toFixed(1);
+    return `<div class="clm-mix" data-tip="${_esc(`회사 사유 ${s.co} · 고객 사유 ${s.cu} · 사유 없음 · 기타 ${s.na}`)}"><i class="co" style="width:${w(s.co)}%"></i><i class="cu" style="width:${w(s.cu)}%"></i><i class="na" style="width:${w(s.na)}%"></i></div>`;
+  }
+  function _clmRateCell(rate, max, sold){
+    if(rate==null) return `<td class="n clm-rate-td"><span class="csi-muted" title="판매 기록이 없거나 기간보다 늦게 시작">—</span></td>`;
+    // 판매가 적으면 숫자가 크게 튀어 막대 없이 흐리게 (참고만)
+    if(sold<CLM_MIN_SOLD) return `<td class="n clm-rate-td"><span class="csi-muted" data-tip="${_esc(`반품률 ${_clmPct(rate,1)} — 판매 ${_csiN(sold)}개뿐이라 참고만`)}">${_clmPct(rate)}</span></td>`;
+    const w=max>0 ? Math.min(100, rate/max*100) : 0;
+    return `<td class="n clm-rate-td"><div class="clm-ratebar" data-tip="${_esc(`반품률 ${_clmPct(rate,2)}\n판매 ${_csiN(sold)}개`)}"><b><i style="width:${w.toFixed(1)}%"></i></b><span>${_clmPct(rate)}</span></div></td>`;
+  }
+  function _clmRenderCompare(P){
+    const el=document.getElementById('clmCompare'); if(!el) return;
+    const byBrand=_clmByBrand();
+    let rows=[];
+    if(byBrand){
+      for(const b of BRAND_SECTIONS){
+        const r=_clmRows(P.from,P.to,{brand:b.id}), sold=_clmSold(P.from,P.to,b.id,_clm.channel);
+        if(!r.length && !sold.qty) continue;
+        rows.push({key:b.id, label:b.display, dot:b.dot, attr:`data-b="${_esc(b.id)}"`, s:_clmStatRow(r,sold)});
+      }
+    }else{
+      for(const [ch,label] of CLM_CHANNELS){
+        if(_clm.channel && ch!==_clm.channel) continue;
+        const r=_clmRows(P.from,P.to,{channel:ch}), sold=_clmSold(P.from,P.to,_clm.brand,ch);
+        if(!r.length && !sold.qty) continue;
+        rows.push({key:ch, label, attr:`data-ch="${ch}"`, s:_clmStatRow(r,sold)});
+      }
+    }
+    rows.sort((a,b)=>b.s.n-a.s.n || (b.s.sold||0)-(a.s.sold||0));
+    const all=_clmStatRow(_clmRows(P.from,P.to), _clmSold(P.from,P.to,_clm.brand,_clm.channel));
+    const maxRate=Math.max(0,...rows.map(r=>r.s.rate||0));
+    const what=byBrand?'브랜드':'채널';
+    const seg=!_clm.brand && !_clm.channel ? `<div class="csi-seg" role="group" aria-label="비교 기준"><button type="button" data-cmp="brand" aria-pressed="${_clm.cmp==='brand'}">브랜드별</button><button type="button" data-cmp="channel" aria-pressed="${_clm.cmp==='channel'}">채널별</button></div>` : '';
+    const scopeT=_clm.brand?` · ${_esc(_csiBrandLabel(_clm.brand))}`:_clm.channel?` · ${_esc(_clmChLabel(_clm.channel))}`:'';
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">${what}별 비교${scopeT}</div><div class="csi-card-sub">${_esc(P.label)} · 반품률 = 반품 · 교환 수량 ÷ 같은 기간 판매 수량 · 줄을 누르면 그 ${what}만</div></div>${seg}</div>`;
+    if(!rows.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 반품 · 교환도 판매 기록도 없어요</div>'; return; }
+    const tr=(r,cls)=>{
+      const s=r.s;
+      return `<tr ${r.attr||''}${r.attr?' tabindex="0"':''} class="${cls||''}">
+        <td class="nw">${r.dot?`<i class="csi-bdot" style="background:${r.dot}"></i> `:''}<b>${_esc(r.label)}</b></td>
+        <td class="n">${s.sold?_csiN(s.sold):'<span class="csi-muted">—</span>'}</td>
+        <td class="n"><b>${_csiN(s.n)}</b><div class="csi-muted">반품 ${s.ret} · 교환 ${s.exc}</div></td>
+        ${_clmRateCell(s.rate, maxRate, s.sold)}
+        <td class="n">${s.coPct==null?'<span class="csi-muted">—</span>':_clmPct(s.coPct,0)}</td>
+        <td class="clm-mix-td">${_clmMixBar(s)}</td>
+        <td class="nw">${s.top?`<span class="clm-dot ${_clmFault(s.top)}"></span>${_esc(_clmReason(s.top).label)} <span class="csi-muted">${s.topN}</span>`:'<span class="csi-muted">—</span>'}</td>
+        <td class="n">${s.amt?_esc(_clmWon(s.amt)):'<span class="csi-muted">—</span>'}</td>
+        <td class="n">${s.open?`<span class="clm-chip open">${s.open}</span>`:'<span class="csi-muted">0</span>'}</td></tr>`;
+    };
+    el.innerHTML=head+`<div class="csi-scroll"><table class="csi-tbl clm-stat"><thead><tr><th>${what}</th><th class="n">판매 수량</th><th class="n">반품 · 교환</th><th class="n">반품률</th><th class="n">회사 사유</th><th>사유 구성</th><th>많은 사유</th><th class="n">반품 금액</th><th class="n">처리 중</th></tr></thead>
+      <tbody>${rows.map(r=>tr(r)).join('')}${rows.length>1?tr({label:'합계', s:all},'clm-total'):''}</tbody></table></div>`
+      +(all.soldInfo.missing.length||all.soldInfo.partial.length?`<div class="clm-note">${_esc(_clmMissingText(all.soldInfo))}</div>`:'');
+  }
+
+  /* ── 사유 × 브랜드(채널) 표 — 줄마다 몫이 클수록 진하게 ── */
+  function _clmRenderMix(P){
+    const el=document.getElementById('clmMix'); if(!el) return;
+    const byBrand=_clmByBrand();
+    const groups=[];
+    if(byBrand) for(const b of BRAND_SECTIONS){ const r=_clmRows(P.from,P.to,{brand:b.id}); if(r.length) groups.push({label:b.display, dot:b.dot, attr:`data-b="${_esc(b.id)}"`, rows:r}); }
+    else for(const [ch,label] of CLM_CHANNELS){ if(_clm.channel && ch!==_clm.channel) continue; const r=_clmRows(P.from,P.to,{channel:ch}); if(r.length) groups.push({label, attr:`data-ch="${ch}"`, rows:r}); }
+    const what=byBrand?'브랜드':'채널';
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">사유 × ${what}</div><div class="csi-card-sub">${_esc(P.label)} · 칸 = 건수, 색이 진할수록 그 ${what}에서 차지하는 몫이 큼 · 주황 = 회사 사유, 파랑 = 고객 사유</div></div></div>`;
+    if(!groups.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 반품 · 교환이 없어요</div>'; return; }
+    const all=groups.flatMap(g=>g.rows);
+    const cols=CLM_REASON_KEYS.filter(k=>all.some(l=>l.reason===k));
+    const colTot=Object.fromEntries(cols.map(k=>[k, all.filter(l=>l.reason===k).length]));
+    const shade=(f,share)=>{ const a=(0.08+share*0.72).toFixed(2); return f==='co' ? `rgba(235,104,52,${a})` : f==='cu' ? `rgba(2,132,199,${a})` : `rgba(179,172,154,${a})`; };
+    el.innerHTML=head+`<div class="csi-scroll"><table class="csi-tbl clm-heat"><thead><tr><th>${what}</th>${cols.map(k=>`<th class="n" title="${_esc(_clmReason(k).label)}"><span class="clm-dot ${_clmFault(k)}"></span>${_esc(_clmReason(k).short)}</th>`).join('')}<th class="n">합계</th></tr></thead><tbody>${
+      groups.map(g=>{
+        const n=g.rows.length;
+        return `<tr ${g.attr} tabindex="0"><td class="nw">${g.dot?`<i class="csi-bdot" style="background:${g.dot}"></i> `:''}${_esc(g.label)}</td>${cols.map(k=>{
+          const c=g.rows.filter(l=>l.reason===k).length; if(!c) return '<td class="n clm-zero">·</td>';
+          const share=c/n;
+          return `<td class="n" style="background:${shade(_clmFault(k),share)}" data-tip="${_esc(`${g.label} · ${_clmReason(k).label}\n${c}건 · ${g.label}의 ${_clmPct(share,0)}`)}">${c}</td>`;
+        }).join('')}<td class="n"><b>${n}</b></td></tr>`;
+      }).join('')
+    }<tr class="clm-total"><td>합계</td>${cols.map(k=>`<td class="n">${colTot[k]}<div class="csi-muted">${_clmPct(colTot[k]/all.length,0)}</div></td>`).join('')}<td class="n"><b>${all.length}</b></td></tr></tbody></table></div>`;
+  }
+
+  /* ── 사유별 막대 · 고객 목소리 ── */
   function _clmBar(label, n, max, total, fill, sub, tip){
     const pct=total ? Math.round(n/total*100) : 0;
     return `<div class="csi-hbar" tabindex="0" data-tip="${_esc(tip)}" aria-label="${_esc(`${label.replace(/<[^>]+>/g,'')} ${n}건`)}">
@@ -33611,82 +33927,151 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="csi-hbar-sub">${_esc(sub)}</div></div>`;
   }
   function _clmTop(rows, fn, k){ return _csiCountBy(rows.filter(r=>fn(r)), fn).slice(0,k) }
-
   function _clmRenderReasons(P, cur){
     const el=document.getElementById('clmReasons');
     const head=`<div class="csi-card-head"><div><div class="csi-card-title">사유별</div><div class="csi-card-sub">${_esc(P.label)} · ${_csiN(cur.length)}건 · 몰마다 다른 사유를 같은 분류로 묶음</div></div>
-      <div class="csi-legend"><span><i style="background:var(--csi-co)"></i>회사 사유</span><span><i style="background:var(--csi-accent)"></i>고객 사유</span><span><i style="background:var(--csi-other)"></i>사유 없음 · 기타</span></div></div>`;
+      <div class="csi-legend"><span><i style="background:var(--csi-co)"></i>회사</span><span><i style="background:var(--csi-accent)"></i>고객</span><span><i style="background:var(--csi-other)"></i>없음 · 기타</span></div></div>`;
     if(!cur.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 반품 · 교환이 없어요</div>'; return; }
     const by=_clmReasonOrder(_csiCountBy(cur,l=>l.reason)), max=Math.max(...by.map(x=>x[1]));
     el.innerHTML=head+`<div class="csi-hbars clm-hbars">${by.map(([k,n])=>{
       const R=_clmReason(k), rows=cur.filter(l=>l.reason===k);
       const src=_clmTop(rows,l=>l.reason_src,3).map(([s,c])=>`${s} ${c}`).join(' · ');
-      const ch=_clmTop(rows,l=>CLM_CH_LABEL[l.channel]||l.channel,3).map(([s,c])=>`${s} ${c}`).join(' · ');
+      const ch=_clmTop(rows,l=>_clmChLabel(l.channel),3).map(([s,c])=>`${s} ${c}`).join(' · ');
       const sub=k==='none' ? '공홈 11/13 전 완료 건 · W컨셉은 몰이 사유를 안 줘요' : (src||ch);
       return _clmBar(`<span class="clm-dot ${R.f}"></span>${_esc(R.label)}`, n, max, cur.length, R.f, sub, `${R.label} ${n}건\n${CLM_FAULT_LABEL[R.f]}\n몰 사유: ${src||'—'}\n채널: ${ch}`);
     }).join('')}</div>`;
   }
-  function _clmRenderChannels(P, cur){
-    const el=document.getElementById('clmChannels');
-    const head=`<div class="csi-card-head"><div><div class="csi-card-title">채널별</div><div class="csi-card-sub">${_esc(P.label)} · 막대 색 = 그 채널에서 가장 많은 사유의 쪽</div></div></div>`;
-    if(!cur.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 반품 · 교환이 없어요</div>'; return; }
-    const by=_csiCountBy(cur,l=>l.channel), max=by[0][1];
-    el.innerHTML=head+`<div class="csi-hbars clm-hbars">${by.map(([k,n])=>{
-      const rows=cur.filter(l=>l.channel===k);
-      const brands=_clmTop(rows,l=>_csiBrandLabel(l.brand),3).map(([s,c])=>`${s} ${c}`).join(' · ');
-      const routes=_clmTop(rows,l=>l.route||'',2).map(([s,c])=>`${s} ${c}`).join(' · ');
-      const reasons=_clmReasonOrder(_csiCountBy(rows,l=>l.reason));
-      const f=_clmDomFault(reasons);
-      const rTxt=reasons.slice(0,4).map(([r,c])=>`${_clmReason(r).label} ${c}`).join(' · ');
-      return _clmBar(_esc(CLM_CH_LABEL[k]||k), n, max, cur.length, f, [_clm.brand?'':brands, routes].filter(Boolean).join(' · ') || rTxt, `${CLM_CH_LABEL[k]||k} ${n}건\n${brands}${routes?`\n${routes}`:''}\n사유: ${rTxt}`);
-    }).join('')}</div>`;
-  }
-  function _clmRenderProducts(P, cur){
-    const el=document.getElementById('clmProducts');
-    const by=new Map();
-    for(const l of cur){
-      const k=l.brand+'|'+_csiKeyName(l.product);
-      let x=by.get(k); if(!x){ x={brand:l.brand, names:new Map(), n:0, qty:0, amt:0, reasons:new Map(), ch:new Map(), opts:new Map(), ret:0, exc:0}; by.set(k,x); }
-      x.n++; x.qty+=Number(l.qty)||1; x.amt+=Number(l.amount)||0; l.type==='exchange'?x.exc++:x.ret++;
-      x.names.set(l.product,(x.names.get(l.product)||0)+1);
-      x.reasons.set(l.reason,(x.reasons.get(l.reason)||0)+1);
-      const c=CLM_CH_LABEL[l.channel]||l.channel; x.ch.set(c,(x.ch.get(c)||0)+1);
-      if(l.option) x.opts.set(l.option,(x.opts.get(l.option)||0)+1);
-    }
-    const rank=[...by.values()].sort((a,b)=>b.n-a.n || b.amt-a.amt), top=rank.slice(0,10);
-    const head=`<div class="csi-card-head"><div><div class="csi-card-title">반품 · 교환 많은 상품 TOP ${top.length||10}</div><div class="csi-card-sub">${_esc(P.label)} · 상품 이름이 채널마다 달라 같은 상품도 따로 셀 수 있어요${rank.length>10?` · 상품 ${rank.length}개 중`:''}</div></div></div>`;
-    if(!top.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 반품 · 교환이 없어요</div>'; return; }
-    const max=top[0].n;
-    el.innerHTML=head+`<div class="csi-hbars clm-hbars">${top.map((x,i)=>{
-      const name=_csiMajor(x.names), rs=_clmReasonOrder([...x.reasons.entries()]);
-      const f=_clmDomFault(rs);
-      const rTxt=rs.slice(0,3).map(([r,c])=>`${_clmReason(r).label} ${c}`).join(' · ');
-      const chTxt=[...x.ch.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c,n])=>`${c} ${n}`).join(' · ');
-      const opt=[...x.opts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([o,n])=>`${o} ${n}`).join(' · ');
-      const label=(_clm.brand?'':`<span class="b">${_esc(_csiBrandLabel(x.brand))}</span>`)+_esc(name);
-      return _clmBar(label, x.n, max, cur.length, f, `${rTxt} · ${chTxt}`, `${i+1}위 · ${x.n}건 (반품 ${x.ret} · 교환 ${x.exc}) · ${_clmWon(x.amt)}\n${_csiBrandLabel(x.brand)} · ${name}\n사유: ${rTxt}\n채널: ${chTxt}${opt?`\n많은 옵션: ${opt}`:''}`);
+  function _clmRenderVoice(P, cur){
+    const el=document.getElementById('clmVoice'); if(!el) return;
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">고객 목소리</div><div class="csi-card-sub">${_esc(P.label)} · 사유마다 고객이 직접 쓴 글 (최근 것부터)</div></div></div>`;
+    // 글자가 너무 짧은 메모(“*재배치*” 같은 처리 표시)는 빼고 문장만
+    const said=l=>String(l.memo||'').replace(/[^\p{L}\p{N}]/gu,'').length>=6;
+    cur=cur.filter(said);
+    const by=_clmReasonOrder(_csiCountBy(cur,l=>l.reason)).filter(([k])=>k!=='none').slice(0,4);
+    if(!by.length){ el.innerHTML=head+'<div class="csi-empty-line">이 기간에는 고객이 쓴 글이 없어요</div>'; return; }
+    el.innerHTML=head+`<div class="clm-voice">${by.map(([k,n])=>{
+      const R=_clmReason(k);
+      const items=cur.filter(l=>l.reason===k && l.memo).sort((a,b)=>String(b.requested_at||b.date).localeCompare(String(a.requested_at||a.date))).slice(0,3);
+      return `<div class="clm-voice-grp"><div class="clm-voice-h"><span class="clm-dot ${R.f}"></span>${_esc(R.label)} <span class="csi-muted">글 ${n}건</span></div>${items.map(l=>
+        `<div class="clm-quote">“${_esc(l.memo.length>110?l.memo.slice(0,109)+'…':l.memo)}”<div class="csi-muted">${_esc(_csiMd(l.date))} · ${_esc(_clmChLabel(l.channel))}${_clm.brand?'':` · ${_esc(_csiBrandLabel(l.brand))}`} · ${_esc(l.product.length>34?l.product.slice(0,33)+'…':l.product)}${l.photos?` · 📷 ${Number(l.photos)||0}`:''}</div></div>`).join('')}</div>`;
     }).join('')}</div>`;
   }
 
-  // 일별 추이 — 회사 사유 · 고객 사유 · 사유 없음/기타 누적 막대 (14일보다 짧은 기간은 14일)
+  /* ── 상품 분석 — 반품률 · 회사 사유 · ⚠ 반복 (🛠 개선 요청) ── */
+  function _clmProducts(P){
+    const rows=_clmRows(P.from,P.to), idx=_clmProdIndex(), by=new Map();
+    for(const l of rows){
+      const k=l.brand+'|'+_csiKeyName(l.product);
+      let x=by.get(k); if(!x){ x={key:k, brand:l.brand, names:new Map(), n:0, qty:0, amt:0, ret:0, exc:0, co:0, reasons:new Map(), ch:new Map(), opts:new Map(), memo:null, lines:[]}; by.set(k,x); }
+      x.n++; x.qty+=Number(l.qty)||1; x.amt+=Number(l.amount)||0; l.type==='exchange'?x.exc++:x.ret++;
+      if(_clmFault(l.reason)==='co') x.co++;
+      x.names.set(l.product,(x.names.get(l.product)||0)+1);
+      x.reasons.set(l.reason,(x.reasons.get(l.reason)||0)+1);
+      x.ch.set(l.channel,(x.ch.get(l.channel)||0)+1);
+      x.lines.push(l);
+      if(l.option) x.opts.set(l.option,(x.opts.get(l.option)||0)+1);
+      if(l.memo && (!x.memo || String(l.requested_at||l.date)>String(x.memo.requested_at||x.memo.date))) x.memo=l;
+    }
+    for(const x of by.values()){
+      x.name=_csiMajor(x.names);
+      const s=_clmProdSold(idx.get(x.key), P.from, P.to, _clm.channel);
+      x.sold=s ? s.qty : null;
+      x.rate=s && s.qty ? _clmRateQty(x.lines, s)/s.qty : null;
+      x.rs=_clmReasonOrder([...x.reasons.entries()]);
+      x.coTop=x.rs.find(([k])=>_clmFault(k)==='co');
+    }
+    return [...by.values()];
+  }
+  function _clmRenderProducts(P){
+    const el=document.getElementById('clmProducts'); if(!el) return;
+    let list=_clmProducts(P);
+    const sorts={n:'건수', rate:'반품률', co:'회사 사유'};
+    if(_clm.psort==='rate') list=list.filter(x=>x.sold!=null && x.sold>=CLM_MIN_SOLD).sort((a,b)=>(b.rate||0)-(a.rate||0) || b.n-a.n);
+    else if(_clm.psort==='co') list=list.filter(x=>x.co>0).sort((a,b)=>b.co-a.co || b.n-a.n);
+    else list.sort((a,b)=>b.n-a.n || (b.rate||0)-(a.rate||0));
+    _clm.prods=list;
+    const repeat=list.filter(x=>x.co>=CLM_REPEAT_CO).length;
+    const seg=`<div class="csi-seg" role="group" aria-label="상품 순서">${Object.entries(sorts).map(([k,v])=>`<button type="button" data-psort="${k}" aria-pressed="${_clm.psort===k}">${v}순</button>`).join('')}</div>`;
+    const note=_clm.psort==='rate' ? ` · 판매 ${CLM_MIN_SOLD}개 이상만` : _clm.psort==='co' ? ' · 회사 사유가 있는 상품만' : '';
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">상품 분석${repeat?` <span class="csi-warn-chip">⚠ 회사 사유 반복 ${repeat}개</span>`:''}</div><div class="csi-card-sub">${_esc(P.label)} · 상품 이름이 채널마다 달라 같은 상품도 따로 셀 수 있어요${note}${P.from<_clmProdStart()?' · 92일보다 앞선 기간은 상품별 판매를 몰라 반품률이 비어요':''}</div></div>${seg}</div>`;
+    if(!list.length){ el.innerHTML=head+`<div class="csi-empty-line">${_clm.psort==='rate'?`판매 ${CLM_MIN_SOLD}개 이상인 상품이 없어요`:_clm.psort==='co'?'이 기간에는 회사 사유 반품 · 교환이 없어요':'이 기간에는 반품 · 교환이 없어요'}</div>`; return; }
+    const show=list.slice(0,_clm.plimit), maxRate=Math.max(0,...show.map(x=>x.rate||0));
+    el.innerHTML=head+`<div class="csi-scroll"><table class="csi-tbl clm-stat clm-prod-tbl"><thead><tr><th class="n">#</th><th>상품</th><th>채널</th><th class="n">판매</th><th class="n">반품 · 교환</th><th class="n">반품률</th><th class="n">회사 사유</th><th>많은 사유</th><th>최근 고객 글</th><th></th></tr></thead><tbody>${show.map((x,i)=>{
+      const opt=[...x.opts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2).map(([o,n])=>`${o} ${n}`).join(' · ');
+      const ch=[...x.ch.entries()].sort((a,b)=>b[1]-a[1]).map(([c,n])=>`${_clmChLabel(c)}${x.ch.size>1?` ${n}`:''}`).join(' · ');
+      const reasons=x.rs.slice(0,2).map(([r,n])=>`<span class="clm-dot ${_clmFault(r)}"></span>${_esc(_clmReason(r).short)} ${n}`).join(' <span class="csi-muted">·</span> ');
+      const low=x.sold!=null && x.sold<CLM_MIN_SOLD;
+      const rate=x.rate==null ? '<td class="n"><span class="csi-muted">—</span></td>' : low ? `<td class="n"><span class="csi-muted" title="판매가 ${CLM_MIN_SOLD}개보다 적어 참고만">${_clmPct(x.rate)}</span></td>` : _clmRateCell(x.rate, maxRate, x.sold);
+      const warn=x.co>=CLM_REPEAT_CO;
+      return `<tr class="${warn?'clm-warn-row':''}"><td class="n csi-muted">${i+1}</td>
+        <td class="clm-prod">${_clm.brand?'':`<span class="csi-muted">${_esc(_csiBrandLabel(x.brand))}</span> `}<b>${_esc(x.name)}</b>${opt?`<div class="csi-muted">많은 옵션 ${_esc(opt)}</div>`:''}</td>
+        <td class="nw csi-muted">${_esc(ch)}</td>
+        <td class="n">${x.sold==null?'<span class="csi-muted">—</span>':_csiN(x.sold)}</td>
+        <td class="n"><b>${x.n}</b><div class="csi-muted">반품 ${x.ret} · 교환 ${x.exc}</div></td>
+        ${rate}
+        <td class="n">${x.co?`<b class="${warn?'clm-co-hot':''}">${x.co}</b>`:'<span class="csi-muted">0</span>'}</td>
+        <td class="nw">${reasons}</td>
+        <td class="clm-memo">${x.memo?`“${_esc(x.memo.memo.length>70?x.memo.memo.slice(0,69)+'…':x.memo.memo)}”`:'<span class="csi-muted">—</span>'}</td>
+        <td class="nw">${warn?`<button type="button" class="csi-btn clm-req-btn" data-act="req" data-i="${i}" title="이 상품으로 개선 요청을 만들어요 (근거 자동 기재)">🛠 개선 요청</button>`:''}</td></tr>`;
+    }).join('')}</tbody></table></div>${list.length>show.length?`<button type="button" class="csi-btn clm-more" data-act="pmore">상품 더 보기 (${_csiN(list.length-show.length)}개 더)</button>`:''}`;
+  }
+  // ⚠ 반복 상품 → 개선 요청 (근거 · VOC 코드 · 받는 팀 · 우선순위 자동)
+  function _clmMakeReq(i){
+    const x=_clm.prods[i]; if(!x) return;
+    if(typeof csiReqAdd!=='function' || !_csi.inited){ toast('개선 요청 화면을 열지 못했어요','err'); return; }
+    const P=_clmPeriod(), top=x.coTop ? x.coTop[0] : '', code=CLM_REASON_VOC[top]||'';
+    const voc=code ? CSI_CODES.find(c=>c.code.startsWith(code)) : null;
+    const coTxt=x.rs.filter(([k])=>_clmFault(k)==='co').map(([k,n])=>`${_clmReason(k).label} ${n}`).join(' · ');
+    const chTxt=[...x.ch.entries()].sort((a,b)=>b[1]-a[1]).map(([c,n])=>`${_clmChLabel(c)} ${n}`).join(' · ');
+    const memo=x.memo ? ` · 고객 글 "${x.memo.memo.slice(0,80)}"` : '';
+    if(_csi.brand && _csi.brand!==x.brand) _csi.brand=x.brand;
+    csiReqAdd({brand:x.brand, product:x.name, code, team:voc?voc.team:'', priority:x.co>=5?'높음':'보통',
+      evidence:`${_csiMd(P.from)}~${_csiMd(P.to)} 반품 · 교환 ${x.n}건 중 회사 사유 ${x.co}건 (${coTxt})${x.rate!=null?` · 반품률 ${_clmPct(x.rate)} (판매 ${x.sold}개)`:''} · ${chTxt}${memo} — ↩️ 반품·교환 분석에서`});
+    toast('개선 요청을 만들었어요 — 요청 내용 · 담당자를 채워 주세요');
+  }
+
+  /* ── 추이 — 위: 건수(회사 · 고객 · 없음/기타), 아래: 반품률. 31일 넘으면 주 단위 ── */
+  function _clmBuckets(P){
+    if(P.len<=31){
+      const days=Math.max(14,P.len), from=_csiAdd(P.to,-(days-1)), out=[];
+      for(let i=0;i<days;i++){ const d=_csiAdd(from,i); out.push({from:d, to:d, label:_csiMd(d), tip:`${_csiMd(d)} (${_csiDow(d)})`}); }
+      return {unit:'일', list:out};
+    }
+    // 월요일 시작 주
+    const start=_csiAdd(P.from, -((new Date(P.from+'T00:00:00Z').getUTCDay()+6)%7)), out=[];
+    for(let d=start; d<=P.to; d=_csiAdd(d,7)){ const e=_csiAdd(d,6)<P.to?_csiAdd(d,6):P.to, f=d<P.from?P.from:d; out.push({from:f, to:e, label:_csiMd(f), tip:`${_csiMd(f)} ~ ${_csiMd(e)}`}); }
+    return {unit:'주', list:out};
+  }
   function _clmRenderTrend(P){
     const el=document.getElementById('clmTrend'); if(!el) return;
-    const days=Math.min(92, Math.max(14, P.len)), to=P.to, from=_csiAdd(to,-(days-1));
-    const dates=[]; for(let i=0;i<days;i++) dates.push(_csiAdd(from,i));
-    const idx=new Map(dates.map((d,i)=>[d,i]));
-    const G={co:new Array(days).fill(0), cu:new Array(days).fill(0), na:new Array(days).fill(0)};
-    for(const l of _clmRows(from,to)){ const i=idx.get(l.date); if(i!=null) G[_clmFault(l.reason)][i]++; }
-    const tot=dates.map((d,i)=>G.co[i]+G.cu[i]+G.na[i]), sum=tot.reduce((a,b)=>a+b,0);
-    const head=`<div class="csi-card-head"><div><div class="csi-card-title">일별 추이 · ${days}일</div><div class="csi-card-sub">${_csiMd(from)} ~ ${_csiMd(to)} · ${_csiN(sum)}건 · 하루 평균 ${(sum/days).toFixed(1)}건 · 접수일 기준</div></div>
-      <div class="csi-legend"><span><i style="background:var(--csi-co)"></i>회사 사유</span><span><i style="background:var(--csi-accent)"></i>고객 사유</span><span><i style="background:var(--csi-other)"></i>사유 없음 · 기타</span></div></div>`;
-    const W=Math.max(320, Math.min(1400, Math.round((el.clientWidth||796)-36))), H=W<560?190:220, L=30, R=6, T=10, B=28, iw=W-L-R, ih=H-T-B;
+    const B=_clmBuckets(P), n=B.list.length;
+    const G={co:[], cu:[], na:[]}, rate=[];
+    for(const b of B.list){
+      const rows=_clmRows(b.from,b.to);
+      G.co.push(rows.filter(l=>_clmFault(l.reason)==='co').length); G.cu.push(rows.filter(l=>_clmFault(l.reason)==='cu').length); G.na.push(rows.filter(l=>_clmFault(l.reason)==='na').length);
+      const sold=_clmSold(b.from,b.to,_clm.brand,_clm.channel);
+      // 하루짜리 칸은 판매가 적어 흔들리니 판매 5개 미만이면 비움
+      rate.push(sold.qty>=5 ? _clmRate(rows,sold) : null);
+    }
+    const tot=B.list.map((b,i)=>G.co[i]+G.cu[i]+G.na[i]), sum=tot.reduce((a,b)=>a+b,0);
+    const rs=rate.filter(r=>r!=null), avgRate=rs.length ? rs.reduce((a,b)=>a+b,0)/rs.length : null;
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">추이 · ${B.unit} 단위</div><div class="csi-card-sub">${_csiMd(B.list[0].from)} ~ ${_csiMd(B.list[n-1].to)} · ${_csiN(sum)}건 · ${B.unit} 평균 ${(sum/n).toFixed(1)}건${avgRate!=null?` · 반품률 ${B.unit} 평균 ${_clmPct(avgRate)}`:''}</div></div>
+      <div class="csi-legend"><span><i style="background:var(--csi-co)"></i>회사 사유</span><span><i style="background:var(--csi-accent)"></i>고객 사유</span><span><i style="background:var(--csi-other)"></i>없음 · 기타</span><span><i class="clm-leg-line"></i>반품률</span></div></div>`;
+    const W=Math.max(320, Math.min(1400, Math.round((el.clientWidth||796)-36))), L=38, R=8, T=20, H1=W<560?150:170, GAP=30, H2=W<560?80:92, B0=24;
+    const H=T+H1+GAP+H2+B0, iw=W-L-R;
     const maxTot=Math.max(0,...tot), step=_csiNiceStep(maxTot), top=Math.max(step*2, Math.ceil(maxTot/step)*step);
-    const y=v=>T+ih-(v/top)*ih;
-    let g='';
+    const y=v=>T+H1-(v/top)*H1;
+    let g=`<text class="clm-panel-t" x="${L}" y="${T-8}">건수</text>`;
     for(let v=0; v<=top+1e-9; v+=step){ const yy=y(v).toFixed(1); g+=`<line class="csi-gridline" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text x="${L-6}" y="${(+yy+3.5).toFixed(1)}" text-anchor="end">${v}</text>`; }
-    const sw=iw/days, bw=Math.min(24, Math.max(3, sw*0.62)), every=Math.max(1, Math.ceil(days/8)), base=T+ih;
+    const sw=iw/n, bw=Math.min(28, Math.max(3, sw*0.62)), every=Math.max(1, Math.ceil(n/8));
     const SEGS=[['co','csi-seg-co'],['cu','csi-seg-def'],['na','csi-seg-oth']];
-    dates.forEach((d,i)=>{
+    // 반품률 칸 (아래)
+    const t2=T+H1+GAP, maxR=Math.max(0.01,...rs), rstep=maxR<=0.02?0.005:maxR<=0.05?0.01:maxR<=0.1?0.02:maxR<=0.3?0.05:0.1, rtop=Math.ceil(maxR/rstep)*rstep;
+    const y2=v=>t2+H2-(v/rtop)*H2;
+    for(let v=0; v<=rtop+1e-9; v+=rstep){ const yy=y2(v).toFixed(1); g+=`<line class="csi-gridline" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text x="${L-6}" y="${(+yy+3.5).toFixed(1)}" text-anchor="end">${_clmPct(v,v<0.01?1:0)}</text>`; }
+    g+=`<text class="clm-panel-t" x="${L}" y="${t2-8}">반품률${rs.length?'':' — 판매 기록이 없어 비어요'}</text>`;
+    let path='', dots='';
+    B.list.forEach((b,i)=>{
       const cx=L+sw*i+sw/2, x=cx-bw/2, vals=SEGS.map(([k])=>G[k][i]);
       const lastOn=vals.reduce((a,v,j)=>v>0?j:a,-1);
       let seg='', cum=0, drawn=false;
@@ -33697,20 +34082,41 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         seg+=`<path class="${cls}" d="${_csiColPath(x, bottom-h, bw, h, j===lastOn?4:0)}"/>`;
         drawn=true;
       });
-      const tip=`${tot[i]}건 · ${_csiMd(d)} (${_csiDow(d)})\n회사 사유 ${G.co[i]} · 고객 사유 ${G.cu[i]} · 사유 없음 · 기타 ${G.na[i]}`;
-      g+=`<g class="csi-col" data-tip="${_esc(tip)}"><rect class="hit" x="${(L+sw*i).toFixed(1)}" y="${T}" width="${sw.toFixed(1)}" height="${ih}"/>${seg}</g>`;
-      if((days-1-i)%every===0) g+=`<text x="${cx.toFixed(1)}" y="${H-9}" text-anchor="middle"${d===_csiToday()?' class="csi-col-today"':''}>${_csiMd(d)}</text>`;
+      const r=rate[i];
+      if(r!=null){ const yy=y2(r).toFixed(1); path+=(path && rate[i-1]!=null?'L':'M')+cx.toFixed(1)+','+yy; dots+=`<circle class="clm-rate-dot" cx="${cx.toFixed(1)}" cy="${yy}" r="${n>40?1.6:2.6}"/>`; }
+      const tip=`${b.tip} · ${tot[i]}건\n회사 사유 ${G.co[i]} · 고객 사유 ${G.cu[i]} · 없음 · 기타 ${G.na[i]}${r!=null?`\n반품률 ${_clmPct(r,2)}`:''}`;
+      g+=`<g class="csi-col" data-tip="${_esc(tip)}"><rect class="hit" x="${(L+sw*i).toFixed(1)}" y="${T}" width="${sw.toFixed(1)}" height="${H1+GAP+H2}"/>${seg}</g>`;
+      if((n-1-i)%every===0) g+=`<text x="${cx.toFixed(1)}" y="${H-8}" text-anchor="middle"${b.to===_csiToday()?' class="csi-col-today"':''}>${b.label}</text>`;
     });
-    g+=`<line class="csi-axisline" x1="${L}" x2="${W-R}" y1="${base}" y2="${base}"/>`;
-    el.innerHTML=head+`<svg class="csi-trend-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${_esc(`최근 ${days}일 일별 반품 · 교환 건수, 회사 사유 · 고객 사유 · 사유 없음과 기타`)}">${g}</svg>`;
+    g+=`<line class="csi-axisline" x1="${L}" x2="${W-R}" y1="${T+H1}" y2="${T+H1}"/><line class="csi-axisline" x1="${L}" x2="${W-R}" y1="${t2+H2}" y2="${t2+H2}"/>`;
+    if(path) g+=`<path class="clm-rate-line" d="${path}"/>${dots}`;
+    el.innerHTML=head+`<svg class="csi-trend-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${_esc(`${n}${B.unit} 반품 · 교환 건수와 반품률 추이`)}">${g}</svg>`;
   }
 
+  /* ── 처리 현황 — 지금 처리 중인 것 (단계 × 경과일) · 오래된 순 ── */
+  function _clmRenderOps(){
+    const el=document.getElementById('clmOps'); if(!el) return;
+    const open=_clmOpenRows(), stale=_clmStaleRows();
+    const staleBy=_csiCountBy(stale,l=>_clmChLabel(l.channel)).map(([c,n])=>`${c} ${n}`).join(' · ');
+    const staleTxt=stale.length ? `<div class="clm-note">30일 넘게 '${_esc([...new Set(stale.map(l=>CLM_STAGE[l.stage]))].join(' · '))}'로 그대로인 ${_csiN(stale.length)}건 (${_esc(staleBy)})은 처리 중에서 뺐어요 — 몰 상태가 갱신 안 된 것일 수 있어요. 실제로 남아 있는지 판매자 화면에서 확인해 주세요.</div>` : '';
+    const head=`<div class="csi-card-head"><div><div class="csi-card-title">처리 현황</div><div class="csi-card-sub">지금 처리 중인 반품 · 교환 ${_csiN(open.length)}건 (접수 30일 안, 기간과 상관없이) · 경과일 = 접수일부터 오늘까지</div></div></div>`;
+    if(!open.length){ el.innerHTML=head+'<div class="csi-empty-line">✓ 지금 처리 중인 반품 · 교환이 없어요</div>'+staleTxt; return; }
+    const cnt=(st,a)=>open.filter(l=>l.stage===st && _clmAge(l)>=a[0] && _clmAge(l)<=a[1]).length;
+    const table=`<div class="csi-scroll"><table class="csi-tbl clm-stat clm-ops"><thead><tr><th>단계</th>${CLM_AGES.map(a=>`<th class="n">${a[2]}</th>`).join('')}<th class="n">합계</th></tr></thead><tbody>${
+      CLM_OPEN_STAGES.map(st=>{ const tot=open.filter(l=>l.stage===st).length; if(!tot) return ''; return `<tr><td class="nw">${_esc(CLM_STAGE[st])}</td>${CLM_AGES.map(a=>{ const c=cnt(st,a); return `<td class="n${c && a[0]>=7?' clm-late':''}">${c||'<span class="csi-muted">·</span>'}</td>`; }).join('')}<td class="n"><b>${tot}</b></td></tr>`; }).join('')
+    }</tbody></table></div>`;
+    const oldest=open.slice().sort((a,b)=>_clmAge(b)-_clmAge(a)).slice(0,8);
+    const list=`<div class="clm-ops-list"><div class="clm-ops-h">오래 걸리는 것</div>${oldest.map(l=>`<div class="clm-ops-row"><b class="${_clmAge(l)>=7?'clm-late-t':''}">${_clmAge(l)}일</b> <span class="clm-chip open">${_esc(CLM_STAGE[l.stage])}</span> ${_esc(_clmChLabel(l.channel))}${l.route?` <span class="clm-route">${_esc(l.route)}</span>`:''}${_clm.brand?'':` · ${_esc(_csiBrandLabel(l.brand))}`} · ${_esc(l.product.length>30?l.product.slice(0,29)+'…':l.product)} <span class="csi-muted">· ${_esc(_clmReason(l.reason).short)} · 주문 ${_esc(l.order_no)}</span></div>`).join('')}</div>`;
+    el.innerHTML=head+`<div class="clm-ops-grid">${table}${list}</div>`+staleTxt;
+  }
+
+  /* ── 목록 ── */
   function _clmRenderList(){
     const body=document.getElementById('clmListBody'), sub=document.getElementById('clmListSub'); if(!body || !_clm.data) return;
     const P=_clmPeriod(), q=_csiKeyName(_clm.q);
     let rows=_clmRows(P.from, P.to);
-    if(q) rows=rows.filter(l=>_csiKeyName([l.product,l.option,l.memo,l.reason_src,_clmReason(l.reason).label,l.order_no,CLM_CH_LABEL[l.channel],_csiBrandLabel(l.brand),l.route].join(' ')).includes(q));
-    const gone=(_clm.data.lines||[]).filter(l=>l.date>=P.from && l.date<=P.to && !_clmLive(l)).length;
+    if(q) rows=rows.filter(l=>_csiKeyName([l.product,l.option,l.memo,l.reason_src,_clmReason(l.reason).label,l.order_no,_clmChLabel(l.channel),_csiBrandLabel(l.brand),l.route].join(' ')).includes(q));
+    const gone=(_clm.data.lines||[]).filter(l=>l.date>=P.from && l.date<=P.to && !_clmLive(l) && (!_clm.brand||l.brand===_clm.brand) && (!_clm.channel||l.channel===_clm.channel)).length;
     sub.textContent=`${P.label} · ${_csiN(rows.length)}건 · 접수일 최신순${gone?` · 철회 · 거부 ${gone}건은 뺐어요`:''}`;
     if(!rows.length){ body.innerHTML=`<div class="csi-empty-line">${q?'검색에 맞는 반품 · 교환이 없어요':'이 기간에는 반품 · 교환이 없어요'}</div>`; return; }
     // '새로' = 하루 안에 처음 본 것 — 처음 한꺼번에 채운 지난 줄(가장 이른 first_seen 무리)은 빼고
@@ -33721,22 +34127,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const seen=Date.parse(l.first_seen||'')||0;
       const isNew=seen>batch+10*60e3 && now-seen<24*3600e3 && l.date>=recent;
       const when=l.requested_at ? `${_csiMd(l.date)} <span class="csi-muted">${_esc(l.requested_at.slice(11,16))}</span>` : `${_csiMd(l.date)} <span class="csi-muted" title="접수일을 몰라 처리일">처리</span>`;
-      const done=l.stage==='done' && l.done_at ? `<div class="csi-muted">완료 ${_esc(_csiMd(l.done_at.slice(0,10)))}</div>` : '';
+      const done=l.stage==='done' && l.done_at ? `<div class="csi-muted">완료 ${_esc(_csiMd(l.done_at.slice(0,10)))}</div>` : open ? `<div class="csi-muted">${_clmAge(l)}일째</div>` : '';
       return `<tr><td class="nw">${when}${isNew?'<span class="clm-chip new">새로</span>':''}</td>
-        <td class="nw">${_esc(CLM_CH_LABEL[l.channel]||l.channel)}${l.route?`<span class="clm-route">${_esc(l.route)}</span>`:''}${_clm.brand?'':`<div class="csi-muted">${_esc(_csiBrandLabel(l.brand))}</div>`}</td>
+        <td class="nw">${_esc(_clmChLabel(l.channel))}${l.route?`<span class="clm-route">${_esc(l.route)}</span>`:''}${_clm.brand?'':`<div class="csi-muted">${_esc(_csiBrandLabel(l.brand))}</div>`}</td>
         <td class="clm-prod"><b>${_esc(l.product)}</b>${l.option?`<div class="csi-muted">${_esc(l.option)}${(Number(l.qty)||1)>1?` · ${l.qty}개`:''}</div>`:((Number(l.qty)||1)>1?`<div class="csi-muted">${l.qty}개</div>`:'')}<div class="csi-muted">주문 ${_esc(l.order_no)}</div></td>
         <td class="nw"><span class="clm-chip ${l.type==='exchange'?'exc':'ret'}">${l.type==='exchange'?'교환':'반품'}</span> <span class="clm-chip ${open?'open':'done'}" title="${_esc(l.status||'')}">${_esc(CLM_STAGE[l.stage]||l.stage)}</span>${done}</td>
         <td class="clm-reason"><span class="clm-dot ${R.f}"></span>${_esc(R.label)}${l.reason_src && l.reason_src!==R.label?`<div class="csi-muted">${_esc(l.reason_src)}</div>`:''}</td>
-        <td class="clm-memo">${l.memo?_esc(l.memo):'<span class="csi-muted">—</span>'}${l.photos?`<span class="clm-photo" title="고객이 붙인 사진 — ${_esc(CLM_CH_LABEL[l.channel]||l.channel)} 판매자 화면에서 볼 수 있어요">📷 ${Number(l.photos)||0}장</span>`:''}</td>
+        <td class="clm-memo">${l.memo?_esc(l.memo):'<span class="csi-muted">—</span>'}${l.photos?`<span class="clm-photo" title="고객이 붙인 사진 — ${_esc(_clmChLabel(l.channel))} 판매자 화면에서 볼 수 있어요">📷 ${Number(l.photos)||0}장</span>`:''}</td>
         <td class="n">${_csiN(l.amount)}원</td></tr>`;
     }).join('')}</tbody></table></div>${rows.length>show.length?`<button type="button" class="csi-btn clm-more" data-act="more">더 보기 (${_csiN(rows.length-show.length)}건 더)</button>`:''}`;
   }
 
-  function _clmRenderFoot(P){
+  function _clmRenderFoot(){
     const el=document.getElementById('clmFoot'); if(!el) return;
-    el.innerHTML=`<b>어디서 오나요</b> — 공홈(자사몰 · 네이버페이)은 식스샵 프로, 지그재그(스토어배송 · 직진배송)는 파트너센터, 그 밖의 플랫폼(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡)은 플레이오토에서 30분마다 받아요.<br>`
-      +`<b>건</b> = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · <b>날짜</b> = 접수일 (공홈의 지난 완료 건은 접수일을 몰라 처리일) · <b>금액</b> = 반품 · 교환한 상품의 결제 금액 (배송비 빼고) · 철회 · 거부된 건은 숫자에서 빼요.<br>`
-      +`<b>에이블리</b>는 플레이오토가 고객 사유를 비워 보내서 에이블리 셀러 화면의 사유 · 고객 글 · 사진 수로 다시 채워요 (플레이오토엔 남아 있어도 에이블리에서 철회된 반품은 빼요).<br>`
+    el.innerHTML=`<b>어디서 오나요</b> — 공홈(자사몰 · 네이버페이)은 식스샵 프로, 지그재그(스토어배송 · 직진배송)는 파트너센터, 그 밖의 플랫폼(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡)은 플레이오토에서 30분마다 받아요. 에이블리 사유는 에이블리 셀러 화면에서 다시 채워요.<br>`
+      +`<b>반품률</b> = 반품 · 교환 수량 ÷ 같은 기간 판매 수량 (결제일 기준, 반품된 것도 판매에 들어 있음) — 판매 기록이 기간 처음부터 있는 브랜드 · 채널만 (공홈 코페리 10/20 · 아페티 10/22 · 야르 11/2 · 식스에이 11/3 부터). 상품별 판매는 최근 92일만 있어요.<br>`
+      +`<b>건</b> = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · <b>날짜</b> = 접수일 (공홈의 지난 완료 건은 처리일) · <b>금액</b> = 반품한 상품의 결제 금액 (배송비 빼고) · 철회 · 거부된 건은 숫자에서 빼요.<br>`
       +`<b>사유 없음</b> — 공홈은 11/13 전에 끝난 반품, W컨셉은 몰이 사유를 주지 않아요. 고객 이름 · 연락처 · 주소 · 환불 계좌는 받지 않고, 고객 글 속 전화번호 · 이메일 · 계좌번호는 가려요.`;
   }
 
@@ -33744,22 +34150,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function clmCopyReport(){
     if(!_clm.data){ toast('아직 반품 · 교환을 못 불러왔어요','err'); return; }
     const P=_clmPeriod(), cur=_clmRows(P.from,P.to);
-    const ret=cur.filter(l=>l.type==='return'), exc=cur.filter(l=>l.type==='exchange'), open=cur.filter(l=>CLM_OPEN.has(l.stage));
+    const ret=cur.filter(l=>l.type==='return'), exc=cur.filter(l=>l.type==='exchange'), open=_clmOpenRows();
     const co=cur.filter(l=>_clmFault(l.reason)==='co'), cu=cur.filter(l=>_clmFault(l.reason)==='cu'), known=co.length+cu.length;
-    const scope=[_clm.brand?_csiBrandLabel(_clm.brand):'전체 브랜드', _clm.channel?CLM_CH_LABEL[_clm.channel]:'전체 채널', _clm.type==='return'?'반품만':_clm.type==='exchange'?'교환만':''].filter(Boolean).join(' · ');
+    const sold=_clmSold(P.from,P.to,_clm.brand,_clm.channel), rate=_clmRate(cur,sold);
+    const scope=[_clm.brand?_csiBrandLabel(_clm.brand):'전체 브랜드', _clm.channel?_clmChLabel(_clm.channel):'전체 채널', _clm.type==='return'?'반품만':_clm.type==='exchange'?'교환만':''].filter(Boolean).join(' · ');
     const L=[`[반품 · 교환 요약] ${_csiMd(P.from)} ~ ${_csiMd(P.to)} (${P.label}) · ${scope}`];
-    L.push(`반품 ${ret.length}건 (${_clmWon(ret.reduce((a,l)=>a+(Number(l.amount)||0),0))}) · 교환 ${exc.length}건 · 처리 중 ${open.length}건`);
+    L.push(`반품 ${ret.length}건 (${_clmWon(ret.reduce((a,l)=>a+(Number(l.amount)||0),0))}) · 교환 ${exc.length}건${rate!=null?` · 반품률 ${_clmPct(rate)} (판매 ${_csiN(sold.qty)}개)`:''} · 처리 중 ${open.length}건`);
     if(known) L.push(`회사 사유 ${Math.round(co.length/known*100)}% — ${_csiCountBy(co,l=>l.reason).map(([k,n])=>`${_clmReason(k).label} ${n}`).join(' · ')||'없음'}`);
     if(cur.length){
       L.push('', '▶ 사유: '+_clmReasonOrder(_csiCountBy(cur,l=>l.reason)).map(([k,n])=>`${_clmReason(k).label} ${n}`).join(' · '));
-      if(!_clm.channel) L.push('▶ 채널: '+_csiCountBy(cur,l=>l.channel).map(([k,n])=>`${CLM_CH_LABEL[k]||k} ${n}`).join(' · '));
-      const by=new Map();
-      for(const l of cur){ const k=l.brand+'|'+_csiKeyName(l.product); let x=by.get(k); if(!x){ x={brand:l.brand,name:l.product,n:0,r:new Map()}; by.set(k,x); } x.n++; x.r.set(l.reason,(x.r.get(l.reason)||0)+1); }
-      const top=[...by.values()].sort((a,b)=>b.n-a.n).slice(0,5);
+      if(!_clm.brand){
+        const br=BRAND_SECTIONS.map(b=>{ const r=cur.filter(l=>l.brand===b.id); if(!r.length) return ''; const rr=_clmRate(r,_clmSold(P.from,P.to,b.id,_clm.channel)); return `${b.display} ${r.length}${rr!=null?` (${_clmPct(rr)})`:''}`; }).filter(Boolean);
+        L.push('▶ 브랜드: '+br.join(' · '));
+      }
+      if(!_clm.channel) L.push('▶ 채널: '+_csiCountBy(cur,l=>l.channel).map(([k,n])=>`${_clmChLabel(k)} ${n}`).join(' · '));
+      const top=_clmProducts(P).sort((a,b)=>b.n-a.n).slice(0,5);
       L.push('▶ 많은 상품');
-      top.forEach((x,i)=>L.push(`${i+1}. ${_clm.brand?'':_csiBrandLabel(x.brand)+' '}${x.name} — ${x.n}건 (${_clmReasonOrder([...x.r.entries()]).slice(0,3).map(([r,n])=>`${_clmReason(r).label} ${n}`).join(' · ')})`));
-      const defect=cur.filter(l=>l.reason==='defect' && l.memo).slice(0,3);
-      if(defect.length){ L.push('▶ 불량 · 파손 고객 글'); defect.forEach(l=>L.push(`· ${_csiBrandLabel(l.brand)} ${l.product}: ${l.memo.slice(0,80)}`)); }
+      top.forEach((x,i)=>L.push(`${i+1}. ${_clm.brand?'':_csiBrandLabel(x.brand)+' '}${x.name} — ${x.n}건${x.rate!=null && x.sold>=CLM_MIN_SOLD?` · 반품률 ${_clmPct(x.rate)}`:''} (${x.rs.slice(0,3).map(([r,n])=>`${_clmReason(r).label} ${n}`).join(' · ')})`));
+      const hot=_clmProducts(P).filter(x=>x.co>=CLM_REPEAT_CO).sort((a,b)=>b.co-a.co).slice(0,3);
+      if(hot.length){ L.push('▶ 회사 사유가 반복되는 상품'); hot.forEach(x=>L.push(`· ${_clm.brand?'':_csiBrandLabel(x.brand)+' '}${x.name} — 회사 사유 ${x.co}건${x.memo?`: "${x.memo.memo.slice(0,60)}"`:''}`)); }
     }
     L.push('', `(${_clmKstHm(_clm.data.updated_at)} 기준 · 오피스 CS팀 ↩️ 반품·교환)`);
     const text=L.join('\n');
@@ -33774,7 +34183,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     ta.remove();
   }
 
-  // 막대 · 숫자 카드 설명 — CS 이슈 분석과 같은 말풍선 (이 탭 안에서만)
+  // 막대 · 숫자 칸 설명 — CS 이슈 분석과 같은 말풍선 (이 탭 안에서만)
   function _clmTipInit(){
     const pane=document.getElementById('clmPane'), tip=document.getElementById('clmTip');
     let curEl=null;
@@ -34611,10 +35020,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(q.code && !String(r.code||'').startsWith(q.code)) return false;
     return true;
   }
-  function _csiReqCount(q, from, to){ let n=0; for(const r of _csi.rows) if(r.issue_date>=from && r.issue_date<=to && _csiReqMatch(q,r)) n++; return n; }
+  // VOC 대분류 → 반품 · 교환 사유 (↩️ 반품·교환 분석의 분류). V · E(응대 · 문의)는 반품 · 교환에 없다
+  const CSI_REQ_CLAIM_REASONS={Q:['defect'], S:['option'], I:['info'], D:['wrong','delivery'], C:['change','option','misorder'], O:['soldout']};
+  function _csiReqClaimMatch(q, l){
+    if(!(q.brand || q.product || q.code)) return false;
+    if(q.brand && l.brand!==q.brand) return false;
+    if(q.product){ const a=_csiKeyName(l.product), b=_csiKeyName(q.product); if(!(a===b || a.includes(b))) return false; }
+    if(q.code){ const rs=CSI_REQ_CLAIM_REASONS[q.code[0]]; if(!rs || !rs.includes(l.reason)) return false; }
+    return true;
+  }
+  // 2026-11-13 CS 기록을 숨기면서 건수는 반품 · 교환 자동 수집에서 센다 (못 불러왔으면 예전처럼 CS 기록)
+  function _csiReqCount(q, from, to){
+    let n=0;
+    if(_clm.data){ for(const l of _clm.data.lines) if(l.date>=from && l.date<=to && _clmLive(l) && _csiReqClaimMatch(q,l)) n++; return n; }
+    for(const r of _csi.rows) if(r.issue_date>=from && r.issue_date<=to && _csiReqMatch(q,r)) n++;
+    return n;
+  }
   function _csiReqEffect(q){
     const today=_csiToday(), now30=_csiReqCount(q, _csiAdd(today,-29), today);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(q.action_on||'')) return {now30, text:'', cls:'', tip:'조치일을 넣으면 조치 전 · 후 30일 CS 건수가 나와요'};
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(q.action_on||'')) return {now30, text:'', cls:'', tip:'조치일을 넣으면 조치 전 · 후 30일 반품 · 교환 건수가 나와요'};
     const a=q.action_on, before=_csiReqCount(q,_csiAdd(a,-30),_csiAdd(a,-1)), after=_csiReqCount(q,a,_csiAdd(a,29)), days=_csiDiff(today,a)+1;
     if(days<30) return {now30, before, after, done:false, text:`${before} → ${after}건 · ${Math.max(days,1)}일째`, cls:'wait', tip:`조치 전 30일 ${before}건, 조치 뒤 지금까지 ${after}건 — 조치하고 30일이 지나면 효과가 나와요`};
     const eff = after<before ? '줄어듦' : after===before ? '변화 없음' : '늘어남';
@@ -34693,7 +35117,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       +'<td class="c-del"><button type="button" class="csi-del" data-act="rq-del" title="이 요청 지우기" aria-label="이 요청 지우기">🗑</button></td></tr>';
   }
   function _csiReqBusy(){ const a=document.activeElement, t=document.getElementById('csiReqSheet'); return !!(a && t && t.contains(a) && a.classList.contains('cell')); }
-  function _csiReqSig(){ return [_csi.rq.ver, _csi.ver, _csi.brand, _csi.rq.filter, _csi.rq.pin.size, [..._csi.rq.ed.values()].filter(e=>!e.id).map(e=>e.k).join(',')].join('|'); }
+  function _csiReqSig(){ return [_csi.rq.ver, _csi.ver, _clm.at, _csi.brand, _csi.rq.filter, _csi.rq.pin.size, [..._csi.rq.ed.values()].filter(e=>!e.id).map(e=>e.k).join(',')].join('|'); }
   function _csiRenderReq(force){
     const tbl=document.getElementById('csiReqSheet'); if(!tbl) return;
     const sig=_csiReqSig();
@@ -34715,7 +35139,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const seg=document.getElementById('csiReqSeg');
     if(seg) seg.innerHTML=[['open','진행 중',cnt.open],['done','완료',cnt.done],['hold','보류',cnt.hold],['all','전체',cnt.all]].map(([k,l,n])=>`<button type="button" data-rq-f="${k}" aria-pressed="${_csi.rq.filter===k}">${l} <b>${n}</b></button>`).join('');
     document.getElementById('csiReqTitle').textContent=`🛠 ${b?_csiBrandLabel(b)+' ':''}개선 요청`;
-    document.getElementById('csiReqSub').textContent=`진행 중 ${cnt.open}건 · 완료 ${cnt.done}건${cnt.hold?` · 보류 ${cnt.hold}건`:''} · 진행 중 → 우선순위 → 번호 순 · 건수는 CS 기록(같은 브랜드 · 상품 · VOC 코드)에서 자동으로 세요`;
+    document.getElementById('csiReqSub').textContent=`진행 중 ${cnt.open}건 · 완료 ${cnt.done}건${cnt.hold?` · 보류 ${cnt.hold}건`:''} · 진행 중 → 우선순위 → 번호 순 · 건수는 반품 · 교환 자동 수집에서 같은 브랜드 · 상품 · VOC 대분류(Q 불량 · D 오배송/배송 · I 정보 다름 · S 사이즈 · C 변심/주문 실수 · O 품절)로 세요`;
   }
   function _csiReqPaint(tr){
     const k=tr.dataset.k, v=_csiReqView(k), e=_csi.rq.ed.get(k); if(!v) return;
