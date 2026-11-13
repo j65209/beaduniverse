@@ -26,6 +26,9 @@
   차트 색: dataviz 기본 팔레트 1번(파랑)=인스타, 2번(주황)=스레드, 3번(청록)=X — 이 화면 카드 바탕(#fff / #171e29)에서 세 색 모두 검사 통과
     (밝은 화면 청록은 바탕 대비 2.82 → 범례·표가 같이 있어서 허용)
   X: 계정 칸의 'X 연결' → POST /x/start → X 허용 화면 → /x/callback → 이 화면 ?x=ok|err&m=… (토큰 붙여넣기 없음)
+  데이터 보기 (2026-11-13 사장님 "최대한 데이터만 — 업로드는 어차피 자동"): 기본 화면은 요약 · 게시물별 조회수 · 게시물 분석 · 업로드 현황 · 팔로워 추이만.
+    올리기 · 임시저장/예약 · 텔레그램 컨펌 · 링크 모음 · 계정 연결 · 토큰 · 댓글 DM 링크는 지우지 않고 숨김 (body.data-only),
+    등록 · 대기열 · 텔레그램 · 링크도 안 불러온다. 주소 끝 ?manage=1 (X 연결에서 돌아오는 ?x= 도) 이면 예전 관리 화면 그대로
 -->
 <style>
   :root{
@@ -213,6 +216,9 @@
   .pill.mute{color:var(--sub);background:var(--bg)}
   .pill.draft{color:var(--demo-ink);background:var(--demo)}
   @media (max-width:560px){ .qrow{grid-template-columns:48px minmax(0,1fr)} .qrow > .row{grid-column:1 / -1} }
+  /* 데이터 보기 (기본) — 관리 칸 숨김. ?manage=1 이면 body 에 data-only 가 안 붙어 전부 보인다 */
+  body.data-only #composer, body.data-only #queueCard, body.data-only #tgCard, body.data-only #linkCard,
+  body.data-only #devBanner, body.data-only .manage-only{display:none!important}
 </style>
 </head>
 <body>
@@ -223,7 +229,7 @@
   </a>
   <h1>🐷 꿀꿀집 마케팅 회사</h1>
   <span class="handle">@ggul.ggul.zip · 인스타 · 스레드 · X @ggulggulzip</span>
-  <a class="back" href="dm.html" style="margin-left:auto" title="인스타 댓글에 링크를 DM 으로 자동 답장 (sns/dm.html)">💬 댓글 자동 DM</a>
+  <a class="back manage-only" href="dm.html" style="margin-left:auto" title="인스타 댓글에 링크를 DM 으로 자동 답장 (sns/dm.html)">💬 댓글 자동 DM</a>
 </header>
 
 <main id="app" hidden>
@@ -386,7 +392,7 @@
     <div class="chart" id="followChart"></div>
   </section>
 
-  <section class="two">
+  <section class="two manage-only">
     <section class="card">
       <h2>계정 연결</h2>
       <p class="lead">토큰을 저장하면 서버가 인스타·스레드에 직접 확인해요. 토큰은 서버에만 보관되고 이 화면에 다시 나오지 않아요. X 는 토큰 붙여넣기 없이 X 칸의 <b>X 연결</b> 버튼으로 연결해요.</p>
@@ -441,6 +447,9 @@
   document.getElementById('app').hidden = false;
 
   var DEMO = /(?:^|[?&])demo=1(?:&|$)/.test(location.search);
+  // 관리 화면 = ?manage=1 또는 X 연결에서 돌아올 때(?x=). 아니면 데이터 보기 — 업로드는 자동이라 관리 칸을 숨긴다
+  var MANAGE = /(?:^|[?&])(?:manage=1|x=)/.test(location.search);
+  if (!MANAGE) document.body.classList.add('data-only');
   var DAY = 864e5;
   var PL = { instagram: { name: '인스타', color: 'var(--ig)', wash: 'var(--ig-wash)' }, threads: { name: '스레드', color: 'var(--th)', wash: 'var(--th-wash)' }, x: { name: 'X', color: 'var(--x)', wash: 'var(--x-wash)' }, reels: { name: '릴스', color: 'var(--ig)', wash: 'var(--ig-wash)' } }; // 릴스 = 인스타 계정으로 올리는 영상 (제작 에이전트가 만든 것만, 화면에선 고르지 않음)
   var PLATFORMS = ['instagram', 'threads', 'x'];
@@ -514,7 +523,7 @@
     if (DEMO) { var d = demoData(); state.accounts = d.accounts; state.posts = d.posts; state.followers = d.followers; }
     else {
       var j = await api('/overview').catch(function () { return { ok: false, error: '서버에 연결하지 못했어요.' }; });
-      if (!j.ok) { $('app').classList.remove('loading'); $('accounts').textContent = ''; $('accounts').appendChild(el('div', 'msg bad', j.error || '불러오지 못했어요.')); return; }
+      if (!j.ok) { $('app').classList.remove('loading'); $('accounts').textContent = ''; $('accounts').appendChild(el('div', 'msg bad', j.error || '불러오지 못했어요.')); $('collectMeta').textContent = '⚠ ' + (j.error || '불러오지 못했어요.'); return; } // 데이터 보기에선 계정 칸이 숨어 있어 위 줄에도 띄운다
       state.accounts = j.accounts || []; state.posts = j.posts || []; state.followers = j.followers || [];
     }
     $('app').classList.remove('loading');
@@ -1773,8 +1782,7 @@
   if (DEMO) $('demoBanner').hidden = false;
   xReturnNotice();
   load();
-  loadDevice();
-  loadTg();
+  if (MANAGE) { loadDevice(); loadTg(); } // 데이터 보기에선 등록 · 대기열 · 텔레그램 · 링크를 안 불러온다
 })();
 </script>
 </body>
