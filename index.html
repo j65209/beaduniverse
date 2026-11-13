@@ -1321,6 +1321,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   .kd-ord{font-size:13px;font-weight:700;color:var(--text-0);letter-spacing:.02em}
   .kd-ord-meta{font-size:10.5px;color:var(--text-3);margin-top:3px;font-family:var(--mono);letter-spacing:.03em}
+  /* 2026-11-13 비드유니버스 통합 — 신청서 · 상품 카드에 어느 계정(브라이트비드 · 샤인비드) 것인지 작은 표시 */
+  .kd-brand-tag{display:inline-block;font-family:var(--sans,inherit);font-size:10px;font-weight:700;letter-spacing:0;padding:1px 6px;margin-right:5px;border-radius:999px;vertical-align:1px;color:#fff;background:#8b5cf6}
+  .kd-brand-tag.kd-brand-shinebeed{background:#0284c7}
   .kd-status{
     display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;
     font-size:10.5px;font-weight:600;letter-spacing:0;white-space:nowrap;font-family:var(--sans)
@@ -11719,15 +11722,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
         홈
       </button>
-      <h1 class="view-title">물류팀<span class="view-title-sub">/ 발주 관리</span></h1>
+      <h1 class="view-title">물류팀 <span class="view-title-brand">비드유니버스</span><span class="view-title-sub">/ 발주 관리</span></h1>
     </div>
-
-    <!-- 브랜드 스위치: 메인(총괄) · 브라이트비드 · 샤인비드 -->
-    <div class="lg-brand-switch" role="tablist" aria-label="브랜드 선택">
-      <button class="lg-brand-pill active" data-brand="main" onclick="switchLgBrand('main')" role="tab" aria-selected="true">메인</button>
-      <button class="lg-brand-pill" data-brand="brightbeed" onclick="switchLgBrand('brightbeed')" role="tab" aria-selected="false">브라이트비드</button>
-      <button class="lg-brand-pill" data-brand="shinebeed" onclick="switchLgBrand('shinebeed')" role="tab" aria-selected="false">샤인비드</button>
-    </div>
+    <!-- 2026-11-13 메인 · 브라이트비드 · 샤인비드 탭을 없애고 비드유니버스 하나로 합침 — 최근 발주 · 상품 리스트 모두 두 계정 것을 같이 보여 준다 (줄마다 브랜드 표시) -->
 
     <!-- 탭 버튼: 최근 발주 · 발주서 리스트 -->
     <div class="lg-tabs" role="tablist">
@@ -17590,13 +17587,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof syncStaffPhonesFromRemote==='function') syncStaffPhonesFromRemote().catch(()=>{});
     }
     if(id==='viewLg'){
-      /* hash 로 직접 진입 (새로고침) 시에도 마지막 브랜드 복원 */
-      if(!window._lgBrand){
-        let last = 'main';
-        try{ last = localStorage.getItem('lgLastBrand') || 'main'; }catch(_){}
-        if(!['main','brightbeed','shinebeed'].includes(last)) last = 'main';
-        if(typeof switchLgBrand==='function') switchLgBrand(last);
-      }
       // 새로고침으로 바로 들어오면 탭 내용이 전부 접혀 빈 화면이 된다 → 선택된 탭을 펼친다
       if(typeof switchLgTab==='function' && ![...document.querySelectorAll('.lg-pane')].some(p=>p.style.display!=='none')){
         const activeTab=document.querySelector('.lg-tab.active');
@@ -17782,43 +17772,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     showView('viewDiary');
   }
-  /* 홈 물류팀 카드 진입 — 최근 사용 브랜드 유지 (없으면 메인) */
-  function triggerLogistics(brand){
-    const allowed = ['main','brightbeed','shinebeed'];
-    let target;
-    if(allowed.includes(brand)){
-      target = brand;
-    }else{
-      try{ target = localStorage.getItem('lgLastBrand') || 'main'; }catch(_){ target='main'; }
-      if(!allowed.includes(target)) target = 'main';
-    }
-    switchLgBrand(target);
+  /* 홈 물류팀 카드 진입 — 2026-11-13 메인 · 브라이트비드 · 샤인비드 탭을 비드유니버스 하나로 합침 (브랜드 선택 없음) */
+  function triggerLogistics(){
     showView('viewLg');
     // 진입 시 최근 발주 내역 탭부터
     if(typeof switchLgTab==='function') switchLgTab('recent');
   }
-  /* 뷰 내부 브랜드 스위치 (메인/BB/SB pill 및 프로그래매틱 호출)
-     - window._lgBrand : 브랜드 (main/brightbeed/shinebeed)
-     - window._kdBrand : 발주 데이터 브랜드 (brightbeed/shinebeed) — 메인은 brightbeed 로 fallback */
-  function switchLgBrand(brand){
-    const allowed = ['main','brightbeed','shinebeed'];
-    window._lgBrand = allowed.includes(brand) ? brand : 'main';
-    // 발주 데이터는 BB/SB 만 존재 → 메인이면 brightbeed 로 매핑
-    window._kdBrand = (window._lgBrand === 'shinebeed') ? 'shinebeed' : 'brightbeed';
-    try{ localStorage.setItem('lgLastBrand', window._lgBrand); }catch(_){}
-    _kdLastHash = ''; // dedup 캐시 초기화 → 강제 재렌더
-
-    const labels = { main:'메인', brightbeed:'브라이트비드', shinebeed:'샤인비드' };
-    const titleEl = document.querySelector('#viewLg .view-title');
-    if(titleEl){
-      titleEl.innerHTML = `물류팀 <span class="view-title-brand">${labels[window._lgBrand]}</span><span class="view-title-sub">/ 발주 관리</span>`;
-    }
-    document.querySelectorAll('.lg-brand-pill').forEach(btn=>{
-      const active = btn.dataset.brand === window._lgBrand;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-selected', active?'true':'false');
-    });
-    _refreshArchiveTabLabel();
+  // 옛 북마크 · 다른 화면에서 부르던 이름 — 이제 브랜드를 고르지 않고 합친 화면을 다시 그린다
+  function switchLgBrand(){
+    _kdLastHash = '';
     if(typeof renderKDOrders==='function') renderKDOrders({force:true}).catch(()=>{});
     if(document.querySelector('.lg-tab.active[data-tab="archive"]')) refreshArchivePane();
   }
@@ -17826,13 +17788,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   function _refreshArchiveTabLabel(){
     const badge = document.getElementById('lgTabArchiveBadge');
-    if(!badge) return;
-    if(window._kdBrand === 'shinebeed'){
-      // filtered 는 applyArchive 실행 후에만 채워지므로 all 로 대체
-      const n = (typeof _arStateSB !== 'undefined' && _arStateSB.all.length) || 0;
-      badge.textContent = n ? n.toLocaleString('ko-KR') : '—';
-    }
-    // 브라이트비드는 기존 arState 값을 arSearch/loadArchive 흐름이 이미 세팅.
+    if(!badge || typeof arState==='undefined') return;
+    const n = arState.filtered.length || (_arStateBB.all.length + _arStateSB.all.length);
+    badge.textContent = n ? n.toLocaleString('ko-KR') : '—';
   }
   function triggerNotice(){ showView('viewNotice'); }
   function triggerCs(){
@@ -27220,9 +27178,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const PO_REPO='j65209/beaduniverse';
   const PO_BRANCH='main';
 
-  async function fetchKDOrders(opts){
+  async function fetchKDOrders(opts, brand){
     opts=opts||{};
-    const brand = window._kdBrand || 'brightbeed';
+    brand = brand || 'brightbeed';
     const request=async()=>{
       const base=await loadProxyBase();
       if(!base) throw new Error('proxy unavailable');
@@ -27359,9 +27317,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const cnt=document.getElementById('poCount');
     const updTag=document.getElementById('kdUpdated');
     if(!tbody||!tbl||!empty) return;
-    let data=null;
-    try{ data=await fetchKDOrders(opts); }catch(e){ data=null; }
-    if(!data || !Array.isArray(data.orders)){
+    // 2026-11-13 비드유니버스 통합 — 브라이트비드 · 샤인비드 콰이디에어 계정 두 곳을 같이 받아 한 표로 합친다.
+    // 한쪽만 실패하면 받은 쪽만 보여 주고 갱신 시각 옆에 실패한 계정을 적는다.
+    const KD_BRANDS=[{key:'brightbeed',label:'브라이트비드',short:'브비'},{key:'shinebeed',label:'샤인비드',short:'샤비'}];
+    const got=await Promise.all(KD_BRANDS.map(b=>fetchKDOrders(opts,b.key).then(d=>(d&&Array.isArray(d.orders))?d:null).catch(()=>null)));
+    if(!got.some(Boolean)){
       // fetch 실패 시 표 유지 (지우지 않음) — updTag 에만 에러 표시.
       // 사장님 요청: 새로고침 눌렀을 때 데이터가 갑자기 사라지지 않도록.
       if(updTag){
@@ -27379,24 +27339,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       return;
     }
-    // 발주 품목 없는 신청서는 표시 안 함 (콰이디에어에서 취소/빈 신청서 등)
-    const orders=(data.orders||[]).filter(o => Array.isArray(o.items) && o.items.length > 0);
+    // 발주 품목 없는 신청서는 표시 안 함 (콰이디에어에서 취소/빈 신청서 등). 신청서마다 어느 계정 것인지 붙인다.
+    const orders=[];
+    got.forEach((d,i)=>{
+      if(!d) return;
+      const b=KD_BRANDS[i];
+      d.orders.filter(o => Array.isArray(o.items) && o.items.length > 0)
+        .forEach(o=>orders.push({...o, _brand:b.key, _brandLabel:b.label, _brandShort:b.short}));
+    });
+    // 두 계정을 섞어 최근 신청서가 위로 (날짜가 같으면 계정별 원래 순서 유지)
+    orders.sort((a,b)=>String(b.order_date||'').localeCompare(String(a.order_date||'')));
     // 샤인비드는 KD orders 를 클라이언트측에서 dedupe해서 카탈로그로 서빙.
     // 이 자리에서 자동 재빌드 → 아카이브 탭 진입 시 즉시 최신.
-    if((window._kdBrand||'brightbeed') === 'shinebeed'){
-      _arStateSB.all = buildShineCatalog(orders);
-      const ts=data.fetched_at?new Date(data.fetched_at*1000):null;
+    const sbData=got[1];
+    if(sbData){
+      _arStateSB.all = buildShineCatalog(orders.filter(o=>o._brand==='shinebeed'));
+      const ts=sbData.fetched_at?new Date(sbData.fetched_at*1000):null;
       window._shineArUpdated = ts ? `${ts.getFullYear()}-${String(ts.getMonth()+1).padStart(2,'0')}-${String(ts.getDate()).padStart(2,'0')} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}` : '';
       // 아카이브 탭이 활성 상태면 즉시 재렌더
-      if(document.querySelector('.lg-tab.active[data-tab="archive"]') && arState.brand === 'shinebeed'){
-        applyArchive();
-        const upd = document.getElementById('arUpdated');
-        if(upd) upd.textContent = window._shineArUpdated || '';
-      }
+      if(document.querySelector('.lg-tab.active[data-tab="archive"]')){ applyArchive(); _arRenderUpdated(); }
       _refreshArchiveTabLabel();
     }
+    // 갱신 시각 · 오류는 두 계정 중 더 늦게 받은 쪽 기준, 오류는 어느 계정이든 있으면 표시
+    const fetchedAt=Math.max(0,...got.filter(Boolean).map(d=>d.fetched_at||0));
+    const errs=[];
+    got.forEach((d,i)=>{
+      if(!d) errs.push({who:KD_BRANDS[i].label, ts:Date.now()/1000, error:'서버에서 못 받음'});
+      else if(d._error) errs.push({who:KD_BRANDS[i].label, ts:d._error.ts||0, error:d._error.error||'알 수 없는 오류'});
+    });
+    const data={fetched_at:fetchedAt||null, _error:errs.length?{ts:Math.max(...errs.map(e=>e.ts)), error:errs.map(e=>`${e.who}: ${e.error}`).join(' / ')}:null};
     // dedup-check: same data → skip rerender for cheaper polling
-    const hash = JSON.stringify({n:orders.length, t:data.fetched_at, first:orders[0]&&orders[0].ord_no, err:data._error&&data._error.ts});
+    const hash = JSON.stringify({n:orders.length, t:got.map(d=>d&&d.fetched_at), first:orders[0]&&orders[0].ord_no, err:data._error&&data._error.ts});
     const tsTxt = (()=>{
       if(!data.fetched_at) return '없음';
       const ts=new Date(data.fetched_at*1000);
@@ -27426,7 +27399,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const rows=[];
     for(const o of orders){
       for(const it of o.items){
-        rows.push({...it, ord_no:o.ord_no, date:o.order_date||'', status:o.status||'', serial:o.serial});
+        rows.push({...it, ord_no:o.ord_no, date:o.order_date||'', status:o.status||'', serial:o.serial, _brand:o._brand, _brandLabel:o._brandLabel, _brandShort:o._brandShort, _gk:o._brand+":"+o.ord_no});
       }
     }
     if(rows.length===0){
@@ -27444,18 +27417,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ordTone={};
     let nextTone=0;
     for(const r of rows){
-      if(!(r.ord_no in ordTone)){ ordTone[r.ord_no]=nextTone; nextTone=(nextTone+1)%4; }
+      if(!(r._gk in ordTone)){ ordTone[r._gk]=nextTone; nextTone=(nextTone+1)%4; }
     }
     let lastOrd='';
     const renderedHTML=rows.map(r=>{
-      const isFirst=r.ord_no!==lastOrd;
-      lastOrd=r.ord_no;
-      const groupCls=`po-row-g${ordTone[r.ord_no]||0}`;
+      const isFirst=r._gk!==lastOrd;
+      lastOrd=r._gk;
+      const groupCls=`po-row-g${ordTone[r._gk]||0}`;
       const stMap={'취소':'kd-st-cancel','출고완료':'kd-st-done','전체입고':'kd-st-full','부분입고':'kd-st-part'};
       const statusCls=stMap[r.status]||'kd-st-other';
       const ordCell = isFirst
         ? `<div class="kd-ord">${escapeHTML(r.ord_no)}</div>
-           <div class="kd-ord-meta">${escapeHTML(r.date)} · #${r.serial}</div>
+           <div class="kd-ord-meta"><span class="kd-brand-tag kd-brand-${r._brand}" title="${escapeHTML(r._brandLabel)} 콰이디에어 계정">${escapeHTML(r._brandShort)}</span>${escapeHTML(r.date)} · #${r.serial}</div>
            ${r.status?`<div class="kd-status ${statusCls}">${escapeHTML(r.status)}</div>`:''}`
         : '';
       // alicdn 등 중국 CDN이 Referer 검사로 hotlink 차단 → referrerpolicy=no-referrer 로 우회
@@ -27680,21 +27653,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 발주 상품 카탈로그 (products 배열 로드) =====
      scripts/parse_orders.py 가 xlsx 아이템 6천개를 link/img 기준 dedupe해서
      1,100+ 개 고유 상품으로 집계한 것을 3열 그리드로 렌더. */
-  // arState는 브랜드 별로 두 벌 유지하고 브랜드 스위치 시 통째로 스왑한다.
+  // 2026-11-13 비드유니버스 통합 — 화면은 두 브랜드 상품을 한 목록으로(arState = 검색 · 정렬 · 합친 목록),
+  // 상품 데이터 · 이름 바꾸기 등 오버라이드는 브랜드별로 따로 둔다(_arStateBB · _arStateSB, 상품마다 p._brand).
   // BB는 dropbox 발주서 카탈로그(프록시 /orders-catalog) + product-name-overrides.json,
   // SB는 KD 실시간 orders(dedupe) + product-name-overrides-shinebeed.json.
-  // 두 브랜드 모두 오버라이드 편집(제품명·이미지·삭제) 지원.
-  let arState={all:[],filtered:[],q:'',sort:'recent',shown:60,overrides:{},autoOverrides:{},imgOverrides:{},deletedIds:{},brand:'brightbeed',readonly:false};
-  const _arStateBB=arState;
-  const _arStateSB={all:[],filtered:[],q:'',sort:'recent',shown:60,overrides:{},autoOverrides:{},imgOverrides:{},deletedIds:{},brand:'shinebeed',readonly:false};
+  // 두 브랜드 모두 오버라이드 편집(제품명·이미지·삭제) 지원 — 고치면 그 상품 브랜드의 파일에 저장된다.
+  let arState={all:[],filtered:[],q:'',sort:'recent',shown:60,brand:'all',readonly:false};
+  const _arStateBB={all:[],overrides:{},autoOverrides:{},imgOverrides:{},deletedIds:{},brand:'brightbeed'};
+  const _arStateSB={all:[],overrides:{},autoOverrides:{},imgOverrides:{},deletedIds:{},brand:'shinebeed'};
+  const AR_BRANDS=['brightbeed','shinebeed'];
+  function _arSt(brand){ return brand==='shinebeed' ? _arStateSB : _arStateBB; }
   // 브랜드별 오버라이드 파일 (GitHub contents API) + PUT용 sha 캐시
   const AR_OVERRIDES_APIS={
     brightbeed:'https://api.github.com/repos/j65209/beaduniverse/contents/data/product-name-overrides.json',
     shinebeed :'https://api.github.com/repos/j65209/beaduniverse/contents/data/product-name-overrides-shinebeed.json',
   };
   const _arOverridesShaMap={brightbeed:null, shinebeed:null};
-  function _arCurBrand(){ return (arState && arState.brand) || 'brightbeed'; }
-  function _arCurOverridesApi(){ return AR_OVERRIDES_APIS[_arCurBrand()] || AR_OVERRIDES_APIS.brightbeed; }
   // 하위호환: 다른 곳에서 참조하던 이름 유지
   let _arOverridesSha=null;
   const AR_OVERRIDES_API=AR_OVERRIDES_APIS.brightbeed;
@@ -27725,13 +27699,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(emp){emp.querySelector('.po-empty-text').textContent='아직 카탈로그가 없습니다 — 🔄 동기화를 눌러 주세요';emp.style.display='block';}
         return;
       }
-      arState.all=d.products||[];
+      _arStateBB.all=d.products||[];
       buildOfferHistoryIndex(d.orders||[]);
-      const upd=document.getElementById('arUpdated');
-      if(upd) upd.textContent=(d.generated_at||'').slice(0,16).replace('T',' ');
+      window._bbArUpdated=(d.generated_at||'').slice(0,16).replace('T',' ');
+      _arRenderUpdated();
       const sel=document.getElementById('arSort');
       if(sel) sel.value=arState.sort;
-      loadNameOverrides().finally(()=>applyArchive());
+      loadNameOverrides('brightbeed').finally(()=>applyArchive());
       // 콰이디에어 최근 발주 테이블이 이미 렌더되었으면 이전 발주 뱃지 재부착
       if(typeof attachKDHistoryChips==='function') attachKDHistoryChips();
     }catch(e){
@@ -27774,27 +27748,27 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window.getOfferHistory=(url)=>_offerHistory[_extractOfferId(url)]||[];
 
-  async function loadNameOverrides(){
-    const brand=_arCurBrand();
-    const api=_arCurOverridesApi();
+  // 브랜드별 상품 이름 · 이미지 · 숨김 파일을 그 브랜드 상태(_arStateBB / _arStateSB)에 넣는다
+  async function loadNameOverrides(brand){
+    brand = brand==='shinebeed' ? 'shinebeed' : 'brightbeed';
+    const st=_arSt(brand);
+    const api=AR_OVERRIDES_APIS[brand];
     try{
       const r=await ghFetch(api,{cache:'no-cache'});
-      if(brand!==_arCurBrand()) return;   // 받는 사이 브랜드를 바꿨으면 다른 브랜드 상태에 넣지 않는다
       if(!r.ok){
         // 못 읽은 건 "없음"이 아니다 — 파일이 정말 없을 때(404)만 비운다
         if(r.status===404){
-          arState.overrides={}; arState.autoOverrides={}; arState.imgOverrides={}; arState.deletedIds={};
-          _arOverridesShaMap[brand]=null; _arOverridesSha=null;
+          st.overrides={}; st.autoOverrides={}; st.imgOverrides={}; st.deletedIds={};
+          _arOverridesShaMap[brand]=null; if(brand==='brightbeed') _arOverridesSha=null;
         }
         return;
       }
       const j=await r.json();
       const raw=decodeURIComponent(escape(atob(j.content||'')));
       const d=JSON.parse(raw||'{}');
-      if(brand!==_arCurBrand()) return;
       _arOvApplyToState(d, brand);
       _arOverridesShaMap[brand]=j.sha||null;
-      _arOverridesSha=_arOverridesShaMap[brand]; // 하위호환
+      if(brand==='brightbeed') _arOverridesSha=_arOverridesShaMap[brand]; // 하위호환
     }catch(e){
       console.warn('상품 이름 불러오기 실패',e);   // 지금 값을 그대로 둔다
     }
@@ -27823,10 +27797,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _arOvApplyToState(d, brand){
     const p=_arOvPending[brand];
     const m=_arOvApplyOps(Object.assign({}, d), p?p.ops:[]);
-    arState.overrides=m.overrides;
-    arState.autoOverrides=m.auto_overrides;
-    arState.imgOverrides=m.img_overrides;
-    arState.deletedIds=m.deleted_ids;
+    const st=_arSt(brand);
+    st.overrides=m.overrides;
+    st.autoOverrides=m.auto_overrides;
+    st.imgOverrides=m.img_overrides;
+    st.deletedIds=m.deleted_ids;
   }
   function _arOvPersistDirty(brand){
     try{
@@ -27899,8 +27874,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         _arOvPending[brand] = left.length ? {ops:left, msg:_arOvPending[brand].msg} : null;
         _arOvPersistDirty(brand);
         _arOvPushFailStreak[brand] = 0;
-        if(newSha){ _arOvOverridesShaMap[brand] = newSha; if(brand===_arCurBrand()) _arOverridesSha = newSha; }
-        if(brand===_arCurBrand()) _arOvApplyToState(merged, brand);   // 남이 바꾼 이름도 반영
+        if(newSha){ _arOvOverridesShaMap[brand] = newSha; if(brand==="brightbeed") _arOverridesSha = newSha; }
+        _arOvApplyToState(merged, brand);   // 남이 바꾼 이름도 반영
         if(left.length) _arOvPushAgain[brand] = true;
         return true;
       }
@@ -27917,10 +27892,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   // 하위 호환용 sha map alias
   const _arOvOverridesShaMap = _arOverridesShaMap;
-  async function _saveOverridesPayload(nextOverrides, nextAuto, msg, nextImg, nextDeleted){
-    if(nextImg===undefined) nextImg=arState.imgOverrides||{};
-    if(nextDeleted===undefined) nextDeleted=arState.deletedIds||{};
-    const brand=_arCurBrand();
+  // brand = 고친 상품의 브랜드 — 그 브랜드 상태 · 파일에만 저장한다
+  async function _saveOverridesPayload(brand, nextOverrides, nextAuto, msg, nextImg, nextDeleted){
+    brand = brand==='shinebeed' ? 'shinebeed' : 'brightbeed';
+    const st=_arSt(brand);
+    if(nextImg===undefined) nextImg=st.imgOverrides||{};
+    if(nextDeleted===undefined) nextDeleted=st.deletedIds||{};
     // 지금 상태와 달라진 칸만 작업으로
     const ops=[];
     const diff=(k,cur,next)=>{
@@ -27928,15 +27905,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       Object.keys(next).forEach(id=>{ if(JSON.stringify(cur[id])!==JSON.stringify(next[id])) ops.push({k,id,v:next[id]}); });
       Object.keys(cur).forEach(id=>{ if(!(id in next)) ops.push({k,id,v:null}); });
     };
-    diff('overrides',arState.overrides,nextOverrides);
-    diff('autoOverrides',arState.autoOverrides,nextAuto);
-    diff('imgOverrides',arState.imgOverrides,nextImg);
-    diff('deletedIds',arState.deletedIds,nextDeleted);
+    diff('overrides',st.overrides,nextOverrides);
+    diff('autoOverrides',st.autoOverrides,nextAuto);
+    diff('imgOverrides',st.imgOverrides,nextImg);
+    diff('deletedIds',st.deletedIds,nextDeleted);
     // 로컬 상태는 즉시 반영 (UI 반응성)
-    arState.overrides=nextOverrides;
-    arState.autoOverrides=nextAuto;
-    arState.imgOverrides=nextImg;
-    arState.deletedIds=nextDeleted;
+    st.overrides=nextOverrides;
+    st.autoOverrides=nextAuto;
+    st.imgOverrides=nextImg;
+    st.deletedIds=nextDeleted;
     if(!ops.length) return;
     // 미푸시 작업을 localStorage 에 저장 → 새로고침 후 자동 재전송
     const prev=_arOvPending[brand];
@@ -27960,71 +27937,93 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function resetAutoOverrides(){
     if(!confirm('자동 매칭된 상품명을 모두 원래 이름으로 되돌립니다.\n(수동으로 수정한 이름은 그대로 유지됩니다)\n\n계속할까요?')) return;
     try{
-      await _saveOverridesPayload(arState.overrides, {}, 'product-name-overrides: reset auto_overrides');
+      for(const b of AR_BRANDS){
+        const st=_arSt(b);
+        if(Object.keys(st.autoOverrides||{}).length) await _saveOverridesPayload(b, st.overrides, {}, 'product-name-overrides: reset auto_overrides');
+      }
       applyArchive();
       toast('✓ 자동 매칭 되돌림','ok');
     }catch(e){ toast(`되돌리기 실패: ${e.message}`,'err'); }
   }
   window.resetAutoOverrides=resetAutoOverrides;
 
-  async function saveProductName(pid, currentDisplay){
+  async function saveProductName(pid, currentDisplay, brand){
     const raw=prompt('상품명 수정 (비우면 원래 이름으로 복구):', currentDisplay||'');
     if(raw===null) return;
     const val=raw.trim();
-    const next={...arState.overrides};
+    const st=_arSt(brand);
+    const next={...st.overrides};
     if(val) next[pid]=val;
     else delete next[pid];
     try{
-      await _saveOverridesPayload(next, arState.autoOverrides, `product-name-overrides: ${val?'update':'clear'} ${pid}`);
+      await _saveOverridesPayload(brand, next, st.autoOverrides, `product-name-overrides: ${val?'update':'clear'} ${pid}`);
       applyArchive();
       toast('✓ 상품명 저장됨','ok');
     }catch(e){ toast(`저장 오류: ${e.message}`,'err'); }
   }
   window.saveProductName=saveProductName;
 
-  async function saveProductImg(pid, currentUrl){
+  async function saveProductImg(pid, currentUrl, brand){
     const raw=prompt('상품 이미지 URL 수정 (비우면 원래 이미지로 복구):', currentUrl||'');
     if(raw===null) return;
     const val=raw.trim();
     if(val && !/^https?:\/\//i.test(val)){ toast('URL은 http:// 또는 https:// 로 시작해야 합니다','err'); return; }
-    const next={...arState.imgOverrides};
+    const st=_arSt(brand);
+    const next={...st.imgOverrides};
     if(val) next[pid]=val;
     else delete next[pid];
     try{
-      await _saveOverridesPayload(arState.overrides, arState.autoOverrides, `product-name-overrides: ${val?'update':'clear'} img ${pid}`, next);
+      await _saveOverridesPayload(brand, st.overrides, st.autoOverrides, `product-name-overrides: ${val?'update':'clear'} img ${pid}`, next);
       applyArchive();
       toast(val?'✓ 이미지 저장됨':'✓ 이미지 복구됨','ok');
     }catch(e){ toast(`저장 오류: ${e.message}`,'err'); }
   }
   window.saveProductImg=saveProductImg;
 
-  async function saveProductDelete(pid, displayName){
+  async function saveProductDelete(pid, displayName, brand){
     if(!confirm(`이 상품을 목록에서 숨깁니까?\n\n"${displayName||pid}"\n\n(원본 발주 데이터는 그대로 유지되며, 언제든 되돌릴 수 있습니다.)`)) return;
-    const next={...arState.deletedIds, [pid]: true};
+    const st=_arSt(brand);
+    const next={...st.deletedIds, [pid]: true};
     try{
-      await _saveOverridesPayload(arState.overrides, arState.autoOverrides, `product-name-overrides: delete ${pid}`, arState.imgOverrides, next);
+      await _saveOverridesPayload(brand, st.overrides, st.autoOverrides, `product-name-overrides: delete ${pid}`, st.imgOverrides, next);
       applyArchive();
       toast('✓ 목록에서 숨김','ok');
     }catch(e){ toast(`저장 오류: ${e.message}`,'err'); }
   }
   window.saveProductDelete=saveProductDelete;
 
+  function _arCountAll(key){ return AR_BRANDS.reduce((n,b)=>n+Object.keys(_arSt(b)[key]||{}).length,0); }
   async function restoreAllDeleted(){
-    const cnt=Object.keys(arState.deletedIds||{}).length;
+    const cnt=_arCountAll('deletedIds');
     if(!cnt){ toast('숨긴 상품이 없습니다','ok'); return; }
     if(!confirm(`숨겨둔 상품 ${cnt}개를 모두 복원할까요?`)) return;
     try{
-      await _saveOverridesPayload(arState.overrides, arState.autoOverrides, 'product-name-overrides: restore all deleted', arState.imgOverrides, {});
+      for(const b of AR_BRANDS){
+        const st=_arSt(b);
+        if(Object.keys(st.deletedIds||{}).length) await _saveOverridesPayload(b, st.overrides, st.autoOverrides, 'product-name-overrides: restore all deleted', st.imgOverrides, {});
+      }
       applyArchive();
       toast(`✓ ${cnt}개 복원됨`,'ok');
     }catch(e){ toast(`복원 오류: ${e.message}`,'err'); }
   }
   window.restoreAllDeleted=restoreAllDeleted;
+  // 상품 리스트 갱신 시각 — 브라이트비드(발주서 동기화) · 샤인비드(콰이디에어) 따로
+  function _arRenderUpdated(){
+    const upd=document.getElementById('arUpdated');
+    if(!upd) return;
+    const parts=[];
+    if(window._bbArUpdated) parts.push('브비 '+window._bbArUpdated);
+    if(window._shineArUpdated) parts.push('샤비 '+window._shineArUpdated);
+    upd.textContent=parts.join(' · ');
+  }
   function applyArchive(){
     const q=arState.q.trim().toLowerCase();
-    const del=arState.deletedIds||{};
+    // 두 브랜드 상품을 한 목록으로 — 상품마다 어느 브랜드 것인지 붙여 두고 숨김 · 이름은 그 브랜드 상태에서 본다
+    _arStateBB.all.forEach(p=>{ p._brand='brightbeed'; });
+    _arStateSB.all.forEach(p=>{ p._brand='shinebeed'; });
+    arState.all=_arStateBB.all.concat(_arStateSB.all);
     arState.filtered=arState.all.filter(p=>{
-      if(del[p.id]) return false;
+      if((_arSt(p._brand).deletedIds||{})[p.id]) return false;
       if(q){
         const hay=[p.kor||'',p.cn||'',...(p.memos||[])].join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
@@ -28054,12 +28053,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const cnt=document.getElementById('arCount');
     if(!grid) return;
     if(cnt) cnt.textContent=`${arState.filtered.length.toLocaleString('ko-KR')}종`;
-    const autoCnt=Object.keys(arState.autoOverrides||{}).length;
+    const autoCnt=_arCountAll('autoOverrides');
     const resetBtn=document.getElementById('arResetBtn');
     const autoCntSpan=document.getElementById('arAutoCount');
     if(resetBtn) resetBtn.style.display = autoCnt>0 ? '' : 'none';
     if(autoCntSpan) autoCntSpan.textContent = autoCnt>0 ? `(${autoCnt}개)` : '';
-    const delCnt=Object.keys(arState.deletedIds||{}).length;
+    const delCnt=_arCountAll('deletedIds');
     const restoreBtn=document.getElementById('arRestoreBtn');
     const restoreCntSpan=document.getElementById('arRestoreCount');
     if(restoreBtn) restoreBtn.style.display = delCnt>0 ? '' : 'none';
@@ -28087,21 +28086,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         e.stopPropagation();
         const pid=btn.dataset.pid;
         const nameEl=btn.parentElement.querySelector('.ar-name-text');
-        saveProductName(pid, nameEl?.textContent?.trim() || '');
+        saveProductName(pid, nameEl?.textContent?.trim() || '', _arBrandOfBtn(btn));
       });
     });
     // 이미지 편집 버튼 클릭 → 이미지 URL 수정 프롬프트
     grid.querySelectorAll('.ar-img-edit').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
-        saveProductImg(btn.dataset.pid, btn.dataset.img || '');
+        saveProductImg(btn.dataset.pid, btn.dataset.img || '', _arBrandOfBtn(btn));
       });
     });
     // 삭제(숨김) 버튼 클릭 → 상품 숨김 처리
     grid.querySelectorAll('.ar-card-del').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
-        saveProductDelete(btn.dataset.pid, btn.dataset.name || '');
+        saveProductDelete(btn.dataset.pid, btn.dataset.name || '', _arBrandOfBtn(btn));
       });
     });
     // 이전 발주 뱃지 hover → 이력 팝업
@@ -28116,30 +28115,33 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
     // 자동 매칭 승인/취소
     grid.querySelectorAll('.ar-btn-approve').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ e.stopPropagation(); approveAutoName(btn.dataset.pid); });
+      btn.addEventListener('click', (e)=>{ e.stopPropagation(); approveAutoName(btn.dataset.pid, _arBrandOfBtn(btn)); });
     });
     grid.querySelectorAll('.ar-btn-reject').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ e.stopPropagation(); rejectAutoName(btn.dataset.pid); });
+      btn.addEventListener('click', (e)=>{ e.stopPropagation(); rejectAutoName(btn.dataset.pid, _arBrandOfBtn(btn)); });
     });
   }
 
-  async function approveAutoName(pid){
-    const name = arState.autoOverrides[pid]?.name;
+  function _arBrandOfBtn(btn){ const c=btn.closest('.ar-prod'); return (c&&c.dataset.brand)||'brightbeed'; }
+  async function approveAutoName(pid, brand){
+    const st=_arSt(brand);
+    const name = st.autoOverrides[pid]?.name;
     if(!name) return;
-    const nextOverrides = {...arState.overrides, [pid]: name};
-    const nextAuto = {...arState.autoOverrides};
+    const nextOverrides = {...st.overrides, [pid]: name};
+    const nextAuto = {...st.autoOverrides};
     delete nextAuto[pid];
     try{
-      await _saveOverridesPayload(nextOverrides, nextAuto, `product-name-overrides: approve auto ${pid}`);
+      await _saveOverridesPayload(brand, nextOverrides, nextAuto, `product-name-overrides: approve auto ${pid}`);
       applyArchive();
       toast(`✓ 승인: ${name}`,'ok');
     }catch(e){ toast(`승인 실패: ${e.message}`,'err'); }
   }
-  async function rejectAutoName(pid){
-    const nextAuto = {...arState.autoOverrides};
+  async function rejectAutoName(pid, brand){
+    const st=_arSt(brand);
+    const nextAuto = {...st.autoOverrides};
     delete nextAuto[pid];
     try{
-      await _saveOverridesPayload(arState.overrides, nextAuto, `product-name-overrides: reject auto ${pid}`);
+      await _saveOverridesPayload(brand, st.overrides, nextAuto, `product-name-overrides: reject auto ${pid}`);
       applyArchive();
       toast('✗ 취소됨','ok');
     }catch(e){ toast(`취소 실패: ${e.message}`,'err'); }
@@ -28148,8 +28150,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.rejectAutoName=rejectAutoName;
   function renderProductCard(p){
     const readonly = !!arState.readonly;
-    const overrideName=arState.overrides[p.id];
-    const autoName=arState.autoOverrides?.[p.id]?.name;
+    const st=_arSt(p._brand);
+    const overrideName=st.overrides[p.id];
+    const autoName=st.autoOverrides?.[p.id]?.name;
     // 🤖 제안은 이미 붙은 이름(사진 보고 붙인 이름 등)이 있어도 보여줌 — 취소하면 그 이름으로 돌아감
     const isAuto = !!autoName && autoName!==overrideName;
     const shownName = isAuto ? autoName : overrideName;
@@ -28157,7 +28160,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const origName=(isAuto && overrideName) ? overrideName : (p.kor||p.cn||'');
     const sub=(shownName && origName && shownName!==origName) ? origName
              : (p.kor && p.cn && p.kor!==p.cn) ? p.cn : '';
-    const overrideImg=arState.imgOverrides?.[p.id];
+    const overrideImg=st.imgOverrides?.[p.id];
     const displayImg=overrideImg || p.img || '';
     const isImgEdited = !!overrideImg;
     const imgBody=displayImg
@@ -28196,7 +28199,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               </button>
             `);
     return `
-      <div class="ar-prod">
+      <div class="ar-prod" data-brand="${p._brand==='shinebeed'?'shinebeed':'brightbeed'}">
         ${delBtn}
         <div class="ar-prod-img">${img}</div>
         <div class="ar-prod-body">
@@ -28213,7 +28216,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             ${p.link ? `<span class="ar-hist-chip" data-purl="${arEscape(p.link)}" title="hover 시 이전 발주 내역">이전 <em>${p.order_count||0}회</em></span>` : ''}
           </div>
           <div class="ar-prod-foot">
-            <div class="ar-prod-tags"></div>
+            <div class="ar-prod-tags">${p._brand==='shinebeed'?'<span class="kd-brand-tag kd-brand-shinebeed" title="샤인비드 발주 상품">샤비</span>':'<span class="kd-brand-tag kd-brand-brightbeed" title="브라이트비드 발주 상품">브비</span>'}</div>
             ${link}
           </div>
         </div>
@@ -28430,41 +28433,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window.switchLgTab=switchLgTab;
 
+  // 2026-11-13 비드유니버스 통합 — 브라이트비드(발주서 카탈로그) · 샤인비드(콰이디에어) 상품을 한 목록으로
   function refreshArchivePane(){
-    const brand = window._kdBrand || 'brightbeed';
-    // arState 스왑 (참조 갈아치우기 — 하위 함수들이 모두 arState.xxx 로 참조)
-    arState = (brand === 'shinebeed') ? _arStateSB : _arStateBB;
-    // Pane 제목 + 브라이트비드 전용 버튼 표시/숨김
     const titleEl = document.querySelector('.lg-pane[data-pane="archive"] .po-section-title');
-    if(titleEl) titleEl.textContent = (brand === 'shinebeed')
-      ? '샤인비드 발주 상품 카탈로그'
-      : '브라이트비드 발주 상품 카탈로그';
-    const syncBtn = document.getElementById('arSyncBtn');
-    const resetBtn = document.getElementById('arResetBtn');
-    const restoreBtn = document.getElementById('arRestoreBtn');
-    if(syncBtn) syncBtn.style.display = (brand === 'shinebeed') ? 'none' : '';
-    if(resetBtn && brand === 'shinebeed') resetBtn.style.display = 'none';
-    if(restoreBtn && brand === 'shinebeed') restoreBtn.style.display = 'none';
+    if(titleEl) titleEl.textContent = '비드유니버스 발주 상품 카탈로그';
     // 검색/정렬 UI 를 현재 상태로 복원
     const sb = document.getElementById('arSearch');
     if(sb) sb.value = arState.q || '';
     const sel = document.getElementById('arSort');
     if(sel) sel.value = arState.sort || 'recent';
-    if(brand === 'shinebeed'){
-      // SB는 renderKDOrders 가 최신 KD orders 를 받아 arStateSB.all 을 채워둔다. 즉시 렌더.
-      const upd = document.getElementById('arUpdated');
-      if(upd) upd.textContent = window._shineArUpdated || '';
-      // 첫 진입에 오버라이드(제품명/이미지/삭제) 로드 후 applyArchive
-      if(!window._shineOverridesLoaded){
-        window._shineOverridesLoaded=true;
-        loadNameOverrides().finally(()=>applyArchive());
-      }else{
-        applyArchive();
-      }
-    }else{
-      if(!_arLoaded){ _arLoaded=true; loadArchive(); }
-      else applyArchive();
+    _arRenderUpdated();
+    // SB 상품은 renderKDOrders 가 콰이디에어 신청서로 채워 둔다. 이름 · 숨김 파일은 처음 열 때 한 번
+    if(!window._shineOverridesLoaded){
+      window._shineOverridesLoaded=true;
+      loadNameOverrides('shinebeed').finally(()=>applyArchive());
     }
+    // BB 카탈로그(약 340KB)는 처음 열 때만 받는다 — 받는 동안 SB 상품을 먼저 보여 준다
+    if(!_arLoaded){ _arLoaded=true; loadArchive(); }
+    applyArchive();
   }
   window.refreshArchivePane=refreshArchivePane;
 
