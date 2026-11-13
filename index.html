@@ -2592,6 +2592,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     letter-spacing:.04em;padding:0 6px;
   }
   .md-cal-add{margin-left:0}
+  /* 자동 일정 갱신 시각 — 30분 넘게 못 받으면 경고색 */
+  .md-cal-fresh{font-size:11.5px;font-family:var(--mono);color:var(--text-3);white-space:nowrap;cursor:help}
+  .md-cal-fresh.is-stale{color:var(--warn)}
   .md-cal-body{padding:14px 18px 16px}
   .md-cal-weekdays{
     display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;
@@ -12173,6 +12176,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="po-section-head md-cal-head">
           <div class="po-section-title">기획전 일정</div>
           <div class="po-section-meta md-cal-meta">
+            <span class="md-cal-fresh" id="mdCalFresh"></span>
             <div class="md-cal-nav">
               <button type="button" class="btn-md-cal-nav" onclick="mdCalNavToday()" title="오늘">오늘</button>
               <button type="button" class="btn-md-cal-nav md-cal-nav-arrow" onclick="mdCalNavPrev()" aria-label="이전 달">‹</button>
@@ -35217,8 +35221,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {plat:'zigzag', brand:'6a',  path:'zigzag/6a/daily'},
   ];
   const MD_AUTO_CACHE='brightbeed_md_auto_events_v1';
-  const _mdAuto={events:[], fetchedAt:0, loading:false, updatedAt:0};
-  try{ const c=JSON.parse(localStorage.getItem(MD_AUTO_CACHE)||'null'); if(c && Array.isArray(c.events)){ _mdAuto.events=c.events; _mdAuto.updatedAt=c.updatedAt||0; } }catch(e){}
+  const _mdAuto={events:[], fetchedAt:0, loading:false, updatedAt:0, asOf:{}, failed:[]};
+  try{ const c=JSON.parse(localStorage.getItem(MD_AUTO_CACHE)||'null'); if(c && Array.isArray(c.events)){ _mdAuto.events=c.events; _mdAuto.updatedAt=c.updatedAt||0; _mdAuto.asOf=c.asOf||{}; } }catch(e){}
+  /* 갱신 시각 (2026-11-13 사장님 "기획전 캘린더는 30분마다 최신화") — 메일 · 에이블리 · 지그재그는 서버가 30분마다 새로 넣고
+     이 화면은 열려 있으면 10분마다 다시 받는다. 30분 넘게 못 받았거나 일부를 못 받았으면 경고색 */
+  const _mdHm=t=>{ const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  function _mdFreshRender(){
+    const el=document.getElementById('mdCalFresh');
+    if(!el) return;
+    if(!_mdAuto.updatedAt){ el.textContent=''; el.title=''; el.classList.remove('is-stale'); return; }
+    const late=_mdAuto.fetchedAt>0 && Date.now()-_mdAuto.updatedAt>30*60*1000;   // 이 창에서 받으려 했는데 30분 넘게 못 받음
+    const failed=_mdAuto.failed||[];
+    el.textContent=late ? `⚠ 자동 일정 ${_mdHm(_mdAuto.updatedAt)} 이후 못 받음` : `자동 일정 ${_mdHm(_mdAuto.updatedAt)} 갱신${failed.length?' · 일부 못 받음':''}`;
+    el.classList.toggle('is-stale', late || failed.length>0);
+    const asOf=Object.entries(_mdAuto.asOf||{}).map(([p,at])=>`${(_mdPlatMap[p]||{}).label||p} ${String(at).split(' ').pop()}`).join(' · ');
+    el.title=['29CM · W컨셉 메일 · 에이블리 · 지그재그 기획전은 서버가 30분마다 새로 넣고, 이 화면은 열려 있으면 10분마다 다시 받습니다.',
+      asOf?`보고서 기준 시각: ${asOf}`:'', failed.length?`못 받은 곳: ${failed.join(', ')} — 지난 일정을 그대로 보여 줍니다 (서버 PC 연결 확인)`:''].filter(Boolean).join('\n');
+  }
   function _mdAutoTitle(name){
     return String(name||'')
       .replace(/\p{Extended_Pictographic}|[☀-➿️★☆]/gu,'')
@@ -35247,6 +35266,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return j;
   }
   async function mdAutoLoad(force){
+    _mdFreshRender();
     if(_mdAuto.loading) return;
     if(!force && Date.now()-_mdAuto.fetchedAt < 10*60*1000) return;
     _mdAuto.loading=true;
@@ -35254,12 +35274,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const kst=d=>new Date(d.getTime()+9*3600e3).toISOString().slice(0,10);
       const today=kst(new Date()), yday=kst(new Date(Date.now()-864e5));
       const out=[]; let okCount=0;
+      const failed=[], asOf={};   // failed: 못 받은 곳 {plat, brand} · asOf: 플랫폼별 보고서 기준 시각
       await Promise.all(MD_AUTO_SOURCES.map(async src=>{
         try{
           let rep=await _mdAutoGet(`${src.path}/${today}.json`);
           if(!rep) rep=await _mdAutoGet(`${src.path}/${yday}.json`);
           if(!rep) return;
           okCount++;
+          const at=`${rep.date||''} ${rep.as_of||''}`.trim();
+          if(rep.as_of && (!asOf[src.plat] || at>asOf[src.plat])) asOf[src.plat]=at;
           (Array.isArray(rep.events)?rep.events:[]).forEach(e=>{
             const start=String(e.start||'').slice(0,10), end=String(e.end||e.start||'').slice(0,10);
             if(!start) return;
@@ -35272,13 +35295,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               memo:`${pf?pf.label:src.plat}에서 자동으로 가져온 일정 · ${st}${goods?` · 상품 ${goods}개`:''}${rep.as_of?` · ${rep.date} ${rep.as_of} 기준`:''}`,
             });
           });
-        }catch(err){}
+        }catch(err){ failed.push(src); }
       }).concat([(async()=>{
         // 29CM · W컨셉 — 메일 기획전 (shinebead0 지메일: 보낸 신청 메일 = '신청함', 받은 제안 메일 = '제안받음' → Apps Script → 함수 md-mail-events → 표 md_mail_events)
         try{
           const K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
           const r=await fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/md_mail_events?select=id,platform,brand,name,start_date,end_date,status,memo,subject&hidden=eq.false&start_date=not.is.null&limit=500',{headers:{apikey:K,Authorization:'Bearer '+K},cache:'no-store'});
-          if(!r.ok) return;
+          if(!r.ok){ failed.push({plat:'mail'}); return; }
           okCount++;
           (await r.json()).forEach(e=>{
             const pf=_mdPlatMap[e.platform];
@@ -35288,14 +35311,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               status:e.status||'신청함', memo:e.memo||'',
             });
           });
-        }catch(err){}
+        }catch(err){ failed.push({plat:'mail'}); }
       })()]));
       _mdAuto.fetchedAt=Date.now();
+      _mdAuto.failed=failed.map(s=>s.plat==='mail' ? '29CM · W컨셉 메일'
+        : `${(_mdPlatMap[s.plat]||{}).label||s.plat} ${((MD_BRANDS_ALL.find(b=>b.key===s.brand))||{}).label||s.brand}`);
       if(okCount===0) return;   // 프록시가 꺼졌으면 지난 목록 유지
-      _mdAuto.events=out; _mdAuto.updatedAt=Date.now();
-      try{ localStorage.setItem(MD_AUTO_CACHE, JSON.stringify({events:out, updatedAt:_mdAuto.updatedAt})); }catch(e){}
+      // 못 받은 곳은 지난 일정을 그대로 둔다 — 메일(수파베이스)만 받고 서버 PC(프록시)가 꺼졌을 때 에이블리 · 지그재그 일정이 통째로 사라지지 않게
+      const keep=failed.map(s=>s.plat==='mail' ? 'auto:mail:' : `auto:${s.plat}:${s.brand}:`);
+      if(keep.length) (_mdAuto.events||[]).forEach(e=>{ if(keep.some(p=>String(e.id||'').startsWith(p))) out.push(e); });
+      Object.entries(_mdAuto.asOf||{}).forEach(([p,at])=>{ if(!asOf[p] && failed.some(s=>s.plat===p)) asOf[p]=at; });
+      _mdAuto.events=out; _mdAuto.updatedAt=Date.now(); _mdAuto.asOf=asOf;
+      try{ localStorage.setItem(MD_AUTO_CACHE, JSON.stringify({events:out, updatedAt:_mdAuto.updatedAt, asOf})); }catch(e){}
       renderMdCal();
-    }finally{ _mdAuto.loading=false; }
+    }finally{ _mdAuto.loading=false; _mdFreshRender(); }
   }
   window.mdAutoLoad=mdAutoLoad;
   const _mdIsAuto=id=>String(id||'').startsWith('auto:');
