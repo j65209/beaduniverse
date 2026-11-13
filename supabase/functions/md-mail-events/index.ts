@@ -5,11 +5,16 @@
 //       → 그 지메일의 Apps Script(scripts/md-mail-sync.gs, 30분마다)가 메일 원문 + 첨부 엑셀 글자를 보냄
 //       → 여기서 기획전 이름 · 기간 · 브랜드를 뽑아 md_mail_events 에 upsert → 오피스 MD 캘린더가 '자동' 줄로 읽음.
 // 뽑는 규칙은 여기에만 있다 — 고치면 {action:'reparse'} 로 저장된 원문을 다시 뽑는다.
+// 브랜드 (2026-11-13 사장님 "브랜드 미지정은 코페리꺼 아니야? 엑셀 열어서 제품명 확인하고 매칭해줘" — 미지정 없이):
+//   ① 브랜드 이름 — 첨부 파일명 · 제목 · 내 본문 · 첨부 엑셀 글자('코페리의 산뜻한 여름 컬러 코발트니백')
+//   ② 상품명 — 같은 글들의 상품명을 오피스 MD팀 구글시트(코페리 · 아페티 · 코즈미) 상품 목록과 대조
+//      (29CM 일괄할인 · 가격 변경 엑셀은 '브랜드 명' 칸이 비고 'Mush bag' 같은 상품명만 있다)
+//   ③ 계정 — 이 지메일(샤인비드)의 29CM · W컨셉 셀러 계정은 코페리뿐 → 29CM 잡화 MD 전체 공지처럼 둘 다 없는 메일
 //
 // 배포: Supabase MCP deploy_edge_function, 프로젝트 ckyjkxbqsyjoqpuqwoce, verify_jwt=false (키로 확인)
 // 키: private_kv 'md_mail_key'
 //   POST {action:'mail', key, msg:{id, dir:'sent'|'received', sentAt, subject, from, to, body, attachments:[{name, text}]}} → {events:[...]}
-//   POST {action:'reparse', key}
+//   POST {action:'reparse', key} — 원문 다시 뽑기 (표 새로 채움) · {action:'preview', key} — 뽑은 결과만 돌려줌 (표 그대로)
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -21,6 +26,67 @@ const BRANDS: [string, RegExp][] = [
   ['akoi', /아코이|akoi/i], ['yar', /야르|yär|\byar\b/i], ['6a', /식스에이|\b6a\b/i],
 ];
 const PLATFORM_LABEL: Record<string, string> = { wconcept: 'W컨셉', '29cm': '29CM' };
+// 이 지메일의 셀러 계정 브랜드 — W컨셉 셀러 3013187 = 플레이오토 "[코페리] W컨셉", 29CM 은 코페리만 입점.
+// 다른 브랜드가 이 계정으로 들어가면 그 메일은 ① · ② 로 가려진다 (엑셀 파일명 · 상품명)
+const ACCOUNT_BRAND: Record<string, string> = { '29cm': 'kop', wconcept: 'kop' };
+
+// 상품 목록 — MD팀 구글시트(링크 공개 gviz CSV) 탭 · 상품명 열(0부터). sixshop-collector ably-cost.ts · home-brands.ts 와 같은 표
+const PRODUCT_SHEETS: { brand: string; sheet: string; gid: string; cols: number[] }[] = [
+  { brand: 'kop', sheet: '1bnKosG3_Ytjg-maMKt1SeaO-ojeQemKp_mzyjnWscD0', gid: '0', cols: [2, 15] }, // 코페리 — 기획전 플랫폼 리스트 C · P열
+  { brand: 'kop', sheet: '1bnKosG3_Ytjg-maMKt1SeaO-ojeQemKp_mzyjnWscD0', gid: '705952769', cols: [2] }, // 코페리 — Product List
+  { brand: 'apt', sheet: '1u6u15dxSUthAYKxqjYH8zLSdOAeWAiFtM24dVYZwOS0', gid: '1838386820', cols: [2] }, // 아페티 — Product List
+  { brand: 'koz', sheet: '1TS-HqffOap11AdGwiffMr38KwHAUq1fmcjmmBPdKLMU', gid: '1819637012', cols: [2] }, // 코즈미 — Product List
+];
+/** 글자 · 숫자만 남김 — 엑셀 글자는 칸이 붙어서 온다('확인Mush bag판매가') */
+const flat = (s: string) => String(s || '').toLowerCase().replace(/[^0-9a-z가-힣]+/g, '');
+let products: { at: number; keys: [string, string][] } | null = null; // [상품명(flat, 색상 괄호 뺌), 브랜드]
+function csvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; continue; }
+    if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+async function loadProducts() {
+  if (products && Date.now() - products.at < 6 * 3600e3) return;
+  const owner = new Map<string, Set<string>>();
+  let ok = 0;
+  await Promise.all(PRODUCT_SHEETS.map(async (s) => {
+    try {
+      const r = await fetch(`https://docs.google.com/spreadsheets/d/${s.sheet}/gviz/tq?tqx=out:csv&gid=${s.gid}`);
+      if (!r.ok) return;
+      let n = 0;
+      for (const row of csvRows(await r.text()).slice(1)) for (const c of s.cols) {
+        const k = flat(String(row[c] ?? '').replace(/\([^)]*\)/g, ' '));
+        // 'n01' · 'gleam' 처럼 짧은 이름은 아무 글에나 들어 있어서 뺀다
+        if (k.length < 7 || !/[a-z가-힣]/.test(k)) continue;
+        if (!owner.has(k)) owner.set(k, new Set());
+        owner.get(k)!.add(s.brand);
+        n++;
+      }
+      if (n) ok++;
+    } catch { /* 시트를 못 읽으면 상품명 대조만 건너뛴다 → ③ 계정 브랜드 */ }
+  }));
+  if (!ok) return; // 다 못 읽으면 지난 목록 그대로
+  // 두 브랜드에 다 있는 이름(Big star ring 등)은 못 가린다 → 뺀다
+  products = { at: Date.now(), keys: [...owner].filter(([, b]) => b.size === 1).map(([k, b]) => [k, [...b][0]]) };
+}
+/** 글 안의 상품명으로 브랜드 — 가장 많이 나온 브랜드, 같으면 못 정함 */
+function productBrand(...texts: string[]): string | null {
+  if (!products) return null;
+  const t = flat(texts.join(' '));
+  const hits = new Map<string, number>();
+  for (const [k, b] of products.keys) if (t.includes(k)) hits.set(b, (hits.get(b) ?? 0) + 1);
+  const best = [...hits].sort((a, b) => b[1] - a[1]);
+  return best.length && (best.length === 1 || best[0][1] > best[1][1]) ? best[0][0] : null;
+}
 
 interface Att { name: string; text?: string }
 // dir: 'sent'(내가 보낸 신청 · 예전 원문은 dir 없음) | 'received'(29CM · W컨셉이 보낸 제안)
@@ -101,7 +167,9 @@ function parseProposal(m: Msg, platform: string): MailEvent[] {
   const body = String(m.body ?? '');
   const r = pickRange(ownPart(body), name, m.sentAt) ?? pickRange(body.slice(0, 12000), name, m.sentAt);
   if (!r) return [];
-  const brand = brandOf(subject);
+  // 받은 메일은 본문을 안 본다 (전체 공지에 다른 브랜드 예시가 섞인다). 파일명엔 '협찬요청리스트_코페리.xlsx' 처럼 브랜드가 있다
+  const names = [subject, ...(m.attachments ?? []).map((a) => a.name)];
+  const brand = brandOf(...names) ?? productBrand(...names) ?? ACCOUNT_BRAND[platform] ?? null;
   const label = PLATFORM_LABEL[platform];
   return [{
     key: `${platform}|${brand ?? ''}|${name}`, platform, brand, name,
@@ -127,6 +195,9 @@ export function parseMail(m: Msg): MailEvent[] {
   };
   if (atts.length) for (const a of atts) add(cleanName(a.name, platform), a.text ?? '');
   else add(cleanName(m.subject ?? '', platform), '');
+  const names = [...(m.attachments ?? []).map((a) => a.name), m.subject ?? ''];
+  const texts = [own, ...atts.map((a) => a.text ?? '')];
+  const brand = brandOf(...names, ...texts) ?? productBrand(...names, ...texts) ?? ACCOUNT_BRAND[platform] ?? null;
   const out: MailEvent[] = [];
   for (const g of groups.values()) {
     // 기간: 내 본문 → (29CM) 첨부 엑셀 '종료기간' → 인용된 원문.
@@ -134,7 +205,6 @@ export function parseMail(m: Msg): MailEvent[] {
     let r = pickRange(own, g.name, m.sentAt);
     if (!r && platform === '29cm') for (const t of g.texts) { const x = pickRange(t, g.name, m.sentAt); if (x) r = r ? [x[0] < r[0] ? x[0] : r[0], x[1] > r[1] ? x[1] : r[1]] : x; }
     if (!r) r = pickRange(body.slice(0, 8000), g.name, m.sentAt);
-    const brand = brandOf(...(m.attachments ?? []).map((a) => a.name), m.subject ?? '', own);
     const label = PLATFORM_LABEL[platform];
     out.push({
       key: `${platform}|${brand ?? ''}|${g.name}`,
@@ -154,6 +224,10 @@ async function checkKey(k: string) {
 }
 
 const normName = (s: string) => String(s || '').replace(/^\d+\s*월\s*/, '').replace(/[\s_\-·&]+/g, '').replace(/(기획전|프로모션|행사|이벤트)$/, '').toLowerCase();
+// 이름 앞의 'N월' — 한쪽에만 있으면 같은 기획전('11월 이구위크' ↔ '이구위크'), 둘 다 있는데 다르면 다른 기획전
+// ('3월 전사기획전 공지' ↔ '11월 전사기획전 공지' 처럼 달마다 오는 공지가 한 줄로 합쳐져 옛 이름에 새 기간이 붙던 문제, 2026-11-13)
+const monthOf = (s: string) => String(s || '').match(/^\s*(\d{1,2})\s*월/)?.[1] ?? '';
+const sameMonth = (a: string, b: string) => !monthOf(a) || !monthOf(b) || +monthOf(a) === +monthOf(b);
 
 async function upsert(evs: MailEvent[]) {
   for (const e of evs) {
@@ -166,7 +240,7 @@ async function upsert(evs: MailEvent[]) {
     // 이름이 조금 달라도('11월 이구위크' ↔ '이구위크', '추석 세일' ↔ '추석세일') 같은 플랫폼 · 같은 브랜드(또는 브랜드 없음)면 합친다
     if (!ex) {
       const rows = (await sb.from('md_mail_events').select(COLS + ', name, brand').eq('platform', e.platform)).data ?? [];
-      const hit = rows.find((x: any) => normName(x.name) === normName(e.name) && (!x.brand || !e.brand || x.brand === e.brand));
+      const hit = rows.find((x: any) => normName(x.name) === normName(e.name) && sameMonth(x.name, e.name) && (!x.brand || !e.brand || x.brand === e.brand));
       if (hit) {
         if (e.brand && !hit.brand) await sb.from('md_mail_events').update({ key: e.key, brand: e.brand }).eq('id', hit.id);
         if (e.status === '신청함' && hit.status !== '신청함') await sb.from('md_mail_events').update({ key: e.key, name: e.name }).eq('id', hit.id);
@@ -196,6 +270,7 @@ Deno.serve(async (req) => {
   let p: any;
   try { p = await req.json(); } catch { return json({ error: 'bad json' }, 400); }
   if (!(await checkKey(String(p.key || '')))) return json({ error: 'key' }, 401);
+  await loadProducts();
   if (p.action === 'mail') {
     const evs = parseMail(p.msg || {});
     await upsert(evs);
@@ -206,7 +281,8 @@ Deno.serve(async (req) => {
     }
     return json({ events: evs });
   }
-  if (p.action === 'reparse') {
+  // reparse: 저장된 원문을 새 규칙으로 다시 뽑아 표를 새로 채움 · preview: 뽑기만 하고 표는 그대로 (규칙 고친 뒤 미리 보기)
+  if (p.action === 'reparse' || p.action === 'preview') {
     const rows: { value: string }[] = [];
     for (let from = 0; ; from += 1000) {
       const { data } = await sb.from('private_kv').select('value').like('key', 'md_mail_raw:%').order('key').range(from, from + 999);
@@ -214,11 +290,14 @@ Deno.serve(async (req) => {
       rows.push(...data);
       if (data.length < 1000) break;
     }
-    await sb.from('md_mail_events').delete().neq('id', 0);
-    const all: MailEvent[] = [];
     const msgs = rows.map((r) => JSON.parse(r.value) as Msg).sort((a, b) => String(a.sentAt).localeCompare(String(b.sentAt)));
-    for (const m of msgs) { const evs = parseMail(m); await upsert(evs); all.push(...evs); }
-    return json({ ok: true, mails: msgs.length, events: all.length });
+    // 먼저 다 뽑아 본다 — 규칙에서 오류가 나면 표를 지우기 전에 멈춘다
+    const parsed = msgs.map((m) => parseMail(m));
+    const all = parsed.flat();
+    if (p.action === 'preview') return json({ ok: true, mails: msgs.length, products: products?.keys.length ?? 0, events: all.map(({ platform, brand, name, start_date, end_date, status, source_msg_id }) => ({ platform, brand, name, start_date, end_date, status, source_msg_id })) });
+    await sb.from('md_mail_events').delete().neq('id', 0);
+    for (const evs of parsed) await upsert(evs);
+    return json({ ok: true, mails: msgs.length, products: products?.keys.length ?? 0, events: all.length });
   }
   return json({ error: 'action' }, 400);
 });
