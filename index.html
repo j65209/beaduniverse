@@ -4872,6 +4872,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .hrc-tiles{grid-template-columns:1fr}
     .hrc-meta{margin-left:0;width:100%;order:3}
   }
+  .rcv-chat{position:fixed;inset:0;z-index:9100;background:rgba(10,12,16,.35);display:flex;justify-content:flex-end}
+  .rcv-chat[hidden]{display:none}
+  .rcv-chat-panel{width:min(440px,100vw);height:100%;background:var(--bg-1);box-shadow:-20px 0 50px -24px rgba(0,0,0,.4);animation:rcvChatIn .25s cubic-bezier(.22,1,.36,1)}
+  .rcv-chat-panel iframe{width:100%;height:100%;border:0;display:block}
+  @keyframes rcvChatIn{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
   .rcv-modal{position:fixed;inset:0;z-index:9000;background:rgba(10,12,16,.45);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
   .rcv-modal[hidden]{display:none}
   .rcv-panel{width:min(860px,100%);background:var(--bg-1);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.25);padding:16px 18px 14px;display:flex;flex-direction:column;gap:10px;max-height:90vh}
@@ -6452,6 +6457,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sixstock-sec[data-brand="kop"] {--brand-color:129,140,248}
   .sixstock-sec[data-brand="apt"] {--brand-color:251,113,133}
   .sixstock-sec[data-brand="koz"] {--brand-color:20,184,166}
+  .sixstock-sec[data-brand="akoi"]{--brand-color:244,114,182}
+  /* ERP MASTER 표 (2026-11-13) — 한 옵션 상품의 옵션 · 카테고리 · 최근 입고일 */
+  .sixstock-tbl .sixstock-opt-inline{margin-left:6px;font-weight:500;color:var(--text-3);font-size:11.5px}
+  .sixstock-tbl .sixstock-cat{margin-left:6px;font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--bg-2);color:var(--text-3);font-weight:600;white-space:nowrap}
+  .sixstock-tbl .sixstock-rd{font-family:var(--mono);font-size:11px;color:var(--text-3);white-space:nowrap}
+  a.sixstock-sec-refresh{text-decoration:none}
   .sixstock-sec-head{
     display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none;
     background:linear-gradient(180deg,rgba(var(--brand-color),.10),rgba(var(--brand-color),.02));
@@ -10726,7 +10737,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="hrc-head">
         <div class="hrc-title">📦 <span>입고 현황</span><span class="hrc-sub">ERP MASTER 반영 기록</span></div>
         <div class="hrc-meta" id="homeRcvMeta">불러오는 중…</div>
-        <a class="hrc-btn" href="./agents.html#chat=receive">+ 입고 입력</a>
+        <a class="hrc-btn" href="./agents.html#chat=receive" onclick="rcvChatOpen();return false;">+ 입고 입력</a>
       </div>
       <div class="hrc-tiles" id="homeRcvTiles">
         <button type="button" class="hrc-tile" data-period="today" onclick="rcvModalOpen('today')"><span class="hrc-tl">오늘 입고</span><span class="hrc-num">–</span></button>
@@ -10755,9 +10766,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="rcv-list" id="rcvModalList"></div>
         <div class="rcv-foot">
           <span>남은 재고 칸 메모에 몇 시 몇 분 · 누가 넣었는지 남습니다. 원본: ERP MASTER 숨김 탭 '물류 입고기록'</span>
-          <a class="hrc-btn" href="./agents.html#chat=receive">+ 입고 입력</a>
+          <a class="hrc-btn" href="./agents.html#chat=receive" onclick="rcvChatOpen();return false;">+ 입고 입력</a>
         </div>
       </div>
+    </div>
+
+    <!-- 입고 입력 대화창 — 에이전트 오피스로 넘어가지 않고 그 자리에서 모아와 대화 (agents.html?embed=receive 를 대화창만 띄움).
+         처음 열 때 불러오고 닫아도 살려 둬서 다시 열면 대화가 이어진다. 지금 보는 주소 기준이라 로그인 · 이름이 그대로 이어진다 -->
+    <div id="rcvChatDrawer" class="rcv-chat" hidden onclick="if(event.target===this) rcvChatClose()">
+      <div class="rcv-chat-panel"><iframe id="rcvChatFrame" title="모아 — 입고 입력" src="about:blank"></iframe></div>
     </div>
 
     <!-- 대표 캘린더 홈 위젯 (대표 두 분 로그인 PC 에만 노출, 마스터 전용) -->
@@ -10908,105 +10925,59 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- 일일 브랜드 리포트 (매 30분 갱신 — 어제 TOP10 / 리오더 / 급상승 한 페이지) -->
-    <div class="sub-modules-section sub-modules-brep">
-      <div class="sub-modules-eyebrow">
-        <span class="folder-icon">📈</span>
-        <span class="folder-label">일일 브랜드 리포트</span>
-        <span class="folder-meta">어제 TOP10 · 리오더 · 급상승 <b>매 30분 갱신</b></span>
-      </div>
-      <div class="sub-modules">
-        <div class="sub-module m-brep m-brep-6a" onclick="triggerBrandReport('6a')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22d3ee;box-shadow:0 0 12px rgba(34,211,238,.7)"></span></div>
-          <div class="sub-module-title">식스에이</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-ct" onclick="triggerBrandReport('ct')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.7)"></span></div>
-          <div class="sub-module-title">클리어타입</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-yar" onclick="triggerBrandReport('yar')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.7)"></span></div>
-          <div class="sub-module-title">야르</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-pp" onclick="triggerBrandReport('pp')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.7)"></span></div>
-          <div class="sub-module-title">프로덕트피알</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-akoi" onclick="triggerBrandReport('akoi')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f472b6;box-shadow:0 0 12px rgba(244,114,182,.7)"></span></div>
-          <div class="sub-module-title">아코이하우스</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-kop" onclick="triggerBrandReport('kop')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#818cf8;box-shadow:0 0 12px rgba(129,140,248,.7)"></span></div>
-          <div class="sub-module-title">코페리</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-apt" onclick="triggerBrandReport('apt')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#fb7185;box-shadow:0 0 12px rgba(251,113,133,.7)"></span></div>
-          <div class="sub-module-title">아페티</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-koz" onclick="triggerBrandReport('koz')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#14b8a6;box-shadow:0 0 12px rgba(20,184,166,.7)"></span></div>
-          <div class="sub-module-title">코즈미</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 실시간 재고 (폴더 스타일 — 7 브랜드 식스샵/식스샵프로 실시간; 아페티는 admin credentials 대기 중) -->
+    <!-- 실시간 재고 (폴더 스타일) — 2026-11-13 ERP MASTER 남은 재고로 바꿈. 브랜드 카드는 그 브랜드만 펼쳐 바로 연다 -->
     <div class="sub-modules-section sub-modules-sixstock">
       <div class="sub-modules-eyebrow">
         <span class="folder-icon">📦</span>
         <span class="folder-label">실시간 재고</span>
-        <span class="folder-meta"><b>8</b> 브랜드 · 식스샵 / 식스샵프로</span>
+        <span class="folder-meta"><b>7</b> 브랜드 · ERP MASTER 남은 재고 (입고 · 판매 반영)</span>
       </div>
       <div class="sub-modules">
-        <div class="sub-module m-sixstock m-sixstock-6a" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-6a" onclick="triggerSixStock('6a')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22d3ee;box-shadow:0 0 12px rgba(34,211,238,.7)"></span></div>
           <div class="sub-module-title">식스에이</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
-        <div class="sub-module m-sixstock m-sixstock-ct" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-ct" onclick="triggerSixStock('ct')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.7)"></span></div>
           <div class="sub-module-title">클리어타입</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
-        <div class="sub-module m-sixstock m-sixstock-yar" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-yar" onclick="triggerSixStock('yar')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.7)"></span></div>
           <div class="sub-module-title">야르</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
-        <div class="sub-module m-sixstock m-sixstock-pp" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-pp" onclick="triggerSixStock('pp')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.7)"></span></div>
           <div class="sub-module-title">프로덕트피알</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
-        <div class="sub-module m-sixstock m-sixstock-akoi" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-akoi" onclick="triggerSixStock('akoi')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f472b6;box-shadow:0 0 12px rgba(244,114,182,.7)"></span></div>
           <div class="sub-module-title">아코이하우스</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
-        <div class="sub-module m-sixstock m-sixstock-kop" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-kop" onclick="triggerSixStock('kop')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#818cf8;box-shadow:0 0 12px rgba(129,140,248,.7)"></span></div>
           <div class="sub-module-title">코페리</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
-        <div class="sub-module m-sixstock m-sixstock-apt" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-apt" onclick="triggerSixStock('apt')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#fb7185;box-shadow:0 0 12px rgba(251,113,133,.7)"></span></div>
           <div class="sub-module-title">아페티</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
-        <div class="sub-module m-sixstock m-sixstock-koz" onclick="triggerSixStock()">
+        <div class="sub-module m-sixstock m-sixstock-koz" onclick="triggerSixStock('koz')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#14b8a6;box-shadow:0 0 12px rgba(20,184,166,.7)"></span></div>
           <div class="sub-module-title">코즈미</div>
-          <div class="sub-module-tag">LIVE</div>
+          <div class="sub-module-tag">ERP</div>
         </div>
+        <a class="sub-module m-sixstock m-sixstock-sheet" href="https://docs.google.com/spreadsheets/d/1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA/edit" target="_blank" rel="noopener" style="text-decoration:none">
+          <div class="sub-module-icon">📄</div>
+          <div class="sub-module-title">ERP 시트 열기</div>
+          <div class="sub-module-tag">구글시트 ↗</div>
+        </a>
       </div>
     </div>
 
@@ -12268,6 +12239,57 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
+    <!-- 일일 브랜드 리포트 — 2026-11-13 사장님 요청으로 홈에서 온라인사업팀 맨 아래로 옮김 (매 30분 갱신 — 어제 TOP10 / 리오더 / 급상승) -->
+    <div class="sub-modules-section sub-modules-brep">
+      <div class="sub-modules-eyebrow">
+        <span class="folder-icon">📈</span>
+        <span class="folder-label">일일 브랜드 리포트</span>
+        <span class="folder-meta">어제 TOP10 · 리오더 · 급상승 <b>매 30분 갱신</b></span>
+      </div>
+      <div class="sub-modules">
+        <div class="sub-module m-brep m-brep-6a" onclick="triggerBrandReport('6a')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22d3ee;box-shadow:0 0 12px rgba(34,211,238,.7)"></span></div>
+          <div class="sub-module-title">식스에이</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+        <div class="sub-module m-brep m-brep-ct" onclick="triggerBrandReport('ct')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.7)"></span></div>
+          <div class="sub-module-title">클리어타입</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+        <div class="sub-module m-brep m-brep-yar" onclick="triggerBrandReport('yar')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.7)"></span></div>
+          <div class="sub-module-title">야르</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+        <div class="sub-module m-brep m-brep-pp" onclick="triggerBrandReport('pp')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.7)"></span></div>
+          <div class="sub-module-title">프로덕트피알</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+        <div class="sub-module m-brep m-brep-akoi" onclick="triggerBrandReport('akoi')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f472b6;box-shadow:0 0 12px rgba(244,114,182,.7)"></span></div>
+          <div class="sub-module-title">아코이하우스</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+        <div class="sub-module m-brep m-brep-kop" onclick="triggerBrandReport('kop')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#818cf8;box-shadow:0 0 12px rgba(129,140,248,.7)"></span></div>
+          <div class="sub-module-title">코페리</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+        <div class="sub-module m-brep m-brep-apt" onclick="triggerBrandReport('apt')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#fb7185;box-shadow:0 0 12px rgba(251,113,133,.7)"></span></div>
+          <div class="sub-module-title">아페티</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+        <div class="sub-module m-brep m-brep-koz" onclick="triggerBrandReport('koz')">
+          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#14b8a6;box-shadow:0 0 12px rgba(20,184,166,.7)"></span></div>
+          <div class="sub-module-title">코즈미</div>
+          <div class="sub-module-tag">30분마다</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ============ MD팀 (기획전 전문 탭) ============ -->
@@ -12773,7 +12795,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </div>
   </div>
 
-  <!-- ============ 실시간 재고 (식스에이 / 클리어타입 / 야르) ============ -->
+  <!-- ============ 실시간 재고 — ERP MASTER 남은 재고 (2026-11-13, 그 전엔 식스샵 판매 재고) ============ -->
   <!-- Server proxy /sx/catalog?brand=X 로 sixshop 어드민 mall API 실시간 fetch.
        진입 시 3 브랜드 병렬 fetch — 브랜드별 accordion 섹션으로 펼쳐서 전부 표시. -->
   <div class="view" id="viewSixStock" hidden>
@@ -12782,19 +12804,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
         홈
       </button>
-      <h1 class="view-title">실시간 재고<span class="view-title-sub">/ 식스샵 어드민 실시간</span></h1>
+      <h1 class="view-title">실시간 재고<span class="view-title-sub">/ ERP MASTER 남은 재고 (입고 · 판매 반영)</span></h1>
     </div>
 
     <div class="sixstock-wrap">
       <div class="sixstock-toolbar">
         <div class="sixstock-controls" style="flex:1;justify-content:flex-start">
           <label class="sixstock-filter">
-            <input type="checkbox" id="sixStockFilterSelling" onchange="sixStockRenderAll()" checked>
-            <span>판매중만</span>
+            <input type="checkbox" id="sixStockFilterLow" onchange="sixStockRenderAll()">
+            <span>재고 5개 이하만</span>
           </label>
-          <input type="search" id="sixStockSearch" class="sixstock-search" placeholder="상품명 검색…" oninput="sixStockRenderAll()">
+          <input type="search" id="sixStockSearch" class="sixstock-search" placeholder="상품명 · 옵션 · 카테고리 검색…" oninput="sixStockRenderAll()">
         </div>
         <div class="sixstock-controls">
+          <a class="sixstock-refresh" href="https://docs.google.com/spreadsheets/d/1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA/edit" target="_blank" rel="noopener" style="text-decoration:none" title="식스샵 ERP MASTER 구글시트 열기">📄 ERP 시트 열기 ↗</a>
           <button type="button" class="sixstock-refresh" id="sixStockRefreshAllBtn" onclick="sixStockRefreshAll()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             전체 새로고침
@@ -12813,7 +12836,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <div class="view-head">
       <button class="btn-back" onclick="goHome()" aria-label="홈으로">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
-        홈
+        뒤로
       </button>
       <h1 class="view-title">브랜드 리포트<span class="view-title-sub">/ 어제 실적 · 리오더 · 급상승</span></h1>
     </div>
@@ -14323,7 +14346,42 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
   }
   function rcvHomeRefresh(){ if(Date.now() - _rcvHome.at > 20000) rcvHomeLoad(); }
-  Object.assign(window, {rcvModalOpen, rcvModalClose, rcvModalPeriod, rcvModalSearch, rcvModalToggleOut, rcvHomeBoot, rcvHomeRefresh});
+  /* 입고 입력 대화창 — [+ 입고 입력] 을 누르면 에이전트 오피스로 넘어가지 않고 이 화면 위에 모아 대화창.
+     지금 보고 있는 주소(j65209.github.io/beaduniverse/ 또는 beaduniverse.kr/office/) 의 agents.html 을 띄워서
+     로그인 권한 · '나는 ○○○' 이름이 그대로 이어진다. 반영되면 대화창이 알려 와서 입고 현황을 바로 다시 읽는다. */
+  function rcvChatOpen(){
+    const d = document.getElementById('rcvChatDrawer');
+    const f = document.getElementById('rcvChatFrame');
+    if(!d || !f) return;
+    const m = document.getElementById('rcvModal');
+    if(m && !m.hidden) rcvModalClose();
+    if(!f.dataset.loaded){
+      const here = location.origin + location.pathname.replace(/[^/]*$/, '');
+      f.src = here + 'agents.html?embed=receive#chat=receive';
+      f.dataset.loaded = '1';
+    } else {
+      try{ f.contentWindow.postMessage({type:'rcv-chat-focus'}, location.origin); }catch(e){}
+    }
+    d.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function rcvChatClose(){
+    const d = document.getElementById('rcvChatDrawer');
+    if(d) d.hidden = true;
+    document.body.style.overflow = '';
+    rcvHomeLoad();
+  }
+  window.addEventListener('message', e => {
+    if(e.origin !== location.origin) return;
+    const t = e.data && e.data.type;
+    if(t === 'rcv-chat-close') rcvChatClose();
+    if(t === 'erp-moves-updated') rcvHomeLoad();
+  });
+  document.addEventListener('keydown', e => {
+    const d = document.getElementById('rcvChatDrawer');
+    if(e.key === 'Escape' && d && !d.hidden) rcvChatClose();
+  });
+  Object.assign(window, {rcvModalOpen, rcvModalClose, rcvModalPeriod, rcvModalSearch, rcvModalToggleOut, rcvHomeBoot, rcvHomeRefresh, rcvChatOpen, rcvChatClose});
 
   async function loadAgentsMini(){
     const runN = document.getElementById('agentsRunningN');
@@ -17840,140 +17898,120 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function triggerDesign(){ _dsgActiveBoard = 'design'; showView('viewDesign'); if(typeof dsgInit==='function') dsgInit(); }
   function triggerStock(){ showView('viewStock'); }
-  function triggerSixStock(){ showView('viewSixStock'); }
+  // 홈 실시간 재고 카드 — 브랜드를 주면 그 브랜드만 펼쳐서 바로 보여준다 (ERP MASTER)
+  function triggerSixStock(brand){ if(typeof _erpStockFocus!=='undefined') _erpStockFocus = brand || null; showView('viewSixStock'); }
 
-  /* ===== 실시간 재고 (viewSixStock) — 브랜드별 accordion =====
-     server proxy /sx/catalog?brand=X → sixshop 어드민 mall API read-only fetch.
-     캐시 JSON 없이 매번 fresh. 진입 시 3 브랜드 병렬 fetch (약 3~5초).
-     3 섹션 모두 렌더 — 헤더 클릭으로 접기/펼치기. */
+  /* ===== 실시간 재고 (viewSixStock) — ERP MASTER 남은 재고 (2026-11-13 사장님: "erp 마스터를 바로 연결하면서 바로 열람") =====
+     맥미니 프록시 /erp/catalog = 구글시트 '식스샵 ERP MASTER' 의 브랜드별 송장출력 탭 L열(남은 재고)을 한 번에 7 브랜드.
+     (60초 캐시 · 새로고침은 fresh · 서버 scripts/erp_moves.py). 식스샵 판매 재고(/sx/pro-stock)가 아니라 ERP 재고라
+     물류 입고(에이전트 오피스 모아) · 매일 15시 판매 차감이 반영된 값이다.
+     홈 브랜드 카드를 누르면 그 브랜드만 펼쳐 바로 보여주고, 브랜드마다 '시트 열기' 로 그 ERP 탭이 바로 열린다.
+     예전 식스샵 브랜드별 fetch(_sixStockAdaptPro 등)는 2026-11-13 이 구조로 바뀌며 걷어냈다. */
   const SIX_STOCK_BRANDS = [
-    {key:'6a',  display:'식스에이',     host:'store.sixshop.com/6ashop',      endpoint:'/pro-stock?brand=6a',   proShape:true},
-    {key:'ct',  display:'클리어타입',   host:'store.sixshop.com/cleartype1',   endpoint:'/pro-stock?brand=ct',   proShape:true},
-    {key:'yar', display:'야르',         host:'store.sixshop.com/yarshop',     endpoint:'/pro-stock?brand=yar',  proShape:true},
-    {key:'pp',  display:'프로덕트피알', host:'store.sixshop.com/produktepr',   endpoint:'/pro-stock?brand=pp',   proShape:true},
-    {key:'akoi',display:'아코이하우스', host:'store.sixshop.com/akoihaus1',    endpoint:'/pro-stock?brand=akoi', proShape:true},
-    {key:'kop', display:'코페리',       host:'store.sixshop.com/coferry',     endpoint:'/pro-stock?brand=kop',  proShape:true},
-    {key:'apt', display:'아페티',       host:'store.sixshop.com/apeti',       endpoint:'/pro-stock?brand=apt',  proShape:true},
-    {key:'koz', display:'코즈미',       host:'store.sixshop.com/cos-mi',      endpoint:'/pro-stock?brand=koz',  proShape:true},
+    {key:'6a',  display:'식스에이'},
+    {key:'yar', display:'야르'},
+    {key:'pp',  display:'프로덕트피알'},
+    {key:'akoi',display:'아코이하우스'},
+    {key:'kop', display:'코페리'},
+    {key:'apt', display:'아페티'},
+    {key:'koz', display:'코즈미'},
   ].filter(b=>!PAUSED_BRANDS.has(b.key));
-  const _sixStockCache    = { '6a':null,  'ct':null,  'pp':null,  'akoi':null,  'yar':null,  'kop':null,  'apt':null,  'koz':null };
-  const _sixStockInflight = { '6a':false, 'ct':false, 'pp':false, 'akoi':false, 'yar':false, 'kop':false, 'apt':false, 'koz':false };
-  const _sixStockCollapsed= { '6a':false, 'ct':false, 'pp':false, 'akoi':false, 'yar':false, 'kop':false, 'apt':false, 'koz':false };
-  let _sixStockOpened = false;
+  const ERP_SHEET_ID = '1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA';
+  const _sixStockCollapsed = {};
+  let _erpStock = null, _erpStockErr = '', _erpStockInflight = false, _erpStockFocus = null;
+  const _pad2 = n => String(n).padStart(2,'0');
+  const _lastLine = v => String(v||'').split(/\n/).map(x=>x.trim()).filter(Boolean).pop() || '';
 
   function sixStockOpen(){
     _sixStockScaffold();
-    // 진입 시 3 브랜드 병렬 fetch (아직 없는 것만; 리프레시는 별도 버튼)
-    for(const b of SIX_STOCK_BRANDS){
-      if(!_sixStockCache[b.key] && !_sixStockInflight[b.key]){
-        sixStockFetch(b.key).catch(()=>{});
-      } else {
-        _sixStockRenderBrand(b.key);
-      }
+    const focus = _erpStockFocus;
+    _erpStockFocus = null;
+    if(focus){
+      // 홈에서 브랜드 카드를 눌렀으면 그 브랜드만 펼친다
+      SIX_STOCK_BRANDS.forEach(b => { _sixStockCollapsed[b.key] = b.key !== focus; });
+      _sixStockApplyCollapse();
+      setTimeout(() => {
+        const sec = document.querySelector(`.sixstock-sec[data-brand="${focus}"]`);
+        if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+      }, 60);
     }
-    _sixStockOpened = true;
+    if(!_erpStock || Date.now() - _erpStock.at > 60*1000) sixStockFetch(false);
+    else sixStockRenderAll();
   }
 
   function _sixStockScaffold(){
     const host = document.getElementById('sixStockSections');
-    if(!host) return;
-    if(host.dataset.built==='1') return;
-    let html = '';
-    for(const b of SIX_STOCK_BRANDS){
-      html += `<section class="sixstock-sec" data-brand="${b.key}">
+    if(!host || host.dataset.built === 'erp') return;
+    host.innerHTML = SIX_STOCK_BRANDS.map(b => `<section class="sixstock-sec" data-brand="${b.key}">
         <header class="sixstock-sec-head" onclick="sixStockToggle('${b.key}')">
           <span class="sixstock-sec-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></span>
           <span class="sixstock-sec-dot"></span>
           <span class="sixstock-sec-name">${_esc(b.display)}</span>
-          <span class="sixstock-sec-host">${_esc(b.host)}</span>
-          <span class="sixstock-sec-status" data-slot="status">fetch 대기 중…</span>
-          <button type="button" class="sixstock-sec-refresh" data-slot="refresh" onclick="event.stopPropagation();sixStockRefreshOne('${b.key}')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            새로고침
-          </button>
+          <span class="sixstock-sec-host" data-slot="tab">ERP MASTER</span>
+          <span class="sixstock-sec-status" data-slot="status">불러오는 중…</span>
+          <a class="sixstock-sec-refresh" data-slot="sheet" href="https://docs.google.com/spreadsheets/d/${ERP_SHEET_ID}/edit" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="ERP MASTER 시트의 이 브랜드 탭 열기">시트 열기 ↗</a>
         </header>
-        <div class="sixstock-sec-body" data-slot="body">
-          <div class="sixstock-empty">불러오는 중… (2~5초)</div>
-        </div>
-      </section>`;
-    }
-    host.innerHTML = html;
-    host.dataset.built = '1';
+        <div class="sixstock-sec-body" data-slot="body"><div class="sixstock-empty">ERP MASTER 불러오는 중… (2~3초)</div></div>
+      </section>`).join('');
+    host.dataset.built = 'erp';
+    _sixStockApplyCollapse();
   }
-
+  function _sixStockApplyCollapse(){
+    document.querySelectorAll('#sixStockSections .sixstock-sec').forEach(sec => sec.classList.toggle('is-collapsed', !!_sixStockCollapsed[sec.dataset.brand]));
+  }
   function sixStockToggle(brandKey){
     _sixStockCollapsed[brandKey] = !_sixStockCollapsed[brandKey];
-    const sec = document.querySelector(`.sixstock-sec[data-brand="${brandKey}"]`);
-    if(sec) sec.classList.toggle('is-collapsed', _sixStockCollapsed[brandKey]);
+    _sixStockApplyCollapse();
   }
 
-  // 식스샵프로(cleartype1) → viewSixStock catalog shape 로 adapt.
-  // 원본: {products:[{id,name,status:'판매중'|'판매중지',stock,price,options:[{label,stock}]}]}
-  // 대상: {products:[{name,price,status:'selling'|'stop',stock,hasOptions,options:[{label,stock}]}]}
-  function _sixStockAdaptPro(pro){
-    const products=(pro.products||[]).map(p=>{
-      const hasOpts=(p.options||[]).length>0;
-      // 옵션 stock 음수 = 수량관리안함. 전부 음수면 상품도 무제한(-1), 아니면 유효분만 합산.
-      const optStocks=hasOpts?(p.options||[]).map(o=>Number(o.stock)||0):[];
-      const totalOptStock=hasOpts
-        ? (optStocks.every(s=>s<0) ? -1 : optStocks.filter(s=>s>=0).reduce((a,s)=>a+s,0))
-        : 0;
-      return {
-        name: p.name,
-        price: Number(p.price)||0,
-        status: p.status==='판매중' ? 'selling' : (p.status==='품절' ? 'soldOut_selling' : 'stop_selling'),
-        stock: hasOpts ? totalOptStock : (Number(p.stock)||0),
-        hasOptions: hasOpts,
-        options: (p.options||[]).map(o=>({label:o.label, stock:Number(o.stock)||0})),
-      };
-    });
-    return {ok:true, products, fetchedAt:pro.fetchedAt, elapsedMs:pro.elapsedMs||0};
-  }
-
-  async function sixStockFetch(brandKey, forceFresh){
-    if(_sixStockInflight[brandKey]) return;
-    _sixStockInflight[brandKey] = true;
-    _sixStockSetStatus(brandKey, 'loading', '불러오는 중… (2~5초)');
-    _sixStockDisableRefresh(brandKey, true);
+  async function sixStockFetch(forceFresh){
+    if(_erpStockInflight) return;
+    _erpStockInflight = true;
+    const all = document.getElementById('sixStockRefreshAllBtn');
+    if(all) all.disabled = true;
+    SIX_STOCK_BRANDS.forEach(b => _sixStockSetStatus(b.key, 'loading', '불러오는 중…'));
     try{
-      const meta = SIX_STOCK_BRANDS.find(b=>b.key===brandKey);
-      const base = meta?.endpoint || `/catalog?brand=${brandKey}`;
-      // 식스샵프로는 캐시 서빙이라 새로고침 시 fresh=1 로 재수집을 요청한다.
-      // cron 이 같은 job lock 을 잡고 있으면 409 → 캐시 GET 으로 폴백.
-      let r = await sxFetch(forceFresh && meta?.proShape ? `${base}&fresh=1` : base, {method:'GET'});
-      if(!r.ok && forceFresh && meta?.proShape) r = await sxFetch(base, {method:'GET'});
-      let data;
-      try{ data = await r.json(); } catch(e){ data = {ok:false, error:'invalid JSON'}; }
-      if(!r.ok || !data.ok){
-        _sixStockCache[brandKey] = {error: data.error || `HTTP ${r.status}`, at: Date.now()};
-      } else {
-        if(meta?.proShape) data = _sixStockAdaptPro(data);
-        _sixStockCache[brandKey] = data;
-      }
-    } catch(e){
-      _sixStockCache[brandKey] = {error: String(e && e.message || e), at: Date.now()};
-    } finally {
-      _sixStockInflight[brandKey] = false;
-      _sixStockDisableRefresh(brandKey, false);
-      _sixStockRenderBrand(brandKey);
+      const base = await loadProxyBase();
+      if(!base) throw new Error('서버 연결 안 됨');
+      const r = await fetch(`${base}/erp/catalog${forceFresh ? '?fresh=1' : ''}`, {headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'}, cache:'no-store'});
+      const j = await r.json().catch(() => ({}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      _erpStock = {data:j, at:Date.now(), byBrand:_erpStockGroup(j)};
+      _erpStockErr = '';
+    }catch(e){
+      _erpStockErr = (e && e.message) || String(e);
+    }finally{
+      _erpStockInflight = false;
+      if(all) all.disabled = false;
+      sixStockRenderAll();
     }
   }
-
-  function sixStockRefreshOne(brandKey){
-    if(_sixStockInflight[brandKey]) return;
-    _sixStockCache[brandKey] = null;
-    sixStockFetch(brandKey, true).catch(()=>{});
+  // 송장출력 한 행 = 상품 · 옵션 하나. 이름이 같은 행들을 한 상품으로 묶는다 (임시등록 · 묶음 행은 서버가 t 로 표시 → 뺀다)
+  function _erpStockGroup(j){
+    const by = {};
+    (j.items||[]).forEach(x => {
+      if(x.t) return;
+      const m = by[x.b] || (by[x.b] = new Map());
+      let p = m.get(x.n);
+      if(!p){ p = {name:x.n, cat:x.c, options:[]}; m.set(x.n, p); }
+      p.options.push({label:x.o, s:x.s, po:x.po, rc:x.rc, rd:x.rd});
+    });
+    const out = {};
+    Object.keys(by).forEach(b => {
+      out[b] = [...by[b].values()].map(p => {
+        const known = p.options.filter(o => o.s != null);
+        p.stock = known.length ? known.reduce((a, o) => a + o.s, 0) : null;
+        p.blank = p.options.length - known.length;
+        p.remain = p.options.reduce((a, o) => a + (o.po > 0 ? Math.max(0, o.po - (o.rc||0)) : 0), 0);
+        p.min = known.length ? Math.min(...known.map(o => o.s)) : Infinity;
+        return p;
+      });
+    });
+    return out;
   }
-
-  function sixStockRefreshAll(){
-    for(const b of SIX_STOCK_BRANDS){
-      if(_sixStockInflight[b.key]) continue;
-      _sixStockCache[b.key] = null;
-      sixStockFetch(b.key, true).catch(()=>{});
-    }
-  }
-
-  // 필터/검색 변경 시 3 섹션 다시 렌더 (재-fetch 없음)
+  function sixStockRefreshOne(){ sixStockFetch(true); }
+  function sixStockRefreshAll(){ sixStockFetch(true); }
+  // 검색 · 필터 바꾸면 다시 그리기만 (다시 안 불러옴)
   function sixStockRenderAll(){
     for(const b of SIX_STOCK_BRANDS) _sixStockRenderBrand(b.key);
   }
@@ -17985,104 +18023,83 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     el.textContent = text;
   }
 
-  function _sixStockDisableRefresh(brandKey, disabled){
-    const b = document.querySelector(`.sixstock-sec[data-brand="${brandKey}"] [data-slot="refresh"]`);
-    if(b) b.disabled = disabled;
-    const all = document.getElementById('sixStockRefreshAllBtn');
-    if(all){
-      const anyInflight = SIX_STOCK_BRANDS.some(x=>_sixStockInflight[x.key]);
-      all.disabled = anyInflight;
-    }
-  }
-
-  function _sixStockStatusLabel(raw){
-    if(!raw) return {label:'—', cls:''};
-    if(raw==='selling') return {label:'판매중', cls:'is-selling'};
-    if(raw==='soldOut_selling') return {label:'품절', cls:'is-soldout'};
-    if(raw.indexOf('stop')>=0) return {label:'중지', cls:'is-stopped'};
-    return {label:raw, cls:''};
-  }
-
-  function _sixStockStockCell(stock, status){
-    // sixshop 은 "수량관리안함" 인 상품에 productQuantity 를 음수(-1/-2)로 돌려줌.
-    // 판매중(selling) + 음수 → 무제한 (∞).
-    // 품절/중지 + 음수 → 재고 없어서 음수 (skip 처리).
-    if(stock === -1 || stock === -2){
-      if(status === 'selling') return {n:'∞', cls:'is-unlimited', hint:'수량 관리 안 함 (무제한)'};
-      return {n:'—', cls:'is-untracked', hint:'재고 정보 없음'};
-    }
-    if(stock === 0) return {n:'0', cls:'is-out', hint:''};
-    if(stock <= 5) return {n:String(stock), cls:'is-low', hint:''};
-    return {n:String(stock), cls:'is-on', hint:''};
+  function _erpStockCell(v){
+    if(v == null) return {n:'빈칸', cls:'is-untracked', hint:'ERP 에 아직 재고를 안 적은 상품'};
+    if(v < 0) return {n:String(v), cls:'is-out', hint:'마이너스 — 입고 전에 먼저 팔린 수량'};
+    if(v === 0) return {n:'0', cls:'is-out', hint:''};
+    if(v <= 5) return {n:String(v), cls:'is-low', hint:''};
+    return {n:v.toLocaleString(), cls:'is-on', hint:''};
   }
 
   function _esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
   function _sixStockRenderBrand(brandKey){
     const meta = SIX_STOCK_BRANDS.find(b=>b.key===brandKey);
-    const cache = _sixStockCache[brandKey];
-    const bodyEl = document.querySelector(`.sixstock-sec[data-brand="${brandKey}"] [data-slot="body"]`);
+    const sec = document.querySelector(`.sixstock-sec[data-brand="${brandKey}"]`);
+    const bodyEl = sec && sec.querySelector('[data-slot="body"]');
     if(!bodyEl || !meta) return;
-
-    if(!cache){
-      bodyEl.innerHTML = '<div class="sixstock-empty">fetch 대기 중…</div>';
+    if(!_erpStock){
+      if(_erpStockErr){
+        _sixStockSetStatus(brandKey, 'err', `❌ ${_erpStockErr}`);
+        bodyEl.innerHTML = `<div class="sixstock-empty">❌ ${_esc(_erpStockErr)}</div>`;
+      }
       return;
     }
-    if(cache.error){
-      _sixStockSetStatus(brandKey, 'err', `❌ ${cache.error}`);
-      bodyEl.innerHTML = `<div class="sixstock-empty">❌ ${_esc(cache.error)}</div>`;
+    const data = _erpStock.data;
+    const bm = (data.brands||{})[brandKey];
+    if(!bm){
+      _sixStockSetStatus(brandKey, 'err', '❌ ERP 탭을 못 읽음');
+      bodyEl.innerHTML = `<div class="sixstock-empty">❌ ${_esc((data.errors||{})[brandKey] || 'ERP 시트에서 이 브랜드 탭을 못 읽었습니다')}</div>`;
       return;
     }
+    const tabEl = sec.querySelector('[data-slot="tab"]');
+    if(tabEl) tabEl.textContent = bm.tab + (bm.stale ? ' · 직전에 읽은 값' : '');
+    const sheetEl = sec.querySelector('[data-slot="sheet"]');
+    if(sheetEl && bm.gid) sheetEl.href = `https://docs.google.com/spreadsheets/d/${data.sheet || ERP_SHEET_ID}/edit#gid=${bm.gid}`;
 
-    const onlySelling = !!document.getElementById('sixStockFilterSelling')?.checked;
+    const lowOnly = !!document.getElementById('sixStockFilterLow')?.checked;
     const q = (document.getElementById('sixStockSearch')?.value || '').trim().toLowerCase();
-    const rows = (cache.products || []).filter(p=>{
-      if(onlySelling && p.status !== 'selling') return false;
-      if(q && !(p.name||'').toLowerCase().includes(q)) return false;
-      return true;
-    });
+    const all = _erpStock.byBrand[brandKey] || [];
+    let rows = all;
+    if(q) rows = rows.filter(p => [p.name, p.cat, ...p.options.map(o => o.label)].join(' ').toLowerCase().includes(q));
+    if(lowOnly) rows = rows.filter(p => p.options.some(o => o.s != null && o.s <= 5));
 
-    // 상태 라인 — 헤더 우측
-    const t = new Date(cache.fetchedAt||Date.now());
-    const hh = String(t.getHours()).padStart(2,'0');
-    const mm = String(t.getMinutes()).padStart(2,'0');
-    const ss = String(t.getSeconds()).padStart(2,'0');
-    _sixStockSetStatus(brandKey, '', `${hh}:${mm}:${ss} · ${cache.elapsedMs||0} ms · ${rows.length}/${(cache.products||[]).length} 상품`);
-
-    if(rows.length===0){
-      bodyEl.innerHTML = '<div class="sixstock-empty">필터 조건에 맞는 상품이 없습니다.</div>';
+    const t = new Date(data.fetchedAt || _erpStock.at);
+    _sixStockSetStatus(brandKey, '', `${_pad2(t.getHours())}:${_pad2(t.getMinutes())} 기준 · ${rows.length}/${all.length} 상품${bm.blank ? ` · 빈칸 ${bm.blank}` : ''}`);
+    if(rows.length === 0){
+      bodyEl.innerHTML = '<div class="sixstock-empty">조건에 맞는 상품이 없습니다.</div>';
       return;
     }
-
-    // 재고 낮은 순 정렬 (품절/0 위로)
-    rows.sort((a,b)=>{
-      const av = (a.stock === -1 || a.stock === -2) ? Infinity : a.stock;
-      const bv = (b.stock === -1 || b.stock === -2) ? Infinity : b.stock;
-      return av - bv;
-    });
+    // 재고 적은 순 — 마이너스 · 0 이 위로, 남은 재고가 빈칸인 상품은 맨 아래
+    rows = rows.slice().sort((a, b) => a.min - b.min || a.name.localeCompare(b.name));
 
     let html = '<table class="sixstock-tbl"><thead><tr>';
-    html += '<th>상품명</th><th class="sixstock-col-price">가격</th><th class="sixstock-col-stock">재고</th><th class="sixstock-col-status">상태</th></tr></thead><tbody>';
+    html += '<th>상품명</th><th class="sixstock-col-stock">남은 재고</th><th class="sixstock-col-price">발주 잔량</th><th class="sixstock-col-status">최근 입고</th></tr></thead><tbody>';
     for(const p of rows){
-      const st = _sixStockStatusLabel(p.status);
-      const sc = _sixStockStockCell(p.stock, p.status);
-      const hasOpts = p.hasOptions && (p.options||[]).length>0;
-      const optsTag = hasOpts ? `<span class="sixstock-opts-tag">${p.options.length} opt</span>` : '';
-      const parentCls = hasOpts ? ' sixstock-parent' : '';
-      html += `<tr class="${parentCls}">`
-        + `<td class="sixstock-name">${_esc(p.name)}${optsTag}</td>`
-        + `<td class="sixstock-price">${(p.price||0).toLocaleString()}</td>`
+      const multi = p.options.length > 1;
+      const one = multi ? null : p.options[0];
+      const sc = multi
+        ? (p.stock == null ? _erpStockCell(null) : {n:p.stock.toLocaleString(), cls:'', hint:p.blank ? `빈칸 ${p.blank}개 옵션 제외한 합` : '옵션 합'})
+        : _erpStockCell(one.s);
+      html += `<tr class="${multi ? 'sixstock-parent' : ''}">`
+        + `<td class="sixstock-name">${_esc(p.name)}`
+        + (one && one.label ? `<span class="sixstock-opt-inline">${_esc(one.label)}</span>` : '')
+        + (p.cat ? `<span class="sixstock-cat">${_esc(p.cat)}</span>` : '')
+        + (multi ? `<span class="sixstock-opts-tag">${p.options.length} opt</span>` : '')
+        + `</td>`
         + `<td class="sixstock-stock ${sc.cls}" title="${_esc(sc.hint)}">${sc.n}</td>`
-        + `<td class="sixstock-status-cell"><span class="sixstock-badge ${st.cls}">${_esc(st.label)}</span></td>`
+        + `<td class="sixstock-price">${p.remain ? p.remain.toLocaleString() : ''}</td>`
+        + `<td class="sixstock-status-cell sixstock-rd">${one ? _esc(_lastLine(one.rd)) : ''}</td>`
         + `</tr>`;
-      if(hasOpts){
+      if(multi){
         for(const o of p.options){
-          const osc = _sixStockStockCell(o.stock, p.status);
+          const osc = _erpStockCell(o.s);
+          const rem = o.po > 0 ? Math.max(0, o.po - (o.rc||0)) : 0;
           html += `<tr class="sixstock-opt-row">`
-            + `<td class="sixstock-name">${_esc(o.label)}</td>`
-            + `<td class="sixstock-price"></td>`
+            + `<td class="sixstock-name">${_esc(o.label || '옵션 없음')}</td>`
             + `<td class="sixstock-stock ${osc.cls}" title="${_esc(osc.hint)}">${osc.n}</td>`
-            + `<td class="sixstock-status-cell"></td>`
+            + `<td class="sixstock-price">${rem ? rem.toLocaleString() : ''}</td>`
+            + `<td class="sixstock-status-cell sixstock-rd">${_esc(_lastLine(o.rd))}</td>`
             + `</tr>`;
         }
       }
