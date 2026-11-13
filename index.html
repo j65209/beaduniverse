@@ -17361,6 +17361,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     const total=(data.checks||[]).length;
     const okN=(data.checks||[]).filter(c=>c.ok).length;
+    // 서버 디스크는 다른 항목보다 먼저 — 꽉 차면 수집 · 로그 · 저장이 전부 조용히 멈춘다 (2026-11-13 100% 사고)
+    const disk=(data.checks||[]).find(c=>c.name==='서버 디스크');
+    if(disk && disk.level==='error'){
+      pill.classList.add('is-error');
+      if(label) label.textContent=`⚠ 디스크 ${Math.round(disk.used_pct)}% · 정리 필요`;
+      pill.title=`서버 디스크 ${disk.detail||''} — 오류선 ${disk.error_pct}%`;
+      return;
+    }
+    if(disk && disk.level==='warn'){
+      pill.classList.add('is-warn');
+      if(label) label.textContent=`⚠ 디스크 ${Math.round(disk.used_pct)}%`;
+      pill.title=`서버 디스크 ${disk.detail||''} — 경고선 ${disk.warn_pct}%`;
+      return;
+    }
+    pill.title='';
     if(okN===total){
       pill.classList.add('is-ok');
       if(label) label.textContent=`시스템 정상 ${okN}/${total}`;
@@ -17381,7 +17396,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     const rows=(data.checks||[]).map(c=>{
       const cls = c.status==='missing' ? 'is-missing' : (c.status==='stale' ? 'is-stale' : '');
-      const ageTxt = c.status==='missing' ? '없음' : _sysHealthFmtAge(c.age_hours);
+      // 시각이 아닌 값을 보여주는 항목(서버 디스크 '사용 73% · 남은 61GB')은 detail 을 그대로
+      const ageTxt = c.detail ? c.detail : (c.status==='missing' ? '없음' : _sysHealthFmtAge(c.age_hours));
       return `<div class="sys-health-item ${cls}">
         <span class="sys-health-item-dot"></span>
         <span class="sys-health-item-name">${_esc(c.name||'')}<span class="sys-health-item-cat">${_esc(c.category||'')}</span></span>
