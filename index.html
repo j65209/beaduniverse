@@ -7062,6 +7062,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .clm-hbars .csi-hbar-fill.cu{background:var(--csi-accent)}
   .clm-hbars .csi-hbar-fill.na{background:var(--csi-other)}
   .clm-more{display:block;margin:12px auto 0}
+  .clm-photo{font-size:11px;font-weight:600;color:var(--text-3);margin-left:6px;white-space:nowrap}
   .clm-foot{font-size:12px;color:var(--text-3);line-height:1.65;padding:2px 4px 6px}
   .clm-foot b{color:var(--text-2);font-weight:600}
   @media (max-width:600px){
@@ -33548,7 +33549,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const el=document.getElementById('clmAlert'); if(!el) return;
     const d=_clm.data; if(!d){ el.hidden=true; return; }
     const name=k=>({playauto1:'플레이오토 1번 아이디 (스마트스토어 · 29CM · W컨셉 · 오늘의집 · EQL · 에이블리의 프로덕트피알 · 아코이하우스 · 식스에이)', playauto2:'플레이오토 2번 아이디 (코페리 · 아페티의 스마트스토어 · 에이블리 · 29CM · W컨셉 · 쿠팡)'}[k]
-      || (k.startsWith('home:') ? `공홈 ${_csiBrandLabel(k.slice(5))}` : k.startsWith('zigzag:') ? `지그재그 ${_csiBrandLabel(k.slice(7))}` : k));
+      || (k.startsWith('home:') ? `공홈 ${_csiBrandLabel(k.slice(5))}` : k.startsWith('zigzag:') ? `지그재그 ${_csiBrandLabel(k.slice(7))}` : k.startsWith('ably:') ? `에이블리 ${_csiBrandLabel(k.slice(5))} 사유 (셀러 API)` : k));
     const bad=Object.entries(d.sources||{}).filter(([,s])=>s && s.ok===false);
     const lines=bad.map(([k,s])=>`<b>${_esc(name(k))}</b> — ${s.at?`${_esc(_clmKstHm(s.at))} 이후 새로 못 받았어요`:'아직 못 받았어요'}${s.note?` (${_esc(s.note)})`:''}`);
     for(const u of (d.unmapped||[])) lines.push(`플레이오토 ${u.login}번 아이디에 표에 없는 계정이 있어요: <b>${_esc(u.nick||u.shop_cd)}</b> (${u.n}건) — 수집기 계정 표에 넣어야 반품 · 교환이 잡혀요`);
@@ -33621,7 +33622,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const R=_clmReason(k), rows=cur.filter(l=>l.reason===k);
       const src=_clmTop(rows,l=>l.reason_src,3).map(([s,c])=>`${s} ${c}`).join(' · ');
       const ch=_clmTop(rows,l=>CLM_CH_LABEL[l.channel]||l.channel,3).map(([s,c])=>`${s} ${c}`).join(' · ');
-      const sub=k==='none' ? '공홈 지난 완료 건 · 에이블리 일부 · W컨셉은 몰이 사유를 안 줘요' : (src||ch);
+      const sub=k==='none' ? '공홈 11/13 전 완료 건 · W컨셉은 몰이 사유를 안 줘요' : (src||ch);
       return _clmBar(`<span class="clm-dot ${R.f}"></span>${_esc(R.label)}`, n, max, cur.length, R.f, sub, `${R.label} ${n}건\n${CLM_FAULT_LABEL[R.f]}\n몰 사유: ${src||'—'}\n채널: ${ch}`);
     }).join('')}</div>`;
   }
@@ -33726,7 +33727,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <td class="clm-prod"><b>${_esc(l.product)}</b>${l.option?`<div class="csi-muted">${_esc(l.option)}${(Number(l.qty)||1)>1?` · ${l.qty}개`:''}</div>`:((Number(l.qty)||1)>1?`<div class="csi-muted">${l.qty}개</div>`:'')}<div class="csi-muted">주문 ${_esc(l.order_no)}</div></td>
         <td class="nw"><span class="clm-chip ${l.type==='exchange'?'exc':'ret'}">${l.type==='exchange'?'교환':'반품'}</span> <span class="clm-chip ${open?'open':'done'}" title="${_esc(l.status||'')}">${_esc(CLM_STAGE[l.stage]||l.stage)}</span>${done}</td>
         <td class="clm-reason"><span class="clm-dot ${R.f}"></span>${_esc(R.label)}${l.reason_src && l.reason_src!==R.label?`<div class="csi-muted">${_esc(l.reason_src)}</div>`:''}</td>
-        <td class="clm-memo">${l.memo?_esc(l.memo):'<span class="csi-muted">—</span>'}</td>
+        <td class="clm-memo">${l.memo?_esc(l.memo):'<span class="csi-muted">—</span>'}${l.photos?`<span class="clm-photo" title="고객이 붙인 사진 — ${_esc(CLM_CH_LABEL[l.channel]||l.channel)} 판매자 화면에서 볼 수 있어요">📷 ${Number(l.photos)||0}장</span>`:''}</td>
         <td class="n">${_csiN(l.amount)}원</td></tr>`;
     }).join('')}</tbody></table></div>${rows.length>show.length?`<button type="button" class="csi-btn clm-more" data-act="more">더 보기 (${_csiN(rows.length-show.length)}건 더)</button>`:''}`;
   }
@@ -33735,7 +33736,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const el=document.getElementById('clmFoot'); if(!el) return;
     el.innerHTML=`<b>어디서 오나요</b> — 공홈(자사몰 · 네이버페이)은 식스샵 프로, 지그재그(스토어배송 · 직진배송)는 파트너센터, 그 밖의 플랫폼(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡)은 플레이오토에서 30분마다 받아요.<br>`
       +`<b>건</b> = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · <b>날짜</b> = 접수일 (공홈의 지난 완료 건은 접수일을 몰라 처리일) · <b>금액</b> = 반품 · 교환한 상품의 결제 금액 (배송비 빼고) · 철회 · 거부된 건은 숫자에서 빼요.<br>`
-      +`<b>사유 없음</b> — 공홈은 11/13 전에 끝난 반품, 에이블리는 일부, W컨셉은 몰이 사유를 주지 않아요. 고객 이름 · 연락처 · 주소는 받지 않고, 고객 글 속 전화번호 · 이메일 · 계좌번호는 가려요.`;
+      +`<b>에이블리</b>는 플레이오토가 고객 사유를 비워 보내서 에이블리 셀러 화면의 사유 · 고객 글 · 사진 수로 다시 채워요 (플레이오토엔 남아 있어도 에이블리에서 철회된 반품은 빼요).<br>`
+      +`<b>사유 없음</b> — 공홈은 11/13 전에 끝난 반품, W컨셉은 몰이 사유를 주지 않아요. 고객 이름 · 연락처 · 주소 · 환불 계좌는 받지 않고, 고객 글 속 전화번호 · 이메일 · 계좌번호는 가려요.`;
   }
 
   // 📋 요약 복사 — 지금 보는 기간 · 브랜드 · 채널 · 구분 그대로
