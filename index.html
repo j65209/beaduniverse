@@ -5164,6 +5164,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== 잠시 중단한 브랜드 숨김 — 클리어타입 (2026-11-09~). 다시 열 땐 이 줄과 스크립트의 PAUSED_BRANDS 에서 뺀다 ===== */
   .m-metaads-ct,.m-brep-ct,.m-sixstock-ct,.best-col-ct,.ng-builder-ct{display:none!important}
+  /* ===== 홈 실시간 재고 — 브랜드별 카드 숨김, 'ERP 시트 열기' 만 보임 (사장님 2026-11-13 "나중에 필요하면 부를게").
+     카드 HTML 은 그대로 두었다. 다시 보이려면 이 줄만 지운다 ===== */
+  .sub-modules-sixstock .m-sixstock:not(.m-sixstock-sheet){display:none!important}
 
   /* ===== 전략팀 월간 손익 메인보드 (.sb-*) — 시트처럼 칸마다 자동 값(흐리게) 위에 직접 입력 ===== */
   .sb{display:flex;flex-direction:column;gap:12px}
@@ -10731,6 +10734,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <!-- ============ 홈 뷰 ============ -->
   <div class="view" id="viewHome">
 
+    <!-- 대표 캘린더 홈 위젯 — 홈 맨 위 (대표 두 분 로그인 PC 에만 노출, 마스터 전용). 2026-11-13 사장님: 입고 현황보다 위로 -->
+    <div id="homeCeoCalCard" class="home-ceocal-card" hidden>
+      <div class="hcc-head">
+        <div class="hcc-title">👑 <span>대표 캘린더</span></div>
+        <div class="hcc-meta" id="homeCeoCalMeta">—</div>
+        <div class="hcc-actions">
+          <button class="hcc-btn" type="button" onclick="cecOpenAddModal()">+ 일정</button>
+          <button class="hcc-btn hcc-btn-open" type="button" onclick="triggerCeoCal()">열기 →</button>
+        </div>
+      </div>
+      <div class="hcc-body" id="homeCeoCalList"></div>
+    </div>
+
     <!-- 입고 현황 (2026-11-13) — 에이전트 오피스 물류팀 모아가 식스샵 ERP MASTER 에 반영한 입고 · 차감.
          기록 원본은 ERP 시트 숨김 탭 '물류 입고기록' (서버 /erp/moves). 타일을 누르면 그 기간 내역 -->
     <section id="homeRcvCard" class="home-rcv-card" aria-label="입고 현황">
@@ -10775,19 +10791,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
          처음 열 때 불러오고 닫아도 살려 둬서 다시 열면 대화가 이어진다. 지금 보는 주소 기준이라 로그인 · 이름이 그대로 이어진다 -->
     <div id="rcvChatDrawer" class="rcv-chat" hidden onclick="if(event.target===this) rcvChatClose()">
       <div class="rcv-chat-panel"><iframe id="rcvChatFrame" title="모아 — 입고 입력" src="about:blank"></iframe></div>
-    </div>
-
-    <!-- 대표 캘린더 홈 위젯 (대표 두 분 로그인 PC 에만 노출, 마스터 전용) -->
-    <div id="homeCeoCalCard" class="home-ceocal-card" hidden>
-      <div class="hcc-head">
-        <div class="hcc-title">👑 <span>대표 캘린더</span></div>
-        <div class="hcc-meta" id="homeCeoCalMeta">—</div>
-        <div class="hcc-actions">
-          <button class="hcc-btn" type="button" onclick="cecOpenAddModal()">+ 일정</button>
-          <button class="hcc-btn hcc-btn-open" type="button" onclick="triggerCeoCal()">열기 →</button>
-        </div>
-      </div>
-      <div class="hcc-body" id="homeCeoCalList"></div>
     </div>
 
     <!-- 팀 카드: 3열 그리드 통합 (인사·업무일지·물류 / MD·마케팅·디자인·벤더·전략) -->
@@ -10925,7 +10928,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- 실시간 재고 (폴더 스타일) — 2026-11-13 ERP MASTER 남은 재고로 바꿈. 브랜드 카드는 그 브랜드만 펼쳐 바로 연다 -->
+    <!-- 실시간 재고 (폴더 스타일) — 2026-11-13 ERP MASTER 남은 재고로 바꿈. 브랜드 카드는 그 브랜드만 펼쳐 바로 연다.
+         같은 날 사장님: 'ERP 시트 열기' 를 맨 앞에, 브랜드별 카드는 숨김 (CSS '홈 실시간 재고 — 브랜드별 카드 숨김' 한 줄) -->
     <div class="sub-modules-section sub-modules-sixstock">
       <div class="sub-modules-eyebrow">
         <span class="folder-icon">📦</span>
@@ -10933,6 +10937,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <span class="folder-meta"><b>7</b> 브랜드 · ERP MASTER 남은 재고 (입고 · 판매 반영)</span>
       </div>
       <div class="sub-modules">
+        <a class="sub-module m-sixstock m-sixstock-sheet" href="https://docs.google.com/spreadsheets/d/1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA/edit" target="_blank" rel="noopener" style="text-decoration:none">
+          <div class="sub-module-icon">📄</div>
+          <div class="sub-module-title">ERP 시트 열기</div>
+          <div class="sub-module-tag">구글시트 ↗</div>
+        </a>
         <div class="sub-module m-sixstock m-sixstock-6a" onclick="triggerSixStock('6a')">
           <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22d3ee;box-shadow:0 0 12px rgba(34,211,238,.7)"></span></div>
           <div class="sub-module-title">식스에이</div>
@@ -10973,11 +10982,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-title">코즈미</div>
           <div class="sub-module-tag">ERP</div>
         </div>
-        <a class="sub-module m-sixstock m-sixstock-sheet" href="https://docs.google.com/spreadsheets/d/1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA/edit" target="_blank" rel="noopener" style="text-decoration:none">
-          <div class="sub-module-icon">📄</div>
-          <div class="sub-module-title">ERP 시트 열기</div>
-          <div class="sub-module-tag">구글시트 ↗</div>
-        </a>
       </div>
     </div>
 
