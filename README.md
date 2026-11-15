@@ -277,6 +277,25 @@ studio/
 - 실제 발송 서버(brightbeed@gmail.com 「제목 없는 프로젝트」)는 `appsscript.json` 에 `oauthScopes` 를 직접 적어서 지메일은 **읽기 전용**(`gmail.readonly`)만 받는다 — 나머지: `script.send_mail`, `spreadsheets`, `drive`, `script.scriptapp`, `userinfo.email`.
 - 권한 창에서 「현재 파일을 열 수 없습니다」가 뜨면 크롬에 구글 계정이 여러 개 로그인돼 있어서다(기본 계정 ≠ 스크립트 주인). 시크릿 창에서 보내는 계정만 로그인해서 승인하고, 권한 목록은 **모두 선택**.
 
+
+## 12. 인사팀 — 직원 명단 · 퇴사 처리
+
+직원 원본은 `index.html` 의 `STAFF` 상수(하드코딩)이고, 화면에서 바꾼 것은 Supabase 테이블에 얹힌다.
+
+| 테이블 | 내용 |
+|---|---|
+| `staff_added` | 「신규 입사자 등록」 — STAFF 뒤에 이어 붙는다. 잘못 등록한 직원은 연차 카드 **퇴사** → **등록 지우기** |
+| `staff_resigned` | 퇴사 처리 — 퇴사일(마지막 근무일) · 메모 · 퇴사일 기준 남은 연차 · 처리할 때의 부서 · 입사일 · 처리한 사람 |
+| `staff_dept_overrides` · `staff_titles` · `staff_phones` | 부서 이동 · 직책 · 휴대폰 번호 |
+| `staff_diary_hidden` | 업무일지만 숨김 (재직 중이지만 일지를 안 쓰는 직원) — 업무일지 보드에서 관리 |
+| `staff_hidden` | **안 씀** — 2026-11-15 퇴사 처리로 바뀌면서 숨겨 둔 직원을 전부 다시 보이게 했다. 예전 명단은 `row_history` 에 남아 있다 |
+
+- **퇴사 처리**: 인사팀 → 연차 현황 카드 오른쪽 위 **퇴사** (관리자 PIN). 마지막 근무일까지는 「퇴사 예정」 배지(관리자만)로 그대로 보이고,
+  다음 날부터 조직도 · 연차 현황 · 연차 신청서 · 달력 · 업무일지 · 직원 연락처 · 업무일지 로그인 목록에서 빠진다. 연차 신청 · 업무일지 기록은 지우지 않는다.
+- **퇴사자 명단**: 연차 현황 아래 (관리자만) — 입사일 → 퇴사일 · 근속 · 남은 연차 · 메모, **수정** · **퇴사 취소**.
+- 남은 연차는 연차 카드와 같은 계산을 **퇴사일 기준**으로 한 값 (미사용 연차 정산 참고용으로 저장).
+- `staff_resigned` · `staff_added` 의 모든 변경은 `row_history` 에 쌓인다 — `select * from row_history where tbl in ('staff_resigned','staff_added') order by logged_at desc;`
+
 ---
 
 © 2025 브라이트비드 · 내부 사용 전용

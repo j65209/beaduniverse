@@ -7433,6 +7433,31 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .dsm-input.is-bad{border-color:#ef4444}
   .dsm-hint{min-height:18px;margin-top:8px;font-size:12px;font-weight:600;color:#b91c1c;letter-spacing:-.01em}
   .dsm-note{margin-top:2px;font-size:11.5px;color:#78716c;line-height:1.5;letter-spacing:-.01em}
+  /* 퇴사 처리 팝업 (#resignModal) — 같은 카드, 입력 칸은 왼쪽 정렬 */
+  .rsm-card{max-width:440px}
+  .rsm-card .dsm-desc{margin-bottom:18px}
+  .rsm-fields{display:flex;flex-direction:column;gap:14px;text-align:left}
+  .rsm-label{display:block;font-size:12.5px;font-weight:700;color:#44403c;margin:0 0 6px;letter-spacing:-.01em}
+  .rsm-label-sub{font-weight:500;color:#a8a29e}
+  .rsm-input{
+    width:100%;box-sizing:border-box;padding:11px 13px;border-radius:10px;
+    border:1.5px solid #d5cfb8;background:#fff;
+    font-size:16px;font-weight:600;color:#1c1917;
+    outline:none;font-family:var(--sans);letter-spacing:-.01em;
+    transition:border-color .15s ease;
+  }
+  .rsm-input:focus{border-color:#f59e0b}
+  .rsm-sub{margin-top:6px;font-size:11.5px;color:#78716c;line-height:1.5;letter-spacing:-.01em}
+  .rsm-leave{padding:10px 13px;border-radius:10px;background:#faf7ed;font-size:13px;color:#44403c;line-height:1.5}
+  .rsm-leave b{font-size:16px;color:#1c1917}
+  .rsm-leave.is-over b{color:#b91c1c}
+  .rsm-leave-sub{font-size:11.5px;color:#78716c}
+  .rsm-delreg{
+    display:block;margin:14px auto 0;padding:4px 6px;background:none;border:none;
+    font-size:12px;color:#a8a29e;text-decoration:underline;cursor:pointer;font-family:var(--sans)
+  }
+  .rsm-delreg[hidden]{display:none}
+  .rsm-delreg:hover{color:#b91c1c}
 
   @media (max-width:480px){
     .dsm-card{padding:28px 22px 22px}
@@ -9974,40 +9999,50 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .leave-head-left{display:flex;flex-direction:column;gap:2px;min-width:0}
   .leave-name{font-size:15.5px;font-weight:700;color:var(--text-0);letter-spacing:-.015em;line-height:1.2}
   .leave-name-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-  /* 직원 숨김(퇴사) 버튼 — master 전용, 카드 우측 상단 */
-  .leave-staff-hide{
-    position:absolute;top:6px;right:6px;
-    width:22px;height:22px;padding:0;
-    display:inline-flex;align-items:center;justify-content:center;
+  /* 퇴사 처리 버튼 — 관리자 전용, 카드 오른쪽 위 (2026-11-15, 예전 휴지통 '숨김' 아이콘 대신) */
+  body.role-master .leave-head{padding-right:44px}
+  .leave-staff-resign{
+    position:absolute;top:8px;right:8px;
+    padding:3px 9px;font-size:11px;font-weight:700;line-height:1.4;letter-spacing:-.01em;font-family:var(--sans);
     background:var(--bg-1);color:var(--text-3);border:1px solid var(--line);
-    border-radius:5px;cursor:pointer;opacity:.55;
+    border-radius:999px;cursor:pointer;opacity:.6;
     transition:opacity .12s,background .12s,color .12s,border-color .12s
   }
-  .leave-card:hover .leave-staff-hide{opacity:1;color:var(--danger,#dc2626);border-color:rgba(220,38,38,.35)}
-  .leave-staff-hide:hover{opacity:1 !important;background:var(--danger,#dc2626);color:#fff;border-color:transparent}
+  .leave-card:hover .leave-staff-resign{opacity:1;color:var(--danger,#dc2626);border-color:rgba(220,38,38,.35)}
+  .leave-staff-resign:hover{opacity:1 !important;background:var(--danger,#dc2626);color:#fff;border-color:transparent}
   @media (hover:none) and (pointer:coarse){
-    .leave-staff-hide{opacity:.85;width:26px;height:26px;color:var(--danger,#dc2626);border-color:rgba(220,38,38,.35)}
+    .leave-staff-resign{opacity:.9;padding:5px 11px;color:var(--danger,#dc2626);border-color:rgba(220,38,38,.35)}
   }
-  /* 숨긴 직원 복원 패널 */
-  .leave-hidden-panel{
-    margin:12px 0 0;padding:10px 12px;
-    background:var(--bg-1);border:1px dashed var(--line);border-radius:8px;
-    display:flex;align-items:center;gap:8px;flex-wrap:wrap
+  /* 퇴사 예정 배지 — 마지막 근무일까지 카드에 (관리자만) */
+  .leave-resign-badge{
+    align-self:flex-start;margin-top:5px;padding:2px 8px;
+    font-size:11px;font-weight:700;letter-spacing:-.01em;line-height:1.5;
+    color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:999px
   }
-  .leave-hidden-panel .lhp-title{font-size:12px;color:var(--text-3);font-weight:500;margin-right:4px}
-  .leave-hidden-chip{
-    display:inline-flex;align-items:center;gap:4px;
-    padding:3px 6px 3px 10px;font-size:12px;color:var(--text-2);
-    background:var(--bg-2);border:1px solid var(--line);border-radius:999px
-  }
-  .leave-hidden-chip button{
-    width:18px;height:18px;padding:0;line-height:1;
-    display:inline-flex;align-items:center;justify-content:center;
-    background:transparent;border:none;color:var(--text-3);
-    cursor:pointer;border-radius:50%;font-size:14px;
-    transition:background .12s,color .12s
-  }
-  .leave-hidden-chip button:hover{background:var(--ok);color:#fff}
+  /* 퇴사자 명단 — 연차 현황 아래, 관리자 전용 (renderResignedPanel) */
+  .resigned-panel{margin:16px 0 0;padding:14px 16px 16px;background:var(--bg-1);border:1px dashed var(--line-2);border-radius:12px}
+  .rsd-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .rsd-title{font-size:14px;font-weight:800;color:var(--text-0);letter-spacing:-.015em}
+  .rsd-count{font-size:12px;color:var(--text-3);font-weight:600}
+  .rsd-note{margin-left:auto;font-size:11px;color:var(--text-3);opacity:.75}
+  .rsd-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media (max-width:1080px){.rsd-list{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:600px){.rsd-list{grid-template-columns:1fr}.rsd-note{margin-left:0}}
+  .rsd-row{display:flex;flex-direction:column;gap:5px;padding:11px 13px;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;min-width:0}
+  .rsd-row.is-pending{background:#fffbeb;border-color:#fde68a}
+  .rsd-main{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .rsd-name{font-size:14px;font-weight:700;color:var(--text-0);letter-spacing:-.015em}
+  .rsd-team{font-size:11.5px;color:var(--text-3);font-weight:600}
+  .rsd-badge{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;color:#b45309;background:#fef3c7;border:1px solid #fde68a}
+  .rsd-meta{font-size:12px;color:var(--text-2);line-height:1.5}
+  .rsd-meta b{color:var(--text-0);font-weight:700}
+  .rsd-memo{font-size:11.5px;color:var(--text-3);line-height:1.45;overflow-wrap:anywhere}
+  .rsd-actions{display:flex;gap:6px;margin-top:3px}
+  .rsd-btn{padding:4px 10px;font-size:11.5px;font-weight:700;font-family:var(--sans);border-radius:7px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-2);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+  .rsd-btn:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--line-2)}
+  .rsd-btn-undo:hover{background:var(--ok);color:#fff;border-color:transparent}
+  .rsd-more{margin-top:10px;padding:6px 12px;font-size:12px;font-weight:700;font-family:var(--sans);border-radius:8px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-2);cursor:pointer}
+  .rsd-more:hover{color:var(--text-0);border-color:var(--line-2)}
   .leave-dept{font-size:11.5px;color:var(--text-2);letter-spacing:-.005em;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .leave-dept-ov{color:#4f46e5;font-weight:800;margin-left:3px;font-size:11px}
   .leave-dept-sel{
@@ -10747,7 +10782,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     /* 아이콘 버튼 */
     .wr-copy-btn,.ar-name-edit,.leave-cal-nav,.btn-fx-cal-nav,.btn-cec-cal-nav,.ably-nav,#diaryPrevDay,#diaryNextDay,
     #signageRefresh,.cec-list-del,.pc-tier-del-btn,.leave-recent-del,.dsg-fs-btn,.dcs-add,.dcs-prev-toggle{min-width:36px;min-height:36px}
-    .ar-card-del,.ar-img-edit,.leave-staff-hide{width:32px;height:32px}
+    .ar-card-del,.ar-img-edit{width:32px;height:32px}
+    .leave-staff-resign{min-height:32px}
     /* 촘촘한 줄의 아이콘 — 모양은 그대로 두고 손가락이 닿는 영역만 넓힌다 */
     .dcs-prev-check,.dcs-req-check,.dcs-plan-check,.dcs-task-check,.dcs-prio,.dcs-prev-del,.dcs-req-del,.dcs-plan-del,
     .md-gantt-ckl-btn,.dsg-blk-check,.dsg-blk-prio,.dsg-blk-del,.dsg-blk-plus,.dsg-sec-caret,.cs-act-del,
@@ -11254,7 +11290,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <label class="add-staff-label" for="asHire">입사일</label>
         <input class="add-staff-input" id="asHire" type="date" required>
       </div>
-      <div class="add-staff-hint">등록 즉시 조직도·연차 현황·신청서에 반영됩니다. 잘못 등록 시 <b>숨김(퇴사)</b> 처리하거나 마스터가 삭제할 수 있습니다.</div>
+      <div class="add-staff-hint">등록 즉시 조직도·연차 현황·신청서에 반영됩니다. 잘못 등록했으면 그 직원 연차 카드의 <b>퇴사</b> → <b>등록 지우기</b>로 지울 수 있습니다.</div>
       <div class="add-staff-actions">
         <button type="button" class="add-staff-btn add-staff-cancel" onclick="closeAddStaffForm()">취소</button>
         <button type="submit" class="add-staff-btn add-staff-submit">등록</button>
@@ -11301,7 +11337,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <text class="t-teamcap c-share"  x="740" y="158">CS팀</text>
         <text class="t-teamcap c-vendor" x="900" y="158">벤더</text>
 
-        <!-- 인원 pill — renderOrgChartExtra() 가 STAFF(부서 이동·직책·신규·숨김 반영)로 매번 새로 그린다 -->
+        <!-- 인원 pill — renderOrgChartExtra() 가 STAFF(부서 이동·직책·신규·퇴사 반영)로 매번 새로 그린다 -->
       </svg>
 
       <!-- 모바일 전용 카드 레이아웃 (≤600px에서 표시, SVG는 숨김) -->
@@ -11515,8 +11551,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="leave-grid" id="leaveGrid"></div>
       <datalist id="staffTitleOpts"><option value="팀장"><option value="실장"><option value="파트장"><option value="매니저"><option value="주임"><option value="사원"></datalist>
-      <!-- 숨긴 직원(퇴사자) 복원 패널 — master 전용, 숨긴 직원이 있을 때만 표시 -->
-      <div class="leave-hidden-panel master-only" id="leaveHiddenPanel" hidden></div>
+      <!-- 퇴사자 명단 — 관리자 전용, 퇴사 처리한 직원이 있을 때만 (renderResignedPanel) -->
+      <div class="resigned-panel master-only" id="resignedPanel" hidden></div>
     </div>
   </div><!-- /viewHr -->
 
@@ -25173,7 +25209,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!modal || !sel) return;
     if(modal.hidden) return;
     const isM = (typeof isMaster === 'function') && isMaster();
-    const staffOptions = STAFF.filter(s => isM || !s.ceo);
+    const staffOptions = STAFF.filter(s => (isM || !s.ceo) && !(typeof isStaffResigned === 'function' && isStaffResigned(s.name)));
     const cur = sel.value;
     sel.innerHTML = '<option value="">— 이름 선택 —</option>' +
       staffOptions.map(s=>`<option value="${_esc(s.name)}">${_esc(s.name)} · ${_esc(s.dept)}${s.team?' '+_esc(s.team):''}</option>`).join('');
@@ -25193,7 +25229,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     /* 뷰어(비마스터) PC 에서는 대표 두 분(전승훈·전수빈) 이름 아예 노출 안 함.
        마스터 PIN 을 아는 대표 본인만 CEO 로 선택 가능. */
     const isM = (typeof isMaster === 'function') && isMaster();
-    const staffOptions = STAFF.filter(s => isM || !s.ceo);
+    const staffOptions = STAFF.filter(s => (isM || !s.ceo) && !(typeof isStaffResigned === 'function' && isStaffResigned(s.name)));
     const buildOptions = ()=> '<option value="">— 이름 선택 —</option>' +
       staffOptions.map(s=>`<option value="${_esc(s.name)}">${_esc(s.name)} · ${_esc(s.dept)}${s.team?' '+_esc(s.team):''}</option>`).join('');
     /* 팝업 열 때 인사팀에서 방금 추가된 직원까지 반영하기 위해 최신 staff 를 한 번 pull.
@@ -25412,7 +25448,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _diaryRenderHiddenPanel();
 
     // 전체 데이터 로드: 요청은 직원 단위(이월), 할일은 선택된 날짜 것만
-    // 퇴사(숨김)·업무일지 숨김 처리된 직원은 카드도 알림도 만들지 않는다.
+    // 퇴사 · 업무일지 숨김 처리된 직원은 카드도 알림도 만들지 않는다.
     _diaryEntries = {};
     const all = loadDiaryAll();
     const visible = _diaryVisibleStaff();
@@ -25445,19 +25481,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _diaryUpdateAlert();
   }
 
-  /* 업무일지 카드로 노출할 직원 — 퇴사(숨김) 처리된 사람만 제외.
+  /* 업무일지 카드로 노출할 직원 — 퇴사한 사람(마지막 근무일이 지난 사람)만 제외.
      activeStaff()는 대표(ceo)까지 걸러내지만 업무일지 보드에는 대표 카드도 그대로 보여야 하므로 별도로 둔다.
-     staff_hidden 이 아직 로드되기 전이면(초기 진입) _hiddenStaff.size === 0 이라 자연스럽게 전원 표시. */
+     퇴사자 명단(staff_resigned)은 지난번 받은 것을 localStorage 에서 먼저 쓰고, 서버 값이 오면 다시 그린다. */
   function _diaryVisibleStaff(){
     return STAFF.filter(st => {
-      if(typeof isStaffHidden === 'function' && isStaffHidden(st.name)) return false;
+      if(typeof isStaffResigned === 'function' && isStaffResigned(st.name)) return false;
       if(typeof isDiaryHidden === 'function' && isDiaryHidden(st.name)) return false;
       return true;
     });
   }
   /* 마스터용 — 업무일지에서 숨긴 직원 명단 (STAFF 원본 순서 유지) */
   function _diaryHiddenList(){
-    return STAFF.filter(st => isDiaryHidden(st.name) && !isStaffHidden(st.name));
+    return STAFF.filter(st => isDiaryHidden(st.name) && !isStaffResigned(st.name));
   }
 
   /* 업무일지 카드 정렬 — 팀별 우선순위:
@@ -26369,10 +26405,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return grants;
   }
 
-  function leaveCardHTML(s,v,editing){
+  /* 연차 합계 — 카드 큰 숫자(N일 남음)의 계산. asOf(Date)를 주면 그날 기준 (퇴사 처리 팝업의 '퇴사일 기준 남은 연차') */
+  function _leaveTotals(s,v,editing,asOf){
     // leaveData(v) 우선 → STAFF default → 입사일 기반 cycle 자동 계산
     const hire =v?.hire||s.hire||'';
-    const cycle = cycleInfo(hire);
+    const cycle = cycleInfo(hire, asOf);
     let total=Number.isFinite(v?.total)?v.total:(Number.isFinite(s.total)?s.total:null);
     if(total===null && cycle && cycle.cycleIndex>=0){
       total=cycle.total;
@@ -26383,10 +26420,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const used=_computeCycleUsed(s,v,cycle);
     // total은 있는데 used 미설정 시 0으로 간주 (미입력 표시 방지)
     const usedEff=(used===null&&total!==null)?0:used;
+    const remain=(total!==null&&usedEff!==null)?(total-usedEff):null;
+    return {hire,cycle,total,used,usedEff,remain};
+  }
+  function leaveCardHTML(s,v,editing){
+    const {hire,cycle,total,used,usedEff,remain}=_leaveTotals(s,v,editing);
     // 편집 모드에선 baseline만 표시 (master가 override 직접 설정)
     const usedDisplay=editing?(Number.isFinite(v?.used)?v.used:(Number.isFinite(s.used)?s.used:'')):usedEff;
     const hasFull=total!==null&&usedEff!==null;
-    const remain=hasFull?(total-usedEff):null;
     /* 게이지 = 남은 연차 비율 — 큰 숫자 'N일 남음' 과 같은 방향 (안 쓰면 가득, 쓸수록 줄어듦).
        예전엔 사용률이라 아직 안 쓴 신규 입사자 카드가 '2일 남음' 인데 비어 보였다 (2026-11-06). 초과면 빨간 막대 가득 */
     const fillPct=!hasFull?0:(remain<0?100:(total>0?Math.min(100,Math.max(0,Math.round((remain/total)*100))):0));
@@ -26451,9 +26492,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         }).join('')}
       </div>
     `:'';
-    const hideBtn=`<button class="leave-staff-hide master-only" type="button" title="이 직원을 조직도에서 숨김 (퇴사 처리)" onclick="hideStaffMember('${escapeHTML(s.name)}')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-    </button>`;
+    // 퇴사 처리 — 관리자 전용. 마지막 근무일까지(퇴사 예정)는 배지를 달고 같은 버튼으로 날짜 · 메모 수정
+    const rs=getStaffResign(s.name);
+    const resignBtn=`<button class="leave-staff-resign master-only" type="button" title="${rs?'퇴사 예정 — 날짜 · 메모 수정':'퇴사 처리'}" data-staff="${escapeHTML(s.name)}" onclick="openResignModal(this.dataset.staff)">퇴사</button>`;
+    const resignBadge=rs?`<span class="leave-resign-badge master-only">${escapeHTML(_resignPendingLabel(rs.date))}</span>`:'';
     const cycleBadge = cycleLabel ? `<span class="leave-cycle-badge">${escapeHTML(cycleLabel)}</span>` : '';
     // 1년 미만인데 아직 0일(첫 달 전)이면 게이지가 비어 있는 이유 — 첫 연차 생기는 날을 같이 보여 준다
     let firstGrantText='';
@@ -26473,11 +26515,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           : `<span data-field="used" ${ceNum}>${usedDisplay??''}</span> / <span data-field="total" ${ceNum}>${total??''}</span>일 사용`);
     return `
       <div class="leave-card l-${s.color}${isEmpty?' leave-empty':''}${overClass}" data-staff="${escapeHTML(s.name)}">
-        ${hideBtn}
+        ${resignBtn}
         <div class="leave-head">
           <div class="leave-head-left">
             <span class="leave-name">${escapeHTML(s.name)}${editing?'':titleBadge}</span>
             ${editing ? deptEditHtml+titleEditHtml : `<span class="leave-dept">${sub}${deptBadge}</span>`}
+            ${resignBadge}
           </div>
           ${cycleBadge}
         </div>
@@ -26506,7 +26549,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const data=loadLeaveData();
     const editing=document.body.classList.contains('leave-edit-mode');
     // 입사일 오름차순 정렬 (오래된 직원 → 오늘 입사자 순, 입사일 없으면 맨 뒤)
-    // 숨긴(퇴사) 직원 제외
+    // 퇴사자 제외 (퇴사 예정은 마지막 근무일까지 그대로)
     const sorted=activeStaff().sort((a,b)=>{
       const ha=a.hire||'9999-12-31', hb=b.hire||'9999-12-31';
       return ha.localeCompare(hb);
@@ -26549,7 +26592,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const currentYear=new Date().getFullYear();
     const items=[];
     Object.keys(data).forEach(name=>{
-      if(_hiddenStaff.has(name)) return; // 숨긴 직원 신청 내역 제외
+      if(_resignedStaff.has(name)) return; // 퇴사자 신청 내역 제외
       const h=Array.isArray(data[name]?.history)?data[name].history:[];
       h.forEach(e=>{
         if(!e||!e.submittedAt) return;
@@ -27138,7 +27181,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!form)return;
     const opening=form.hidden;
     if(opening){
-      // STAFF 옵션 채움 + 오늘 날짜 default (숨긴 직원 제외)
+      // STAFF 옵션 채움 + 오늘 날짜 default (퇴사자 제외)
       const sel=document.getElementById('lfStaff');
       sel.innerHTML='<option value="">선택해주세요</option>'+
         activeStaff().map(s=>`<option value="${escapeHTML(s.name)}">${escapeHTML(s.name)} · ${escapeHTML(s.team||s.dept)}</option>`).join('');
@@ -29608,13 +29651,53 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // anon JWT — Authorization: Bearer 헤더로 PostgREST가 role=anon 인식
   const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
   let _leave_lastHash=null;
-  /* 숨긴 직원(퇴사자) 명단 — staff_hidden 테이블에서 동기화. 조직도·연차 현황·신청서에서 필터 */
-  const _hiddenStaff=new Set();
-  function isStaffHidden(name){return _hiddenStaff.has(name)}
+  /* 퇴사자 — staff_resigned 테이블 (2026-11-15, 예전 '숨김' staff_hidden 대신. staff_hidden 은 이제 읽지도 쓰지도 않는다).
+     _resignRows    이름 → {date: 퇴사일(마지막 근무일) YYYY-MM-DD, memo, remain: 퇴사일 기준 남은 연차, dept, team, hire, by, at}
+     _resignedStaff 마지막 근무일이 지난 사람 — 조직도 · 연차 현황 · 신청서 · 달력 · 업무일지 · 연락처 · 로그인 목록에서 뺀다.
+     마지막 근무일 당일까지는 '퇴사 예정' 으로 그대로 보이고 관리자 화면에만 배지. 날짜가 바뀌면 다음 연차 동기화(60초) 때 넘어간다.
+     첫 화면에 퇴사자가 잠깐 보이지 않게 지난번 받은 명단을 localStorage 에 둔다. */
+  const RESIGNED_CACHE_KEY='bb_staff_resigned_v1';
+  const _resignRows=new Map();
+  const _resignedStaff=new Set();
+  function _resignTodayStr(){
+    const d=new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function _refreshResignedSet(){
+    const today=_resignTodayStr();
+    _resignedStaff.clear();
+    for(const [name,r] of _resignRows) if(r.date<today) _resignedStaff.add(name);
+  }
+  function _resignRowFromDb(r){
+    const remain=(r.leave_remain==null||r.leave_remain==='')?null:Number(r.leave_remain);
+    return {
+      date:String(r.resign_date).slice(0,10), memo:r.memo||'', remain:Number.isFinite(remain)?remain:null,
+      dept:r.dept||'', team:r.team||'', hire:r.hire||'', by:r.processed_by||'', at:r.created_at||''
+    };
+  }
+  function _applyResignRows(rows){
+    _resignRows.clear();
+    for(const r of (Array.isArray(rows)?rows:[])){
+      if(r && r.staff_name && /^\d{4}-\d{2}-\d{2}/.test(String(r.resign_date||''))) _resignRows.set(r.staff_name, _resignRowFromDb(r));
+    }
+    _refreshResignedSet();
+  }
+  function _saveResignCache(){
+    try{
+      localStorage.setItem(RESIGNED_CACHE_KEY, JSON.stringify([..._resignRows].map(([name,r])=>({
+        staff_name:name, resign_date:r.date, memo:r.memo||null, leave_remain:r.remain,
+        dept:r.dept||null, team:r.team||null, hire:r.hire||null, processed_by:r.by||null, created_at:r.at||null
+      }))));
+    }catch(e){}
+  }
+  try{ _applyResignRows(JSON.parse(localStorage.getItem(RESIGNED_CACHE_KEY)||'[]')); }catch(e){}
+  function getStaffResign(name){return _resignRows.get(name)||null}
+  function isStaffResigned(name){return _resignedStaff.has(name)}
   /* 대표는 연차/조직도/신청서에서 제외 (업무일지 카드에만 노출) */
-  function activeStaff(){return STAFF.filter(s=>!_hiddenStaff.has(s.name) && !s.ceo)}
+  function activeStaff(){return STAFF.filter(s=>!_resignedStaff.has(s.name) && !s.ceo)}
   window.activeStaff=activeStaff;
-  window.isStaffHidden=isStaffHidden;
+  window.isStaffResigned=isStaffResigned;
+  window.getStaffResign=getStaffResign;
 
   /* 직책(팀장 등) — staff_titles 테이블에서 동기화. 마스터가 인사팀 편집 모드에서 입력/삭제.
      조직도 pill · 연차 카드 이름 옆에 표시되고, 직책 있는 사람이 팀 맨 위로 온다. */
@@ -29661,26 +29744,41 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     return changed;
   }
+  /* 잘못 등록한 신규 입사자 지우기(deleteAddedStaff) — STAFF 에서도 뺀다. 하드코딩 원본 직원은 건드리지 않는다 */
+  function _removeAddedStaff(name){
+    const i=STAFF.findIndex(s=>s.name===name && s._extra);
+    if(i<0) return false;
+    STAFF.splice(i,1);
+    _addedNames.delete(name);
+    return true;
+  }
+  /* 다른 기기에서 지운 등록도 빼기 — 서버 전체 목록(rows)에 없는 앱 등록 직원을 STAFF 에서 뺀다 */
+  function _pruneAddedStaff(rows){
+    const keep=new Set((rows||[]).map(r=>r&&r.name).filter(Boolean));
+    let changed=false;
+    for(const s of STAFF.filter(x=>x._extra && !keep.has(x.name))) changed=_removeAddedStaff(s.name)||changed;
+    return changed;
+  }
 
   /* leave_entries + leave_overrides + leave_baseline_deletes 세 테이블을 가져와 v 형태로 조합
      v = { used?, total?, hire?, history: [...신규 entries], baselineDeletes: [{date,type,days}] } */
   async function sbFetchLeave(){
     try{
-      const [entriesR, overridesR, deletesR, hiddenR]=await Promise.all([
+      const [entriesR, overridesR, deletesR, resignedR]=await Promise.all([
         fetch(`${SUPABASE_URL}/rest/v1/leave_entries?select=*&order=submitted_at.asc`,{headers:_sbHeaders(),cache:'no-cache'}),
         fetch(`${SUPABASE_URL}/rest/v1/leave_overrides?select=*`,{headers:_sbHeaders(),cache:'no-cache'}),
         fetch(`${SUPABASE_URL}/rest/v1/leave_baseline_deletes?select=*`,{headers:_sbHeaders(),cache:'no-cache'}),
-        fetch(`${SUPABASE_URL}/rest/v1/staff_hidden?select=staff_name`,{headers:_sbHeaders(),cache:'no-cache'})
+        fetch(`${SUPABASE_URL}/rest/v1/staff_resigned?select=*`,{headers:_sbHeaders(),cache:'no-cache'})
       ]);
       if(!entriesR.ok || !overridesR.ok || !deletesR.ok) return null;
       const entries=await entriesR.json();
       const overrides=await overridesR.json();
       const deletes=await deletesR.json();
-      if(hiddenR.ok){
-        const hidden=await hiddenR.json();
-        _hiddenStaff.clear();
-        for(const h of (hidden||[])) if(h?.staff_name) _hiddenStaff.add(h.staff_name);
-      }
+      // 퇴사자 명단 — 못 받으면 들고 있던 명단 그대로 (날짜가 바뀐 것만 다시 판정)
+      if(resignedR.ok){
+        const rows=await resignedR.json();
+        if(Array.isArray(rows)){ _applyResignRows(rows); _saveResignCache(); }
+      }else _refreshResignedSet();
       const data={};
       for(const o of (overrides||[])){
         const row={};
@@ -29784,24 +29882,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){return {ok:false, reason:'fetch'}}
   }
 
-  /* 직원 숨김(퇴사자) — staff_hidden 테이블 upsert/delete */
-  async function sbInsertStaffHidden(staff_name){
+  /* 퇴사 처리 — staff_resigned 테이블 upsert (처리 · 수정) / delete (퇴사 취소) */
+  async function sbUpsertStaffResigned(row){
     try{
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_hidden?on_conflict=staff_name`,{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_resigned?on_conflict=staff_name`,{
         method:'POST',
-        headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
-        body:JSON.stringify({staff_name})
+        headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),
+        body:JSON.stringify(Object.assign({}, row, {updated_at:new Date().toISOString()}))
+      });
+      if(!r.ok) return {ok:false,reason:`http_${r.status}`};
+      const rows=await r.json().catch(()=>null);
+      return {ok:true,row:Array.isArray(rows)?rows[0]:null};
+    }catch(e){return {ok:false,reason:'fetch'}}
+  }
+  async function sbDeleteStaffResigned(staff_name){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_resigned?staff_name=eq.${encodeURIComponent(staff_name)}`,{
+        method:'DELETE', headers:_sbHeaders()
       });
       return r.ok?{ok:true}:{ok:false,reason:`http_${r.status}`};
     }catch(e){return {ok:false,reason:'fetch'}}
-  }
-  async function sbDeleteStaffHidden(staff_name){
-    try{
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_hidden?staff_name=eq.${encodeURIComponent(staff_name)}`,{
-        method:'DELETE', headers:_sbHeaders()
-      });
-      return {ok:r.ok};
-    }catch(e){return {ok:false}}
   }
 
   /* 업무일지 숨김 — staff_diary_hidden 테이블 upsert/delete/fetch */
@@ -30021,51 +30121,197 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window.deleteBaselineLeave=deleteBaselineLeave;
 
-  /* 직원 숨김(퇴사자 처리) — master 전용
-     · 조직도/연차 현황/신청서 dropdown/달력에서 제거
-     · leave_entries·leave_overrides 등 기존 데이터는 그대로 유지 (분쟁 방지)
-     · 복원 패널에서 언제든 되돌릴 수 있음 */
-  async function hideStaffMember(name){
-    if(!name) return;
-    if(!requireMaster('직원 삭제')) return;
-    const ok=confirm(`'${name}'님을 조직도·연차 현황에서 숨길까요?\n\n· 조직도, 연차 현황, 연차 신청서, 달력에서 사라집니다.\n· 신청 이력·연차 데이터는 그대로 유지됩니다 (분쟁 방지).\n· 언제든 '숨긴 직원' 패널에서 복원할 수 있습니다.`);
-    if(!ok) return;
-    const r=await sbInsertStaffHidden(name);
-    if(!r.ok){
-      toast(`숨김 실패 (${r.reason||'?'}) — 잠시 후 다시 시도해주세요`,'err');
-      return;
-    }
-    _hiddenStaff.add(name);
+  /* ===== 퇴사 처리 — 관리자 전용 (2026-11-15, 예전 '숨김(퇴사)' 휴지통 버튼 대신) =====
+     · 연차 카드의 '퇴사' → 팝업에서 퇴사일(마지막 근무일) · 메모 → staff_resigned 에 저장.
+     · 마지막 근무일 다음 날부터 조직도 · 연차 현황 · 신청서 · 달력 · 업무일지 · 연락처 · 로그인 목록에서 빠지고
+       '퇴사자 명단'(연차 현황 아래, 관리자 전용)으로 옮겨진다. 그 전까지는 '퇴사 예정' 배지.
+     · 연차 신청 이력 · 업무일지 기록은 그대로 (분쟁 방지). 퇴사일 기준 남은 연차를 같이 남긴다 (미사용 연차 정산 참고).
+     · 퇴사자 명단에서 수정 · 퇴사 취소. 앱에서 잘못 등록한 직원은 팝업 아래 '등록 지우기'. */
+  function _staffByName(name){ return STAFF.find(s=>s.name===name)||null; }
+  function _fmtDot(iso){ return iso ? String(iso).slice(0,10).replace(/-/g,'.') : ''; }
+  function _fmtMD(iso){ const m=String(iso||'').match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${+m[1]}/${+m[2]}` : ''; }
+  function _isoDays(a,b){   // a → b 일수 (YYYY-MM-DD)
+    const pa=a.split('-').map(Number), pb=b.split('-').map(Number);
+    return Math.round((Date.UTC(pb[0],pb[1]-1,pb[2])-Date.UTC(pa[0],pa[1]-1,pa[2]))/86400000);
+  }
+  function _isoNextDay(iso){
+    const p=iso.split('-').map(Number), d=new Date(Date.UTC(p[0],p[1]-1,p[2]+1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  }
+  /* 근속 — 입사일 ~ 마지막 근무일. 'N년 N개월' / 'N개월' / 'N일' */
+  function _tenureLabel(hire,last){
+    const re=/^\d{4}-\d{2}-\d{2}$/;
+    if(!re.test(hire||'') || !re.test(last||'') || last<hire) return '';
+    const [hy,hm,hd]=hire.split('-').map(Number);
+    const end=_isoNextDay(last);   // 마지막 근무일 다음 날 = 근속이 끝나는 날
+    const [ny,nm,nd]=end.split('-').map(Number);
+    let months=(ny-hy)*12+(nm-hm); if(nd<hd) months--;
+    if(months<1) return `${_isoDays(hire,end)}일`;
+    const y=Math.floor(months/12), m=months%12;
+    return y ? (m?`${y}년 ${m}개월`:`${y}년`) : `${m}개월`;
+  }
+  function _resignPendingLabel(date){
+    return date===_resignTodayStr() ? '오늘 마지막 근무' : `퇴사 예정 · ${_fmtMD(date)}까지 근무`;
+  }
+  /* 퇴사일 기준 남은 연차 — 연차 카드와 같은 계산을 그날 기준으로 (직원 목록에 없으면 저장해 둔 값) */
+  function _resignRemainAt(name,date){
+    const s=_staffByName(name);
+    if(!s || !/^\d{4}-\d{2}-\d{2}$/.test(date||'')) return getStaffResign(name)?.remain ?? null;
+    const [y,m,d]=date.split('-').map(Number);
+    return _leaveTotals(s, loadLeaveData()[name], false, new Date(y,m-1,d)).remain;
+  }
+  function _resignHire(name){
+    const s=_staffByName(name);
+    return (s && (loadLeaveData()[name]?.hire || s.hire)) || getStaffResign(name)?.hire || '';
+  }
+  /* 다시 그리기 — 연차 현황(안에서 조직도 · 퇴사자 명단 · 연락처까지) + 열려 있으면 업무일지 */
+  function _resignRedraw(){
     _leave_lastHash=null;
     renderLeaveStatus();
-    applyHiddenToOrgChart();
-    // 업무일지 보드가 열려 있으면 카드도 즉시 사라지게 다시 그린다
     if(!document.getElementById('viewDiary')?.hidden && typeof _diaryRenderBoard==='function'){
-      _diaryRenderBoard();
+      if(typeof _diaryIsEditing==='function' && _diaryIsEditing()) _diarySyncDeferred=true;
+      else _diaryRenderBoard();
     }
-    toast(`✓ ${name}님을 조직도에서 숨겼습니다`,'ok');
   }
-  window.hideStaffMember=hideStaffMember;
 
-  async function restoreStaffMember(name){
+  /* 퇴사 처리 팝업 (#resignModal — 이 스크립트 뒤의 HTML 이라 처음 열 때 이벤트를 단다) */
+  let _resignTarget='';
+  function _resignBind(){
+    if(_resignBind._done) return true;
+    const form=document.getElementById('resignForm');
+    if(!form) return false;
+    _resignBind._done=true;
+    form.addEventListener('submit',e=>{ e.preventDefault(); resignModalSave(); });
+    document.getElementById('resignCancel').addEventListener('click',closeResignModal);
+    document.getElementById('resignDelReg').addEventListener('click',()=>deleteAddedStaff(_resignTarget));
+    document.getElementById('resignDate').addEventListener('input',_resignModalRefresh);
+    document.getElementById('resignModal').addEventListener('keydown',e=>{ if(e.key==='Escape') closeResignModal(); });
+    return true;
+  }
+  /* 날짜를 바꿀 때마다 — 언제부터 빠지는지 + 그날 기준 남은 연차 */
+  function _resignModalRefresh(){
+    const name=_resignTarget;
     if(!name) return;
-    if(!requireMaster('직원 복원')) return;
-    const r=await sbDeleteStaffHidden(name);
-    if(!r.ok){
-      toast('복원 실패 — 잠시 후 다시 시도해주세요','err');
+    const date=document.getElementById('resignDate').value;
+    const sub=document.getElementById('resignDateSub');
+    const leave=document.getElementById('resignLeave');
+    const today=_resignTodayStr();
+    document.getElementById('resignHint').textContent='';
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){
+      sub.textContent='마지막으로 출근한 날을 골라 주세요';
+      leave.className='rsm-leave';
+      leave.textContent='—';
       return;
     }
-    _hiddenStaff.delete(name);
-    _leave_lastHash=null;
-    renderLeaveStatus();
-    applyHiddenToOrgChart();
-    // 복원 즉시 업무일지 카드에도 다시 나타나게
-    if(!document.getElementById('viewDiary')?.hidden && typeof _diaryRenderBoard==='function'){
-      _diaryRenderBoard();
-    }
-    toast(`✓ ${name}님을 복원했습니다`,'ok');
+    sub.textContent = date<today ? '저장하면 바로 조직도 · 연차 · 업무일지에서 빠지고 퇴사자 명단으로 옮겨져요'
+      : date===today ? '오늘까지 근무 — 내일부터 퇴사자 명단으로 옮겨져요'
+      : `${_fmtMD(date)}까지는 지금처럼 보이고(퇴사 예정), 다음 날부터 퇴사자 명단으로 옮겨져요`;
+    const remain=_resignRemainAt(name,date);
+    leave.className='rsm-leave'+(remain!==null&&remain<0?' is-over':'');
+    leave.innerHTML = remain===null ? '연차 정보가 없어요'
+      : remain<0 ? `<b>${Math.abs(remain)}일</b> 초과 사용 <span class="rsm-leave-sub">· 퇴사일 기준</span>`
+      : `<b>${remain}일</b> <span class="rsm-leave-sub">· 퇴사일 기준 · 미사용 연차 정산 참고 (퇴사자 명단에 같이 남아요)</span>`;
   }
-  window.restoreStaffMember=restoreStaffMember;
+  function openResignModal(name){
+    const modal=document.getElementById('resignModal');
+    if(!modal || !name || !_resignBind()) return;
+    if(!requireMaster('퇴사 처리')) return;
+    const s=_staffByName(name), cur=getStaffResign(name);
+    if(!s && !cur) return;
+    _resignTarget=name;
+    const team=s ? (s.team?`${s.dept} · ${_normTeam(s.team)}`:s.dept) : (cur.team?`${cur.dept} · ${cur.team}`:cur.dept);
+    const hire=_resignHire(name);
+    document.getElementById('resignTitle').textContent=cur?'퇴사 정보 수정':'퇴사 처리';
+    document.getElementById('resignDesc').innerHTML=`<b>${escapeHTML(name)}</b>${team?` · ${escapeHTML(team)}`:''}${hire?` · 입사 ${escapeHTML(_fmtDot(hire))}`:''}`;
+    const dateEl=document.getElementById('resignDate');
+    dateEl.value=cur?.date || _resignTodayStr();
+    dateEl.min=/^\d{4}-\d{2}-\d{2}$/.test(hire)?hire:'';
+    document.getElementById('resignMemo').value=cur?.memo||'';
+    const saveBtn=document.getElementById('resignSave');
+    saveBtn.textContent=cur?'저장':'퇴사 처리';
+    saveBtn.disabled=false;
+    // 앱에서 등록한 직원(staff_added)을 처음 처리할 때만 — 잘못 등록했으면 퇴사가 아니라 등록을 지운다
+    document.getElementById('resignDelReg').hidden=!(s && s._extra) || !!cur;
+    _resignModalRefresh();
+    modal.hidden=false;
+    setTimeout(()=>{ try{ dateEl.focus(); }catch(e){} },60);
+  }
+  window.openResignModal=openResignModal;
+  function closeResignModal(){
+    const modal=document.getElementById('resignModal');
+    if(modal) modal.hidden=true;
+    _resignTarget='';
+  }
+  async function resignModalSave(){
+    const name=_resignTarget;
+    if(!name) return;
+    if(!requireMaster('퇴사 처리')) return;
+    const dateEl=document.getElementById('resignDate');
+    const hint=document.getElementById('resignHint');
+    const saveBtn=document.getElementById('resignSave');
+    if(saveBtn.disabled) return;   // 저장 중에 Enter 를 또 눌러도 한 번만
+    const date=dateEl.value;
+    const hire=_resignHire(name);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ hint.textContent='퇴사일(마지막 근무일)을 골라 주세요'; dateEl.focus(); return; }
+    if(/^\d{4}-\d{2}-\d{2}$/.test(hire) && date<hire){ hint.textContent=`퇴사일이 입사일(${_fmtDot(hire)})보다 빠를 수 없어요`; dateEl.focus(); return; }
+    const s=_staffByName(name), cur=getStaffResign(name);
+    const memo=document.getElementById('resignMemo').value.trim().slice(0,60);
+    const row={
+      staff_name:name, resign_date:date, memo:memo||null,
+      leave_remain:_resignRemainAt(name,date),
+      dept:(s?s.dept:cur?.dept)||null,
+      team:(s?_normTeam(s.team):cur?.team)||null,
+      hire:hire||null,
+      processed_by:_diaryGetMe()||null
+    };
+    const label=saveBtn.textContent;
+    saveBtn.disabled=true;
+    saveBtn.textContent='저장 중…';
+    const r=await sbUpsertStaffResigned(row);
+    saveBtn.textContent=label;
+    saveBtn.disabled=false;
+    if(!r.ok){ hint.textContent=`저장하지 못했어요 (${r.reason||'?'}) — 잠시 후 다시 눌러 주세요`; return; }
+    _resignRows.set(name, _resignRowFromDb(r.row || Object.assign({created_at:cur?.at||new Date().toISOString()}, row)));
+    _refreshResignedSet();
+    _saveResignCache();
+    closeResignModal();
+    _resignRedraw();
+    if(cur) toast(`✓ ${name}님 퇴사 정보를 고쳤어요`,'ok');
+    else if(date<_resignTodayStr()) toast(`✓ ${name}님 퇴사 처리 — 퇴사자 명단으로 옮겼어요`,'ok');
+    else toast(`✓ ${name}님 퇴사 예정 — ${_fmtMD(date)}까지는 그대로 보여요`,'ok');
+  }
+
+  /* 퇴사 취소 — 다시 재직 중으로. 행을 지운다 (row_history 에 기록은 남음) */
+  async function cancelStaffResign(name){
+    const cur=getStaffResign(name);
+    if(!name || !cur) return;
+    if(!requireMaster('퇴사 취소')) return;
+    const ok=confirm(`'${name}'님 퇴사를 취소할까요?\n\n· 다시 재직 중으로 돌아가 조직도 · 연차 현황 · 업무일지에 나타납니다.\n· 적어 둔 퇴사일(${_fmtDot(cur.date)}) · 메모는 지워집니다.`);
+    if(!ok) return;
+    const r=await sbDeleteStaffResigned(name);
+    if(!r.ok){ toast(`퇴사 취소 실패 (${r.reason||'?'}) — 잠시 후 다시 시도해주세요`,'err'); return; }
+    _resignRows.delete(name);
+    _refreshResignedSet();
+    _saveResignCache();
+    _resignRedraw();
+    toast(`✓ ${name}님 퇴사를 취소했어요 — 다시 재직 중`,'ok');
+  }
+  window.cancelStaffResign=cancelStaffResign;
+
+  /* 잘못 등록한 신규 입사자 지우기 — 관리자 전용, 앱에서 등록한 직원(staff_added)만. 하드코딩 원본 직원은 못 지운다 */
+  async function deleteAddedStaff(name){
+    const s=_staffByName(name);
+    if(!s || !s._extra) return;
+    if(!requireMaster('직원 등록 지우기')) return;
+    const ok=confirm(`'${name}'님 등록을 지울까요?\n\n· 이름을 잘못 넣는 등 잘못 등록했을 때만 쓰세요. 실제로 일했던 직원은 '퇴사 처리'를 해 주세요.\n· 조직도 · 연차 현황 · 업무일지에서 바로 사라집니다.`);
+    if(!ok) return;
+    const r=await sbDeleteStaffAdded(name);
+    if(!r.ok){ toast('지우지 못했어요 — 잠시 후 다시 시도해주세요','err'); return; }
+    _removeAddedStaff(name);
+    closeResignModal();
+    _resignRedraw();
+    toast(`✓ ${name} 등록을 지웠어요`,'ok');
+  }
 
   /* 업무일지 숨김 · 복원 — master 전용.
      · 업무일지 카드/버튼/뷰 접근을 해당 이름에서 차단 (연차·조직도엔 그대로 남음).
@@ -30221,19 +30467,47 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window._diaryApplyHomeVisibility=_diaryApplyHomeVisibility;
 
-  /* 숨긴 직원 복원 패널 — leave-grid 아래에 chip 형태로 표시 */
-  function renderHiddenStaffPanel(){
-    const panel=document.getElementById('leaveHiddenPanel');
+  /* 퇴사자 명단 — 연차 현황 아래, 관리자 전용. 퇴사 예정(마지막 근무일 전)이 위, 그다음 최근 퇴사 순 · 6명 넘으면 접힘 */
+  const RESIGNED_PREVIEW=6;
+  let _resignedShowAll=false;
+  function toggleResignedAll(){ _resignedShowAll=!_resignedShowAll; renderResignedPanel(); }
+  window.toggleResignedAll=toggleResignedAll;
+  function renderResignedPanel(){
+    const panel=document.getElementById('resignedPanel');
     if(!panel) return;
-    const names=[..._hiddenStaff].filter(n=>STAFF.some(s=>s.name===n));
-    if(!names.length){panel.hidden=true;panel.innerHTML='';return}
+    if(!_resignRows.size){ panel.hidden=true; panel.innerHTML=''; return; }
+    const today=_resignTodayStr();
+    const rows=[..._resignRows].map(([name,r])=>Object.assign({name, pending:r.date>=today}, r))
+      .sort((a,b)=>(b.pending-a.pending) || (a.pending ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)) || a.name.localeCompare(b.name));
+    const nPend=rows.filter(r=>r.pending).length, nDone=rows.length-nPend;
+    const shown=_resignedShowAll ? rows : rows.slice(0, Math.max(RESIGNED_PREVIEW, nPend));
+    const items=shown.map(r=>{
+      const s=_staffByName(r.name);
+      const team=s ? (s.team?_normTeam(s.team):s.dept) : (r.team||r.dept||'');
+      const hire=r.hire || (s && s.hire) || '';
+      const tenure=_tenureLabel(hire, r.date);
+      const remain=r.remain===null ? '' : (r.remain<0 ? `연차 ${Math.abs(r.remain)}일 초과 사용` : `남은 연차 ${r.remain}일`);
+      const nm=escapeHTML(r.name);
+      const badge=r.pending ? `<span class="rsd-badge">${escapeHTML(r.date===today?'오늘 마지막 근무':`퇴사 예정 · D-${_isoDays(today,r.date)}`)}</span>` : '';
+      return `<div class="rsd-row${r.pending?' is-pending':''}" data-staff="${nm}">
+        <div class="rsd-main"><span class="rsd-name">${nm}</span>${team?`<span class="rsd-team">${escapeHTML(team)}</span>`:''}${badge}</div>
+        <div class="rsd-meta">${hire?`입사 ${escapeHTML(_fmtDot(hire))} → `:''}퇴사 <b>${escapeHTML(_fmtDot(r.date))}</b>${tenure?` · 근속 ${escapeHTML(tenure)}`:''}</div>
+        ${remain||r.memo?`<div class="rsd-memo">${escapeHTML([remain, r.memo].filter(Boolean).join(' · '))}</div>`:''}
+        <div class="rsd-actions">
+          <button type="button" class="rsd-btn" data-staff="${nm}" onclick="openResignModal(this.dataset.staff)">수정</button>
+          <button type="button" class="rsd-btn rsd-btn-undo" data-staff="${nm}" onclick="cancelStaffResign(this.dataset.staff)">퇴사 취소</button>
+        </div>
+      </div>`;
+    }).join('');
+    const more=rows.length>shown.length
+      ? `<button type="button" class="rsd-more" onclick="toggleResignedAll()">지난 퇴사자 ${rows.length-shown.length}명 더 보기 ▾</button>`
+      : (_resignedShowAll && rows.length>RESIGNED_PREVIEW ? `<button type="button" class="rsd-more" onclick="toggleResignedAll()">접기 ▴</button>` : '');
     panel.hidden=false;
-    const chips=names.map(n=>`<span class="leave-hidden-chip">${escapeHTML(n)}<button type="button" title="복원" onclick="restoreStaffMember('${escapeHTML(n)}')">↺</button></span>`).join('');
-    panel.innerHTML=`<span class="lhp-title">🙈 숨긴 직원 (${names.length})</span>${chips}`;
+    panel.innerHTML=`<div class="rsd-head"><span class="rsd-title">👋 퇴사자 명단</span><span class="rsd-count">${nDone}명${nPend?` · 퇴사 예정 ${nPend}명`:''}</span><span class="rsd-note">관리자만 보여요 · 연차 · 업무일지 기록은 그대로 보관</span></div><div class="rsd-list">${items}</div>${more}`;
   }
-  window.renderHiddenStaffPanel=renderHiddenStaffPanel;
+  window.renderResignedPanel=renderResignedPanel;
 
-  /* 조직도 — STAFF(부서 override · 직책 · 신규 입사 · 숨김 반영)로 SVG · 모바일 카드를 매번 통째로 다시 그린다.
+  /* 조직도 — STAFF(부서 override · 직책 · 신규 입사 · 퇴사 반영)로 SVG · 모바일 카드를 매번 통째로 다시 그린다.
      예전엔 HTML 에 하드코딩된 pill 을 숨기고 위로 당기는 방식이라 부서 이동·직책이 조직도에 안 따라왔다.
      팀 안 순서: 직책 있는 사람 먼저 → 입사일 오름차순. */
   /* 인원 pill 슬롯 — x 는 SVG 팀 캡션 center. pill: rect(x-w/2, y, w, 24) + text(x, y+12), 첫 줄 y=172, 28px 간격 */
@@ -30324,20 +30598,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           : `<span class="om-mem" data-staff="${escapeHTML(s.name)}">${escapeHTML(s.name)}</span>`;
       }).join('');
     }
-    renderHiddenStaffPanel();
-    // 숨김 · 부서 · 직책이 바뀌면 직원 연락처 순서도 같이 (스크립트 실행 중 이른 호출이면 건너뜀)
+    renderResignedPanel();
+    // 퇴사 · 부서 · 직책이 바뀌면 직원 연락처 순서도 같이 (스크립트 실행 중 이른 호출이면 건너뜀)
     try{ renderStaffPhonePanel(); }catch(e){}
   }
   window.renderOrgChartExtra=renderOrgChartExtra;
-  /* 예전 이름 유지 — 숨김/복원·연차 렌더 등 여러 곳에서 부른다. 이제 전체 재렌더와 같다. */
+  /* 예전 이름 유지 — 퇴사 처리 · 연차 렌더 등 여러 곳에서 부른다. 이제 전체 재렌더와 같다. */
   function applyHiddenToOrgChart(){ renderOrgChartExtra(); }
   window.applyHiddenToOrgChart=applyHiddenToOrgChart;
 
   /* Supabase staff_added → STAFF 병합 + 조직도 재렌더 + 연차 상태 갱신 */
   async function syncStaffAddedFromRemote(){
     const rows=await sbFetchStaffAdded();
-    if(rows===null) return false;
-    const changed=mergeAddedStaff(rows);
+    if(!Array.isArray(rows)) return false;
+    // 다른 기기에서 '등록 지우기' 한 직원은 빼고, 새로 등록된 직원은 넣는다
+    const pruned=_pruneAddedStaff(rows);
+    const changed=mergeAddedStaff(rows)||pruned;
     if(changed){
       renderOrgChartExtra();
       if(document.getElementById('leaveGrid')) renderLeaveStatus();
@@ -30518,9 +30794,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   window.syncStaffPhonesFromRemote=syncStaffPhonesFromRemote;
 
-  /* 대표 → 조직도 팀 순서(직책 · 입사일 순) → 조직도 팀에 안 맞는 부서. 퇴사(숨김) 제외 */
+  /* 대표 → 조직도 팀 순서(직책 · 입사일 순) → 조직도 팀에 안 맞는 부서. 퇴사자 제외 */
   function _phonePeople(){
-    const out=STAFF.filter(s=>s.ceo && !isStaffHidden(s.name));
+    const out=STAFF.filter(s=>s.ceo && !isStaffResigned(s.name));
     const groups=_orgSortedGroups();
     for(const k of Object.keys(ORG_SLOTS)) out.push(...(groups[k]||[]));
     for(const s of activeStaff()) if(!out.includes(s)) out.push(s);
@@ -30760,9 +31036,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 인사 카드에 입력 중이면 다시 그리지 않는다 (치던 글자가 사라진다). 다음 회차에 반영
     const grid0=document.getElementById('leaveGrid');
     if(grid0 && document.activeElement && grid0.contains(document.activeElement)) return;
-    // hidden 목록 변경도 hash에 반영 (직원 삭제/복원 시 재렌더 트리거)
-    const hiddenKey=[..._hiddenStaff].sort().join('|');
-    const json=JSON.stringify(fresh)+'#'+hiddenKey;
+    // 퇴사자 명단 · 날짜(퇴사 예정 → 퇴사)도 hash에 반영 — 퇴사 처리 · 취소 · 자정이 지나면 다시 그린다
+    const resignKey=JSON.stringify([..._resignRows].sort((a,b)=>a[0].localeCompare(b[0])))+'@'+[..._resignedStaff].sort().join('|')+'@'+_resignTodayStr();
+    const json=JSON.stringify(fresh)+'#'+resignKey;
     if(json===_leave_lastHash) return;
     _leave_lastHash=json;
     if(typeof _hrOvOverlay==='function') _hrOvOverlay(fresh);
@@ -44836,7 +45112,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   /* MD팀 명단 — STAFF 의 팀 컬러 키로 뽑는다 (신규 입사자 append 도 자동 반영) */
   function _mdwStaff(){
-    const hidden = (typeof isStaffHidden === 'function') ? isStaffHidden : (()=>false);
+    const hidden = (typeof isStaffResigned === 'function') ? isStaffResigned : (()=>false);
     return STAFF.filter(s => s && s.color === 'md2' && !hidden(s.name)).map(s => s.name);
   }
   function _mdwMe(){ return (typeof _diaryGetMe === 'function' ? _diaryGetMe() : '') || '' }
@@ -46215,7 +46491,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function yeLoad(){
     if(_yeLoading) return _yeLoading;
     window.YE_BRIDGE={
-      people:()=>STAFF.filter(s=>!_hiddenStaff.has(s.name)).map(s=>({name:s.name,dept:s.dept||'',team:_normTeam(s.team)||'',hire:s.hire||'',ceo:!!s.ceo,title:getStaffTitle(s.name)||''})),
+      people:()=>STAFF.filter(s=>!_resignedStaff.has(s.name)).map(s=>({name:s.name,dept:s.dept||'',team:_normTeam(s.team)||'',hire:s.hire||'',ceo:!!s.ceo,title:getStaffTitle(s.name)||''})),
       kvSet, kvPull, toast, goHome,
       loadRealtime:_diaryLoadSupabaseClient,
       refreshOrg:()=>syncDeptOverridesFromRemote(),   // 직책 · 부서 변경은 인사팀 화면에서만 받아 오므로 여기서도 받는다
@@ -47397,6 +47673,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <button type="button" class="dsm-btn dsm-btn-ghost" id="phoneCancel">취소</button>
       <button type="submit" class="dsm-btn dsm-btn-primary" id="phoneSave" disabled>등록</button>
     </div>
+  </form>
+</div>
+
+<!-- 퇴사 처리 팝업 (관리자 전용) — 인사팀 연차 카드의 '퇴사' · 퇴사자 명단의 '수정'으로 열림 · staff_resigned 에 저장 -->
+<div id="resignModal" class="dsm-overlay" hidden>
+  <form class="dsm-card rsm-card" id="resignForm" novalidate autocomplete="off">
+    <div class="dsm-icon">👋</div>
+    <h2 class="dsm-title" id="resignTitle">퇴사 처리</h2>
+    <p class="dsm-desc" id="resignDesc"></p>
+    <div class="rsm-fields">
+      <div>
+        <label class="rsm-label" for="resignDate">퇴사일 <span class="rsm-label-sub">(마지막 근무일)</span></label>
+        <input id="resignDate" class="rsm-input" type="date" required>
+        <div class="rsm-sub" id="resignDateSub"></div>
+      </div>
+      <div>
+        <span class="rsm-label">남은 연차</span>
+        <div class="rsm-leave" id="resignLeave">—</div>
+      </div>
+      <div>
+        <label class="rsm-label" for="resignMemo">메모 <span class="rsm-label-sub">(선택 · 관리자 화면에만 보여요)</span></label>
+        <input id="resignMemo" class="rsm-input" type="text" maxlength="60" placeholder="예) 자진 퇴사 · 인수인계 완료">
+      </div>
+    </div>
+    <div class="dsm-hint" id="resignHint" aria-live="polite"></div>
+    <div class="dsm-note">연차 신청 내역 · 업무일지 기록은 지우지 않아요. 연차 현황 아래 퇴사자 명단에서 언제든 고치거나 퇴사 취소할 수 있어요.</div>
+    <div class="dsm-actions">
+      <button type="button" class="dsm-btn dsm-btn-ghost" id="resignCancel">취소</button>
+      <button type="submit" class="dsm-btn dsm-btn-primary" id="resignSave">퇴사 처리</button>
+    </div>
+    <button type="button" class="rsm-delreg" id="resignDelReg" hidden>이름을 잘못 넣는 등 잘못 등록한 직원이면 → 등록 지우기</button>
   </form>
 </div>
 
