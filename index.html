@@ -4945,6 +4945,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-mrow a.reo-sheet{font-size:11.5px;font-weight:700;color:#0f766e;text-decoration:none;white-space:nowrap;padding:6px 4px}
   .reo-pend{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:#dcfce7;color:#166534}
   .reo-basis{font-size:11.5px;color:var(--text-3);line-height:1.6;border-top:1px solid var(--line);padding-top:8px}
+  .reo-expired{border-top:1px solid var(--line);padding-top:6px}
+  .reo-expired summary{cursor:pointer;font-size:12.5px;font-weight:800;color:var(--text-2);padding:8px 2px;min-height:36px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .reo-expired summary span{font-weight:600;color:var(--text-3);font-size:11.5px}
+  .reo-exp-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:6px 10px;margin:0 0 4px;border-left:4px solid var(--bc,#cbd5e1);border-radius:8px;background:var(--bc-bg,var(--bg-2));opacity:.85}
+  .reo-exp-num{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
   .reo-basis b{color:var(--text-2)}
   @media (max-width:700px){
     .home-reo-card{margin:6px 8px 14px;padding:12px 12px 12px}
@@ -11193,6 +11198,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
         <div class="rcv-sum" id="reoModalSum"></div>
         <div class="rcv-list" id="reoModalList"></div>
+        <details class="reo-expired" id="reoModalExpired" hidden ontoggle="_reo.expOpen=this.open"></details>
         <div class="reo-basis" id="reoModalBasis"></div>
       </div>
     </div>
@@ -14913,7 +14919,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const REO_SEV = {out:{t:'품절', cls:'out', g:'지금 품절 — 남은 재고 0 이하인데 팔리는 중'},
                    urgent:{t:'7일 안', cls:'urg', g:'7일 안에 바닥'}};
   const REO_ORDER = ['out','urgent'];
-  const _reo = {data:null, at:0, loading:false, err:'', timer:null, brand:'all', q:'', sev:'', again:null};
+  const _reo = {data:null, at:0, loading:false, err:'', timer:null, brand:'all', q:'', sev:'', again:null, expOpen:false};
   const _reoEsc = v => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const _reoN = n => Number(n).toLocaleString('ko-KR', {maximumFractionDigits: 1});
   const _reoHM = ms => { const d = new Date(ms); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
@@ -14931,6 +14937,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 조각마다 줄바꿈 안 함 — 휴대폰에서 '최근 7일 중 7 / 일' 처럼 끊기지 않게
     const parts = [`하루 ${_reoN(it.rate)}개 팔림`];
     if(it.act7) parts.push(`최근 7일 중 ${it.act7}일`);
+    // 1주일 뒤 숨기기 (사장님 "1주일 뒤 숨기기") — 경보에 뜬 지 며칠째인지, 7일째가 마지막 날
+    if(it.age) parts.push(it.age >= 7 ? '경보 7일째 · 내일 내려감' : `경보 ${it.age}일째`);
     return `<span class="reo-pace ${it.sev === 'out' ? 'out' : ''}">${parts.map(x => `<span class="nw">${x}</span>`).join(' · ')} · <strong class="nw">${_reoWhen(it)}</strong></span>`;
   }
   // 남은 개수는 줄 오른쪽에 크게 — 0 이하는 빨강, 7일 안은 주황
@@ -15058,6 +15066,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         }).join('');
       }
     }
+    // 1주일 지나 내린 상품 — 접힌 채로 개수만 (열면 목록). 다시 그려도 열림 상태 유지
+    const exp = document.getElementById('reoModalExpired');
+    if(exp){
+      const ex = (d.expired || []).filter(i => _reo.brand === 'all' || i.b === _reo.brand);
+      exp.hidden = !ex.length;
+      if(ex.length){
+        exp.open = !!_reo.expOpen;
+        exp.innerHTML = `<summary>1주일 지나 내린 상품 ${ex.length}개 <span>— 그동안 리오더 안 한 걸로 보고 경보에서 뺐어요</span></summary>`
+          + ex.map(it => `<div class="reo-exp-row reo-b-${_reoEsc(it.b)}"><span class="reo-name">${_reoNameHtml(it)}</span>`
+            + `<span class="reo-exp-num">남은 ${_reoN(it.stock)}개 · 하루 ${_reoN(it.rate)}개 · 경보 ${it.age}일째</span></div>`).join('');
+      }
+    }
     const basis = document.getElementById('reoModalBasis');
     if(basis){
       const src = {erp:'재고 마스터 시트', pro:'식스샵 재고 (실사 전)'};
@@ -15069,7 +15089,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         return `<b>${_reoEsc(x.label)}</b> 재고: ${src[x.stockSource] || x.stockSource} · 판매 속도: ${how}${cov}`;
       });
       basis.innerHTML = lines.join('<br>')
-        + '<br>7일 안에 바닥나는 상품만, 최근 7일 중 3일 넘게 팔린(또는 시트 출고 하루 1개 넘는) 상품만 띄웁니다. 판매중지 · B급 · 하루 0.2개 미만은 뺍니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
+        + '<br>7일 안에 바닥나는 상품만, 최근 7일 중 3일 넘게 팔린(또는 시트 출고 하루 1개 넘는) 상품만 띄웁니다. 판매중지 · B급 · 하루 0.2개 미만은 뺍니다.'
+        + '<br>경보에 뜬 지 7일이 지나면 내립니다 — 그동안 리오더 안 한 걸로 봅니다. 입고로 재고가 늘면 다시 셉니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
     }
   }
   function reoHomeBoot(){
