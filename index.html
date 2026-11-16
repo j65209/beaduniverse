@@ -2498,6 +2498,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .md-gantt-ckl-btn.is-done{border-color:#059669;color:#fff;background:#059669}
   .md-gantt-ckl-btn.is-done:hover{background:#047857;border-color:#047857}
   .md-gantt-ckl-btn svg{display:block}
+  /* 지난 일정 접기 (2026-11-16 사장님 "3일 전까지만 보여주고 접어줘") — 3일 전보다 앞 날짜 칸은 한 칸으로 접고, 그 전에 끝난 일정 줄은 숨긴다 */
+  .md-gantt-th-fold{min-width:38px;width:38px;padding:6px 0 !important;cursor:pointer;color:var(--text-3) !important;background:repeating-linear-gradient(135deg,var(--bg-1) 0 5px,var(--bg-2) 5px 10px) !important}
+  .md-gantt-th-fold:hover{color:var(--text-0) !important}
+  .md-gantt-td-fold{position:relative;background:repeating-linear-gradient(135deg,transparent 0 5px,rgba(148,163,184,.10) 5px 10px)}
+  .md-gantt-td-fold.is-cont{cursor:pointer}
+  .md-gantt-td-fold.is-cont::before{content:'';position:absolute;left:0;right:0;top:6px;bottom:6px;background:linear-gradient(90deg,transparent,var(--evc));opacity:.95}
+  .md-cal-past-btn{font-family:var(--sans)}
+  .md-cal-past-btn[hidden]{display:none}   /* display 지정이 hidden 속성을 덮어버린다 */
 
   /* ===== 아코이 기획전 계산기 ===== */
   .akp-wrap{display:flex;flex-direction:column;gap:14px}
@@ -12479,6 +12487,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <span class="md-cal-monthlabel" id="mdCalMonthLabel">2026.05</span>
               <button type="button" class="btn-md-cal-nav md-cal-nav-arrow" onclick="mdCalNavNext()" aria-label="다음 달">›</button>
             </div>
+            <button type="button" class="btn-md-cal-nav md-cal-past-btn" id="mdCalPastBtn" onclick="mdCalTogglePast()" hidden></button>
             <button class="btn po-import md-cal-add" onclick="mdCalOpenAdd()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               일정 추가
@@ -36311,6 +36320,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   let _mdCal_lastHash=null;
   let _mdCal_editingId=null;
   let _mdCal_pickedColor='rose';
+  // 지난 일정 접기 (2026-11-16) — 기본은 접힘: 3일 전부터만 보인다. 펼친 상태는 이 창에서만 (새로 열면 다시 접힘)
+  const MD_CAL_PAST_DAYS=3;
+  let _mdCalShowPast=false;
   const MD_EVENTS_PUSHED_KEY='brightbeed_md_events_pushed_v1';   // 방금 올린 내용의 해시 — 새로고침해도 옛 CDN 파일을 받아들이지 않게
   function _mdePushedGet(){
     try{
@@ -36816,6 +36828,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     renderMdCal();
   }
 
+  // 지난 일정 접기 · 펼치기 버튼 — 보고 있는 달에 접을 날짜가 있을 때만 보인다
+  function _mdPastBtnRender(canFold, pastCount){
+    const btn=document.getElementById('mdCalPastBtn');
+    if(!btn) return;
+    btn.hidden=!canFold;
+    if(!canFold) return;
+    btn.textContent = _mdCalShowPast ? '지난 일정 접기' : (pastCount ? `지난 일정 ${pastCount}건 펼치기` : '지난 날짜 펼치기');
+    btn.title = _mdCalShowPast ? `${MD_CAL_PAST_DAYS}일 전부터만 보이게 접어요` : `${MD_CAL_PAST_DAYS}일 전보다 앞 날짜와 그 전에 끝난 일정이 접혀 있어요`;
+  }
+  function mdCalTogglePast(){
+    _mdCalShowPast=!_mdCalShowPast;
+    renderMdCal();
+  }
+
   function renderMdCal(){
     const grid=document.getElementById('mdCalGrid');
     if(!grid) return;
@@ -36830,10 +36856,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const daysInMonth=new Date(year, month+1, 0).getDate();
     const monthStartIso=_mdIso(new Date(year, month, 1));
     const monthEndIso=_mdIso(new Date(year, month, daysInMonth));
-    const todayIso=_mdIso(new Date());
+    const now=new Date();
+    const todayIso=_mdIso(now);
     const wdShort=['일','월','화','수','목','금','토'];
+    // 지난 일정 접기 — 보고 있는 달 안에 '3일 전'이 있으면 그 앞 날짜 칸과 그 전에 끝난 일정을 접는다.
+    // 통째로 지난 달(일부러 넘겨 본 것) · 앞으로 올 달은 그대로 다 보여 준다
+    const cutIso=_mdIso(new Date(now.getFullYear(), now.getMonth(), now.getDate()-MD_CAL_PAST_DAYS));
+    const canFold = cutIso>monthStartIso && cutIso<=monthEndIso;
+    const folded = canFold && !_mdCalShowPast;
 
-    const evs=(_mdCal.events||[]).concat(_mdAuto.events||[]).filter(ev=>{
+    const monthEvs=(_mdCal.events||[]).concat(_mdAuto.events||[]).filter(ev=>{
       if(!ev.start) return false;
       if(!_mdEventPassesFilter(ev)) return false;
       const e=ev.end || ev.start;
@@ -36844,11 +36876,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(aE!==bE) return aE<bE?-1:1;
       return (a.title||'').localeCompare(b.title||'');
     });
+    const pastCount = canFold ? monthEvs.filter(ev=>(ev.end||ev.start)<cutIso).length : 0;
+    const evs = folded ? monthEvs.filter(ev=>(ev.end||ev.start)>=cutIso) : monthEvs;
+    _mdPastBtnRender(canFold, pastCount);
 
     grid.className='md-gantt-wrap';
 
     if(evs.length===0){
-      grid.innerHTML='<div class="md-gantt-empty">이 달에 해당하는 기획전이 없습니다. 위쪽 "일정 추가"로 만들어보세요.</div>';
+      grid.innerHTML = folded && pastCount
+        ? `<div class="md-gantt-empty">3일 전부터 앞으로 잡힌 기획전이 없습니다. 지난 일정 ${pastCount}건은 위쪽 "펼치기"로 볼 수 있어요.</div>`
+        : '<div class="md-gantt-empty">이 달에 해당하는 기획전이 없습니다. 위쪽 "일정 추가"로 만들어보세요.</div>';
       return;
     }
 
@@ -36858,13 +36895,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const date=new Date(year, month, d);
       const wd=date.getDay();
       const iso=_mdIso(date);
+      if(folded && iso<cutIso) continue;   // 접힌 날짜 — 맨 앞 '접힘' 칸 하나로 모인다
       const cls=['md-gantt-th-day'];
       if(iso===todayIso) cls.push('is-today');
       if(wd===0) cls.push('is-sun');
       if(wd===6) cls.push('is-sat');
       days.push({d, iso, wd, cls});
     }
-    const headerHtml = days.map(x=>`<th class="${x.cls.join(' ')}">${x.d}<span class="md-gantt-th-wd">${wdShort[x.wd]}</span></th>`).join('');
+    const foldN = folded ? Number(cutIso.slice(8,10))-1 : 0;   // 접힌 날짜: 1일 ~ foldN일
+    const foldTh = folded ? `<th class="md-gantt-th-fold" onclick="mdCalTogglePast()" title="${month+1}/1 ~ ${month+1}/${foldN} 접힘 — 누르면 펼쳐요">${foldN>1?'1~'+foldN:'1'}<span class="md-gantt-th-wd">접힘</span></th>` : '';
+    const headerHtml = foldTh + days.map(x=>`<th class="${x.cls.join(' ')}">${x.d}<span class="md-gantt-th-wd">${wdShort[x.wd]}</span></th>`).join('');
 
     // 브랜드별 그룹핑 (필터에 통과한 브랜드만) — _mdEventBrands()는 brands 필드 없어도 제목에서 자동 감지
     const activeBrands = MD_BRANDS.filter(b=>_mdFilterBrands.has(b.key));
@@ -36881,7 +36921,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const barColor = brandColor || _mdEvColor(ev.color).hex;
       const evStart=ev.start;
       const evEnd=ev.end||ev.start;
-      const cellsHtml = days.map(x=>{
+      // 접힌 날짜에 시작한 일정은 '접힘' 칸에서 막대가 이어져 들어온다
+      const foldTd = !folded ? '' : evStart<cutIso
+        ? `<td class="md-gantt-td-fold is-cont" style="--evc:${barColor}" data-ev-id="${escapeHTML(ev.id||'')}"></td>`
+        : '<td class="md-gantt-td-fold"></td>';
+      const cellsHtml = foldTd + days.map(x=>{
         const inRange = x.iso>=evStart && x.iso<=evEnd;
         const cls=['md-gantt-td-day'];
         if(x.iso===todayIso) cls.push('is-today');
@@ -36915,7 +36959,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
     // 각 브랜드 그룹 헤더 + 플랫폼 서브그룹 + 이벤트 행들
     const activePlats = MD_PLATFORMS.filter(p=>_mdFilterPlats.has(p.key));
-    const emptyDaysHtml = days.map(x=>{
+    const emptyDaysHtml = (folded ? '<td class="md-gantt-td-fold"></td>' : '') + days.map(x=>{
       const cls=['md-gantt-td-day'];
       if(x.iso===todayIso) cls.push('is-today');
       if(x.wd===0) cls.push('is-sun');
@@ -37358,6 +37402,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.mdCalNavPrev=mdCalNavPrev;
   window.mdCalNavNext=mdCalNavNext;
   window.mdCalNavToday=mdCalNavToday;
+  window.mdCalTogglePast=mdCalTogglePast;
   window.mdCalOpenAdd=mdCalOpenAdd;
   window.mdCalOpenEdit=mdCalOpenEdit;
   window.renderMdCal=renderMdCal;
