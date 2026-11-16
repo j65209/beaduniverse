@@ -50,7 +50,12 @@ const OPT = {
   // 제품 카드 내내 카드 아래 '💬 댓글 → 링크' 말풍선, 카드가 바뀔 때마다 톡 튀어나옴 (2026-11-12 승훈 님 "댓글 적어 주시면 링크 보내 드린다고 계속 팝업").
   // cards.json 에 cta 가 있을 때만 = DM 이 실제로 될 때만 넣는 칸 (GUIDE '댓글 → 링크 DM 안내') — 안 되는데 띄우면 거짓 안내
   dmPopup: null,
+  // --lead : 첫 장면(= 릴스 썸네일)을 꿀꿀이 인트로 대신 '오늘 1등 딜' 제품 사진 + 가격 + 할인율로 (2026-11-16 표지가 전부 같은 돼지라 구분이 안 되고
+  // 첫 화면에 상품이 없어 바로 넘김 → 매번 다른 상품이 썸네일이 되게). 사진을 못 찾으면 예전처럼 인트로로 만든다
+  lead: null,
+  leadSec: num(args['lead-sec'], 2.2, 1, 5),
 };
+let LEAD = null; // { ref, title, price, was, pct, kicker, file, crop }
 // 카드(template.html won · discount)와 같은 할인율 계산 — 썸네일 숫자가 카드 숫자와 어긋나지 않게
 const won = (s) => {
   s = String(s || '').replace(/정가|판매가|\s/g, '');
@@ -76,6 +81,22 @@ if (args.data && args.data !== '1') {
       OPT.count = Math.min(10, d.deals.length); // 카드와 같이 10개까지 (template.html render)
       const best = Math.max(0, ...d.deals.slice(0, 10).map((x) => pctOf(x) ?? 0));
       if (best >= 10 && best < 100) OPT.maxOff = best;
+      if (args.lead) { // 맨 앞 딜 = 1등 딜 (GUIDE: 할인율 크고 사진 있는 딜을 맨 앞에)
+        const x = d.deals[0], base = path.dirname(path.resolve(args.data));
+        const brand = String(x.brand ?? '').trim(), nm = String(x.short || x.name || '').replace(/\s+/g, ' ').trim();
+        const ref = String(x.ref ?? '');
+        const cand = [
+          x.image ? { file: path.resolve(base, String(x.image)), crop: Array.isArray(x.imageCrop) && x.imageCrop.length === 4 ? x.imageCrop.map(Number) : null } : null,
+          args.ph && args.ph !== '1' && ref ? { file: path.join(path.resolve(args.ph), ref.replace(/[^\w-]+/g, '-') + '.jpg'), crop: null } : null, // 원본이 없으면 render.mjs --ph 가 카드에서 찍어 둔 사진(작음)
+        ].filter((c) => c && fs.existsSync(c.file));
+        if (cand.length && nm && String(x.price ?? '').trim()) {
+          LEAD = {
+            ref, title: brand && !nm.startsWith(brand) ? brand + ' ' + nm : nm, price: String(x.price).trim(),
+            was: won(x.was) ? String(x.was).trim() : '', pct: pctOf(x), kicker: String(d?.cover?.kicker ?? '').slice(0, 40),
+            more: Math.max(0, Math.min(10, d.deals.length) - 1), handle: String(d.handle ?? '').slice(0, 30), ...cand[0],
+          };
+        } else console.error('⚠ --lead: 맨 앞 딜의 사진 · 이름 · 가격을 찾지 못해 예전 인트로로 만들어요.');
+      }
     }
   } catch (e) { console.error(`⚠ ${args.data} 를 읽지 못했어요 — 인트로 제목 없이 만들어요 (${e.message})`); }
 }
@@ -109,7 +130,7 @@ async function loadMedia(spec) {
     const list = JSON.parse((await get('assets.json')).toString('utf8'));
     const hour = Math.floor(Date.now() / 3_600_000); // 실행 시각마다 다른 조합
     const intros = (list.intros ?? []).filter(Boolean), musics = (list.music ?? []).filter(Boolean);
-    if (!INTRO && intros.length) { const n = intros[hour % intros.length]; INTRO = await get(n); MEDIA.intro = n; }
+    if (!INTRO && !LEAD && intros.length) { const n = intros[hour % intros.length]; INTRO = await get(n); MEDIA.intro = n; }
     if (!MUSIC && musics.length) { const n = musics[(hour * 7 + 3) % musics.length]; MUSIC = await get(n); MUSIC_NAME = n; MEDIA.music = n; }
   } catch (e) { console.error(`⚠ 인트로 · 배경음악을 받지 못했어요 (${e.message}) — 없이 만들어요.`); }
 }
@@ -153,6 +174,7 @@ window.setIntro = (src) => new Promise(async (res, rej) => {
   v.onerror = () => rej(new Error('인트로 영상을 열지 못했어요 (' + (v.error && v.error.code) + ')'));
   v.src = URL.createObjectURL(await (await fetch(src)).blob());
 });
+window.setLead = async (src) => { window.leadImg = await createImageBitmap(await (await fetch(src)).blob()); return [leadImg.width, leadImg.height]; };
 window.setMusic = async (src) => { window.musicBuf = await (await fetch(src)).arrayBuffer(); return musicBuf.byteLength; };
 
 window.build = async (o) => {
@@ -161,7 +183,8 @@ window.build = async (o) => {
   const starts = []; let t = 0;
   for (let i = 0; i < n; i++) { starts.push(t); t += holds[i] + (i < n - 1 ? T : 0); }
   const iv = document.getElementById('iv');
-  const introDur = iv.src ? Math.min(o.introSec, Math.floor(iv.duration * FPS) / FPS - 1 / FPS) : 0; // 마지막 프레임은 빼고
+  const introDur = o.lead && window.leadImg ? o.leadSec
+    : iv.src ? Math.min(o.introSec, Math.floor(iv.duration * FPS) / FPS - 1 / FPS) : 0; // 마지막 프레임은 빼고
   const slideTotal = t, total = introDur + slideTotal, frames = Math.round(total * FPS);
 
   // 배경 — 카드와 같은 크림 · 분홍 · 꿀 (한 번만 그려 둔다)
@@ -244,7 +267,7 @@ window.build = async (o) => {
   // ── 인트로: AI 영상(꽉 채움) + 위쪽 빈 곳에 표지 제목, 끝에서 표지 카드로 겹쳐 바뀜 ──
   const first = new OffscreenCanvas(W, H); // 카드 영상 첫 장면 (겹쳐 바뀔 때 씀)
   draw(0); first.getContext('2d').drawImage(cv, 0, 0);
-  if (introDur && (o.hook || o.count)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + '꿀딜 0123456789개 최대%↓').catch(() => null);
+  if (introDur && (o.hook || o.count || o.lead)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + (o.lead ? o.lead.title + o.lead.price + o.lead.was + o.lead.handle + '정가할인외더보기,원' : '') + '꿀딜 0123456789개 최대%↓').catch(() => null);
   const hookFont = (px) => px + 'px Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const drawHook = () => {
     if (!o.hook && !o.count) return;
@@ -306,6 +329,77 @@ window.build = async (o) => {
     }
     ctx.restore();
   };
+  // ── 1등 딜 첫 장면 (--lead): 제품 사진 크게 + 이름 + 가격 + 할인율 + '외 꿀딜 N개' ──
+  // 글자 · 사진은 y 260~1480 안에만 (위는 릴스 화면 제목, 아래는 문구가 덮고, 프로필 3:4 썸네일은 위아래 240px 이 잘린다)
+  const drawLead = () => {
+    const L = o.lead, left = 84, maxW = W - left * 2;
+    ctx.drawImage(bg, 0, 0);
+    ctx.save();
+    ctx.textBaseline = 'alphabetic';
+    if (L.kicker) { // 꿀색 알약 (표지 kicker)
+      ctx.font = '900 ' + hookFont(44);
+      const kw = Math.min(maxW - 260, ctx.measureText(L.kicker).width + 60);
+      ctx.fillStyle = '#ffc94a'; ctx.beginPath(); ctx.roundRect(left, 236, kw, 76, 18); ctx.fill();
+      ctx.fillStyle = '#3a2c25'; ctx.fillText(L.kicker, left + 30, 290, kw - 60);
+    }
+    if (L.handle) { ctx.font = '700 ' + hookFont(34); ctx.fillStyle = '#9a8474'; ctx.textAlign = 'right'; ctx.fillText(L.handle, W - left, 288); ctx.textAlign = 'left'; }
+    // 제품 사진 — 흰 상자에 꽉 채움 (imageCrop 이 있으면 그 부분만)
+    const px = left, py = 346, pw = maxW, ph = 720, im = window.leadImg;
+    const c = L.crop && L.crop.every((v) => v >= 0 && v <= 1) && L.crop[2] > L.crop[0] && L.crop[3] > L.crop[1] ? L.crop : [0, 0, 1, 1];
+    let sx = c[0] * im.width, sy = c[1] * im.height, sw = (c[2] - c[0]) * im.width, sh = (c[3] - c[1]) * im.height;
+    // 제품이 잘리면 안 된다 (2026-11-16 승훈 님 "제품 이미지는 최대한 리얼하게") — 꽉 채웠을 때 12% 넘게 잘리면 흰 바탕에 사진을 통째로 넣는다
+    const k = Math.max(pw / sw, ph / sh), vw = pw / k, vh = ph / k, lost = 1 - (vw * vh) / (sw * sh);
+    ctx.save();
+    ctx.shadowColor = 'rgba(110,72,40,0.22)'; ctx.shadowBlur = 46; ctx.shadowOffsetY = 18;
+    ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 44); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.clip();
+    if (lost <= 0.12) ctx.drawImage(im, sx + (sw - vw) / 2, sy + (sh - vh) / 2, vw, vh, px, py, pw, ph);
+    else { const c2 = Math.min(pw / sw, ph / sh), dw = sw * c2, dh = sh * c2; ctx.drawImage(im, sx, sy, sw, sh, px + (pw - dw) / 2, py + (ph - dh) / 2, dw, dh); }
+    ctx.restore();
+    if (L.pct >= 10 && L.pct < 100) { // 할인율 스티커 — 사진 오른쪽 위에 걸치게
+      const dm = 280;
+      ctx.save();
+      ctx.translate(px + pw - dm / 2 + 14, py + dm / 2 - 30); ctx.rotate(0.1);
+      ctx.fillStyle = 'rgba(58,44,37,0.22)'; ctx.beginPath(); ctx.arc(6, 10, dm / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ef5d50'; ctx.beginPath(); ctx.arc(0, 0, dm / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 9; ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+      ctx.font = '900 ' + hookFont(118); ctx.fillText(L.pct + '%', 0, 26, dm - 40);
+      ctx.fillStyle = '#ffc94a'; ctx.font = '900 ' + hookFont(54); ctx.fillText('할인!', 0, 92);
+      ctx.restore();
+    }
+    // 이름 한 줄 (넘치면 글자를 줄이고, 그래도 넘치면 … 으로 자름)
+    let size = 78, title = L.title;
+    ctx.font = '900 ' + hookFont(size);
+    while (size > 54 && ctx.measureText(title).width > maxW) { size -= 4; ctx.font = '900 ' + hookFont(size); }
+    while (title.length > 4 && ctx.measureText(title).width > maxW) title = title.slice(0, -2).trimEnd() + '…';
+    ctx.fillStyle = '#3a2c25'; ctx.fillText(title, left, 1172);
+    // 가격 크게 + 정가(줄 그음)
+    let ps = 176;
+    ctx.font = '900 ' + hookFont(ps);
+    while (ps > 110 && ctx.measureText(L.price).width > maxW) { ps -= 8; ctx.font = '900 ' + hookFont(ps); }
+    ctx.fillStyle = '#ef5d50'; ctx.fillText(L.price, left - 6, 1346, maxW);
+    const pwid = Math.min(maxW, ctx.measureText(L.price).width);
+    if (L.was) {
+      ctx.font = '700 ' + hookFont(46);
+      const ww = ctx.measureText(L.was).width, wx = left + pwid + 26;
+      if (wx + ww <= W - left) {
+        ctx.fillStyle = '#9a8474'; ctx.fillText(L.was, wx, 1340);
+        ctx.fillRect(wx - 4, 1322, ww + 8, 5);
+      }
+    }
+    if (L.more > 0) { // '외 꿀딜 N개 더' — 다음 장면이 더 있다는 걸 알려 끝까지 보게
+      const t1 = '외 꿀딜 ', t2 = String(L.more), t3 = '개 더 보기 ▶';
+      ctx.font = '900 ' + hookFont(58);
+      const w1 = ctx.measureText(t1).width, w2 = ctx.measureText(t2).width, w3 = ctx.measureText(t3).width, bw = w1 + w2 + w3 + 76;
+      ctx.fillStyle = '#3a2c25'; ctx.beginPath(); ctx.roundRect(left, 1386, bw, 100, 50); ctx.fill();
+      let x = left + 38;
+      ctx.fillStyle = '#ffffff'; ctx.fillText(t1, x, 1457); x += w1;
+      ctx.fillStyle = '#ffc94a'; ctx.fillText(t2, x, 1457); x += w2;
+      ctx.fillStyle = '#ffffff'; ctx.fillText(t3, x, 1457);
+    }
+    ctx.restore();
+  };
   const seekTo = (s) => new Promise((res) => {
     if (Math.abs(iv.currentTime - s) < 1e-6 && iv.readyState >= 2) return res();
     const done = () => { iv.removeEventListener('seeked', done); res(); };
@@ -313,13 +407,16 @@ window.build = async (o) => {
   });
   // 끝 0.5초는 카드 넘기듯 — 인트로가 왼쪽으로 나가고 표지 카드 화면이 오른쪽에서 들어온다 (글자가 겹쳐 보이지 않게)
   const drawIntro = async (time) => {
-    await seekTo(time);
     const p = time > introDur - o.xfade ? ease(Math.min(1, (time - (introDur - o.xfade)) / o.xfade)) : 0;
-    const vw = iv.videoWidth, vh = iv.videoHeight, k = Math.max(W / vw, H / vh); // 꽉 채움 (넘치는 쪽은 잘림)
     ctx.save();
     ctx.translate(-p * W, 0);
-    ctx.drawImage(iv, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k);
-    drawHook();
+    if (o.lead && window.leadImg) drawLead();
+    else {
+      await seekTo(time);
+      const vw = iv.videoWidth, vh = iv.videoHeight, k = Math.max(W / vw, H / vh); // 꽉 채움 (넘치는 쪽은 잘림)
+      ctx.drawImage(iv, (W - vw * k) / 2, (H - vh * k) / 2, vw * k, vh * k);
+      drawHook();
+    }
     ctx.restore();
     if (p > 0) ctx.drawImage(first, (1 - p) * W, 0);
   };
@@ -572,7 +669,20 @@ async function main() {
     if (!(await js('isSecureContext && typeof VideoEncoder === "function"'))) throw new Error('이 브라우저는 WebCodecs(VideoEncoder)를 못 써요.');
 
     let introOk = false;
-    if (INTRO) { // 매그내픽 인트로 — 못 열면 인트로 없이
+    if (LEAD) { // 1등 딜 첫 장면 — 사진을 못 열면 예전 인트로(받아 둔 게 있으면)로
+      try {
+        const ext = path.extname(LEAD.file).toLowerCase(), mt = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+        const [lw, lh] = await js(`setLead(${JSON.stringify(`data:${mt};base64,` + fs.readFileSync(LEAD.file).toString('base64'))})`);
+        const cr = LEAD.crop ?? [0, 0, 1, 1], uw = Math.round((cr[2] - cr[0]) * lw), uh = Math.round((cr[3] - cr[1]) * lh);
+        if (!(Math.min(uw, uh) >= 600)) throw new Error(`사진이 첫 장면에 쓰기엔 작아요 (쓰는 부분 ${uw}×${uh}, 짧은 쪽 600px 부터)`);
+        const { file, ...rest } = LEAD; OPT.lead = rest; introOk = true;
+      } catch (e) {
+        console.error(`⚠ 1등 딜 사진을 못 써요 (${e.message}) — 예전 꿀꿀이 인트로로 만들어요.`);
+        await js('window.leadImg = null, true'); OPT.lead = null;
+        if (!INTRO && args.media) { LEAD = null; await loadMedia(args.media); } // 인트로를 안 받아 뒀으니 지금 받는다
+      }
+    }
+    if (INTRO && !OPT.lead) { // 매그내픽 인트로 — 못 열면 인트로 없이
       try {
         const iv = await js(`setIntro(${JSON.stringify('data:video/mp4;base64,' + INTRO.toString('base64'))})`);
         if (!(iv.duration >= 1)) throw new Error(`길이 ${iv.duration}초`);
@@ -616,8 +726,9 @@ async function main() {
       intro_s: meta.intro, music: meta.music && !meta.music.error ? meta.music : false, hook: !!(meta.intro && OPT.hook),
       thumb_count: meta.intro && OPT.count ? OPT.count : null, // 썸네일(첫 장면)의 '꿀딜 N개'
       thumb_max_off: meta.intro && OPT.count && OPT.maxOff ? OPT.maxOff : null, // 그 옆 '최대 N%↓'
+      lead: OPT.lead ? { ref: OPT.lead.ref, title: OPT.lead.title, price: OPT.lead.price, pct: OPT.lead.pct } : null, // 첫 장면이 1등 딜이면 (--lead)
       dm_popup: !!OPT.dmPopup, // 제품 카드 내내 '💬 댓글 → 링크' 말풍선 (cards.json cta 가 있을 때만)
-      media: { intro: meta.intro ? MEDIA.intro : null, music: meta.music && !meta.music.error ? MEDIA.music : null },
+      media: { intro: meta.intro && !OPT.lead ? MEDIA.intro : null, music: meta.music && !meta.music.error ? MEDIA.music : null },
       took_s: Math.round((Date.now() - t0) / 1000),
     }, null, 2));
   } finally {
