@@ -5434,6 +5434,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .m-metaads .mar-msg{font-size:13px;font-weight:600;color:var(--text-3);line-height:1.35}
   .sub-module.m-metaads .sub-module-tag{position:static;align-self:flex-start;font-size:11px;line-height:1.2;padding:0 5px}
   .sub-module.m-metaads.is-idle{display:none!important}
+  .sub-module.m-metaads .sub-module-tag:empty{display:none}
+  .m-metaads .mar-rank{display:inline-block;min-width:1.4em;margin-right:4px;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text-3)}
   /* 홈 첫 화면용으로 촘촘하게 — 집행 없는 브랜드는 타일 대신 아래 흐린 한 줄 */
   .sub-modules-metaads.sub-modules-section{margin:14px auto 16px;padding:10px 16px 12px}
   .sub-modules-metaads .sub-modules-eyebrow{margin-bottom:10px;padding-bottom:8px}
@@ -11212,42 +11214,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <!-- ============ 홈 뷰 ============ -->
   <div class="view" id="viewHome">
 
-    <!-- 리오더 경보 — 홈 맨 위 고정 (2026-11-16 사장님 "리오더 경보는 확실하게 배치해줘. 상단으로 무조건 고정").
-         모든 PC · 휴대폰 · 보기 PIN 에 보이고 숨기거나 접을 수 없다. 서버 /erp/reorder (맥미니 scripts/reorder_alert.py, 30분) -->
-    <section id="homeReorderCard" class="home-reo-card" aria-label="리오더 경보">
-      <div class="hro-head">
-        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-sub">7일 안에 바닥 · 계속 팔리는 상품</span></div>
-        <div class="hro-meta" id="homeReoMeta">불러오는 중…</div>
-        <div class="hro-actions">
-          <button class="hro-btn hro-btn-ghost" type="button" onclick="reoHomeLoad(true)" title="지금 다시 계산 (1분쯤 걸려요)">↻</button>
-          <button class="hro-btn" type="button" onclick="reoModalOpen()">전체 보기</button>
-        </div>
-      </div>
-      <div class="hro-chips" id="homeReoChips"></div>
-      <button type="button" class="hro-need" id="homeReoNeed" hidden onclick="reoModalOpen('need')"></button>
-      <div class="hro-list" id="homeReoList"></div>
-    </section>
-
-    <!-- 리오더 경보 전체 창 -->
-    <div id="reoModal" class="rcv-modal" hidden onclick="if(event.target===this) reoModalClose()">
-      <div class="rcv-panel reo-panel" role="dialog" aria-modal="true" aria-labelledby="reoModalTitle">
-        <div class="rcv-phead">
-          <div class="rcv-ptitle" id="reoModalTitle">리오더 경보</div>
-          <button type="button" class="rcv-x" onclick="reoModalClose()" aria-label="닫기">✕</button>
-        </div>
-        <div class="rcv-tabs reo-tabs" id="reoModalTabs"></div>
-        <div class="rcv-tools">
-          <input type="search" id="reoModalQ" placeholder="상품명 · 옵션 찾기" oninput="reoModalSearch(this.value)" autocomplete="off">
-        </div>
-        <div class="rcv-sum" id="reoModalSum"></div>
-        <div class="rcv-list" id="reoModalList"></div>
-        <div class="reo-need" id="reoModalNeed" hidden></div>
-        <details class="reo-expired" id="reoModalExpired" hidden ontoggle="_reo.expOpen=this.open"></details>
-        <div class="reo-basis" id="reoModalBasis"></div>
-      </div>
-    </div>
-
-    <!-- 메타 광고 분석 리포트 — 홈 첫 화면 (리오더 카드 바로 아래, 2026-11-16 사장님: 들어가자마자 보이게) (Facebook Marketing API — 브랜드별 성과·피드백; 클릭 시 새 창) -->
+    <!-- 메타 광고 분석 리포트 — 홈 첫 화면 (홈 맨 위 · 리오더 카드 위, 2026-11-16 사장님: 들어가자마자 보이게 · 오늘 매출 순) (Facebook Marketing API — 브랜드별 성과·피드백; 클릭 시 새 창) -->
     <div class="sub-modules-section sub-modules-metaads">
       <div class="sub-modules-eyebrow">
         <span class="folder-icon">📱</span>
@@ -11298,6 +11265,42 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="metaads-idle" id="metaadsIdle" hidden></div>
     </div>
+
+    <!-- 리오더 경보 — 홈 맨 위 고정 (2026-11-16 사장님 "리오더 경보는 확실하게 배치해줘. 상단으로 무조건 고정").
+         모든 PC · 휴대폰 · 보기 PIN 에 보이고 숨기거나 접을 수 없다. 서버 /erp/reorder (맥미니 scripts/reorder_alert.py, 30분) -->
+    <section id="homeReorderCard" class="home-reo-card" aria-label="리오더 경보">
+      <div class="hro-head">
+        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-sub">7일 안에 바닥 · 계속 팔리는 상품</span></div>
+        <div class="hro-meta" id="homeReoMeta">불러오는 중…</div>
+        <div class="hro-actions">
+          <button class="hro-btn hro-btn-ghost" type="button" onclick="reoHomeLoad(true)" title="지금 다시 계산 (1분쯤 걸려요)">↻</button>
+          <button class="hro-btn" type="button" onclick="reoModalOpen()">전체 보기</button>
+        </div>
+      </div>
+      <div class="hro-chips" id="homeReoChips"></div>
+      <button type="button" class="hro-need" id="homeReoNeed" hidden onclick="reoModalOpen('need')"></button>
+      <div class="hro-list" id="homeReoList"></div>
+    </section>
+
+    <!-- 리오더 경보 전체 창 -->
+    <div id="reoModal" class="rcv-modal" hidden onclick="if(event.target===this) reoModalClose()">
+      <div class="rcv-panel reo-panel" role="dialog" aria-modal="true" aria-labelledby="reoModalTitle">
+        <div class="rcv-phead">
+          <div class="rcv-ptitle" id="reoModalTitle">리오더 경보</div>
+          <button type="button" class="rcv-x" onclick="reoModalClose()" aria-label="닫기">✕</button>
+        </div>
+        <div class="rcv-tabs reo-tabs" id="reoModalTabs"></div>
+        <div class="rcv-tools">
+          <input type="search" id="reoModalQ" placeholder="상품명 · 옵션 찾기" oninput="reoModalSearch(this.value)" autocomplete="off">
+        </div>
+        <div class="rcv-sum" id="reoModalSum"></div>
+        <div class="rcv-list" id="reoModalList"></div>
+        <div class="reo-need" id="reoModalNeed" hidden></div>
+        <details class="reo-expired" id="reoModalExpired" hidden ontoggle="_reo.expOpen=this.open"></details>
+        <div class="reo-basis" id="reoModalBasis"></div>
+      </div>
+    </div>
+
 
     <!-- 대표 캘린더 홈 위젯 — 홈 맨 위 (대표 두 분 로그인 PC 에만 노출, 마스터 전용). 2026-11-13 사장님: 입고 현황보다 위로 -->
     <div id="homeCeoCalCard" class="home-ceocal-card" hidden>
@@ -33035,6 +33038,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* card: 스코어보드 cards[브랜드] (fb-ads build_all_brands_scoreboard.py card_of) · null = 그 브랜드 리포트 없음 · undefined = 못 받음 */
+  // 공홈 실매출 = sixshop_roas × 지출 — 순위 정렬에만 쓰고 화면에 금액은 안 낸다. 값이 없으면 null
+  function _metaadsRev(d){
+    if(!d || d.sixshop_available !== true || d.sixshop_roas == null) return null;
+    const v = Number(d.sixshop_roas) * Number(d.spend || 0);
+    return isFinite(v) ? v : null;
+  }
   async function _metaadsCheckOne(brand, card){
     const subEl = document.getElementById(`metaadsSub_${brand}`);
     const tagEl = document.getElementById(`metaadsTag_${brand}`);
@@ -33078,18 +33087,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           subEl.innerHTML = `<div class="mar-pair">${cell('오늘', todayV, ' is-today')}${cell('어제', ydayV, '')}</div><span class="mar-u">ROAS</span>`;
         }
         subEl.style.color = '';
-        _metaadsMeta[brand] = { ready:true, dateStr, roasText, genAt:genDate, idle:(roasText === '최근 광고 집행 없음') };
+        _metaadsMeta[brand] = { ready:true, dateStr, roasText, genAt:genDate, idle:(roasText === '최근 광고 집행 없음'),
+          rev:{ t:_metaadsRev(today), y:_metaadsRev(yday) } };
         const adsFetchStatus = data.ads_fetch_status || 'ok';
         if(adsFetchStatus === 'failed'){
-          tagEl.textContent = 'READY⚠';
+          tagEl.textContent = '⚠ 소재';
           tagEl.title = '광고 소재 수집 실패 — 다음 갱신 시 재시도';
           tagEl.style.color = 'var(--err, #b91c1c)';
         } else if(adsFetchStatus === 'partial'){
-          tagEl.textContent = 'READY⚠';
+          tagEl.textContent = '⚠ 소재';
           tagEl.title = '광고 소재 일부 미수집 — 다음 갱신 시 재시도';
           tagEl.style.color = 'var(--warn, #b45309)';
         } else {
-          tagEl.textContent = 'READY';
+          tagEl.textContent = '';   // 준비됐을 땐 표시 없음
           tagEl.style.color = '';
           tagEl.title = '';
         }
@@ -33105,7 +33115,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _metaadsMeta[brand] = { ready:false, failed:true };
       subEl.textContent = '상태 확인 실패';
       subEl.style.color = '';
-      tagEl.textContent = '—';
+      tagEl.textContent = '';
       cardEl.dataset.ready = '0';
     }
   }
@@ -33143,6 +33153,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       el.classList.remove('is-idle');
       if(el.offsetParent === null) return;           // 숨김 브랜드(클리어타입)는 한 줄에도 안 올린다
       if((_metaadsMeta[b.id]||{}).idle){ el.classList.add('is-idle'); names.push(b.name); }
+    });
+    // 순위: 오늘 매출 큰 순 · 오늘이 전부 0/없음이면 어제 기준 · 같으면 다른 날 매출로 (금액은 표시 안 함)
+    const shown = METAADS_BRANDS.map(b => ({ b, el:document.querySelector(`.m-metaads-${b.id}`), r:(_metaadsMeta[b.id]||{}).rev }))
+      .filter(x => x.el && x.el.offsetParent !== null && !x.el.classList.contains('is-idle'));
+    const anyToday = shown.some(x => x.r && x.r.t > 0);
+    const k1 = x => (x.r ? (anyToday ? x.r.t : x.r.y) : null) ?? -1;
+    const k2 = x => (x.r ? (anyToday ? x.r.y : x.r.t) : null) ?? -1;
+    shown.sort((p, q) => (k1(q) - k1(p)) || (k2(q) - k2(p)));
+    const host = line.parentNode;
+    let n = 0;
+    shown.forEach(x => {
+      host.querySelector('.sub-modules').appendChild(x.el);
+      const t = x.el.querySelector('.sub-module-title');
+      let rk = t.querySelector('.mar-rank');
+      if(!rk){ rk = document.createElement('span'); rk.className = 'mar-rank'; t.prepend(rk); }
+      rk.textContent = x.r ? String(++n) : '';
     });
     line.hidden = !names.length;
     line.textContent = names.length ? `광고 집행 없음 · ${names.join(' · ')}` : '';
