@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>오피스 · 저장 내용 옮기기</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png?v=2">
+<style>
+html,body{height:100%;margin:0;background:#fefcf5;color:#1f2329;font:14px/1.7 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+body{display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;text-align:center}
+p{margin:0 0 4px}
+small{color:#86868b}
+</style>
+</head>
+<body>
+<div><p id="msg">예전 주소에 저장된 작업을 옮기는 중…</p><small>자동으로 닫힙니다</small></div>
+<script>
+/* 오피스 저장 내용 옮기기 (2026-11-16)
+   이 페이지는 옛 주소(j65209.github.io/beaduniverse/)에서 창으로 열려야 그 주소에 쌓인 스튜디오 작업(IndexedDB bb-content-studio)과
+   메일 발송 연결값(localStorage bb_mailer_*)을 읽을 수 있다 (iframe 으로 넣으면 브라우저가 저장소를 사이트별로 나눠 빈 것만 보임).
+   회사 주소의 오피스(index.html toolBridgeStart)가 이 창을 열고 'bb-bridge-hello' 를 보내면 읽어서 보내 주고, 'bb-bridge-ack' 를 받으면 닫힌다.
+   보내는 곳은 회사 주소로만 제한한다 (이 페이지를 로컬에서 띄운 시험 때만 localhost · 127.0.0.1 도). 읽기만 하고 아무것도 지우지 않는다. */
+(function () {
+  'use strict';
+  var msg = document.getElementById('msg');
+  var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  function allowed(origin) {
+    if (origin === 'https://beaduniverse.kr' || origin === 'https://www.beaduniverse.kr') return true;
+    return LOCAL && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  }
+  // 새 창이 아니라 오피스 탭 자체가 여기로 넘어온 경우(앱 안 브라우저 등) — 옮기지 못하니 오피스로 바로 되돌려 보낸다.
+  // 돌아갈 곳은 오피스가 붙여 준 #back= (?bridge=skip 이 붙어 있어 오피스가 다시 시도하지 않음), 회사 주소일 때만 따른다
+  if (!window.opener) {
+    var back = '';
+    try { back = decodeURIComponent((/[#&]back=([^&]+)/.exec(location.hash) || [])[1] || ''); } catch (e) { back = ''; }
+    var ok = false;
+    try { ok = !!back && allowed(new URL(back).origin); } catch (e) { ok = false; }
+    if (ok) { msg.textContent = '오피스로 돌아갑니다…'; location.replace(back); }
+    else msg.textContent = '이 창은 닫아도 됩니다.';
+    return;
+  }
+
+  function readLocal() {
+    var out = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (/^bb_mailer_/.test(k)) out[k] = localStorage.getItem(k);
+      }
+    } catch (e) { /* noop */ }
+    return out;
+  }
+  // 없는 DB 는 새로 만들지 않는다 — 만들어지려 하면(upgradeneeded) 그 자리에서 취소 (스튜디오가 나중에 제 모양으로 만들게)
+  function readDb(name) {
+    return new Promise(function (resolve) {
+      var req, fresh = false;
+      try { req = indexedDB.open(name); } catch (e) { resolve(null); return; }
+      req.onupgradeneeded = function () { fresh = true; try { req.transaction.abort(); } catch (e) { /* noop */ } };
+      req.onerror = function () { resolve(null); };
+      req.onblocked = function () { resolve(null); };
+      req.onsuccess = function () {
+        var d = req.result;
+        if (fresh) { d.close(); resolve(null); return; }
+        var names = Array.prototype.slice.call(d.objectStoreNames);
+        if (!names.length) { d.close(); resolve(null); return; }
+        var out = { name: name, version: d.version, stores: [] }, tx;
+        try { tx = d.transaction(names, 'readonly'); } catch (e) { d.close(); resolve(null); return; }
+        names.forEach(function (nm) {
+          var os = tx.objectStore(nm), st = { name: nm, keyPath: os.keyPath, autoIncrement: os.autoIncrement, records: [] };
+          out.stores.push(st);
+          os.openCursor().onsuccess = function (e) {
+            var c = e.target.result;
+            if (!c) return;
+            st.records.push(os.keyPath == null ? { k: c.primaryKey, v: c.value } : { v: c.value });
+            c.continue();
+          };
+        });
+        tx.oncomplete = function () { d.close(); resolve(out); };
+        tx.onabort = tx.onerror = function () { d.close(); resolve(null); };
+      };
+    });
+  }
+
+  var sending = null, acked = false;
+  window.addEventListener('message', function (e) {
+    if (e.source !== window.opener || !allowed(e.origin) || !e.data) return;
+    if (e.data.type === 'bb-bridge-ack') {
+      acked = true;
+      msg.textContent = '다 옮겼어요. 창을 닫습니다…';
+      setTimeout(function () { window.close(); }, 150);
+      return;
+    }
+    if (e.data.type !== 'bb-bridge-hello' || sending) return;
+    var to = e.origin;
+    sending = readDb('bb-content-studio').then(function (db) {
+      try { window.opener.postMessage({ type: 'bb-bridge-data', v: 1, ls: readLocal(), idb: db ? [db] : [] }, to); }
+      catch (err) { msg.textContent = '옮기지 못했어요. 이 창은 닫아도 됩니다.'; }
+    });
+  });
+  setTimeout(function () {
+    if (acked) return;
+    msg.textContent = '응답이 없어 그만둡니다. 이 창은 닫아도 됩니다.';
+    setTimeout(function () { window.close(); }, 1500);
+  }, 20000);
+})();
+</script>
+</body>
+</html>

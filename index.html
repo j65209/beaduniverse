@@ -4983,6 +4983,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .view{display:block}
   .view[hidden]{display:none}
 
+  /* ===== 업무용 툴 별도 페이지(studio/ · mailer/ · models/)를 오피스 안 화면으로 — 상단 바 아래를 꽉 채우는 iframe.
+     --tool-top 은 상단 바 아래 끝 (toolFitTop 이 잰다). 설명은 스크립트 'TOOL_PAGES' 주석 ===== */
+  .view-tool{position:fixed;left:0;right:0;bottom:0;top:var(--tool-top,57px);z-index:9;background:var(--bg-1);padding-bottom:env(safe-area-inset-bottom)}
+  .tool-frame{display:block;width:100%;height:100%;border:0;background:var(--bg-1)}
+  .tool-frame.is-loading{visibility:hidden}
+  .tool-veil{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;color:var(--text-2);font-size:13px;background:var(--bg-1)}
+  .tool-veil[hidden]{display:none}
+  .tool-veil-spin{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:toolSpin .8s linear infinite}
+  .tool-veil.is-fail .tool-veil-spin{display:none}
+  .tool-veil-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  @keyframes toolSpin{to{transform:rotate(360deg)}}
+  body.tool-open{overflow:hidden}
+  body.tool-open .footer{display:none}
+
   /* HQ 홈 보조 모듈 그리드 (메인 hero 아래) */
   .sub-modules-section{
     margin:24px auto 40px;
@@ -11098,11 +11112,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="sub-modules">
         <!-- 재고 ERP 마스터 = 구글시트 '식스샵 ERP MASTER' (2026-11-13 실시간 재고 폴더에서 옮겨 옴, 사장님 이름 지정) -->
-        <a class="sub-module m-erpmaster" href="https://docs.google.com/spreadsheets/d/1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA/edit" target="_blank" rel="noopener" style="text-decoration:none">
+        <!-- 업무용 툴 중 이 카드만 새 탭: 구글시트는 다른 사이트 안(iframe)에 넣으면 로그인 화면이 막히고 편집이 안 됨 (2026-11-16) -->
+        <a class="sub-module m-erpmaster" href="https://docs.google.com/spreadsheets/d/1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA/edit" target="_blank" rel="noopener" title="구글시트가 새 탭으로 열립니다" style="text-decoration:none">
           <div class="sub-module-icon">📦</div>
           <div class="sub-module-title">재고 ERP 마스터</div>
-          <div class="sub-module-sub">7 브랜드 남은 재고 · 입고 · 판매 반영 (구글시트)</div>
-          <div class="sub-module-tag">시트 ↗</div>
+          <div class="sub-module-sub">7 브랜드 남은 재고 · 입고 · 판매 반영 (구글시트 · 새 탭)</div>
+          <div class="sub-module-tag">구글시트 ↗</div>
         </a>
         <div class="sub-module m-notice" onclick="triggerNotice()">
           <div class="sub-module-icon">🔐</div>
@@ -14118,6 +14133,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </form>
     </div>
   </div>
+
+  <!-- ============ 업무용 툴 별도 페이지를 오피스 안 화면으로 (2026-11-16) — 내용은 toolMount 가 iframe 으로 채움 ============ -->
+  <div class="view view-tool" id="viewStudio" hidden></div>
+  <div class="view view-tool" id="viewMailer" hidden></div>
+  <div class="view view-tool" id="viewModels" hidden></div>
 
   </main>
 
@@ -17811,8 +17831,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -17824,6 +17844,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(v===id) el.removeAttribute('hidden');
       else el.setAttribute('hidden','');
     });
+    toolViewSync(id);  // 업무용 툴 별도 페이지 화면 (iframe 만들기 · 치우기)
     window.scrollTo({top:0,behavior:'instant'});
     if(id==='viewHr'){
       renderLeaveStatus();
@@ -18507,15 +18528,276 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function triggerTopping(){ showView('viewTopping'); if(typeof initToppingView==='function') initToppingView(); }
   function triggerBadge(){ showView('viewBadge'); if(typeof initBadgeView==='function') initBadgeView(); }
   function triggerPromoCalc(){ showView('viewPromoCalc'); if(typeof pcInit==='function') pcInit(); }
-  /* 광고 컨텐츠 스튜디오 — studio/ 별도 페이지. 같은 이름의 탭을 재사용해서 여러 번 눌러도 탭이 늘지 않음 */
-  function openContentStudio(){ const w=window.open('studio/','bbContentStudio'); if(!w) location.href='studio/'; }
+  /* ===== 업무용 툴 별도 페이지를 오피스 안 화면으로 (2026-11-16 사장님: "누르면 깃허브 주소가 뜨면서 다른 창으로 열린다 → 오피스앱 안에서 자연스럽게")
+     - 광고 컨텐츠 스튜디오(studio/) · 메일 발송(mailer/) · 모델 지원자(models/) 는 따로 만든 페이지라 예전엔 새 탭으로 열었고,
+       회사 주소(beaduniverse.kr/office/)에선 <base> 가 깃허브 주소라 새 탭이 j65209.github.io 로 떴다.
+     - 이제 상단 바 아래를 꽉 채우는 iframe 화면(#studio · #mailer · #models)으로 연다. 뒤로 가기는 다른 뷰와 같다
+       (페이지의 '← 오피스' · 브라우저 뒤로 · 스와이프). 각 페이지 head 의 잠금 스크립트가 '← 오피스' 를 bbToolClose 로 바꾼다.
+     - 옛 주소(j65209.github.io/beaduniverse/)에선 같은 곳의 studio/ 를 그대로 iframe 에 연다.
+       회사 주소(beaduniverse.kr/office/, 입구 loader.js 가 앱 HTML 을 받아 씀)에선 깃허브 주소를 iframe 에 넣으면 다른 사이트라
+       PIN 잠금값 · 저장소가 안 보인다 → 오피스가 페이지 HTML 을 받아 <base>(깃허브 쪽 폴더)를 넣고 빈 iframe 에 직접 쓴다
+       (loader.js 와 같은 방식). 빈 iframe 은 오피스와 같은 출처라 잠금값을 같이 쓰고, 공홈 레포에 입구 파일이 필요 없다.
+       주소창은 계속 오피스 주소(#studio 등).
+     - 저장소는 출처마다 따로다: 스튜디오 작업(IndexedDB bb-content-studio) · 메일 발송 연결값(localStorage bb_mailer_*) 은
+       지금까지 깃허브 주소 쪽에 쌓였다. 회사 주소에서 스튜디오 · 메일 발송을 처음 열 때 tool-bridge.html 을 작은 창으로
+       한 번 띄워 옮겨 온다 (여기 없는 것만 넣고 덮어쓰지 않음 · 브라우저마다 한 번).
+     - keep = 홈으로 나가도 화면을 살려 둠 (스튜디오 작업 · 메일 발송이 이어서 돈다). 모델 지원자는 열 때마다 새로 읽는다. */
+  const TOOL_PAGES={
+    studio:{view:'viewStudio',path:'studio/',title:'광고 컨텐츠 스튜디오',keep:true,bridge:true},
+    mailer:{view:'viewMailer',path:'mailer/',title:'메일 발송',keep:true,bridge:true},
+    models:{view:'viewModels',path:'models/',title:'모델 지원자',keep:false,bridge:false},
+  };
+  const TOOL_BRIDGE_KEY='bb_tool_bridge_v1';
+  let _toolBridge=null;     // 옮겨 오는 중이면 Promise
+  let _toolDirect=false;    // 새로고침 · 북마크로 도구 화면에 바로 들어옴 (뒤로 가면 오피스 밖일 수 있음)
+  // 회사 주소 입구(loader.js)로 열렸는지 — <base> 가 다른 출처(깃허브)를 가리킨다
+  function toolUnderLoader(){ try{ return new URL(document.baseURI).origin!==location.origin; }catch(e){ return false; } }
+  // <base> 가 아니라 지금 주소 기준 (회사 주소 → beaduniverse.kr/office/studio/, 옛 주소 → j65209.github.io/beaduniverse/studio/)
+  function toolUrl(t){ return new URL(t.path+'?embed=1', location.origin+location.pathname.replace(/[^/]*$/,'')).href; }
+  function toolKeyOf(viewId){ return Object.keys(TOOL_PAGES).find(k=>TOOL_PAGES[k].view===viewId)||null; }
+  function toolFitTop(){
+    const tb=document.querySelector('.topbar');
+    const y=tb?Math.max(0,Math.round(tb.getBoundingClientRect().bottom)):0;
+    document.documentElement.style.setProperty('--tool-top',y+'px');
+  }
+  window.addEventListener('resize',()=>{ if(document.body.classList.contains('tool-open')) toolFitTop(); });
+  if(window.ResizeObserver){ const _tb=document.querySelector('.topbar'); if(_tb) new ResizeObserver(()=>{ if(document.body.classList.contains('tool-open')) toolFitTop(); }).observe(_tb); }
+
+  // applyView 가 부른다 — 보이는 도구 화면은 채우고, 살려 두지 않는 도구 화면은 치운다
+  function toolViewSync(id){
+    try{
+      const key=toolKeyOf(id);
+      document.body.classList.toggle('tool-open',!!key);
+      for(const k of Object.keys(TOOL_PAGES)){
+        if(k===key) toolMount(k);
+        else if(!TOOL_PAGES[k].keep) toolUnmount(k);
+      }
+    }catch(e){ console.warn('toolViewSync',e); }
+  }
+  function toolMount(key){
+    const t=TOOL_PAGES[key], el=document.getElementById(t.view);
+    if(!el) return;
+    toolFitTop();
+    if(el.querySelector('iframe.tool-frame')||el.dataset.mounting==='1') return;  // 살아 있는 화면은 그대로
+    const gen=el._toolGen=(el._toolGen||0)+1;
+    el.dataset.mounting='1';
+    el.innerHTML=
+      '<div class="tool-veil"><div class="tool-veil-spin"></div><div class="tool-veil-msg"></div>'+
+      '<div class="tool-veil-btns"><button type="button" class="btn-back" data-act="retry" hidden>다시 열기</button>'+
+      '<button type="button" class="btn-back" data-act="home">← 홈</button></div></div>';
+    const veil=el.querySelector('.tool-veil'), msg=el.querySelector('.tool-veil-msg');
+    msg.textContent=t.title+' 여는 중…';
+    el.querySelector('[data-act="home"]').onclick=()=>bbToolClose();
+    el.querySelector('[data-act="retry"]').onclick=()=>{ toolUnmount(key); toolMount(key); };
+    const go=()=>{
+      if(el._toolGen!==gen) return;              // 그 사이 치워짐 · 다시 열림
+      delete el.dataset.mounting;
+      if(el.hidden&&!t.keep){ el.innerHTML=''; return; }
+      const fr=document.createElement('iframe');
+      fr.className='tool-frame is-loading';
+      fr.title=t.title;
+      fr.allow='clipboard-read; clipboard-write; fullscreen';
+      fr.setAttribute('allowfullscreen','');
+      if(toolUnderLoader()){
+        el.appendChild(fr);   // 빈 iframe (오피스와 같은 출처) — 내용은 toolWriteFrame 이 쓴다
+        toolWriteFrame(t,fr).catch(err=>{ console.warn('tool page',t.path,err); fr.dataset.failed='1'; });
+      }else{
+        fr.src=toolUrl(t);
+        el.appendChild(fr);
+      }
+      toolWatchReady(t,el,fr,veil,msg,gen);
+    };
+    if(_toolBridge&&t.bridge){
+      msg.textContent='예전 주소에 저장된 작업을 옮겨 오는 중…';
+      _toolBridge.then(go,go);
+    }else go();
+  }
+  // 페이지가 그려지면 가림막을 걷는다. 회사 주소 입구는 loader.js 가 내용을 받아 쓰기 전까지 'script[data-page]' 만 있는 빈 문서
+  function toolWatchReady(t,el,fr,veil,msg,gen){
+    const t0=Date.now();
+    const tick=()=>{
+      if(el._toolGen!==gen||!fr.isConnected) return;
+      let doc=null;
+      try{ doc=fr.contentDocument; }catch(e){ doc=null; }
+      const ok=doc===null   // 다른 출처면 들여다볼 수 없으니 그냥 보여 준다
+        ||(doc.readyState!=='loading'&&(fr.dataset.written==='1'||(doc.location&&doc.location.href!=='about:blank'))
+           &&doc.body&&doc.body.childElementCount>0&&!doc.querySelector('script[data-page]'));
+      if(ok){ fr.classList.remove('is-loading'); veil.hidden=true; return; }
+      if(fr.dataset.failed==='1'||Date.now()-t0>20000){
+        veil.classList.add('is-fail');
+        msg.textContent=t.title+' 화면을 열지 못했어요 · 인터넷 연결을 확인하고 다시 열어 주세요';
+        const rb=veil.querySelector('[data-act="retry"]'); if(rb) rb.hidden=false;
+        return;
+      }
+      setTimeout(tick,200);
+    };
+    tick();
+  }
+  // 회사 주소: 페이지 HTML 을 깃허브 쪽에서 받아 <base> 를 넣고 빈 iframe 에 쓴다 (loader.js 와 같은 방식, Pages 응답은 CORS *)
+  async function toolWriteFrame(t,fr){
+    const base=new URL(t.path,document.baseURI).href;
+    const r=await fetch(base+'index.html',{cache:'no-cache'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const html=(await r.text()).replace(/<head>/i,m=>m+'<base href="'+base+'">');
+    if(!fr.isConnected) return;
+    const doc=fr.contentDocument;
+    doc.open(); doc.write(html); doc.close();
+    fr.dataset.written='1';
+  }
+  function toolUnmount(key){
+    const el=document.getElementById(TOOL_PAGES[key].view);
+    if(!el) return;
+    el._toolGen=(el._toolGen||0)+1;
+    delete el.dataset.mounting;
+    if(el.firstChild) el.innerHTML='';
+  }
+  // 도구 페이지의 '← 오피스' · 가림막의 '← 홈'
+  function bbToolClose(){
+    const key=toolKeyOf(history.state&&history.state.view);
+    if(!key){ goHome(); return; }
+    const home=()=>{ history.replaceState({view:'viewHome'},'',location.pathname+location.search); applyView('viewHome'); };
+    if(_toolDirect){ _toolDirect=false; home(); return; }
+    history.back();
+    // iframe 안에서 기록이 생겼으면 back 이 그 안에서 끝날 수 있다 — 화면이 그대로면 홈으로 바꿔 끼운다
+    const el=document.getElementById(TOOL_PAGES[key].view);
+    setTimeout(()=>{ if(el&&!el.hidden&&toolKeyOf(history.state&&history.state.view)===key) home(); },450);
+  }
+  window.bbToolClose=bbToolClose;
+  function openToolPage(key){
+    const t=TOOL_PAGES[key]; if(!t) return;
+    if(t.bridge&&toolBridgeNeeded()) toolBridgeStart(key);   // 누른 그 순간에 열어야 팝업이 안 막힌다
+    _toolDirect=false;
+    showView(t.view);
+  }
+  /* 광고 컨텐츠 스튜디오 — studio/ (릴스·스토리 9:16 제작, 작업은 그 브라우저 IndexedDB) */
+  function openContentStudio(){ openToolPage('studio'); }
   window.openContentStudio=openContentStudio;
-  /* 메일 발송 — mailer/ 별도 페이지 (보내는 계정의 구글 Apps Script 웹 앱으로 한 통씩 발송) */
-  function openMailer(){ const w=window.open('mailer/','bbMailer'); if(!w) location.href='mailer/'; }
+  /* 메일 발송 — mailer/ (보내는 계정의 구글 Apps Script 웹 앱으로 한 통씩 발송, 연결값은 그 브라우저 localStorage) */
+  function openMailer(){ openToolPage('mailer'); }
   window.openMailer=openMailer;
-  /* 모델 지원자 — models/ 별도 페이지. brightbeed@bead-uni.com 지원 메일 → 지메일 Apps Script(models/gmail-sync.gs) → 엣지 함수 model-apply → model_applicants. 전 직원 */
-  function openModelsPage(){ const w=window.open('models/','bbModels'); if(!w) location.href='models/'; }
+  /* 모델 지원자 — models/. brightbeed@bead-uni.com 지원 메일 → 지메일 Apps Script(models/gmail-sync.gs) → 엣지 함수 model-apply → model_applicants. 전 직원 */
+  function openModelsPage(){ openToolPage('models'); }
   window.openModelsPage=openModelsPage;
+
+  /* ----- 옛 주소(깃허브)에 저장된 스튜디오 작업 · 메일 발송 연결값을 회사 주소로 한 번 옮기기 -----
+     다른 출처의 저장소는 iframe 으로도 못 읽는다(브라우저가 사이트별로 나눔). 그래서 tool-bridge.html 을 깃허브 주소에서
+     창으로 열고(그 창은 원래 저장소를 그대로 봄), 여기서 'hello' → 그 창이 읽어 보냄 → 여기 없는 것만 넣고 'ack' → 창이 닫힘.
+     보낼 곳은 tool-bridge.html 이 회사 주소로만 제한한다. 팝업이 막히거나 응답이 없으면 두 번까지만 다시 시도. */
+  function toolBridgeState(){ try{ return JSON.parse(localStorage.getItem(TOOL_BRIDGE_KEY)||'null')||{}; }catch(e){ return {}; } }
+  function toolBridgeMark(patch){
+    try{ localStorage.setItem(TOOL_BRIDGE_KEY,JSON.stringify(Object.assign(toolBridgeState(),patch,{at:new Date().toISOString()}))); }catch(e){}
+  }
+  function toolBridgeNeeded(){
+    if(!toolUnderLoader()) return false;   // 옛 주소 · 로컬은 같은 출처라 옮길 것 없음
+    // 휴대폰 홈 화면 앱은 새 창이 따로 떠서 말을 주고받지 못한다 — 시도하지 않는다
+    try{ if(navigator.standalone===true||(matchMedia('(display-mode: standalone)').matches&&matchMedia('(pointer: coarse)').matches)) return false; }catch(e){}
+    const v=toolBridgeState();
+    return !(v.done||(v.fail||0)>=2);
+  }
+  // 새 창 대신 이 탭이 옮기기 화면으로 넘어가 버리는 브라우저(앱 안 브라우저 등) — tool-bridge.html 이 ?bridge=skip 을 붙여 되돌려 보낸다
+  (function toolBridgeSkipBack(){
+    try{
+      const u=new URL(location.href);
+      if(u.searchParams.get('bridge')!=='skip') return;
+      toolBridgeMark({fail:2,sameTab:true});
+      u.searchParams.delete('bridge');
+      history.replaceState(history.state,'',u.pathname+u.search+u.hash);
+    }catch(e){}
+  })();
+  function toolBridgeStart(key){
+    if(_toolBridge) return _toolBridge;
+    let app, w=null;
+    try{ app=new URL(document.baseURI); }catch(e){ return null; }
+    const origin=app.origin, back=new URL(location.href);
+    back.searchParams.set('bridge','skip');
+    back.hash=VIEW_HASH[(TOOL_PAGES[key]||{}).view]||'';   // 되돌아오면 그 도구 화면이 바로 열리게
+    const url=new URL('tool-bridge.html',app).href+'#back='+encodeURIComponent(back.href);
+    try{
+      const W=420, H=260;
+      const left=Math.max(0,(window.screenX||0)+(window.outerWidth||W)-W-40), top=(window.screenY||0)+90;
+      w=window.open(url,'bbToolBridge',`popup,width=${W},height=${H},left=${left},top=${top}`);
+    }catch(e){ w=null; }
+    if(!w){ toolBridgeMark({fail:(toolBridgeState().fail||0)+1}); return null; }   // 팝업 막힘 — 다음에 한 번 더
+    _toolBridge=new Promise(resolve=>{
+      let done=false, iv=0, to=0;
+      const finish=(res)=>{
+        if(done) return; done=true;
+        clearInterval(iv); clearTimeout(to); window.removeEventListener('message',onMsg);
+        _toolBridge=null; resolve(res);
+      };
+      const onMsg=async e=>{
+        if(e.origin!==origin||e.source!==w||!e.data||e.data.type!=='bb-bridge-data') return;
+        clearInterval(iv); clearTimeout(to);
+        let res=null;
+        try{ res=await Promise.race([toolBridgeImport(e.data),new Promise(r=>setTimeout(()=>r(null),30000))]); }catch(err){ console.warn('tool bridge import',err); }
+        try{ w.postMessage({type:'bb-bridge-ack'},origin); }catch(_){}
+        toolBridgeMark({done:true,got:res});
+        if(res&&(res.projects||res.mail)) toast('예전 주소에 저장된 '+[res.projects?`스튜디오 작업 ${res.projects}개`:'',res.mail?'메일 발송 연결':''].filter(Boolean).join(' · ')+'을 옮겨 왔어요','ok');
+        finish(res);
+      };
+      window.addEventListener('message',onMsg);
+      // 창이 다 뜨기 전 메시지는 버려지므로 응답이 올 때까지 계속 부른다. 사람이 창을 닫으면 다시 묻지 않는다
+      iv=setInterval(()=>{
+        try{ w.postMessage({type:'bb-bridge-hello'},origin); }catch(_){}
+        try{ if(w.closed){ toolBridgeMark({fail:2}); finish(null); } }catch(_){}
+      },250);
+      to=setTimeout(()=>{
+        try{ w.close(); }catch(_){}
+        toolBridgeMark({fail:2});   // 창은 떴는데 말이 안 통함 — 이 브라우저에선 다시 해도 같다
+        finish(null);
+      },8000);
+    });
+    return _toolBridge;
+  }
+  // 받은 것 넣기 — 메일 발송 키(bb_mailer_*)와 스튜디오 DB 만, 여기 이미 있는 값은 그대로 둔다
+  async function toolBridgeImport(d){
+    const out={projects:0,mail:false};
+    const ls=(d&&d.ls)||{};
+    for(const k of Object.keys(ls)){
+      if(!/^bb_mailer_/.test(k)||typeof ls[k]!=='string') continue;
+      try{ if(localStorage.getItem(k)===null){ localStorage.setItem(k,ls[k]); if(k==='bb_mailer_conn_v1') out.mail=true; } }catch(e){}
+    }
+    for(const db of ((d&&d.idb)||[])){
+      if(!db||db.name!=='bb-content-studio') continue;
+      const n=await toolIdbMerge(db);
+      out.projects+=n.projects||0;
+    }
+    return out;
+  }
+  function toolIdbMerge(src){
+    return new Promise(resolve=>{
+      const counts={projects:0};
+      let req;
+      try{ req=indexedDB.open(src.name,src.version); }catch(e){ resolve(counts); return; }
+      req.onupgradeneeded=()=>{   // 여기에 아직 없으면 원래와 똑같은 모양으로 만든다 (스튜디오가 여는 판과 같음)
+        const d=req.result;
+        for(const s of src.stores||[]){
+          if(d.objectStoreNames.contains(s.name)) continue;
+          d.createObjectStore(s.name,s.keyPath==null?{autoIncrement:!!s.autoIncrement}:{keyPath:s.keyPath,autoIncrement:!!s.autoIncrement});
+        }
+      };
+      req.onerror=()=>resolve(counts);     // 여기가 더 새 판(VersionError) 등 — 건드리지 않는다
+      req.onblocked=()=>resolve(counts);
+      req.onsuccess=()=>{
+        const d=req.result;
+        const stores=(src.stores||[]).filter(s=>d.objectStoreNames.contains(s.name)&&(s.records||[]).length);
+        if(!stores.length){ d.close(); resolve(counts); return; }
+        let tx;
+        try{ tx=d.transaction(stores.map(s=>s.name),'readwrite'); }catch(e){ d.close(); resolve(counts); return; }
+        for(const s of stores){
+          const os=tx.objectStore(s.name);
+          for(const r of s.records){
+            let q;
+            try{ q=os.keyPath==null?os.add(r.v,r.k):os.add(r.v); }catch(e){ continue; }
+            q.onsuccess=()=>{ if(s.name==='projects') counts.projects++; };
+            q.onerror=ev=>{ ev.preventDefault(); ev.stopPropagation(); };   // 이미 있는 키 — 그대로 두고 다음 것
+          }
+        }
+        tx.oncomplete=()=>{ d.close(); resolve(counts); };
+        tx.onabort=tx.onerror=()=>{ d.close(); resolve(counts); };
+      };
+    });
+  }
   (function modelsCardCount(){ const MK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
     const run=()=>{ try{
       fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/model_applicants?select=id&deleted_at=is.null&status=eq.'+encodeURIComponent('새 지원'),
@@ -18550,6 +18832,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 잠금 해제 후 호출 — 현재 hash로 초기 뷰 결정 + history state 시드
   function initHistoryFromHash(){
     const initial=resolveViewFromHash();
+    _toolDirect=!!toolKeyOf(initial);  // #studio 등으로 바로 들어옴 — '← 오피스' 는 뒤로 가기 대신 홈으로
     history.replaceState({view:initial},'',VIEW_HASH[initial]?'#'+VIEW_HASH[initial]:location.pathname+location.search);
     applyView(initial);
   }

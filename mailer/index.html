@@ -6,9 +6,26 @@
 <title>메일 발송 · 브라이트비드 오피스</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <script>
-  /* 오피스 잠금 연동 — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음 */
+  /* 오피스 잠금 연동 — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음.
+     오피스 안 화면(iframe)으로 열렸으면 '← 오피스' 는 그 화면을 닫는다 — 오피스 index.html 의 TOOL_PAGES · bbToolClose (2026-11-16).
+     회사 주소(beaduniverse.kr/office/)에선 오피스가 이 HTML 을 받아 빈 iframe 에 직접 쓰므로(<base> = 깃허브 쪽 폴더)
+     이 문서의 주소는 오피스 주소나 about:blank 다 — 그래서 '← 오피스' 주소는 부모(오피스) 주소에서 얻는다. */
   (function () {
-    try { if (localStorage.getItem('brightbeed_unlocked') !== '1') location.replace('../?from=mailer'); } catch (e) { /* noop */ }
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    try { if (window.parent === window && localStorage.getItem('brightbeed_unlocked') !== '1') { location.replace(home + '?from=mailer'); return; } } catch (e) { /* noop */ }
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) {
+        a.href = home;
+        if (inOffice) a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
+        });
+      });
+    });
   })();
 </script>
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
