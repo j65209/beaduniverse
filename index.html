@@ -4946,6 +4946,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-mrow a.reo-sheet{font-size:11.5px;font-weight:700;color:#0f766e;text-decoration:none;white-space:nowrap;padding:6px 4px}
   .reo-pend{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:#dcfce7;color:#166534}
   .reo-basis{font-size:11.5px;color:var(--text-3);line-height:1.6;border-top:1px solid var(--line);padding-top:8px}
+  .hro-need{display:block;width:100%;text-align:left;margin:-2px 0 10px;padding:8px 12px;min-height:36px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
+  .hro-need b{font-size:14px;color:#0f172a}
+  .hro-need:hover{border-color:#475569;background:#f1f5f9}
+  .reo-need{border-top:1px solid var(--line);padding-top:8px}
+  .reo-need-head{font-size:13px;font-weight:800;color:#0f172a;padding:2px 2px 2px}
+  .reo-need-sub{font-size:11.5px;color:var(--text-3);line-height:1.5;padding:2px 2px 8px}
+  .reo-need .reo-exp-row{opacity:1;align-items:center}
+  .reo-need a.reo-sheet{margin-left:auto}
   .reo-expired{border-top:1px solid var(--line);padding-top:6px}
   .reo-expired summary{cursor:pointer;font-size:12.5px;font-weight:800;color:var(--text-2);padding:8px 2px;min-height:36px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .reo-expired summary span{font-weight:600;color:var(--text-3);font-size:11.5px}
@@ -11183,6 +11191,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
       </div>
       <div class="hro-chips" id="homeReoChips"></div>
+      <button type="button" class="hro-need" id="homeReoNeed" hidden onclick="reoModalOpen('need')"></button>
       <div class="hro-list" id="homeReoList"></div>
     </section>
 
@@ -11199,6 +11208,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
         <div class="rcv-sum" id="reoModalSum"></div>
         <div class="rcv-list" id="reoModalList"></div>
+        <div class="reo-need" id="reoModalNeed" hidden></div>
         <details class="reo-expired" id="reoModalExpired" hidden ontoggle="_reo.expOpen=this.open"></details>
         <div class="reo-basis" id="reoModalBasis"></div>
       </div>
@@ -15003,6 +15013,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(chips){
       chips.innerHTML = REO_ORDER.map(k => `<button type="button" class="hro-chip ${REO_SEV[k].cls}${cnt[k] ? '' : ' zero'}" onclick="reoModalOpen('${k}')"><b>${cnt[k]}</b>${REO_SEV[k].t}</button>`).join('');
     }
+    // 시트에 실제 개수가 없는 상품 (식스샵 '수량관리 안함'이라 빈칸에서 시작해 판매만 빠진 마이너스) — 품절이 아니라 실사 필요
+    const needBtn = document.getElementById('homeReoNeed');
+    const need = d.needCount || [];
+    if(needBtn){
+      needBtn.hidden = !need.length;
+      if(need.length) needBtn.innerHTML = `📝 시트에 실제 개수가 없는 상품 <b>${need.length}</b>개 — 품절 아님, 실사 필요 ›`;
+    }
     if(!list) return;
     if(!items.length){
       list.innerHTML = '<div class="hro-empty ok">✅ 7일 안에 바닥날 상품이 없어요</div>';
@@ -15022,6 +15039,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     m.hidden = false;
     document.body.style.overflow = 'hidden';
     reoModalRender();
+    if(sev === 'need'){ const n = document.getElementById('reoModalNeed'); if(n && !n.hidden) n.scrollIntoView({block:'start'}); }
     if(Date.now() - _reo.at > 60000) reoHomeLoad(false);
   }
   function reoModalClose(){
@@ -15066,6 +15084,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
                   + `${_reoMainHtml(it)}${_reoLeftHtml(it)}${link}</div>`;
               }).join('');
         }).join('');
+      }
+    }
+    // 시트에 실제 개수가 필요한 상품 — 식스샵 '수량관리 안함' 상품이라 11-12 시트가 빈칸으로 시작, 판매만 빠져 마이너스
+    const needBox = document.getElementById('reoModalNeed');
+    if(needBox){
+      let nd = (d.needCount || []).filter(i => _reo.brand === 'all' || i.b === _reo.brand);
+      if(q) nd = nd.filter(i => [i.n, i.o, _reoLabel(i.b)].join(' ').toLowerCase().includes(q));
+      needBox.hidden = !nd.length;
+      if(nd.length){
+        needBox.innerHTML = `<div class="reo-need-head">📝 시트에 실제 개수가 필요한 상품 ${nd.length}개</div>`
+          + `<div class="reo-need-sub">품절이 아니에요. 식스샵에서 '수량관리 안함'인 상품이라 재고 마스터가 빈칸으로 시작했고, 판매분만 빠져 마이너스가 됐어요. 시트 남은 재고 칸에 실제 개수를 넣으면 그때부터 경보에 들어갑니다.</div>`
+          + nd.map(it => {
+              const bi = brands[it.b] || {};
+              const link = (it.row && bi.gid && d.sheet) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="이 상품 남은 재고 칸">시트 ↗</a>` : '';
+              const stock = it.stock == null ? '빈칸' : (it.stock < 0 ? '−' + _reoN(-it.stock) : _reoN(it.stock));
+              return `<div class="reo-exp-row reo-b-${_reoEsc(it.b)}"><span class="reo-name">${_reoNameHtml(it)}</span>`
+                + `<span class="reo-exp-num">시트 ${stock} · 하루 ${_reoN(it.rate)}개 팔림${it.act7 ? ` · 최근 7일 중 ${it.act7}일` : ''}</span>${link}</div>`;
+            }).join('');
       }
     }
     // 1주일 지나 내린 상품 — 접힌 채로 개수만 (열면 목록). 다시 그려도 열림 상태 유지
