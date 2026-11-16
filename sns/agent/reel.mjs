@@ -93,6 +93,7 @@ if (args.data && args.data !== '1') {
           LEAD = {
             ref, title: brand && !nm.startsWith(brand) ? brand + ' ' + nm : nm, price: String(x.price).trim(),
             was: won(x.was) ? String(x.was).trim() : '', pct: pctOf(x), kicker: String(d?.cover?.kicker ?? '').slice(0, 40),
+            hook: String(d?.cover?.title ?? '').slice(0, 80), // 첫 장면 맨 위 훅 두 줄 (없으면 "이 가격 / 실화?!")
             more: Math.max(0, Math.min(10, d.deals.length) - 1), handle: String(d.handle ?? '').slice(0, 30), ...cand[0],
           };
         } else console.error('⚠ --lead: 맨 앞 딜의 사진 · 이름 · 가격을 찾지 못해 예전 인트로로 만들어요.');
@@ -267,7 +268,7 @@ window.build = async (o) => {
   // ── 인트로: AI 영상(꽉 채움) + 위쪽 빈 곳에 표지 제목, 끝에서 표지 카드로 겹쳐 바뀜 ──
   const first = new OffscreenCanvas(W, H); // 카드 영상 첫 장면 (겹쳐 바뀔 때 씀)
   draw(0); first.getContext('2d').drawImage(cv, 0, 0);
-  if (introDur && (o.hook || o.count || o.lead)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + (o.lead ? o.lead.title + o.lead.price + o.lead.was + o.lead.handle + '정가할인외더보기,원' : '') + '꿀딜 0123456789개 최대%↓').catch(() => null);
+  if (introDur && (o.hook || o.count || o.lead)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + (o.lead ? o.lead.title + o.lead.price + o.lead.was + o.lead.kicker + (o.lead.hook || '이 가격실화?!') + '정가할인외꿀딜개더보기▶,원' : '') + '꿀딜 0123456789개 최대%↓').catch(() => null);
   const hookFont = (px) => px + 'px Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const drawHook = () => {
     if (!o.hook && !o.count) return;
@@ -329,75 +330,162 @@ window.build = async (o) => {
     }
     ctx.restore();
   };
-  // ── 1등 딜 첫 장면 (--lead): 제품 사진 크게 + 이름 + 가격 + 할인율 + '외 꿀딜 N개' ──
-  // 글자 · 사진은 y 260~1480 안에만 (위는 릴스 화면 제목, 아래는 문구가 덮고, 프로필 3:4 썸네일은 위아래 240px 이 잘린다)
-  const drawLead = () => {
-    const L = o.lead, left = 84, maxW = W - left * 2;
-    ctx.drawImage(bg, 0, 0);
+  // ── 1등 딜 첫 장면 (--lead) — 2026-11-16 승훈 님 "어그로를 끌 수 있게 첫화면을 바꾸자" ──
+  // 꿀색 바탕 + 사진 뒤에서 천천히 도는 햇살 + 맨 위 훅 두 줄(cards.json cover.title, ==…== 는 빨간 상자)
+  // + 제품 사진(진한 테두리 스티커) + 할인율 도장 + 정가(빨간 줄) → 판매가 크게 + 오른쪽 위 '외 꿀딜 N개 더 ▶'.
+  // 첫 프레임(= 릴스 썸네일)이 다 갖춘 모습이고, 그 뒤엔 햇살이 돌고 도장 · 가격이 톡톡 튀며 ▶ 가 깜빡인다 (멈춘 사진보다 손가락이 멈춘다).
+  // 글자 · 사진은 y 256~1495 안 (위는 릴스 화면 제목, 아래는 문구 · 계정 이름이 덮고, 프로필 3:4 썸네일은 위아래 240px 이 잘린다),
+  // 아래쪽 오른쪽(좋아요 · 댓글 버튼 자리, x 940~ · y 1000~)에는 글자를 두지 않는다.
+  const INK = '#2a1d17', RED = '#ef3b2d', HONEY = '#ffc94a';
+  const bump = (t, at, len, amp) => { const x = (t - at) / len; return x > 0 && x < 1 ? 1 + amp * Math.sin(Math.PI * x) : 1; };
+  const drawLead = (t) => {
+    const L = o.lead, left = 84, maxW = W - left * 2, im = window.leadImg, TOP = 256; // TOP: 프로필 3:4 썸네일에서도 안 잘리게
+    t = t || 0;
     ctx.save();
     ctx.textBaseline = 'alphabetic';
-    if (L.kicker) { // 꿀색 알약 (표지 kicker)
-      ctx.font = '900 ' + hookFont(44);
-      const kw = Math.min(maxW - 260, ctx.measureText(L.kicker).width + 60);
-      ctx.fillStyle = '#ffc94a'; ctx.beginPath(); ctx.roundRect(left, 236, kw, 76, 18); ctx.fill();
-      ctx.fillStyle = '#3a2c25'; ctx.fillText(L.kicker, left + 30, 290, kw - 60);
-    }
-    if (L.handle) { ctx.font = '700 ' + hookFont(34); ctx.fillStyle = '#9a8474'; ctx.textAlign = 'right'; ctx.fillText(L.handle, W - left, 288); ctx.textAlign = 'left'; }
-    // 제품 사진 — 흰 상자에 꽉 채움 (imageCrop 이 있으면 그 부분만)
-    const px = left, py = 346, pw = maxW, ph = 720, im = window.leadImg;
+
+    // ① 자리 재기 (그리기 전에 — 햇살을 글자보다 먼저 깔아야 해서)
+    const lines = String(L.hook || '이 가격\n==실화?!==').split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 2);
+    const segs = (line) => line.split(/(==[^=]+==)/).filter(Boolean).map((p) => (/^==.*==$/.test(p) ? { hi: true, s: p.slice(2, -2) } : { hi: false, s: p }));
+    const padOf = (sz) => Math.round(sz * 0.17);
+    const lineW = (line, sz) => segs(line).reduce((a, g) => a + ctx.measureText(g.s).width + (g.hi ? padOf(sz) * 2 + 10 : 0), 0);
+    let size = 136;
+    ctx.font = '900 ' + hookFont(size);
+    while (size > 72 && lines.some((l) => lineW(l, size) > maxW)) { size -= 4; ctx.font = '900 ' + hookFont(size); }
+    const base0 = TOP + 100 + size * 0.9, titleBottom = base0 + (lines.length - 1) * size * 1.17 + size * 0.24;
+    // 제품 사진 — 훅 아래 ~ y 1230 칸 안에. 꽉 채워 12% 넘게 잘리면 (2026-11-16 승훈 님 "제품 이미지는 최대한 리얼하게")
+    // 사진을 통째로 넣고 상자를 사진 비율에 맞춘다 (흰 여백 없이)
+    const areaTop = Math.round(titleBottom + 40), areaH = Math.max(440, 1230 - areaTop);
     const c = L.crop && L.crop.every((v) => v >= 0 && v <= 1) && L.crop[2] > L.crop[0] && L.crop[3] > L.crop[1] ? L.crop : [0, 0, 1, 1];
-    let sx = c[0] * im.width, sy = c[1] * im.height, sw = (c[2] - c[0]) * im.width, sh = (c[3] - c[1]) * im.height;
-    // 제품이 잘리면 안 된다 (2026-11-16 승훈 님 "제품 이미지는 최대한 리얼하게") — 꽉 채웠을 때 12% 넘게 잘리면 흰 바탕에 사진을 통째로 넣는다
-    const k = Math.max(pw / sw, ph / sh), vw = pw / k, vh = ph / k, lost = 1 - (vw * vh) / (sw * sh);
+    const sx = c[0] * im.width, sy = c[1] * im.height, sw = (c[2] - c[0]) * im.width, sh = (c[3] - c[1]) * im.height;
+    const k = Math.max(maxW / sw, areaH / sh), vw = maxW / k, vh = areaH / k, lost = 1 - (vw * vh) / (sw * sh);
+    let px = left, py = areaTop, pw = maxW, ph = areaH;
+    if (lost > 0.12) { const k2 = Math.min(maxW / sw, areaH / sh); pw = Math.round(sw * k2); ph = Math.round(sh * k2); px = Math.round((W - pw) / 2); py = Math.round(areaTop + (areaH - ph) / 2); }
+
+    // ② 꿀색 바탕 + 천천히 흐르는 망점 + 사진 뒤 흰 빛 + 사진에서 퍼지는 고리
+    //    (가운데서 뻗는 햇살 줄무늬는 쓰지 않는다 — 욱일기처럼 보일 수 있어 국내 계정엔 위험)
+    ctx.fillStyle = HONEY; ctx.fillRect(0, 0, W, H);
+    const gap = 46, drift = (t * 26) % gap;
+    ctx.fillStyle = 'rgba(42,29,23,0.07)';
+    for (let yy = -gap; yy < H + gap; yy += gap) {
+      const row = Math.round(yy / gap);
+      for (let xx = -gap; xx < W + gap; xx += gap) { ctx.beginPath(); ctx.arc(xx + drift + (row % 2 ? gap / 2 : 0), yy + drift, 7, 0, Math.PI * 2); ctx.fill(); }
+    }
+    const gx = px + pw / 2, gy = py + ph / 2, gr = Math.max(pw, ph) * 0.95;
+    const glow = ctx.createRadialGradient(gx, gy, gr * 0.2, gx, gy, gr);
+    glow.addColorStop(0, 'rgba(255,255,255,0.7)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    for (let r = 0; r < 2; r++) { // 0.15초부터 0.9초마다 고리 하나
+      const p = (t - 0.15 - r * 0.45) / 0.9;
+      if (p < 0) continue;
+      const q = p % 1, a = (1 - q) * 0.75;
+      ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')';
+      ctx.beginPath(); ctx.roundRect(px - q * 150, py - q * 150, pw + q * 300, ph + q * 300, 40 + q * 120); ctx.stroke();
+    }
+
+    // ③ 맨 위 줄: 왼쪽 kicker(진한 알약) · 오른쪽 '외 꿀딜 N개 더 ▶'(빨간 알약)
+    let chipW = 0;
+    if (L.more > 0) {
+      const t1 = '외 꿀딜 ', t2 = String(L.more), t3 = '개 더 ';
+      ctx.font = '900 ' + hookFont(42);
+      const w1 = ctx.measureText(t1).width, w2 = ctx.measureText(t2).width, w3 = ctx.measureText(t3).width, w4 = ctx.measureText('▶').width;
+      chipW = w1 + w2 + w3 + w4 + 64;
+      const x0 = W - left - chipW;
+      ctx.fillStyle = RED; ctx.beginPath(); ctx.roundRect(x0, TOP, chipW, 76, 38); ctx.fill();
+      let x = x0 + 32;
+      ctx.fillStyle = '#ffffff'; ctx.fillText(t1, x, TOP + 53); x += w1;
+      ctx.fillStyle = HONEY; ctx.fillText(t2, x, TOP + 53); x += w2;
+      ctx.fillStyle = '#ffffff'; ctx.fillText(t3, x, TOP + 53); x += w3;
+      ctx.globalAlpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos((t * Math.PI * 2) / 0.7)); // ▶ 깜빡임 (첫 프레임은 또렷하게)
+      ctx.fillText('▶', x, TOP + 53); ctx.globalAlpha = 1;
+    }
+    if (L.kicker) {
+      ctx.font = '900 ' + hookFont(44);
+      const room = maxW - (chipW ? chipW + 24 : 0), kw = Math.min(room, ctx.measureText(L.kicker).width + 64);
+      ctx.fillStyle = INK; ctx.beginPath(); ctx.roundRect(left, TOP, kw, 76, 38); ctx.fill();
+      ctx.fillStyle = HONEY; ctx.fillText(L.kicker, left + 32, TOP + 54, kw - 64);
+    }
+
+    // ④ 훅 두 줄 — ==…== 는 빨간 상자 · 흰 글자, 살짝 기울어 있다가 0.45초쯤 한 번 흔들린다
+    ctx.font = '900 ' + hookFont(size);
+    let base = base0;
+    lines.forEach((line, li) => {
+      if (li) base += size * 1.17;
+      let x = left;
+      for (const g of segs(line)) {
+        const w = ctx.measureText(g.s).width;
+        if (g.hi) {
+          const pad = padOf(size), bw = w + pad * 2, bh = size * 1.08, by = base - size * 0.86;
+          const wob = t > 0.45 && t < 0.95 ? 0.03 * Math.sin((t - 0.45) * Math.PI * 6) : 0;
+          ctx.save();
+          ctx.translate(x + bw / 2, by + bh / 2); ctx.rotate(-0.035 + wob);
+          ctx.fillStyle = 'rgba(42,29,23,0.9)'; ctx.beginPath(); ctx.roundRect(-bw / 2 + 7, -bh / 2 + 10, bw, bh, 22); ctx.fill();
+          ctx.fillStyle = RED; ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, 22); ctx.fill();
+          ctx.fillStyle = '#ffffff'; ctx.fillText(g.s, -bw / 2 + pad, base - (by + bh / 2));
+          ctx.restore();
+          x += bw + 10;
+        } else {
+          ctx.fillStyle = INK; ctx.fillText(g.s, x, base);
+          x += w;
+        }
+      }
+    });
+
+    // ⑤ 제품 사진 (진한 테두리 · 진한 그림자 = 스티커)
+    ctx.fillStyle = 'rgba(42,29,23,0.9)'; ctx.beginPath(); ctx.roundRect(px + 8, py + 14, pw, ph, 40); ctx.fill();
     ctx.save();
-    ctx.shadowColor = 'rgba(110,72,40,0.22)'; ctx.shadowBlur = 46; ctx.shadowOffsetY = 18;
-    ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 44); ctx.fillStyle = '#fff'; ctx.fill();
-    ctx.shadowColor = 'transparent'; ctx.clip();
+    ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 40); ctx.fillStyle = '#fff'; ctx.fill(); ctx.clip();
     if (lost <= 0.12) ctx.drawImage(im, sx + (sw - vw) / 2, sy + (sh - vh) / 2, vw, vh, px, py, pw, ph);
-    else { const c2 = Math.min(pw / sw, ph / sh), dw = sw * c2, dh = sh * c2; ctx.drawImage(im, sx, sy, sw, sh, px + (pw - dw) / 2, py + (ph - dh) / 2, dw, dh); }
+    else ctx.drawImage(im, sx, sy, sw, sh, px, py, pw, ph);
     ctx.restore();
-    if (L.pct >= 10 && L.pct < 100) { // 할인율 스티커 — 사진 오른쪽 위에 걸치게
-      const dm = 280;
+    ctx.lineWidth = 8; ctx.strokeStyle = INK; ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 40); ctx.stroke();
+
+    // ⑥ 할인율 도장 — 사진 오른쪽 위 모서리에 걸치게 (0.28초 · 1.2초에 톡 튄다)
+    if (L.pct >= 10 && L.pct < 100) {
+      const dm = 300, s = bump(t, 0.28, 0.32, 0.13) * bump(t, 1.2, 0.32, 0.13);
       ctx.save();
-      ctx.translate(px + pw - dm / 2 + 14, py + dm / 2 - 30); ctx.rotate(0.1);
-      ctx.fillStyle = 'rgba(58,44,37,0.22)'; ctx.beginPath(); ctx.arc(6, 10, dm / 2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ef5d50'; ctx.beginPath(); ctx.arc(0, 0, dm / 2, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 9; ctx.stroke();
-      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
-      ctx.font = '900 ' + hookFont(118); ctx.fillText(L.pct + '%', 0, 26, dm - 40);
-      ctx.fillStyle = '#ffc94a'; ctx.font = '900 ' + hookFont(54); ctx.fillText('할인!', 0, 92);
+      ctx.translate(Math.min(px + pw - 80, W - 170), py + 90); ctx.rotate(0.12); ctx.scale(s, s);
+      const burst = (ox, oy) => { // 톱니 별 모양 '특가' 딱지
+        ctx.beginPath();
+        for (let i = 0; i < 36; i++) { const a = (i / 36) * Math.PI * 2, r = i % 2 ? dm / 2 - 20 : dm / 2 + 6; ctx.lineTo(ox + Math.cos(a) * r, oy + Math.sin(a) * r); }
+        ctx.closePath();
+      };
+      ctx.fillStyle = 'rgba(42,29,23,0.9)'; burst(7, 11); ctx.fill();
+      ctx.fillStyle = RED; burst(0, 0); ctx.fill();
+      ctx.lineJoin = 'round'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 9; ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff'; ctx.font = '900 ' + hookFont(124); ctx.fillText(L.pct + '%', 0, 30, dm - 44);
+      ctx.fillStyle = HONEY; ctx.font = '900 ' + hookFont(56); ctx.fillText('할인', 0, 100);
       ctx.restore();
     }
-    // 이름 한 줄 (넘치면 글자를 줄이고, 그래도 넘치면 … 으로 자름)
-    let size = 78, title = L.title;
-    ctx.font = '900 ' + hookFont(size);
-    while (size > 54 && ctx.measureText(title).width > maxW) { size -= 4; ctx.font = '900 ' + hookFont(size); }
-    while (title.length > 4 && ctx.measureText(title).width > maxW) title = title.slice(0, -2).trimEnd() + '…';
-    ctx.fillStyle = '#3a2c25'; ctx.fillText(title, left, 1172);
-    // 가격 크게 + 정가(줄 그음)
-    let ps = 176;
-    ctx.font = '900 ' + hookFont(ps);
-    while (ps > 110 && ctx.measureText(L.price).width > maxW) { ps -= 8; ctx.font = '900 ' + hookFont(ps); }
-    ctx.fillStyle = '#ef5d50'; ctx.fillText(L.price, left - 6, 1346, maxW);
-    const pwid = Math.min(maxW, ctx.measureText(L.price).width);
+
+    // ⑦ 상품 이름 — 사진 아래 테두리에 걸친 진한 알약 (왼쪽에서 시작, 오른쪽 버튼 자리 x 920~ 는 피함)
+    const nx = Math.max(left - 20, px - 28), room = 920 - nx - 64;
+    let ns = 54, name = L.title;
+    ctx.font = '900 ' + hookFont(ns);
+    while (ns > 42 && ctx.measureText(name).width > room) { ns -= 2; ctx.font = '900 ' + hookFont(ns); }
+    while (name.length > 4 && ctx.measureText(name).width > room) name = name.slice(0, -2).trimEnd() + '…';
+    const nw = ctx.measureText(name).width + 64, ny = py + ph - 46;
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.roundRect(nx, ny, nw, 92, 46); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.fillText(name, nx + 32, ny + 46 + ns * 0.36);
+
+    // ⑧ 정가(빨간 줄) → 판매가 크게 (흰 테두리 빨간 글자, 0.65초에 한 번 튄다)
+    const pb = L.was ? 1490 : 1462;
     if (L.was) {
-      ctx.font = '700 ' + hookFont(46);
-      const ww = ctx.measureText(L.was).width, wx = left + pwid + 26;
-      if (wx + ww <= W - left) {
-        ctx.fillStyle = '#9a8474'; ctx.fillText(L.was, wx, 1340);
-        ctx.fillRect(wx - 4, 1322, ww + 8, 5);
-      }
+      ctx.font = '800 ' + hookFont(50);
+      const lab = '정가 ', lw = ctx.measureText(lab).width, ww = ctx.measureText(L.was).width;
+      ctx.fillStyle = 'rgba(42,29,23,0.72)'; ctx.fillText(lab, left + 6, 1350); ctx.fillText(L.was, left + 6 + lw, 1350);
+      ctx.fillStyle = RED; ctx.save(); ctx.translate(left + 6 + lw + ww / 2, 1350 - 18); ctx.rotate(-0.06); ctx.fillRect(-ww / 2 - 8, -4, ww + 16, 8); ctx.restore();
     }
-    if (L.more > 0) { // '외 꿀딜 N개 더' — 다음 장면이 더 있다는 걸 알려 끝까지 보게
-      const t1 = '외 꿀딜 ', t2 = String(L.more), t3 = '개 더 보기 ▶';
-      ctx.font = '900 ' + hookFont(58);
-      const w1 = ctx.measureText(t1).width, w2 = ctx.measureText(t2).width, w3 = ctx.measureText(t3).width, bw = w1 + w2 + w3 + 76;
-      ctx.fillStyle = '#3a2c25'; ctx.beginPath(); ctx.roundRect(left, 1386, bw, 100, 50); ctx.fill();
-      let x = left + 38;
-      ctx.fillStyle = '#ffffff'; ctx.fillText(t1, x, 1457); x += w1;
-      ctx.fillStyle = '#ffc94a'; ctx.fillText(t2, x, 1457); x += w2;
-      ctx.fillStyle = '#ffffff'; ctx.fillText(t3, x, 1457);
-    }
+    let ps = 172;
+    ctx.font = '900 ' + hookFont(ps);
+    while (ps > 104 && ctx.measureText(L.price).width > 830) { ps -= 6; ctx.font = '900 ' + hookFont(ps); }
+    const sp = bump(t, 0.65, 0.3, 0.07);
+    ctx.save();
+    ctx.translate(left, pb); ctx.scale(sp, sp);
+    ctx.lineJoin = 'round'; ctx.lineWidth = 18; ctx.strokeStyle = '#ffffff'; ctx.strokeText(L.price, 0, 0);
+    ctx.fillStyle = RED; ctx.fillText(L.price, 0, 0);
+    ctx.restore();
     ctx.restore();
   };
   const seekTo = (s) => new Promise((res) => {
@@ -410,7 +498,7 @@ window.build = async (o) => {
     const p = time > introDur - o.xfade ? ease(Math.min(1, (time - (introDur - o.xfade)) / o.xfade)) : 0;
     ctx.save();
     ctx.translate(-p * W, 0);
-    if (o.lead && window.leadImg) drawLead();
+    if (o.lead && window.leadImg) drawLead(time);
     else {
       await seekTo(time);
       const vw = iv.videoWidth, vh = iv.videoHeight, k = Math.max(W / vw, H / vh); // 꽉 채움 (넘치는 쪽은 잘림)
@@ -726,7 +814,7 @@ async function main() {
       intro_s: meta.intro, music: meta.music && !meta.music.error ? meta.music : false, hook: !!(meta.intro && OPT.hook),
       thumb_count: meta.intro && OPT.count ? OPT.count : null, // 썸네일(첫 장면)의 '꿀딜 N개'
       thumb_max_off: meta.intro && OPT.count && OPT.maxOff ? OPT.maxOff : null, // 그 옆 '최대 N%↓'
-      lead: OPT.lead ? { ref: OPT.lead.ref, title: OPT.lead.title, price: OPT.lead.price, pct: OPT.lead.pct } : null, // 첫 장면이 1등 딜이면 (--lead)
+      lead: OPT.lead ? { ref: OPT.lead.ref, title: OPT.lead.title, price: OPT.lead.price, pct: OPT.lead.pct, hook: OPT.lead.hook || '이 가격\n==실화?!==' } : null, // 첫 장면이 1등 딜이면 (--lead)
       dm_popup: !!OPT.dmPopup, // 제품 카드 내내 '💬 댓글 → 링크' 말풍선 (cards.json cta 가 있을 때만)
       media: { intro: meta.intro && !OPT.lead ? MEDIA.intro : null, music: meta.music && !meta.music.error ? MEDIA.music : null },
       took_s: Math.round((Date.now() - t0) / 1000),
