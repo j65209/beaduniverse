@@ -5588,7 +5588,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .brep-lg{display:inline-flex;align-items:center;gap:5px}
   .brep-lg i{width:9px;height:9px;border-radius:2px;display:inline-block}
   .brep-lg i.is-prev{height:0;width:13px;border-top:2px solid rgba(0,0,0,.6);border-radius:0}
-  .brep-plot{position:relative;height:190px;margin-left:38px;border-bottom:1px solid var(--line-2)}
+  .brep-plot{position:relative;height:190px;margin-left:38px;border-bottom:1px solid var(--line-2);touch-action:pan-y}
   .brep-gl{position:absolute;left:0;right:0;height:0;border-top:1px dashed var(--line-2);pointer-events:none}
   .brep-gl em{position:absolute;right:100%;top:-7px;margin-right:6px;font-style:normal;font-size:10px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
   .brep-days{position:absolute;inset:0;display:grid;gap:2px}
@@ -5691,6 +5691,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .brep-mix i{display:block;height:100%}
   .brep-br-spark{grid-area:spark}
   .brep-spark{display:block;width:100%;height:26px}
+  .brep-mix-legend{margin:10px 15px 0;padding:0}
   .brep-foot{margin:18px 2px 0;font-size:11px;color:var(--text-3);line-height:1.6}
 
   @media(max-width:1080px){
@@ -5705,9 +5706,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .brep-cmp{font-size:10.5px}
     .brep-kpi-sub{font-size:10.5px}
     .brep-chart{padding:10px 10px 12px 6px}
-    .brep-legend{margin-left:30px;font-size:10.5px;gap:3px 10px}
-    .brep-plot{height:150px;margin-left:32px}
-    .brep-xl{margin-left:32px}
+    .brep-legend{margin-left:0;gap:3px 10px}
+    .brep-plot{height:150px;margin-left:46px}
+    .brep-xl{margin-left:46px}
     .brep-days{gap:1px}
     .brep-tip{font-size:11.5px}
     .brep-chr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name amt" "bar chg" "meta meta";gap:4px 10px;padding:9px 5px}
@@ -5719,6 +5720,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .brep-sec span{font-size:14px}
     .brep-br{grid-template-columns:minmax(0,1fr) 84px;grid-template-areas:"name chg" "amt amt" "meta spark" "mix mix";gap:5px 10px;padding:10px 5px}
     .brep-br-spark{align-self:end}
+    .brep-mix-legend{margin:10px 12px 0}
+  }
+  /* 휴대폰 — 오피스 모바일 기준(2026-11-02 '모바일 보강'): 글씨 11px 이상 · 손가락으로 누르는 곳 36px */
+  @media (max-width:600px){
+    .brep-cmp,.brep-kpi-sub,.brep-legend,.brep-mv-q,.brep-wd-v,.brep-gl em,.brep-xl span{font-size:11px}
+    .brep-gl em{top:-8px}
+    .brep-xl{height:20px}
+    .brep-kpi-val small,.brep-qty small{font-size:11px}
+  }
+  @media (pointer:coarse), (max-width:600px){
+    .brep-tab{min-height:36px}
+    #brepPrev,#brepNext{width:36px;height:36px}
+    #brepStart,#brepEnd{min-height:36px}
+    #viewBrandReport .brep-refresh{min-height:36px}
+    #viewBrandReport .brep-sort{min-height:36px;padding:6px 12px}
+  }
+  /* 아주 좁은 폰(320px) — 날짜 두 칸이 ‹ › 와 한 줄에 들어가게 */
+  @media (max-width:360px){
+    #brepRange .best-range-dates{width:100%}
+    #brepStart,#brepEnd{flex:1 1 0;min-width:0;padding-left:4px;padding-right:2px}
   }
 
   /* ===== 텍스트 토핑 도구 ===== */
@@ -15082,6 +15103,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const ico=b.key==='all' ? '<span class="brep-tab-ico" aria-hidden="true">📊</span>' : `<span class="brep-dot" style="background:${b.dot};color:${b.dot}"></span>`;
       return `<button type="button" class="brep-tab" data-on="${on?1:0}" aria-pressed="${on}" onclick="brepSelect('${b.key}')">${ico}${_brepEsc(b.display)}</button>`;
     }).join('');
+    // 휴대폰은 탭 줄이 가로 스크롤 — 오른쪽 끝 브랜드(코즈미 등)를 고르면 고른 탭이 화면 밖에 있었다 → 가운데로
+    const sel=el.querySelector('[data-on="1"]');
+    if(sel && el.scrollWidth>el.clientWidth+1){
+      const er=el.getBoundingClientRect(), sr=sel.getBoundingClientRect();
+      if(sr.left<er.left || sr.right>er.right) el.scrollLeft+=(sr.left+sr.width/2)-(er.left+er.width/2);
+    }
   }
   function brepSelect(k, toTop){
     if(k===_brep.brand) return;
@@ -15251,7 +15278,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const stampTxt=stamp ? new Date(stamp).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+' 자료' : '';
     const live=b===t ? `<span class="brep-live">● 오늘 ${_brepEsc(asOf||'')}${asOf?'까지':'진행 중'}</span>` : '';
     const rng=(x,y)=>x===y ? `${_bMD(x)} (${_bWd(x)})` : `${_bMD(x)} ~ ${_bMD(y)}`;
-    const cmpTxt=cr.trimmed ? `비교 · ${cr.plabel} ${rng(cr.pa,cr.pb)} ↔ 이번 ${rng(cr.a,cr.b)} (오늘은 진행 중이라 어제까지 같은 날수)`
+    const cmpTxt=cr.trimmed ? `비교 · ${cr.plabel} ${rng(cr.pa,cr.pb)} ↔ ${rng(cr.a,cr.b)} · 진행 중인 오늘은 빼고 같은 날수`
                             : `비교 · ${cr.plabel} ${rng(cr.pa,cr.pb)}`;
     return `<div class="brep-bar">
         <span class="brep-date"><b>${_brepEsc(_brepRangeLabel(a,b))}</b></span>
@@ -15328,7 +15355,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const cls=['brep-day', o.hi&&o.hi.has(d)?'is-hi':'', miss?'is-miss':'', _bWdN(d)===0||_bWdN(d)===6?'is-we':'', i===(o.tipIndex!=null?o.tipIndex:n-1)?'is-sel':''].filter(Boolean).join(' ');
       return `<div class="${cls}" data-i="${i}" title="${_brepEsc(_bMD(d)+' ('+_bWd(d)+') '+_brepWonT(tot[i]))}"><span class="brep-day-stack">${segs}</span>${pv}</div>`;
     }).join('');
-    const step=Math.max(1, Math.ceil(n/(o.narrow?5:8)));
+    const narrow=!!(window.matchMedia && matchMedia('(max-width:520px)').matches);   // 휴대폰 — 날짜 눈금이 붙지 않게 5개 정도
+    const step=Math.max(1, Math.ceil(n/(narrow?5:8)));
     const xl=o.dates.map((d,i)=>{
       const show = i===n-1 || (i%step===0 && n-1-i>=Math.ceil(step/2));
       return show ? `<span style="left:${((i+0.5)/n*100).toFixed(3)}%">${_bMD(d)}</span>` : '';
@@ -15356,15 +15384,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const body=document.getElementById('brepBody');
     if(!body || body._brepBound) return;
     body._brepBound=true;
-    const pick=e=>{
-      const bar=e.target.closest && e.target.closest('.brep-day'); if(!bar) return;
-      const tip=document.getElementById('brepTip'); if(!tip) return;
+    const show=bar=>{
+      const tip=document.getElementById('brepTip'); if(!tip || !bar || bar.classList.contains('is-sel')) return;
       tip.innerHTML=_brepTipHtml(Number(bar.dataset.i));
       body.querySelectorAll('.brep-day.is-sel').forEach(x=>x.classList.remove('is-sel'));
       bar.classList.add('is-sel');
     };
+    const pick=e=>{ const bar=e.target.closest && e.target.closest('.brep-day'); if(bar) show(bar); };
+    // 휴대폰 — 막대가 가늘어(30일이면 9px) 한 날을 누르기 어렵다 → 차트 위를 손가락으로 옆으로 밀면 그 자리의 날을 보여 준다
+    //   (.brep-plot 은 touch-action:pan-y 라 위아래로 밀면 그대로 화면이 스크롤된다)
+    const scrub=e=>{
+      const days=e.target.closest && e.target.closest('.brep-days'); if(!days || !days.children.length) return;
+      const r=days.getBoundingClientRect(), n=days.children.length;
+      show(days.children[Math.max(0, Math.min(n-1, Math.floor((e.clientX-r.left)/r.width*n)))]);
+    };
     body.addEventListener('mouseover', pick);
     body.addEventListener('click', pick);
+    body.addEventListener('pointerdown', e=>{ if(e.pointerType!=='mouse') scrub(e); });
+    body.addEventListener('pointermove', e=>{ if(e.pointerType!=='mouse') scrub(e); });
   }
   // 막대 차트 범위 — 하루만 볼 땐 그날까지 14일 흐름 (그날 강조), 아니면 기간 그대로
   function _brepChartRange(a, b){
@@ -15607,13 +15644,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function _brepWeekdayCard(W){
     const mx=Math.max(1,...W.avg);
+    const man=mx>=10000;   // 만원 단위로 쓰면 숫자가 짧아져 휴대폰 일곱 칸에도 안 붙는다
+    const lab=v=>man ? (v>=100000 ? Math.round(v/10000).toLocaleString('ko-KR') : (Math.round(v/1000)/10).toLocaleString('ko-KR')) : _brepAxis(v);
     const cols=W.order.map(w=>`<div class="brep-wd-col${w===W.hi?' is-hi':''}${w===W.lo?' is-lo':''}">
-        <span class="brep-wd-v">${_brepAxis(W.avg[w])}</span>
+        <span class="brep-wd-v">${lab(W.avg[w])}</span>
         <span class="brep-wd-bar"><i style="height:${(W.avg[w]/mx*100).toFixed(1)}%"></i></span>
         <span class="brep-wd-l">${'일월화수목금토'[w]}</span>
       </div>`).join('');
     return `<div class="brep-card brep-o-wd">
-        <div class="brep-card-head"><span class="brep-card-ico">📅</span><span class="brep-card-title">요일별 평균 매출</span><span class="brep-card-note">이 기간 · 오늘 빼고${W.partial?' · 자료가 꽉 찬 채널만':''}</span></div>
+        <div class="brep-card-head"><span class="brep-card-ico">📅</span><span class="brep-card-title">요일별 평균 매출</span><span class="brep-card-note">${man?'단위 만원 · ':''}이 기간 · 오늘 빼고${W.partial?' · 자료가 꽉 찬 채널만':''}</span></div>
         <div class="brep-wd">${cols}</div>
       </div>`;
   }
@@ -15730,10 +15769,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <span class="brep-br-spark">${_brepSpark(sv, x.dot)}</span>
         </button>`;
     }).join('');
+    const kindsHere=BREP_CH_ORDER.filter(k=>rows.some(x=>x.chs.some(ch=>ch.kind===k && _brepSum(ch.st,a,b).paid>0)));
+    const legend=kindsHere.length ? `<div class="brep-legend brep-mix-legend">${kindsHere.map(k=>`<span class="brep-lg"><i style="background:${BREP_CH[k].color}"></i>${_brepEsc(BREP_CH[k].label)}</span>`).join('')}</div>` : '';
     return `<div class="brep-card">
         <div class="brep-card-head"><span class="brep-card-ico">🏷️</span><span class="brep-card-title">브랜드별</span><span class="brep-card-note">${_brepEsc(plabel)}${cr.trimmed?'(어제까지)':''} 대비 · 막대 = 채널 구성 · 선 = ${crt.single?'최근 14일':'이 기간'} 일별 매출</span></div>
+        ${legend}
         <div class="brep-brs">${body}</div>
-        <div class="brep-hint">* = 비교 기간 자료가 없는 채널을 빼고 같은 채널끼리 비교 · 브랜드를 누르면 그 브랜드 분석</div>
+        <div class="brep-hint">* = 비교 기간 자료가 없는 채널을 빼고 같은 채널끼리 비교 · 비교 부족 = 비교 기간 자료가 있는 채널이 매출의 60% 미만 · 브랜드를 누르면 그 브랜드 분석</div>
       </div>`;
   }
   function _brepKindCard(kindRows, T, ctx){
