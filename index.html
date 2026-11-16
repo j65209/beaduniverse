@@ -4921,6 +4921,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-name i{font-style:normal;color:var(--text-3);margin-left:4px}
   .reo-name .tag{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:#e0e7ff;color:#3730a3}
   .reo-name .tag.stop{background:var(--bg-3);color:var(--text-3)}
+  .reo-name .tag.mark{background:#fee2e2;color:#991b1b}
   .reo-pace{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
   .reo-pace strong{color:var(--text-0)}
   .reo-pace .nw{white-space:nowrap}
@@ -11174,7 +11175,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
          모든 PC · 휴대폰 · 보기 PIN 에 보이고 숨기거나 접을 수 없다. 서버 /erp/reorder (맥미니 scripts/reorder_alert.py, 30분) -->
     <section id="homeReorderCard" class="home-reo-card" aria-label="리오더 경보">
       <div class="hro-head">
-        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-sub">7일 안에 바닥 · 계속 팔리는 상품</span></div>
+        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-sub">재고 마스터 기준 · 7일 안에 바닥 · 계속 팔리는 상품</span></div>
         <div class="hro-meta" id="homeReoMeta">불러오는 중…</div>
         <div class="hro-actions">
           <button class="hro-btn hro-btn-ghost" type="button" onclick="reoHomeLoad(true)" title="지금 다시 계산 (1분쯤 걸려요)">↻</button>
@@ -14909,8 +14910,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function rcvHomeRefresh(){ if(Date.now() - _rcvHome.at > 20000) rcvHomeLoad(); }
   /* ===== 리오더 경보 — 홈 맨 위 고정 (2026-11-16 사장님 "리오더 경보는 확실하게 배치해줘. 상단으로 무조건 고정") =====
      서버 /erp/reorder = 맥미니 scripts/reorder_alert.py 가 30분마다 계산한 것 (읽기만 — 자동 품절 · 출고보류 없음).
-     재고: 코페리 · 아페티 · 코즈미 = 식스샵 ERP MASTER 남은 재고(L). 쇼핑몰은 일부러 수량관리 안함이라 0개가 돼도 계속 팔린다
-           → 이 카드가 유일한 안전장치. 식스에이 · 야르 · 프피 · 아코이 = 식스샵프로 재고 (실사 전, 사장님 결정).
+     재고: 7곳 모두 식스샵 ERP MASTER 남은 재고(L) — 사장님 "재고 마스터가 실 재고니까 그거보고 말해주면 되잖아" (같은 날).
+           코페리 · 아페티 · 코즈미는 쇼핑몰이 수량관리 안함이라 0개가 돼도 계속 팔린다 → 이 카드가 유일한 안전장치.
      판매 속도: 시트 출고 기록(송장 처리가 세트 · 플랫폼까지 풀어 둔 숫자)과 채널 판매 보고서 중 빠른 쪽.
      카드는 숨기거나 접을 수 없다. 급한 게 없으면 '없음'을 보여 줘서 계산이 돌고 있다는 걸 알린다.
      전체 창 검색칸은 다시 그리는 목록 밖에 있어 5분 갱신이 입력을 지우지 않는다. */
@@ -14931,7 +14932,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _reoNameHtml(it){
     return `<span class="reo-brand">${_reoEsc(_reoLabel(it.b))}</span><b>${_reoEsc(it.n)}</b>${it.o ? `<i>${_reoEsc(it.o)}</i>` : ''}`
       + (it.pend ? `<span class="reo-pend" title="송장출력 시트 발주 잔량${it.rdate ? ' · 입고일 ' + _reoEsc(it.rdate) : ''}">발주 잔량 ${_reoN(it.pend)}</span>` : '')
-      + (it.st ? `<span class="tag stop">${_reoEsc(it.st)}</span>` : '');
+      + (it.st ? `<span class="tag stop">${_reoEsc(it.st)}</span>` : '')
+      + (it.mark ? '<span class="tag mark" title="재고 마스터 시트의 품절 / 예정 칸에 체크된 상품">시트 품절 체크</span>' : '');
   }
   function _reoPaceHtml(it){
     // 조각마다 줄바꿈 안 함 — 휴대폰에서 '최근 7일 중 7 / 일' 처럼 끊기지 않게
