@@ -268,7 +268,7 @@ window.build = async (o) => {
   // ── 인트로: AI 영상(꽉 채움) + 위쪽 빈 곳에 표지 제목, 끝에서 표지 카드로 겹쳐 바뀜 ──
   const first = new OffscreenCanvas(W, H); // 카드 영상 첫 장면 (겹쳐 바뀔 때 씀)
   draw(0); first.getContext('2d').drawImage(cv, 0, 0);
-  if (introDur && (o.hook || o.count || o.lead)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + (o.lead ? o.lead.title + o.lead.price + o.lead.was + o.lead.kicker + (o.lead.hook || '이 가격실화?!') + '정가할인외꿀딜개더보기▶,원' : '') + '꿀딜 0123456789개 최대%↓').catch(() => null);
+  if (introDur && (o.hook || o.count || o.lead)) await document.fonts.load('900 100px Pretendard', (o.hook?.kicker || '') + (o.hook?.title || '') + (o.lead ? o.lead.title + o.lead.price + o.lead.was + o.lead.kicker + (o.lead.hook || '이 가격실화?!') + '정가할인외꿀딜개더보기▶,원 댓글달면링크DM!💬' : '') + '꿀딜 0123456789개 최대%↓').catch(() => null);
   const hookFont = (px) => px + 'px Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const drawHook = () => {
     if (!o.hook && !o.count) return;
@@ -399,9 +399,29 @@ window.build = async (o) => {
       ctx.globalAlpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos((t * Math.PI * 2) / 0.7)); // ▶ 깜빡임 (첫 프레임은 또렷하게)
       ctx.fillText('▶', x, TOP + 53); ctx.globalAlpha = 1;
     }
-    if (L.kicker) {
+    const topRoom = maxW - (chipW ? chipW + 24 : 0);
+    if (o.dmPopup) {
+      // 댓글 → 링크 DM 약속 — kicker 자리(맨 위 왼쪽, 가장 먼저 읽히는 곳)에 흰 말풍선 (2026-11-16 승훈 님 "댓글달면 링크 주겠다고 꼭!")
+      // DM 이 실제로 될 때(cards.json cta)만 뜬다 — 안 되는데 약속하면 거짓 안내
+      const a = '💬 댓글 달면 ', b = '링크 DM!';
+      let cs = 44;
+      ctx.font = '900 ' + hookFont(cs);
+      while (cs > 34 && ctx.measureText(a + b).width + 56 > topRoom) { cs -= 2; ctx.font = '900 ' + hookFont(cs); }
+      const wa = ctx.measureText(a).width, wb = ctx.measureText(b).width, bw = Math.min(topRoom, wa + wb + 56), bh = 76;
+      const s = bump(t, 0.9, 0.3, 0.1) * bump(t, 1.75, 0.3, 0.1);
+      ctx.save();
+      ctx.translate(left + bw / 2, TOP + bh / 2); ctx.scale(s, s); ctx.translate(-bw / 2, -bh / 2);
+      ctx.fillStyle = 'rgba(42,29,23,0.9)'; ctx.beginPath(); ctx.roundRect(5, 7, bw, bh, 38); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.roundRect(0, 0, bw, bh, 38); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(46, bh - 4); ctx.lineTo(34, bh + 24); ctx.lineTo(76, bh - 4); ctx.closePath(); ctx.fill(); // 꼬리
+      ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.roundRect(0, 0, bw, bh, 38); ctx.stroke();
+      ctx.fillStyle = INK; ctx.fillText(a, 28, bh / 2 + cs * 0.36, bw - 56);
+      ctx.fillStyle = RED; ctx.fillText(b, 28 + wa, bh / 2 + cs * 0.36);
+      ctx.restore();
+    } else if (L.kicker) {
       ctx.font = '900 ' + hookFont(44);
-      const room = maxW - (chipW ? chipW + 24 : 0), kw = Math.min(room, ctx.measureText(L.kicker).width + 64);
+      const kw = Math.min(topRoom, ctx.measureText(L.kicker).width + 64);
       ctx.fillStyle = INK; ctx.beginPath(); ctx.roundRect(left, TOP, kw, 76, 38); ctx.fill();
       ctx.fillStyle = HONEY; ctx.fillText(L.kicker, left + 32, TOP + 54, kw - 64);
     }
