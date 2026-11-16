@@ -4900,7 +4900,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .hro-chip.zero{opacity:.55}
   .hro-chip.out{background:#fee2e2;border-color:#fecaca;color:#991b1b}
   .hro-chip.urg{background:#ffedd5;border-color:#fed7aa;color:#9a3412}
-  .hro-chip.warn{background:#fef3c7;border-color:#fde68a;color:#92400e}
   .hro-list{display:flex;flex-direction:column;gap:6px}
   /* 브랜드 색 — 브랜드 리포트(BREP_BRANDS dot)와 같은 색. 칸 바탕 · 왼쪽 띠 · 이름표 글씨 (2026-11-16 사장님 "브랜드별로 폰트나 칸컬러는 다르게") */
   .reo-b-kop {--bc:#818cf8;--bc-ink:#4338ca;--bc-bg:rgba(129,140,248,.13)}
@@ -4915,7 +4914,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-sev{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--bg-3);color:var(--text-2)}
   .reo-sev.out{background:#dc2626;color:#fff}
   .reo-sev.urg{background:#ea580c;color:#fff}
-  .reo-sev.warn{background:#f59e0b;color:#fff}
   .reo-main{min-width:0;display:flex;flex-direction:column;gap:2px}
   .reo-name{min-width:0;font-size:13.5px;line-height:1.35}
   .reo-brand{display:inline-block;font-size:11.5px;font-weight:800;color:var(--bc-ink,var(--text-2));background:#fff;border:1.5px solid var(--bc,var(--line-2));border-radius:6px;padding:0 6px;margin-right:6px;vertical-align:1px;white-space:nowrap}
@@ -4925,6 +4923,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-name .tag.stop{background:var(--bg-3);color:var(--text-3)}
   .reo-pace{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
   .reo-pace strong{color:var(--text-0)}
+  .reo-pace .nw{white-space:nowrap}
   .reo-pace.out strong{color:#b91c1c}
   /* 남은 개수 — 줄 오른쪽에 크게 (사장님 "남은 갯수 잘 보이게") */
   .reo-left{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:76px;padding:2px 0 2px 12px;border-left:1px dashed var(--line-2);font-variant-numeric:tabular-nums;line-height:1.05}
@@ -4953,8 +4952,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .hro-sub{display:none}
     .hro-meta{margin-left:0;width:100%;order:3}
     .hro-actions{margin-left:auto}
-    /* 휴대폰: 단계 칩 4개를 한 줄에 · 목록은 JS 가 3줄까지만 */
-    .hro-chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
+    /* 휴대폰: 단계 칩(품절 · 7일 안)을 한 줄에 · 목록은 JS 가 3줄까지만 */
+    .hro-chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:8px}
     .hro-chip{justify-content:center;padding:5px 4px;font-size:11.5px;gap:3px}
     .hro-chip b{font-size:14px}
     .hro-row{gap:8px;padding:8px 10px 8px 8px}
@@ -11170,7 +11169,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
          모든 PC · 휴대폰 · 보기 PIN 에 보이고 숨기거나 접을 수 없다. 서버 /erp/reorder (맥미니 scripts/reorder_alert.py, 30분) -->
     <section id="homeReorderCard" class="home-reo-card" aria-label="리오더 경보">
       <div class="hro-head">
-        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-sub">남은 재고가 며칠 버티는지</span></div>
+        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-sub">7일 안에 바닥 · 계속 팔리는 상품</span></div>
         <div class="hro-meta" id="homeReoMeta">불러오는 중…</div>
         <div class="hro-actions">
           <button class="hro-btn hro-btn-ghost" type="button" onclick="reoHomeLoad(true)" title="지금 다시 계산 (1분쯤 걸려요)">↻</button>
@@ -14909,11 +14908,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      판매 속도: 시트 출고 기록(송장 처리가 세트 · 플랫폼까지 풀어 둔 숫자)과 채널 판매 보고서 중 빠른 쪽.
      카드는 숨기거나 접을 수 없다. 급한 게 없으면 '없음'을 보여 줘서 계산이 돌고 있다는 걸 알린다.
      전체 창 검색칸은 다시 그리는 목록 밖에 있어 5분 갱신이 입력을 지우지 않는다. */
+  /* 2026-11-16 사장님 "일주일만 노출 · 판매가 계속 되는 것 위주 · 리오더 오래 안 하면 굳이 노출 말고"
+     → 서버가 품절 · 7일 안만 낸다 (14 · 21일 단계 없앰), 최근 7일 중 3일 넘게 팔린 것만, 많이 팔리는 순 */
   const REO_SEV = {out:{t:'품절', cls:'out', g:'지금 품절 — 남은 재고 0 이하인데 팔리는 중'},
-                   urgent:{t:'7일 안', cls:'urg', g:'7일 안에 바닥'},
-                   warn:{t:'14일 안', cls:'warn', g:'14일 안에 바닥'},
-                   watch:{t:'21일 안', cls:'watch', g:'21일 안에 바닥 (지켜보기)'}};
-  const REO_ORDER = ['out','urgent','warn','watch'];
+                   urgent:{t:'7일 안', cls:'urg', g:'7일 안에 바닥'}};
+  const REO_ORDER = ['out','urgent'];
   const _reo = {data:null, at:0, loading:false, err:'', timer:null, brand:'all', q:'', sev:'', again:null};
   const _reoEsc = v => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const _reoN = n => Number(n).toLocaleString('ko-KR', {maximumFractionDigits: 1});
@@ -14929,7 +14928,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + (it.st ? `<span class="tag stop">${_reoEsc(it.st)}</span>` : '');
   }
   function _reoPaceHtml(it){
-    return `<span class="reo-pace ${it.sev === 'out' ? 'out' : ''}">하루 ${_reoN(it.rate)}개 팔림 · <strong>${_reoWhen(it)}</strong></span>`;
+    // 조각마다 줄바꿈 안 함 — 휴대폰에서 '최근 7일 중 7 / 일' 처럼 끊기지 않게
+    const parts = [`하루 ${_reoN(it.rate)}개 팔림`];
+    if(it.act7) parts.push(`최근 7일 중 ${it.act7}일`);
+    return `<span class="reo-pace ${it.sev === 'out' ? 'out' : ''}">${parts.map(x => `<span class="nw">${x}</span>`).join(' · ')} · <strong class="nw">${_reoWhen(it)}</strong></span>`;
   }
   // 남은 개수는 줄 오른쪽에 크게 — 0 이하는 빨강, 7일 안은 주황
   function _reoLeftHtml(it){
@@ -14984,7 +14986,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     if(!d){ if(list) list.innerHTML = `<div class="hro-empty">${_reo.err ? '리오더 경보를 불러오지 못했어요. 잠시 뒤 ↻ 를 눌러 주세요.' : '불러오는 중…'}</div>`; return; }
     const items = d.items || [];
-    const cnt = {out:0, urgent:0, warn:0, watch:0};
+    const cnt = {out:0, urgent:0};
     items.forEach(i => { if(cnt[i.sev] != null) cnt[i.sev]++; });
     card.classList.toggle('alarm', cnt.out + cnt.urgent > 0);
     card.classList.toggle('calm', !items.length);
@@ -14993,12 +14995,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     if(!list) return;
     if(!items.length){
-      list.innerHTML = '<div class="hro-empty ok">✅ 3주 안에 바닥날 상품이 없어요</div>';
+      list.innerHTML = '<div class="hro-empty ok">✅ 7일 안에 바닥날 상품이 없어요</div>';
       return;
     }
-    const top = items.filter(i => i.sev !== 'watch');
     // 휴대폰은 3줄까지만 (첫 화면을 이 카드가 다 덮지 않게) — 나머지는 '전체 보기'
-    const show = (top.length ? top : items).slice(0, window.matchMedia('(max-width:700px)').matches ? 3 : 6);
+    const show = items.filter(i => REO_SEV[i.sev]).slice(0, window.matchMedia('(max-width:700px)').matches ? 3 : 6);
     list.innerHTML = show.map(it => `<button type="button" class="hro-row reo-b-${_reoEsc(it.b)}" onclick="reoModalOpen('${it.sev}')">`
         + `<span class="reo-sev ${REO_SEV[it.sev].cls}">${REO_SEV[it.sev].t}</span>`
         + _reoMainHtml(it) + _reoLeftHtml(it) + `</button>`).join('')
@@ -15041,7 +15042,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const list = document.getElementById('reoModalList');
     if(list){
       if(!rows.length){
-        list.innerHTML = `<div class="rcv-none">${q ? '찾는 상품이 없어요.' : '이 브랜드는 3주 안에 바닥날 상품이 없어요.'}</div>`;
+        list.innerHTML = `<div class="rcv-none">${q ? '찾는 상품이 없어요.' : '이 브랜드는 7일 안에 바닥날 상품이 없어요.'}</div>`;
       } else {
         const order = _reo.sev ? [_reo.sev, ...REO_ORDER.filter(k => k !== _reo.sev)] : REO_ORDER;
         list.innerHTML = order.map(k => {
@@ -15068,7 +15069,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         return `<b>${_reoEsc(x.label)}</b> 재고: ${src[x.stockSource] || x.stockSource} · 판매 속도: ${how}${cov}`;
       });
       basis.innerHTML = lines.join('<br>')
-        + '<br>하루 0.2개 미만으로 팔리는 상품 · B급은 경보에서 뺍니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
+        + '<br>7일 안에 바닥나는 상품만, 최근 7일 중 3일 넘게 팔린(또는 시트 출고 하루 1개 넘는) 상품만 띄웁니다. 판매중지 · B급 · 하루 0.2개 미만은 뺍니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
     }
   }
   function reoHomeBoot(){
