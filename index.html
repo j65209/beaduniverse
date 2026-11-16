@@ -4902,29 +4902,47 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .hro-chip.urg{background:#ffedd5;border-color:#fed7aa;color:#9a3412}
   .hro-chip.warn{background:#fef3c7;border-color:#fde68a;color:#92400e}
   .hro-list{display:flex;flex-direction:column;gap:6px}
-  .hro-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);font-family:inherit;color:var(--text-1);cursor:pointer;min-height:40px}
-  .hro-row:hover{border-color:#fca5a5}
+  /* 브랜드 색 — 브랜드 리포트(BREP_BRANDS dot)와 같은 색. 칸 바탕 · 왼쪽 띠 · 이름표 글씨 (2026-11-16 사장님 "브랜드별로 폰트나 칸컬러는 다르게") */
+  .reo-b-kop {--bc:#818cf8;--bc-ink:#4338ca;--bc-bg:rgba(129,140,248,.13)}
+  .reo-b-apt {--bc:#fb7185;--bc-ink:#be123c;--bc-bg:rgba(251,113,133,.11)}
+  .reo-b-koz {--bc:#14b8a6;--bc-ink:#0f766e;--bc-bg:rgba(20,184,166,.11)}
+  .reo-b-6a  {--bc:#22d3ee;--bc-ink:#0e7490;--bc-bg:rgba(34,211,238,.12)}
+  .reo-b-yar {--bc:#a78bfa;--bc-ink:#6d28d9;--bc-bg:rgba(167,139,250,.13)}
+  .reo-b-pp  {--bc:#f59e0b;--bc-ink:#b45309;--bc-bg:rgba(245,158,11,.11)}
+  .reo-b-akoi{--bc:#f472b6;--bc-ink:#be185d;--bc-bg:rgba(244,114,182,.11)}
+  .hro-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;text-align:left;padding:8px 14px 8px 12px;border:1px solid var(--line);border-left:6px solid var(--bc,#cbd5e1);border-radius:10px;background:var(--bc-bg,var(--bg-2));font-family:inherit;color:var(--text-1);cursor:pointer;min-height:52px}
+  .hro-row:hover{border-color:var(--bc,#fca5a5);box-shadow:0 2px 10px rgba(0,0,0,.06)}
   .reo-sev{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--bg-3);color:var(--text-2)}
   .reo-sev.out{background:#dc2626;color:#fff}
   .reo-sev.urg{background:#ea580c;color:#fff}
   .reo-sev.warn{background:#f59e0b;color:#fff}
-  .reo-name{min-width:0;font-size:13px;line-height:1.35}
-  .reo-name .b{font-size:11px;font-weight:700;color:var(--text-3);margin-right:6px}
+  .reo-main{min-width:0;display:flex;flex-direction:column;gap:2px}
+  .reo-name{min-width:0;font-size:13.5px;line-height:1.35}
+  .reo-brand{display:inline-block;font-size:11.5px;font-weight:800;color:var(--bc-ink,var(--text-2));background:#fff;border:1.5px solid var(--bc,var(--line-2));border-radius:6px;padding:0 6px;margin-right:6px;vertical-align:1px;white-space:nowrap}
   .reo-name b{font-weight:700;color:var(--text-0)}
   .reo-name i{font-style:normal;color:var(--text-3);margin-left:4px}
   .reo-name .tag{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:#e0e7ff;color:#3730a3}
   .reo-name .tag.stop{background:var(--bg-3);color:var(--text-3)}
-  .reo-num{font-size:12px;color:var(--text-2);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .reo-num strong{font-size:14px;color:var(--text-0)}
-  .reo-num.out strong{color:#b91c1c}
+  .reo-pace{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
+  .reo-pace strong{color:var(--text-0)}
+  .reo-pace.out strong{color:#b91c1c}
+  /* 남은 개수 — 줄 오른쪽에 크게 (사장님 "남은 갯수 잘 보이게") */
+  .reo-left{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:76px;padding:2px 0 2px 12px;border-left:1px dashed var(--line-2);font-variant-numeric:tabular-nums;line-height:1.05}
+  .reo-left b{font-size:26px;font-weight:900;color:var(--text-0);letter-spacing:-.5px}
+  .reo-left small{font-size:11px;font-weight:700;color:var(--text-3);margin-top:2px;white-space:nowrap}
+  .reo-left.low b{color:#c2410c}
+  .reo-left.zero b{color:#b91c1c}
+  .reo-left.zero small{color:#b91c1c}
   .hro-empty{font-size:13px;color:var(--text-2);padding:6px 2px}
   .hro-empty.ok{color:#15803d;font-weight:700}
   .hro-more{font-size:12px;font-weight:700;color:#b91c1c;padding:2px 2px 0;background:none;border:0;font-family:inherit;cursor:pointer;text-align:left;min-height:32px}
   .reo-panel{width:min(980px,100%)}
   .reo-tabs{flex-wrap:wrap}
   .rcv-tabs.reo-tabs button.on{background:#dc2626;border-color:#dc2626;color:#fff}
+  .rcv-tabs.reo-tabs button[class*="reo-b-"]{border-color:var(--bc);color:var(--bc-ink);background:var(--bc-bg)}
+  .rcv-tabs.reo-tabs button[class*="reo-b-"].on{background:var(--bc-ink);border-color:var(--bc-ink);color:#fff}
   .reo-group{font-size:12px;font-weight:800;color:var(--text-2);padding:10px 2px 4px;display:flex;gap:8px;align-items:center}
-  .reo-mrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--line)}
+  .reo-mrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto 52px;align-items:center;gap:12px;padding:8px 10px 8px 10px;margin:0 0 6px;border:1px solid var(--line);border-left:6px solid var(--bc,#cbd5e1);border-radius:10px;background:var(--bc-bg,var(--bg-2))}
   .reo-mrow a.reo-sheet{font-size:11.5px;font-weight:700;color:#0f766e;text-decoration:none;white-space:nowrap;padding:6px 4px}
   .reo-pend{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:#dcfce7;color:#166534}
   .reo-basis{font-size:11.5px;color:var(--text-3);line-height:1.6;border-top:1px solid var(--line);padding-top:8px}
@@ -4939,10 +4957,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .hro-chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:8px}
     .hro-chip{justify-content:center;padding:5px 4px;font-size:11.5px;gap:3px}
     .hro-chip b{font-size:14px}
-    .hro-row{grid-template-columns:auto minmax(0,1fr);padding:8px 10px}
-    .hro-row .reo-num{grid-column:2;text-align:left;white-space:normal}
-    .reo-mrow{grid-template-columns:auto minmax(0,1fr)}
-    .reo-mrow .reo-num,.reo-mrow a.reo-sheet{grid-column:2;text-align:left;white-space:normal}
+    .hro-row{gap:8px;padding:8px 10px 8px 8px}
+    .reo-left{min-width:58px;padding-left:8px}
+    .reo-left b{font-size:22px}
+    .reo-mrow{grid-template-columns:auto minmax(0,1fr) auto;gap:8px;padding:8px 8px}
+    .reo-mrow a.reo-sheet{grid-column:2/4;justify-self:start;padding:4px 0}
+    .reo-mrow .reo-sheet-none{display:none}
     .hro-btn{min-height:36px}
     .hro-chip{min-height:36px}
   }
@@ -14904,12 +14924,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return it.days < 1 ? '하루 안에 바닥' : `약 ${Math.round(it.days)}일 뒤 바닥`;
   }
   function _reoNameHtml(it){
-    return `<span class="b">${_reoEsc(_reoLabel(it.b))}</span><b>${_reoEsc(it.n)}</b>${it.o ? `<i>${_reoEsc(it.o)}</i>` : ''}`
+    return `<span class="reo-brand">${_reoEsc(_reoLabel(it.b))}</span><b>${_reoEsc(it.n)}</b>${it.o ? `<i>${_reoEsc(it.o)}</i>` : ''}`
       + (it.pend ? `<span class="reo-pend" title="송장출력 시트 발주 잔량${it.rdate ? ' · 입고일 ' + _reoEsc(it.rdate) : ''}">발주 잔량 ${_reoN(it.pend)}</span>` : '')
       + (it.st ? `<span class="tag stop">${_reoEsc(it.st)}</span>` : '');
   }
-  function _reoNumHtml(it){
-    return `<span class="reo-num ${it.sev === 'out' ? 'out' : ''}">남은 <strong>${_reoN(it.stock)}</strong>개 · 하루 ${_reoN(it.rate)}개 · <strong>${_reoWhen(it)}</strong></span>`;
+  function _reoPaceHtml(it){
+    return `<span class="reo-pace ${it.sev === 'out' ? 'out' : ''}">하루 ${_reoN(it.rate)}개 팔림 · <strong>${_reoWhen(it)}</strong></span>`;
+  }
+  // 남은 개수는 줄 오른쪽에 크게 — 0 이하는 빨강, 7일 안은 주황
+  function _reoLeftHtml(it){
+    const cls = it.stock <= 0 ? 'zero' : (it.sev === 'urgent' ? 'low' : '');
+    const num = it.stock < 0 ? '−' + _reoN(-it.stock) : _reoN(it.stock);   // 굵은 글씨에서 '-' 가 떨어져 보여 수학 기호 − 로
+    return `<span class="reo-left ${cls}" title="남은 재고"><b>${num}</b><small>${it.stock < 0 ? '개 · 모자람' : '개 남음'}</small></span>`;
+  }
+  function _reoMainHtml(it){
+    return `<span class="reo-main"><span class="reo-name">${_reoNameHtml(it)}</span>${_reoPaceHtml(it)}</span>`;
   }
   async function reoHomeLoad(fresh){
     if(_reo.loading) return;
@@ -14970,10 +14999,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const top = items.filter(i => i.sev !== 'watch');
     // 휴대폰은 3줄까지만 (첫 화면을 이 카드가 다 덮지 않게) — 나머지는 '전체 보기'
     const show = (top.length ? top : items).slice(0, window.matchMedia('(max-width:700px)').matches ? 3 : 6);
-    list.innerHTML = show.map(it => `<button type="button" class="hro-row" onclick="reoModalOpen('${it.sev}')">`
+    list.innerHTML = show.map(it => `<button type="button" class="hro-row reo-b-${_reoEsc(it.b)}" onclick="reoModalOpen('${it.sev}')">`
         + `<span class="reo-sev ${REO_SEV[it.sev].cls}">${REO_SEV[it.sev].t}</span>`
-        + `<span class="reo-name">${_reoNameHtml(it)}</span>`
-        + _reoNumHtml(it) + `</button>`).join('')
+        + _reoMainHtml(it) + _reoLeftHtml(it) + `</button>`).join('')
       + (items.length > show.length ? `<button type="button" class="hro-more" onclick="reoModalOpen()">+${items.length - show.length}개 더 · 전체 보기 ›</button>` : '');
   }
   function reoModalOpen(sev){
@@ -15000,7 +15028,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(tabs){
       const by = {}; all.forEach(i => { by[i.b] = (by[i.b] || 0) + 1; });
       tabs.innerHTML = `<button type="button" class="${_reo.brand === 'all' ? 'on' : ''}" onclick="reoModalBrand('all')">전체 ${all.length}</button>`
-        + Object.keys(brands).map(b => `<button type="button" class="${_reo.brand === b ? 'on' : ''}" onclick="reoModalBrand('${b}')">${_reoEsc(brands[b].label)} ${by[b] || 0}</button>`).join('');
+        + Object.keys(brands).map(b => `<button type="button" class="reo-b-${_reoEsc(b)}${_reo.brand === b ? ' on' : ''}" onclick="reoModalBrand('${b}')">${_reoEsc(brands[b].label)} ${by[b] || 0}</button>`).join('');
     }
     let rows = all.filter(i => _reo.brand === 'all' || i.b === _reo.brand);
     const q = (_reo.q || '').trim().toLowerCase();
@@ -15022,9 +15050,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           return `<div class="reo-group"><span class="reo-sev ${REO_SEV[k].cls}">${REO_SEV[k].t}</span>${REO_SEV[k].g} · ${g.length}개</div>`
             + g.map(it => {
                 const bi = brands[it.b] || {};
-                const link = (it.row && bi.gid && d.sheet) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="재고 마스터 시트의 이 상품 남은 재고 칸">시트 ↗</a>` : '<span></span>';
-                return `<div class="reo-mrow"><span class="reo-sev ${REO_SEV[it.sev].cls}">${REO_SEV[it.sev].t}</span>`
-                  + `<span class="reo-name">${_reoNameHtml(it)}</span>${_reoNumHtml(it)}${link}</div>`;
+                const link = (it.row && bi.gid && d.sheet) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="재고 마스터 시트의 이 상품 남은 재고 칸">시트 ↗</a>` : '<span class="reo-sheet-none"></span>';
+                return `<div class="reo-mrow reo-b-${_reoEsc(it.b)}"><span class="reo-sev ${REO_SEV[it.sev].cls}">${REO_SEV[it.sev].t}</span>`
+                  + `${_reoMainHtml(it)}${_reoLeftHtml(it)}${link}</div>`;
               }).join('');
         }).join('');
       }
