@@ -14138,6 +14138,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <div class="view view-tool" id="viewStudio" hidden></div>
   <div class="view view-tool" id="viewMailer" hidden></div>
   <div class="view view-tool" id="viewModels" hidden></div>
+  <div class="view view-tool" id="viewSns" hidden></div>
 
   </main>
 
@@ -17831,8 +17832,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -18541,11 +18542,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      - 저장소는 출처마다 따로다: 스튜디오 작업(IndexedDB bb-content-studio) · 메일 발송 연결값(localStorage bb_mailer_*) 은
        지금까지 깃허브 주소 쪽에 쌓였다. 회사 주소에서 스튜디오 · 메일 발송을 처음 열 때 tool-bridge.html 을 작은 창으로
        한 번 띄워 옮겨 온다 (여기 없는 것만 넣고 덮어쓰지 않음 · 브라우저마다 한 번).
-     - keep = 홈으로 나가도 화면을 살려 둠 (스튜디오 작업 · 메일 발송이 이어서 돈다). 모델 지원자는 열 때마다 새로 읽는다. */
+     - keep = 홈으로 나가도 화면을 살려 둠 (스튜디오 작업 · 메일 발송이 이어서 돈다). 모델 지원자 · 꿀꿀집은 열 때마다 새로 읽는다.
+     - 꿀꿀집(sns/, '관리자 전용' 폴더, 2026-11-16 같은 날 추가)은 데이터 보기 화면이라 옮겨 올 저장 내용이 없다
+       (등록 브라우저 키 ggul_device_key 는 관리 화면에서만 씀). 관리 화면은 예전처럼 주소 sns/?manage=1 로 따로 연다.
+       access = 들어갈 수 있는 사람 (카드 조건 snsRefreshAccess 와 같게) — 아니면 해시로 와도 홈으로. */
   const TOOL_PAGES={
     studio:{view:'viewStudio',path:'studio/',title:'광고 컨텐츠 스튜디오',keep:true,bridge:true},
     mailer:{view:'viewMailer',path:'mailer/',title:'메일 발송',keep:true,bridge:true},
     models:{view:'viewModels',path:'models/',title:'모델 지원자',keep:false,bridge:false},
+    sns:{view:'viewSns',path:'sns/',title:'꿀꿀집 마케팅 회사',keep:false,bridge:false,
+      access(){ try{ return isMaster()&&execGetMe()===SNS_OWNER; }catch(e){ return true; } }},
   };
   const TOOL_BRIDGE_KEY='bb_tool_bridge_v1';
   let _toolBridge=null;     // 옮겨 오는 중이면 Promise
@@ -18567,6 +18573,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function toolViewSync(id){
     try{
       const key=toolKeyOf(id);
+      if(key&&TOOL_PAGES[key].access&&!TOOL_PAGES[key].access()){   // 해시 직입력 등 — 카드가 안 보이는 사람
+        toast('관리자 전용 화면입니다','err');
+        history.replaceState({view:'viewHome'},'',location.pathname+location.search);
+        applyView('viewHome');
+        return;
+      }
       document.body.classList.toggle('tool-open',!!key);
       for(const k of Object.keys(TOOL_PAGES)){
         if(k===key) toolMount(k);
@@ -18665,6 +18677,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.bbToolClose=bbToolClose;
   function openToolPage(key){
     const t=TOOL_PAGES[key]; if(!t) return;
+    if(t.access&&!t.access()){ toast('관리자 전용 화면입니다','err'); return; }   // 기록(#sns)을 남기기 전에 막는다
     if(t.bridge&&toolBridgeNeeded()) toolBridgeStart(key);   // 누른 그 순간에 열어야 팝업이 안 막힌다
     _toolDirect=false;
     showView(t.view);
@@ -18807,7 +18820,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     setTimeout(run,1500); setInterval(()=>{ if(!document.hidden) run(); },120000);
   })();
   /* 꿀꿀집 마케팅 회사 — sns/ 별도 페이지 (@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석, 서버는 Supabase 엣지 함수 sns). 카드는 '관리자 전용' 폴더 — 관리자 PIN 이면서 SNS_OWNER(전승훈)일 때만 보임 (snsRefreshAccess) */
-  function openSnsPage(){ const w=window.open('sns/','bbSns'); if(!w) location.href='sns/'; }
+  function openSnsPage(){ openToolPage('sns'); }   // 오피스 안 화면 (TOOL_PAGES) — 관리 화면은 주소 sns/?manage=1
   window.openSnsPage=openSnsPage;
   window.triggerTopping=triggerTopping;
   // goHome: 서브뷰면 history.back() — 브라우저 뒤로가기와 동일 경로로 빠짐 (iOS 엣지 스와이프와 일관됨).
