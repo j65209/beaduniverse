@@ -4976,10 +4976,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 남은 개수 — 줄 오른쪽에 크게 (사장님 "남은 갯수 잘 보이게") */
   .reo-left{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:76px;padding:2px 0 2px 12px;border-left:1px dashed var(--line-2);font-variant-numeric:tabular-nums;line-height:1.05}
   .reo-left b{font-size:26px;font-weight:900;color:var(--text-0);letter-spacing:-.5px}
-  .reo-left small{font-size:11px;font-weight:700;color:var(--text-3);margin-top:2px;white-space:nowrap}
+  .reo-left b small{font-size:15px;font-weight:800;letter-spacing:0;margin-left:2px}   /* 숫자 바로 옆 '개' — 숫자와 같은 색 */
   .reo-left.zero b{color:#b91c1c}
-  .reo-left.zero small{color:#b91c1c}
-  .reo-left.hrc-left{min-width:92px}  /* 2,686 같은 네 자리도 세 줄의 점선이 한 줄로 서게 */
+  .reo-left.hrc-left{min-width:104px}  /* 2,686개 같은 네 자리도 세 줄의 점선이 한 줄로 서게 */
   .reo-left.hrc-left.none b{color:var(--text-3)}
   .hro-empty{font-size:13px;color:var(--text-2);padding:6px 2px}
   .hro-empty.ok{color:var(--text-1);font-weight:700}
@@ -5030,8 +5029,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .hro-row,.hrc-row{gap:8px;padding:8px 10px 8px 8px}
     .hro-row>.reo-sev,.hrc-row>.reo-sev{min-width:46px}
     .reo-left{min-width:58px;padding-left:8px}
-    .reo-left.hrc-left{min-width:72px}
+    .reo-left.hrc-left{min-width:84px}
     .reo-left b{font-size:22px}
+    .reo-left b small{font-size:13px}
     /* 입고 품목 — 휴대폰은 칸이 좁아 이름표 · 이름 · 수량을 따로 세우면 옵션까지 잘린다 → 한 문장처럼 이어 쓰고 줄바꿈 */
     .hrc-it{display:block;font-size:12.5px;overflow-wrap:anywhere}
     .hrc-it .reo-brand{margin-right:4px}
@@ -11454,9 +11454,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="hrc-chips" id="homeRcvChips"></div>
       <div class="hrc-list" id="homeRcvList">
-        <button type="button" class="hrc-row" data-period="today" onclick="rcvModalOpen('today')"><span class="reo-sev rcv">오늘</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b><small>개 입고</small></span></button>
-        <button type="button" class="hrc-row" data-period="week" onclick="rcvModalOpen('week')"><span class="reo-sev rcv">이번 주</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b><small>개 입고</small></span></button>
-        <button type="button" class="hrc-row" data-period="month" onclick="rcvModalOpen('month')"><span class="reo-sev rcv">이번 달</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b><small>개 입고</small></span></button>
+        <button type="button" class="hrc-row" data-period="today" onclick="rcvModalOpen('today')"><span class="reo-sev rcv">오늘</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b></span></button>
+        <button type="button" class="hrc-row" data-period="week" onclick="rcvModalOpen('week')"><span class="reo-sev rcv">이번 주</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b></span></button>
+        <button type="button" class="hrc-row" data-period="month" onclick="rcvModalOpen('month')"><span class="reo-sev rcv">이번 달</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b></span></button>
       </div>
     </section>
     </div>
@@ -15064,7 +15064,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<button type="button" class="hrc-row" data-period="${p}" onclick="rcvModalOpen('${p}')">`
         + `<span class="reo-sev rcv">${t}</span>`
         + `<span class="hrc-main">${items || `<span class="hrc-none">${p === 'today' ? '아직 오늘 입고가 없어요' : '아직 입고 기록이 없어요'}</span>`}${cnt ? `<span class="hrc-cnt">${cnt}</span>` : ''}</span>`
-        + `<span class="reo-left hrc-left${s.qty ? '' : ' none'}" title="${t} 입고 (반영된 것만)"><b>${_rcvN(s.qty)}</b><small>개 입고</small></span>`
+        + `<span class="reo-left hrc-left${s.qty ? '' : ' none'}" title="${t} 입고 (반영된 것만)"><b>${_rcvN(s.qty)}<small>개</small></b></span>`
         + `</button>`;
     }).join('');
   }
@@ -15190,7 +15190,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _reoLeftHtml(it){
     const cls = it.stock <= 0 ? 'zero' : (it.sev === 'urgent' ? 'low' : '');
     const num = it.stock < 0 ? '−' + _reoN(-it.stock) : _reoN(it.stock);   // 굵은 글씨에서 '-' 가 떨어져 보여 수학 기호 − 로
-    return `<span class="reo-left ${cls}" title="남은 재고"><b>${num}</b><small>${it.stock < 0 ? '개 · 모자람' : '개 남음'}</small></span>`;
+    // 11-17 사장님 "개 남음 이렇게 하지말고 숫자옆에 그냥 개만" — 아래 설명 줄 없이 숫자 옆 '개' 하나 (모자람은 − 기호 · 빨강으로)
+    return `<span class="reo-left ${cls}" title="${it.stock < 0 ? '남은 재고 — 모자람' : '남은 재고'}"><b>${num}<small>개</small></b></span>`;
   }
   function _reoMainHtml(it){
     return `<span class="reo-main"><span class="reo-name">${_reoNameHtml(it)}</span>${_reoPaceHtml(it)}</span>`;
