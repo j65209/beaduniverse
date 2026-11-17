@@ -10971,6 +10971,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   /* ===== MD팀 — 구글시트 6종 실시간 연동 ===== */
   .mds-wrap{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+  /* 📎 구글시트 모음 (MD팀 맨 아래, 2026-11-17) */
+  .mdl-wrap{margin-top:18px}
+  .mdl-head{gap:10px;flex-wrap:wrap}
+  .mdl-meta{font-size:12px;color:var(--text-3);margin-right:auto}
+  .mdl-body{padding:4px 20px 18px}
+  .mdl-group{margin-top:16px}
+  .mdl-gtitle{font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:8px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .mdl-gtitle span{font-size:12px;font-weight:500;color:var(--text-3)}
+  .mdl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+  .mdl-card{display:block;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg-0);color:inherit;text-decoration:none;transition:border-color .15s,box-shadow .15s}
+  .mdl-card:hover,.mdl-card:focus-visible{border-color:var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.06);outline:none}
+  .mdl-ctitle{font-weight:700;color:var(--text-0);display:flex;align-items:center;gap:8px;word-break:keep-all}
+  .mdl-open{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--accent);white-space:nowrap}
+  .mdl-admin{font-size:10.5px;font-weight:700;color:var(--text-3);border:1px solid var(--line);border-radius:5px;padding:0 5px}
+  .mdl-desc{margin-top:4px;font-size:12.5px;color:var(--text-2);line-height:1.5;word-break:keep-all}
+  .mdl-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .mdl-tabs span{font-size:11px;padding:1px 7px;border-radius:6px;background:var(--bg-2);color:var(--text-2)}
+  .mdl-used{margin-top:8px;font-size:11.5px;color:var(--text-3)}
+  .mdl-empty{padding:16px 0;color:var(--text-3);font-size:13px}
+  @media (max-width:640px){ .mdl-body{padding:2px 14px 14px} .mdl-search{width:100%} .mdl-grid{grid-template-columns:1fr} }
   .mds-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:6;background:var(--bg-0);padding:8px 0}
   .mds-sp{flex:1}
   .mds-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-3);padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--bg-1)}
@@ -13248,6 +13268,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
       <div class="mds-list" id="mdsList"></div>
       <div class="mds-foot" id="mdsFoot"></div>
+    </div>
+
+    <!-- ============ 📎 구글시트 모음 (2026-11-17 사장님 "내가 이때까지 공유해준 구글시트 링크들 정리해서 엠디팀 최하단에 깔끔하게") ============
+         링크는 공개 레포(이 파일)에 두지 않는다 — 시트 대부분이 '링크가 있는 사람 보기'라 주소가 곧 열쇠.
+         비공개 brightbeed-reports md/sheet-links.json 을 프록시로 읽기만 (mdl* 함수). 고치기는 그 파일에서 -->
+    <div class="po-wrap mdl-wrap" id="mdlWrap">
+      <div class="po-section">
+        <div class="po-section-head mdl-head">
+          <div class="po-section-title">📎 구글시트 모음</div>
+          <span class="mdl-meta" id="mdlMeta"></span>
+          <input class="mds-search mdl-search" id="mdlSearch" type="search" placeholder="시트 · 탭 이름 검색" oninput="mdlSetSearch(this.value)" autocomplete="off">
+        </div>
+        <div class="mdl-body" id="mdlBody"><div class="mdl-empty">불러오는 중…</div></div>
+      </div>
     </div>
   </div>
 
@@ -19547,6 +19581,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof renderMdCal==='function') renderMdCal();
       if(typeof syncMdEventsFromRemote==='function') syncMdEventsFromRemote().catch(()=>{});
       if(typeof mdsInit==='function') mdsInit();
+      if(typeof mdlInit==='function') mdlInit();
     }
     if(id==='viewMarketing'){
       if(typeof renderAdSignage==='function') renderAdSignage();
@@ -49211,6 +49246,74 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ── 진입 ── */
+  /* ── 📎 구글시트 모음 (2026-11-17, MD팀 맨 아래) ──
+     사장님 "내가 이때까지 공유해준 구글시트 링크들 정리해서 엠디팀 최하단에 깔끔하게 정리해줘".
+     링크는 공개 레포(이 파일)에 두지 않는다 — 시트 대부분이 '링크가 있는 사람 보기'라 주소가 곧 열쇠.
+     비공개 brightbeed-reports md/sheet-links.json 을 프록시로 읽기만: { groups:[{ title, note?, items:[{ key, title, url, desc, used, tabs[], admin? }] }] }
+     admin = 관리자만 (뷰어에겐 그리지 않음). 시트를 더하거나 고치는 건 그 파일에서. */
+  const MDL_PATH='md/sheet-links.json', MDL_TTL=10*60*1000;
+  const _mdl={data:null, at:0, loading:null, err:'', q:''};
+  async function _mdlGet(path){
+    const gf=(typeof ghFetch==='function')?ghFetch:window.ghFetch;
+    const r=await gf('https://api.github.com/repos/j65209/brightbeed-reports/contents/'+path+'?ref=main',{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'});
+    if(r.status===404) return null;
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    let j=await r.json();
+    if(j && typeof j.content==='string' && j.encoding==='base64'){
+      const bytes=Uint8Array.from(atob(j.content.replace(/\n/g,'')),c=>c.charCodeAt(0));
+      j=JSON.parse(new TextDecoder().decode(bytes));
+    }
+    return j;
+  }
+  function mdlInit(){
+    if(!document.getElementById('mdlWrap')) return;
+    mdlRender();
+    if(!_mdl.data || Date.now()-_mdl.at>MDL_TTL) mdlLoad();
+  }
+  async function mdlLoad(){
+    if(_mdl.loading) return _mdl.loading;
+    _mdl.loading=(async()=>{
+      try{
+        const d=await _mdlGet(MDL_PATH);
+        if(!d) throw new Error('아직 목록이 없어요');
+        if(!Array.isArray(d.groups)) throw new Error('파일 모양이 달라요');
+        _mdl.data=d; _mdl.at=Date.now(); _mdl.err='';
+      }catch(e){ _mdl.err=(e && e.message) || String(e); }
+      finally{ _mdl.loading=null; }
+      mdlRender();
+    })();
+    return _mdl.loading;
+  }
+  function mdlSetSearch(v){ _mdl.q=String(v||''); mdlRender(); }
+  function mdlRender(){
+    const body=document.getElementById('mdlBody'), meta=document.getElementById('mdlMeta'); if(!body) return;
+    if(!_mdl.data){
+      body.innerHTML=`<div class="mdl-empty">${_mdl.err?`구글시트 모음을 못 불러왔어요 (${_esc(_mdl.err)}) — MD팀 화면을 다시 열면 다시 받아요`:'불러오는 중…'}</div>`;
+      if(meta) meta.textContent=''; return;
+    }
+    const viewer=document.body.classList.contains('role-viewer');
+    const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,'');
+    const q=norm(_mdl.q);
+    const safe=u=>/^https:\/\/docs\.google\.com\//.test(String(u||''))?String(u):'';
+    let total=0, shown=0;
+    const html=_mdl.data.groups.map(g=>{
+      const all=(g.items||[]).filter(it=>safe(it.url) && !(viewer && it.admin));
+      total+=all.length;
+      const items=q ? all.filter(it=>norm([it.title,it.desc,it.used,(it.tabs||[]).join(' '),g.title].join(' ')).includes(q)) : all;
+      if(!items.length) return '';
+      shown+=items.length;
+      return `<section class="mdl-group"><div class="mdl-gtitle">${_esc(g.title)}${g.note?`<span>${_esc(g.note)}</span>`:''}</div><div class="mdl-grid">${items.map(it=>
+        `<a class="mdl-card${it.admin?' master-only':''}" href="${_esc(safe(it.url))}" target="_blank" rel="noopener noreferrer" title="구글시트가 새 탭으로 열려요">
+          <div class="mdl-ctitle">${_esc(it.title)}${it.admin?'<span class="mdl-admin">관리자</span>':''}<span class="mdl-open">열기 ↗</span></div>
+          ${it.desc?`<div class="mdl-desc">${_esc(it.desc)}</div>`:''}
+          ${(it.tabs||[]).length?`<div class="mdl-tabs">${it.tabs.map(t=>`<span>${_esc(t)}</span>`).join('')}</div>`:''}
+          ${it.used?`<div class="mdl-used">쓰는 곳 · ${_esc(it.used)}</div>`:''}
+        </a>`).join('')}</div></section>`;
+    }).join('');
+    body.innerHTML=html || `<div class="mdl-empty">${q?'검색에 맞는 시트가 없어요':'아직 시트가 없어요'}</div>`;
+    if(meta) meta.textContent=q ? `${shown} / ${total}개` : `${total}개 · 누르면 새 탭으로 열려요`;
+  }
+
   function mdsInit(){
     if(!_mds.initing) _mds.initing=_mdsInitRun().finally(()=>{ _mds.initing=null });
     return _mds.initing;
