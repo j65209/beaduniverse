@@ -413,7 +413,7 @@ const CHARACTERS = [
   {
     id:'chief', name:'리안', team:'본부',
     hairColor:'#1a1a1a', cloth:'#78350f',
-    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert'],
+    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit'],
     taskLabel:'전 에이전트 자동업무 검수', scheduleLabel:'상시 감시', intervalSec:1800,
     role:'자동화 검수관 · 이상 감지',
     knows:[
@@ -426,6 +426,29 @@ const CHARACTERS = [
       {label:'전체 검수', cmd:'지금 전체 에이전트 검수'},
       {label:'지금 이슈', cmd:'지금 이상 있는 에이전트'},
       {label:'일일 요약', cmd:'오늘 자동업무 요약'},
+      {label:'전문 분야', cmd:'전문 분야'},
+    ],
+  },
+  /* 2026-11-17 — 재고 검수 담당 (사장님 "더블체크할 수 있는 에이전트가 더 있었으면"). 맥미니 scripts/erp_audit.py 가 30분마다
+     자동 차감(바로 차감 · 15시 처리)과 다른 길로 결과를 다시 본다 — 아래 '재고 검수 — 다온'. 관찰만, 이상 있을 때만 비드유니버스 봇 단톡방 */
+  {
+    id:'audit', name:'다온', team:'본부',
+    hairColor:'#2b1d14', cloth:'#475569',
+    agentIds:['erp-audit'],
+    taskLabel:'재고 검수 (자동 차감 더블체크)', scheduleLabel:'30분마다', intervalSec:1800,
+    role:'재고 검수 · 자동 차감 더블체크',
+    knows:[
+      '식스에이 · 야르 · 프로덕트피알 · 아코이하우스 재고 마스터를 30분마다 자동 처리와 다른 길로 다시 봅니다',
+      '수량 맞추기 — 식스샵프로에서 송장 나간 줄이 재고에 다 들어갔는지, 오늘 송장 수량 = 공홈 탭 = 식스샵 칸 = 판매로그',
+      '이상한 숫자 — 센 뒤 마이너스, 판매 · 입고 없이 바뀐 숫자, 빨간 ⚠ 새 상품, 아직 안 셌는데 팔리는 상품',
+      '식스샵프로 재고와 비교(수량관리 끄기 전까지) · 실사 진행률 · 바로 차감 · 15시 처리가 제때 돌았는지',
+      '관찰만 합니다 — 고칠 게 있으면 어디를 보면 되는지 알려 드려요. 확인 필요한 건 비드유니버스 봇 단톡방에도 가고, 이상 없으면 아무것도 안 보내요',
+    ],
+    quick:[
+      {label:'검수 결과', cmd:'검수 결과'},
+      {label:'지금 다시 검수', cmd:'지금 다시 검수'},
+      {label:'실사 진행률', cmd:'실사 진행률'},
+      {label:'식스샵 비교', cmd:'식스샵 숫자 비교'},
       {label:'전문 분야', cmd:'전문 분야'},
     ],
   },
@@ -1288,6 +1311,8 @@ async function handle(c, text){
   }
   /* 모아는 "오늘 입고 현황 알려줘" 같은 말이 아래 공통 '업무 보고' 로 새지 않게 먼저 받는다 */
   if(c.id === 'receive'){ await receiveAgent(c, text, t); return; }
+  /* 다온 — "오늘 재고 이상 없어?" 같은 말이 공통 '업무 보고' 로 새지 않게 먼저 받는다 */
+  if(c.id === 'audit'){ await auditAgent(c, text, t); return; }
   /* 리안 검수 — 실제 상태(에이전트 · 상태판 · 서버 디스크)를 읽어 답한다. 보기 전용 권한에서도 돈다 */
   if(c.id === 'chief' && has(t, ['검수','이상','문제','점검','요약','디스크','용량','저장 공간','서버'])){ await chiefInspect(c, t); return; }
   if(has(t, ['전문 분야','전문분야','뭐 할 줄','뭘 할 줄','능력','도움말','help','뭐해'])){
@@ -1407,6 +1432,85 @@ async function chiefInspect(c, t){
     return d2 ? `서버 디스크 ${d2.detail} — ${d2.level === 'ok' ? '변화 없음, 정상' : '경고 상태 그대로입니다'}` : '디스크 항목을 다시 못 읽었습니다.';
   });
 }
+
+/* ---- 다온: 재고 검수 (2026-11-17) ----
+   맥미니 scripts/erp_audit.py 가 30분마다 자동 차감과 다른 길로 다시 본 결과(/erp/audit, 보기 PIN 도 읽음). 관찰만 — 고치거나 다시 돌리지 않음.
+   '지금 다시 검수' 는 결과가 2분 넘었을 때만 서버가 뒤에서 다시 돈다(?fresh=1) — 끝날 때까지 15초마다 다시 읽음 (최대 2분). */
+const _auditNum = v => (v == null ? '–' : Number(v).toLocaleString('ko-KR'));
+const _auditAgo = ms => { if(!ms) return '기록 없음'; const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.round(m / 60)}시간 전`; };
+function _auditQtyLine(b){
+  const q = b.qty || {};
+  const a = q.proToday == null ? '식스샵프로 못 읽음' : `식스샵프로 송장 ${_auditNum(q.proToday)} ${q.proToday === q.tabToday ? '=' : '≠'} 공홈 탭 ${_auditNum(q.tabToday)}${q.proToday === q.tabToday ? ' ✅' : ' ⚠️'}`;
+  const d = q.dToday == null ? '오늘 처리 전' : `식스샵 칸 ${_auditNum(q.dToday)} ${q.dToday === q.logToday ? '=' : '≠'} 판매로그 ${_auditNum(q.logToday)}${q.dToday === q.logToday ? ' ✅' : ' ⚠️'}`;
+  return `· ${b.label}: ${a} · ${d}${b.unlogged ? ` · 안 들어간 송장 ${b.unlogged}줄 ⚠️` : ''}`;
+}
+async function auditAgent(c, raw, t){
+  if(has(t, ['전문 분야','전문분야','뭐 할 줄','뭘 할 줄','도움말','help','사용법'])){
+    say('agent', `제 전문 분야입니다.\n\n${c.knows.map(k => '· ' + k).join('\n')}`, {chips: c.quick.filter(q => q.cmd !== '전문 분야')});
+    return;
+  }
+  if(has(t, ['업무 보고']) ){ await reportStatus(c); return; }
+  const fresh = has(t, ['다시','지금 검수','새로','갱신','지금 돌려']);
+  let d;
+  try{ d = await api('/erp/audit' + (fresh ? '?fresh=1' : '')); }
+  catch(e){ say('agent', `검수 결과를 못 읽었어요. 서버 연결을 확인해 주세요. (${e.message||e})`, {kind:'err'}); return; }
+  if(fresh){
+    if(d.refreshing || d.job?.status === 'running'){
+      const before = d.fetchedAt || 0;
+      say('agent', '네, 지금 다시 검수합니다… 1분쯤 걸려요.');
+      for(let i = 0; i < 8; i++){
+        await wait(15000);
+        try{ const d2 = await api('/erp/audit'); if((d2.fetchedAt || 0) > before){ d = d2; break; } }catch(e){}
+      }
+    } else say('agent', `방금(${_auditAgo(d.fetchedAt)}) 검수한 결과가 최신이에요.`);
+  }
+  if(!d.ok){ say('agent', d.error || '아직 검수 결과가 없어요. 30분마다 돌아요.'); return; }
+  const issues = d.issues || [];
+  const alerts = issues.filter(x => x.level === 'alert');
+  const checks = issues.filter(x => x.level === 'check');
+  const brands = Object.values(d.brands || {});
+  const jobs = d.jobs || {};
+  if(has(t, ['진행','실사','몇 줄','얼마나 셌','셌어','다 셌'])){
+    const p = d.progress || {};
+    const lines = [`네 사장님, 실사 진행률입니다 — ${d.at} 기준`, `전체 ${_auditNum(p.counted)} / ${_auditNum(p.countable)}줄 (${p.pct ?? 0}%)`];
+    brands.forEach(b => lines.push(`· ${b.label}: ${_auditNum(b.counted)} / ${_auditNum(b.countable)}줄 — 남은 빈칸 ${_auditNum(b.blank)}${b.negative ? ` · 센 뒤 마이너스 ${b.negative}` : ''}`));
+    const sell = checks.filter(x => x.kind === 'blank_selling');
+    if(sell.length){
+      lines.push('', '먼저 세면 좋은 것 (아직 안 셌는데 오늘 팔린 상품):');
+      sell.forEach(x => lines.push(`· ${AUDIT_BRAND_NAME(x.brand)}: ` + (x.rows || []).slice(0, 5).map(r => `${r.n}${r.o ? ' / ' + r.o : ''} ${r.k}개`).join(' · ')));
+    }
+    lines.push('', '다 세면 사장님이 OK 주시는 대로 식스샵프로 수량관리를 끕니다.');
+    say('agent', lines.join('\n'));
+    return;
+  }
+  if(has(t, ['비교','차이','오타','식스샵 숫자'])){
+    const diff = checks.filter(x => x.kind === 'pro_diff');
+    const lines = [`네 사장님, 센 숫자와 식스샵프로 재고 비교입니다 — ${d.at} 기준`];
+    if(!diff.length) lines.push(brands.some(b => b.counted) ? '크게 다른 줄은 없어요 ✅' : '아직 센 줄이 없어서 비교할 게 없어요. 세어서 적으시면 오타처럼 크게 다른 숫자를 찾아 드릴게요.');
+    diff.forEach(x => { lines.push(`· ${AUDIT_BRAND_NAME(x.brand)}`); (x.rows || []).slice(0, 8).forEach(r => lines.push(`   ${r.n}${r.o ? ' / ' + r.o : ''}: 시트 ${r.sheet} · 식스샵 ${r.pro} (차이 ${r.gap > 0 ? '+' : ''}${r.gap})`)); });
+    lines.push('', '식스샵프로 숫자는 실사 전 숫자라 틀릴 수 있어요 — 크게 다른 것만 오타인지 한 번 봐 주세요.');
+    say('agent', lines.join('\n'));
+    return;
+  }
+  const ship = jobs['erp-ship'] || {}, catchup = jobs['erp-catchup'] || {}, daily = jobs.daily || {};
+  const lines = [
+    `네 사장님, 검수 결과입니다 — ${d.at} 기준`,
+    alerts.length ? `🔴 확인 필요 ${alerts.length}건${checks.length ? ` · 참고 ${checks.length}건` : ''}` : `🟢 이상 없음${checks.length ? ` · 참고 ${checks.length}건` : ''}`,
+    '', '수량 맞추기 (오늘)', ...brands.map(_auditQtyLine),
+    '', `실사 진행: ${_auditNum(d.progress?.counted)} / ${_auditNum(d.progress?.countable)}줄 (${d.progress?.pct ?? 0}%)`,
+    `자동 처리: 바로 차감 ${ship.result === 'ok' ? '✅' : '⚠️'} (${_auditAgo(ship.at)}) · 따라잡기 ${catchup.result === 'ok' ? '✅' : '⚠️'} (${_auditAgo(catchup.at)}) · 15시 처리 ${daily.date ? (daily.date === d.at.slice(0, 10) ? '✅ 오늘 했음' : `마지막 ${daily.date}`) : '기록 시작 전'}`,
+  ];
+  if(alerts.length){ lines.push('', '[확인 필요]'); alerts.forEach(x => lines.push(`· ${x.text}`)); }
+  if(checks.length){ lines.push('', '[참고]'); checks.slice(0, 8).forEach(x => lines.push(`· ${x.text}`)); }
+  say('agent', lines.join('\n'), {chips: [{label:'실사 진행률', cmd:'실사 진행률'}, {label:'식스샵 비교', cmd:'식스샵 숫자 비교'}, {label:'지금 다시 검수', cmd:'지금 다시 검수'}]});
+  await doubleCheck('검수 작업 상태 확인', async () => {
+    const st = d.job || {};
+    if(st.status === 'failed') return `⚠️ 마지막 검수 실행이 실패했어요 (${st.error_code}) — 위 결과는 그 전 것입니다.`;
+    const age = (Date.now() - (d.fetchedAt || 0)) / 60000;
+    return age > 45 ? `⚠️ 검수 결과가 ${Math.round(age)}분 전 것이에요 — 검수 작업이 늦어지고 있어요.` : `검수 작업 정상 — 다음 검수는 30분 안에 돌아요.`;
+  });
+}
+const AUDIT_BRAND_NAME = code => ({'6a':'식스에이', yar:'야르', pp:'프로덕트피알', akoi:'아코이하우스'}[code] || code || '');
 
 /* ---- 꿀꿀집 마케터: 텔레그램 연결(바로 올리기 · /긴급) · 꿀꿀집 화면 ----
    sns-tg/status 는 비밀값 없는 공개 상태(봇 이름 · 단톡방 · 승인자 · 열쇠 유무 · 바로 올리기 켜짐)만 준다. */
