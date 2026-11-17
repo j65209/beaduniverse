@@ -4910,26 +4910,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 홈 운영 카드 한 줄 — 왼쪽 리오더 경보 · 오른쪽 입고 현황 (2026-11-17 사장님 "좌/우로 세팅 · 무드 · 톤 같이 맞춰")
-     두 카드는 같은 틀이다: 흰 카드 · 위 4px 색 띠(리오더 = 상태색 빨강/초록, 입고 = 청록) · 같은 머리줄 · 같은 칩 줄 ·
-     같은 줄 모양(왼쪽 알약 · 가운데 글 · 오른쪽 큰 숫자) · 브랜드 이름표는 둘 다 브랜드 색(.reo-b-*).
+     두 카드는 같은 틀이다: 흰 카드 · 같은 머리줄 · 같은 칩 줄 · 같은 줄 모양(왼쪽 알약 · 가운데 글 · 오른쪽 큰 숫자).
+     같은 날 2차 "컬러감 너무 많아 눈 아파" → 무채색 바탕. 색은 빨강 한 가지만 — 품절 · 모자람 · 실패 · 7일 안(연한 빨강).
+     브랜드는 이름표 앞 작은 점(.reo-b-* 의 --bc)으로만. 버튼은 둘 다 먹색.
      한 줄에서 높이가 같게 늘어나고(입고 세 줄이 남는 높이를 나눠 가짐), 900px 아래에서는 위아래로 쌓인다. ===== */
   .home-ops-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch;margin:6px 0 18px}
-  .home-reo-card,.home-rcv-card{display:flex;flex-direction:column;min-width:0;background:var(--bg-1);border:1px solid var(--line-2);border-top:4px solid var(--ops-c);border-radius:12px;padding:12px 16px 14px;box-shadow:0 4px 18px rgba(20,20,20,.05)}
-  .home-reo-card{--ops-c:#94a3b8}
-  .home-reo-card.alarm{--ops-c:#dc2626}
-  .home-reo-card.calm{--ops-c:#16a34a}
-  .home-rcv-card{--ops-c:#0d9488}
+  .home-reo-card,.home-rcv-card{display:flex;flex-direction:column;min-width:0;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:12px 16px 14px}
   .hro-head,.hrc-head{display:flex;align-items:center;gap:6px 12px;margin-bottom:10px;flex-wrap:wrap;min-height:32px}
   .hro-title,.hrc-title{font-size:15px;font-weight:800;color:var(--text-0);display:flex;align-items:baseline;gap:8px;min-width:0}
   .hro-sub,.hrc-sub{font-size:11.5px;font-weight:600;color:var(--text-3)}
   .hro-meta,.hrc-meta{font-size:11.5px;color:var(--text-3);margin-left:auto;font-variant-numeric:tabular-nums}
   .hro-meta.err,.hrc-meta.err{color:#b91c1c;font-weight:700}
   .hro-actions,.hrc-actions{display:flex;gap:6px}
-  /* 버튼 — 같은 알약, 색만 카드 색 (리오더 빨강 · 입고 청록). ↻ 는 둘 다 같은 연한 버튼 */
-  .hro-btn,.hrc-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:32px;padding:6px 12px;border-radius:999px;border:0;background:#dc2626;color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;text-decoration:none}
-  .hro-btn:hover{background:#b91c1c}
-  .hrc-btn{background:#0d9488}
-  .hrc-btn:hover{background:#0f766e}
+  /* 버튼 — 둘 다 같은 먹색 알약 (전엔 리오더 빨강 · 입고 청록). ↻ 는 둘 다 같은 연한 버튼 */
+  .hro-btn,.hrc-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:32px;padding:6px 12px;border-radius:999px;border:0;background:#1f2329;color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;text-decoration:none}
+  .hro-btn:hover,.hrc-btn:hover{background:#000}
   .hro-btn-ghost,.hrc-btn-ghost{background:var(--bg-2);color:var(--text-1);min-width:32px;padding:6px 10px;font-size:14px}
   .hro-btn-ghost:hover,.hrc-btn-ghost:hover{background:var(--bg-3)}
   /* 칩 줄 — 리오더: 품절 · 7일 안 / 입고: 반영 중 · 실패 · 차감. 0 이면 흐리게, 누르면 전체 창 */
@@ -4937,45 +4932,43 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .hro-chip,.hrc-chip{display:inline-flex;align-items:baseline;gap:5px;min-height:32px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:var(--text-2);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
   .hro-chip b,.hrc-chip b{font-size:15px;font-variant-numeric:tabular-nums}
   .hro-chip.zero,.hrc-chip.zero{opacity:.55}
-  .hro-chip.out{background:#fee2e2;border-color:#fecaca;color:#991b1b}
-  .hro-chip.urg{background:#ffedd5;border-color:#fed7aa;color:#9a3412}
-  .hrc-chip.wait{background:#fef3c7;border-color:#fde68a;color:#92400e}
-  .hrc-chip.fail{background:#fee2e2;border-color:#fecaca;color:#991b1b}
+  .hro-chip.out:not(.zero),.hrc-chip.fail:not(.zero){background:#fef2f2;border-color:#fecaca;color:#b91c1c}   /* 색은 품절 · 실패가 있을 때만 */
   .hro-list,.hrc-list{display:flex;flex-direction:column;gap:6px;flex:1 1 auto}
-  /* 브랜드 색 — 브랜드 리포트(BREP_BRANDS dot)와 같은 색. 칸 바탕 · 왼쪽 띠 · 이름표 글씨 (2026-11-16 사장님 "브랜드별로 폰트나 칸컬러는 다르게") */
-  .reo-b-kop {--bc:#818cf8;--bc-ink:#4338ca;--bc-bg:rgba(129,140,248,.13)}
-  .reo-b-apt {--bc:#fb7185;--bc-ink:#be123c;--bc-bg:rgba(251,113,133,.11)}
-  .reo-b-koz {--bc:#14b8a6;--bc-ink:#0f766e;--bc-bg:rgba(20,184,166,.11)}
-  .reo-b-6a  {--bc:#22d3ee;--bc-ink:#0e7490;--bc-bg:rgba(34,211,238,.12)}
-  .reo-b-yar {--bc:#a78bfa;--bc-ink:#6d28d9;--bc-bg:rgba(167,139,250,.13)}
-  .reo-b-pp  {--bc:#f59e0b;--bc-ink:#b45309;--bc-bg:rgba(245,158,11,.11)}
-  .reo-b-akoi{--bc:#f472b6;--bc-ink:#be185d;--bc-bg:rgba(244,114,182,.11)}
-  .hro-row,.hrc-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;text-align:left;padding:8px 14px 8px 12px;border:1px solid var(--line);border-left:6px solid var(--bc,#cbd5e1);border-radius:10px;background:var(--bc-bg,var(--bg-2));font-family:inherit;color:var(--text-1);cursor:pointer;min-height:52px}
-  .hro-row:hover,.hrc-row:hover{border-color:var(--bc,#fca5a5);box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  /* 입고 줄 — 청록 띠 · 오늘 / 이번 주 / 이번 달. 왼쪽 카드가 더 길면 남는 높이를 셋이 나눠 가진다 */
-  .hrc-row{--bc:#0d9488;--bc-bg:rgba(13,148,136,.06);flex:1 1 auto}
+  /* 브랜드 색 — 브랜드 리포트(BREP_BRANDS dot)와 같은 색. 2026-11-16 "브랜드별로 폰트나 칸컬러는 다르게" 로 칸 바탕 · 띠 · 글씨였다가
+     11-17 "컬러감 너무 많아 눈 아파" → 이름표 앞 작은 점에만 쓴다 (리오더 · 입고 · 두 전체 창) */
+  .reo-b-kop {--bc:#818cf8}
+  .reo-b-apt {--bc:#fb7185}
+  .reo-b-koz {--bc:#14b8a6}
+  .reo-b-6a  {--bc:#22d3ee}
+  .reo-b-yar {--bc:#a78bfa}
+  .reo-b-pp  {--bc:#f59e0b}
+  .reo-b-akoi{--bc:#f472b6}
+  .hro-row,.hrc-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;text-align:left;padding:8px 14px 8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg-1);font-family:inherit;color:var(--text-1);cursor:pointer;min-height:52px}
+  .hro-row:hover,.hrc-row:hover{border-color:var(--line-2);background:var(--bg-0);box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  /* 입고 줄 — 오늘 / 이번 주 / 이번 달. 왼쪽 카드가 더 길면 남는 높이를 셋이 나눠 가진다 */
+  .hrc-row{flex:1 1 auto}
   .hro-row>.reo-sev,.hrc-row>.reo-sev{min-width:52px;text-align:center}
   .reo-sev{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--bg-3);color:var(--text-2)}
   .reo-sev.out{background:#dc2626;color:#fff}
-  .reo-sev.urg{background:#ea580c;color:#fff}
-  .reo-sev.rcv{background:#0d9488;color:#fff}
+  .reo-sev.urg{background:#fee2e2;color:#b91c1c}
+  .reo-sev.rcv{background:var(--bg-3);color:var(--text-1)}
   .hrc-main{min-width:0;display:flex;flex-direction:column;gap:3px}
   .hrc-it{display:flex;align-items:baseline;min-width:0;font-size:13px;line-height:1.4}
   .hrc-it .reo-brand{flex:none}
   .hrc-it .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;color:var(--text-0)}
   .hrc-it .nm i{font-style:normal;font-weight:500;color:var(--text-3);margin-left:4px}
-  .hrc-it>b{flex:none;margin-left:10px;font-weight:800;color:#0f766e;font-variant-numeric:tabular-nums}
+  .hrc-it>b{flex:none;margin-left:10px;font-weight:800;color:var(--text-1);font-variant-numeric:tabular-nums}
   .hrc-cnt{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
-  .hrc-cnt .go{color:#0f766e;font-weight:700;white-space:nowrap}
+  .hrc-cnt .go{color:var(--text-1);font-weight:700;white-space:nowrap}
   .hrc-none{font-size:12.5px;color:var(--text-3)}
   .reo-main{min-width:0;display:flex;flex-direction:column;gap:2px}
   .reo-name{min-width:0;font-size:13.5px;line-height:1.35}
-  .reo-brand{display:inline-block;font-size:11.5px;font-weight:800;color:var(--bc-ink,var(--text-2));background:#fff;border:1.5px solid var(--bc,var(--line-2));border-radius:6px;padding:0 6px;margin-right:6px;vertical-align:1px;white-space:nowrap}
+  .reo-brand{display:inline-block;font-size:11.5px;font-weight:700;color:var(--text-2);background:var(--bg-1);border:1px solid var(--line-2);border-radius:6px;padding:0 6px;margin-right:6px;vertical-align:1px;white-space:nowrap}
+  .reo-brand::before,.rcv-row .b::before,.rcv-tabs.reo-tabs button[class*="reo-b-"]::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--bc,var(--text-3));margin-right:4px;vertical-align:1px}
   .reo-name b{font-weight:700;color:var(--text-0)}
   .reo-name i{font-style:normal;color:var(--text-3);margin-left:4px}
-  .reo-name .tag{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:#e0e7ff;color:#3730a3}
-  .reo-name .tag.stop{background:var(--bg-3);color:var(--text-3)}
-  .reo-name .tag.mark{background:#fee2e2;color:#991b1b}
+  .reo-name .tag{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:var(--bg-3);color:var(--text-2)}
+  .reo-name .tag.stop{color:var(--text-3)}
   .reo-pace{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
   .reo-pace strong{color:var(--text-0)}
   .reo-pace .nw{white-space:nowrap}
@@ -4984,27 +4977,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-left{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:76px;padding:2px 0 2px 12px;border-left:1px dashed var(--line-2);font-variant-numeric:tabular-nums;line-height:1.05}
   .reo-left b{font-size:26px;font-weight:900;color:var(--text-0);letter-spacing:-.5px}
   .reo-left small{font-size:11px;font-weight:700;color:var(--text-3);margin-top:2px;white-space:nowrap}
-  .reo-left.low b{color:#c2410c}
   .reo-left.zero b{color:#b91c1c}
   .reo-left.zero small{color:#b91c1c}
   .reo-left.hrc-left{min-width:92px}  /* 2,686 같은 네 자리도 세 줄의 점선이 한 줄로 서게 */
-  .reo-left.hrc-left b{color:#0f766e}
   .reo-left.hrc-left.none b{color:var(--text-3)}
   .hro-empty{font-size:13px;color:var(--text-2);padding:6px 2px}
-  .hro-empty.ok{color:#15803d;font-weight:700}
+  .hro-empty.ok{color:var(--text-1);font-weight:700}
   /* 목록 자리의 안내(불러오는 중 · 없음)는 남는 높이를 채우는 점선 칸 — 옆 카드와 높이가 맞게 */
   .hro-list>.hro-empty,.hrc-list>.hro-empty{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:52px;padding:10px;border:1px dashed var(--line-2);border-radius:10px;text-align:center}
-  .hro-list>.hro-empty.ok{background:rgba(22,163,74,.06);border-color:#bbf7d0}
-  .hro-more{font-size:12px;font-weight:700;color:#b91c1c;padding:2px 2px 0;background:none;border:0;font-family:inherit;cursor:pointer;text-align:left;min-height:32px}
+  .hro-more{font-size:12px;font-weight:700;color:var(--text-1);padding:2px 2px 0;background:none;border:0;font-family:inherit;cursor:pointer;text-align:left;min-height:32px}
   .reo-panel{width:min(980px,100%)}
   .reo-tabs{flex-wrap:wrap}
-  .rcv-tabs.reo-tabs button.on{background:#dc2626;border-color:#dc2626;color:#fff}
-  .rcv-tabs.reo-tabs button[class*="reo-b-"]{border-color:var(--bc);color:var(--bc-ink);background:var(--bc-bg)}
-  .rcv-tabs.reo-tabs button[class*="reo-b-"].on{background:var(--bc-ink);border-color:var(--bc-ink);color:#fff}
+  .rcv-tabs.reo-tabs button.on{background:#1f2329;border-color:#1f2329;color:#fff}
   .reo-group{font-size:12px;font-weight:800;color:var(--text-2);padding:10px 2px 4px;display:flex;gap:8px;align-items:center}
-  .reo-mrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto 52px;align-items:center;gap:12px;padding:8px 10px 8px 10px;margin:0 0 6px;border:1px solid var(--line);border-left:6px solid var(--bc,#cbd5e1);border-radius:10px;background:var(--bc-bg,var(--bg-2))}
-  .reo-mrow a.reo-sheet{font-size:11.5px;font-weight:700;color:#0f766e;text-decoration:none;white-space:nowrap;padding:6px 4px}
-  .reo-pend{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:#dcfce7;color:#166534}
+  .reo-mrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto 52px;align-items:center;gap:12px;padding:8px 10px 8px 10px;margin:0 0 6px;border:1px solid var(--line);border-radius:10px;background:var(--bg-1)}
+  .reo-mrow a.reo-sheet{font-size:11.5px;font-weight:700;color:var(--text-1);text-decoration:underline;text-underline-offset:2px;white-space:nowrap;padding:6px 4px}
+  .reo-pend{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:var(--bg-3);color:var(--text-2)}
   .reo-basis{font-size:11.5px;color:var(--text-3);line-height:1.6;border-top:1px solid var(--line);padding-top:8px}
   .hro-need{display:block;width:100%;text-align:left;margin:-2px 0 10px;padding:8px 12px;min-height:36px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
   .hro-need b{font-size:14px;color:#0f172a}
@@ -5018,7 +5006,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-expired{border-top:1px solid var(--line);padding-top:6px}
   .reo-expired summary{cursor:pointer;font-size:12.5px;font-weight:800;color:var(--text-2);padding:8px 2px;min-height:36px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .reo-expired summary span{font-weight:600;color:var(--text-3);font-size:11.5px}
-  .reo-exp-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:6px 10px;margin:0 0 4px;border-left:4px solid var(--bc,#cbd5e1);border-radius:8px;background:var(--bc-bg,var(--bg-2));opacity:.85}
+  .reo-exp-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:6px 10px;margin:0 0 4px;border:1px solid var(--line);border-radius:8px;background:var(--bg-1);opacity:.85}
   .reo-exp-num{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
   .reo-basis b{color:var(--text-2)}
   @media (max-width:900px){
@@ -5067,7 +5055,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .rcv-x{margin-left:auto;border:0;background:var(--bg-2);border-radius:8px;width:32px;height:32px;font-size:14px;cursor:pointer;color:var(--text-1)}
   .rcv-tabs{display:flex;gap:6px}
   .rcv-tabs button{border:1px solid var(--line-2);background:var(--bg-1);color:var(--text-1);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
-  .rcv-tabs button.on{background:#0d9488;border-color:#0d9488;color:#fff}
+  .rcv-tabs button.on{background:#1f2329;border-color:#1f2329;color:#fff}
   .rcv-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .rcv-tools input[type=search]{flex:1;min-width:180px;border:1px solid var(--line-2);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;background:var(--bg-1);color:var(--text-1)}
   .rcv-chk{font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:4px;white-space:nowrap}
@@ -5080,15 +5068,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .rcv-row .n{min-width:0}
   .rcv-row .n b{font-weight:700}
   .rcv-row .n i{font-style:normal;color:var(--text-3);font-size:11.5px;margin-left:4px}
-  .rcv-row .b{display:inline-block;font-size:10.5px;font-weight:700;color:#0f766e;background:rgba(13,148,136,.1);border-radius:4px;padding:0 5px;margin-right:5px}
+  .rcv-row .b{display:inline-block;font-size:10.5px;font-weight:700;color:var(--text-2);background:var(--bg-3);border-radius:4px;padding:0 5px;margin-right:5px}
   .rcv-row .q{font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
-  .rcv-row .q.in{color:#0f766e}
-  .rcv-row .q.out{color:#b45309}
+  .rcv-row .q.in{color:var(--text-0)}
+  .rcv-row .q.out{color:var(--text-2)}
   .rcv-row .s{color:var(--text-2);font-variant-numeric:tabular-nums;text-align:right}
   .rcv-row .w{color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rcv-row .st{font-size:11.5px;font-weight:700}
-  .rcv-row .st.ok{color:#047857}
-  .rcv-row .st.wait{color:#b45309}
+  .rcv-row .st.ok,.rcv-row .st.wait{color:var(--text-2)}
   .rcv-row .st.fail{color:#b91c1c}
   .rcv-row .why{grid-column:2 / -1;font-size:11.5px;color:#b91c1c}
   .rcv-none{padding:24px 4px;text-align:center;color:var(--text-3);font-size:12.5px}
@@ -5485,24 +5472,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-metaads-apt .sub-module-tag{color:#fb7185;border-color:rgba(251,113,133,.45);border-style:solid}
   .sub-module.m-metaads-koz {--m-color:#14b8a6;--m-border:rgba(20,184,166,.45)}
   .sub-module.m-metaads-koz .sub-module-tag{color:#14b8a6;border-color:rgba(20,184,166,.45);border-style:solid}
-  .sub-module.m-metaads-6a{--m-ink:#0e7490}
-  .sub-module.m-metaads-ct{--m-ink:#15803d}
-  .sub-module.m-metaads-yar{--m-ink:#6d28d9}
-  .sub-module.m-metaads-pp{--m-ink:#b45309}
-  .sub-module.m-metaads-akoi{--m-ink:#be185d}
-  .sub-module.m-metaads-kop{--m-ink:#4338ca}
-  .sub-module.m-metaads-apt{--m-ink:#be123c}
-  .sub-module.m-metaads-koz{--m-ink:#0f766e}
   /* 타일 구성(2026-11-16): 브랜드명 → 오늘·어제 ROAS 큰 숫자 → 상태(작게). 점 대신 왼쪽·위쪽 브랜드 색 띠 */
-  .sub-module.m-metaads{gap:8px;padding:14px 14px 10px;min-width:0;border-left:4px solid var(--m-color);border-top:3px solid var(--m-color)}
-  .sub-module.m-metaads .sub-module-title{font-size:16px;font-weight:800;color:var(--m-ink,var(--text-0));overflow-wrap:anywhere}
+  /* 2026-11-17 사장님 "컬러감 너무 많아 눈 아파" — 타일 테두리 · 이름 · 오늘 숫자의 브랜드 색을 빼고 순위 옆 작은 점으로만 */
+  .sub-module.m-metaads{gap:8px;padding:14px 14px 10px;min-width:0}
+  .sub-module.m-metaads::before{display:none}
+  .sub-module.m-metaads:hover{border-color:var(--line-2)}
+  .sub-module.m-metaads .sub-module-title{font-size:16px;font-weight:800;color:var(--text-0);overflow-wrap:anywhere}
+  .m-metaads .mar-rank::after{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--m-color);margin-left:6px;vertical-align:2px}
   .sub-module.m-metaads .sub-module-sub{font-family:var(--sans,inherit);color:var(--text-1,inherit);min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:2px}
   .m-metaads .mar-pair{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
   .m-metaads .mar-cell{display:flex;flex-direction:column;min-width:0}
   .m-metaads .mar-l{font-size:11px;font-weight:600;color:var(--text-3);line-height:1.2}
   .m-metaads .mar-v{font-family:var(--mono);font-weight:800;line-height:1.1;color:var(--text-0);font-size:20px;opacity:.85}
-  .m-metaads .is-today .mar-v{font-size:30px;opacity:1;color:var(--m-ink,var(--text-0))}
-  .m-metaads .is-today .mar-l{color:var(--m-ink,var(--text-3));font-weight:800}
+  .m-metaads .is-today .mar-v{font-size:30px;opacity:1;color:var(--text-0)}
+  .m-metaads .is-today .mar-l{color:var(--text-2);font-weight:800}
   .m-metaads .mar-v.is-none{color:var(--text-3);font-weight:600}
   .m-metaads .mar-v.is-word{font-size:12px;font-weight:600}
   .m-metaads .mar-u{font-size:11px;font-weight:600;color:var(--text-3);letter-spacing:.04em}
@@ -5518,7 +5501,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-metaads .sub-module-sub{min-height:0}
   .metaads-idle{max-width:980px;margin:10px auto 0;font-size:11px;color:var(--text-3);line-height:1.5}
   @media(max-width:480px){.sub-module.m-metaads{padding:8px 8px 6px}}
-  .sub-module.m-metaads[data-ready="1"] .sub-module-tag{color:var(--m-ink)}
+  .sub-module.m-metaads[data-ready="1"] .sub-module-tag{color:var(--text-2);border-color:var(--line-2)}
   @media(max-width:480px){.m-metaads .mar-pair{gap:8px}.m-metaads .mar-v{font-size:17px}.m-metaads .is-today .mar-v{font-size:24px}}
   .sub-module.m-metaads[data-ready="0"]{opacity:.6;cursor:default}
   .sub-module.m-metaads[data-ready="0"]:hover{transform:none;background:var(--bg-1)}
@@ -15141,7 +15124,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const stock = r.after != null ? `${r.before == null ? '빈칸' : _rcvN(r.before)} → ${_rcvN(r.after)}` : '';
       html += `<div class="rcv-row">`
         + `<span class="t">${_rcvHM(_rcvAt(r))}</span>`
-        + `<span class="n"><span class="b">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}</span>`
+        + `<span class="n"><span class="b reo-b-${_rcvEsc(r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}</span>`
         + `<span class="q ${r.kind === 'out' ? 'out' : 'in'}">${r.kind === 'out' ? '−' : '+'}${_rcvN(r.qty)}</span>`
         + `<span class="s" title="남은 재고 (반영 전 → 후)">${stock}</span>`
         + `<span class="w" title="입력자">${_rcvEsc(r.by || '–')}</span>`
