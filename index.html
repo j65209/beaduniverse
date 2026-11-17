@@ -1549,6 +1549,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-m-jg{color:#c084fc;border-color:rgba(192,132,252,.5);background:rgba(192,132,252,.1)}
   .lgb-m-ec{color:#4ade80;border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.08)}
   .lgb-m-none{color:#6b7280;border-style:dashed;background:transparent;font-weight:600}
+  .lgb-msub{display:none}   /* 휴대폰 · 태블릿에서만 방식 아래에 '박스 · 품목 수' */
   .lgb-goods{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}
   .lgb-thumb{width:32px;height:32px;border-radius:5px;object-fit:cover;background:#1f2430;border:1px solid #2a3040;flex:none;cursor:zoom-in}
   /* 사진은 칸 폭만큼 채우고 넘치는 것만 '+N 더보기' (_lgbFitThumbs 가 hidden 으로 정리) */
@@ -1570,27 +1571,27 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   @media (max-width:720px){
     .lgb{margin:0 8px 12px;border-radius:12px}
   }
-  /* 900px 이하(휴대폰 · 태블릿)는 줄마다 카드 — 표 칸이 사진 자리를 다 먹어서 */
+  /* 900px 이하(휴대폰 · 태블릿) — 한 출고를 한 줄에 (2026-11-17 요청: 웬만하면 두 번째 줄로 안 내려가게).
+     [출고일 / 며칠 전] [방식 / 박스 · 품목 수] [사진 — 남는 폭만큼, 넘치면 +N]. 신청서번호는 아래 표에서 (폭이 모자라 뺌) */
   @media (max-width:900px){
-    .lgb-head{padding:11px 14px 10px;flex-wrap:nowrap;align-items:center;gap:8px}
+    .lgb-head{padding:11px 14px 10px;align-items:center;gap:4px 8px}
     .lgb-sub-l{display:none}
     .lgb-sub,.lgb-stamp{white-space:nowrap}
     .lgb-cols{display:none}
-    .lgb-row{padding:11px 14px}
-    /* 휴대폰 (2026-11-17 다시 짬): 1줄 = 출고일 · 며칠 전 … 방식 · 박스 / 2줄 = 품목 사진 (폭만큼, 넘치면 +N) / 3줄 = 품목 수 … 신청서 */
-    .lgb-row.lgb-grid{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-    .lgb-date{order:1}
-    .lgb-method{order:2;margin-left:auto}
-    .lgb-box{order:3}
-    .lgb-goods{order:4;flex:1 1 100%;gap:4px}
-    .lgb-goods:empty{display:none}
-    .lgb-cnt{order:5;font-size:11.5px;color:#9ca3af}
-    .lgb-ords{order:6;margin-left:auto}
-    .lgb-thumb{width:34px;height:34px}
-    .lgb-more{height:34px;min-width:34px;padding:0 7px}
+    .lgb-row{padding:9px 12px}
+    .lgb-row.lgb-grid{display:flex;flex-wrap:nowrap;align-items:center;gap:10px}
+    .lgb-date{flex:none;min-width:50px}
+    .lgb-date b{font-size:16px}
+    .lgb-date i{display:none}
+    .lgb-date .lgb-new{display:table;margin:3px 0 0;padding:1px 4px;font-size:9.5px;vertical-align:0}
+    .lgb-method{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px}
+    .lgb-m{font-size:11px;padding:2px 6px}
+    .lgb-msub{display:block;font-size:10px;color:#9ca3af;white-space:nowrap}
+    .lgb-box,.lgb-cnt,.lgb-ords{display:none}
+    .lgb-goods{flex:1 1 auto;gap:4px}
+    .lgb-thumb{width:30px;height:30px}
+    .lgb-more{height:30px;min-width:30px;padding:0 5px;font-size:10.5px}
     .lgb-more-t{display:none}
-    .lgb-ord{font-size:10.5px;padding:3px 6px}
-    .lgb-date em:not(.lgb-new){display:inline;margin:0 0 0 6px}
   }
 
   /* ===== 물류팀 뷰 탭 (최근 발주 ↔ 발주서 리스트) ===== */
@@ -29741,8 +29742,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const chips=ords.slice(0,4).map(o=>`<button type="button" class="lgb-ord" data-ord="${escapeHTML(o.ord_no)}" title="신청서 ${escapeHTML(o.ord_no)} · 신청 ${escapeHTML(o.date)} — 누르면 아래 표에서 찾기">${escapeHTML(o.ord_no)}</button>`).join('')
         + (ords.length>4?`<span class="lgb-ord-more">+${ords.length-4}</span>`:'');
       const bt=_lgbBoxText(g.boxes);
-      const boxCell=bt.split('·').length>2 ? `<span title="${escapeHTML(bt)}">${new Set(g.boxes).size}박스</span>` : escapeHTML(bt);
-      return `<div class="lgb-row lgb-grid"><div class="lgb-date">${dateCell}</div><div class="lgb-method">${methodCell}</div><div class="lgb-box">${boxCell}</div><div class="lgb-cnt">${g.items.length}품목</div><div class="lgb-goods">${thumbs}${moreBtn}</div><div class="lgb-ords">${chips}</div></div>`;
+      const boxShort=bt.split('·').length>2 ? `${new Set(g.boxes).size}박스` : bt;
+      const boxCell=boxShort!==bt ? `<span title="${escapeHTML(bt)}">${escapeHTML(boxShort)}</span>` : escapeHTML(bt);
+      // 휴대폰 · 태블릿은 한 줄에 담으려고 방식 아래에 '박스 · 품목 수' 를 작게 (데스크톱은 숨김)
+      const msub=[boxShort, g.items.length+'품목'].filter(Boolean).join(' · ');
+      return `<div class="lgb-row lgb-grid"><div class="lgb-date">${dateCell}</div><div class="lgb-method">${methodCell}<span class="lgb-msub">${escapeHTML(msub)}</span></div><div class="lgb-box">${boxCell}</div><div class="lgb-cnt">${g.items.length}품목</div><div class="lgb-goods">${thumbs}${moreBtn}</div><div class="lgb-ords">${chips}</div></div>`;
     }).join('');
     const ts=_lgbFetchedAt?new Date(_lgbFetchedAt*1000):null;
     const stamp=ts?`갱신 ${String(ts.getMonth()+1).padStart(2,'0')}.${String(ts.getDate()).padStart(2,'0')} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}`:'';
