@@ -1321,9 +1321,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   .kd-ord{font-size:13px;font-weight:700;color:var(--text-0);letter-spacing:.02em}
   .kd-ord-meta{font-size:10.5px;color:var(--text-3);margin-top:3px;font-family:var(--mono);letter-spacing:.03em}
-  /* 2026-11-13 비드유니버스 통합 — 신청서 · 상품 카드에 어느 계정(브라이트비드 · 샤인비드) 것인지 작은 표시 */
-  .kd-brand-tag{display:inline-block;font-family:var(--sans,inherit);font-size:10px;font-weight:700;letter-spacing:0;padding:1px 6px;margin-right:5px;border-radius:999px;vertical-align:1px;color:#fff;background:#8b5cf6}
-  .kd-brand-tag.kd-brand-shinebeed{background:#0284c7}
   .kd-status{
     display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;
     font-size:10.5px;font-weight:600;letter-spacing:0;white-space:nowrap;font-family:var(--sans)
@@ -1551,21 +1548,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-m-ec{color:#4ade80;border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.08)}
   .lgb-m-none{color:#6b7280;border-style:dashed;background:transparent;font-weight:600}
   .lgb-goods{display:flex;align-items:center;gap:5px;min-width:0}
-  .lgb-thumb{width:28px;height:28px;border-radius:5px;object-fit:cover;background:#1f2430;border:1px solid #2a3040;flex:none}
+  .lgb-thumb{width:28px;height:28px;border-radius:5px;object-fit:cover;background:#1f2430;border:1px solid #2a3040;flex:none;cursor:zoom-in}
   .lgb-more{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:#9ca3af;flex:none}
   .lgb-cnt{font-size:12px;color:#d1d5db;margin-left:3px;white-space:nowrap}
   .lgb-ords{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;min-width:0}
-  .lgb-ord{font:600 11.5px/1 var(--sans);color:#d1d5db;background:#151922;border:1px solid #2a3040;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
+  .lgb-ord{font:500 11.5px/1 'JetBrains Mono',ui-monospace,monospace;color:#d1d5db;background:#151922;border:1px solid #2a3040;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
   .lgb-ord:hover{border-color:#fbbf24;color:#fde68a}
-  .lgb-ord b{font-weight:800;margin-right:3px}
-  .lgb-ord.lgb-bb b{color:#93c5fd}
-  .lgb-ord.lgb-sb b{color:#f9a8d4}
   .lgb-ord-more{font-size:11px;color:#8b93a1;align-self:center}
   .lgb-box{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;color:#fde68a;white-space:nowrap}
   .lgb-foot{padding:8px 18px 12px;text-align:center;border-top:1px solid #1d212a}
   .lgb-foot button{font:600 12px var(--sans);color:#d1d5db;background:transparent;border:1px solid #2a3040;border-radius:6px;padding:6px 14px;cursor:pointer}
   .lgb-foot button:hover{color:#fde68a;border-color:#fbbf24}
   .lgb-br{display:none}
+  /* 썸네일 크게 보기 (2026-11-17) — 마우스를 올린 동안만 · 휴대폰은 누르면. 판 밖으로 안 잘리게 body 에 붙는 창 하나, 나타날 때 움직이는 효과 없음 */
+  .lgb-zoom{position:fixed;z-index:1000;display:none;box-sizing:border-box;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);pointer-events:none}
   @media (max-width:720px){
     .lgb{margin:0 8px 12px;border-radius:12px}
     .lgb-head{padding:12px 14px 10px}
@@ -11295,7 +11291,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   @media (max-width:600px){
     /* ④ 작은 글씨 — 11-02 목록 뒤에 생긴 것 + 더 구체적인 규칙이 10px 로 덮던 것 (그래프 안 글자는 그대로) */
     .hrc-badge,#hrPhoneMeta,.leave-cal-daynum,.diary-scoreboard-live,.dcs-stat span,
-    .kd-brand-tag,.kd-hist-chip,.kd-hist-chip em,.ar-stat .unit,.md-gantt-auto,.md-gantt-auto-st,.best-delta,.signage-brand-pill .pill-camps,
+    .kd-hist-chip,.kd-hist-chip em,.ar-stat .unit,.md-gantt-auto,.md-gantt-auto-st,.best-delta,.signage-brand-pill .pill-camps,
     .lsb-badge small,.nt-table-name .nt-badge,.vm-pending-badge,.sixstock-tbl .sixstock-cat,.sixstock-parent .sixstock-opts-tag,
     .ig-fixed-body code{font-size:11px}
     /* 글자 크기를 HTML 안(style)이나 더 좁은 규칙(.om-mem.is-lead small · .adsh-tbl th small)이 정해 둔 것 */
@@ -29486,7 +29482,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         g.items.push(it);
         if(parsed[i]) g.boxes.push(...parsed[i].boxes);
         const ok=o._brand+':'+o.ord_no;
-        if(!g.orders.has(ok)) g.orders.set(ok,{ord_no:String(o.ord_no||''), date:o.order_date||'', serial:o.serial, brand:o._brand, short:o._brandShort||'', label:o._brandLabel||''});
+        if(!g.orders.has(ok)) g.orders.set(ok,{ord_no:String(o.ord_no||''), date:o.order_date||''});
       });
     }
     return [...groups.values()].sort((a,b)=>String(b.sortKey).localeCompare(String(a.sortKey)) || (b.date?1:0)-(a.date?1:0));
@@ -29497,6 +29493,35 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   let _lgbRows=[], _lgbFetchedAt=0, _lgbExpanded=false, _lgbLastHTML='';
   function _lgbMd(iso){ const p=String(iso||'').split('-'); return p.length===3 ? p[1]+'.'+p[2] : ''; }
   function _lgbDayIso(back){ const d=new Date(); d.setDate(d.getDate()-(back||0)); return _lgbIso(d.getFullYear(), d.getMonth()+1, d.getDate()); }
+  // 썸네일 크게 보기 — 마우스를 올린 동안만 (휴대폰은 누르면). 판이 overflow:hidden 이라 body 에 붙인 창 하나를 옮겨 쓴다
+  let _lgbZoomEl=null;
+  function _lgbShowZoom(img){
+    if(!_lgbZoomEl){
+      _lgbZoomEl=document.createElement('img');
+      _lgbZoomEl.className='lgb-zoom';
+      _lgbZoomEl.alt='';
+      _lgbZoomEl.referrerPolicy='no-referrer';
+      document.body.appendChild(_lgbZoomEl);
+    }
+    const z=_lgbZoomEl, src=img.getAttribute('src');
+    if(z.getAttribute('src')!==src) z.src=src;
+    const W=window.innerWidth, H=window.innerHeight;
+    const S=Math.min(360, W-24, H-24);
+    const r=img.getBoundingClientRect();
+    // 오른쪽 → 모자라면 왼쪽 → 둘 다 모자라면(휴대폰) 썸네일 위 · 아래
+    let left=r.right+10, top=r.top+r.height/2-S/2;
+    if(left+S>W-8) left=r.left-S-10;
+    if(left<8){
+      left=Math.max(8, Math.min(W-S-8, r.left+r.width/2-S/2));
+      top=(r.top-S-10>=8) ? r.top-S-10 : r.bottom+10;
+    }
+    top=Math.max(8, Math.min(H-S-8, top));
+    z.style.width=z.style.height=S+'px';
+    z.style.left=Math.round(left)+'px';
+    z.style.top=Math.round(top)+'px';
+    z.style.display='block';
+  }
+  function _lgbHideZoom(){ if(_lgbZoomEl) _lgbZoomEl.style.display='none'; }
   function renderLgBoard(orders, fetchedAt){
     const box=document.getElementById('lgBoard');
     if(!box) return;
@@ -29510,6 +29535,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const b=e.target.closest('.lgb-ord');
         if(b) lgbFocusOrder(b.dataset.ord);
       });
+      box.addEventListener('mouseover', e=>{
+        const t=e.target.closest('.lgb-thumb');
+        if(t) _lgbShowZoom(t);
+      });
+      box.addEventListener('mouseout', e=>{
+        if(e.target.closest('.lgb-thumb')) _lgbHideZoom();
+      });
+      window.addEventListener('scroll', _lgbHideZoom, {passive:true});
     }
     const today=_lgbDayIso(0), yday=_lgbDayIso(1);
     const shown=_lgbExpanded ? rows : rows.slice(0,_LGB_LIMIT);
@@ -29528,7 +29561,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       for(const it of g.items){ const u=it.image_url; if(u && !seen.has(u)){ seen.add(u); imgs.push(u); } }
       const thumbs=imgs.slice(0,4).map(u=>`<img class="lgb-thumb" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(u)}" alt="" onerror="this.style.visibility='hidden'">`).join('');
       const goodsCell=`${thumbs}${imgs.length>4?`<span class="lgb-more">+${imgs.length-4}</span>`:''}<span class="lgb-cnt">${g.items.length}품목</span>`;
-      const chips=ords.slice(0,4).map(o=>`<button type="button" class="lgb-ord ${o.brand==='shinebeed'?'lgb-sb':'lgb-bb'}" data-ord="${escapeHTML(o.ord_no)}" title="${escapeHTML(o.label)} 신청서 ${escapeHTML(o.ord_no)} · 신청 ${escapeHTML(o.date)} — 누르면 아래 표에서 찾기"><b>${escapeHTML(o.short)}</b>#${escapeHTML(String(o.serial!=null&&o.serial!==''?o.serial:o.ord_no.slice(-4)))}</button>`).join('')
+      const chips=ords.slice(0,4).map(o=>`<button type="button" class="lgb-ord" data-ord="${escapeHTML(o.ord_no)}" title="신청서 ${escapeHTML(o.ord_no)} · 신청 ${escapeHTML(o.date)} — 누르면 아래 표에서 찾기">${escapeHTML(o.ord_no)}</button>`).join('')
         + (ords.length>4?`<span class="lgb-ord-more">+${ords.length-4}</span>`:'');
       const bt=_lgbBoxText(g.boxes);
       const boxCell=bt.split('·').length>2 ? `<span title="${escapeHTML(bt)}">${new Set(g.boxes).size}박스</span>` : escapeHTML(bt);
@@ -29543,6 +29576,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     box.hidden=false;
     if(html===_lgbLastHTML) return;
     _lgbLastHTML=html;
+    _lgbHideZoom();
     box.innerHTML=html;
   }
   function lgbToggleAll(){ _lgbExpanded=!_lgbExpanded; renderLgBoard(); }
@@ -29683,7 +29717,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const statusCls=stMap[r.status]||'kd-st-other';
       const ordCell = isFirst
         ? `<div class="kd-ord">${escapeHTML(r.ord_no)}</div>
-           <div class="kd-ord-meta"><span class="kd-brand-tag kd-brand-${r._brand}" title="${escapeHTML(r._brandLabel)} 콰이디에어 계정">${escapeHTML(r._brandShort)}</span>${escapeHTML(r.date)} · #${r.serial}</div>
+           <div class="kd-ord-meta">${escapeHTML(r.date)} · #${r.serial}</div>
            ${r.status?`<div class="kd-status ${statusCls}">${escapeHTML(r.status)}</div>`:''}`
         : '';
       // alicdn 등 중국 CDN이 Referer 검사로 hotlink 차단 → referrerpolicy=no-referrer 로 우회
@@ -30262,13 +30296,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ toast(`복원 오류: ${e.message}`,'err'); }
   }
   window.restoreAllDeleted=restoreAllDeleted;
-  // 상품 리스트 갱신 시각 — 브라이트비드(발주서 동기화) · 샤인비드(콰이디에어) 따로
+  // 상품 리스트 갱신 시각 — 발주서 동기화 · 콰이디에어 따로 (2026-11-17 브비 · 샤비 표시는 뺐다)
   function _arRenderUpdated(){
     const upd=document.getElementById('arUpdated');
     if(!upd) return;
     const parts=[];
-    if(window._bbArUpdated) parts.push('브비 '+window._bbArUpdated);
-    if(window._shineArUpdated) parts.push('샤비 '+window._shineArUpdated);
+    if(window._bbArUpdated) parts.push('발주서 '+window._bbArUpdated);
+    if(window._shineArUpdated) parts.push('콰이디에어 '+window._shineArUpdated);
     upd.textContent=parts.join(' · ');
   }
   function applyArchive(){
@@ -30471,7 +30505,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             ${p.link ? `<span class="ar-hist-chip" data-purl="${arEscape(p.link)}" title="hover 시 이전 발주 내역">이전 <em>${p.order_count||0}회</em></span>` : ''}
           </div>
           <div class="ar-prod-foot">
-            <div class="ar-prod-tags">${p._brand==='shinebeed'?'<span class="kd-brand-tag kd-brand-shinebeed" title="샤인비드 발주 상품">샤비</span>':'<span class="kd-brand-tag kd-brand-brightbeed" title="브라이트비드 발주 상품">브비</span>'}</div>
+            <div class="ar-prod-tags"></div>
             ${link}
           </div>
         </div>
