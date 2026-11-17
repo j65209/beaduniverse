@@ -10971,11 +10971,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   /* ===== MD팀 — 구글시트 6종 실시간 연동 ===== */
   .mds-wrap{display:flex;flex-direction:column;gap:12px;margin-top:4px}
-  /* 📎 구글시트 모음 (MD팀 맨 아래, 2026-11-17) — 위 시트 6종(.mds-*) 모양을 그대로 쓰고 보조만 */
-  .mdl-wrap{margin-top:22px}
-  .mdl-head-title{font-weight:700;font-size:14px;color:var(--text-0);white-space:nowrap}
-  .mdl-group-label{font-size:12.5px;font-weight:700;color:var(--text-2);margin:8px 2px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-  .mdl-group-label span{font-weight:500;color:var(--text-3);font-size:12px}
+  /* 📎 구글시트 모음 (MD팀 시트 6종 바로 아래 이어서, 2026-11-17) — 6종(.mds-*) 모양을 그대로 쓰고 보조만 */
+  .mdl-list{margin-top:-2px}
+  .mdl-list:empty{display:none}
   .mdl-book-desc{font-size:12.5px;color:var(--text-2);padding:6px 6px 8px;line-height:1.5;word-break:keep-all}
   .mdl-book-desc span{color:var(--text-3)}
   .mdl-tab-link{text-decoration:none;color:inherit}
@@ -13229,7 +13227,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="mds-bar">
         <span class="mds-status" id="mdsStatus" data-state="idle">불러오는 중…</span>
         <span class="mds-sp"></span>
-        <input class="mds-search" id="mdsSearch" type="search" placeholder="펼친 탭에서 검색" oninput="mdsOnSearch(this.value)" autocomplete="off">
+        <input class="mds-search" id="mdsSearch" type="search" placeholder="펼친 탭 · 시트 이름에서 검색" oninput="mdsOnSearch(this.value)" autocomplete="off">
         <button type="button" class="mds-btn" onclick="mdsExpandAll(true)">시트 모두 펼치기</button>
         <button type="button" class="mds-btn" onclick="mdsExpandAll(false)">모두 접기</button>
         <button type="button" class="mds-btn mds-btn-prio" id="mdsPrioBtn" onclick="mdsTogglePrio()" hidden>우선순위 편집</button>
@@ -13257,24 +13255,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
 
       <div class="mds-list" id="mdsList"></div>
+      <!-- 📎 구글시트 모음 (2026-11-17 사장님 "이때까지 공유해준 구글시트 링크들 정리해서 엠디팀 최하단에" → "기존에 있던 구글시트랑 동일한 방식으로"(모양만) → "기존꺼에서 연달아서 나오게")
+           위 시트 6종 바로 아래 같은 목록으로 번호를 이어서 (7번부터). 탭을 누르면 그 탭이 구글시트 새 창으로 열린다 (오피스 안 표 보기 · 고치기는 6종만).
+           링크는 공개 레포(이 파일)에 두지 않는다 — 시트 대부분이 '링크가 있는 사람 보기'라 주소가 곧 열쇠. 비공개 brightbeed-reports md/sheet-links.json 을 프록시로 읽기만 (mdl* 함수),
+           탭 목록은 맥미니 sixshop-collector sheet-links 가 1시간마다. 위 막대의 검색 · 모두 펼치기 · 접기 · 새로고침이 같이 먹는다 -->
+      <div class="mds-list mdl-list" id="mdlList"></div>
       <div class="mds-foot" id="mdsFoot"></div>
     </div>
 
-    <!-- ============ 📎 구글시트 모음 (2026-11-17 사장님 "내가 이때까지 공유해준 구글시트 링크들 정리해서 엠디팀 최하단에" → "기존에 있던 구글시트랑 동일한 방식으로" — 모양만)
-         위 MD팀 시트 6종과 같은 모양: 시트 줄 → 탭 줄. 탭을 누르면 그 탭이 구글시트 새 창으로 열린다 (오피스 안 표 보기 · 고치기는 6종만).
-         링크는 공개 레포(이 파일)에 두지 않는다 — 시트 대부분이 '링크가 있는 사람 보기'라 주소가 곧 열쇠.
-         비공개 brightbeed-reports md/sheet-links.json 을 프록시로 읽기만 (mdl* 함수). 탭 목록은 맥미니 sixshop-collector sheet-links 가 1시간마다 새로 -->
-    <div class="mds-wrap mdl-wrap" id="mdlWrap">
-      <div class="mds-bar">
-        <span class="mdl-head-title">📎 구글시트 모음</span>
-        <span class="mds-status" id="mdlMeta" data-state="idle">불러오는 중…</span>
-        <span class="mds-sp"></span>
-        <input class="mds-search" id="mdlSearch" type="search" placeholder="시트 · 탭 이름 검색" oninput="mdlSetSearch(this.value)" autocomplete="off">
-        <button type="button" class="mds-btn" onclick="mdlExpandAll(true)">시트 모두 펼치기</button>
-        <button type="button" class="mds-btn" onclick="mdlExpandAll(false)">모두 접기</button>
-      </div>
-      <div class="mds-list" id="mdlList"></div>
-    </div>
   </div>
 
   <!-- ============ 벤더팀 (공구 일정) ============ -->
@@ -49259,7 +49247,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return j;
   }
   function mdlInit(){
-    if(!document.getElementById('mdlWrap')) return;
+    if(!document.getElementById('mdlList')) return;
     mdlRender();
     if(!_mdl.data || Date.now()-_mdl.at>MDL_TTL) mdlLoad();
   }
@@ -49289,48 +49277,50 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     mdlRender();
   }
   function mdlRender(){
-    const list=document.getElementById('mdlList'), meta=document.getElementById('mdlMeta'); if(!list) return;
+    const list=document.getElementById('mdlList'); if(!list) return;
     if(!_mdl.data){
-      list.innerHTML=`<div class="mds-empty">${_mdl.err?`구글시트 모음을 못 불러왔어요 (${_esc(_mdl.err)}) — MD팀 화면을 다시 열면 다시 받아요`:'불러오는 중…'}</div>`;
-      if(meta){ meta.dataset.state=_mdl.err?'err':'busy'; meta.textContent=_mdl.err?'못 불러옴':'불러오는 중…'; }
+      list.innerHTML=_mdl.err ? `<div class="mds-empty">구글시트 모음을 못 불러왔어요 (${_esc(_mdl.err)}) — 새로고침을 누르면 다시 받아요</div>` : '';
       return;
     }
     const viewer=document.body.classList.contains('role-viewer');
     const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,'');
     const q=norm(_mdl.q);
     const safe=u=>/^https:\/\/docs\.google\.com\//.test(String(u||''))?String(u):'';
-    let n=0, total=0;
-    const html=_mdl.data.groups.map(g=>{
-      const items=(g.items||[]).filter(it=>safe(it.url) && !(viewer && it.admin));
-      total+=items.length;
-      const rows=items.map(it=>{
-        const tabs=(it.tabs||[]).map(t=>typeof t==='string'?{name:t,gid:''}:t).filter(t=>t && t.name);
-        const hitBook=!q || norm([it.title,it.name,it.desc,it.used,g.title].join(' ')).includes(q);
-        const hitTabs=q ? tabs.filter(t=>norm(t.name).includes(q)) : tabs;
-        if(q && !hitBook && !hitTabs.length) return '';
-        const show=q && !hitBook ? hitTabs : tabs;
-        const open=q ? true : _mdl.open.has(it.key);
-        const base=safe(it.url);
-        n++;
-        return `<section class="mds-book${open?' is-open':''}${it.admin?' master-only':''}" data-mk="${_esc(it.key)}">
-          <header class="mds-book-head" onclick="mdlToggleBook(this)">
-            <span class="mds-chev">▶</span><span class="mds-rank">${n}</span>
-            <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}</span>
-            <span class="mds-book-meta">탭 ${tabs.length}개</span>
-            <span class="mds-head-sp"></span>
-            <a class="mds-open" href="${_esc(base)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트 ↗</a>
-          </header>
-          <div class="mds-book-body">
-            ${it.desc||it.used?`<div class="mdl-book-desc">${_esc(it.desc||'')}${it.used?` <span>· 쓰는 곳 ${_esc(it.used)}</span>`:''}</div>`:''}
-            ${show.map((t,ti)=>`<div class="mds-tab"><a class="mds-tab-head mdl-tab-link" href="${_esc(base)}${t.gid?`#gid=${encodeURIComponent(t.gid)}`:''}" target="_blank" rel="noopener" title="이 탭을 구글시트로 열기"><span class="mds-chev">↗</span><span class="mds-tab-rank">${ti+1}</span><span class="mds-tab-name">${_esc(t.name)}</span><span class="mds-head-sp"></span><span class="mds-open">구글 ↗</span></a></div>`).join('')||'<div class="mds-empty">탭 목록을 아직 못 받았어요.</div>'}
-            ${it.note?`<div class="mds-book-err">탭 목록을 새로 못 받았어요 (${_esc(it.note)}) — 지난번 목록이에요</div>`:''}
-          </div>
-        </section>`;
-      }).join('');
-      return rows ? `<div class="mdl-group-label">${_esc(g.title)}${g.note?`<span>${_esc(g.note)}</span>`:''}</div>${rows}` : '';
-    }).join('');
-    list.innerHTML=html || `<div class="mds-empty">${q?'검색에 맞는 시트 · 탭이 없어요':'표시할 시트가 없어요.'}</div>`;
-    if(meta){ meta.dataset.state='ok'; meta.textContent=q?`${n} / ${total}개 시트`:`시트 ${total}개 · 탭을 누르면 구글시트로 열려요`; }
+    // 번호는 위 시트 6종 다음부터 이어서. 위에 이미 있는 시트(같은 키 · 같은 시트 번호)는 빼서 두 번 나오지 않게 — 6종을 못 불러왔으면 다 보여 준다
+    const above=new Set(), idOf=u=>(/\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/.exec(String(u||''))||[])[1]||'';
+    document.querySelectorAll('#mdsList .mds-book').forEach(b=>{
+      if(b.dataset.b) above.add('k:'+b.dataset.b);
+      const a=b.querySelector('a.mds-open'), id=a && idOf(a.getAttribute('href'));
+      if(id) above.add('i:'+id);
+    });
+    const KEY_ALIAS={erp_master:'invoice'};   // 6종 쪽 키 이름이 다른 것
+    const dup=it=>above.has('k:'+(KEY_ALIAS[it.key]||it.key)) || (idOf(it.url) && above.has('i:'+idOf(it.url)));
+    let n=document.querySelectorAll('#mdsList .mds-book').length;
+    const html=_mdl.data.groups.map(g=>(g.items||[]).filter(it=>safe(it.url) && !(viewer && it.admin) && !dup(it)).map(it=>{
+      const tabs=(it.tabs||[]).map(t=>typeof t==='string'?{name:t,gid:''}:t).filter(t=>t && t.name);
+      const hitBook=!q || norm([it.title,it.name,it.desc,it.used,g.title].join(' ')).includes(q);
+      const hitTabs=q ? tabs.filter(t=>norm(t.name).includes(q)) : tabs;
+      if(q && !hitBook && !hitTabs.length) return '';
+      const show=q && !hitBook ? hitTabs : tabs;
+      const open=(q && !hitBook) ? true : _mdl.open.has(it.key);
+      const base=safe(it.url);
+      n++;
+      return `<section class="mds-book${open?' is-open':''}${it.admin?' master-only':''}" data-mk="${_esc(it.key)}">
+        <header class="mds-book-head" onclick="mdlToggleBook(this)">
+          <span class="mds-chev">▶</span><span class="mds-rank">${n}</span>
+          <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}</span>
+          <span class="mds-book-meta">${_esc(g.title)} · 탭 ${tabs.length}개</span>
+          <span class="mds-head-sp"></span>
+          <a class="mds-open" href="${_esc(base)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트 ↗</a>
+        </header>
+        <div class="mds-book-body">
+          ${it.desc||it.used?`<div class="mdl-book-desc">${_esc(it.desc||'')}${it.used?` <span>· 쓰는 곳 ${_esc(it.used)}</span>`:''}</div>`:''}
+          ${show.map((t,ti)=>`<div class="mds-tab"><a class="mds-tab-head mdl-tab-link" href="${_esc(base)}${t.gid?`#gid=${encodeURIComponent(t.gid)}`:''}" target="_blank" rel="noopener" title="이 탭을 구글시트로 열기"><span class="mds-chev">↗</span><span class="mds-tab-rank">${ti+1}</span><span class="mds-tab-name">${_esc(t.name)}</span><span class="mds-head-sp"></span><span class="mds-open">구글 ↗</span></a></div>`).join('')||'<div class="mds-empty">탭 목록을 아직 못 받았어요.</div>'}
+          ${it.note?`<div class="mds-book-err">탭 목록을 새로 못 받았어요 (${_esc(it.note)}) — 지난번 목록이에요</div>`:''}
+        </div>
+      </section>`;
+    }).join('')).join('');
+    list.innerHTML=html;
   }
 
   function mdsInit(){
@@ -49386,6 +49376,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _mdsOpenTabKeys().forEach(tk=>_mdsLoadTab(tk,true));
   }
   async function mdsRefreshAll(){
+    if(typeof mdlLoad==='function') mdlLoad();   // 📎 구글시트 모음도 다시 받기
     if(!_mds.cfg||!_mds.cfg.token){ mdsInit(); return }
     _mdsStatus('busy','새로고침 중…');
     await _mdsLoadMeta(true);
@@ -49568,6 +49559,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(old) el.replaceWith(old);
       else if(el.closest('.mds-tab').classList.contains('is-open') && el.closest('.mds-book').classList.contains('is-open')) _mdsEnsureTab(el.dataset.k);
     });
+    // 📎 아래 이어지는 구글시트 모음 — 번호를 6종 다음부터 다시 맞춘다
+    if(typeof mdlRender==='function') mdlRender();
   }
   function _mdsTabMetaHtml(t,d){
     if(d){
@@ -49593,6 +49586,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(open) _mdsEnsureTab(_mdsTabKey(tab.dataset.b,tab.dataset.t));
   }
   function mdsExpandAll(open){
+    if(typeof mdlExpandAll==='function') mdlExpandAll(open);   // 📎 아래 이어지는 구글시트 모음도
     document.querySelectorAll('#mdsList .mds-book').forEach(sec=>{ sec.classList.toggle('is-open',open); _mds.open['b:'+sec.dataset.b]=open });
     if(!open) document.querySelectorAll('#mdsList .mds-tab').forEach(tab=>{ tab.classList.remove('is-open'); _mds.open[_mdsOpenKeyT(tab.dataset.b,tab.dataset.t)]=false });
     _mdsSaveOpen();
@@ -50315,6 +50309,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     clearTimeout(_mdsSearchT);
     _mdsSearchT=setTimeout(()=>{
       _mds.search=v||'';
+      if(typeof mdlSetSearch==='function') mdlSetSearch(_mds.search);   // 📎 구글시트 모음은 시트 · 탭 이름으로
       Object.keys(_mds.data).forEach(tk=>{
         const b=_mdsBodyEl(tk);
         if(b&&b.closest('.mds-tab').classList.contains('is-open')) _mdsRenderTabBody(tk);
