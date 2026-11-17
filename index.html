@@ -1528,9 +1528,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-sub{font-size:11.5px;color:#8b93a1}
   .lgb-sp{flex:1}
   .lgb-stamp{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;color:#8b93a1}
-  .lgb-grid{display:grid;grid-template-columns:96px 108px 76px minmax(0,1fr) minmax(0,max-content);column-gap:14px;align-items:center}
+  .lgb-grid{display:grid;grid-template-columns:136px 108px 76px minmax(0,1fr) minmax(0,max-content);column-gap:14px;align-items:center}
   .lgb-cols{padding:8px 18px;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#6b7280;border-bottom:1px solid #1d212a}
   .lgb-cols span:last-child{text-align:right}
+  .lgb-cols span:nth-child(2),.lgb-method{text-align:center}
+  .lgb-empty{padding:18px;text-align:center;font-size:12.5px;color:#8b93a1}
   .lgb-row{padding:10px 18px;border-bottom:1px dashed #1c2029}
   .lgb-row:last-child{border-bottom:0}
   .lgb-date{white-space:nowrap;line-height:1.15}
@@ -1547,9 +1549,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-m-jg{color:#c084fc;border-color:rgba(192,132,252,.5);background:rgba(192,132,252,.1)}
   .lgb-m-ec{color:#4ade80;border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.08)}
   .lgb-m-none{color:#6b7280;border-style:dashed;background:transparent;font-weight:600}
-  .lgb-goods{display:flex;align-items:center;gap:5px;min-width:0}
+  .lgb-goods{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}
   .lgb-thumb{width:28px;height:28px;border-radius:5px;object-fit:cover;background:#1f2430;border:1px solid #2a3040;flex:none;cursor:zoom-in}
-  .lgb-more{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:#9ca3af;flex:none}
+  .lgb-more{font:600 11px/1 var(--sans);color:#d1d5db;background:transparent;border:1px solid #2a3040;border-radius:5px;padding:6px 8px;cursor:pointer;flex:none;white-space:nowrap}
+  .lgb-more:hover{color:#fde68a;border-color:#fbbf24}
   .lgb-cnt{font-size:12px;color:#d1d5db;margin-left:3px;white-space:nowrap}
   .lgb-ords{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;min-width:0}
   .lgb-ord{font:500 11.5px/1 'JetBrains Mono',ui-monospace,monospace;color:#d1d5db;background:#151922;border:1px solid #2a3040;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
@@ -29518,7 +29521,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const method=p?p.method:fallback;
         const key=date ? date+'|'+method : 'nd|'+(o.order_date||'')+'|'+method;
         let g=groups.get(key);
-        if(!g){ g={date, method, sortKey:date||o.order_date||'', orders:new Map(), items:[], boxes:[]}; groups.set(key,g); }
+        if(!g){ g={key, date, method, sortKey:date||o.order_date||'', orders:new Map(), items:[], boxes:[]}; groups.set(key,g); }
         g.items.push(it);
         if(parsed[i]) g.boxes.push(...parsed[i].boxes);
         const ok=o._brand+':'+o.ord_no;
@@ -29531,8 +29534,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const _LGB_CLS={'우체국항공':'airpost','에어':'air','에어요청':'air','에어발송':'air','일반우체국':'post','우체국':'post','LCL':'lcl','준광':'jg','전자상사업자':'ec'};
   const _LGB_WD=['일','월','화','수','목','금','토'];
   let _lgbRows=[], _lgbFetchedAt=0, _lgbExpanded=false, _lgbLastHTML='';
+  const _lgbOpenGoods=new Set();   // 품목 사진을 다 펼친 줄 (g.key)
   function _lgbMd(iso){ const p=String(iso||'').split('-'); return p.length===3 ? p[1]+'.'+p[2] : ''; }
-  function _lgbDayIso(back){ const d=new Date(); d.setDate(d.getDate()-(back||0)); return _lgbIso(d.getFullYear(), d.getMonth()+1, d.getDate()); }
+  // 출고 후 20일이 지나면 판에서 뺀다 (2026-11-17 요청). 출고일이 메모에 없는 건은 신청일 기준
+  const _LGB_KEEP_DAYS=20;
+  function _lgbDaysAgo(iso){
+    const p=String(iso||'').split('-').map(Number);
+    if(p.length!==3 || !p[0]) return null;
+    const now=new Date();
+    return Math.round((Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())-Date.UTC(p[0],p[1]-1,p[2]))/864e5);
+  }
+  function _lgbAgoText(n){ return n===0 ? '오늘' : (n===1 ? '어제' : n+'일 전'); }
   // 썸네일 크게 보기 — 마우스를 올린 동안만 (휴대폰은 누르면). 판이 overflow:hidden 이라 body 에 붙인 창 하나를 옮겨 쓴다
   let _lgbZoomEl=null;
   function _lgbShowZoom(img){
@@ -29567,11 +29579,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!box) return;
     if(orders) _lgbRows=_lgbBuildRows(orders);
     if(fetchedAt) _lgbFetchedAt=fetchedAt;
-    const rows=_lgbRows;
-    if(!rows.length){ box.hidden=true; _lgbLastHTML=''; return; }
+    if(!_lgbRows.length){ box.hidden=true; _lgbLastHTML=''; return; }
+    const rows=_lgbRows.filter(g=>{ const n=_lgbDaysAgo(g.sortKey); return n!=null && n<=_LGB_KEEP_DAYS; });
     if(!box._lgbBound){
       box._lgbBound=true;
       box.addEventListener('click', e=>{
+        const more=e.target.closest('.lgb-more');
+        if(more){
+          const k=more.dataset.key;
+          if(_lgbOpenGoods.has(k)) _lgbOpenGoods.delete(k); else _lgbOpenGoods.add(k);
+          renderLgBoard();
+          return;
+        }
         const b=e.target.closest('.lgb-ord');
         if(b) lgbFocusOrder(b.dataset.ord);
       });
@@ -29584,14 +29603,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       });
       window.addEventListener('scroll', _lgbHideZoom, {passive:true});
     }
-    const today=_lgbDayIso(0), yday=_lgbDayIso(1);
     const shown=_lgbExpanded ? rows : rows.slice(0,_LGB_LIMIT);
     const body=shown.map(g=>{
       const ords=[...g.orders.values()];
       let dateCell;
       if(g.date){
         const [y,mo,d]=g.date.split('-').map(Number);
-        const tag=g.date===today?'<em class="lgb-new">오늘</em>':(g.date===yday?'<em class="lgb-new">어제</em>':'');
+        const n=_lgbDaysAgo(g.date);
+        const tag=(n!=null && n>=0) ? `<em class="lgb-new">${_lgbAgoText(n)}</em>` : '';
         dateCell=`<b>${_lgbMd(g.date)}</b><i>${_LGB_WD[new Date(y,mo-1,d).getDay()]}</i>${tag}`;
       }else{
         dateCell=`<span title="메모에 출고일이 없음"><b class="lgb-nodate">—</b><em>신청 ${_lgbMd(ords[0]&&ords[0].date)}</em></span>`;
@@ -29599,8 +29618,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const methodCell=`<span class="lgb-m lgb-m-${_LGB_CLS[g.method]||'none'}">${escapeHTML(g.method||'방식 미기재')}</span>`;
       const seen=new Set(), imgs=[];
       for(const it of g.items){ const u=it.image_url; if(u && !seen.has(u)){ seen.add(u); imgs.push(u); } }
-      const thumbs=imgs.slice(0,4).map(u=>`<img class="lgb-thumb" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(u)}" alt="" onerror="this.style.visibility='hidden'">`).join('');
-      const goodsCell=`${thumbs}${imgs.length>4?`<span class="lgb-more">+${imgs.length-4}</span>`:''}<span class="lgb-cnt">${g.items.length}품목</span>`;
+      // 사진은 4장까지, '+N 더보기' 를 누르면 그 줄만 전부 펼친다 (2026-11-17 요청)
+      const open=_lgbOpenGoods.has(g.key);
+      const thumbs=(open?imgs:imgs.slice(0,4)).map(u=>`<img class="lgb-thumb" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(u)}" alt="" onerror="this.style.visibility='hidden'">`).join('');
+      const moreBtn=imgs.length>4 ? `<button type="button" class="lgb-more" data-key="${escapeHTML(g.key)}">${open?'접기':`+${imgs.length-4} 더보기`}</button>` : '';
+      const goodsCell=`${thumbs}${moreBtn}<span class="lgb-cnt">${g.items.length}품목</span>`;
       const chips=ords.slice(0,4).map(o=>`<button type="button" class="lgb-ord" data-ord="${escapeHTML(o.ord_no)}" title="신청서 ${escapeHTML(o.ord_no)} · 신청 ${escapeHTML(o.date)} — 누르면 아래 표에서 찾기">${escapeHTML(o.ord_no)}</button>`).join('')
         + (ords.length>4?`<span class="lgb-ord-more">+${ords.length-4}</span>`:'');
       const bt=_lgbBoxText(g.boxes);
@@ -29610,9 +29632,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ts=_lgbFetchedAt?new Date(_lgbFetchedAt*1000):null;
     const stamp=ts?`갱신 ${String(ts.getMonth()+1).padStart(2,'0')}.${String(ts.getDate()).padStart(2,'0')} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}`:'';
     const foot=rows.length>_LGB_LIMIT?`<div class="lgb-foot"><button type="button" onclick="lgbToggleAll()">${_lgbExpanded?'접기':`전체 ${rows.length}줄 보기`}</button></div>`:'';
-    const html=`<div class="lgb-head"><span class="lgb-title">출고 전광판</span><span class="lgb-sub">콰이디에어 출고완료 · 상품 메모 기준</span><span class="lgb-sp"></span><span class="lgb-stamp">${stamp}</span></div>`
-      +`<div class="lgb-cols lgb-grid"><span>출고일</span><span>방식</span><span>박스</span><span>상품</span><span>신청서</span></div>`
-      +`<div class="lgb-list">${body}</div>${foot}`;
+    const html=`<div class="lgb-head"><span class="lgb-title">출고 전광판</span><span class="lgb-sub">콰이디에어 출고완료 · 상품 메모 기준 · 최근 ${_LGB_KEEP_DAYS}일</span><span class="lgb-sp"></span><span class="lgb-stamp">${stamp}</span></div>`
+      +(rows.length
+        ? `<div class="lgb-cols lgb-grid"><span>출고일</span><span>방식</span><span>박스</span><span>상품</span><span>신청서</span></div><div class="lgb-list">${body}</div>${foot}`
+        : `<div class="lgb-empty">최근 ${_LGB_KEEP_DAYS}일 안에 출고된 건이 없습니다</div>`);
     box.hidden=false;
     if(html===_lgbLastHTML) return;
     _lgbLastHTML=html;
