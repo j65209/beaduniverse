@@ -11923,7 +11923,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </form>
 
-    <!-- 대체휴무 신청 · 대표 승인 — leave_comp_requests. 승인 버튼은 그 대표 본인(관리자 PIN + '나는' 이름)만 누를 수 있다 -->
+    <!-- 대체휴무 신청 · 대표 승인 — leave_comp_requests. '대표 승인' 버튼 하나, 대표(관리자 PIN + '나는' 이름이 전승훈 · 전수빈)만 누를 수 있다 -->
     <div class="comp-req" id="compReqPanel" hidden>
       <div class="comp-req-head">
         <span class="comp-req-title">🎁 대체휴무 신청 · 대표 승인</span>
@@ -31829,8 +31829,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      · 승인 · 반려 = RPC leave_comp_decide(id, 대표 이름, 승인?) — 대기 중인 것만 한 번. 승인하면 같은 트랜잭션에서
        leave_entries 에 '대체휴무' 부여 행(근무한 날 · +1 / +0.5 · "사유 (OOO 승인)")을 만든다 → 연차 카드 총량이 는다.
        두 대표가 동시에 눌러도 부여는 한 번. 대표 이름이 아니면 서버가 거절(not_ceo).
-     · 화면: '전승훈 승인' · '전수빈 승인' 버튼은 그 대표 본인만 — 관리자 PIN + '나는' 이름 (대표 전용 금고와 같은 판정).
-       한 분만 승인하면 확정. 대표가 신청서로 직접 넣으면 그 대표 승인으로 바로 기록.
+     · 화면: '대표 승인' 버튼 하나 — 대표(전승훈 · 전수빈)만, 관리자 PIN + '나는' 이름 (대표 전용 금고와 같은 판정).
+       누른 대표 이름이 승인자로 남고, 한 분이 누르면 확정. 대표가 신청서로 직접 넣으면 그 대표 승인으로 바로 기록.
      · 신청 취소 = RPC leave_comp_cancel — 대기 중인 것만 (지운 것도 row_history 에 남는다)
      · 목록: 대기 전부 + 최근 30일 처리된 것. 연차 sync(60초) 때 같이 받아 온다. */
   var _compReqs=[];
@@ -31932,10 +31932,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     list.innerHTML=pending.length?pending.map(r=>{
       const id=escapeHTML(r.id);
-      const btns=['전승훈','전수빈'].map(c=>{
-        const mine=(ceo===c);
-        return `<button type="button" class="comp-req-approve${mine?'':' is-locked'}" title="${mine?`${c} 대표로 승인`:`${c} 대표 본인만 누를 수 있어요`}" onclick="compReqApprove('${id}','${c}')">${c} 승인</button>`;
-      }).join('');
+      // 대표 승인 버튼 하나 — 두 대표 중 누구든 (누른 대표 이름이 승인자로 남는다)
+      const btns=`<button type="button" class="comp-req-approve${ceo?'':' is-locked'}" title="${ceo?`${ceo} 대표로 승인`:'대표(전승훈 · 전수빈)만 누를 수 있어요'}" onclick="compReqApprove('${id}')">대표 승인</button>`;
       const subBtn=ceo
         ? `<button type="button" class="comp-req-sub" onclick="compReqReject('${id}')">반려</button>`
         : `<button type="button" class="comp-req-sub" onclick="compReqCancel('${id}')">신청 취소</button>`;
@@ -31952,7 +31950,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="comp-req-actions">${btns}${subBtn}</div>
         </div>
       </div>`;
-    }).join('')+(ceo?'':`<div class="comp-req-note">🔒 승인은 대표(전승훈 · 전수빈) 본인만 할 수 있어요. 승인되면 그 직원 연차에 바로 더해져요.</div>`):'';
+    }).join('')+(ceo?'':`<div class="comp-req-note">🔒 승인은 대표(전승훈 · 전수빈)만 할 수 있어요. 승인되면 그 직원 연차에 바로 더해져요.</div>`):'';
     const PREVIEW=3;
     const shown=_compReqDoneOpen?decided:decided.slice(0,PREVIEW);
     done.innerHTML=decided.length?`<div class="comp-req-done-title">처리 완료 · 최근 30일</div>`+shown.map(r=>{
@@ -32034,13 +32032,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     setTimeout(()=>document.getElementById('compReqPanel')?.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
   }
 
-  async function compReqApprove(id,ceoName){
+  async function compReqApprove(id){
     const me=compCeoMe();
-    if(me!==ceoName){
+    if(!me){
       let who=''; try{ who=String(_diaryGetMe()||'').trim(); }catch(e){}
-      if(who===ceoName && !isMaster()) toast('관리자 PIN 으로 들어와야 승인할 수 있어요','err');
-      else if(me) toast(`${ceoName} 대표 본인만 누를 수 있어요 — '${me} 승인' 을 눌러주세요`,'err');
-      else toast(`대체휴무 승인은 ${ceoName} 대표 본인만 할 수 있어요`,'err');
+      if((who==='전승훈'||who==='전수빈') && !isMaster()) toast('관리자 PIN 으로 들어와야 승인할 수 있어요','err');
+      else toast('대체휴무 승인은 대표(전승훈 · 전수빈)만 할 수 있어요','err');
       return;
     }
     const r=_compFind(id);
