@@ -48780,6 +48780,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'kop-home',     brand:'kop', label:'공홈',     report:'home-kop'},
     {id:'kop-ably',     brand:'kop', label:'에이블리', report:'ably-kop', perOrderShip:true},
     {id:'kop-zigzag',   brand:'kop', label:'지그재그', report:'zigzag-kop', perOrderShip:true, feeAuto:true},
+    // 코페리 스마트스토어 — 커머스API 앱이 10월 말부터 정지. 다시 살려 맥미니 열쇠 지킴이(ss-secret)가 연결하면 smartstore/kop 이 생긴다.
+    // 그 전(그 달 자료 · 입력값 없음)에는 줄을 숨긴다 — 빈 0원 줄이 안 보이게 (hideUntilData)
+    {id:'kop-smartstore',brand:'kop', label:'스마트스토어', report:'smartstore-kop', perOrderShip:true, feeAuto:true, feeFromNet:true, hideUntilData:true},
     {id:'kop-29cm',     brand:'kop', label:'29CM', report:'29cm-kop', perOrderShip:true, noAutoAd:true, feeRate:SB_29CM_FEE},
     {id:'kop-wconcept', brand:'kop', label:'W컨셉', report:'wconcept-kop', perOrderShip:true, noAutoAd:true},
     {id:'apt-home',     brand:'apt', label:'공홈',     report:'home-apt'},
@@ -49070,7 +49073,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     new Set(SB_CHANNELS.map(c=>c.brand)).forEach(b=>{
       const meta=_sbBrand(b), list=SB_CHANNELS.filter(c=>c.brand===b);
       list.forEach(c=>{
-        html+=`<tr><td class="sb-ch"><span class="brand-dot" style="background:${meta.dot}"></span>${_stratEsc(meta.display)} ${_stratEsc(c.label)}</td>`
+        html+=`<tr id="sb-row-${c.id}"${c.hideUntilData?' hidden':''}><td class="sb-ch"><span class="brand-dot" style="background:${meta.dot}"></span>${_stratEsc(meta.display)} ${_stratEsc(c.label)}</td>`
           +SB_FIELDS.map(([f,l])=>`<td><input class="sb-in" id="sb-${c.id}-${f}" data-c="${c.id}" data-f="${f}" inputmode="numeric" autocomplete="off" aria-label="${_stratEsc(meta.display)} ${_stratEsc(c.label)} ${l}"></td>`).join('')
           +`<td class="n sb-net" id="sb-${c.id}-net"></td><td class="n" id="sb-${c.id}-rate"></td></tr>`;
       });
@@ -49135,6 +49138,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       });
       document.getElementById(`sb-${c.id}-net`).innerHTML=money(net);
       document.getElementById(`sb-${c.id}-rate`).textContent=rate(net,vals.sales.v);
+      // 아직 연결 전 채널 — 그 달 자동 자료도, 칸 값(입력 · 지난달 기준)도 없으면 숨김. 입력 중인 칸이 있으면 그대로 둠
+      if(c.hideUntilData){
+        const tr=document.getElementById(`sb-row-${c.id}`);
+        if(tr&&!tr.contains(active)) tr.hidden=!auto&&!SB_FIELDS.some(([f])=>vals[f].v);
+      }
     });
     const paintTotal=(p,rows)=>{
       const net=rows.reduce((a,r)=>a+r.net,0), sales=rows.reduce((a,r)=>a+r.vals.sales.v,0);
