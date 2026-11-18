@@ -5645,6 +5645,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     border-bottom:1px solid var(--line);line-height:1.45;
   }
   .brep-hint b{color:var(--text-1);font-family:var(--mono);font-weight:700}
+  .brep-more-btn{display:block;margin:2px 12px 8px}
   .brep-empty{padding:26px 16px;text-align:center;font-size:12px;color:var(--text-3)}
   .brep-empty b{display:block;font-size:13px;color:var(--text-2);margin-bottom:3px}
 
@@ -15311,7 +15312,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 리오더 경보 — 홈 맨 위 고정 (2026-11-16 사장님 "리오더 경보는 확실하게 배치해줘. 상단으로 무조건 고정") =====
      서버 /erp/reorder = 맥미니 scripts/reorder_alert.py 가 30분마다 계산한 것 (읽기만 — 자동 품절 · 출고보류 없음).
      재고: 코페리 · 아페티 · 코즈미 = 식스샵 ERP MASTER 남은 재고(L) — 쇼핑몰이 수량관리 안함이라 0개가 돼도 계속 팔린다 → 이 카드가 유일한 안전장치.
-           식스에이 · 야르 · 프피 · 아코이 = 식스샵프로 재고 (사장님 "일단 식스샵프로 재고, 재고마스터에 다 넣으면 그때 로직을 바꾸자").
+           식스에이 · 야르 · 프피 · 아코이도 2026-11-18부터 재고 마스터 L (사장님 "이젠 재고마스터 erp가 실재고다" — 식스샵프로 재고는 안 불러옴).
+           빈칸 = 아직 안 센 것 → 품절이 아니라 '실사 필요'(needCount). 브랜드 리포트 '지금 상태' · 제품 분석 창도 이 숫자만 쓴다.
      판매 속도: 시트 출고 기록(송장 처리가 세트 · 플랫폼까지 풀어 둔 숫자)과 채널 판매 보고서 중 빠른 쪽.
      카드는 숨기거나 접을 수 없다. 급한 게 없으면 '없음'을 보여 줘서 계산이 돌고 있다는 걸 알린다.
      전체 창 검색칸은 다시 그리는 목록 밖에 있어 5분 갱신이 입력을 지우지 않는다. */
@@ -15373,6 +15375,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       reoHomeRender();
       const m = document.getElementById('reoModal');
       if(m && !m.hidden) reoModalRender();
+      // 브랜드 리포트 '지금 상태'도 이 숫자를 쓴다 (2026-11-18 재고 마스터가 실재고)
+      const bv = document.getElementById('viewBrandReport');
+      if(bv && !bv.hidden && typeof _brepRenderSoon === 'function') _brepRenderSoon();
     }
   }
   function reoHomeRender(){
@@ -15868,6 +15873,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       jobs.push(_pixLoadIdx(k, force).then(again));
       jobs.push(_pixLoadCat(k, force).then(again));
       jobs.push(_brepLoadRep(k, force).then(again));
+      // 재고 마스터가 실재고인 브랜드: 리오더 · 재고는 홈 리오더 경보와 같은 /erp/reorder (2026-11-18)
+      if(_brepErpBrand(k) && (force || !_reo.data || Date.now()-_reo.at>5*60*1000)) jobs.push(Promise.resolve(reoHomeLoad(false)).then(again));
     }
     _brep.busy=true;
     brepRender();
@@ -16226,6 +16233,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const wk=n===1 ? _brepCompare(chs,a,b,_bAdd(a,-7),_bAdd(b,-7)) : null;
     const P=_brepProducts(brand,a,b,cr);
     const rep=_brep.rep[brand], R=rep&&rep.d&&rep.d.ok ? rep.d : null;
+    const erp=_brepErpBrand(brand);   // 재고 마스터가 실재고 — 식스샵프로 재고 숫자는 안 보여 줌 (2026-11-18)
     const ctx={a, b, n, isToday, cr, plabel};
 
     // 채널별 — 보여 주는 값은 기간 전체(x), 증감은 비교 범위(xc ↔ yc, 두 기간 모두 자료가 꽉 찬 채널만)
@@ -16262,10 +16270,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="brep-col">${_brepChannelCard(rows, T, missing, ctx)}${_brepMoversCard(P, ctx)}${W?_brepWeekdayCard(W):''}</div>
           <div class="brep-col">${_brepTopCard(brand, P, ctx)}</div>
         </div>`
-      + `<div class="brep-sec"><span>지금 상태</span><em>재고와 판매 속도 — 어제까지 기준 · 30분마다 (위 기간과 무관)</em>${R&&R.fetchedAt?`<em>${_brepEsc(new Date(R.fetchedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} 계산</em>`:''}</div>`
+      + (erp
+        ? `<div class="brep-sec"><span>지금 상태</span><em>재고 = 재고 마스터(실재고) · 판매 속도 — 30분마다 (위 기간과 무관)</em>${_reo.data&&_reo.data.fetchedAt?`<em>${_brepEsc(new Date(_reo.data.fetchedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} 계산</em>`:''}</div>`
+        : `<div class="brep-sec"><span>지금 상태</span><em>재고와 판매 속도 — 어제까지 기준 · 30분마다 (위 기간과 무관)</em>${R&&R.fetchedAt?`<em>${_brepEsc(new Date(R.fetchedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} 계산</em>`:''}</div>`)
       + `<div class="brep-grid brep-grid-even">
-          <div class="brep-col">${R?brepCardReorder(R):_brepRepEmpty(rep,'리오더 필요','⚠️')}</div>
-          <div class="brep-col">${R?brepCardHot(R):_brepRepEmpty(rep,'갑자기 잘 팔린 핫 아이템','🔥')}</div>
+          <div class="brep-col">${erp?_brepErpReorderCard(brand):(R?brepCardReorder(R):_brepRepEmpty(rep,'리오더 필요','⚠️'))}</div>
+          <div class="brep-col">${R?brepCardHot(R, erp):_brepRepEmpty(rep,'갑자기 잘 팔린 핫 아이템','🔥')}</div>
         </div>`
       + _brepFoot(' 공홈 상품 순위는 배송비를 뺀 상품 실결제 · 공홈 판매만이에요 (플랫폼 상품 판매는 들어 있지 않음).');
   }
@@ -16335,10 +16345,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const r=P.tot.xqty/(P.tot.qty+P.tot.xqty)*100;
       if(r>=5) out.push(`공홈 취소 · 반품 수량 <b class="${r>=8?'brep-t-down':''}">${_brepPctTxt(r)}</b>${_bSpan(b,t)<=15?' <span class="brep-muted">(최근 날짜는 반품이 아직 덜 들어와 더 오를 수 있어요)</span>':''}`);
     }
-    // 7. 재고 위험 (어제 기준 계산)
-    if(R){
-      const re=R.reorder||[], out0=re.filter(r=>r.severity==='out').length, urg=re.filter(r=>r.severity==='urgent').length;
-      if(out0||urg) out.push(`🚨 ${out0?`품절 ${out0}개`:''}${out0&&urg?' · ':''}${urg?`7일 안에 떨어질 상품 ${urg}개`:''} — 아래 리오더 확인`);
+    // 7. 재고 위험 — 재고 마스터가 실재고인 브랜드는 홈 리오더 경보와 같은 숫자(/erp/reorder, 2026-11-18), 나머지는 맥미니 리포트(어제 기준)
+    const erpB=_brepErpBrand(B.key);
+    const re=erpB ? (((_reo.data||{}).items)||[]).filter(i=>i.b===B.key).map(i=>({severity:i.sev})) : (R ? (R.reorder||[]) : []);
+    {
+      const out0=re.filter(r=>r.severity==='out').length, urg=re.filter(r=>r.severity==='urgent').length;
+      if(out0||urg) out.push(`🚨 ${out0?`품절 ${out0}개`:''}${out0&&urg?' · ':''}${urg?`7일 안에 떨어질 상품 ${urg}개`:''} — 아래 리오더 확인${erpB?' <span class="brep-muted">(재고 마스터 기준)</span>':''}`);
     }
     return out.slice(0,6);
   }
@@ -16397,7 +16409,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const share=`<span class="brep-chip">비중 ${_brepShare(x.c.paid,P.tot.paid)}</span>`;
       const chg=x.q && x.q.paid>0 ? (()=>{ const g=_brepGrowth(x.cc.paid,x.q.paid); return `<span class="brep-chip ${g>0?'up':g<0?'down':''}" title="${_brepEsc(vs)} ${_brepEsc(_brepWonT(x.q.paid))} → ${_brepEsc(_brepWonT(x.cc.paid))}">${_brepSPct(g)}</span>`; })() : '';
       const xq=x.c.xqty>0 ? `<span class="brep-chip urgent">취소 · 반품 ${Math.round(x.c.xqty)}</span>` : '';
-      const stock=it ? _brepStock(it.stock) : '';
+      const stock=it && !_brepErpBrand(brand) ? _brepStock(it.stock) : '';   // 재고 마스터 브랜드는 식스샵 재고 칸 안 씀
       const ops=_brepOpts(p, P.ab);
       const opLine=ops.length>=2 ? `<span class="brep-optline is-plain">${ops.slice(0,4).map(o=>`${_brepEsc(o.label)} <b>${Math.round(o.q)}</b>`).join(' · ')}${ops.length>4?` 외 ${ops.length-4}`:''}</span>` : '';
       const thumb=it&&it.thumb ? `<img class="brep-thumb" src="${_brepEsc(it.thumb)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="brep-thumb"></span>';
@@ -16607,6 +16619,42 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </${tag}>`;
   }
 
+  /* 재고 마스터가 실재고인 브랜드 (2026-11-18 사장님 "이젠 재고마스터 erp가 실재고다" · "식스샵프로에 기재된 재고 불러오지말고").
+     서버 reorder_alert.py STOCK_SOURCE 를 따르고, 아직 못 읽었으면 같은 7곳으로 본다. 이 브랜드는 리오더 · 재고 숫자를
+     /erp/reorder(홈 리오더 경보와 같은 계산)로만 보여 주고, 식스샵 상품 목록의 재고 칸(/sx/pro-stock)은 안 쓴다. */
+  const BREP_ERP_STOCK=new Set(['kop','apt','koz','6a','yar','pp','akoi']);
+  function _brepErpBrand(b){
+    const x=((_reo.data||{}).brands||{})[b];
+    return x ? x.stockSource==='erp' : BREP_ERP_STOCK.has(b);
+  }
+  function brepOpenReo(b){ _reo.brand=b; reoModalOpen(); }
+  window.brepOpenReo=brepOpenReo;
+  function _brepErpReorderCard(brand){
+    const d=_reo.data;
+    const items=d ? (d.items||[]).filter(i=>i.b===brand && REO_SEV[i.sev]) : [];
+    const need=d ? (d.needCount||[]).filter(i=>i.b===brand) : [];
+    const head=`<div class="brep-card-head">
+        <span class="brep-card-ico">⚠️</span>
+        <span class="brep-card-title">리오더 필요</span>
+        <span class="brep-card-note">재고 마스터 · 7일 안</span>
+        <span class="brep-card-count ${items.length?'is-alert':''}">${d?items.length:'–'}</span>
+      </div>`;
+    if(!d) return `<div class="brep-card">${head}<div class="brep-empty">${_reo.err?`불러오지 못했습니다 · ${_brepEsc(_reo.err)}`:'불러오는 중…'}</div></div>`;
+    const needLine=need.length ? `<div class="brep-hint">📝 아직 안 센 상품 <b>${need.length}</b>개 — 품절 아님, 재고 마스터에 세어 적으면 그때부터 빠져요</div>` : '';
+    const more=`<button type="button" class="hro-more brep-more-btn" onclick="brepOpenReo('${_brepEsc(brand)}')">리오더 경보 전체 보기 ›</button>`;
+    if(!items.length) return `<div class="brep-card">${head}<div class="brep-empty"><b>7일 안에 바닥날 상품 없음 ✅</b>재고 마스터 남은 재고 · 판매 속도 기준</div>${needLine}${more}</div>`;
+    const rows=items.slice(0,12).map((it,i)=>_brepRow({
+      rank:i+1, name:it.n+(it.o?` / ${it.o}`:''), sev:it.sev,
+      sub:`<span class="brep-chip ${it.sev}">${REO_SEV[it.sev].t}</span>`
+         +`<span class="brep-chip">재고 ${it.stock<0?'−'+_reoN(-it.stock):_reoN(it.stock)}</span>`
+         +`<span class="brep-chip">하루 ${_reoN(it.rate)}개${it.act7?` · 최근 7일 중 ${it.act7}일`:''}</span>`
+         +(it.pend?`<span class="brep-chip">발주 잔량 ${_reoN(it.pend)}</span>`:''),
+      right: it.sev==='out' ? `<span class="brep-qty" style="font-size:15px">${it.stock<0?'모자람':'품절'}</span>`
+                            : `<span class="brep-qty">D-${Math.max(0,Math.round(it.days))}</span>`,
+    })).join('');
+    return `<div class="brep-card">${head}<div class="brep-rows">${rows}</div>${needLine}${more}</div>`;
+  }
+
   function brepCardReorder(d){
     const items=d.reorder||[];
     const urgent=(d.counts&&d.counts.urgent)||0;
@@ -16636,7 +16684,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return `<div class="brep-card">${head}<div class="brep-rows">${rows}</div></div>`;
   }
 
-  function brepCardHot(d){
+  function brepCardHot(d, erp){
     const items=d.hot||[];
     const head=`<div class="brep-card-head">
         <span class="brep-card-ico">🔥</span>
@@ -16654,7 +16702,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return _brepRow({
         rank:i+1, name:h.name, thumb:h.thumb, url:h.url, cls:'is-hot',
         sub:(h.isNew?`<span class="brep-chip new">신규 판매</span>`:`<span class="brep-chip hot">평소 일 ${h.baseRate}개 → ${h.recentRate}개</span>`)
-           +`<span class="brep-chip">3일 ${h.sold3d}개</span>${_brepStock(h.stock)}`,
+           +`<span class="brep-chip">3일 ${h.sold3d}개</span>${erp?'':_brepStock(h.stock)}`,
         right:big,
       });
     }).join('');
@@ -17854,7 +17902,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const kv=[];
     kv.push(['상태', it.status ? _bestEsc(it.status) : '–']);
     kv.push(['판매가', it.price ? `${_pixN(it.price)}원` : '–']);
-    if(tracked.length){
+    const erp=_brepErpBrand(p.brand);
+    if(erp){
+      // 2026-11-18 재고 마스터가 실재고 — 식스샵 상품 목록의 재고 숫자는 안 씀 (사장님 "식스샵프로에 기재된 재고 불러오지말고")
+      kv.push(['재고', '재고 마스터에서 관리 <span class="pa-note">(식스샵프로 재고 숫자는 안 씀 — 운송장 출력된 주문만 빠짐 · 홈 리오더 경보)</span>']);
+    }else if(tracked.length){
       const days=avg7>0 ? stock/avg7 : null;
       const cls=days!=null && days<7 ? 'pa-bad' : days!=null && days<14 ? 'pa-warn' : '';
       kv.push(['재고', `${_pixN(stock)}개${it.options.length&&tracked.length<live.length?` <span class="pa-note">(재고 관리하는 옵션 ${tracked.length}/${live.length}개만)</span>`:''}`]);
@@ -17863,7 +17915,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }else{
       kv.push(['재고', '재고 수량 관리 안 함 <span class="pa-note">(식스샵 재고 무제한 설정)</span>']);
     }
-    const opts=live.filter(o=>o.stock>=0).sort((x,y)=>x.stock-y.stock);
+    const opts=erp ? [] : live.filter(o=>o.stock>=0).sort((x,y)=>x.stock-y.stock);
     const chips=opts.length>1 ? `<div class="pa-stock-list">${opts.slice(0,24).map(o=>`<span class="${o.stock<=0?'is-zero':''}" title="${_bestEsc(o.label)}">${_bestEsc(o.label.length>28?o.label.slice(0,27)+'…':o.label)} ${_pixN(o.stock)}</span>`).join('')}${opts.length>24?`<span>외 ${opts.length-24}개</span>`:''}</div>` : '';
     return `<div class="pa-card"><div class="pa-card-title">재고 · 상품 정보 <small>식스샵 상품 목록</small></div><dl class="pa-kv">${kv.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>${chips}</div>`;
   }

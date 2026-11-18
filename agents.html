@@ -441,14 +441,14 @@ const CHARACTERS = [
       '식스에이 · 야르 · 프로덕트피알 · 아코이하우스 재고 마스터를 30분마다 자동 처리와 다른 길로 다시 봅니다',
       '수량 맞추기 — 식스샵프로에서 송장 나간 줄이 재고에 다 들어갔는지, 오늘 송장 수량 = 공홈 탭 = 식스샵 칸 = 판매로그',
       '이상한 숫자 — 센 뒤 마이너스, 판매 · 입고 없이 바뀐 숫자, 빨간 ⚠ 새 상품, 아직 안 셌는데 팔리는 상품',
-      '식스샵프로 재고와 비교(수량관리 끄기 전까지) · 실사 진행률 · 바로 차감 · 15시 처리가 제때 돌았는지',
-      '관찰만 합니다 — 고칠 게 있으면 어디를 보면 되는지 알려 드려요. 확인 필요한 건 비드유니버스 봇 단톡방에도 가고, 이상 없으면 아무것도 안 보내요',
+      '실사 진행률 · 바로 차감 · 15시 처리가 제때 돌았는지',
+      '2026-11-18부터 재고 마스터가 실재고예요 — 식스샵프로에 적힌 재고 숫자는 안 보고, 운송장 출력된 주문만 재고에서 빠집니다',
+      '관찰만 합니다 — 고칠 게 있으면 어디를 보면 되는지 알려 드려요. 확인 필요한 건 오피스 자동 업무 알림 봇에도 가고, 이상 없으면 아무것도 안 보내요',
     ],
     quick:[
       {label:'검수 결과', cmd:'검수 결과'},
       {label:'지금 다시 검수', cmd:'지금 다시 검수'},
       {label:'실사 진행률', cmd:'실사 진행률'},
-      {label:'식스샵 비교', cmd:'식스샵 숫자 비교'},
       {label:'전문 분야', cmd:'전문 분야'},
     ],
   },
@@ -1480,17 +1480,12 @@ async function auditAgent(c, raw, t){
       lines.push('', '먼저 세면 좋은 것 (아직 안 셌는데 오늘 팔린 상품):');
       sell.forEach(x => lines.push(`· ${AUDIT_BRAND_NAME(x.brand)}: ` + (x.rows || []).slice(0, 5).map(r => `${r.n}${r.o ? ' / ' + r.o : ''} ${r.k}개`).join(' · ')));
     }
-    lines.push('', '다 세면 사장님이 OK 주시는 대로 식스샵프로 수량관리를 끕니다.');
+    lines.push('', '2026-11-18부터 재고 마스터가 실재고예요. 빈칸은 세어서 적는 순간부터 운송장 출력분이 빠집니다.');
     say('agent', lines.join('\n'));
     return;
   }
-  if(has(t, ['비교','차이','오타','식스샵 숫자'])){
-    const diff = checks.filter(x => x.kind === 'pro_diff');
-    const lines = [`네 사장님, 센 숫자와 식스샵프로 재고 비교입니다 — ${d.at} 기준`];
-    if(!diff.length) lines.push(brands.some(b => b.counted) ? '크게 다른 줄은 없어요 ✅' : '아직 센 줄이 없어서 비교할 게 없어요. 세어서 적으시면 오타처럼 크게 다른 숫자를 찾아 드릴게요.');
-    diff.forEach(x => { lines.push(`· ${AUDIT_BRAND_NAME(x.brand)}`); (x.rows || []).slice(0, 8).forEach(r => lines.push(`   ${r.n}${r.o ? ' / ' + r.o : ''}: 시트 ${r.sheet} · 식스샵 ${r.pro} (차이 ${r.gap > 0 ? '+' : ''}${r.gap})`)); });
-    lines.push('', '식스샵프로 숫자는 실사 전 숫자라 틀릴 수 있어요 — 크게 다른 것만 오타인지 한 번 봐 주세요.');
-    say('agent', lines.join('\n'));
+  if(has(t, ['식스샵 비교','식스샵 숫자','식스샵프로 재고','식스샵 재고'])){
+    say('agent', '2026-11-18부터 재고 마스터가 실재고라 식스샵프로에 적힌 재고와는 비교하지 않아요 (사장님 지시 — 식스샵프로 재고는 안 불러옴).\n숫자가 이상해 보이면 "검수 결과"에서 판매 · 입고로 설명 안 되게 바뀐 숫자를 봐 주세요.', {chips: [{label:'검수 결과', cmd:'검수 결과'}, {label:'실사 진행률', cmd:'실사 진행률'}]});
     return;
   }
   const ship = jobs['erp-ship'] || {}, catchup = jobs['erp-catchup'] || {}, daily = jobs.daily || {};
@@ -1503,7 +1498,7 @@ async function auditAgent(c, raw, t){
   ];
   if(alerts.length){ lines.push('', '[확인 필요]'); alerts.forEach(x => lines.push(`· ${x.text}`)); }
   if(checks.length){ lines.push('', '[참고]'); checks.slice(0, 8).forEach(x => lines.push(`· ${x.text}`)); }
-  say('agent', lines.join('\n'), {chips: [{label:'실사 진행률', cmd:'실사 진행률'}, {label:'식스샵 비교', cmd:'식스샵 숫자 비교'}, {label:'지금 다시 검수', cmd:'지금 다시 검수'}]});
+  say('agent', lines.join('\n'), {chips: [{label:'실사 진행률', cmd:'실사 진행률'}, {label:'지금 다시 검수', cmd:'지금 다시 검수'}]});
   await doubleCheck('검수 작업 상태 확인', async () => {
     const st = d.job || {};
     if(st.status === 'failed') return `⚠️ 마지막 검수 실행이 실패했어요 (${st.error_code}) — 위 결과는 그 전 것입니다.`;
