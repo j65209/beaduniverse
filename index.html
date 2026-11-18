@@ -17945,7 +17945,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'zigzag-6a',     brand:'6a',  endpoint:'/zigzag-sales?brand=6a',      group:'지그재그',    display:'식스에이',     dot:'#ff2380', hasItemAmount:true,  hasOptions:false, hideUsd:true},
     {id:'ably-kop',      brand:'kop', endpoint:'/ably-sales?brand=kop',       group:'에이블리',    display:'코페리',       dot:'#ff5a92', hasItemAmount:false, hasOptions:false, hideUsd:true},
     {id:'ably-apt',      brand:'apt', endpoint:'/ably-sales?brand=apt',       group:'에이블리',    display:'아페티',       dot:'#ff5a92', hasItemAmount:false, hasOptions:false, hideUsd:true},
-    {id:'smartstore-kop',brand:'kop', endpoint:'/smartstore-sales?brand=kop', group:'스마트스토어', display:'코페리',       dot:'#03c75a', hasItemAmount:true,  hasOptions:false, hideUsd:true},
+    // 코페리 커머스API 앱이 정지된 동안(서버 값이 없거나 3시간 넘게 멈춤)은 맥미니 플레이오토 수집분 smartstore/kop/card.json 으로 대신 (2026-11-18)
+    {id:'smartstore-kop',brand:'kop', endpoint:'/smartstore-sales?brand=kop', fallbackReportPath:'smartstore/kop', group:'스마트스토어', display:'코페리',       dot:'#03c75a', hasItemAmount:true,  hasOptions:false, hideUsd:true},
     {id:'zigzag-kop',    brand:'kop', endpoint:'/zigzag-sales?brand=kop',     group:'지그재그',    display:'코페리',       dot:'#ff2380', hasItemAmount:true,  hasOptions:false, hideUsd:true},
     {id:'zigzag-apt',    brand:'apt', endpoint:'/zigzag-sales?brand=apt',     group:'지그재그',    display:'아페티',       dot:'#ff2380', hasItemAmount:true,  hasOptions:false, hideUsd:true},
     // 플레이오토 수집분 — 프록시가 아니라 비공개 보고서의 {reportPath}/card.json 을 읽는다 (맥미니 playauto-live)
@@ -18060,14 +18061,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       ${amountCol}
     </div>`;
   }
-  function _salesRenderUpdated(id, ts){
+  function _salesRenderUpdated(id, ts, via){
     const el=document.getElementById(`salesUpd_${id}`);
     if(!el) return;
     const t=new Date(ts||Date.now());
     const hm=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
     // 수집이 멈춘 카드는 시각만 보면 오늘 갱신된 줄 안다 → 오늘이 아니면 날짜까지, 2시간 넘게 멈췄으면 빨갛게
     const day=t.toDateString()===new Date().toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `;
-    el.textContent=`${day}${hm} 갱신`;
+    el.textContent=`${day}${hm} 갱신${via?` · ${via} 기준`:''}`;
     el.classList.toggle('is-stale', Date.now()-t.getTime()>2*60*60*1000);
   }
   function _salesBuildCard(cfg, opts){
@@ -18159,11 +18160,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         }
       }else{
         const r=await sxFetch(cfg.endpoint,{method:'GET'});
-        if(!r.ok){
+        j=r.ok?await r.json().catch(()=>null):null;
+        // 서버 값이 없거나 3시간 넘게 멈췄으면 맥미니 수집분 카드로 대신 (fallbackReportPath — 코페리 스마트스토어: 커머스API 앱 정지 동안 플레이오토).
+        // 서버가 다시 살면 저절로 서버 값
+        const old=!j||!j.ok||!j.fetchedAt||Date.now()-new Date(j.fetchedAt).getTime()>3*3600e3;
+        if(cfg.fallbackReportPath&&old){
+          const fb=await _stratGet(cfg.fallbackReportPath+'/card.json').catch(()=>null);
+          if(fb&&fb.ok) j={...fb, _via:'플레이오토'};
+        }
+        if(!r.ok&&!(j&&j._via)){
           body.innerHTML=`<div class="akoi-err">서버 오류 (HTTP ${r.status})</div>`;
           return;
         }
-        j=await r.json();
       }
       if(!j || !j.ok){
         body.innerHTML=`<div class="akoi-err">${_akoiEsc(j&&j.error||'응답 오류')}</div>`;
@@ -18175,7 +18183,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         ? top.map(it=>_akoiRenderRow(it, cfg)).join('')
         : '<div class="akoi-empty">아직 판매 데이터가 없습니다.</div>';
       _salesLast[id]=Date.now();
-      _salesRenderUpdated(id, j.fetchedAt);
+      _salesRenderUpdated(id, j.fetchedAt, j._via);
       // 최근 30일 매출 저장 후 카드 순서 재정렬 (매출 많은 순)
       const rev30=Number((j.summary||{}).thirtyDays?.revenue)||0;
       _salesRev30[id]=rev30;
