@@ -5132,16 +5132,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .hcc-btn:hover{background:rgba(212,175,55,.12);border-color:#d4af37}
   .hcc-btn-open{background:linear-gradient(135deg,#d4af37,#b8901f);color:#fff;border-color:transparent}
   .hcc-btn-open:hover{filter:brightness(1.08);border-color:transparent}
-  .hcc-body{display:flex;flex-direction:column;gap:4px}
+  /* 열 너비 = 실제 내용 폭 (subgrid 로 모든 줄이 같은 열을 공유) → 날짜·배지 뒤 빈 공간 없이 제목이 바로 붙음.
+     시간은 날짜 칸 안에 같이 표시 (빈 시간 칸 '·' 제거). subgrid 미지원 브라우저는 줄마다 auto 로 폴백. */
+  .hcc-body{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);column-gap:10px;row-gap:4px}
   .hcc-row{
-    display:grid;grid-template-columns:88px 58px 60px 1fr;gap:10px;align-items:center;
+    grid-column:1 / -1;
+    display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-columns:subgrid;
+    column-gap:10px;align-items:center;
     padding:7px 12px;border-radius:6px;background:var(--bg-1);border:1px solid transparent;
     font-size:12.5px;color:var(--text-1);cursor:pointer;transition:all .12s;
   }
   .hcc-row:hover{background:rgba(212,175,55,.06);border-color:rgba(212,175,55,.35)}
-  .hcc-row-date{font-family:var(--mono);font-size:11.5px;color:var(--text-1);font-weight:600;font-variant-numeric:tabular-nums}
+  .hcc-row-date{font-family:var(--mono);font-size:11.5px;color:var(--text-1);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
   .hcc-row-date.today{color:#854d0e;font-weight:700}
-  .hcc-row-time{font-family:var(--mono);font-size:11px;color:var(--text-2)}
+  .hcc-row-time{font-family:var(--mono);font-size:11px;color:var(--text-2);font-weight:500;margin-left:4px}
   .hcc-row-cat{
     padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:600;
     background:color-mix(in srgb, var(--cev-c,#a8a29e) 14%, transparent);
@@ -5150,11 +5154,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     justify-self:start;white-space:nowrap;
   }
   .hcc-row-title{color:var(--text-0);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .hcc-empty{padding:14px;text-align:center;color:var(--text-3);font-size:12px;background:var(--bg-1);border-radius:6px}
+  .hcc-empty{grid-column:1 / -1;padding:14px;text-align:center;color:var(--text-3);font-size:12px;background:var(--bg-1);border-radius:6px}
   @media (max-width:600px){
     .home-ceocal-card{margin:6px 8px 14px;padding:12px 14px 14px}
-    .hcc-row{grid-template-columns:70px 1fr auto;gap:6px}
-    .hcc-row-time{display:none}
+    .hcc-body,.hcc-row{column-gap:8px}
+    .hcc-row{padding:7px 10px}
+    .hcc-row-time{display:block;margin-left:0;font-size:10.5px}
   }
 
   /* ===== 뷰 (홈 / 인사팀 / 물류팀 / 추가 모듈) ===== */
@@ -42338,11 +42343,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const isToday = ev.date === today;
       const dateLabel = isToday ? '오늘' : _cecFmtDate(ev.date);
       const dateCls = 'hcc-row-date' + (isToday ? ' today' : '');
-      const timeCell = ev.time ? _cecEsc(ev.time) : '·';
+      const timeHtml = ev.time ? `<span class="hcc-row-time">${_cecEsc(ev.time)}</span>` : '';
       const catLabel = ev.createdBy ? `${cat.label} · ${ev.createdBy}` : cat.label;
       return `<div class="hcc-row" onclick="cecOpenEditModal('${ev.id}')">
-        <div class="${dateCls}">${_cecEsc(dateLabel)}</div>
-        <div class="hcc-row-time">${timeCell}</div>
+        <div class="${dateCls}">${_cecEsc(dateLabel)}${timeHtml}</div>
         <span class="hcc-row-cat" style="--cev-c:${color}">${_cecEsc(catLabel)}</span>
         <div class="hcc-row-title">${_cecEsc(ev.title || '(제목 없음)')}</div>
       </div>`;
