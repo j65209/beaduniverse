@@ -31,12 +31,14 @@
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
 <style>
-  /* ERP전산팀 — 구글시트 '식스샵 ERP MASTER'(= 재고 ERP MASTER)를 업무 프로그램 화면으로 보여 준다 (보기 전용)
+  /* ERP전산팀 — 구글시트 '식스샵 ERP MASTER'(= 재고 ERP MASTER)를 업무 프로그램 화면으로 보여 주고, 고친 칸은 구글시트에 바로 적는다
      · 2026-11-19 첫 판은 시트 모양 그대로였고, 같은 날 사용자 "구글시트랑 똑같이가 아니라 전문 프로그램처럼 —
        칸을 우리가 맞추는 게 아니라 들어간 숫자 · 글자에 맞춰 자동으로" → 2판: 왼쪽 메뉴 · 요약 카드 · 자동 칸 너비 표 · 상세 창.
      · 자료는 그대로 시트 '웹 보기'(htmlview/sheet)를 브라우저가 구글에서 바로 받는다 (링크 보기 공개 시트, CORS 허용, 서버 · 키 없음).
        시트의 머리글 줄 = 표 머리글, 칸 너비 · 정렬 · 숫자 쉼표는 내용으로 정하고, 시트의 글자색 · 굵게 · 칸 색(옅게) · 체크박스 · 칩 · 사진 · 링크는 뜻만 살린다.
-     · 날짜별 주문 원본 탭의 주문자 이름 · 연락처 · 주소 칸은 가려서 보여 준다. */
+     · 날짜별 주문 원본 탭의 주문자 이름 · 연락처 · 주소 칸은 가려서 보여 준다.
+     · 2026-11-19 사용자 "ERP에서 수정하는건 다 구글시트에서도 같이 연결되어 수정되게" → 표 칸 두 번 누르기 · 상세 창 값 누르기로 고치고,
+       MD팀 Apps Script 브리지(scripts/md-sheets-bridge.gs)로 그 칸에 바로 쓴다 (아래 '고치기' 부분). 같은 날 "전체 모두 좌측정렬" → 숫자 · 체크 칸도 왼쪽. */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -160,13 +162,13 @@
   .app.dense .tbl td{height:28px}
   .tbl .cl{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.25;word-break:keep-all;overflow-wrap:break-word}
   .app.dense .tbl .cl{-webkit-line-clamp:1}
-  .tbl .r{text-align:right;font-variant-numeric:tabular-nums}
-  .tbl .c{text-align:center}
+  .tbl .r{text-align:left;font-variant-numeric:tabular-nums}   /* 2026-11-19 사용자 "전체 모두 좌측정렬" — 숫자 · 체크 · 사진 칸도 왼쪽 */
+  .tbl .c{text-align:left}
   .tbl td.r,.tbl td.c,.tbl th.r,.tbl th.c{padding-left:6px;padding-right:6px}   /* 숫자 · 체크 칸은 좁게 (fitCols 의 여백과 같게) */
   .tbl .b{font-weight:700}
   .tbl .z{color:#c3cad4}
   .tbl .neg{color:var(--danger);font-weight:700}
-  .tbl .rn{color:var(--text-4);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;padding:0 7px 0 3px}
+  .tbl .rn{color:var(--text-4);font-size:11.5px;text-align:left;font-variant-numeric:tabular-nums;padding:0 7px 0 3px}
   .tbl .sk{position:sticky;z-index:1}
   .tbl .skl{border-right:1px solid #d5dce5}
   .tbl tbody tr{cursor:pointer}
@@ -202,8 +204,8 @@
   .ck{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#dcfce7;color:#15803d;vertical-align:middle}
   .ck svg{width:12px;height:12px}
   .ck0{display:inline-block;width:14px;height:14px;border-radius:4px;border:1.5px solid #d5dce5;vertical-align:middle}
-  .thumb{display:block;margin:2px auto;width:30px;height:30px;border-radius:6px;object-fit:cover;background:#f1f5f9;cursor:zoom-in}
-  .app.dense .thumb{width:24px;height:24px;margin:1px auto}
+  .thumb{display:block;margin:2px 0;width:30px;height:30px;border-radius:6px;object-fit:cover;background:#f1f5f9;cursor:zoom-in}
+  .app.dense .thumb{width:24px;height:24px;margin:1px 0}
   .lnk{color:var(--info);text-decoration:none}
   .lnk:hover{text-decoration:underline}
   mark{background:#fef08a;color:inherit;border-radius:2px;padding:0 1px}
@@ -237,6 +239,33 @@
   .dimg{display:block;max-width:100%;max-height:220px;border-radius:10px;background:#f1f5f9;cursor:zoom-in}
   .lb{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(15,23,42,.82);cursor:zoom-out;padding:24px}
   .lb img{max-width:100%;max-height:100%;border-radius:12px;background:#fff}
+
+  /* ── 고치기 (표 칸 두 번 누르기 · 상세 창 값 누르기 → 구글시트에 바로) ── */
+  .d-hint{margin-top:9px;font-size:11.5px;line-height:1.45;color:var(--text-4)}
+  .d-hint.no{color:var(--warn)}
+  .dl dd.ed-ok{cursor:text;position:relative;padding-right:52px}
+  .dl dd.ed-ok:hover{background:#f6f9ff;box-shadow:inset 0 0 0 1px #c7d7fe;border-radius:6px}
+  .dl dd.ed-ok:hover::after{content:'✎ 고치기';position:absolute;right:6px;top:10px;font-size:11px;font-weight:700;color:var(--info);white-space:nowrap}
+  .dl dd.ed-ro{cursor:default}
+  .dl dd.ed-on{background:#eef4ff;box-shadow:inset 0 0 0 2px var(--info);border-radius:6px}
+  .tbl td.ed-on{box-shadow:inset 0 0 0 2px var(--info)!important}
+  .edbox{position:fixed;z-index:70;display:flex;flex-direction:column;gap:7px;padding:8px;border:2px solid var(--info);border-radius:10px;background:#fff;box-shadow:0 14px 34px rgba(15,23,42,.2)}
+  .edbox .ed-cap{font-size:11.5px;font-weight:700;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .edbox input,.edbox textarea{width:100%;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:7px;font:inherit;font-size:14px;color:var(--text);background:#fff;outline:0;resize:vertical}
+  .edbox input:focus,.edbox textarea:focus{border-color:var(--info);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .edbox input:disabled,.edbox textarea:disabled{background:#f6f8fa;color:var(--text-3)}
+  .edbox .ed-row{display:flex;align-items:center;gap:6px}
+  .edbox .ed-msg{flex:1;min-width:0;font-size:11.5px;line-height:1.4;color:var(--text-4)}
+  .edbox .ed-msg.err{color:var(--danger);font-weight:600}
+  .edbox .ed-msg.busy{color:var(--info);font-weight:600}
+  .edbox button{flex:none;height:30px;padding:0 12px;border-radius:7px;font-size:12.5px;font-weight:700;white-space:nowrap}
+  .edbox .ed-save{background:var(--info);color:#fff}
+  .edbox .ed-save:disabled{opacity:.45;cursor:default}
+  .edbox .ed-force{background:var(--danger);color:#fff}
+  .edbox .ed-cancel{background:#f1f4f8;color:var(--text-2)}
+  .toast{position:fixed;left:50%;bottom:22px;z-index:80;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 16px;border-radius:10px;background:#0f172a;color:#fff;font-size:13px;font-weight:600;line-height:1.45;box-shadow:0 12px 30px rgba(15,23,42,.25)}
+  .toast.err{background:#b91c1c}
+  @media (max-width:720px){ .edbox input,.edbox textarea{font-size:16px} .dl dd.ed-ok:hover::after{display:none} }   /* 아이폰 입력 칸 자동 확대 막기 */
 
   /* ── 좁은 화면 ── */
   @media (max-width:1000px){
@@ -315,12 +344,16 @@
       <div class="d-title" id="dTitle"></div>
       <div class="d-sub" id="dSub"></div>
       <a class="d-sheet" id="dSheet" href="#" target="_blank" rel="noopener">구글시트에서 이 줄 보기 ↗</a>
+      <div class="d-hint" id="dHint"></div>
     </div>
     <div class="dbody"><dl class="dl" id="dList"></dl></div>
   </aside>
   <div class="dscrim" id="dscrim" hidden></div>
 </div>
 <div class="lb" id="lb" hidden><img id="lbImg" alt="" referrerpolicy="no-referrer"></div>
+<div class="edbox" id="edbox" hidden></div>
+<datalist id="edList"></datalist>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <script>
 (function () {
   'use strict';
@@ -335,7 +368,7 @@
   // 2026-11-19 사용자 "로딩이 느린 이유" → 기다림은 거의 전부 구글이 웹 보기를 만드는 시간(보통 0.4~0.9초, 가끔 7~8초).
   // 그래서 받은 자료를 이 브라우저(IndexedDB 'erp_cache')에 저장해 두고, 열 때 · 탭을 바꿀 때 저장본을 먼저 띄운 뒤 뒤에서 새로 받는다.
   // 탭 목록도 저장(erp_tabs_v1)해 메뉴가 바로 뜨고, 첫 탭이 뜬 뒤 다른 브랜드 재고 탭을 미리 받아 둔다.
-  const LS_TABS = 'erp_tabs_v1', IDB_NAME = 'erp_cache', CACHE_VER = 1, PREFETCH_GAP = 700;
+  const LS_TABS = 'erp_tabs_v1', IDB_NAME = 'erp_cache', CACHE_VER = 2, PREFETCH_GAP = 700;
   // 송장출력 탭은 체크박스만 있는 줄이 3,000줄이라 웹 보기가 무겁다 → 지난번 내용 끝 줄 + 여유만 읽는다 (range=1:N).
   // 내용이 범위 끝까지 차 있으면 전체를 다시 읽고, 탭마다 한 번은 전체를 읽어 멀리 떨어진 칸도 확인한다. 상태 단추를 누르면 늘 전체.
   const RANGE_MIN = 500, RANGE_FULL_OVER = 2500;
@@ -605,7 +638,7 @@
         const o = {t: '', chips: [], cb: 0, img: '', href: ''};
         walk(td, o);
         const cls = Array.from(td.classList).find(c => /^s\d+$/.test(c));
-        cells.push({p, cs, rs, st: (cls && styles[cls]) || NOSTYLE, t: cleanText(o.t), chips: o.chips, cb: o.cb, img: o.img, href: o.href});
+        cells.push({p, cs, rs, r: +mm[1] + 1, st: (cls && styles[cls]) || NOSTYLE, t: cleanText(o.t), chips: o.chips, cb: o.cb, img: o.img, href: o.href});
         for (let y = ri + 1; y < ri + rs; y++) for (let x = p; x < p + cs; x++) (taken[y] = taken[y] || new Set()).add(x);
         p += cs;
       }
@@ -645,7 +678,9 @@
     let n = 0;
     rows.forEach((row, i) => row.cells.forEach(c => {
       const pc = cols[c.p];
-      if (!pc || i < pc.from || !c.t) return;
+      if (!pc || i < pc.from) return;
+      c.pii = 1;   // 가린 칸 = 고치기 막음 (가린 글자를 시트에 다시 쓰면 안 됨)
+      if (!c.t) return;
       const v = MASK[pc.kind](c.t);
       if (v !== c.t) { c.t = v; n++; }
     }));
@@ -1044,7 +1079,7 @@
       }
     }
     cls = cls.trim();
-    return `<td${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
+    return `<td data-p="${col.p}"${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
   }
   function skeleton() {
     let h = '<div class="skel">';
@@ -1146,6 +1181,7 @@
     grid.scrollTop = keep.t;
     grid.scrollLeft = keep.l;
     paintCount();
+    reanchor();
     // 그리고 나서 세로 스크롤바가 생기거나 없어져 폭이 바뀌었으면 그 폭으로 한 번 더 맞춘다
     if (!nar && !opt.again && grid.clientWidth && Math.abs(grid.clientWidth - vw) > 1) renderGrid({keep: true, again: true});
   }
@@ -1443,12 +1479,15 @@
     $('dTitle').textContent = kv || `${r}행`;
     $('dSub').textContent = [...subs, `시트 ${r}행`].join(' · ');
     $('dSheet').href = `${BASE}/edit#gid=${S.cur}&range=A${r}`;
-    $('dList').innerHTML = d.cols.map(c => `<dt>${esc(c.name)}</dt><dd${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}</dd>`).join('');
+    $('dList').innerHTML = d.cols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}</dd>`).join('');
+    markEditable();
+    if (t) fxOf(t.name).then(() => { if (S.sel && S.sel.gid === S.cur && S.sel.r === r) markEditable(); }, () => {});
     const det = $('detail'), was = det.hidden;
     det.hidden = false;
     app.classList.add('has-detail');
     $('dscrim').hidden = !narrow.matches;
     if (was) det.querySelector('.dbody').scrollTop = 0;
+    reanchor();
   }
   function closeDetail() {
     $('detail').hidden = true;
@@ -1461,7 +1500,13 @@
   $('dscrim').addEventListener('click', closeDetail);
   $('dPrev').addEventListener('click', () => moveSel(-1));
   $('dNext').addEventListener('click', () => moveSel(1));
-  $('dList').addEventListener('click', e => { const im = e.target.closest('img.dimg'); if (im) openLb(im.currentSrc || im.src); });
+  $('dList').addEventListener('click', e => {
+    const im = e.target.closest('img.dimg');
+    if (im) { openLb(im.currentSrc || im.src); return; }
+    if (e.target.closest('a') || !S.sel) return;
+    const dd = e.target.closest('dd[data-p]');
+    if (dd && !(window.getSelection && String(window.getSelection()).length)) openEditor(S.cur, S.sel.r, +dd.dataset.p, dd);   // 글자를 끌어 고르는 중이면 안 염
+  });
   function openLb(src) { $('lbImg').src = src; $('lb').hidden = false; }
   $('lb').addEventListener('click', () => { $('lb').hidden = true; $('lbImg').removeAttribute('src'); });
   // 칸 사진이 <img> 로 안 열리면 한 번 받아서 띄운다 (구글 사진 주소는 CORS 허용)
@@ -1472,6 +1517,345 @@
     fetch(im.src, {mode: 'cors', credentials: 'omit'}).then(r => r.ok ? r.blob() : Promise.reject(new Error('img')))
       .then(b => { im.src = URL.createObjectURL(b); }).catch(() => { im.style.visibility = 'hidden'; });
   }, true);
+
+  /* ── 고치기 — 2026-11-19 사용자 "ERP에서 수정하는건 다 구글시트에서도 같이 연결되어 수정되게 해줘" ──
+     · 표 칸을 두 번 누르거나(더블클릭) 상세 창의 값을 누르면 고칠 칸이 뜬다 → 저장 = 구글시트 그 칸에 바로 적힘. 체크 칸은 누르면 바로 바뀜.
+     · 쓰기 통로 = MD팀과 같은 Apps Script 브리지 (scripts/md-sheets-bridge.gs, book 'invoice' = 이 시트). URL · 토큰은 Supabase md_sheet_config.
+     · 못 고치는 칸: 수식 칸(합계 · 잔량 같은 자동 계산 — 브리지에서 수식 위치를 받아 앎) · 가린 개인정보 칸 · 사진 · 집계 표 ·
+       자동 계산(QUERY · ARRAYFORMULA 등)이 들어간 탭 · 브리지가 막는 탭(플토 · 코페리/아페티/코즈미 날짜별 주문 원본 = 개인정보 탭).
+     · 그사이 시트 값이 바뀌었으면 덮어쓰기 전에 묻는다 (브리지가 옛 값과 비교). 고친 기록 = md_sheet_edit_log (누가 뒤에 '· ERP').
+     · 저장 직후 웹 보기가 잠깐 옛 값을 줄 수 있어 2분 동안은 고친 값을 우선한다 (E.pend). */
+  const SB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';   // 오피스 index.html 과 같은 공개(anon) 키
+  const BOOK = 'invoice', FX_MS = 5 * 60e3, PEND_MS = 120e3, WRITE_TIMEOUT = 45e3;
+  const E = {cfg: null, cfgP: null, fx: new Map(), pend: new Map(), x: null, at: null, anchor: null, busy: false};
+  const sbH = extra => Object.assign({apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json'}, extra || {});
+  const whoAmI = () => lsGet('brightbeed_diary_me') || (lsGet('brightbeed_role') === 'master' ? '관리자' : '');
+  const piiCol = name => { const n = norm(name); return PII.some(x => x[1].test(n)); };
+  const short = s => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s ? (s.length > 18 ? s.slice(0, 17) + '…' : s) : '(빈칸)'; };
+  const EDIT_ERR = {
+    sheet_not_allowed: '이 탭은 오피스에서 고칠 수 없게 막혀 있어요 (플토 · 날짜별 주문 원본) — 구글시트에서 고쳐 주세요',
+    unauthorized: '구글시트 연결 토큰이 맞지 않아요 — 관리자에게 알려 주세요',
+    not_connected: '구글시트 연결 정보가 없어요 — 관리자에게 알려 주세요',
+    formula_cell: '수식 칸이라 자동으로 계산돼요 — 고치려면 구글시트에서 수식을 바꿔 주세요',
+    timeout: '구글시트 응답이 늦어요 — 잠시 뒤 다시 저장해 주세요',
+    bad_cell: '칸 위치를 찾지 못했어요 — 새로 불러온 뒤 다시 해 주세요',
+  };
+  const RO_TAB = '자동 계산(QUERY 등)이 들어간 탭이라 오피스에서는 고치지 않아요 — 구글시트에서 고쳐 주세요';
+  const DENY_RE = /^(sheet_not_allowed|unauthorized|not_connected)$/;
+  const editErr = m => EDIT_ERR[m] || (/^http_|^cfg$|Failed to fetch|NetworkError|Load failed/.test(m) ? '구글시트에 저장하지 못했어요 — 인터넷 연결을 확인하고 다시 해 주세요' : `저장하지 못했어요 (${m})`);
+
+  function bridgeCfg() {
+    if (E.cfg) return Promise.resolve(E.cfg);
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {   // 로컬 시험용 가짜 브리지 (localStorage erp_dev_bridge = {"url","token"})
+      try { const dev = JSON.parse(lsGet('erp_dev_bridge') || 'null'); if (dev && dev.url) return Promise.resolve(E.cfg = dev); } catch (e) { /* noop */ }
+    }
+    if (!E.cfgP) {
+      E.cfgP = fetch(`${SB_URL}/rest/v1/md_sheet_config?select=key,value`, {headers: sbH(), cache: 'no-store'})
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('cfg')))
+        .then(rows => {
+          const m = {};
+          (rows || []).forEach(x => { m[x.key] = x.value; });
+          if (!m.bridge_url || !m.bridge_token) throw new Error('not_connected');
+          return (E.cfg = {url: m.bridge_url, token: m.bridge_token});
+        })
+        .finally(() => { E.cfgP = null; });
+    }
+    return E.cfgP;
+  }
+  // text/plain POST 라 preflight 없이 Apps Script 로 간다 (MD팀과 같은 방식)
+  async function bridge(action, extra) {
+    const cfg = await bridgeCfg();
+    const ac = new AbortController(), timer = setTimeout(() => ac.abort(), WRITE_TIMEOUT);
+    try {
+      const r = await fetch(cfg.url, {method: 'POST', body: JSON.stringify(Object.assign({action, token: cfg.token}, extra || {})), signal: ac.signal});
+      if (!r.ok) throw new Error('http_' + r.status);
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'error');
+      return j;
+    } catch (e) {
+      if (e && e.message === 'unauthorized') E.cfg = null;   // 관리자가 다시 연결했을 수 있음 → 다음엔 새로 받기
+      throw e && e.name === 'AbortError' ? new Error('timeout') : e;
+    } finally { clearTimeout(timer); }
+  }
+  // 탭의 수식 칸 위치 · 자동 계산 탭 여부 (5분 기억) → {set: Set('행,열'), ro} 또는 막힌 탭이면 {deny}
+  function fxOf(name) {
+    const hit = E.fx.get(name);
+    if (hit && (hit.p || Date.now() - hit.at < FX_MS)) return hit.p || Promise.resolve(hit);
+    const p = bridge('read', {book: BOOK, sheet: name, parts: 'formulas'}).then(j => {
+      const set = new Set(), fx = j.fx || {};
+      (fx.fxRuns || []).forEach(run => { for (let r = run[1]; r <= run[2]; r++) set.add(`${r + 1},${run[0] + 1}`); });
+      const v = {set, ro: !!fx.ro, at: Date.now()};
+      E.fx.set(name, v);
+      return v;
+    }, e => {
+      const m = (e && e.message) || String(e);
+      if (DENY_RE.test(m)) { const v = {deny: m, at: Date.now()}; E.fx.set(name, v); return v; }
+      E.fx.delete(name);   // 연결 문제는 다음에 다시
+      throw e;
+    });
+    E.fx.set(name, {p, at: 0});
+    return p;
+  }
+  // 고칠 칸 정보 + 화면만 보고 아는 못 고치는 까닭(why)
+  function editCtx(gid, r, p) {
+    const d = curData(), ent = S.cache.get(gid), t = tabOf(gid);
+    if (gid !== S.cur || !d || !ent || !t) return null;
+    const col = d.cols.find(c => c.p === p), row = d.rows.find(x => x.r === r), mc = ent.model.cols[p];
+    if (!col || !row || !mc) return null;
+    const cell = row.byP[p] || null;
+    const why = d.side ? '집계 표는 시트가 자동으로 만든 표라 고칠 수 없어요'
+      : (cell && cell.pii) || piiCol(col.name) ? '가린 개인정보 칸은 오피스에서 고칠 수 없어요 — 구글시트에서 고쳐 주세요'
+      : cell && cell.img ? '사진 칸은 구글시트에서 바꿔 주세요'
+      : !cell ? '이 칸은 구글시트에서 고쳐 주세요' : '';
+    return {gid, name: t.name, col, cell, p, row: r, r: (cell && cell.r) || r, sc: mc.i + 1,
+      check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why};
+  }
+  // 브리지에서 받은 수식 정보까지 더한 까닭 ('' = 고칠 수 있음, 아직 모르면 '')
+  function roWhy(x) {
+    if (!x) return '고칠 수 없는 칸이에요';
+    if (x.why) return x.why;
+    const f = E.fx.get(x.name);
+    if (!f || f.p) return '';
+    if (f.deny) return editErr(f.deny);
+    if (f.ro) return RO_TAB;
+    return f.set.has(`${x.r},${x.sc}`) ? EDIT_ERR.formula_cell : '';
+  }
+  function markEditable() {
+    const t = tabOf(S.cur), d = curData(), hint = $('dHint');
+    if (!S.sel || !t || !d) return;
+    const f = E.fx.get(t.name);
+    const tabWhy = d.side ? '집계 표는 고칠 수 없어요' : f && f.deny ? editErr(f.deny) : f && f.ro ? RO_TAB : '';
+    hint.textContent = tabWhy || '값을 누르면 고칠 수 있어요 · 저장하면 구글시트에 바로 적혀요 (합계 같은 수식 칸은 자동 계산)';
+    hint.classList.toggle('no', !!tabWhy);
+    $('dList').querySelectorAll('dd[data-p]').forEach(dd => {
+      const why = roWhy(editCtx(S.cur, S.sel.r, +dd.dataset.p));
+      dd.classList.toggle('ed-ok', !why);
+      dd.classList.toggle('ed-ro', !!why);
+      dd.title = why || '눌러서 고치기 — 저장하면 구글시트에 바로 적혀요';
+    });
+  }
+
+  /* 고칠 칸 상자 — 표 칸 · 상세 값 바로 위에 겹쳐 뜬다 (휴대폰은 화면 위쪽) */
+  function setEdMsg(t, kind) { const m = $('edbox').querySelector('.ed-msg'); if (m) { m.textContent = t; m.className = 'ed-msg' + (kind ? ' ' + kind : ''); } }
+  function placeEditor(anchor) {
+    const box = $('edbox');
+    if (box.hidden) return;
+    const vw = innerWidth, vh = innerHeight, rc = anchor && anchor.isConnected ? anchor.getBoundingClientRect() : null;
+    if (narrow.matches || !rc) { box.style.width = Math.min(vw - 16, 460) + 'px'; box.style.left = Math.max(8, (vw - Math.min(vw - 16, 460)) / 2) + 'px'; box.style.top = '12px'; return; }
+    const w = Math.min(vw - 16, Math.max(300, rc.width + 8));
+    box.style.width = w + 'px';
+    const h = box.offsetHeight;
+    let top = rc.top - 6;
+    if (top + h > vh - 8) top = rc.bottom - h + 6;
+    box.style.left = Math.max(8, Math.min(rc.left - 6, vw - w - 8)) + 'px';
+    box.style.top = Math.max(8, Math.min(top, vh - h - 8)) + 'px';
+  }
+  function reanchor() {   // 표 · 상세 창을 다시 그렸으면 같은 칸을 다시 찾아 상자를 맞춘다
+    if (!E.x || !E.at || (E.anchor && E.anchor.isConnected)) return;
+    const el = E.at.kind === 'td' ? grid.querySelector(`tbody tr[data-r="${E.at.r}"] td[data-p="${E.at.p}"]`)
+      : S.sel && S.sel.r === E.at.r ? $('dList').querySelector(`dd[data-p="${E.at.p}"]`) : null;
+    E.anchor = el || null;
+    if (el) { el.classList.add('ed-on'); placeEditor(el); }
+  }
+  function closeEditor() {
+    if (E.busy) return false;
+    const box = $('edbox');
+    box.hidden = true;
+    box.innerHTML = '';
+    if (E.anchor) E.anchor.classList.remove('ed-on');
+    E.x = E.at = E.anchor = null;
+    return true;
+  }
+  function colValues(x) {   // 같은 열에 쓰인 값 (카테고리 · 쇼핑몰처럼 몇 가지뿐인 열만) → 입력 칸 추천 목록
+    const d = curData();
+    if (!d || x.col.type !== 'text' || x.col.key) return [];
+    const m = new Map();
+    d.rows.forEach(rw => { const v = catVal(rw, x.p); if (v && v.length <= 40) m.set(v, (m.get(v) || 0) + 1); });
+    return m.size >= 2 && m.size <= 80 ? [...m.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]) : [];
+  }
+  function openEditor(gid, r, p, anchor) {
+    if (E.busy) return;
+    closeEditor();
+    const x = editCtx(gid, r, p);
+    const why = roWhy(x);
+    if (why) { toast(why, true); return; }
+    if (x.check) { toggleCheck(x, anchor); return; }
+    E.x = x;
+    E.at = {kind: anchor && anchor.tagName === 'TD' ? 'td' : 'dd', r, p};
+    E.anchor = anchor || null;
+    if (anchor) anchor.classList.add('ed-on');
+    const old = x.cell.t, multi = /\n/.test(old) || old.length > 60;
+    const box = $('edbox');
+    box.innerHTML = (multi ? '<textarea rows="3" spellcheck="false"></textarea>' : '<input type="text" spellcheck="false" autocomplete="off">')
+      + '<div class="ed-row"><div class="ed-msg"></div><button type="button" class="ed-cancel">취소</button><button type="button" class="ed-save">저장</button></div>';
+    const inp = box.firstChild, btn = box.querySelector('.ed-save');
+    inp.value = old;
+    const opts = multi ? [] : colValues(x);
+    if (opts.length) { $('edList').innerHTML = opts.map(v => `<option value="${esc(v)}">`).join(''); inp.setAttribute('list', 'edList'); }
+    setEdMsg(`${x.col.name} · 시트 ${colName(x.sc - 1)}${x.r} — ${multi ? 'Ctrl+Enter' : 'Enter'} 저장 · Esc 취소`);
+    box.hidden = false;
+    placeEditor(anchor);
+    inp.focus();
+    inp.select();
+    box.querySelector('.ed-cancel').onclick = () => closeEditor();
+    btn.onclick = () => saveEdit(x, inp.value);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeEditor(); }
+      else if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229 && (!multi || e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(x, inp.value); }
+    });
+    // 수식 칸인지 아직 모르면 받아 와서, 수식이면 막는다 (브리지도 수식 칸 쓰기는 거절함)
+    const f = E.fx.get(x.name);
+    if (!f || f.p) fxOf(x.name).then(() => {
+      if (E.x !== x || E.busy) return;
+      const w = roWhy(x);
+      if (w) { inp.disabled = true; btn.disabled = true; setEdMsg(w, 'err'); }
+    }, () => {});
+  }
+  async function saveEdit(x, v, force) {
+    if (E.busy || E.x !== x) return;
+    const box = $('edbox'), inp = box.querySelector('input,textarea'), btn = box.querySelector('.ed-save');
+    const old = x.cell.t;
+    v = String(v);
+    if (!force && v === old) { closeEditor(); return; }
+    E.busy = true;
+    inp.disabled = true;
+    btn.disabled = true;
+    box.querySelectorAll('.ed-force').forEach(b => b.remove());
+    setEdMsg('구글시트에 저장하는 중…', 'busy');
+    try {
+      const res = await writeCell(x, v, force ? null : old, old);
+      E.busy = false;
+      if (res.conflict) {   // 그사이 시트 값이 바뀜 → 덮어쓸지 묻는다
+        inp.disabled = false;
+        btn.disabled = false;
+        setEdMsg(`그사이 시트 값이 '${short(res.current)}'(으)로 바뀌었어요. 그래도 저장할까요?`, 'err');
+        const fb = document.createElement('button');
+        fb.type = 'button';
+        fb.className = 'ed-force';
+        fb.textContent = '덮어쓰기';
+        fb.onclick = () => saveEdit(x, inp.value, true);
+        btn.before(fb);
+        placeEditor(E.anchor);
+        return;
+      }
+      closeEditor();
+      toast(`저장됨 · ${x.col.name} ${short(old)} → ${short(res.shown != null ? res.shown : v)} (구글시트 ${colName(x.sc - 1)}${x.r})`);
+    } catch (e) {
+      E.busy = false;
+      inp.disabled = false;
+      btn.disabled = false;
+      setEdMsg(editErr((e && e.message) || String(e)), 'err');
+    }
+  }
+  async function toggleCheck(x, anchor) {
+    if (E.busy) return;
+    const on = x.cell.cb === 2;
+    E.busy = true;
+    if (anchor) anchor.classList.add('ed-on');
+    toast(`${x.col.name} ${on ? '체크 끄는' : '체크하는'} 중… (구글시트에 저장)`);
+    try {
+      await writeCell(x, on ? 'FALSE' : 'TRUE', null, on ? 'TRUE' : 'FALSE');
+      toast(`저장됨 · ${x.col.name} ${on ? '체크 끔' : '체크함'} (구글시트 ${colName(x.sc - 1)}${x.r})`);
+    } catch (e) {
+      toast(editErr((e && e.message) || String(e)), true);
+    } finally {
+      E.busy = false;
+      if (anchor) anchor.classList.remove('ed-on');
+    }
+  }
+  // 브리지로 한 칸 쓰기 — old 를 주면 시트의 지금 값과 같을 때만 씀 (다르면 {conflict}), prev = 기록용 옛 값
+  async function writeCell(x, v, old, prev) {
+    const j = await bridge('write', {book: BOOK, sheet: x.name, edits: [{r: x.r, c: x.sc, v, old}]});
+    const res = (j.results || [])[0] || {};
+    if (!res.ok && res.error === 'conflict') {
+      if (norm(res.current) === norm(old)) return writeCell(x, v, null, prev);   // 띄어쓰기 · 줄바꿈만 다름 = 같은 값
+      if (norm(res.current) === norm(v)) { applyRow(x, null, v); return {ok: true}; }   // 이미 그 값 (앞선 저장이 늦게 닿음)
+      return {conflict: true, current: res.current};
+    }
+    if (!res.ok) { logEdit(x, prev, v, false, res.error); throw new Error(res.error || 'error'); }
+    const arr = j.rows && (j.rows[x.r] || j.rows[String(x.r)]);
+    applyRow(x, arr, v);
+    logEdit(x, prev, v, true);
+    setTimeout(() => { if (shown() && !S.busy[x.gid]) loadSheet(x.gid); }, 2500);   // 서식 · 다른 칸 계산까지 다시 읽기
+    return {ok: true, shown: arr ? arr[x.sc - 1] : null};
+  }
+  // 저장한 줄의 시트 표시값으로 화면 자료를 바로 고친다 (합계 · 리오더 알림 같은 수식 칸도 새 값)
+  function applyRow(x, arr, v) {
+    const ent = S.cache.get(x.gid);
+    if (!ent) return;
+    const model = ent.model, mrow = model.rows.find(rw => rw.r === x.r), mc = mrow && mrow.cells.find(c => c.p === x.p);
+    if (!mc) return;
+    const was = {t: mc.t, cb: mc.cb, chips: mc.chips.slice()};
+    if (arr) mrow.cells.forEach(c => { const val = arr[model.cols[c.p].i]; if (!c.pii && val != null) setCellText(model, c, val); });
+    else setCellText(model, mc, v);
+    E.pend.set(`${x.gid}|${x.r}|${x.p}`, {at: Date.now(), was, now: {t: mc.t, cb: mc.cb, chips: mc.chips.slice()}});
+    ent.data = buildAll(model, tabOf(x.gid));
+    saveModel(x.gid, model, ent.at, true);
+    if (x.gid === S.cur) {
+      renderHead();
+      renderGrid({keep: true});
+      if (S.sel && S.sel.gid === x.gid && !$('detail').hidden) openDetail(S.sel.r, false);
+    }
+  }
+  function setCellText(model, c, val) {
+    if (c.img) return;
+    const s = String(val);
+    if (c.cb && /^(TRUE|FALSE)$/i.test(s)) { c.cb = /^TRUE$/i.test(s) ? 2 : 1; return; }
+    const t = cleanText(s);
+    if (t === c.t) return;
+    let chip = null;   // 드롭다운 칸이면 같은 열에서 같은 값의 칩 색을 빌린다
+    for (const rw of model.rows) { const o = rw.cells.find(z => z.p === c.p && z.chips.length && z.chips[0].t === t); if (o) { chip = o.chips[0]; break; } }
+    if (c.chips.length || chip) c.chips = t ? [{t, bg: chip ? chip.bg : '', fg: chip ? chip.fg : ''}] : [];
+    c.t = t;
+  }
+  // 저장 직후 웹 보기가 아직 옛 값을 주면 방금 고친 값으로 (2분 동안 · 그사이 누가 또 바꿨으면 시트 값)
+  function applyPending(gid, model) {
+    const same = (a, b) => a.t === b.t && a.cb === b.cb;
+    for (const [k, pd] of E.pend) {
+      const [g, r, p] = k.split('|');
+      if (g !== gid) continue;
+      if (Date.now() - pd.at > PEND_MS) { E.pend.delete(k); continue; }
+      const mrow = model.rows.find(rw => rw.r === +r), c = mrow && mrow.cells.find(z => z.p === +p);
+      if (!c) continue;
+      if (same(c, pd.was) && !same(c, pd.now)) { c.t = pd.now.t; c.cb = pd.now.cb; c.chips = pd.now.chips.slice(); }
+      else E.pend.delete(k);
+    }
+  }
+  function logEdit(x, oldv, newv, ok, err) {
+    fetch(`${SB_URL}/rest/v1/md_sheet_edit_log`, {method: 'POST', headers: sbH({Prefer: 'return=minimal'}),
+      body: JSON.stringify({who: `${whoAmI() || '이름 모름'} · ERP`, book: BOOK, sheet: x.name, cell: `${colName(x.sc - 1)}${x.r}`,
+        old_value: oldv == null ? null : String(oldv), new_value: String(newv), ok: !!ok, error: err || null})}).catch(() => {});
+  }
+  let toastT = 0;
+  function toast(t, err) {
+    const el = $('toast');
+    el.textContent = t;
+    el.classList.toggle('err', !!err);
+    el.hidden = false;
+    clearTimeout(toastT);
+    toastT = setTimeout(() => { el.hidden = true; }, err ? 5500 : 3500);
+  }
+  // 두 번 누르기: 첫 번째 누름에서 상세 창이 열리며 표 폭이 바뀌어 줄이 밀릴 수 있다 → 첫 번째로 누른 칸을 기억해 그 칸을 연다
+  let downAt = null;
+  grid.addEventListener('mousedown', e => {
+    const td = e.target.closest('tbody td[data-p]'), tr = td && td.closest('tr[data-r]');
+    downAt = td && tr && e.detail <= 1 ? {r: +tr.dataset.r, p: +td.dataset.p, t: Date.now()} : downAt;
+  });
+  grid.addEventListener('dblclick', e => {
+    const td0 = e.target.closest('tbody td[data-p]'), tr0 = td0 && td0.closest('tr[data-r]');
+    if (!td0 || !tr0 || e.target.closest('a,img')) return;
+    e.preventDefault();
+    try { window.getSelection().removeAllRanges(); } catch (er) { /* noop */ }
+    const hit = downAt && Date.now() - downAt.t < 900 ? downAt : {r: +tr0.dataset.r, p: +td0.dataset.p};
+    if (!S.sel || S.sel.gid !== S.cur || S.sel.r !== hit.r) openDetail(hit.r, false);
+    const td = grid.querySelector(`tbody tr[data-r="${hit.r}"] td[data-p="${hit.p}"]`) || td0;
+    openEditor(S.cur, hit.r, hit.p, td);
+  });
+  document.addEventListener('mousedown', e => { if (!$('edbox').hidden && !e.target.closest('#edbox')) closeEditor(); }, true);
+  grid.addEventListener('scroll', () => { if (E.x && E.anchor) placeEditor(E.anchor); }, {passive: true});
+  $('detail').querySelector('.dbody').addEventListener('scroll', () => { if (E.x && E.anchor) placeEditor(E.anchor); }, {passive: true});
+  window.addEventListener('resize', () => { if (E.x) placeEditor(E.anchor); });
 
   /* ── 읽기 · 상태 ── */
   function sigOf(html) {
@@ -1491,6 +1875,7 @@
       if (model) { old.at = now; old.stored = false; saveModel(gid, model, now, false); }
       else {
         model = parseSheet(html, sig);
+        applyPending(gid, model);   // 방금 고친 칸은 웹 보기가 따라올 때까지 고친 값으로
         cachePut(gid, {model, at: now, data: buildAll(model, tabOf(gid))});
         saveModel(gid, model, now, true);
         if (gid === S.cur) {
@@ -1590,6 +1975,7 @@
   });
   $('qx').addEventListener('click', () => { qIn.value = ''; setQuery(''); qIn.focus(); });
   document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('edbox').hidden) { closeEditor(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); qIn.focus(); qIn.select(); }
     else if (e.key === 'Escape' && !$('lb').hidden) { $('lb').hidden = true; }
     else if (e.key === 'Escape' && !$('detail').hidden && e.target !== qIn) closeDetail();
