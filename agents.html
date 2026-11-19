@@ -413,7 +413,7 @@ const CHARACTERS = [
   {
     id:'chief', name:'리안', team:'본부',
     hairColor:'#1a1a1a', cloth:'#78350f',
-    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match','review-guard'],
+    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match','po-audit','review-guard'],
     taskLabel:'전 에이전트 자동업무 검수', scheduleLabel:'상시 감시', intervalSec:1800,
     role:'자동화 검수관 · 이상 감지',
     knows:[
@@ -452,6 +452,29 @@ const CHARACTERS = [
       {label:'전문 분야', cmd:'전문 분야'},
     ],
   },
+  /* 2026-11-19 — 발주 검수 담당 (사장님 "발주일 및 수량은 … 뜨면 바로 erp에 추가해줘 … 휴지통을 눌러서 지우는데 지우면 erp에 적힌 발주일 및
+     수량은 지워줘. 이것 또한 검수 하는 에이전트 만들어줘"). 맥미니 scripts/po_audit.py 가 10분마다 콜리 발주 매칭이 한 일을 시트에서 다시 읽어
+     본다 — 아래 '발주 검수 — 하린'. 관찰만, 두 번 본 경보만 오피스 자동 업무 알림 봇 */
+  {
+    id:'poaudit', name:'하린', team:'본부',
+    hairColor:'#3a2618', cloth:'#57534e',
+    agentIds:['po-audit'],
+    taskLabel:'발주 검수 (발주일 기록 · 입고 삭제 더블체크)', scheduleLabel:'10분마다', intervalSec:600,
+    role:'발주 검수 · 발주일 자동 기록 더블체크',
+    knows:[
+      '콰이디에어에 새 발주가 올라오면 재고 마스터 송장출력 \'발주일 및 수량\' 칸에 바로 들어갔는지 10분마다 시트를 직접 다시 읽어 봅니다',
+      '출고 전광판에서 물류팀장님이 휴지통(입고)을 누르면, 그 발주의 남은 물건이 다 들어왔을 때 발주일 줄이 지워졌는지 봅니다 — 되살리면 줄이 다시 들어갔는지도',
+      '일부만 들어온 발주는 나머지가 올 때까지 줄을 남겨 둬요 · 불량 대체로 무상 보충 발송되는 건 기다리지 않아요 · 발주 수량(O) · 잔량은 그대로예요',
+      '올라온 지 30분 넘게 안 적힌 발주, 휴지통 15분 뒤에도 남은 줄, 두 번 적힌 줄, 숫자가 아닌 발주 수량 칸을 찾아요',
+      '관찰만 합니다 — 고칠 게 있으면 어느 탭 어느 상품 줄인지 알려 드려요. 확인 필요한 건 두 번 본 뒤에만 오피스 자동 업무 알림 봇에 가요',
+    ],
+    quick:[
+      {label:'검수 결과', cmd:'검수 결과'},
+      {label:'새 발주', cmd:'새 발주 들어갔어?'},
+      {label:'휴지통 · 입고', cmd:'휴지통 지운 거 확인'},
+      {label:'지금 다시 검수', cmd:'지금 다시 검수'},
+    ],
+  },
   {
     id:'logistics', name:'콜리', team:'물류팀',
     hairColor:'#2c1810', cloth:'#7c3aed',
@@ -460,7 +483,8 @@ const CHARACTERS = [
     role:'콰이디에어 배송·통관 전문',
     knows:[
       '브라이트비드(BB)·샤인비드(SB) 2계정을 각각 10분마다 pull',
-      '콰이디에어에 올라온 발주(판매번호)를 재고 마스터 송장출력 발주일·발주 수량에 5분마다 자동 매칭 — 메모 "[아페티] 반지 OO라고 표기" 기준, 이미 적힌 건 그대로',
+      '콰이디에어에 올라온 발주(판매번호)를 재고 마스터 송장출력 발주일·발주 수량에 자동 매칭 — 수집이 끝나면 바로, 아니어도 5분마다 · 메모 "[아페티] 반지 OO라고 표기" 기준, 이미 적힌 건 그대로',
+      '출고 전광판 휴지통(입고)을 누르면 그 발주의 남은 물건이 다 들어왔을 때 발주일 줄을 지워요 (발주 수량은 그대로 · 되살리면 다시 넣음)',
       '주문번호·운송장·통관 상태 매칭, 중복 주문 제거',
       '누락 건은 재수집이 원칙 — 수기 입력으로 덮어쓰지 않음',
     ],
@@ -1406,6 +1430,8 @@ async function handle(c, text){
   if(c.id === 'receive'){ await receiveAgent(c, text, t); return; }
   /* 다온 — "오늘 재고 이상 없어?" 같은 말이 공통 '업무 보고' 로 새지 않게 먼저 받는다 */
   if(c.id === 'audit'){ await auditAgent(c, text, t); return; }
+  /* 하린 — "새 발주 다 들어갔어?" 같은 말도 공통 '업무 보고' 로 새지 않게 먼저 */
+  if(c.id === 'poaudit'){ await poAuditAgent(c, text, t); return; }
   /* 리안 검수 — 실제 상태(에이전트 · 상태판 · 서버 디스크)를 읽어 답한다. 보기 전용 권한에서도 돈다 */
   if(c.id === 'chief' && has(t, ['검수','이상','문제','점검','요약','디스크','용량','저장 공간','서버'])){ await chiefInspect(c, t); return; }
   /* 별이 — "숨긴 리뷰 몇 개야?" 같은 말은 공통 '업무 보고' 보다 먼저 */
@@ -1601,6 +1627,86 @@ async function auditAgent(c, raw, t){
   });
 }
 const AUDIT_BRAND_NAME = code => ({'6a':'식스에이', yar:'야르', pp:'프로덕트피알', akoi:'아코이하우스'}[code] || code || '');
+
+/* ---- 발주 검수 — 하린 (2026-11-19). GET /erp/po-audit (맥미니 scripts/po_audit.py, 10분) 를 읽어 말로 답한다. 관찰만 ---- */
+const PO_DEL_STATUS = {removed:'줄 지움', removing:'지우는 중', partial:'일부만 들어옴', none:'지울 줄 없음', check:'확인 필요',
+                       back:'지운 줄이 다시 있음', waiting:'아직 안 지움', late:'늦음'};
+function _poRowKey(k){
+  const p = String(k||'').split('|');
+  if(p[0] === 'nd') return `${(p[1]||'').slice(5).replace('-','.')} 신청 · ${p[2]||'방식 미기재'}`;
+  return `${(p[0]||'').slice(5).replace('-','.')} 출고 · ${p[1]||''}`;
+}
+function _poWhen(iso){
+  const t = new Date(String(iso||'').replace(/\.(\d+)/, (m,f)=>'.'+(f+'00').slice(0,3)));
+  return isNaN(t) ? '' : `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+}
+async function poAuditAgent(c, raw, t){
+  if(has(t, ['전문 분야','전문분야','뭐 할 줄','뭘 할 줄','도움말','help','사용법'])){
+    say('agent', `제 전문 분야입니다.\n\n${c.knows.map(k => '· ' + k).join('\n')}`, {chips: c.quick.filter(q => q.cmd !== '전문 분야')});
+    return;
+  }
+  if(has(t, ['업무 보고'])){ await reportStatus(c); return; }
+  const fresh = has(t, ['다시','지금 검수','새로','갱신','지금 돌려']);
+  let d;
+  try{ d = await api('/erp/po-audit' + (fresh ? '?fresh=1' : '')); }
+  catch(e){ say('agent', `검수 결과를 못 읽었어요. 서버 연결을 확인해 주세요. (${e.message||e})`, {kind:'err'}); return; }
+  if(fresh){
+    if(d.refreshing || d.job?.status === 'running'){
+      const before = d.fetchedAt || 0;
+      say('agent', '네, 지금 다시 검수합니다… 30초쯤 걸려요.');
+      for(let i = 0; i < 8; i++){
+        await wait(10000);
+        try{ const d2 = await api('/erp/po-audit'); if((d2.fetchedAt || 0) > before){ d = d2; break; } }catch(e){}
+      }
+    } else say('agent', `방금(${_auditAgo(d.fetchedAt)}) 검수한 결과가 최신이에요.`);
+  }
+  if(!d.ok){ say('agent', d.error || '아직 검수 결과가 없어요. 10분마다 돌아요.'); return; }
+  const issues = d.issues || [];
+  const alerts = issues.filter(x => x.level === 'alert'), checks = issues.filter(x => x.level === 'check');
+  const o = d.orders || {}, dels = d.deletes || [];
+  const chips = [{label:'새 발주', cmd:'새 발주 들어갔어?'}, {label:'휴지통 · 입고', cmd:'휴지통 지운 거 확인'}, {label:'지금 다시 검수', cmd:'지금 다시 검수'}];
+  if(has(t, ['새 발주','들어갔','추가','적혔','올라온','발주 내역','최근 발주'])){
+    const real = (o.list || []).filter(x => !['sample','material','cancelled'].includes(x.state));
+    const lines = [`네 사장님, 새 발주 검수입니다 — ${d.at} 기준 (${o.since} 뒤 콰이디에어에 올라온 발주)`,
+      `${o.total ?? 0}건 중 ERP 에 있음 ${o.inErp ?? 0} · 적는 중 ${o.going ?? 0} · 확인 필요 ${o.check ?? 0}`
+        + (o.lagAvgMin != null ? ` · 올라온 뒤 적힐 때까지 평균 ${o.lagAvgMin}분 (최대 ${o.lagMaxMin}분)` : '')];
+    real.slice(0, 15).forEach(x => lines.push(`${x.ok ? '✅' : '⚠️'} ${x.date} ${x.sn} ${_auditNum(x.qty)}개 ${x.name || ''} — ${x.note}`));
+    if(real.length > 15) lines.push(`… 외 ${real.length - 15}건`);
+    const skip = (o.list || []).length - real.length;
+    if(skip) lines.push('', `샘플 · 부자재 ${skip}건은 발주일 칸에 안 적어요 (원래 규칙).`);
+    say('agent', lines.join('\n'), {chips: chips.filter(x => x.label !== '새 발주')});
+    return;
+  }
+  if(has(t, ['휴지통','입고','지운','지웠','삭제','전광판','되살'])){
+    if(!dels.length){ say('agent', '최근 60일 안에 출고 전광판에서 지운 줄이 없어요 (되살린 건 빼고).', {chips}); return; }
+    const lines = [`네 사장님, 출고 전광판 휴지통 → 발주일 줄 지움 검수입니다 — ${d.at} 기준`];
+    dels.slice(0, 8).forEach(e => {
+      const cnt = Object.entries(e.counts || {}).filter(([k]) => k !== 'none').map(([k,v]) => `${PO_DEL_STATUS[k] || k} ${v}`).join(' · ');
+      lines.push('', `🗑 ${_poWhen(e.at)} ${e.by || ''} — ${_poRowKey(e.rowKey)}${cnt ? ' · ' + cnt : ''}${e.counts?.none ? ` · 줄 없는 샘플 · 부자재 등 ${e.counts.none}` : ''}`);
+      (e.list || []).slice(0, 8).forEach(x => lines.push(`  ${['removed','partial'].includes(x.status) ? '✅' : x.status === 'removing' || x.status === 'waiting' ? '⏳' : '⚠️'} ${x.sn} ${x.name || ''} — ${x.note}`));
+    });
+    lines.push('', '발주일 및 수량(N) 줄만 지워요 — 발주 수량(O) · 잔량은 그대로예요. 되살리면 지운 줄이 다시 들어가요.');
+    say('agent', lines.join('\n'), {chips: chips.filter(x => x.label !== '휴지통 · 입고')});
+    return;
+  }
+  const jobs = d.jobs || {}, pm = jobs['po-match'] || {};
+  const lines = [
+    `네 사장님, 발주 검수 결과입니다 — ${d.at} 기준`,
+    alerts.length ? `🔴 확인 필요 ${alerts.length}건${checks.length ? ` · 참고 ${checks.length}건` : ''}` : `🟢 이상 없음${checks.length ? ` · 참고 ${checks.length}건` : ''}`,
+    '', `새 발주 (${o.since} 뒤): ${o.total ?? 0}건 중 ERP 에 있음 ${o.inErp ?? 0} · 적는 중 ${o.going ?? 0} · 확인 필요 ${o.check ?? 0}`,
+    `출고 전광판 휴지통: 최근 ${dels.length}줄 — ` + (dels.length ? ['removed','removing','partial','check','late'].map(k => [k, dels.reduce((s,e) => s + ((e.counts||{})[k]||0), 0)]).filter(([,v]) => v).map(([k,v]) => `${PO_DEL_STATUS[k]} ${v}`).join(' · ') || '지울 줄 없음' : '없음'),
+    `자동 처리: 발주 매칭 ${pm.status === 'succeeded' ? '✅' : '⚠️'} (${_auditAgo(pm.lastOk)}) · 새 발주 기록 ${jobs.writeOn === false ? '꺼짐 ⚠️' : '켜짐'} · 입고 정리 ${jobs.receiveOn === false ? '꺼짐 ⚠️' : '켜짐'}`,
+  ];
+  if(alerts.length){ lines.push('', '[확인 필요]'); alerts.forEach(x => lines.push(`· ${x.text}`)); }
+  if(checks.length){ lines.push('', '[참고]'); checks.slice(0, 8).forEach(x => lines.push(`· ${x.text}`)); }
+  say('agent', lines.join('\n'), {chips});
+  await doubleCheck('검수 작업 상태 확인', async () => {
+    const st = d.job || {};
+    if(st.status === 'failed') return `⚠️ 마지막 검수 실행이 실패했어요 (${st.error_code}) — 위 결과는 그 전 것입니다.`;
+    const age = (Date.now() - (d.fetchedAt || 0)) / 60000;
+    return age > 25 ? `⚠️ 검수 결과가 ${Math.round(age)}분 전 것이에요 — 검수 작업이 늦어지고 있어요.` : '검수 작업 정상 — 다음 검수는 10분 안에 돌아요.';
+  });
+}
 
 /* ---- 꿀꿀집 마케터: 텔레그램 연결(바로 올리기 · /긴급) · 꿀꿀집 화면 ----
    sns-tg/status 는 비밀값 없는 공개 상태(봇 이름 · 단톡방 · 승인자 · 열쇠 유무 · 바로 올리기 켜짐)만 준다. */

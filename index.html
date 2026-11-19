@@ -1641,6 +1641,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-delat{display:flex;flex-direction:column;align-items:flex-end;gap:3px;line-height:1.1}
   .lgb-delat b{font:500 13px/1.1 'JetBrains Mono',ui-monospace,monospace;color:#fca5a5;font-variant-numeric:tabular-nums}
   .lgb-delat em{font-style:normal;font-size:10.5px;color:#8b93a1}
+  /* 재고 마스터 발주일 줄 상태 (2026-11-19 휴지통 = 입고 → 발주일 줄 지움) — 확인 필요만 빨강 */
+  .lgb-delat em.lgb-erp{color:#9ca3af;cursor:help}
+  .lgb-delat em.lgb-erp.warn{color:#fca5a5}
   .lgb-restore{font:600 11.5px/1 var(--sans);color:#d1d5db;background:transparent;border:1px solid #2a3040;border-radius:5px;padding:7px 10px;cursor:pointer;white-space:nowrap}
   .lgb-restore:hover{color:#fde68a;border-color:#fbbf24}
   .lgb-restore:disabled{opacity:.4;cursor:default}
@@ -15485,11 +15488,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      숫자는 agents.html 의 CHARACTERS 기준(사람=책상 단위)과 일치시킨다 — raw launchd job 수가 아니라
      "책상 5개 중 몇 명 근무 중" 관점. 미루(재고팀)는 alwaysOn 이라 항상 근무 카운트. */
   const AGENTS_CHARACTERS = [
-    {id:'chief',     name:'리안',   team:'본부',     taskLabel:'전 에이전트 자동업무 검수', schedule:'상시 감시',    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match','review-guard']},
+    {id:'chief',     name:'리안',   team:'본부',     taskLabel:'전 에이전트 자동업무 검수', schedule:'상시 감시',    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match','po-audit','review-guard']},
     // 2026-11-19 CS팀 리뷰 담당 — 프피 · 아코이 별점 1~3 리뷰를 30분마다 비공개 (agents.html '리뷰 관리 — 별이', 맥미니 review-guard 30분)
     {id:'review',    name:'별이',   team:'CS팀',     taskLabel:'리뷰 관리 (별점 1~3 비공개)', schedule:'30분마다',    agentIds:['review-guard']},
     // 2026-11-17 본부 재고 검수 — 자동 차감을 다른 길로 다시 보는 더블체크 (agents.html '재고 검수 — 다온', 맥미니 erp-audit 30분)
     {id:'audit',     name:'다온',   team:'본부',     taskLabel:'재고 검수',               schedule:'30분마다',      agentIds:['erp-audit']},
+    // 2026-11-19 본부 발주 검수 — 새 발주가 발주일 칸에 들어갔나 · 전광판 휴지통(입고)으로 발주일 줄이 지워졌나 (agents.html '발주 검수 — 하린', 맥미니 po-audit 10분)
+    {id:'poaudit',   name:'하린',   team:'본부',     taskLabel:'발주 검수',               schedule:'10분마다',      agentIds:['po-audit']},
     {id:'logistics', name:'콜리',   team:'물류팀',   taskLabel:'콰이디에어 동기화 · 발주 매칭', schedule:'매 10분 · 5분', agentIds:['kd-brightbeed','kd-shinebeed','po-match']},
     // 2026-11-13 물류팀 입고 담당 — 채팅으로 받은 입고 · 차감을 ERP MASTER 남은 재고에 반영 (agents.html '물류 입고 — 모아')
     {id:'receive',   name:'모아',   team:'물류팀',   taskLabel:'ERP 입고 반영',            schedule:'상시 대응',     agentIds:[], alwaysOn:true},
@@ -31416,7 +31421,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let act;
     if(del){
       const by=del.deleted_by?String(del.deleted_by):'';
-      act=`<div class="lgb-delinfo"><span class="lgb-delat" title="${escapeHTML(_lgbWhenFull(del.deleted_at))} 삭제${by?' · '+escapeHTML(by):''}"><b>${escapeHTML(_lgbWhen(del.deleted_at))}</b><em>${by?escapeHTML(by)+' · ':''}삭제</em></span>`
+      const en=_lgbErpNote(g.key);
+      act=`<div class="lgb-delinfo"><span class="lgb-delat" title="${escapeHTML(_lgbWhenFull(del.deleted_at))} 삭제${by?' · '+escapeHTML(by):''}"><b>${escapeHTML(_lgbWhen(del.deleted_at))}</b><em>${by?escapeHTML(by)+' · ':''}삭제</em>${en?`<em class="lgb-erp${en.warn?' warn':''}" title="${escapeHTML(en.tip)}">${escapeHTML(en.text)}</em>`:''}</span>`
         +`<button type="button" class="lgb-restore" data-key="${escapeHTML(g.key)}" title="이 줄을 전광판에 다시 보이게">되살리기</button></div>`;
     }else{
       act=`<div class="lgb-act"><button type="button" class="lgb-x" data-key="${escapeHTML(g.key)}" title="전광판에서 삭제" aria-label="이 줄을 전광판에서 삭제">${_LGB_TRASH}</button></div>`;
@@ -31431,7 +31437,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!g || _lgbBusy.has(key)) return;
     const ords=[...g.orders.values()].map(o=>o.ord_no);
     const what=[g.date?_lgbMd(g.date)+' 출고':'출고일 미기재', g.method||'방식 미기재', g.items.length+'품목'].join(' · ');
-    if(!confirm(`출고 전광판에서 이 줄을 삭제할까요?\n\n${what}\n신청서 ${ords.join(', ')}\n\n콰이디에어 신청서와 아래 발주 내역 표는 그대로예요.\n삭제한 시각은 판 아래 '삭제한 줄'에 남고, 거기서 되살릴 수 있어요.`)) return;
+    if(!confirm(`출고 전광판에서 이 줄을 삭제할까요? (입고 확인)\n\n${what}\n신청서 ${ords.join(', ')}\n\n재고 마스터 '발주일 및 수량'에서 이 출고로 다 들어온 발주의 줄을 몇 분 안에 지워요 — 일부만 들어온 발주는 남은 물건이 올 때까지 그대로, 발주 수량은 안 건드려요.\n콰이디에어 신청서와 아래 발주 내역 표는 그대로예요.\n삭제한 시각은 판 아래 '삭제한 줄'에 남고, 거기서 되살리면 지운 발주일 줄도 다시 들어가요.`)) return;
     _lgbBusy.add(key);
     if(btn) btn.disabled=true;
     try{
@@ -31445,7 +31451,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _lgbDelsGen++;
       _lgbDels=[rec, ..._lgbDels]; _lgbDelsSig='';
       _lgbPaint();
-      toast(`전광판에서 삭제했어요 · ${_lgbWhen(rec.deleted_at)}`,'ok');
+      toast(`전광판에서 삭제했어요 · ${_lgbWhen(rec.deleted_at)} — 재고 마스터 발주일 줄은 몇 분 안에 지워져요`,'ok');
+      _lgbKickErp();
     }catch(e){
       if(btn) btn.disabled=false;
       toast('삭제하지 못했어요 — 다시 시도해 주세요 ('+(e.message||e)+')','err');
@@ -31463,11 +31470,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _lgbDelsGen++;
       _lgbDels=_lgbDels.filter(d=>d.row_key!==key); _lgbDelsSig='';
       _lgbPaint();
-      toast('전광판에 다시 보이게 했어요','ok');
+      toast('전광판에 다시 보이게 했어요 — 지웠던 발주일 줄은 몇 분 안에 다시 들어가요','ok');
+      _lgbKickErp();
     }catch(e){
       if(btn) btn.disabled=false;
       toast('되살리지 못했어요 — 다시 시도해 주세요 ('+(e.message||e)+')','err');
     }finally{ _lgbBusy.delete(bk); }
+  }
+  // 휴지통 · 되살리기 직후 — 맥미니 발주 매칭(입고 정리 포함)을 바로 한 번 돌리게 하고(/erp/po-match?fresh=1), 1분 · 2분 뒤 결과를 다시 받아
+  // '삭제한 줄' 의 ERP 표시를 맞춘다 (2026-11-19 사장님 "지우면 erp에 적힌 발주일 및 수량은 지워줘"). 실패해도 5분 주기가 있다
+  function _lgbKickErp(){
+    loadProxyBase().then(base=>{
+      if(!base) return;
+      fetch(`${base}/erp/po-match?fresh=1&cb=${Date.now()}`,{headers:{'X-Brightbeed-PIN':ghPin()},cache:'no-cache'}).catch(()=>{});
+      [60e3,120e3].forEach(ms=>setTimeout(()=>{ if(typeof pomLoad==='function') pomLoad(true).then(()=>_lgbPaint()).catch(()=>{}); }, ms));
+    }).catch(()=>{});
+  }
+  // '삭제한 줄' 한 줄의 재고 마스터 발주일 줄 상태 — 발주 매칭 결과(recvDels: 휴지통 한 번마다 판매번호 상태 수)를 줄 키로 모은다
+  function _lgbErpNote(rowKey){
+    const d=window._pomState&&window._pomState.data;
+    if(!d||!Array.isArray(d.recvDels)) return null;
+    const c={};
+    let hit=false;
+    d.recvDels.forEach(x=>{ if(x.rowKey!==rowKey) return; hit=true; Object.entries(x.counts||{}).forEach(([k,v])=>{ c[k]=(c[k]||0)+v; }); });
+    if(!hit) return null;
+    const parts=[];
+    if(c.removed) parts.push(`발주일 ${c.removed}줄 지움`);
+    if(c.removing) parts.push(`${c.removing}줄 지우는 중`);
+    if(c.partial) parts.push(`일부 입고 ${c.partial}`);
+    if(c.check) parts.push(`확인 필요 ${c.check}`);
+    return {text: parts.length?('ERP '+parts.join(' · ')):'ERP 지울 발주일 줄 없음', warn: !!c.check,
+            tip: '재고 마스터 송장출력 \'발주일 및 수량\' — 이 출고로 다 들어온 발주의 줄을 지워요 (일부만 들어온 발주는 남은 물건이 올 때까지 그대로, 샘플 · 부자재는 줄이 없음)'};
   }
   // 신청서 칩 → 아래 '최근 발주 내역' 표에서 그 신청서만 보이게
   function lgbFocusOrder(ord){
@@ -31649,6 +31682,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      여기선 GET /erp/po-match 결과를 보여 주기만 한다 (보기 PIN 도 됨). */
   const POM_BRAND={apt:'아페티',kop:'코페리',koz:'코즈미','6a':'식스에이',yar:'야르',pp:'프로덕트피알',akoi:'아코이하우스'};
   let _pom={data:null,at:0,bySn:{},open:false,busy:null};
+  window._pomState=_pom;   // 출고 전광판 '삭제한 줄' 이 입고 정리 상태(recvDels)를 읽는다 (_lgbErpNote)
   function _pomSn(s){ return String(s||'').replace(/\s+/g,'').replace(/^브라이트비드/,'').replace(/^(SB|sb)/,'Sb'); }
   function _pomName(it){ return `${POM_BRAND[it.b]||it.b||''} ${it.n||''}${it.o?' · '+it.o:''}`.trim(); }
   function _pomDays(d){ const t=Date.parse(d+'T00:00:00+09:00'); return isFinite(t)?(Date.now()-t)/864e5:999; }
@@ -31660,8 +31694,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(it.state==='pending'&&(it.tries||0)>=3) return true;
     if((it.state==='check'||it.state==='ambiguous')&&live) return true;
     if(it.state==='unmatched'&&!it.shipped&&_pomDays(it.date)<=21) return true;
+    if(it.state==='received'&&it.recv&&it.recv.status==='check') return true;   // 휴지통(입고) 뒤 지울 줄을 못 정함
     return false;
   }
+  // 출고 전광판 휴지통(입고) → 발주일 줄 지움 (2026-11-19) — 판매번호의 recv: {status, line, at(휴지통 시각), by, qty, left, why}
+  function _pomRecvTip(r){
+    if(!r) return '';
+    const when=r.at?_lgbWhenSafe(r.at):'';
+    const head=`${when?when+' ':''}출고 전광판 휴지통${r.by?'('+r.by+')':''}`;
+    switch(r.status){
+      case 'removed': return `${head} — 재고 마스터 '발주일 및 수량'에서 "${r.line||''}" 줄을 지움 (발주 수량은 그대로)`;
+      case 'removing': return `${head} — "${r.line||''}" 줄을 곧 지워요`;
+      case 'restoring': return `전광판에서 되살림 — 지웠던 "${r.line||''}" 줄을 다시 넣는 중`;
+      case 'none': return `${head} — 지울 발주일 줄 없음 (${r.why||'샘플 · 부자재 · 행 없음'})`;
+      case 'check': return `${head} — ${r.why||'지울 줄을 자동으로 못 정함'}`;
+      case 'partial': return `${head} — 일부만 들어옴 ${Number(r.qty||0).toLocaleString('ko-KR')}개 · 남은 ${Number(r.left||0).toLocaleString('ko-KR')}개가 오면 발주일 줄을 지워요`;
+      default: return '';
+    }
+  }
+  function _lgbWhenSafe(iso){ try{ return _lgbWhen(iso); }catch(e){ return ''; } }
   async function pomLoad(force){
     if(_pom.busy) return _pom.busy;
     if(!force && _pom.data && Date.now()-_pom.at<60e3){ attachPoMatchChips(); return; }
@@ -31684,7 +31735,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.pomLoad=pomLoad;
   function _pomChip(it){
     const nm=escapeHTML(_pomName(it));
+    const c=_pomChipBase(it, nm);
+    // 일부만 들어온 발주 — 원래 표시에 '일부 입고' 를 붙인다
+    if(c&&it.recv&&it.recv.status==='partial'){ c.html+=' · 일부 입고'; c.tip=(c.tip?c.tip+' / ':'')+_pomRecvTip(it.recv); }
+    return c;
+  }
+  function _pomChipBase(it, nm){
     switch(it.state){
+      case 'received': {
+        const r=it.recv||{}, tip=_pomRecvTip(r);
+        if(r.status==='check') return {cls:'warn', html:`ERP 입고 · 줄 확인 필요 · <b>${nm||'행 없음'}</b>`, tip};
+        if(r.status==='removing') return {cls:'', html:`ERP 입고 · 발주일 줄 지우는 중 · <b>${nm}</b>`, tip};
+        if(r.status==='restoring') return {cls:'', html:`ERP 되살리는 중 · <b>${nm}</b>`, tip};
+        if(r.status==='removed') return {cls:'', html:`ERP 입고 · 발주일 줄 지움 · <b>${nm}</b>`, tip};
+        return {cls:'', html:`ERP 입고${it.n?` · <b>${nm}</b>`:''}`, tip};
+      }
       case 'written': return {cls:'', html:`ERP ✓ 자동으로 적음 · <b>${nm}</b>`, tip:`${it.writtenAt||''} 재고 마스터 '발주일 및 수량'에 자동으로 적음 (${it.date} ${it.planQty||it.qty}개)`};
       case 'entered': return {cls:'', html:`ERP ✓ <b>${nm}</b>`, tip:`재고 마스터에 이미 적혀 있음 — 발주일 ${it.claim||''}`};
       case 'pending': return {cls:'', html:`ERP 적는 중 · <b>${nm}</b>`, tip:'재고 마스터에 적는 중 (몇 분 걸려요)'};
@@ -31721,6 +31786,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const going=items.filter(it=>(it.state==='pending'||it.state==='todo')&&!_pomNeedsCheck(it));
     const entered=items.filter(it=>it.state==='entered');
     const need=items.filter(_pomNeedsCheck);
+    const recvOut=items.filter(it=>it.state==='received'&&it.recv&&['removed','removing'].includes(it.recv.status));
+    const recvToday=recvOut.filter(it=>_lgbWhenSafe(it.recv.at).slice(0,5)===_lgbWhenSafe(new Date().toISOString()).slice(0,5));
     const job=d.job||{};
     const stale=!d.fetchedAt||Date.now()-d.fetchedAt>20*60e3||job.status==='failed';
     const st=document.getElementById('pomStats');
@@ -31728,9 +31795,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       `<span>오늘 자동으로 적음 <b>${writtenToday.length}</b></span>`,
       going.length?`<span>적는 중 <b>${going.length}</b></span>`:'',
       `<span>이미 적혀 있음 <b>${entered.length}</b></span>`,
+      recvToday.length?`<span title="출고 전광판 휴지통(입고)으로 재고 마스터 발주일 줄을 지운 발주">오늘 입고로 지움 <b>${recvToday.length}</b></span>`:'',
       `<span class="${need.length?'alarm':''}">확인 필요 <b>${need.length}</b></span>`,
       stale?`<span class="alarm">⚠ 매칭이 멈춤${job.error_code?` (${escapeHTML(job.error_code)})`:''}</span>`:'',
       d.writeOn===false?'<span class="alarm">시트 쓰기 꺼짐</span>':'',
+      d.receiveOn===false?'<span class="alarm">입고 정리 꺼짐</span>':'',
+      d.recvOk===false?'<span class="alarm">전광판 삭제 기록 못 읽음</span>':'',
     ].filter(Boolean).join('');
     const sub=document.getElementById('pomSub');
     if(sub&&d.fetchedAt){ const t=new Date(d.fetchedAt); sub.textContent=`콰이디에어에 올라온 발주를 송장출력 '발주일 및 수량'에 5분마다 적어요 · ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')} 확인`; }
@@ -31746,7 +31816,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     list.innerHTML=
       (need.length?`<div class="pom-group">확인 필요 ${need.length}건 — 사람이 재고 마스터에 적거나, 다음 발주부터 메모에 "[브랜드] 상품명이라고 표기"</div>`+need.map(it=>row(it, it.why||(it.state==='ambiguous'?'후보가 여럿이라 자동으로 안 적음':it.state==='unmatched'?(it.hint?`메모의 이름 '${it.hint}' 가 재고 마스터에 없음`:'메모로 상품을 못 찾음'):it.state==='pending'?`${it.tries}번 보냈는데 안 적힘${it.lastTry&&it.lastTry.reason?' — '+it.lastTry.reason:''}`:''))).join(''):'<div class="pom-group">확인 필요 없음</div>')
       +(going.length?`<div class="pom-group">적는 중 ${going.length}건</div>`+going.map(it=>row(it,'')).join(''):'')
-      +(recent.length?`<div class="pom-group">최근 자동으로 적은 발주</div>`+recent.map(it=>row(it,'')).join(''):'');
+      +(recent.length?`<div class="pom-group">최근 자동으로 적은 발주</div>`+recent.map(it=>row(it,'')).join(''):'')
+      +(recvOut.length?`<div class="pom-group">출고 전광판 휴지통(입고)으로 지운 발주일 줄</div>`+recvOut.slice().sort((a,b)=>String(b.recv.at||'').localeCompare(String(a.recv.at||''))).slice(0,12).map(it=>row(it, `${_lgbWhenSafe(it.recv.at)} ${it.recv.by||''} — "${it.recv.line||''}" ${it.recv.status==='removing'?'지우는 중':'지움'}`)).join(''):'');
     list.hidden=!_pom.open;
   }
   function pomToggle(){
