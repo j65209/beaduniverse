@@ -16456,20 +16456,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(row) row.focus({preventScroll:true});
   }
   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kko.chat){ e.preventDefault(); kkoChatClose(); } });
-  // 서버 답 (11-19 서버 세션): 200 = 최근 100줄(오래된 순, 더 있으면 more) · 403 = 대화 원문은 사장님(관리자) PIN 만 →
-  // 마지막 글 + 파트너센터 링크로 대신, 다시 묻지 않음 · 404 = 최근 3일 목록에 없거나 아직 못 받은 방 → 마지막 글만 · 429 = 분당 60번 넘음
+  // 서버 답 (11-19 서버 세션): 200 = 최근 100줄(오래된 순, 더 있으면 more) · 403 = 사무실 인터넷 밖 (PIN 은 둘 다 공개 화면에 있어
+  // 서버가 사무실 IP 로만 연다) → 마지막 글 + 파트너센터 링크, 5분 동안 다시 묻지 않음 · 404 = 최근 3일 목록에 없거나 아직 못 받은 방 → 마지막 글만 · 429 = 분당 60번 넘음
   async function kkoChatLoad(){
     const c=_kko.chat;
     if(!c || c.loading) return;
-    if(_kko.chatLocked){ c.err='lock'; _kkoChatPaint(false); return; }
+    const lk=_kko.chatLocked;
+    if(lk && Date.now()-lk.at<5*60000){ c.err='lock'; c.why=lk.msg; _kkoChatPaint(false); return; }
     c.loading=true;
     try{
       const base=await loadProxyBase();
       if(!base) throw new Error('서버 연결 안 됨');
       const r=await fetch(`${base}/cs/kakao-chat?${new URLSearchParams({pid:c.pid, chatId:c.chatId})}`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
       const j=await r.json().catch(()=>({}));
-      if(r.ok && j.ok){ c.data=j; c.err=''; }
-      else if(r.status===403){ c.err='lock'; _kko.chatLocked=true; }
+      if(r.ok && j.ok){ c.data=j; c.err=''; _kko.chatLocked=false; }
+      else if(r.status===403){ c.err='lock'; c.why=j.error || '대화 원문은 사무실에서만 볼 수 있어요 — 밖에서는 파트너센터에서 봐 주세요'; _kko.chatLocked={at:Date.now(), msg:c.why}; }
       else if(r.status===404){ c.err='none'; c.why=(j.error && j.error!=='not found') ? j.error : ''; }
       else throw new Error(j.error || `HTTP ${r.status}`);
     }catch(e){ c.err=(e && e.message) || String(e); }
@@ -16528,9 +16529,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }else if(c.err==='lock' || c.err==='none'){
       // 대화 전체를 못 받을 때 — 요약에 있는 마지막 글(서버가 가린 것)만
       sig='N'+c.err+(r ? r.lastAt+':'+(r.preview||'') : '');
-      html=(c.err==='lock'
-          ? '<div class="kko-chat-note"><b>대화 전체는 사장님 PIN 으로 들어와야 보여요</b><br>지금은 마지막 글만 — 아래 \'파트너센터에서 열기\' 로 보세요</div>'
-          : `<div class="kko-chat-note"><b>지금은 마지막 글만 보여요</b><br>${_kkoEsc(c.why || '이 채팅방 대화를 아직 못 받았어요')}</div>`)
+      html=`<div class="kko-chat-note"><b>지금은 마지막 글만 보여요</b><br>${_kkoEsc(c.why || (c.err==='lock' ? '대화 원문은 사무실에서만 볼 수 있어요' : '이 채팅방 대화를 아직 못 받았어요'))}</div>`
         + (r ? _kkoLogHtml([{at:r.lastAt, who:r.lastWho||'customer', text:r.preview||'', kind:r.preview ? '' : 'media'}]) : '');
     }else if(c.err){
       sig='E'+c.err;
