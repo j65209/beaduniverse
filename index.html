@@ -50300,6 +50300,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      모양은 위 MD팀 시트 6종(.mds-book · .mds-tab)과 같고, 탭을 누르면 그 탭(gid)이 구글시트 새 창으로 열린다 (2026-11-17 사장님 "기존에 있던 구글시트랑 동일한 방식으로" — 모양만).
      탭 목록 · 파일 이름은 맥미니 sixshop-collector sheet-links 가 1시간마다 새로 받는다. admin = 관리자만 (뷰어에겐 그리지 않음). 시트를 더하거나 고치는 건 그 파일에서. */
   const MDL_PATH='md/sheet-links.json', MDL_TTL=10*60*1000;
+  // 2026-11-19 사장님 "엠디팀 구글시트 최하단 17번은 대표들이랑 김수민만 보여야해 노출되면 안돼. 전략팀이랑"
+  //   → '한 달 남는 돈 (전략팀 원본)'은 모두가 받는 md/sheet-links.json 에서 빼 strategy/sheet-links.json 으로 옮겼다.
+  //     전략팀과 같은 명단(stratHasAccess — 업무일지 이름 전승훈 · 전수빈 · 김수민)인 PC 만 그 파일을 받아 맨 아래에 붙인다.
+  //     다른 PC 는 그 파일을 받지도 않는다 (마스터 PIN 이어도). 뷰어 PIN 인 명단 사람도 보이게 admin 표시는 안 쓴다.
+  const MDL_STRAT_PATH='strategy/sheet-links.json';
   const _mdl={data:null, at:0, loading:null, err:'', q:'', open:new Set()};
   async function _mdlGet(path){
     const gf=(typeof ghFetch==='function')?ghFetch:window.ghFetch;
@@ -50325,6 +50330,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const d=await _mdlGet(MDL_PATH);
         if(!d) throw new Error('아직 목록이 없어요');
         if(!Array.isArray(d.groups)) throw new Error('파일 모양이 달라요');
+        // 전략팀 명단 PC 만 — 따로 받아 맨 아래에 (못 받아도 나머지 목록은 그대로). 같은 키가 이미 있으면 붙이지 않는다
+        if(typeof stratHasAccess==='function' && stratHasAccess()){
+          try{
+            const s=await _mdlGet(MDL_STRAT_PATH);
+            const keys=new Set(d.groups.flatMap(g=>(g.items||[]).map(it=>it && it.key)));
+            if(s && Array.isArray(s.groups)) s.groups.forEach(g=>{
+              const items=(g.items||[]).filter(it=>it && !keys.has(it.key)).map(it=>({...it, admin:false, strat:true}));
+              if(items.length) d.groups.push({...g, items});
+            });
+          }catch(e){}
+        }
         _mdl.data=d; _mdl.at=Date.now(); _mdl.err='';
       }catch(e){ _mdl.err=(e && e.message) || String(e); }
       finally{ _mdl.loading=null; }
@@ -50375,7 +50391,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<section class="mds-book${open?' is-open':''}${it.admin?' master-only':''}" data-mk="${_esc(it.key)}">
         <header class="mds-book-head" onclick="mdlToggleBook(this)">
           <span class="mds-chev">▶</span><span class="mds-rank">${n}</span>
-          <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}</span>
+          <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}${it.strat?'<span class="mdl-admin" title="전략팀 명단(전승훈 · 전수빈 · 김수민) PC 에만 보여요">전략팀 전용</span>':''}</span>
           <span class="mds-book-meta">${_esc(g.title)} · 탭 ${tabs.length}개</span>
           <span class="mds-head-sp"></span>
           <a class="mds-open" href="${_esc(base)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트 ↗</a>
