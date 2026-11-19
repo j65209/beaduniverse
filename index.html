@@ -15404,7 +15404,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      카드는 숨기거나 접을 수 없다. 급한 게 없으면 '없음'을 보여 줘서 계산이 돌고 있다는 걸 알린다.
      전체 창 검색칸은 다시 그리는 목록 밖에 있어 5분 갱신이 입력을 지우지 않는다. */
   /* 2026-11-16 사장님 "일주일만 노출 · 판매가 계속 되는 것 위주 · 리오더 오래 안 하면 굳이 노출 말고"
-     → 서버가 품절 · 7일 안만 낸다 (14 · 21일 단계 없앰), 최근 7일 중 3일 넘게 팔린 것만, 많이 팔리는 순 */
+     → 서버가 품절 · 7일 안만 낸다 (14 · 21일 단계 없앰), 최근 7일 중 3일 이상 출고된 것만, 많이 팔리는 순
+     2026-11-19 사장님 "재고마스터만 순수하게 보고 판단해서" → 재고 · 판매 속도 · 출고 날 수 모두 재고 마스터 (채널 판매 집계 안 섞음) */
   const REO_SEV = {out:{t:'품절', cls:'out', g:'지금 품절 — 남은 재고 0 이하인데 팔리는 중'},
                    urgent:{t:'7일 안', cls:'urg', g:'7일 안에 바닥'}};
   const REO_ORDER = ['out','urgent'];
@@ -15426,7 +15427,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _reoPaceHtml(it){
     // 조각마다 줄바꿈 안 함 — 휴대폰에서 '최근 7일 중 7 / 일' 처럼 끊기지 않게
     const parts = [`하루 ${_reoN(it.rate)}개 팔림`];
-    if(it.act7) parts.push(`최근 7일 중 ${it.act7}일`);
+    if(it.act7) parts.push(`최근 7일 중 ${it.act7}일 출고`);
     // 1주일 뒤 숨기기 (사장님 "1주일 뒤 숨기기") — 경보에 뜬 지 며칠째인지, 7일째가 마지막 날
     if(it.age) parts.push(it.age >= 7 ? '경보 7일째 · 내일 내려감' : `경보 ${it.age}일째`);
     return `<span class="reo-pace ${it.sev === 'out' ? 'out' : ''}">${parts.map(x => `<span class="nw">${x}</span>`).join(' · ')} · <strong class="nw">${_reoWhen(it)}</strong></span>`;
@@ -15582,7 +15583,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               const link = (it.row && bi.gid && d.sheet) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="이 상품 남은 재고 칸">시트 ↗</a>` : '';
               const stock = it.stock == null ? '빈칸' : (it.stock < 0 ? '−' + _reoN(-it.stock) : _reoN(it.stock));
               return `<div class="reo-exp-row reo-b-${_reoEsc(it.b)}"><span class="reo-name">${_reoNameHtml(it)}</span>`
-                + `<span class="reo-exp-num">시트 ${stock} · 하루 ${_reoN(it.rate)}개 팔림${it.act7 ? ` · 최근 7일 중 ${it.act7}일` : ''}</span>${link}</div>`;
+                + `<span class="reo-exp-num">시트 ${stock} · 하루 ${_reoN(it.rate)}개 팔림${it.act7 ? ` · 최근 7일 중 ${it.act7}일 출고` : ''}</span>${link}</div>`;
             }).join('');
       }
     }
@@ -15603,13 +15604,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const src = {erp:'재고 마스터 시트', pro:'식스샵 재고 (실사 전)'};
       const lines = Object.keys(brands).map(b => {
         const x = brands[b];
-        const how = x.basis === 'sheet' ? `시트 출고 기록 ${x.diaryDays}일`
-          : (x.diaryDays ? `시트 출고 기록 ${x.diaryDays}일 · 채널 판매 중 빠른 쪽` : '채널 판매 (최근 7 · 14일 중 빠른 쪽)');
+        const how = x.basis === 'sheet' ? `재고 마스터 출고 기록 ${x.diaryDays}일` : '채널 판매 (최근 7 · 14일 중 빠른 쪽)';
         const cov = x.coverage == null ? '' : ` · 채널 판매 상품 맞춘 비율 ${Math.round(x.coverage * 100)}%`;
         return `<b>${_reoEsc(x.label)}</b> 재고: ${src[x.stockSource] || x.stockSource} · 판매 속도: ${how}${cov}`;
       });
       basis.innerHTML = lines.join('<br>')
-        + '<br>7일 안에 바닥나는 상품만, 최근 7일 중 3일 넘게 팔린(또는 시트 출고 하루 1개 넘는) 상품만 띄웁니다. 판매중지 · B급 · 하루 0.2개 미만은 뺍니다.'
+        + '<br>재고 · 판매 속도 모두 재고 마스터만 봅니다 (채널 판매 집계는 섞지 않아요). 7일 안에 바닥나는 상품만, 최근 7일 중 3일 이상 출고됐거나 하루 1개 이상 나가는 상품만 띄웁니다. B급 · 하루 0.2개 미만은 뺍니다.'
         + '<br>경보에 뜬 지 7일이 지나면 내립니다 — 그동안 리오더 안 한 걸로 봅니다. 입고로 재고가 늘면 다시 셉니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
     }
   }
@@ -17019,7 +17019,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       rank:i+1, name:it.n+(it.o?` / ${it.o}`:''), sev:it.sev,
       sub:`<span class="brep-chip ${it.sev}">${REO_SEV[it.sev].t}</span>`
          +`<span class="brep-chip">재고 ${it.stock<0?'−'+_reoN(-it.stock):_reoN(it.stock)}</span>`
-         +`<span class="brep-chip">하루 ${_reoN(it.rate)}개${it.act7?` · 최근 7일 중 ${it.act7}일`:''}</span>`
+         +`<span class="brep-chip">하루 ${_reoN(it.rate)}개${it.act7?` · 최근 7일 중 ${it.act7}일 출고`:''}</span>`
          +(it.pend?`<span class="brep-chip">발주 잔량 ${_reoN(it.pend)}</span>`:''),
       right: it.sev==='out' ? `<span class="brep-qty" style="font-size:15px">${it.stock<0?'모자람':'품절'}</span>`
                             : `<span class="brep-qty">D-${Math.max(0,Math.round(it.days))}</span>`,
