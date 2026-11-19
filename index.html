@@ -16267,7 +16267,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const KKO_HIDE=new Set(['bb']);   // 화면에서 뺀 브랜드 (사장님 11-19 "브라이트비드는 … 볼필요없어") — 다시 보려면 여기서 지운다
   const KKO_WHO={customer:'고객',staff:'직원',ai:'카나나',bot:'자동응답',system:'안내',auto:'자동 안내'};
   const KKO_KIND={photo:'사진',video:'동영상',file:'파일',card:'카드',emoticon:'이모티콘',deleted:'지운 글',media:'사진 · 파일'};
-  const _kko={data:null,err:'',loading:false,brand:'all',only:'',more:false,timer:null,showCh:false,showFaq:false,faq:null,faqErr:'',faqBrand:'',drafts:null,draftsErr:'',chat:null};
+  const _kko={data:null,err:'',loading:false,brand:'all',only:'',more:false,timer:null,showCh:false,showFaq:false,faq:null,faqErr:'',faqBrand:'',drafts:null,draftsErr:'',chat:null,chatLocked:false};
   function _kkoEsc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function _kkoAgo(ms){ const m=Math.max(0,Math.round((Date.now()-ms)/60000)); if(m<1) return '방금'; if(m<60) return m+'분'; const h=Math.floor(m/60); if(h<24) return h+'시간'; return Math.floor(h/24)+'일'; }
   function _kkoBrand(b,label){ return `<span class="reo-brand reo-b-${_kkoEsc(b)}">${_kkoEsc(label||KKO_LABEL[b]||b)}</span>`; }
@@ -16456,18 +16456,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(row) row.focus({preventScroll:true});
   }
   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kko.chat){ e.preventDefault(); kkoChatClose(); } });
+  // 서버 답 (11-19 서버 세션): 200 = 최근 100줄(오래된 순, 더 있으면 more) · 403 = 대화 원문은 사장님(관리자) PIN 만 →
+  // 마지막 글 + 파트너센터 링크로 대신, 다시 묻지 않음 · 404 = 최근 3일 목록에 없거나 아직 못 받은 방 → 마지막 글만 · 429 = 분당 60번 넘음
   async function kkoChatLoad(){
     const c=_kko.chat;
     if(!c || c.loading) return;
+    if(_kko.chatLocked){ c.err='lock'; _kkoChatPaint(false); return; }
     c.loading=true;
     try{
       const base=await loadProxyBase();
       if(!base) throw new Error('서버 연결 안 됨');
       const r=await fetch(`${base}/cs/kakao-chat?${new URLSearchParams({pid:c.pid, chatId:c.chatId})}`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
       const j=await r.json().catch(()=>({}));
-      if(r.status===404 && (!j.error || j.error==='not found')) c.err='none';   // 서버에 아직 통로가 없음
-      else if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      else { c.data=j; c.err=''; }
+      if(r.ok && j.ok){ c.data=j; c.err=''; }
+      else if(r.status===403){ c.err='lock'; _kko.chatLocked=true; }
+      else if(r.status===404){ c.err='none'; c.why=(j.error && j.error!=='not found') ? j.error : ''; }
+      else throw new Error(j.error || `HTTP ${r.status}`);
     }catch(e){ c.err=(e && e.message) || String(e); }
     finally{ c.loading=false; if(_kko.chat===c) _kkoChatPaint(false); }
   }
@@ -16518,11 +16522,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let html, sig;
     if(Array.isArray(cd.logs)){
       const L=cd.logs;
-      sig='L'+L.length+':'+((L[L.length-1]||{}).id||'');
-      html=L.length ? _kkoLogHtml(L) : '<div class="kko-chat-note">아직 대화가 없어요</div>';
-    }else if(c.err==='none'){
-      sig='N'+(r ? r.lastAt+':'+(r.preview||'') : '');
-      html='<div class="kko-chat-note"><b>지금은 마지막 글만 보여요</b><br>대화 전체는 서버 준비가 끝나면 여기 나와요</div>'
+      sig='L'+L.length+':'+((L[L.length-1]||{}).id||'')+(cd.more?'+':'');
+      html=(cd.more ? '<div class="kko-chat-note">여기는 최근 100줄 — 앞 대화는 파트너센터에서</div>' : '')
+        + (L.length ? _kkoLogHtml(L) : '<div class="kko-chat-note">아직 대화가 없어요</div>');
+    }else if(c.err==='lock' || c.err==='none'){
+      // 대화 전체를 못 받을 때 — 요약에 있는 마지막 글(서버가 가린 것)만
+      sig='N'+c.err+(r ? r.lastAt+':'+(r.preview||'') : '');
+      html=(c.err==='lock'
+          ? '<div class="kko-chat-note"><b>대화 전체는 사장님 PIN 으로 들어와야 보여요</b><br>지금은 마지막 글만 — 아래 \'파트너센터에서 열기\' 로 보세요</div>'
+          : `<div class="kko-chat-note"><b>지금은 마지막 글만 보여요</b><br>${_kkoEsc(c.why || '이 채팅방 대화를 아직 못 받았어요')}</div>`)
         + (r ? _kkoLogHtml([{at:r.lastAt, who:r.lastWho||'customer', text:r.preview||'', kind:r.preview ? '' : 'media'}]) : '');
     }else if(c.err){
       sig='E'+c.err;
@@ -16544,7 +16552,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(dk && dk!==day){ out+=`<div class="kko-day">${dk}</div>`; day=dk; prev=''; }
       const who=m.who||'customer', side=who==='customer' ? 'c' : (who==='system' || who==='auto') ? 's' : 'o';
       const hm=ok ? `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}` : '';
-      const kind=m.kind ? `<i>(${_kkoEsc(KKO_KIND[m.kind]||m.kind)})</i>` : '';
+      const kind=(m.kind && !(m.kind==='card' && m.text)) ? `<i>(${_kkoEsc(KKO_KIND[m.kind]||m.kind)})</i>` : '';   // 카드 글(카나나 · 자동 안내)은 글만
       const body=kind + (m.text ? (kind ? ' ' : '')+_kkoEsc(m.text) : '');
       out+=`<div class="kko-msg ${side}">${side==='o' && who!==prev ? `<span class="who">${_kkoEsc(KKO_WHO[who]||who)}</span>` : ''}<div class="b">${body || '<i>(빈 글)</i>'}</div>${hm ? `<span class="t">${hm}</span>` : ''}</div>`;
       prev=who;
