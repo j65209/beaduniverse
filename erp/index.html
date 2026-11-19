@@ -60,6 +60,12 @@
   .logo svg{width:16px;height:16px;color:#fff}
   .side-top b{display:block;font-size:15px;font-weight:800;color:#fff;letter-spacing:-.02em}
   .side-top small{display:block;margin-top:1px;font-size:11px;color:var(--side-mute)}
+  .side-fold{flex:none;margin-left:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--side-mute)}
+  .side-fold:hover{background:rgba(255,255,255,.08);color:#fff}
+  .side-fold svg{width:17px;height:17px}
+  /* 왼쪽 메뉴 접기 (PC) — 접으면 표가 그만큼 넓어지고, 위 막대의 ☰ 로 다시 편다 */
+  .app.side-off .menu{display:grid}
+  @media (min-width:1001px){ .app.side-off .side{display:none} }
   .nav{flex:1;min-height:0;overflow:auto;padding:6px 10px 16px;scrollbar-width:thin;scrollbar-color:#334155 transparent}
   .nav-sec{margin:16px 0 6px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--side-mute)}
   .nav-item{position:relative;width:100%;display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;font-size:13.5px;text-align:left;color:var(--side-text)}
@@ -109,7 +115,10 @@
   .dates button{height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
   .dates button:hover{border-color:#cbd5e1}
   .dates button.on{background:var(--text);border-color:var(--text);color:#fff;font-weight:700}
-  .parts{display:inline-flex;gap:2px;margin-left:auto;padding:3px;border-radius:10px;background:#f1f4f8}
+  .tools{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .etog{height:30px;padding:0 12px;border-radius:999px;border:1px dashed #cbd5e1;background:#fff;font-size:12px;color:var(--text-3);white-space:nowrap}
+  .etog:hover{border-color:#94a3b8;color:var(--text)}
+  .parts{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:#f1f4f8}
   .parts button{height:28px;padding:0 12px;border-radius:7px;font-size:12.5px;color:var(--text-3);white-space:nowrap}
   .parts button:hover{color:var(--text)}
   .parts button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
@@ -140,19 +149,23 @@
   .gwrap{flex:1;min-height:0;position:relative;background:var(--card)}
   .grid{position:absolute;inset:0;overflow:auto;outline:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .tbl{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:13px;color:var(--text)}
-  .tbl th{position:sticky;top:0;z-index:3;height:40px;padding:0 11px;background:var(--head);color:var(--text-3);font-size:12px;font-weight:700;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line);border-right:1px solid var(--line-2);cursor:pointer;user-select:none}
+  .tbl th{position:sticky;top:0;z-index:3;height:44px;padding:5px 8px;background:var(--head);color:var(--text-3);font-size:12px;font-weight:700;line-height:1.3;text-align:left;vertical-align:middle;white-space:normal;text-wrap:balance;overflow:hidden;border-bottom:1px solid var(--line);border-right:1px solid var(--line-2);cursor:pointer;user-select:none}
+  .tbl th.ka{word-break:keep-all}   /* 띄어 쓴 머리글은 낱말 사이에서만 줄바꿈 ('남은 / 재고') */
   .tbl th:hover{color:var(--text)}
   .tbl th.sk{z-index:4}
   .tbl th .ar{margin-left:4px;font-size:9px;color:var(--accent)}
   .tbl th.fill,.tbl td.fill{padding:0;border-right:0;cursor:default}
-  .tbl td{height:var(--row-h);padding:0 11px;background:#fff;border-bottom:1px solid var(--line-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tbl td{height:var(--row-h);padding:0 8px;background:#fff;border-bottom:1px solid var(--line-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .app.dense .tbl td{height:28px}
+  .tbl .cl{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.25;word-break:keep-all;overflow-wrap:break-word}
+  .app.dense .tbl .cl{-webkit-line-clamp:1}
   .tbl .r{text-align:right;font-variant-numeric:tabular-nums}
   .tbl .c{text-align:center}
+  .tbl td.r,.tbl td.c,.tbl th.r,.tbl th.c{padding-left:6px;padding-right:6px}   /* 숫자 · 체크 칸은 좁게 (fitCols 의 여백과 같게) */
   .tbl .b{font-weight:700}
   .tbl .z{color:#c3cad4}
   .tbl .neg{color:var(--danger);font-weight:700}
-  .tbl .rn{color:var(--text-4);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;padding:0 10px 0 6px}
+  .tbl .rn{color:var(--text-4);font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;padding:0 7px 0 3px}
   .tbl .sk{position:sticky;z-index:1}
   .tbl .skl{border-right:1px solid #d5dce5}
   .tbl tbody tr{cursor:pointer}
@@ -160,7 +173,7 @@
   .tbl tbody tr.on td{box-shadow:inset 0 0 0 999px rgba(37,99,235,.075)}
   .tbl tbody tr.on td:first-child{box-shadow:inset 3px 0 0 var(--info),inset 0 0 0 999px rgba(37,99,235,.075)}
   .tbl tr.empty td{height:120px;text-align:center;color:var(--text-4);cursor:default;box-shadow:none!important}
-  .tbl tfoot td{position:sticky;bottom:0;z-index:2;height:36px;background:#f1f5f9;border-top:1px solid #cbd5e1;border-bottom:0;font-weight:800;font-variant-numeric:tabular-nums}
+  .tbl tfoot td{position:sticky;bottom:0;z-index:2;height:36px;background:#f1f5f9;border-top:1px solid #cbd5e1;border-bottom:0;font-weight:700;font-variant-numeric:tabular-nums}
   .tbl tfoot td.sk{z-index:3}
   .tbl tfoot .ft{font-size:12px;color:var(--text-3);font-weight:700}
   .tag{display:inline-block;max-width:100%;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;line-height:1.4;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -241,6 +254,7 @@
     <div class="side-top">
       <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>
       <div><b>ERP전산팀</b><small>재고 ERP MASTER</small></div>
+      <button type="button" class="side-fold" id="btnFold" title="메뉴 접기 (표를 넓게)" aria-label="메뉴 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
     </div>
     <nav class="nav" id="nav"></nav>
     <div class="side-foot">
@@ -265,7 +279,7 @@
       <a class="ib" id="btnSheet" href="#" target="_blank" rel="noopener" title="구글시트에서 이 탭 열기 (새 탭)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
     </header>
     <section class="head">
-      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="parts" id="parts" hidden></div></div>
+      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="tools"><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
       <div class="alert" id="alert" hidden></div>
       <div class="kpis" id="kpis"></div>
       <div class="chips" id="chips" hidden></div>
@@ -321,7 +335,10 @@
   const SEC_ORDER = ['stock', 'home', 'plato', 'defect', 'etc'];
   const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
   const F_CELL = `400 13px ${FONT}`, F_BOLD = `700 13px ${FONT}`, F_HEAD = `700 12px ${FONT}`, F_TAG = `500 12px ${FONT}`;
-  const RN_W = 50;
+  const RN_W = 42;
+  const OPT_RE = /^(옵션|상품옵션정보|옵션정보)$/;
+  const DATE_RE = /^(\d{4}[-.]\s?\d{1,2}[-.]\s?\d{1,2}\.?(\s+\d{1,2}:\d{2}(:\d{2})?)?|\d{1,2}[./]\d{1,2})$/;
+  const LS_SIDE = 'erp_side_v1', LS_EMPTY = 'erp_empty_v1';
   const CK1 = '<span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 8.4l2.9 2.9 5.9-6.4"/></svg></span>';
   const CK0 = '<span class="ck0"></span>';
   const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
@@ -341,6 +358,7 @@
     fullAt: {},           // gid → 전체를 읽은 시각
     terms: [], hlRe: null, list: [], sel: null,
     dense: false, shown: true, size: '', want: null, saved: null,
+    showEmpty: false,     // 내용이 하나도 없는 열도 보기 ('빈 열 보기' 단추)
   };
   try { S.rowsKnown = JSON.parse(localStorage.getItem(LS_ROWS) || '{}') || {}; } catch (e) { S.rowsKnown = {}; }
 
@@ -669,9 +687,10 @@
       if (vals.filter(c => c.cb).length >= Math.max(1, vals.length * 0.6)) type = 'check';
       else if (filled.filter(c => c.img).length >= Math.max(1, filled.length * 0.5)) type = 'img';
       else if (texts.length && nums >= texts.length * 0.8 && !ID_RE.test(name) && !texts.some(t => t.replace(/\D/g, '').length >= 9)) type = 'num';
-      else if (texts.length && texts.filter(t => /^\d{4}[-.]\s?\d{1,2}[-.]\s?\d{1,2}|^\d{1,2}[./]\d{1,2}(\s|$)/.test(t)).length >= texts.length * 0.8) type = 'date';
+      else if (texts.length && texts.filter(t => DATE_RE.test(t)).length >= texts.length * 0.8) type = 'date';   // 값 전체가 날짜일 때만 ('2026-09-30 1000개' 는 글)
       else if (texts.length && ID_RE.test(name)) type = 'id';
-      cols.push({p, name, type, w: 80,
+      cols.push({p, name, type, empty: !filled.length,   // empty = 내용이 하나도 없는 열 (체크 안 된 칸만 있어도) → 표에서 숨김, '빈 열 보기'로 다시
+        link: filled.length > 0 && filled.filter(c => c.href).length >= filled.length * 0.5,
         align: type === 'num' ? 'r' : (type === 'check' || type === 'img') ? 'c' : '',
         status: nn === '리오더알림', key: KEY_RE.test(nn), strong: /^(남은재고|합계)$/.test(nn),
         sum: !side && type === 'num' && SUM_RE.test(name)});   // 옆 표(피벗)는 자체 '총계' 줄이 있어 합계를 또 내지 않는다
@@ -684,12 +703,6 @@
       return {r: rows[k].r, byP, k: kk, k2: kk.replace(/\s+/g, '')};
     });
     const keyIdx = cols.findIndex(c => c.key);
-    let stickN = 0;
-    if (keyIdx >= 0 && keyIdx <= 2) {   // 카테고리 · 상품명 · 옵션처럼 앞쪽에 있을 때만 (주문 원본처럼 뒤에 있으면 고정 안 함)
-      stickN = keyIdx + 1;
-      const nx = cols[keyIdx + 1];
-      if (nx && /^(옵션|상품옵션정보|옵션정보)$/.test(norm(nx.name))) stickN++;
-    } else if (model.fCols) stickN = cols.filter(c => c.p < model.fCols).length;
 
     // 위 요약 카드 — 누르면 그 줄만 (재고 탭은 시트 숫자를 세기만 한다, 새 기준 없음)
     const byName = n => cols.find(c => norm(c.name) === n);
@@ -729,13 +742,19 @@
       outRows.forEach(r => { const v = catVal(r, cCat.p); if (v) mm.set(v, (mm.get(v) || 0) + 1); });
       if (mm.size >= 2 && mm.size <= 30) cat = {p: cCat.p, values: [...mm.entries()].sort((x, y) => y[1] - x[1])};
     }
-    const d = {cols, rows: outRows, banner: side ? [] : banner, keyIdx, stickN, kpis, cat: side ? null : cat, sec: meta.sec, side: !!side, caption};
+    const d = {cols, rows: outRows, banner: side ? [] : banner, keyIdx, kpis, cat: side ? null : cat, sec: meta.sec, side: !!side, caption};
     fitCols(d);
     return d;
   }
   const catVal = (row, p) => { const c = row.byP[p]; return c ? (c.t || (c.chips[0] && c.chips[0].t) || '') : ''; };
 
-  /* ── 칸 너비 = 들어간 글자 · 숫자 길이에 맞춰 자동 (머리글 포함, 너무 긴 글은 360px 에서 … · 마우스를 올리거나 상세 창에서 전체) ── */
+  /* ── 칸 너비 = 들어간 글자 · 숫자 길이로 자동 ──
+     2026-11-19 사용자 "글자 칸이 많이 남는 건 당겨서 한 화면에서 웬만하면 다 보이게" →
+     · 머리글은 두 줄까지 접는다 (숫자 칸이 '스마트스토어' 같은 머리글 때문에 넓어지지 않게)
+     · 글자 칸은 '가장 긴 값'이 아니라 대부분(90%)의 값에 맞추고, 그보다 긴 것만 … (마우스를 올리거나 상세 창에서 전체)
+     · 화면 폭에 맞춘다: 모자라면 글자 칸만 최소 폭까지 줄이고, 남으면 잘린 글자 칸부터 원래 길이까지 늘린다.
+       숫자 · 날짜 · 번호 · 체크 · 사진 칸은 잘리면 안 되니 줄이지 않는다. 그래도 모자라면 옆으로 넘김 */
+  const PAD = 17;   // 칸 좌우 여백 8 + 8 + 테두리 1
   const mctx = document.createElement('canvas').getContext('2d'), MW = new Map();
   function tw(text, font) {
     const k = font + '\u0001' + text;
@@ -747,12 +766,23 @@
     const t = c.t;
     if (!t) return '';
     if (col.type === 'num') { const n = numOf(t); return n !== null && Number.isInteger(n) && !/[.%]/.test(t) ? n.toLocaleString('ko-KR') : t; }
-    if (c.href && /^https?:\/\//i.test(t)) { try { return new URL(c.href).hostname.replace(/^www\./, ''); } catch (e) { return t; } }
+    if (c.href && /^https?:\/\//i.test(t)) { try { return new URL(c.href).hostname.replace(/^www\./, '').split('.').slice(-2).join('.'); } catch (e) { return t; } }   // 주소는 사이트 이름만 (1688.com)
     return t.replace(/\s*\n\s*/g, ' · ');
+  }
+  function headMin(name) {   // 머리글을 두 줄로 접었을 때 폭 — 띄어쓰기에서, 없으면 글자 가운데에서
+    const w = s => tw(s, F_HEAD), words = name.split(/\s+/).filter(Boolean);
+    if (!words.length) return 0;
+    let best = w(name);
+    if (words.length > 1) for (let i = 1; i < words.length; i++) best = Math.min(best, Math.max(w(words.slice(0, i).join(' ')), w(words.slice(i).join(' '))));
+    else if (name.length >= 4) { const h = Math.ceil(name.length / 2); best = Math.min(best, Math.max(w(name.slice(0, h)), w(name.slice(h)))); }
+    return Math.ceil(best);
   }
   function fitCols(d) {
     d.cols.forEach(col => {
-      let w = tw(col.name, F_HEAD) + 36;
+      const narrowPad = col.type === 'num' || col.type === 'check' || col.type === 'img';   // 숫자 · 체크 · 사진 칸은 여백 6px
+      const pad = narrowPad ? PAD - 4 : PAD, hm = headMin(col.name) + pad + 4, ws = [], w2 = [], lw = [];
+      col.hm = hm;
+      col.wrap = col.type === 'text' && !col.status && !col.link;   // 글자 칸은 두 줄까지 접어서 보인다 (줄 높이는 그대로) — 링크 칸은 한 줄
       for (const row of d.rows) {
         const c = row.byP[col.p];
         if (!c) continue;
@@ -760,12 +790,74 @@
         if (col.type === 'check' || (c.cb && !c.t)) cw = 18;
         else if (c.img) cw = 30;
         else if (c.chips.length) cw = c.chips.reduce((s, x) => s + tw(x.t, F_TAG) + 19, 0) + (c.chips.length - 1) * 4;
-        else if (c.t) { cw = tw(display(col, c), c.st.bold || col.strong ? F_BOLD : F_CELL); if (col.status) cw += 22; }
-        if (cw + 24 > w) w = cw + 24;
+        else if (c.t) cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? display(col, c).replace(/\d/g, '0') : display(col, c), c.st.bold || col.strong ? F_BOLD : F_CELL);   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
+        if (!cw) continue;
+        ws.push(cw + pad + 2);
+        if (col.wrap && !c.chips.length && c.t) {
+          w2.push(Math.ceil(cw * 0.56) + pad + 4);   // 두 줄로 접었을 때 폭 (낱말 경계 여유 포함)
+          lw.push(Math.max(...display(col, c).split(/\s+/).map(x => tw(x, c.st.bold || col.strong ? F_BOLD : F_CELL))) + pad + 2);   // 가장 긴 낱말 — 이보다 좁으면 낱말 중간에서 잘린다
+        }
       }
-      const max = col.type === 'num' ? 170 : col.type === 'date' || col.type === 'id' ? 210 : col.type === 'img' ? 80 : 360;
-      col.w = Math.ceil(Math.min(max, Math.max(col.type === 'num' || col.type === 'check' ? 58 : 66, w + 2)));
+      const nFilled = ws.length;
+      if (col.sum) {   // 맨 아래 합계 숫자도 들어가게
+        const tot = d.rows.reduce((s, r) => { const c = r.byP[col.p], n = c ? numOf(c.t) : null; return s + (n || 0); }, 0);
+        ws.push(tw(fmt(tot).replace(/\d/g, '0'), F_BOLD) + pad + 2);
+      }
+      ws.sort((a, b) => a - b);
+      w2.sort((a, b) => a - b);
+      lw.sort((a, b) => a - b);
+      const pct = (a, q) => a.length ? a[Math.floor((a.length - 1) * q)] : 0;
+      const top = ws.length ? ws[ws.length - 1] : 0, base = w2.length ? w2 : ws;
+      col.sparse = (col.type === 'text' || col.type === 'id') && !col.key && nFilled < d.rows.length * 0.35;   // 대부분 빈 칸 (발주일 및 수량 · 메모 · 판매번호 등) — 먼저 줄인다
+      const flex = col.flex = col.type === 'text' || (col.type === 'id' && col.sparse);   // 숫자 · 날짜 · 체크 · 사진 · (자주 쓰는) 번호 칸은 줄이지 않는다
+      const max = Math.min(col.key ? 420 : 360, Math.max(hm, top));
+      const pref = flex ? Math.min(max, Math.max(hm, pct(ws, 0.9))) : max;
+      // 줄여도 자주 나오는 값(75%, 드문 칸은 중간값)은 두 줄 안에 다 보이게 — 아주 긴 값만 …
+      let min = max;
+      const word = col.word = Math.min(pct(lw, 0.9), 160);   // 낱말 중간 줄바꿈 막기
+      if (flex) {
+        if (col.key) min = Math.max(hm, 110, word, col.wrap ? Math.min(pct(base, 0.9), 200) : 150);
+        else if (col.status) min = Math.max(hm, 90);
+        else if (col.wrap) min = Math.max(hm, word, col.sparse ? Math.min(pct(base, 0.5), 90) : Math.min(pct(base, 0.75), 120));
+        else min = Math.max(hm, col.sparse ? 56 : Math.min(pct(ws, 0.75), 130));
+      }
+      col.max = Math.ceil(max);
+      col.pref = Math.ceil(pref);
+      col.min = Math.ceil(Math.min(pref, min));
     });
+  }
+  // 화면 폭에 맞추기 — 모자라면 드문 글자 칸 → 다른 글자 칸 → 상품명 순으로 최소 폭까지 줄이고,
+  // 남으면 상품명 → 다른 글자 칸 → 드문 칸 순으로 원래 길이까지 늘린다 (숫자 · 날짜 · 체크 칸은 그대로)
+  function fitWidths(cols, avail) {
+    const ws = cols.map(c => c.pref), idx = f => cols.map((c, i) => i).filter(i => f(cols[i]));
+    const groups = [idx(c => !c.key && c.sparse), idx(c => !c.key && !c.sparse), idx(c => c.key)];
+    let diff = avail - ws.reduce((s, w) => s + w, 0);
+    const pass = (gs, lo) => {
+      for (const g of gs) {
+        if (!diff) break;
+        const shrink = diff < 0, room = g.reduce((s, i) => s + (shrink ? ws[i] - lo(cols[i]) : cols[i].max - ws[i]), 0);
+        if (room <= 0) continue;
+        const k = Math.min(1, Math.abs(diff) / room);
+        let used = 0;
+        g.forEach(i => { const step = Math.max(0, Math.floor((shrink ? ws[i] - lo(cols[i]) : cols[i].max - ws[i]) * k)); ws[i] += shrink ? -step : step; used += step; });
+        diff += shrink ? used : -used;
+      }
+    };
+    pass(diff < 0 ? groups : groups.slice().reverse(), c => c.min);
+    // 그래도 조금(화면의 12% 안) 넘치면 대부분 빈 칸만 머리글 폭까지 한 번 더 줄인다 (자주 쓰는 칸은 읽기 좋은 폭 그대로 — 남으면 옆으로 넘김)
+    const floor = c => c.sparse ? Math.min(c.min, Math.max(c.hm, 48, c.word || 0)) : c.min;
+    if (diff < 0 && -diff <= avail * 0.12) {
+      pass(groups, floor);
+      // 칸마다 소수점을 버려 남은 몇 px 는 넓은 글자 칸부터 1px 씩
+      const order = cols.map((c, i) => i).filter(i => cols[i].flex).sort((a, b) => ws[b] - ws[a]);
+      for (let n = 0; diff < 0 && n < 400; n++) {
+        const i = order.find(j => ws[j] > floor(cols[j]));
+        if (i === undefined) break;
+        ws[i]--; diff++;
+        order.sort((a, b) => ws[b] - ws[a]);
+      }
+    }
+    return ws;
   }
   // 글꼴(Pretendard)이 늦게 받아지면 그 글꼴로 다시 잰다
   if (document.fonts && document.fonts.addEventListener) {
@@ -789,15 +881,21 @@
     return out + esc(s.slice(last));
   }
   const tagHtml = x => `<span class="tag" style="background:${x.bg || '#eef1f5'};color:${x.fg || '#1f2937'}">${hl(x.t)}</span>`;
-  function statusHtml(t) {   // 리오더 알림 — 시트 글 그대로, 앞말만 딱지로
-    if (!t) return '';
+  /* 리오더 알림 — 앞말만 딱지로. 표에선 짧게(‘21일 남음’, ‘리오더 시급 7일 남음’), 소진 예상일 등 전체 글은 마우스 · 상세 창에 */
+  function statusParts(t, full) {
     let m = t.match(/^(리오더\s*\S+)\s*\(?(.*?)\)?$/);
-    if (m) return `<span class="pill red">${hl(m[1])}</span>${m[2] ? `<span class="pill-sub">${hl(m[2])}</span>` : ''}`;
-    if (/재고\s*없음/.test(t)) return `<span class="pill gray">${hl(t)}</span>`;
+    if (m) return {pill: m[1], tone: 'red', sub: full ? m[2] : (m[2].match(/\d+일\s*남음/) || [''])[0]};
+    if (/재고\s*없음/.test(t)) return {pill: t, tone: 'gray', sub: ''};
     m = t.match(/^(\d+일\s*남음)\s*·?\s*(.*)$/);
-    if (m) return `<span class="pill blue">${hl(m[1])}</span>${m[2] ? `<span class="pill-sub">${hl(m[2])}</span>` : ''}`;
-    return `<span class="pill-sub">${hl(t.replace(/^\((.*)\)$/, '$1'))}</span>`;
+    if (m) return {pill: m[1], tone: 'blue', sub: full ? m[2] : ''};
+    return {pill: '', tone: '', sub: t.replace(/^\((.*)\)$/, '$1')};
   }
+  function statusHtml(t, full) {
+    if (!t) return '';
+    const s = statusParts(t, full);
+    return (s.pill ? `<span class="pill ${s.tone}">${hl(s.pill)}</span>` : '') + (s.sub ? `<span class="pill-sub">${hl(s.sub)}</span>` : '');
+  }
+  function statusW(t) { const s = statusParts(t, false); return (s.pill ? tw(s.pill, F_BOLD) + 16 : 0) + (s.sub ? tw(s.sub, F_TAG) + (s.pill ? 6 : 0) : 0); }
   function cellHtml(row, col, pos) {
     const c = row.byP[col.p];
     let cls = col.align + (pos ? pos.cls : ''), style = pos ? pos.style : '', inner = '', title = '';
@@ -809,11 +907,12 @@
       if (col.type === 'check' || (c.cb && !c.t)) inner = c.cb === 2 ? CK1 : c.cb === 1 ? CK0 : '';
       else if (c.img) inner = `<img class="thumb" src="${esc(c.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
       else if (c.chips.length) inner = c.chips.map(tagHtml).join('');
-      else if (col.status) { inner = statusHtml(c.t); title = c.t; }
+      else if (col.status) { inner = statusHtml(c.t, false); title = c.t; }
       else if (c.t) {
         const d = display(col, c);
         if (col.type === 'num') { const n = numOf(c.t); if (n === 0) cls += ' z'; else if (n !== null && n < 0 && !c.st.fg) cls += ' neg'; }
         inner = c.href ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : hl(d);
+        if (col.wrap) inner = `<div class="cl">${inner}</div>`;   // 두 줄까지
         if (d !== c.t || (col.type !== 'num' && d.length > 12)) title = c.t;
       }
     }
@@ -854,14 +953,19 @@
     S.list = list;
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
     const nar = narrow.matches, showRn = !nar, vw = grid.clientWidth || 1000;
-    let cols = d.cols.slice(), stickN = d.stickN, keyFirst = false;
-    if (nar && d.keyIdx >= 0) {
-      const pri = c => c.key ? 0 : /^(옵션|상품옵션정보|옵션정보)$/.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.strong ? 3 : c.status ? 4 : 5;
+    let cols = d.cols.filter(c => S.showEmpty || !c.empty || c.key), stickN = 0, keyFirst = false;
+    if (nar && cols.some(c => c.key)) {
+      const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.strong ? 3 : c.status ? 4 : 5;
       cols = cols.map((c, i) => [c, i]).sort((x, y) => pri(x[0]) - pri(y[0]) || x[1] - y[1]).map(x => x[0]);
       stickN = 1;
       keyFirst = true;
+    } else {   // 카테고리 · 상품명 · 옵션처럼 상품명이 앞쪽(3번째 안)에 있을 때만 왼쪽 고정 (옆으로 넘길 때)
+      const kI = cols.findIndex(c => c.key);
+      if (kI >= 0 && kI <= 2) { stickN = kI + 1; if (cols[kI + 1] && OPT_RE.test(norm(cols[kI + 1].name))) stickN++; }
     }
-    const widths = cols.map((c, k) => keyFirst && k === 0 ? Math.min(c.w, Math.max(120, Math.round(vw * 0.42))) : c.w);
+    // PC 는 화면 폭에 맞춰 칸 너비를 정하고 (fitWidths), 휴대폰은 칸마다 알맞은 너비로 옆으로 넘긴다
+    const widths = nar ? cols.map((c, k) => keyFirst && k === 0 ? Math.min(c.pref, Math.max(120, Math.round(vw * 0.42))) : c.pref)
+      : fitWidths(cols, vw - (showRn ? RN_W : 0) - 2);
     let left = showRn ? RN_W : 0;
     while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (keyFirst ? 0.62 : 0.5)) stickN--;
     const posOf = cols.map((c, k) => {
@@ -875,7 +979,7 @@
     if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="시트 줄 번호 · 누르면 원래 순서로">행</th>`;
     cols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
-      const cls = (c.align + (ps ? ps.cls : '')).trim();
+      const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '')).trim();
       h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)} — 누르면 정렬">${esc(c.name)}${ar}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
@@ -904,6 +1008,8 @@
     grid.scrollTop = keep.t;
     grid.scrollLeft = keep.l;
     paintCount();
+    // 그리고 나서 세로 스크롤바가 생기거나 없어져 폭이 바뀌었으면 그 폭으로 한 번 더 맞춘다
+    if (!nar && !opt.again && grid.clientWidth && Math.abs(grid.clientWidth - vw) > 1) renderGrid({keep: true, again: true});
   }
   const sizeKey = () => `${grid.clientWidth}x${grid.clientHeight}x${narrow.matches ? 1 : 0}`;
 
@@ -916,6 +1022,10 @@
     const td = $('tDate');
     td.hidden = multi || !(m && m.date);
     td.textContent = m && m.date ? `${m.date} 기준` : '';
+    const nEmpty = d ? d.cols.filter(c => c.empty && !c.key).length : 0, et = $('eTog');
+    et.hidden = !nEmpty;
+    et.textContent = S.showEmpty ? `빈 열 ${nEmpty}개 숨기기` : `빈 열 ${nEmpty}개 보기`;
+    et.title = nEmpty ? `내용이 하나도 없는 열: ${d.cols.filter(c => c.empty && !c.key).map(c => c.name).join(', ')}` : '';
     const all = curAll(), pt = $('parts');
     if (all && all.parts.length > 1) {
       const isSum = x => /SUM|합계|총계/i.test(x.caption + ' ' + x.cols.map(c => c.name).join(' '));   // 구글시트 피벗 = 집계 표
@@ -995,8 +1105,22 @@
   }
   const curItem = () => S.nav.find(it => it.tabs.some(t => t.gid === S.cur)) || null;
   function setNav(open) { app.classList.toggle('nav-open', open); $('scrim').hidden = !open; }
+  // PC 는 메뉴를 접어 표를 넓게 (접힌 상태는 기억), 좁은 화면은 서랍
+  const wide = matchMedia('(min-width:1001px)');
+  function setSide(open, save) {
+    app.classList.toggle('side-off', !open);
+    if (save) lsSet(LS_SIDE, open ? '1' : '0');
+    renderGrid({keep: true});
+  }
+  $('btnFold').addEventListener('click', () => { if (wide.matches) setSide(false, true); else setNav(false); });
+  $('eTog').addEventListener('click', () => {
+    S.showEmpty = !S.showEmpty;
+    lsSet(LS_EMPTY, S.showEmpty ? '1' : '0');
+    renderHead();
+    renderGrid({keep: true});
+  });
   $('nav').addEventListener('click', e => { const b = e.target.closest('.nav-item'); if (b) { openTab(b.dataset.gid); setNav(false); } });
-  $('btnMenu').addEventListener('click', () => setNav(!app.classList.contains('nav-open')));
+  $('btnMenu').addEventListener('click', () => { if (wide.matches) setSide(app.classList.contains('side-off'), true); else setNav(!app.classList.contains('nav-open')); });
   $('scrim').addEventListener('click', () => setNav(false));
 
   function saveTab() {
@@ -1070,7 +1194,7 @@
     if (col.type === 'check' || (c.cb && !c.t)) return c.cb === 2 ? `${CK1}<span class="ckt">체크</span>` : '<span class="none">체크 안 함</span>';
     if (c.img) return `<img class="dimg" src="${esc(c.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
     if (c.chips.length) return c.chips.map(tagHtml).join(' ');
-    if (col.status) return statusHtml(c.t);
+    if (col.status) return statusHtml(c.t, true);
     const st = c.st.fg ? ` style="color:${c.st.fg}"` : '';
     if (c.href) return `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${esc(c.t)}</a>`;
     if (col.type === 'num') { const n = numOf(c.t); return `<span class="${n !== null && n < 0 && !c.st.fg ? 'neg' : ''}"${st}>${esc(display(col, c))}</span>`; }
@@ -1274,6 +1398,8 @@
   /* ── 시작 — 지난번 탭은 탭 목록을 기다리지 않고 바로 읽는다 ── */
   (async function boot() {
     setDense(lsGet(LS_DENSE) === '1', false);
+    if (lsGet(LS_SIDE) === '0') app.classList.add('side-off');
+    S.showEmpty = lsGet(LS_EMPTY) === '1';
     if (document.fonts && document.fonts.load) { try { document.fonts.load(F_CELL, '재고ABC123'); document.fonts.load(F_BOLD, '재고ABC123'); } catch (e) { /* noop */ } }
     let saved = null;
     try { saved = JSON.parse(lsGet(LS_TAB) || 'null'); } catch (e) { saved = null; }
