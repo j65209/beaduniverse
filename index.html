@@ -15437,7 +15437,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      숫자는 agents.html 의 CHARACTERS 기준(사람=책상 단위)과 일치시킨다 — raw launchd job 수가 아니라
      "책상 5개 중 몇 명 근무 중" 관점. 미루(재고팀)는 alwaysOn 이라 항상 근무 카운트. */
   const AGENTS_CHARACTERS = [
-    {id:'chief',     name:'리안',   team:'본부',     taskLabel:'전 에이전트 자동업무 검수', schedule:'상시 감시',    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match']},
+    {id:'chief',     name:'리안',   team:'본부',     taskLabel:'전 에이전트 자동업무 검수', schedule:'상시 감시',    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match','review-guard']},
+    // 2026-11-19 CS팀 리뷰 담당 — 프피 · 아코이 별점 1~3 리뷰를 30분마다 비공개 (agents.html '리뷰 관리 — 별이', 맥미니 review-guard 30분)
+    {id:'review',    name:'별이',   team:'CS팀',     taskLabel:'리뷰 관리 (별점 1~3 비공개)', schedule:'30분마다',    agentIds:['review-guard']},
     // 2026-11-17 본부 재고 검수 — 자동 차감을 다른 길로 다시 보는 더블체크 (agents.html '재고 검수 — 다온', 맥미니 erp-audit 30분)
     {id:'audit',     name:'다온',   team:'본부',     taskLabel:'재고 검수',               schedule:'30분마다',      agentIds:['erp-audit']},
     {id:'logistics', name:'콜리',   team:'물류팀',   taskLabel:'콰이디에어 동기화 · 발주 매칭', schedule:'매 10분 · 5분', agentIds:['kd-brightbeed','kd-shinebeed','po-match']},
@@ -16205,6 +16207,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const j = await r.json();
       const statusMap = {};
       (j.agents||[]).forEach(a => statusMap[a.id] = a);
+      // 프록시 /agents/status 목록에 아직 없는 맥미니 작업(리뷰 지킴이)은 상태판 /health 의 같은 id 줄로 (agents.html addHealthAgents 와 같은 기준)
+      if(!statusMap['review-guard']){
+        try{
+          const hr = await fetch(base+'/health', {headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'}, cache:'no-store'});
+          const hx = hr.ok ? ((await hr.json()).checks||[]).find(k => k.id === 'review-guard') : null;
+          if(hx) statusMap['review-guard'] = {id:'review-guard', status: hx.ok ? 'running' : 'stale'};
+        }catch(e){/* 못 읽으면 근무로 셈 (다른 직원과 같게) */}
+      }
       // 캐릭터별 상태: agent 중 stale 있으면 stale, 아니면 running (alwaysOn=항상 running)
       let running = 0, stale = 0;
       const chars = AGENTS_CHARACTERS.filter(c => !c.masterOnly || isMaster()); // 관리자 전용 직원은 관리자에게만 센다 (agents.html 과 같은 기준)
