@@ -16465,9 +16465,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(age>10) w.push(`${age}분째 새 상담을 못 받았어요 — 맥미니 카카오 수집을 확인해야 해요`);
     const dr=_kko.drafts, dAge=_kkoDraftAgeSec();
     // 에이전트 꺼둠 (11-19 저녁 사장님 "기능은 꺼주고 에이전트를 더 완벽하게 설계하고 도입") — 서버가 {off:true, drafts:[]} 를 준다.
-    // 직원 필요(에이전트 판정) · 답 준비 칩 대신 '에이전트 꺼둠' 한 칸, 관리자 호출은 그대로 셈. 다시 켜지면 저절로 돌아옴
+    // 답 준비 칩 대신 '에이전트 꺼둠' 한 칸, 직원 필요는 관리자 호출만으로 셈(초안이 없어서). 다시 켜지면 저절로 돌아옴
     const off=!!(dr && dr.off);
-    if(off && (_kko.only==='staff' || _kko.only==='ready')) _kko.only='';
+    if(off && _kko.only==='ready') _kko.only='';
     if(dr && !off && dAge>KKO_AGENT_STALE_SEC) w.push(`에이전트 판정이 ${Math.round(dAge/60)}분째 멈췄어요 — 직원 필요 · 답 준비 표시와 보낼 답이 늦어요 (맥미니 카카오 에이전트 확인)`);
     warn.innerHTML=w.map(t=>`<div class="kko-warn">${_kkoEsc(t)}</div>`).join('');
     const base=_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand);
@@ -16481,9 +16481,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const pick=(key,label,n,hot,title,extra)=>`<button type="button" class="kko-chip${hot && n ? ' hot' : ''}${n ? '' : ' zero'}${_kko.only===key ? ' on' : ''}" onclick="kkoOnly('${key}')" aria-pressed="${_kko.only===key}" title="${_kkoEsc(title)} — 누르면 이것만 보기">${label} <b>${n}</b>${extra||''}</button>`;
     chips.innerHTML=[
       `<span class="kko-chip hot${calls?'':' zero'}" title="고객이 카나나 상담 중 '관리자 호출'을 누른 채팅방">관리자 호출 <b>${calls}</b></span>`,
-      ...(off ? [`<span class="kko-chip" title="${_kkoEsc((dr.offReason||'에이전트 꺼둠')+' — 다시 켜면 직원 필요 · 답 준비 · 보낼 답이 저절로 다시 나와요. 관리자 호출은 그대로 셉니다')}">에이전트 <b>꺼둠</b><small>설계 중</small></span>`] : [
-      pick('staff','직원 필요',staffRows.length,true,`에이전트가 답하지 않고 직원이 답해야 하는 채팅방 — 관리자 호출 · 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화${drNote ? ` (${drNote})` : ''}`),
-      pick('ready','답 준비',readyRows.length,false,`에이전트가 학습한 예상 질문 · 답으로 초안을 만들어 둔 채팅방 — 열어서 '보낼 답'을 확인하고 파트너센터에서 보내면 돼요${drNote ? ` (${drNote})` : ''}`)]),
+      pick('staff','직원 필요',staffRows.length,true,off ? '에이전트를 꺼 둔 동안은 관리자 호출만 셉니다 — 다시 켜면 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화도 셈'
+        : `에이전트가 답하지 않고 직원이 답해야 하는 채팅방 — 관리자 호출 · 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화${drNote ? ` (${drNote})` : ''}`),
+      off ? `<span class="kko-chip" title="${_kkoEsc((dr.offReason||'에이전트 꺼둠')+' — 다시 켜면 답 준비 · 보낼 답이 저절로 다시 나와요')}">에이전트 <b>꺼둠</b><small>설계 중</small></span>`
+        : pick('ready','답 준비',readyRows.length,false,`에이전트가 학습한 예상 질문 · 답으로 초안을 만들어 둔 채팅방 — 열어서 '보낼 답'을 확인하고 파트너센터에서 보내면 돼요${drNote ? ` (${drNote})` : ''}`),
       pick('wait','답 기다림',waitingRows.length,late>0,`고객 글이 마지막인 채팅방 (최근 ${d.windowDays}일, 마무리 인사 뺌) — 빨강은 상담 시간 중 ${KKO_LATE_MIN}분 넘게 기다린 곳이 있을 때`, late ? `<small>상담 시간 ${KKO_LATE_MIN}분 넘음 ${late}</small>` : ''),
       pick('unread','안 읽음',unreadRows.length,false,`안 읽은 메시지가 있는 채팅방 (파트너센터 안 읽은 메시지 ${unreadMsgs}개)`),
       `<span class="kko-chip${ai?'':' zero'}" title="마지막 답을 카나나 상담매니저(카카오 AI)가 한 채팅방">카나나 답변 <b>${ai}</b></span>`,
