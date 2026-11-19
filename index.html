@@ -5173,11 +5173,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-chat-x:hover{background:var(--bg-3)}
   .kko-chat-info{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto;padding:10px 16px;border-bottom:1px solid var(--line);font-size:12px;line-height:1.5;color:var(--text-2)}
   .kko-chat-info:empty{display:none}
-  .kko-chat-info .kko-mk{flex-direction:row;flex-wrap:wrap}
-  .kko-dr{display:flex;flex-direction:column;gap:4px}
-  .kko-dr-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-  .kko-dr-h b{font-size:12.5px;font-weight:800;color:var(--text-0)}
-  .kko-dr-h b.s{color:#b91c1c}
+  .kko-chat-info .kko-mk{flex-direction:row;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:6px}
+  .kko-chat-info .kko-mk em{font-style:normal;font-size:12px;font-weight:700;color:var(--text-2)}
+  .kko-mk .a{background:var(--bg-2);color:var(--text-1);box-shadow:inset 0 0 0 1px var(--line)}
   .kko-dr-r{padding:8px 10px;border:1px dashed var(--line-2);border-radius:8px;background:var(--bg-0);color:var(--text-1);font-size:12.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
   .kko-dr-r small{display:block;margin-bottom:2px;font-size:11px;font-weight:700;color:var(--text-3)}
   .kko-chat-log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:8px;padding:12px 16px 16px;background:var(--bg-0)}
@@ -16498,21 +16496,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 표시 · 직원 필요 이유 · 답장 초안(보내지 않은 것) — 지금 기다리는 글에 대한 것만
     let info='';
     if(r){
-      const mk=[];
-      if(r.unread>0) mk.push(`<span class="u">안 읽음 ${r.unread}</span>`);
-      if(_kkoIsStaff(r)) mk.push('<span class="s">직원 필요</span>');
-      if(mk.length) info+=`<div class="kko-mk">${mk.join('')}</div>`;
+      const x=_kkoWaiting(r) ? _kkoDraft(c.pid,c.chatId) : null, top=[];
+      if(r.unread>0) top.push(`<span class="u">안 읽음 ${r.unread}</span>`);
+      if(_kkoIsStaff(r)) top.push('<span class="s">직원 필요</span>');
+      else if(x) top.push('<span class="a">에이전트가 답할 수 있음</span>');
+      if(x && x.intentTitle) top.push(`<em>${_kkoEsc(x.intentTitle)}</em>`);
+      if(top.length) info+=`<div class="kko-mk">${top.join('')}</div>`;
       if(r.managerCall) info+='<div>고객이 관리자 호출을 눌렀어요</div>';
-      const x=_kkoWaiting(r) ? _kkoDraft(c.pid,c.chatId) : null;
       if(x){
-        const ow=x.owner==='staff', od=x.order||{};
-        info+=`<div class="kko-dr"><div class="kko-dr-h"><b class="${ow?'s':''}">${ow?'직원이 답할 채팅':'에이전트가 답할 수 있는 채팅'}</b>${x.intentTitle?`<span>${_kkoEsc(x.intentTitle)}</span>`:''}</div>`
-          + ((x.why||[]).length ? `<div>${x.why.map(_kkoEsc).join(' · ')}</div>` : '')
+        const od=x.order||{};
+        info+=((x.why||[]).length ? `<div>${x.why.map(_kkoEsc).join(' · ')}</div>` : '')
           + ((x.needs||[]).length ? `<div>받을 정보 · ${x.needs.map(_kkoEsc).join(' · ')}</div>` : '')
           + (x.reply ? `<div class="kko-dr-r"><small>답장 초안 — 아직 보내지 않아요</small>${_kkoEsc(x.reply)}</div>` : '')
           + (od.orders||[]).map(o=>_kkoOrderHtml(o,brand)).join('')
-          + (od.note ? `<div>${_kkoEsc(od.note)}</div>` : '')
-          + `</div>`;
+          + (od.note ? `<div>${_kkoEsc(od.note)}</div>` : '');
       }
     }
     if(info!==c.info){ document.getElementById('kkoChatInfo').innerHTML=info; c.info=info; }
