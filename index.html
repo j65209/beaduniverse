@@ -16798,10 +16798,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let b=_kko.faqBrand || (_kko.brand!=='all' && f.facts[_kko.brand] ? _kko.brand : brands[0]);
     if(!f.facts[b]) b=brands[0];
     // 공통 정보 (사장님 11-19 "공통 정보 통합하자") — 모든 브랜드에 한 번만. 브랜드 칸에는 공통과 다른 값만.
-    // 답 속 {자리}는 공통 위에 브랜드 값을 얹어 채운다 (브랜드 칸이 비었으면 공통 값)
+    // 답 속 {자리}는 공통 위에 브랜드 칸을 그대로 얹어 채운다 = 에이전트 loadFaq 와 같음 (학습 세션 11-19).
+    // 브랜드 칸의 null 은 '이 브랜드는 모름'이라 공통 값을 덮는다 → 그 브랜드에서는 빨간 확인 필요
     const CF=_kkoCommonFacts(f), bf=f.facts[b]||{}, has=v=>v!=null && v!=='';
-    const facts=Object.assign({}, CF);
-    for(const k of Object.keys(bf)) if(has(bf[k]) || !(k in CF)) facts[k]=bf[k];
+    const facts=Object.assign({}, CF, bf);
     const kind=facts['분류'];
     const common=(f.common||[]).filter(it=>!it.for || !kind || it.for===kind);
     const own=(f.brandItems||{})[b]||[];
@@ -16810,8 +16810,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const lr=(f.learned||[]).filter(l=>l.brand===b), lrKeys=new Set(lr.map(l=>l.key));   // 지난 직원 답 · 송장에서 배운 값 (근거 같이)
     const same=(x,y)=>JSON.stringify(x)===JSON.stringify(y);
     const cfKeys=Object.keys(CF).filter(k=>k!=='분류' && k!=='브랜드');
-    const factKeys=Object.keys(bf).filter(k=>k!=='분류' && k!=='브랜드' && !(k in CF && (!has(bf[k]) || same(bf[k],CF[k]))));
-    const grid=(keys,src,tag)=>`<div class="kko-facts">${keys.map(k=>`<div><span class="k">${_kkoEsc(k)}${tag && lrKeys.has(k) ? '<i class="kko-lr" title="지난 직원 답 · 송장에서 배운 값">배움</i>' : ''}${tag && k in CF ? '<i class="kko-lr" title="공통 정보 대신 이 브랜드만 쓰는 값">브랜드만</i>' : ''}</span><span class="v">${has(src[k]) ? _kkoEsc(src[k]) : '<span class="kko-miss">확인 필요</span>'}</span></div>`).join('')}</div>`;
+    const factKeys=Object.keys(bf).filter(k=>k!=='분류' && k!=='브랜드' && !(k in CF && same(bf[k],CF[k])));
+    const grid=(keys,src,tag)=>`<div class="kko-facts">${keys.map(k=>`<div><span class="k">${_kkoEsc(k)}${tag && lrKeys.has(k) ? '<i class="kko-lr" title="지난 직원 답 · 송장에서 배운 값">배움</i>' : ''}${tag && k in CF ? `<i class="kko-lr" title="${has(src[k]) ? '공통 정보 대신 이 브랜드만 쓰는 값' : '이 브랜드는 공통 값을 쓰지 않아요 — 값을 알려 주시면 넣을게요'}">브랜드만</i>` : ''}</span><span class="v">${has(src[k]) ? _kkoEsc(src[k]) : '<span class="kko-miss">확인 필요</span>'}</span></div>`).join('')}</div>`;
     const groups={};
     for(const it of common){ (groups[it.intent]=groups[it.intent]||[]).push(it); }
     box.innerHTML=`<div class="kko-faq-top"><b>예상 질문 · 답 — ${_kkoEsc(f.status||'초안')}</b><span>${_kkoEsc(f.updatedAt||'')} · 공통 질문 ${common.length} · ${_kkoEsc(KKO_LABEL[b]||b)} 전용 ${own.length}</span><span>${_kkoEsc(f.basis||'')}</span></div>`
