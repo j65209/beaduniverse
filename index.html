@@ -16797,15 +16797,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const box=host.querySelector('.kko-chat-box').getBoundingClientRect(), vw=host.clientWidth;
     const side=!pin && box.left>=300, w=side ? Math.min(440, box.left-32) : Math.min(vw-24, 640);
     pop.style.width=w+'px'; pop.style.left=Math.round(side ? box.left-w-16 : (vw-w)/2)+'px'; pop.style.top='50%'; pop.style.transform='translateY(-50%)';
+    // 작은 사진(thumb, 몇 KB)을 먼저 바로 띄우고, 원본(full)이 오면 바꿔 끼움 — 서버(11-19 세션 2): 둘 다 /cs/kakao-img 통로,
+    // 맥미니가 받아 둔 사진만(카카오 주소는 1시간이면 닫혀서 2분마다 받아 둠, 4일 보관) — 못 받은 옛 사진은 imgs 없이 '(사진)'
     const imgs=[...pop.querySelectorAll('img')], note=pop.querySelector('span');
     let ok=0, bad=0;
-    const fail=k=>{ if(tok!==_kkoImgTok) return; bad++; imgs[k].remove(); note.textContent=`사진을 못 불러왔어요${im.length>1 ? ` (${bad}장)` : ''} — 파트너센터에서 봐 주세요`; };
-    im.forEach((x,k)=>_kkoImgSrc(pin ? x.full : x.thumb).then(src=>{
-      if(tok!==_kkoImgTok) return;
-      imgs[k].onload=()=>{ if(tok===_kkoImgTok && ++ok===im.length-bad) note.textContent=bad ? note.textContent : ''; };
-      imgs[k].onerror=()=>fail(k);
-      imgs[k].src=src;
-    }, ()=>fail(k)));
+    const fail=k=>{ if(tok!==_kkoImgTok || imgs[k].dataset.gone) return; bad++; imgs[k].dataset.gone='1'; imgs[k].remove(); note.textContent=`사진을 못 불러왔어요${im.length>1 ? ` (${bad}장)` : ''} — 파트너센터에서 봐 주세요`; };
+    im.forEach((x,k)=>{
+      const el=imgs[k];
+      el.onload=()=>{ if(tok===_kkoImgTok && el.dataset.full==='1' && ++ok===im.length-bad && !bad) note.textContent=''; };
+      el.onerror=()=>{ if(el.dataset.full==='1') fail(k); };
+      if(x.thumb && x.thumb!==x.full) _kkoImgSrc(x.thumb).then(src=>{ if(tok===_kkoImgTok && !el.dataset.full) el.src=src; }, ()=>{});
+      _kkoImgSrc(x.full).then(src=>{ if(tok!==_kkoImgTok) return; el.dataset.full='1'; el.src=src; }, ()=>fail(k));
+    });
   }
   function kkoImgHover(el){ const pop=document.getElementById('kkoImgPop'); if(pop && pop.classList.contains('pin')) return; _kkoImgShow(el, false); }
   function kkoImgOut(){ const pop=document.getElementById('kkoImgPop'); if(!pop || pop.classList.contains('pin')) return; _kkoImgTok++; pop.hidden=true; pop.innerHTML=''; }
