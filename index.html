@@ -16514,6 +16514,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           + ((x.needs||[]).length ? `<div>받을 정보 · ${x.needs.map(_kkoEsc).join(' · ')}</div>` : '')
           + (x.reply ? `<div class="kko-dr-r"><small>답장 초안 — 아직 보내지 않아요</small>${_kkoEsc(x.reply)}</div>` : '')
           + (od.orders||[]).map(o=>_kkoOrderHtml(o,brand)).join('')
+          // 사무실 밖이면 서버가 주문 내용(주문번호 · 상품 · 송장)을 빼고 hidden 만 준다
+          + (od.hidden && od.found ? `<div>찾은 주문 ${Number(od.found)||''}건 — 주문 내용은 사무실 인터넷에서만 보여요</div>` : '')
           + (od.note ? `<div>${_kkoEsc(od.note)}</div>` : '');
       }
     }
