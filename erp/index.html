@@ -99,6 +99,7 @@
   .st:hover{background:#f1f4f8;color:var(--text)}
   .st .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
   .st.is-load .dot{background:transparent;box-shadow:none;width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:var(--accent);animation:spin .8s linear infinite}
+  .st.is-stored{color:#b45309;background:#fffbeb}
   .st.is-err{color:#b91c1c}
   .st.is-err .dot{background:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.15)}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -235,7 +236,7 @@
     .find{flex:1 1 auto;height:38px}
     .st{padding:0 8px}
     .st #stText,#btnFull,#btnDense{display:none}
-    .st.is-err #stText{display:inline;font-size:11.5px}
+    .st.is-err #stText,.st.is-stored #stText{display:inline;font-size:11.5px}
     .head{padding:12px 12px 10px}
     .trow h1{font-size:17px}
     .kpis{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-12px;margin-right:-12px;padding:0 12px}
@@ -316,7 +317,11 @@
   const REFRESH_MS = 60e3;      // 보고 있는 탭을 다시 읽는 간격 (화면이 보일 때만)
   const STALE_MS = 20e3;        // 다른 탭을 보다 돌아왔을 때 이보다 오래됐으면 뒤에서 다시 읽음
   const TABS_MS = 5 * 60e3;     // 탭 목록 (매일 날짜가 바뀌는 탭 이름 · 새 탭)
-  const RETRY_MS = 30e3, TIMEOUT_MS = 25e3, CACHE_MAX = 8;
+  const RETRY_MS = 30e3, TIMEOUT_MS = 25e3, CACHE_MAX = 12;
+  // 2026-11-19 사용자 "로딩이 느린 이유" → 기다림은 거의 전부 구글이 웹 보기를 만드는 시간(보통 0.4~0.9초, 가끔 7~8초).
+  // 그래서 받은 자료를 이 브라우저(IndexedDB 'erp_cache')에 저장해 두고, 열 때 · 탭을 바꿀 때 저장본을 먼저 띄운 뒤 뒤에서 새로 받는다.
+  // 탭 목록도 저장(erp_tabs_v1)해 메뉴가 바로 뜨고, 첫 탭이 뜬 뒤 다른 브랜드 재고 탭을 미리 받아 둔다.
+  const LS_TABS = 'erp_tabs_v1', IDB_NAME = 'erp_cache', CACHE_VER = 1, PREFETCH_GAP = 700;
   // 송장출력 탭은 체크박스만 있는 줄이 3,000줄이라 웹 보기가 무겁다 → 지난번 내용 끝 줄 + 여유만 읽는다 (range=1:N).
   // 내용이 범위 끝까지 차 있으면 전체를 다시 읽고, 탭마다 한 번은 전체를 읽어 멀리 떨어진 칸도 확인한다. 상태 단추를 누르면 늘 전체.
   const RANGE_MIN = 500, RANGE_FULL_OVER = 2500;
@@ -434,11 +439,16 @@
         if (!out.length) throw new Error(/waffle|sheets-viewport/.test(h) ? 'no_tabs' : 'login');
         S.tabs = out;
         S.tabsAt = Date.now();
+        S.tabsOk = true;
+        lsSet(LS_TABS, JSON.stringify(out.map(t => ({name: t.name, gid: t.gid}))));   // 다음에 열 때 메뉴를 바로 그린다
         const live = new Set(out.map(t => t.gid)), known = Object.keys(S.rowsKnown);   // 지워진 날짜 탭 기록은 버린다
         if (known.some(g => !live.has(g))) { known.forEach(g => { if (!live.has(g)) delete S.rowsKnown[g]; }); lsSet(LS_ROWS, JSON.stringify(S.rowsKnown)); }
+        if (!S.pruned) { S.pruned = true; store.keys().then(ks => (ks || []).forEach(g => { if (!live.has(String(g))) store.del(g); })); }   // 지워진 탭의 저장본도
         if (!S.cur) { hideMsg(); openTab(pickTab(S.want, S.saved)); }                       // 처음 · 실패 뒤 다시 읽힘
         else if (!tabOf(S.cur)) openTab(pickTab(null, {key: tabKey(S.lastName)}));        // 보던 탭이 지워짐
         else { renderNav(); renderHead(); saveTab(); }
+        const cc = S.cache.get(S.cur);
+        if (cc && !cc.stored) prefetch();   // 보던 탭이 먼저 받아졌으면 이제 미리 받기 시작
         return out;
       } catch (e) {
         S.tabsAt = Date.now() - TABS_MS + RETRY_MS;   // 실패하면 30초 뒤 다시
@@ -1127,6 +1137,66 @@
     const t = tabOf(S.cur);
     if (t) lsSet(LS_TAB, JSON.stringify({gid: t.gid, key: tabKey(t.name), name: t.name}));
   }
+
+  /* ── 저장본 (IndexedDB) — 탭마다 마지막으로 받은 칸 자료(주문자 이름은 이미 가린 것)와 받은 시각. 못 쓰는 브라우저(사생활 보호 창 등)면 그냥 안 씀 ── */
+  const store = (() => {
+    let dbp = null;
+    const open = () => dbp || (dbp = new Promise(res => {
+      try {
+        const rq = indexedDB.open(IDB_NAME, 1);
+        rq.onupgradeneeded = () => { try { rq.result.createObjectStore('tabs'); } catch (e) { /* 이미 있음 */ } };
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = rq.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    }));
+    const run = (mode, fn) => open().then(db => db && new Promise(res => {
+      try {
+        const tx = db.transaction('tabs', mode), rq = fn(tx.objectStore('tabs'));
+        tx.oncomplete = () => res(rq ? rq.result : true);
+        tx.onerror = tx.onabort = () => res(null);
+      } catch (e) { res(null); }
+    }));
+    return {
+      get: gid => run('readonly', s => s.get(gid)).then(v => v && v.v === CACHE_VER && v.model ? v : null),
+      put: (gid, model, at) => run('readwrite', s => s.put({v: CACHE_VER, model, at}, gid)),
+      keys: () => run('readonly', s => s.getAllKeys()),
+      del: gid => run('readwrite', s => s.delete(gid)),
+    };
+  })();
+  S.savedAt = {};   // gid → 저장본에 쓴 시각 (자료가 같으면 2분에 한 번만 다시 씀)
+  function saveModel(gid, model, at, changed) {
+    if (!changed && Date.now() - (S.savedAt[gid] || 0) < 120e3) return;
+    S.savedAt[gid] = Date.now();
+    store.put(gid, model, at);
+  }
+  function useStored(gid) {   // 메모리에 없으면 저장본을 꺼내 바로 띄운다 (그 사이 새 자료가 왔으면 무시)
+    return store.get(gid).then(hit => {
+      if (!hit || S.cache.get(gid)) return false;
+      cachePut(gid, {model: hit.model, at: hit.at, data: buildAll(hit.model, tabOf(gid)), stored: true});
+      S.savedAt[gid] = Date.now();
+      if (gid === S.cur) { hideMsg(); renderHead(); renderGrid({pos: S.pos[gid]}); paintStatus(); }
+      return true;
+    }).catch(() => false);
+  }
+
+  /* ── 미리 받기 — 첫 탭이 뜬 뒤 다른 브랜드 재고 탭을 하나씩 (화면이 보일 때만, 1분 안에 받은 탭은 건너뜀) ── */
+  let prefetchOn = false;
+  function prefetch() {
+    if (prefetchOn || !S.tabsOk || !S.cur) return;
+    prefetchOn = true;
+    (async () => {
+      await sleep(1200);
+      const gids = S.nav.filter(it => it.sec === 'stock').map(it => it.tabs[0].gid).filter(g => g !== S.cur);
+      for (const g of gids) {
+        while (!shown()) await sleep(5000);
+        if (!S.cache.get(g)) await useStored(g);
+        const c = S.cache.get(g);
+        if (c && !c.stored && Date.now() - c.at < REFRESH_MS) continue;
+        await loadSheet(g);
+        await sleep(PREFETCH_GAP);
+      }
+    })().catch(() => {});
+  }
   function cachePut(gid, v) {
     S.cache.delete(gid);
     S.cache.set(gid, v);
@@ -1144,7 +1214,8 @@
     const c = S.cache.get(gid);
     renderHead();
     renderGrid({pos: S.pos[gid]});
-    if (!c || Date.now() - c.at > STALE_MS) loadSheet(gid);
+    if (!c) useStored(gid);   // 저장본이 있으면 바로 띄우고, 새 자료는 뒤에서
+    if (!c || c.stored || Date.now() - c.at > STALE_MS) loadSheet(gid);
     paintStatus();
   }
 
@@ -1261,18 +1332,20 @@
     S.st[gid] = {k: 'load', at: Date.now()};
     if (gid === S.cur) paintStatus();
     const p = getText(`${BASE}/htmlview/sheet?headers=true&gid=${gid}${lim ? `&range=1:${lim}` : ''}`).then(html => {
-      const old = S.cache.get(gid), sig = sigOf(html) + (lim ? '' : '.f');
+      const old = S.cache.get(gid), sig = sigOf(html) + (lim ? '' : '.f'), now = Date.now();
       let model = old && old.model.sig === sig ? old.model : null;
-      if (model) old.at = Date.now();
+      if (model) { old.at = now; old.stored = false; saveModel(gid, model, now, false); }
       else {
         model = parseSheet(html, sig);
-        cachePut(gid, {model, at: Date.now(), data: buildAll(model, tabOf(gid))});
+        cachePut(gid, {model, at: now, data: buildAll(model, tabOf(gid))});
+        saveModel(gid, model, now, true);
         if (gid === S.cur) {
           renderHead();
           renderGrid(old ? {keep: true} : {pos: S.pos[gid]});
           if (S.sel && S.sel.gid === gid && !$('detail').hidden) openDetail(S.sel.r, false);   // 상세 창도 새 값으로
         }
       }
+      if (gid === S.cur) prefetch();
       const lastR = model.rows.length ? model.rows[model.rows.length - 1].r : 0;
       if (S.rowsKnown[gid] !== lastR) { S.rowsKnown[gid] = lastR; lsSet(LS_ROWS, JSON.stringify(S.rowsKnown)); }
       if (!lim) S.fullAt[gid] = Date.now();
@@ -1316,9 +1389,11 @@
     const st = $('st'), s = S.st[S.cur] || {k: 'load'}, c = S.cache.get(S.cur);
     const k = s.k;
     st.className = `st is-${k}`;
-    $('stText').textContent = k === 'load' ? (c ? '갱신 중…' : '불러오는 중…') : k === 'err' ? errShort(s.err) : c ? `${hhmm(c.at)} 갱신 · ${ago(c.at)}` : '';
+    if (c && c.stored) st.classList.add('is-stored');   // 저장본을 보고 있음 (주황) — 새 자료가 오면 꺼짐
+    $('stText').textContent = k === 'load' ? (c ? (c.stored ? (narrow.matches ? '저장본' : `${hhmm(c.at)} 저장본 · 새로 받는 중…`) : '갱신 중…') : '불러오는 중…')
+      : k === 'err' ? errShort(s.err) : c ? (c.stored ? `${hhmm(c.at)} 저장본` : `${hhmm(c.at)} 갱신 · ${ago(c.at)}`) : '';
     const m = c && c.model;
-    st.title = (c ? `구글시트에서 ${hhmm(c.at)} 에 읽음 · 보고 있으면 1분마다 다시 읽어요` : '구글시트에서 읽는 중')
+    st.title = (c ? (c.stored ? `이 브라우저에 저장해 둔 ${hhmm(c.at)} 자료를 먼저 보여 주는 중 — 새 자료가 오면 바로 바뀌어요` : `구글시트에서 ${hhmm(c.at)} 에 읽음 · 보고 있으면 1분마다 다시 읽어요`) : '구글시트에서 읽는 중')
       + (m && m.masked ? `\n주문자 이름 등 개인정보 ${m.masked.toLocaleString('ko-KR')}칸은 가려서 보여 줌` : '')
       + '\n누르면 지금 다시 읽기';
   }
@@ -1408,17 +1483,19 @@
     S.want = want;     // 탭 목록이 늦게(실패 뒤 다시) 읽혀도 같은 규칙으로 고른다 (loadTabs)
     S.saved = saved;
     renderGrid();
-    if (saved && saved.gid && !want) {
-      S.tabs = [{name: saved.name || '…', gid: String(saved.gid), meta: classify(saved.name || '')}];
-      openTab(String(saved.gid));
+    // 지난번 탭 목록으로 메뉴를 바로 그리고 고른 탭을 연다 (저장본이 있으면 표도 바로) — 새 탭 목록은 뒤에서
+    let known = null;
+    try { known = JSON.parse(lsGet(LS_TABS) || 'null'); } catch (e) { known = null; }
+    if (Array.isArray(known) && known.length) S.tabs = known.filter(t => t && t.gid).map(t => ({name: String(t.name || ''), gid: String(t.gid), meta: classify(t.name)}));
+    else if (saved && saved.gid && !want) S.tabs = [{name: saved.name || '…', gid: String(saved.gid), meta: classify(saved.name || '')}];
+    if (S.tabs.length) {
+      const first = pickTab(want, saved);
+      if (first && (!want || known)) openTab(first);
     }
-    try { await loadTabs(); }
+    try { await loadTabs(); }   // 보던 탭이 없거나 지워졌으면 loadTabs 가 고른다 (그 사이 사용자가 고른 탭은 그대로)
     catch (e) {
       if (!S.cur) { S.st[''] = {k: 'err', err: e.message, at: Date.now()}; paintStatus(); showErr(e.message); }
-      return;
     }
-    const pick = pickTab(want, saved);
-    if (pick && pick !== S.cur) openTab(pick);
   })();
 })();
 </script>
