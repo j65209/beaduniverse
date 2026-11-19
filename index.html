@@ -16231,6 +16231,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       `<span class="kko-chip${unread?'':' zero'}" title="카카오 파트너센터의 안 읽은 메시지 수">안 읽음 <b>${unread}</b></span>`,
       `<span class="kko-chip${ai?'':' zero'}" title="마지막 답을 카나나 상담매니저(카카오 AI)가 한 채팅방">카나나 답변 <b>${ai}</b></span>`,
       k ? `<span class="kko-chip" title="1시간마다 받아 두는 답변 자료 — 에이전트 학습에 씁니다">답변 자료 <b>${k.favorite+k.kanana+k.autoReply}</b><small>자주 쓰는 답변 ${k.favorite} · 카나나 ${k.kanana} · 자동응답 ${k.autoReply}</small></span>` : '',
+      // 지난 대화 받기 (2026-11-19 사장님 "최근 6개월만") — 맥미니 kakao-history, 상담 시간 밖에만 천천히
+      d.history ? `<span class="kko-chip" title="에이전트 학습용 지난 대화 (최근 ${d.history.days}일) — 카카오 계정 보호를 위해 상담 시간 밖(평일 18시~다음 날 8시 반 · 주말)에만 천천히 받아요">지난 대화 <b>${Number(d.history.got).toLocaleString('ko-KR')}</b><small>${d.history.done ? '방 다 받음' : `/ ${d.history.listed ? Number(d.history.total).toLocaleString('ko-KR')+'방' : '방 세는 중'} · 상담 시간 밖에 받는 중`}</small></span>` : '',
     ].join('');
     // 브랜드 — 채널 순서대로, 숫자 = 답 기다림
     const ordIdx=b=>{ const i=KKO_ORDER.indexOf(b); return i<0?99:i; };
