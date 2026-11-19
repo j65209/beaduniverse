@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>ERP전산팀 · 비드유니버스 오피스</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>
+  /* 오피스 잠금 연동 (models/ 와 같은 방식) — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음.
+     오피스 안 화면(iframe, index.html 의 TOOL_PAGES 'erp')으로 열렸으면 '← 홈' 은 그 화면을 닫는다 (bbToolClose).
+     회사 주소(beaduniverse.kr/office/)에선 오피스가 이 HTML 을 받아 빈 iframe 에 직접 쓰므로 홈 주소는 부모(오피스)에서 얻는다. */
+  (function () {
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    try { if (window.parent === window && localStorage.getItem('brightbeed_unlocked') !== '1') { location.replace(home + '?from=erp'); return; } } catch (e) { /* noop */ }
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) {
+        a.href = home;
+        if (inOffice) a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
+        });
+      });
+    });
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  /* ERP전산팀 — 구글시트 '식스샵 ERP MASTER'(= 재고 ERP MASTER)를 시트 모양 그대로 보는 화면 (2026-11-19 첫 판: 보기 전용)
+     · 자료: 시트 '웹 보기'(htmlview/sheet) — 링크 보기 공개 시트라 브라우저가 구글에서 바로 받는다 (CORS 허용, 서버 · 키 없음).
+       열 너비 · 칸 색 · 글자 · 고정 행/열 · 숨긴 행/열 · 병합 · 체크박스 · 드롭다운 칩 · 사진 · 링크가 시트와 같게 나온다.
+     · 보이는 탭만(숨긴 탭은 시트처럼 안 보임), 순서도 시트 그대로. 보고 있는 탭은 1분마다 다시 읽는다.
+     · 끝의 빈 줄(체크박스만 있는 3,000줄 등)은 자르고 화면을 채울 만큼만 빈 칸을 붙인다.
+     · 주문자 이름 · 연락처 · 주소 칸은 가려서 보여 준다 (날짜별 주문 원본 탭). */
+  :root{
+    --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+    --cell:Arial,'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+    --line:#e0e3e7; --grid:#e2e3e3; --head:#f8f9fa; --head-line:#d5d8dc; --head-text:#444746;
+    --frz:#d0d4d9;
+    --accent:#16a34a; --accent-ink:#137333; --accent-soft:#e6f4ea;
+    --sel:#1a73e8; --sel-head:#d3e3fd; --sel-head-text:#0b57d0;
+    --text:#1f1f1f; --text-2:#444746; --text-3:#80868b;
+    --bar-h:46px; --fx-h:26px; --tab-h:38px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:#fff;color:var(--text);font-family:var(--ui);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+  a{color:inherit}
+  .app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:#fff}
+
+  /* ── 위 막대 ── */
+  .bar{flex:none;display:flex;align-items:center;gap:8px;height:var(--bar-h);padding:0 10px 0 8px;border-bottom:1px solid var(--line);background:#fff;min-width:0}
+  .home{flex:none;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 11px;border:1px solid var(--line);border-radius:15px;font-size:12.5px;font-weight:600;color:var(--text-2);text-decoration:none;white-space:nowrap}
+  .home:hover{background:#f1f3f4}
+  .ttl{flex:none;display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
+  .ttl .logo{width:22px;height:22px;border-radius:5px;background:var(--accent);display:grid;place-items:center;flex:none}
+  .ttl .logo svg{width:14px;height:14px;color:#fff}
+  .ttl .team{font-weight:800;font-size:15px;letter-spacing:-.02em}
+  .ttl .sep{color:#c4c7c5;font-size:13px}
+  .ttl .doc{font-size:13px;font-weight:600;color:var(--text-2)}
+  .find{flex:0 1 380px;min-width:0;display:flex;align-items:center;gap:6px;height:32px;margin-left:6px;padding:0 6px 0 11px;border-radius:16px;background:#f1f3f4;border:1px solid transparent;cursor:text}
+  .find:focus-within{background:#fff;border-color:var(--sel);box-shadow:0 1px 3px rgba(60,64,67,.15)}
+  .find svg{flex:none;width:15px;height:15px;color:var(--text-3)}
+  .find input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font:inherit;font-size:13px;color:var(--text)}
+  .find input::-webkit-search-cancel-button{display:none}
+  .qn{flex:none;font-size:11.5px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .qx{flex:none;width:22px;height:22px;border-radius:50%;color:var(--text-3);font-size:12px}
+  .qx:hover{background:#e3e5e8;color:var(--text)}
+  .sp{flex:1;min-width:0}
+  .st{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:15px;font-size:12px;color:var(--text-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .st:hover{background:#f1f3f4}
+  .st .dot{width:8px;height:8px;border-radius:50%;background:#1e8e3e;flex:none}
+  .st.is-load .dot{background:transparent;border:2px solid #c4c7c5;border-top-color:var(--accent);width:11px;height:11px;animation:spin .8s linear infinite}
+  .st.is-err{color:#b3261e}
+  .st.is-err .dot{background:#d93025}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ib{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--text-2);text-decoration:none}
+  .ib:hover{background:#f1f3f4;color:var(--text)}
+  .ib svg{width:17px;height:17px}
+  .zoom{flex:none;display:flex;align-items:center;height:30px;border:1px solid var(--line);border-radius:15px;overflow:hidden}
+  .zoom button{height:100%;padding:0 9px;font-size:13px;color:var(--text-2)}
+  .zoom button:hover{background:#f1f3f4;color:var(--text)}
+  .zoom #zVal{min-width:50px;font-size:12px;font-variant-numeric:tabular-nums;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+
+  /* ── 수식 입력줄 자리 = 고른 칸 주소 + 값 (보기 전용) ── */
+  .fx{flex:none;position:relative;display:flex;align-items:stretch;height:var(--fx-h);border-bottom:1px solid var(--line);background:#fff;font-size:13px}
+  .nb{flex:none;width:86px;display:flex;align-items:center;padding:0 10px;border-right:1px solid var(--line);font-family:var(--cell);font-size:12.5px;color:var(--text-2);white-space:nowrap;overflow:hidden}
+  .fxi{flex:none;width:30px;display:grid;place-items:center;border-right:1px solid var(--line);color:#9aa0a6;font:italic 13px Georgia,'Times New Roman',serif}
+  .fxv{flex:1;min-width:0;display:flex;align-items:center;padding:0 10px;font-family:var(--cell);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+  .fxv.open{position:absolute;left:116px;right:0;top:0;z-index:30;display:block;min-height:var(--fx-h);max-height:45vh;overflow:auto;padding:4px 10px 6px;white-space:pre-wrap;word-break:break-word;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 4px 10px rgba(60,64,67,.15);line-height:1.45;user-select:text}
+  .fx-hint{color:var(--text-3);font-family:var(--ui);font-size:12px}
+
+  /* ── 표 ── */
+  .gwrap{flex:1;min-height:0;position:relative}
+  .gw{position:absolute;inset:0;overflow:auto;outline:0;background:#fff;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .gz{width:max-content;min-width:100%;position:relative}
+  .gtop{position:sticky;top:0;z-index:4;width:max-content;background:#fff}
+  .gtop.has-fr{box-shadow:0 3px 0 var(--frz)}
+  .g{table-layout:fixed;border-collapse:separate;border-spacing:0;width:0;font-family:var(--cell);font-size:10pt;color:#000;line-height:normal}
+  .g{--gl:var(--grid)}
+  .g.ng{--gl:transparent}   /* 격자선 숨긴 탭 — 칸에 직접 그은 테두리(서식 클래스)는 그대로 보인다 */
+  .g td{overflow:hidden;border:0;border-right:1px solid var(--gl);border-bottom:1px solid var(--gl);vertical-align:bottom;background-color:#fff;padding:0 3px}
+  .g tbody tr{height:21px}
+  .g th{font:400 11px/1 'Google Sans',Roboto,Arial,var(--ui);color:var(--head-text);background:var(--head);text-align:center;vertical-align:middle;padding:0;border:0;border-right:1px solid var(--head-line);border-bottom:1px solid var(--head-line);overflow:hidden;white-space:nowrap}
+  .g thead th{height:24px}
+  .g .rh{position:sticky;left:0;z-index:2}
+  .g thead .rh{z-index:3}
+  .g th.sel{background:var(--sel-head);color:var(--sel-head-text);font-weight:700}
+  .g .fcl{box-shadow:inset -3px 0 0 var(--frz)}
+  .g td.sel{box-shadow:inset 0 0 0 2px var(--sel)}
+  .g td.fcl.sel{box-shadow:inset 0 0 0 2px var(--sel),inset -3px 0 0 var(--frz)}
+  .g td.hit{background-image:linear-gradient(rgba(255,214,0,.42),rgba(255,214,0,.42))}
+  .g a{color:inherit}
+  .g .softmerge{overflow:visible}
+  .g .softmerge-inner{white-space:nowrap;overflow:hidden;position:relative}
+  .g .cbx{display:inline-block;width:16px;height:16px;vertical-align:middle;color:#80868b}
+  .g .cbx.on{color:#1f1f1f}
+  .g .ci{display:block;width:inherit;height:inherit;object-fit:scale-down;object-position:center}
+  .g .ci.bad{visibility:hidden}
+  .msg{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 32px));padding:20px 22px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 8px 28px rgba(60,64,67,.18);font-size:13.5px;line-height:1.6;color:var(--text-2);z-index:20;text-align:center}
+  .msg b{display:block;font-size:15px;color:var(--text);margin-bottom:6px}
+  .msg button{margin-top:12px;height:32px;padding:0 16px;border-radius:16px;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
+
+  /* ── 아래 시트 탭 ── */
+  .tabs{flex:none;display:flex;align-items:stretch;height:calc(var(--tab-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);border-top:1px solid var(--line);background:var(--head)}
+  .tb-all{flex:none;width:42px;display:grid;place-items:center;border-right:1px solid var(--line);color:var(--text-2)}
+  .tb-all svg{width:18px;height:18px}
+  .tb-all:hover{background:#eceef1}
+  .tb-strip{flex:1;min-width:0;position:relative;display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+  .tb-strip::-webkit-scrollbar{display:none}
+  .tb{flex:none;position:relative;display:flex;align-items:center;gap:6px;padding:0 14px;font-size:13px;font-weight:500;color:var(--text-2);white-space:nowrap;border-right:1px solid var(--line)}
+  .tb:hover{background:#eceef1}
+  .tb.on{background:#fff;color:var(--accent-ink);font-weight:700}
+  .tb.on::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent)}
+  .bd{flex:none;width:7px;height:7px;border-radius:50%}
+  .pop{position:fixed;left:8px;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 6px);z-index:50;width:min(340px,calc(100vw - 16px));max-height:min(70vh,600px);display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 34px rgba(60,64,67,.25);overflow:hidden}
+  .pop input{flex:none;height:40px;margin:8px 8px 4px;padding:0 12px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13.5px;outline:0}
+  .pop input:focus{border-color:var(--sel)}
+  .pop-list{flex:1;min-height:0;position:relative;overflow:auto;padding:4px 0 8px}
+  .pi{width:100%;display:flex;align-items:center;gap:9px;padding:9px 16px;font-size:13.5px;text-align:left;color:var(--text)}
+  .pi:hover{background:#f1f3f4}
+  .pi.on{color:var(--accent-ink);font-weight:700;background:var(--accent-soft)}
+  .pi .pn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pi .ck{flex:none;font-size:13px}
+  .pop-empty{padding:16px;color:var(--text-3);font-size:13px;text-align:center}
+
+  /* ── 좁은 화면 (휴대폰) ── */
+  @media (max-width:720px){
+    :root{--bar-h:48px;--tab-h:40px}
+    .bar{gap:5px;padding:0 6px}
+    .home{padding:0 9px}
+    .home span,.ttl .sep,.ttl .doc,.zoom,#btnFull{display:none}
+    .ttl .team{font-size:14px}
+    .find{flex:1 1 auto;margin-left:2px}
+    .st{padding:0 6px}
+    .st #stText{display:none}
+    .st.is-err #stText{display:inline;font-size:11px}
+    .nb{width:62px;padding:0 8px}
+    .fxv.open{left:92px}
+    .tb{padding:0 12px;font-size:12.5px}
+  }
+</style>
+<style id="cellCss"></style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="cb0" viewBox="0 0 16 16"><rect x="1.8" y="1.8" width="12.4" height="12.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="cb1" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="2" fill="currentColor"/><path d="M4.3 8.2l2.5 2.5 4.9-5.2" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+<div class="app" id="app">
+  <header class="bar">
+    <a class="home" href="../" title="오피스 홈으로">←<span> 홈</span></a>
+    <div class="ttl" title="구글시트 '식스샵 ERP MASTER' 를 그대로 보여 줍니다 (보기 전용)">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>
+      <span class="team">ERP전산팀</span><span class="sep">›</span><span class="doc">재고 ERP MASTER</span>
+    </div>
+    <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓰면 모두 들어간 줄만 · Enter 다음 칸">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="찾기 — 상품명 · 옵션 · 무엇이든" autocomplete="off" spellcheck="false" enterkeyhint="search">
+      <span class="qn" id="qn"></span>
+      <button type="button" class="qx" id="qx" hidden aria-label="찾기 지우기">✕</button>
+    </label>
+    <div class="sp"></div>
+    <button type="button" class="st is-load" id="st" title="지금 다시 불러오기"><i class="dot"></i><span id="stText">불러오는 중…</span></button>
+    <div class="zoom" id="zoomBox" title="확대 · 축소">
+      <button type="button" id="zOut" aria-label="축소">−</button><button type="button" id="zVal" title="100% 로">100%</button><button type="button" id="zIn" aria-label="확대">+</button>
+    </div>
+    <button type="button" class="ib" id="btnFull" title="전체 화면 (모니터 꽉 채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <a class="ib" id="btnSheet" href="#" target="_blank" rel="noopener" title="구글시트에서 이 탭 열기 (새 탭)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
+  </header>
+  <div class="fx" id="fx">
+    <div class="nb" id="nb"></div>
+    <div class="fxi">fx</div>
+    <div class="fxv" id="fxv"><span class="fx-hint">칸을 누르면 여기에 내용이 나와요</span></div>
+  </div>
+  <div class="gwrap">
+    <main class="gw" id="gw" tabindex="0" aria-label="재고 ERP MASTER 표"><div class="gz" id="gz"></div></main>
+    <div class="msg" id="msg" hidden></div>
+  </div>
+  <nav class="tabs" aria-label="시트 탭">
+    <button type="button" class="tb-all" id="tabAll" title="모든 시트"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <div class="tb-strip" id="tabs"></div>
+  </nav>
+</div>
+<div class="pop" id="pop" hidden>
+  <input id="popQ" type="search" placeholder="시트 찾기" autocomplete="off" spellcheck="false">
+  <div class="pop-list" id="popList"></div>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  /* ── 설정 ── */
+  const SHEET_ID = '1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA';   // 구글시트 '식스샵 ERP MASTER' (오피스 index.html ERP_SHEET_ID 와 같음)
+  const BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}`;
+  const REFRESH_MS = 60e3;      // 보고 있는 탭을 다시 읽는 간격 (화면이 보일 때만)
+  const STALE_MS = 20e3;        // 다른 탭을 보다 돌아왔을 때 이보다 오래됐으면 뒤에서 다시 읽음
+  const TABS_MS = 5 * 60e3;     // 탭 목록 (매일 날짜가 바뀌는 탭 이름 · 새 탭)
+  const RETRY_MS = 30e3;        // 읽기 실패 뒤 다시 시도
+  const TIMEOUT_MS = 25e3;
+  const ROW_H = 21, COL_W = 100, HEAD_H = 24;
+  const CACHE_MAX = 8;          // 읽어 둔 탭 (메모리)
+  const CHUNK = 700;            // 큰 탭은 이만큼씩 나눠 그린다
+  const LS_TAB = 'erp_tab_v1', LS_ZOOM = 'erp_zoom_v1', LS_ROWS = 'erp_rows_v1';
+  // 송장출력 탭은 체크박스만 있는 줄이 3,000줄이라 웹 보기가 무겁다 → 지난번 내용 끝 줄 + 여유만 읽는다 (range=1:N).
+  // 내용이 범위 끝까지 차 있으면 전체를 다시 읽고, 탭마다 한 번은 전체를 읽어 멀리 떨어진 칸도 확인한다. 상태 단추를 누르면 늘 전체.
+  const RANGE_MIN = 500, RANGE_FULL_OVER = 2500;
+  const ZOOMS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+  // 탭 이름 앞 점 색 = 오피스 '실시간 재고' 브랜드 색
+  const BRAND = [[/코페리/, '#818cf8'], [/아페티/, '#fb7185'], [/코즈미/, '#14b8a6'], [/식스에이/, '#22d3ee'], [/야르/, '#a78bfa'], [/프피|프로덕트피알/, '#f59e0b'], [/아코이/, '#f472b6']];
+  const EMPTY = {cols: [], rows: [], fRows: 0, fCols: 0, css: {}, sig: ''};
+
+  const $ = id => document.getElementById(id);
+  const gw = $('gw'), gz = $('gz'), cellCss = $('cellCss'), qIn = $('q');
+  const narrow = matchMedia('(max-width:720px)');
+  const S = {
+    tabs: [], tabsAt: 0, tabsBusy: null, cur: '',
+    cache: new Map(),     // gid → {model, at}
+    busy: {}, st: {},     // gid → 읽는 중 Promise · {k:'load'|'ok'|'err', err, at}
+    pos: {},              // gid → {t, l} 탭마다 스크롤 자리
+    sel: null,            // {gid, r, p}
+    terms: [], hits: [], hitAt: -1, nRows: 0,
+    zoom: 1, rh: 46, layout: null, gen: 0, size: '', shown: true,
+    rowsKnown: {},        // gid → 내용이 있는 마지막 줄 번호 (다음에 읽을 범위)
+    fullAt: {},           // gid → 전체를 읽은 시각
+  };
+  try { S.rowsKnown = JSON.parse(localStorage.getItem(LS_ROWS) || '{}') || {}; } catch (e) { S.rowsKnown = {}; }
+
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* 저장 못 해도 화면은 그대로 */ } };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const pad2 = n => String(n).padStart(2, '0');
+  const hhmm = t => { const d = new Date(t); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+  const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 50 ? '방금' : s < 3600 ? `${Math.round(s / 60)}분 전` : `${Math.floor(s / 3600)}시간 전`; };
+  const colName = i => { let s = ''; for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+  const tabOf = gid => S.tabs.find(t => t.gid === gid);
+  const tabKey = name => String(name || '').replace(/\d{1,2}\.\d{1,2}/g, '').trim();   // '11.19야르송장출력' → '야르송장출력' (날짜는 매일 바뀜)
+  const brandDot = name => { const b = BRAND.find(x => x[0].test(name)); return b ? `<i class="bd" style="background:${b[1]}"></i>` : ''; };
+  const curModel = () => { const c = S.cache.get(S.cur); return c ? c.model : null; };
+  function hash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36) + '.' + s.length; }
+
+  /* ── 구글에서 받기 — 시간 제한 · 429 는 잠깐 쉬고 다시 · 연결 끊김은 한 번 더 ── */
+  async function getText(url) {
+    for (let i = 0; ; i++) {
+      const ac = new AbortController(), timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+      try {
+        const r = await fetch(url, {cache: 'no-store', credentials: 'omit', signal: ac.signal});
+        if (r.status === 429 && i < 4) { await sleep(900 * 2 ** i); continue; }
+        if (!r.ok) throw Object.assign(new Error('http_' + r.status), {fatal: true});
+        if (/accounts\.google\.com|ServiceLogin/.test(r.url)) throw Object.assign(new Error('login'), {fatal: true});
+        return await r.text();
+      } catch (e) {
+        if (e.fatal) throw e;
+        if (i < 1) { await sleep(1200); continue; }
+        throw new Error(e && e.name === 'AbortError' ? 'timeout' : 'network');
+      } finally { clearTimeout(timer); }
+    }
+  }
+
+  /* ── 탭 목록 = 시트 웹 보기의 시트 메뉴 (보이는 탭만 · 시트 순서) ── */
+  function unesc(s) { try { return JSON.parse('"' + s.replace(/\\x([0-9a-fA-F]{2})/g, '\\u00$1') + '"'); } catch (e) { return s; } }
+  function loadTabs() {
+    if (S.tabsBusy) return S.tabsBusy;
+    S.tabsBusy = (async () => {
+      try {
+        const h = await getText(`${BASE}/htmlview`), out = [];
+        const re = /items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"/g;
+        let m;
+        while ((m = re.exec(h))) out.push({name: unesc(m[1]), gid: m[2]});
+        if (!out.length) throw new Error(/waffle|sheets-viewport/.test(h) ? 'no_tabs' : 'login');
+        S.tabs = out;
+        S.tabsAt = Date.now();
+        const live = new Set(out.map(t => t.gid)), known = Object.keys(S.rowsKnown);   // 지워진 날짜 탭 기록은 버린다
+        if (known.some(g => !live.has(g))) { known.forEach(g => { if (!live.has(g)) delete S.rowsKnown[g]; }); lsSet(LS_ROWS, JSON.stringify(S.rowsKnown)); }
+        if (!S.cur) { hideMsg(); openTab(pickTab(S.want, S.saved)); }                         // 처음 · 실패 뒤 다시 읽힘
+        else if (!tabOf(S.cur)) openTab(pickTab(null, {key: tabKey(S.lastName || '')}));   // 보던 탭이 지워짐
+        else { renderTabs(); paintTitle(); saveTab(); }
+        return out;
+      } catch (e) {
+        S.tabsAt = Date.now() - TABS_MS + RETRY_MS;   // 실패하면 30초 뒤 다시
+        throw e;
+      } finally { S.tabsBusy = null; }
+    })();
+    return S.tabsBusy;
+  }
+  function pickTab(want, saved) {
+    const tabs = S.tabs;
+    if (!tabs.length) return '';
+    if (want) {
+      const k = tabKey(want);
+      const t = tabs.find(x => x.name === want) || tabs.find(x => x.gid === want) || tabs.find(x => k && tabKey(x.name) === k) || tabs.find(x => x.name.includes(want));
+      if (t) return t.gid;
+    }
+    if (saved) {
+      const t = tabs.find(x => x.gid === saved.gid) || (saved.key ? tabs.find(x => tabKey(x.name) === saved.key) : null);
+      if (t) return t.gid;
+    }
+    return tabs[0].gid;
+  }
+
+  /* ── 한 탭 읽기 (웹 보기 → 화면용 자료) ──
+     칸 서식은 웹 보기의 클래스(.s0 …)를 그대로 쓰되 허용한 속성만 옮기고, 칸 내용은 글자 · 줄바꿈 · 체크박스 · 칩 · 사진 · 링크만 다시 만든다. */
+  const PROPS = /^(background-color|color|font-(weight|style|size|family)|text-(align|decoration|decoration-line|decoration-skip-ink|overflow|indent)|vertical-align|white-space|overflow|overflow-wrap|word-wrap|word-break|direction|unicode-bidi|padding(-(top|right|bottom|left))?|border(-(top|right|bottom|left))?(-(width|style|color))?|border-radius|display|height|max-height|line-height|margin-(top|right|bottom|left)|width|max-width|letter-spacing)$/;
+  function cleanDecl(s, inline) {
+    let out = '';
+    String(s || '').split(';').forEach(part => {
+      const i = part.indexOf(':');
+      if (i < 1) return;
+      const k = part.slice(0, i).trim().toLowerCase();
+      let v = part.slice(i + 1).trim();
+      if (!v || !(PROPS.test(k) || (inline && k === 'left'))) return;
+      if (/url\s*\(|expression|javascript|[<>{}\\@]/i.test(v)) return;
+      if (k === 'font-family') v = v.replace(/docs-/g, '');
+      out += `${k}:${v};`;
+    });
+    return out;
+  }
+  function unwrapLink(href) {
+    try {
+      let u = new URL(href, 'https://docs.google.com/');
+      if (/(^|\.)google\.com$/.test(u.hostname) && u.pathname === '/url' && u.searchParams.get('q')) u = new URL(u.searchParams.get('q'));
+      return /^https?:$/.test(u.protocol) ? u.href : '';
+    } catch (e) { return ''; }
+  }
+  function walk(node, o) {
+    for (const n of node.childNodes) {
+      if (n.nodeType === 3) { o.h += esc(n.nodeValue); o.t += n.nodeValue; continue; }
+      if (n.nodeType !== 1) continue;
+      const tag = n.nodeName.toLowerCase();
+      if (tag === 'br') { o.h += '<br>'; o.t += '\n'; continue; }
+      if (tag === 'svg') {
+        const u = n.querySelector('use'), ref = u ? (u.getAttribute('href') || u.getAttribute('xlink:href') || '') : '';
+        if (/checkbox/.test(ref)) {
+          const on = /#checked/.test(ref), fill = (u.getAttribute('fill') || '').toLowerCase();
+          const col = /^#[0-9a-f]{3,8}$/.test(fill) && !/^#0{3}(0{3})?$/.test(fill) ? ` style="color:${fill}"` : '';
+          o.h += `<svg class="cbx${on ? ' on' : ''}" viewBox="0 0 16 16"${col}><use href="#cb${on ? 1 : 0}"/></svg>`;
+          o.cb = on ? 2 : 1;
+        }
+        continue;
+      }
+      if (tag === 'img') {
+        const src = n.getAttribute('src') || '';
+        if (/^https:\/\//i.test(src)) { o.h += `<img class="ci" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${esc(src)}">`; o.img = 1; }
+        continue;
+      }
+      if (tag === 'script' || tag === 'style') continue;
+      const sub = {h: '', t: '', cb: 0, img: 0};
+      walk(n, sub);
+      o.t += sub.t;
+      if (sub.cb) o.cb = sub.cb;
+      if (sub.img) o.img = 1;
+      if (tag === 'a') {
+        const href = unwrapLink(n.getAttribute('href') || '');
+        o.h += href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${sub.h}</a>` : sub.h;
+      } else if (tag === 'div' || tag === 'span') {
+        const st = cleanDecl(n.getAttribute('style'), true);
+        const cls = Array.from(n.classList).filter(c => /^s\d+$/.test(c) || c === 'softmerge-inner').join(' ');
+        o.h += (st || cls) ? `<${tag}${cls ? ` class="${cls}"` : ''}${st ? ` style="${esc(st)}"` : ''}>${sub.h}</${tag}>` : sub.h;
+      } else o.h += sub.h;
+    }
+  }
+  function parseSheet(html, sig) {
+    const a = html.indexOf('<table'), b = html.lastIndexOf('</table>');
+    if (a < 0 || b < 0) throw new Error(/accounts\.google\.com|ServiceLogin/.test(html) ? 'login' : 'no_grid');
+    const css = {}, cssText = styleText(html);
+    const re = /\.ritz\s+\.waffle\s+\.(s\d+)\s*\{([^}]*)\}/g;
+    let m;
+    while ((m = re.exec(cssText))) css[m[1]] = cleanDecl(m[2], false);
+    // 브라우저가 받는 웹 보기는 큰 탭을 200줄쯤씩 여러 <table>(grid-chunk)로 나눠 보낸다 — 머리글은 첫 표, 줄은 모든 표에서
+    const tables = new DOMParser().parseFromString(html.slice(a, b + 8), 'text/html').querySelectorAll('table');
+    const table = tables[0];
+    if (!table) throw new Error('no_grid');
+    // 열 — 숨긴 열은 웹 보기에 없다 (글자 이름 D, E, F, J … 그대로)
+    const cols = [];
+    let fCols = 0;
+    table.querySelectorAll('thead th').forEach(th => {
+      if (th.classList.contains('freezebar-cell')) { fCols = cols.length; return; }
+      const mm = (th.id || '').match(/C(\d+)$/);
+      if (mm) cols.push({i: +mm[1], w: Math.max(2, parseFloat(th.style.width) || COL_W), l: th.textContent.trim() || colName(+mm[1])});
+    });
+    // 줄 — 숨긴 줄도 없다 (줄 번호는 시트 번호 그대로)
+    const rows = [], taken = {};
+    let fRows = 0;
+    const trs = [];
+    tables.forEach(t => Array.from(t.tBodies).forEach(tb => trs.push(...tb.rows)));
+    for (const tr of trs) {
+      const th = tr.cells[0] && tr.cells[0].tagName === 'TH' ? tr.cells[0] : null;
+      if (th && th.classList.contains('freezebar-horizontal-handle')) { fRows = rows.length; continue; }
+      const mm = th && (th.id || '').match(/R(\d+)$/);
+      if (!mm) continue;
+      const ri = rows.length, cells = [];
+      let p = 0;
+      for (const td of tr.cells) {
+        if (td.tagName !== 'TD' || td.classList.contains('freezebar-cell')) continue;
+        while (taken[ri] && taken[ri].has(p)) p++;
+        const cs = Math.max(1, +td.getAttribute('colspan') || 1), rs = Math.max(1, +td.getAttribute('rowspan') || 1);
+        const o = {h: '', t: '', cb: 0, img: 0};
+        walk(td, o);
+        const cls = Array.from(td.classList).filter(c => /^s\d+$/.test(c) || c === 'softmerge').join(' ');
+        cells.push({p, cs, rs, cls, h: o.h, t: o.t.replace(/ /g, ' ').replace(/[​-‍﻿]/g, '').trim(), cb: o.cb, img: o.img});   // 빈 드롭다운 칩은 폭 0 글자만 있다
+        for (let y = ri + 1; y < ri + rs; y++) for (let x = p; x < p + cs; x++) (taken[y] = taken[y] || new Set()).add(x);
+        p += cs;
+      }
+      rows.push({r: +mm[1] + 1, h: parseFloat(tr.style.height) || parseFloat(th.style.height) || 0, cells});
+    }
+    // 끝의 빈 줄은 자른다 (글자 · 체크된 칸 · 사진이 있는 마지막 줄까지, 고정 줄은 남김)
+    let last = -1;
+    rows.forEach((row, i) => { if (row.cells.some(c => c.t || c.cb === 2 || c.img)) last = i; });
+    const cut = rows.length - Math.max(last + 1, fRows);
+    rows.length = Math.max(last + 1, fRows);
+    const masked = maskPII(rows);
+    rows.forEach(row => { const k = row.cells.map(c => c.t).join('\t').toLowerCase(); row.k = k; row.k2 = k.replace(/\s+/g, ''); });
+    const noGrid = table.classList.contains('no-grid');   // 시트에서 '격자선 표시'를 끈 탭
+    return {cols, rows, fRows: Math.min(fRows, rows.length), fCols: Math.min(fCols, cols.length), css, sig, cut, masked, noGrid};
+  }
+
+  /* ── 개인정보 가리기 — 날짜별 주문 원본 탭(코페리11.18 · 야르11.19 …)의 주문자 이름 등. 머리글(위 6줄 안) 이름으로 칸을 찾는다 ── */
+  const PII = [
+    ['name', /^(주문자|수령인|수취인|구매자|주문인|받는(분|사람|이)|고객|보내는(분|사람|이)|발송인)(이름|명|성명)?$/],
+    ['phone', /(연락처|전화|휴대폰|핸드폰|휴대전화)/],
+    ['addr', /(주소|우편번호)/],
+    ['mail', /(이메일|메일주소|e-?mail)/i],
+  ];
+  const MASK = {
+    name: s => /^[-–—.·\s]+$/.test(s) ? s : Array.from(s).map((ch, i) => i === 0 || /\s/.test(ch) ? ch : '○').join(''),
+    phone: s => { const n = (s.match(/\d/g) || []).length; let i = 0; return s.replace(/\d/g, d => (++i <= 3 || i > n - 4) ? d : '*'); },
+    addr: s => { const w = s.split(/\s+/); return w.length > 1 ? w.slice(0, Math.min(2, w.length - 1)).join(' ') + ' ○○○' : '○○○'; },
+    mail: s => s.replace(/^([^@]{0,2})[^@]*@/, '$1***@'),
+  };
+  function maskPII(rows) {
+    const cols = {};
+    rows.slice(0, 6).forEach((row, i) => row.cells.forEach(c => {
+      const t = c.t.replace(/\s+/g, '');
+      if (!t || t.length > 12 || cols[c.p]) return;
+      const hit = PII.find(x => x[1].test(t));
+      if (hit) cols[c.p] = {kind: hit[0], from: i + 1};
+    }));
+    if (!Object.keys(cols).length) return 0;
+    let n = 0;
+    rows.forEach((row, i) => row.cells.forEach(c => {
+      const pc = cols[c.p];
+      if (!pc || i < pc.from || !c.t) return;
+      const v = MASK[pc.kind](c.t);
+      if (v !== c.t) { c.t = v; c.h = esc(v); n++; }
+    }));
+    return n;
+  }
+
+  /* ── 그리기 ──
+     위: 열 머리글(A B C …) + 고정 줄 = 위에 붙는 표 하나 / 아래: 나머지 줄 표. 두 표의 열 너비가 같아 줄이 맞는다.
+     고정 열 · 줄 번호는 칸마다 sticky. 화면이 남으면 빈 열 · 빈 줄로 채운다 (시트처럼 꽉 차게). */
+  function render(model, opt) {
+    opt = opt || {};
+    const gen = ++S.gen, z = S.zoom, rh = S.rh;
+    const keep = opt.keep ? {t: gw.scrollTop, l: gw.scrollLeft} : (opt.pos || {t: 0, l: 0});
+    const viewW = (gw.clientWidth || 1200) / z, viewH = (gw.clientHeight || 800) / z;
+    const cols = model.cols.slice();
+    let w = rh + cols.reduce((s, c) => s + c.w, 0);
+    for (let li = cols.length ? cols[cols.length - 1].i : -1; w < viewW + COL_W;) { li++; cols.push({i: li, w: COL_W, l: colName(li)}); w += COL_W; }
+    const nData = model.cols.length, fC = model.fCols, fR = model.fRows;
+    let css = '', stickyW = rh;
+    for (const k in model.css) css += `.g .${k}{${model.css[k]}}`;
+    for (let j = 0; j < fC; j++) { css += `.g .fc${j}{position:sticky;left:${stickyW}px;z-index:1}`; stickyW += cols[j].w; }
+    cellCss.textContent = css;
+    S.layout = {cols, fC, fR, stickyW, nData};
+    const fcls = (p, cs) => p < fC ? ` fc${p}${p <= fC - 1 && fC - 1 < p + (cs || 1) ? ' fcl' : ''}` : '';
+    const colg = `<colgroup><col style="width:${rh}px">${cols.map(c => `<col style="width:${c.w}px">`).join('')}</colgroup>`;
+    const head = `<thead><tr><th class="rh"></th>${cols.map((c, p) => `<th data-p="${p}"${p < fC ? ` class="${fcls(p).trim()}"` : ''}>${esc(c.l)}</th>`).join('')}</tr></thead>`;
+    const pads = from => { let s = ''; for (let p = from; p < cols.length; p++) s += `<td data-p="${p}"${p < fC ? ` class="${fcls(p).trim()}"` : ''}></td>`; return s; };
+    const padTail = pads(nData);
+    const rowHtml = (row, i) => {
+      let s = `<tr data-i="${i}" data-r="${row.r}"${row.h ? ` style="height:${row.h + 1}px"` : ''}><th class="rh">${row.r}</th>`;
+      for (const c of row.cells) {
+        const cl = (c.cls + fcls(c.p, c.cs)).trim();
+        s += `<td data-p="${c.p}"${cl ? ` class="${cl}"` : ''}${c.cs > 1 ? ` colspan="${c.cs}"` : ''}${c.rs > 1 ? ` rowspan="${c.rs}"` : ''}>${c.h}</td>`;
+      }
+      return s + padTail + '</tr>';
+    };
+    const rows = model.rows, nBody = rows.length - fR;
+    let lastR = rows.length ? rows[rows.length - 1].r : 0, blank = '';
+    const nBlank = Math.max(12, Math.ceil((viewH - HEAD_H) / ROW_H) - rows.length + 2), padAll = pads(0);
+    for (let k = 0; k < nBlank; k++) { lastR++; blank += `<tr class="blank" data-r="${lastR}"><th class="rh">${lastR}</th>${padAll}</tr>`; }
+    const first = Math.min(nBody, nBody > CHUNK * 2 ? CHUNK : nBody);
+    let topRows = '';
+    for (let i = 0; i < fR; i++) topRows += rowHtml(rows[i], i);
+    let bodyRows = '';
+    for (let i = fR; i < fR + first; i++) bodyRows += rowHtml(rows[i], i);
+    const ng = model.noGrid ? ' ng' : '';
+    gz.innerHTML = `<div class="gtop${fR ? ' has-fr' : ''}"><table class="g${ng}">${colg}${head}<tbody>${topRows}</tbody></table></div>`
+      + `<table class="g gb${ng}">${colg}<tbody>${bodyRows}${blank}</tbody></table>`;
+    gz.style.zoom = z === 1 ? '' : String(z);
+    S.size = `${gw.clientWidth}x${gw.clientHeight}x${z}x${rh}`;
+    const done = () => {
+      applyFilter(true);
+      restoreSel();
+      gw.scrollTop = keep.t;
+      gw.scrollLeft = keep.l;
+    };
+    done();
+    if (first >= nBody) return;
+    // 큰 탭: 나머지 줄은 조금씩 이어 붙인다 (먼저 보이는 화면부터). 다 붙인 뒤 스크롤이 덜 내려가 있으면 원래 자리로
+    const tb = gz.querySelector('.gb tbody'), anchor = tb.querySelector('tr.blank'), t0 = gw.scrollTop;
+    let i = fR + first;
+    const step = () => {
+      if (gen !== S.gen || !tb.isConnected) return;
+      let s = '';
+      const end = Math.min(rows.length, i + CHUNK);
+      for (; i < end; i++) s += rowHtml(rows[i], i);
+      if (anchor) anchor.insertAdjacentHTML('beforebegin', s); else tb.insertAdjacentHTML('beforeend', s);
+      if (i < rows.length) { setTimeout(step, 0); return; }
+      applyFilter(true);
+      restoreSel();
+      if (gw.scrollTop === t0 && keep.t > t0) gw.scrollTop = keep.t;
+    };
+    setTimeout(step, 0);
+  }
+
+  /* ── 찾기 = 들어간 줄만 남기고 칸 강조 (고정 줄은 늘 보임) ── */
+  function setQuery(v) {
+    S.terms = String(v || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    $('qx').hidden = !v;
+    S.hitAt = -1;
+    applyFilter(false);
+    if (S.terms.length) gw.scrollTop = 0;
+  }
+  function applyFilter() {
+    const model = curModel(), tb = gz.querySelector('.gb tbody');
+    S.hits = [];
+    S.nRows = 0;
+    gz.querySelectorAll('td.hit').forEach(td => td.classList.remove('hit'));
+    const terms = S.terms;
+    if (tb && model) for (const tr of tb.rows) {
+      const i = tr.dataset.i;
+      if (i === undefined) { tr.hidden = false; continue; }
+      if (!terms.length) { if (tr.hidden) tr.hidden = false; continue; }
+      const row = model.rows[i];
+      const ok = terms.every(t => row.k.includes(t) || row.k2.includes(t));
+      tr.hidden = !ok;
+      if (!ok) continue;
+      S.nRows++;
+      for (let k = 1; k < tr.cells.length; k++) {
+        const c = row.cells[k - 1];
+        if (!c || !c.t) continue;
+        const lt = c.t.toLowerCase(), lt2 = lt.replace(/\s+/g, '');
+        if (terms.some(t => lt.includes(t) || lt2.includes(t))) { tr.cells[k].classList.add('hit'); S.hits.push(tr.cells[k]); }
+      }
+    }
+    paintCount();
+  }
+  function paintCount() {
+    const el = $('qn');
+    if (!S.terms.length) { el.textContent = ''; return; }
+    el.textContent = S.hitAt >= 0 && S.hits.length ? `${S.hitAt + 1}/${S.hits.length}` : `${S.nRows.toLocaleString('ko-KR')}줄`;
+  }
+  function jumpHit(d) {
+    if (!S.hits.length) return;
+    S.hitAt = (S.hitAt + d + S.hits.length) % S.hits.length;
+    selectTd(S.hits[S.hitAt], true);
+    paintCount();
+  }
+
+  /* ── 칸 고르기 · 이동 · 복사 ── */
+  function cellModel(td) {
+    const tr = td.parentElement, model = curModel();
+    if (!model || tr.dataset.i === undefined) return null;
+    const row = model.rows[tr.dataset.i];
+    return row ? row.cells[td.cellIndex - 1] || null : null;
+  }
+  function selectTd(td, scroll) {
+    if (!td || td.tagName !== 'TD' || !gz.contains(td)) return;
+    gz.querySelectorAll('.sel').forEach(el => el.classList.remove('sel'));
+    td.classList.add('sel');
+    const tr = td.parentElement, p = +td.dataset.p, r = +tr.dataset.r;
+    const hth = gz.querySelector(`.gtop thead th[data-p="${p}"]`);
+    if (hth) hth.classList.add('sel');
+    tr.cells[0].classList.add('sel');
+    S.sel = {gid: S.cur, r, p};
+    const col = S.layout && S.layout.cols[p];
+    $('nb').textContent = `${col ? col.l : colName(p)}${r}`;
+    const c = cellModel(td), v = c ? (c.t || (c.cb === 2 ? 'TRUE' : c.cb === 1 ? 'FALSE' : '')) : '';
+    const fxv = $('fxv');
+    fxv.textContent = v;
+    fxv.title = v.length > 40 || v.includes('\n') ? '누르면 전체 내용' : '';
+    if (scroll) ensureVisible(td);
+  }
+  function clearSel() {
+    S.sel = null;
+    gz.querySelectorAll('.sel').forEach(el => el.classList.remove('sel'));
+    $('nb').textContent = '';
+    $('fxv').classList.remove('open');
+    $('fxv').innerHTML = '<span class="fx-hint">칸을 누르면 여기에 내용이 나와요</span>';
+  }
+  function restoreSel() {
+    const s = S.sel;
+    if (!s || s.gid !== S.cur) return;
+    const tr = gz.querySelector(`tr[data-r="${s.r}"]`);
+    const td = tr && Array.from(tr.cells).find(c => c.tagName === 'TD' && +c.dataset.p <= s.p && s.p < +c.dataset.p + (c.colSpan || 1));
+    if (td && !tr.hidden) selectTd(td, false);
+  }
+  function ensureVisible(td) {
+    const g = gw.getBoundingClientRect(), r = td.getBoundingClientRect();
+    const inTop = !!td.closest('.gtop'), sticky = /\bfc\d/.test(td.className);
+    const top = g.top + (inTop ? 0 : gz.querySelector('.gtop').getBoundingClientRect().height);
+    const left = g.left + (sticky ? 0 : S.layout.stickyW * S.zoom);
+    if (!inTop) {
+      if (r.top < top) gw.scrollTop -= top - r.top;
+      else if (r.bottom > g.top + gw.clientHeight) gw.scrollTop += r.bottom - (g.top + gw.clientHeight) + 1;
+    }
+    if (!sticky) {
+      if (r.left < left) gw.scrollLeft -= left - r.left;
+      else if (r.right > g.left + gw.clientWidth) gw.scrollLeft += r.right - (g.left + gw.clientWidth) + 1;
+    }
+  }
+  function move(dr, dc) {
+    const td = gz.querySelector('td.sel');
+    if (!td) return;
+    const trs = Array.from(gz.querySelectorAll('tbody tr')).filter(tr => !tr.hidden);
+    let ri = trs.indexOf(td.parentElement), p = +td.dataset.p;
+    if (dc) p = Math.max(0, Math.min(S.layout.cols.length - 1, dc > 0 ? p + (td.colSpan || 1) : p - 1));
+    if (dr) ri = Math.max(0, Math.min(trs.length - 1, ri + (dr > 0 ? (td.rowSpan || 1) : -1)));
+    for (let k = ri; k >= 0; k--) {   // 세로 병합에 덮인 자리면 위 줄의 병합 칸
+      const hit = Array.from(trs[k].cells).find(c => c.tagName === 'TD' && +c.dataset.p <= p && p < +c.dataset.p + (c.colSpan || 1));
+      if (hit) { if (k === ri || k + (hit.rowSpan || 1) > ri) selectTd(hit, true); return; }
+    }
+  }
+  gz.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const td = e.target.closest('td');
+    if (td) selectTd(td, false);
+    if (document.activeElement !== gw && !matchMedia('(pointer:coarse)').matches) gw.focus({preventScroll: true});
+  });
+  gw.addEventListener('keydown', e => {
+    if (e.target !== gw) return;
+    const mv = {ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], Enter: [e.shiftKey ? -1 : 1, 0], Tab: [0, e.shiftKey ? -1 : 1]}[e.key];
+    if (mv && S.sel && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); move(mv[0], mv[1]); }
+    else if (e.key === 'Escape') clearSel();
+  });
+  document.addEventListener('copy', e => {
+    if (document.activeElement !== gw || !S.sel || String(window.getSelection() || '')) return;
+    e.clipboardData.setData('text/plain', $('fxv').textContent);
+    e.preventDefault();
+  });
+  $('fxv').addEventListener('click', () => {
+    const f = $('fxv');
+    if (f.classList.contains('open')) f.classList.remove('open');
+    else if (S.sel && (f.scrollWidth > f.clientWidth + 1 || f.textContent.includes('\n'))) f.classList.add('open');
+  });
+  // 칸 사진이 <img> 로 안 열리면 한 번 받아서 띄운다 (구글 사진 주소는 CORS 허용)
+  gz.addEventListener('error', e => {
+    const im = e.target;
+    if (!im || im.tagName !== 'IMG' || im.dataset.tried) return;
+    im.dataset.tried = '1';
+    fetch(im.src, {mode: 'cors', credentials: 'omit'}).then(r => r.ok ? r.blob() : Promise.reject(new Error('img')))
+      .then(b => { im.src = URL.createObjectURL(b); }).catch(() => im.classList.add('bad'));
+  }, true);
+
+  /* ── 탭 ── */
+  function renderTabs() {
+    const el = $('tabs');
+    el.innerHTML = S.tabs.map(t => `<button type="button" class="tb${t.gid === S.cur ? ' on' : ''}" data-gid="${t.gid}" title="${esc(t.name)}">${brandDot(t.name)}${esc(t.name)}</button>`).join('');
+    tabIntoView();
+    if (!$('pop').hidden) renderPop();
+  }
+  function tabIntoView() {
+    const el = $('tabs'), on = el.querySelector('.tb.on');
+    if (on && (on.offsetLeft < el.scrollLeft || on.offsetLeft + on.offsetWidth > el.scrollLeft + el.clientWidth)) el.scrollLeft = on.offsetLeft - Math.max(0, (el.clientWidth - on.offsetWidth) / 2);
+  }
+  function paintTitle() {
+    const t = tabOf(S.cur);
+    if (t) S.lastName = t.name;
+    document.title = `${t ? t.name + ' · ' : ''}ERP전산팀`;
+    $('btnSheet').href = S.cur ? `${BASE}/edit#gid=${S.cur}` : `${BASE}/edit`;
+  }
+  function saveTab() {
+    const t = tabOf(S.cur);
+    if (t) lsSet(LS_TAB, JSON.stringify({gid: t.gid, key: tabKey(t.name), name: t.name}));
+  }
+  function cachePut(gid, v) {
+    S.cache.delete(gid);
+    S.cache.set(gid, v);
+    for (const k of S.cache.keys()) { if (S.cache.size <= CACHE_MAX) break; if (k !== S.cur) S.cache.delete(k); }
+  }
+  function openTab(gid) {
+    if (!gid) return;
+    if (S.cur && S.cur !== gid) S.pos[S.cur] = {t: gw.scrollTop, l: gw.scrollLeft};
+    if (S.cur !== gid) clearSel();
+    S.cur = gid;
+    hideMsg();
+    renderTabs();
+    paintTitle();
+    saveTab();
+    const c = S.cache.get(gid);
+    if (c) {
+      render(c.model, {pos: S.pos[gid]});
+      if (Date.now() - c.at > STALE_MS) loadSheet(gid);
+    } else {
+      render(EMPTY);
+      loadSheet(gid);
+    }
+    paintStatus();
+  }
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('.tb'); if (b) openTab(b.dataset.gid); });
+  $('tabs').addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    e.currentTarget.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, {passive: false});
+
+  /* 모든 시트 목록 */
+  function renderPop() {
+    const q = $('popQ').value.trim().toLowerCase(), list = S.tabs.filter(t => !q || t.name.toLowerCase().includes(q));
+    $('popList').innerHTML = list.length
+      ? list.map(t => `<button type="button" class="pi${t.gid === S.cur ? ' on' : ''}" data-gid="${t.gid}">${brandDot(t.name) || '<i class="bd"></i>'}<span class="pn">${esc(t.name)}</span>${t.gid === S.cur ? '<span class="ck">✓</span>' : ''}</button>`).join('')
+      : '<div class="pop-empty">맞는 시트가 없어요</div>';
+  }
+  function togglePop(open) {
+    const pop = $('pop'), on = open === undefined ? pop.hidden : open;
+    pop.hidden = !on;
+    if (!on) return;
+    $('popQ').value = '';
+    renderPop();
+    const list = $('popList'), cur = list.querySelector('.pi.on');
+    if (cur) list.scrollTop = Math.max(0, cur.offsetTop - (list.clientHeight - cur.offsetHeight) / 2);   // scrollIntoView 는 오피스 화면까지 움직일 수 있어서 직접
+    if (!matchMedia('(pointer:coarse)').matches) $('popQ').focus();
+  }
+  $('tabAll').addEventListener('click', e => { e.stopPropagation(); togglePop(); });
+  $('popQ').addEventListener('input', renderPop);
+  $('popQ').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const b = $('popList').querySelector('.pi'); if (b) { openTab(b.dataset.gid); togglePop(false); } }
+    if (e.key === 'Escape') togglePop(false);
+  });
+  $('popList').addEventListener('click', e => { const b = e.target.closest('.pi'); if (b) { openTab(b.dataset.gid); togglePop(false); } });
+  document.addEventListener('pointerdown', e => { if (!$('pop').hidden && !e.target.closest('#pop,#tabAll')) togglePop(false); });
+
+  /* ── 읽기 · 상태 ── */
+  // 웹 보기에는 <style> 이 여러 개다 (브라우저가 받는 쪽은 앞에 작은 것 하나가 더 있음) — 전부 이어 붙인다
+  function styleText(html) {
+    let s = '';
+    for (const m of html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) s += m[1] + '\n';
+    return s;
+  }
+  function sigOf(html) {
+    const a = html.indexOf('<table'), b = html.lastIndexOf('</table>');
+    return hash(styleText(html).length + ':' + (a >= 0 ? html.slice(a, b) : html));   // 매번 바뀌는 nonce 는 빼고 표 · 서식만
+  }
+  function loadSheet(gid, opt) {
+    if (S.busy[gid]) return S.busy[gid];
+    const known = +S.rowsKnown[gid] || 0;
+    const lim = (opt && opt.full) || known > RANGE_FULL_OVER ? 0 : Math.max(RANGE_MIN, Math.ceil(known * 1.3) + 200);
+    let next = '';
+    S.st[gid] = {k: 'load', at: Date.now()};
+    if (gid === S.cur) paintStatus();
+    const p = getText(`${BASE}/htmlview/sheet?headers=true&gid=${gid}${lim ? `&range=1:${lim}` : ''}`).then(html => {
+      const old = S.cache.get(gid), sig = sigOf(html) + (lim ? '' : '.f');
+      let model = old && old.model.sig === sig ? old.model : null;
+      if (model) old.at = Date.now();
+      else {
+        model = parseSheet(html, sig);
+        cachePut(gid, {model, at: Date.now()});
+        if (gid === S.cur) render(model, old ? {keep: true} : {pos: S.pos[gid]});
+      }
+      const lastR = model.rows.length ? model.rows[model.rows.length - 1].r : 0;
+      if (S.rowsKnown[gid] !== lastR) { S.rowsKnown[gid] = lastR; lsSet(LS_ROWS, JSON.stringify(S.rowsKnown)); }
+      if (!lim) S.fullAt[gid] = Date.now();
+      else if (lastR > lim - 60) next = 'now';          // 범위 끝까지 내용 → 전체 다시
+      else if (!S.fullAt[gid]) next = 'later';          // 이 탭은 아직 전체를 한 번도 안 읽음
+      S.st[gid] = {k: 'ok', at: Date.now()};
+      if (gid === S.cur) hideMsg();
+    }).catch(e => {
+      S.st[gid] = {k: 'err', err: (e && e.message) || String(e), at: Date.now()};
+      if (gid === S.cur && !S.cache.get(gid)) showErr(S.st[gid].err);
+    }).finally(() => {
+      delete S.busy[gid];
+      if (gid === S.cur) paintStatus();
+      if (next === 'now') loadSheet(gid, {full: true});
+      else if (next === 'later') setTimeout(() => { if (gid === S.cur && shown() && !S.fullAt[gid]) loadSheet(gid, {full: true}); }, 4000);
+    });
+    S.busy[gid] = p;
+    return p;
+  }
+  const ERR = {
+    login: ['구글시트를 열 수 없어요', "시트 공유가 '링크가 있는 모든 사용자 · 뷰어'여야 이 화면이 읽을 수 있어요. 시트 공유 설정을 확인해 주세요."],
+    timeout: ['구글시트 응답이 늦어요', '잠시 뒤 다시 시도해 주세요. 계속 그러면 구글시트를 직접 열어 확인해 주세요.'],
+    network: ['구글시트에 연결하지 못했어요', '인터넷 연결을 확인하고 다시 시도해 주세요.'],
+  };
+  function errShort(e) {
+    if (e === 'login') return '시트 공유가 꺼져 있어요';
+    if (e === 'timeout') return '응답이 늦어요 · 다시';
+    if (e === 'network') return '연결 실패 · 다시';
+    if (e === 'http_429') return '잠깐 막힘 · 곧 다시';
+    return `읽기 실패 (${e}) · 다시`;
+  }
+  function showErr(e) {
+    const [t, d] = ERR[e] || ['구글시트를 읽지 못했어요', `(${e}) 잠시 뒤 다시 시도해 주세요.`];
+    const m = $('msg');
+    m.innerHTML = `<b>${esc(t)}</b>${esc(d)}<br><button type="button" data-act="retry">다시 불러오기</button>`;
+    m.hidden = false;
+  }
+  function hideMsg() { $('msg').hidden = true; }
+  $('msg').addEventListener('click', e => { if (e.target.closest('[data-act="retry"]')) reloadNow(); });
+  function paintStatus() {
+    const st = $('st'), s = S.st[S.cur] || {k: 'load'}, c = S.cache.get(S.cur);
+    let k = s.k, txt;
+    if (k === 'load') txt = c ? '갱신 중…' : '불러오는 중…';
+    else if (k === 'err') txt = errShort(s.err);
+    else txt = c ? `${hhmm(c.at)} · ${ago(c.at)}` : '';
+    st.className = `st is-${k}`;
+    $('stText').textContent = txt;
+    const m = c && c.model;
+    st.title = (c ? `구글시트에서 ${hhmm(c.at)} 에 읽음 · 보고 있으면 1분마다 다시 읽어요` : '구글시트에서 읽는 중')
+      + (m && m.cut > 0 ? '\n끝의 빈 줄(체크박스만 있는 줄 등)은 생략' : '')
+      + (m && m.masked ? `\n주문자 이름 등 개인정보 ${m.masked.toLocaleString('ko-KR')}칸은 가려서 보여 줌` : '')
+      + '\n누르면 지금 다시 읽기';
+  }
+  function reloadNow() {
+    if (S.cur) loadSheet(S.cur, {full: true});
+    if (!S.tabsBusy) loadTabs().catch(() => {});
+  }
+  $('st').addEventListener('click', reloadNow);
+
+  /* ── 확대 · 축소 · 전체 화면 ── */
+  function setZoom(z, save) {
+    const old = S.zoom;
+    S.zoom = Math.min(2, Math.max(0.5, Math.round(z * 100) / 100));
+    $('zVal').textContent = `${Math.round(S.zoom * 100)}%`;
+    if (save) lsSet(LS_ZOOM, String(S.zoom));
+    if (old === S.zoom && !save) return;
+    const t = gw.scrollTop * S.zoom / old, l = gw.scrollLeft * S.zoom / old;
+    render(curModel() || EMPTY, {pos: {t, l}});
+  }
+  const zStep = d => { const i = ZOOMS.findIndex(v => v >= S.zoom - 1e-6); setZoom(ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? ZOOMS.length - 1 : i) + d))], true); };
+  $('zOut').addEventListener('click', () => zStep(-1));
+  $('zIn').addEventListener('click', () => zStep(1));
+  $('zVal').addEventListener('click', () => setZoom(1, true));
+  if (!('zoom' in document.body.style)) $('zoomBox').hidden = true;
+  const fsOk = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+  if (!fsOk) $('btnFull').hidden = true;
+  $('btnFull').addEventListener('click', () => {
+    const d = document;
+    if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+    else { const el = d.documentElement; (el.requestFullscreen || el.webkitRequestFullscreen).call(el); }
+  });
+
+  /* ── 찾기 입력 ── */
+  let qT = 0;
+  qIn.addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => setQuery(qIn.value), 120); });
+  qIn.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(qT); if (S.terms.join(' ') !== qIn.value.trim().toLowerCase().split(/\s+/).filter(Boolean).join(' ')) setQuery(qIn.value); jumpHit(e.shiftKey ? -1 : 1); }
+    else if (e.key === 'Escape') { qIn.value = ''; setQuery(''); gw.focus({preventScroll: true}); }
+  });
+  $('qx').addEventListener('click', () => { qIn.value = ''; setQuery(''); qIn.focus(); });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); qIn.focus(); qIn.select(); }
+    else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && S.tabs.length) {   // 시트처럼 Alt+↑↓ = 이전 · 다음 탭
+      e.preventDefault();
+      const i = S.tabs.findIndex(t => t.gid === S.cur);
+      openTab(S.tabs[(i + (e.key === 'ArrowDown' ? 1 : -1) + S.tabs.length) % S.tabs.length].gid);
+    }
+  });
+
+  /* ── 보일 때만 자동 갱신 (오피스 안 화면은 홈으로 나가도 살아 있어서 숨었는지 직접 본다) ── */
+  function shown() {
+    if (document.visibilityState === 'hidden') return false;
+    try { const fe = window.frameElement; if (fe && !fe.getClientRects().length) return false; } catch (e) { /* 다른 출처 */ }
+    return true;
+  }
+  function tick() {
+    const vis = shown(), wasHidden = !S.shown;
+    S.shown = vis;
+    if (!vis) return;
+    paintStatus();
+    const size = `${gw.clientWidth}x${gw.clientHeight}x${S.zoom}x${S.rh}`;
+    if (size !== S.size && gw.clientWidth) { render(curModel() || EMPTY, {keep: true}); tabIntoView(); }
+    if (Date.now() - S.tabsAt > TABS_MS && !S.tabsBusy) loadTabs().catch(() => {});
+    if (!S.cur || S.busy[S.cur]) return;
+    const c = S.cache.get(S.cur), s = S.st[S.cur];
+    const age = c ? Date.now() - c.at : Infinity;
+    if (c ? age > (wasHidden ? STALE_MS : REFRESH_MS) : (s && s.k === 'err' && Date.now() - s.at > RETRY_MS)) loadSheet(S.cur);
+  }
+  setInterval(tick, 5000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(tick, 300); });
+  let rzT = 0;
+  window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { S.rh = narrow.matches ? 34 : 46; tick(); }, 180); });
+
+  /* ── 시작 — 지난번 탭은 탭 목록을 기다리지 않고 바로 읽는다 ── */
+  (async function boot() {
+    S.rh = narrow.matches ? 34 : 46;
+    const z = parseFloat(lsGet(LS_ZOOM));
+    if (z >= 0.5 && z <= 2) { S.zoom = z; $('zVal').textContent = `${Math.round(z * 100)}%`; }
+    let saved = null;
+    try { saved = JSON.parse(lsGet(LS_TAB) || 'null'); } catch (e) { saved = null; }
+    let want = null;
+    try { want = new URLSearchParams(location.search).get('tab'); } catch (e) { want = null; }
+    S.want = want;     // 탭 목록이 늦게(실패 뒤 다시) 읽혀도 같은 규칙으로 고른다 (loadTabs)
+    S.saved = saved;
+    render(EMPTY);
+    if (saved && saved.gid && !want) {
+      S.tabs = [{name: saved.name || '…', gid: String(saved.gid)}];
+      openTab(String(saved.gid));
+    }
+    try { await loadTabs(); }
+    catch (e) {
+      if (!S.cur) { S.st[''] = {k: 'err', err: e.message, at: Date.now()}; paintStatus(); showErr(e.message); }
+      return;
+    }
+    const pick = pickTab(want, saved);
+    if (pick && pick !== S.cur) openTab(pick);
+  })();
+})();
+</script>
+</body>
+</html>

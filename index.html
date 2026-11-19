@@ -73,6 +73,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     --neon-strategy:#3a3229;
     --neon-strategy-2:#0c0a09;
     --neon-strategy-glow:rgba(212,175,55,.45);
+    /* ERP전산팀 — 구글시트 그린 (재고 ERP MASTER 를 시트 모양 그대로 보는 화면 erp/, 업무용 툴 '재고 ERP 마스터' 카드와 같은 초록) */
+    --neon-erp:#16a34a;
+    --neon-erp-2:#14532d;
+    --neon-erp-glow:rgba(22,163,74,.42);
     /* 재고연동 (Brightbeed Stock 임베드) — 비비드 에메랄드 (재고·sync) */
     --neon-pa:#059669;
     --neon-pa-2:#047857;
@@ -1144,6 +1148,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       0 0 32px rgba(212,175,55,.6),
       0 0 96px rgba(146,64,14,.34),
       inset 0 1px 0 rgba(255,255,255,.3);
+  }
+
+  /* 히어로 — ERP전산팀 (구글시트 그린 → 포레스트) */
+  .hero.hero-erp .hero-eyebrow{color:#16a34a;text-shadow:0 0 12px var(--neon-erp-glow)}
+  .btn-neon.btn-erp{
+    background:linear-gradient(135deg,var(--neon-erp) 0%,var(--neon-erp-2) 100%);
+    color:#ffffff;
+    border-color:rgba(22,163,74,.5);
+    box-shadow:
+      0 0 0 1px rgba(22,163,74,.35),
+      0 0 24px rgba(22,163,74,.45),
+      0 0 64px rgba(20,83,45,.28),
+      inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .btn-neon.btn-erp:hover:not(:disabled){
+    box-shadow:
+      0 0 0 1px rgba(22,163,74,.55),
+      0 0 32px rgba(22,163,74,.65),
+      0 0 96px rgba(20,83,45,.4),
+      inset 0 1px 0 rgba(255,255,255,.45);
   }
 
   /* 재고연동 — 옵션별 표 */
@@ -11874,6 +11898,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </button>
       </section>
 
+      <!-- ERP전산팀 (2026-11-19) — 재고 ERP MASTER(구글시트)를 시트 모양 그대로 꽉 찬 화면으로 보기 (erp/, 전 직원, 보기 전용) -->
+      <section class="hero hero-erp">
+        <div class="hero-eyebrow">ERP</div>
+        <button class="btn-neon btn-erp" id="erpBtn" onclick="openErpPage()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+          <span id="erpBtnLabel">ERP전산팀</span>
+        </button>
+      </section>
+
       <!-- 전략팀 — 전승훈 · 전수빈 · 김수민 PC 에만 노출 (stratRefreshAccess) -->
       <section class="hero hero-strategy" id="strategyHero" hidden>
         <div class="hero-eyebrow">STRATEGY</div>
@@ -15107,6 +15140,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <div class="view view-tool" id="viewMailer" hidden></div>
   <div class="view view-tool" id="viewModels" hidden></div>
   <div class="view view-tool" id="viewSns" hidden></div>
+  <div class="view view-tool" id="viewErp" hidden></div>
 
   </main>
 
@@ -20302,8 +20336,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -21020,13 +21054,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      - keep = 홈으로 나가도 화면을 살려 둠 (스튜디오 작업 · 메일 발송이 이어서 돈다). 모델 지원자 · 꿀꿀집은 열 때마다 새로 읽는다.
      - 꿀꿀집(sns/, '관리자 전용' 폴더, 2026-11-16 같은 날 추가)은 데이터 보기 화면이라 옮겨 올 저장 내용이 없다
        (등록 브라우저 키 ggul_device_key 는 관리 화면에서만 씀). 관리 화면은 예전처럼 주소 sns/?manage=1 로 따로 연다.
-       access = 들어갈 수 있는 사람 (카드 조건 snsRefreshAccess 와 같게) — 아니면 해시로 와도 홈으로. */
+       access = 들어갈 수 있는 사람 (카드 조건 snsRefreshAccess 와 같게) — 아니면 해시로 와도 홈으로.
+     - ERP전산팀(erp/, 홈 팀 카드, 2026-11-19)은 구글시트 '식스샵 ERP MASTER' 를 시트 모양 그대로 보는 화면. keep = 홈에 다녀와도
+       보던 탭 · 스크롤 · 읽어 둔 탭이 그대로다 (숨어 있는 동안은 erp/ 가 스스로 자동 갱신을 멈춘다). */
   const TOOL_PAGES={
     studio:{view:'viewStudio',path:'studio/',title:'광고 컨텐츠 스튜디오',keep:true,bridge:true},
     mailer:{view:'viewMailer',path:'mailer/',title:'메일 발송',keep:true,bridge:true},
     models:{view:'viewModels',path:'models/',title:'모델 지원자',keep:false,bridge:false},
     sns:{view:'viewSns',path:'sns/',title:'꿀꿀집 마케팅 회사',keep:false,bridge:false,
       access(){ try{ return isMaster()&&execGetMe()===SNS_OWNER; }catch(e){ return true; } }},
+    erp:{view:'viewErp',path:'erp/',title:'ERP전산팀',keep:true,bridge:false},
   };
   const TOOL_BRIDGE_KEY='bb_tool_bridge_v1';
   let _toolBridge=null;     // 옮겨 오는 중이면 Promise
@@ -21297,6 +21334,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 꿀꿀집 마케팅 회사 — sns/ 별도 페이지 (@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석, 서버는 Supabase 엣지 함수 sns). 카드는 '관리자 전용' 폴더 — 관리자 PIN 이면서 SNS_OWNER(전승훈)일 때만 보임 (snsRefreshAccess) */
   function openSnsPage(){ openToolPage('sns'); }   // 오피스 안 화면 (TOOL_PAGES) — 관리 화면은 주소 sns/?manage=1
   window.openSnsPage=openSnsPage;
+  /* ERP전산팀 — erp/ (구글시트 '식스샵 ERP MASTER' 웹 보기를 브라우저가 바로 받아 시트 모양 그대로 그림, 보기 전용 · 전 직원) */
+  function openErpPage(){ openToolPage('erp'); }
+  window.openErpPage=openErpPage;
   window.triggerTopping=triggerTopping;
   // goHome: 서브뷰면 history.back() — 브라우저 뒤로가기와 동일 경로로 빠짐 (iOS 엣지 스와이프와 일관됨).
   function goHome(){
