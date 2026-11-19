@@ -185,6 +185,20 @@
   .pill.blue{background:#eff6ff;color:#1d4ed8}
   .pill-sub{margin-left:6px;font-size:12px;color:var(--text-3);vertical-align:middle}
   .pill-sub:first-child{margin-left:0}
+  /* 날짜가 여러 번 적힌 칸(발주일 · 입고일) — 최근 것만 칸에, 그 전은 '이전 N회' 에 마우스 (오피스 물류팀 발주서 '이전 발주' 와 같은 방식) */
+  .hchip{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);background:#f8fafc;color:var(--text-3);font-size:11px;font-weight:600;line-height:1.45;vertical-align:middle;cursor:default}
+  .hchip:hover{background:#eef2f7;color:var(--text);border-color:#cbd5e1}
+  .hpop{position:fixed;z-index:70;min-width:210px;max-width:min(380px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;padding:10px 12px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 48px rgba(15,23,42,.22),0 0 0 1px rgba(15,23,42,.03);font-size:12.5px;pointer-events:none}
+  .hp-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:7px;margin-bottom:5px;border-bottom:1px solid var(--line-2);font-weight:700;color:var(--text)}
+  .hp-h em{font-style:normal;font-weight:500;font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+  .hp-r{display:grid;grid-template-columns:minmax(78px,auto) 64px 1fr;gap:8px;align-items:baseline;padding:5px 4px;border-radius:5px;font-variant-numeric:tabular-nums}
+  .hp-r.on{background:var(--accent-soft)}
+  .hp-d{font-weight:700;color:var(--text-2);white-space:nowrap}
+  .hp-d small{margin-right:3px;font-size:10.5px;font-weight:500;color:var(--text-4)}
+  .hp-d b{display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;background:#dcfce7;color:var(--accent-ink);font-size:10.5px;font-weight:700}
+  .hp-q{text-align:right;font-weight:700;color:var(--text);white-space:nowrap}
+  .hp-n{color:var(--text-3);overflow-wrap:anywhere}
+  .dl .hp-r{padding:3px 0;grid-template-columns:minmax(74px,auto) 60px 1fr}
   .ck{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#dcfce7;color:#15803d;vertical-align:middle}
   .ck svg{width:12px;height:12px}
   .ck0{display:inline-block;width:14px;height:14px;border-radius:4px;border:1.5px solid #d5dce5;vertical-align:middle}
@@ -350,6 +364,17 @@
   const ID_RE = /번호|ID|코드|송장|전화|연락/i;               // 숫자라도 쉼표 없이 (주문번호 · 신청번호 등)
   const SUM_RE = /수량|합계|재고|식스샵|에이블리|지그재그|29cm|스마트스토어|쿠팡|W컨셉|오늘의집|EQL|잔량|금액|SUM/i;   // 맨 아래 합계를 내는 열
   const KEY_RE = /^(상품명|상품이름|온라인상품명|품목명|제품명)$/;   // 상품 이름 열 = 왼쪽에 고정 · 상세 창 제목
+  /* 재고 · 송장출력 탭은 브랜드마다 같은 칸 · 같은 순서 (2026-11-19 사용자 "모든 브랜드 해당 탭 통일해줘" · "메모를 제작소요일 우측으로")
+     · 시트 칸 순서와 상관없이 STOCK_ORDER 순서로 (오늘의집 · EQL 은 다른 판매처 옆, 메모는 제작 소요일 바로 오른쪽). 목록에 없는 칸은 시트에서 바로 앞 칸 뒤에
+     · STOCK_KEEP 칸은 비어 있어도 보인다 (브랜드마다 칸이 들쭉날쭉하지 않게) — 나머지(입고 예정일 · 판매번호 등)는 지금처럼 비면 숨김
+     · 시트에 없는 칸은 만들지 않는다 (코페리 시트엔 메모 칸이 없고, 샤인비드 시트엔 오늘의집 · EQL 칸이 없음). 시트는 그대로 — 화면만 */
+  const STOCK_ORDER = ['카테고리', '상품명', '옵션', '식스샵', '에이블리', '지그재그', '29cm', '스마트스토어', '쿠팡', 'W컨셉', '오늘의집', 'EQL', '합계', '남은재고', '리오더알림',
+    '발주일및수량', '발주수량', '제작소요일', '메모', '입고일', '입고수량', '잔량', '입고예정일', '이슈체크', '판매번호', '품절/예정', '재고체크필요', '재고체크완료'];
+  const STOCK_KEEP = new Set(['카테고리', '상품명', '옵션', '식스샵', '에이블리', '지그재그', '29cm', '스마트스토어', '쿠팡', 'W컨셉', '오늘의집', 'EQL', '합계', '남은재고', '리오더알림',
+    '발주일및수량', '발주수량', '제작소요일', '메모', '입고일', '입고수량', '잔량', '이슈체크', '품절/예정']);
+  // 한 칸에 날짜가 여러 번 쌓이는 칸 (예: '2026-09-30 695개⏎2026-11-09') — 칸엔 최근 것만 '11/9', 그 전은 '이전 N회' 에 마우스 · 상세 창
+  const HIST = {'발주일및수량': '발주', '입고일': '입고', '입고예정일': '입고 예정'};
+  const F_CHIP = `600 11px ${FONT}`;
 
   const $ = id => document.getElementById(id);
   const app = $('app'), grid = $('grid'), qIn = $('q');
@@ -705,10 +730,18 @@
         status: nn === '리오더알림', key: KEY_RE.test(nn), strong: /^(남은재고|합계)$/.test(nn),
         sum: !side && type === 'num' && SUM_RE.test(name)});   // 옆 표(피벗)는 자체 '총계' 줄이 있어 합계를 또 내지 않는다
     }
+    if (meta.sec === 'stock' && !side) stockLayout(cols, dataIdx.map(k => grid2[k]));
     const outRows = dataIdx.map(k => {
       const byP = grid2[k];
       let txt = '';
-      cols.forEach(col => { const c = byP[col.p]; if (c) txt += ' ' + c.t; });
+      cols.forEach(col => {
+        const c = byP[col.p];
+        if (!c) return;
+        txt += ' ' + c.t;
+        const hx = col.hist && hxOf(c);
+        if (hx) txt += ' ' + hx.all.map(histText).join(' ');   // '9/30' 으로 찾아도 나오게
+        else if (col.lead && c.t) txt += ' ' + leadText(c.t);
+      });
       const kk = txt.toLowerCase();
       return {r: rows[k].r, byP, k: kk, k2: kk.replace(/\s+/g, '')};
     });
@@ -758,6 +791,80 @@
   }
   const catVal = (row, p) => { const c = row.byP[p]; return c ? (c.t || (c.chips[0] && c.chips[0].t) || '') : ''; };
 
+  /* ── 재고 · 송장출력 탭 칸 맞추기 (STOCK_ORDER · STOCK_KEEP · HIST 위 설명) ── */
+  const HX = new WeakMap();   // 칸 → parseHist 결과. 칸 객체에 붙이지 않는다 (저장본 IndexedDB 에 옛 해석이 섞여 남지 않게)
+  function hxOf(c) {
+    if (!c || !c.t) return null;
+    let v = HX.get(c);
+    if (v === undefined) { v = parseHist(c.t); HX.set(c, v); }
+    return v;
+  }
+  function stockLayout(cols, rows) {
+    let prev = -1;
+    cols.forEach(c => { const i = STOCK_ORDER.indexOf(norm(c.name)); c.rk = i >= 0 ? i : prev + 0.5; if (i >= 0) prev = i; });
+    cols.sort((a, b) => a.rk - b.rk || a.p - b.p);
+    cols.forEach(c => {
+      const n = norm(c.name);
+      if (STOCK_KEEP.has(n)) c.keep = true;
+      if (HIST[n]) {
+        c.hist = HIST[n];
+        let dated = 0, texts = 0;
+        rows.forEach(g => { const x = g[c.p]; if (!x || !x.t) return; texts++; if (hxOf(x)) dated++; });
+        if (dated) { c.type = 'hist'; c.align = ''; }   // 날짜가 하나도 없으면 글 칸 그대로
+      } else if (n === '제작소요일') { c.lead = true; c.tip = '발주 → 출고까지 걸린 날'; if (c.type === 'date') c.type = 'text'; }
+    });
+  }
+  // '2026-09-30 695개' · '2026.11.03' · '2026. 10. 8' · '10.16' · '11/2' 줄들 → {all: [오래된 → 최근], latest, prev: [최근 → 오래된]} (날짜가 하나도 없으면 null)
+  function parseHist(t) {
+    const now = new Date(), out = [];
+    let y0 = 0, last = 0;
+    for (const raw of String(t).split(/\n+/)) {
+      const s = raw.trim();
+      if (!s) continue;
+      let m = s.match(/^(\d{4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})\.?\s*(.*)$/), y = 0, mo = 0, d = 0, rest = '';
+      if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; rest = m[4]; }
+      else if ((m = s.match(/^(\d{1,2})\s*[./]\s*(\d{1,2})(?![\d.])\s*(.*)$/))) {
+        mo = +m[1]; d = +m[2]; rest = m[3];
+        y = y0 || now.getFullYear();
+        if (!y0 && new Date(y, mo - 1, d) - now > 31 * 864e5) y--;   // 올해로 보면 한 달 넘게 앞이면 작년
+        if (y0 && y * 10000 + mo * 100 + d < last) y++;              // 앞 줄보다 이르면 해가 바뀐 것 (12.28 → 1.5)
+      }
+      if (!mo || mo > 12 || !d || d > 31) {   // 날짜가 아닌 줄은 앞 날짜에 붙는 메모 (첫 줄이면 따로)
+        const p = out[out.length - 1];
+        if (p) p.note = [p.note, s].filter(Boolean).join(' '); else out.push({ord: 0, note: s});
+        continue;
+      }
+      y0 = y;
+      last = y * 10000 + mo * 100 + d;
+      const q = rest.match(/^(\d[\d,]*)\s*개\s*/);
+      out.push({y, m: mo, d, ord: last, q: q ? +q[1].replace(/,/g, '') : null, note: (q ? rest.slice(q[0].length) : rest).trim()});
+    }
+    const dated = out.filter(e => e.ord);
+    if (!dated.length) return null;
+    const latest = dated.reduce((a, b) => b.ord >= a.ord ? b : a);
+    const prev = out.filter(e => e !== latest).sort((a, b) => b.ord - a.ord);
+    return {all: [latest, ...prev], latest, prev};
+  }
+  function histText(e) {   // '11/18 400개' (날짜 없는 메모 줄은 글만)
+    if (!e.ord) return e.note;
+    return `${e.m}/${e.d}` + (e.q !== null ? ` ${fmt(e.q)}개` : '') + (e.note ? ` ${e.note}` : '');
+  }
+  function histRows(hx) {   // 마우스 팝업 · 상세 창 — 최근 → 오래된
+    const yNow = new Date().getFullYear();
+    return hx.all.map((e, i) => `<div class="hp-r${i === 0 ? ' on' : ''}">`
+      + `<span class="hp-d">${e.ord ? `${e.y !== yNow ? `<small>${e.y}</small>` : ''}${e.m}/${e.d}` : '—'}${i === 0 ? '<b>최근</b>' : ''}</span>`
+      + `<span class="hp-q">${e.q !== null && e.q !== undefined ? `${fmt(e.q)}개` : ''}</span>`
+      + `<span class="hp-n">${esc(e.note || '')}</span></div>`).join('');
+  }
+  // 제작 소요일은 늘 발주 → 출고라 '발주→출고 23일' · '20일 소요' → '23일' · '20일' (사용자 "날짜만 적어줘"), 날짜를 적은 칸은 '9/1'
+  function leadText(t) {
+    let s = String(t).replace(/\s*\n\s*/g, ' · ').replace(/발주\s*(?:→|->|-+>|＞|>)\s*출고\s*:?\s*/g, '').replace(/\s*소요\s*$/, '').trim();
+    const m = s.match(/^(\d{4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})\.?$/);
+    if (m) s = `${+m[2]}/${+m[3]}`;
+    else if (/^\d+$/.test(s)) s += '일';
+    return s;
+  }
+
   /* ── 칸 너비 = 들어간 글자 · 숫자 길이로 자동 ──
      2026-11-19 사용자 "글자 칸이 많이 남는 건 당겨서 한 화면에서 웬만하면 다 보이게" →
      · 머리글은 두 줄까지 접는다 (숫자 칸이 '스마트스토어' 같은 머리글 때문에 넓어지지 않게)
@@ -775,6 +882,9 @@
   function display(col, c) {
     const t = c.t;
     if (!t) return '';
+    const hx = col.hist && hxOf(c);
+    if (hx) return histText(hx.latest);
+    if (col.lead) return leadText(t);
     if (col.type === 'num') { const n = numOf(t); return n !== null && Number.isInteger(n) && !/[.%]/.test(t) ? n.toLocaleString('ko-KR') : t; }
     if (c.href && /^https?:\/\//i.test(t)) { try { return new URL(c.href).hostname.replace(/^www\./, '').split('.').slice(-2).join('.'); } catch (e) { return t; } }   // 주소는 사이트 이름만 (1688.com)
     return t.replace(/\s*\n\s*/g, ' · ');
@@ -800,7 +910,11 @@
         if (col.type === 'check' || (c.cb && !c.t)) cw = 18;
         else if (c.img) cw = 30;
         else if (c.chips.length) cw = c.chips.reduce((s, x) => s + tw(x.t, F_TAG) + 19, 0) + (c.chips.length - 1) * 4;
-        else if (c.t) cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? display(col, c).replace(/\d/g, '0') : display(col, c), c.st.bold || col.strong ? F_BOLD : F_CELL);   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
+        else if (c.t) {
+          cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? display(col, c).replace(/\d/g, '0') : display(col, c), c.st.bold || col.strong ? F_BOLD : F_CELL);   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
+          const hx = col.hist && hxOf(c);
+          if (hx && hx.prev.length) cw += 6 + tw(`이전 ${hx.prev.length}회`, F_CHIP) + 14;   // '이전 N회' 딱지
+        }
         if (!cw) continue;
         ws.push(cw + pad + 2);
         if (col.wrap && !c.chips.length && c.t) {
@@ -918,6 +1032,9 @@
       else if (c.img) inner = `<img class="thumb" src="${esc(c.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
       else if (c.chips.length) inner = c.chips.map(tagHtml).join('');
       else if (col.status) { inner = statusHtml(c.t, false); title = c.t; }
+      else if (col.hist && hxOf(c)) {   // 최근 날짜만 + '이전 N회' (마우스를 올리면 전부)
+        inner = hl(display(col, c)) + (hxOf(c).prev.length ? `<span class="hchip" data-r="${row.r}" data-p="${col.p}">이전 ${hxOf(c).prev.length}회</span>` : '');
+      }
       else if (c.t) {
         const d = display(col, c);
         if (col.type === 'num') { const n = numOf(c.t); if (n === 0) cls += ' z'; else if (n !== null && n < 0 && !c.st.fg) cls += ' neg'; }
@@ -942,7 +1059,16 @@
     if (v.sort) {
       const col = d.cols.find(c => c.p === v.sort.p), dir = v.sort.dir;
       if (col) {
-        const key = r => { const c = r.byP[col.p]; if (!c) return null; if (col.type === 'check') return c.cb === 2 ? 1 : 0; if (col.type === 'num') return numOf(c.t); return c.t || (c.chips[0] && c.chips[0].t) || ''; };
+        const key = r => {
+          const c = r.byP[col.p];
+          if (!c) return null;
+          if (col.type === 'check') return c.cb === 2 ? 1 : 0;
+          const hx = col.hist && hxOf(c);
+          if (hx) return hx.latest.ord;   // 최근 날짜 순
+          if (col.lead && c.t) { const s = leadText(c.t), n = s.match(/^\d+/); return n ? +n[0] : s; }   // 소요일 수 순
+          if (col.type === 'num') return numOf(c.t);
+          return c.t || (c.chips[0] && c.chips[0].t) || '';
+        };
         rows = rows.slice().sort((a, b) => {
           const x = key(a), y = key(b), ex = x === null || x === '', ey = y === null || y === '';
           if (ex || ey) return ex === ey ? a.r - b.r : ex ? 1 : -1;   // 빈칸은 늘 맨 아래
@@ -955,6 +1081,8 @@
   }
   function renderGrid(opt) {
     opt = opt || {};
+    const hp = document.querySelector('.hpop');
+    if (hp) hp.hidden = true;   // 표를 다시 그리면 '이전 N회' 팝업은 닫는다
     const keep = opt.keep ? {t: grid.scrollTop, l: grid.scrollLeft} : (opt.pos || {t: 0, l: 0});
     const d = curData();
     S.size = sizeKey();
@@ -963,7 +1091,7 @@
     S.list = list;
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
     const nar = narrow.matches, showRn = !nar, vw = grid.clientWidth || 1000;
-    let cols = d.cols.filter(c => S.showEmpty || !c.empty || c.key), stickN = 0, keyFirst = false;
+    let cols = d.cols.filter(c => S.showEmpty || !c.empty || c.key || c.keep), stickN = 0, keyFirst = false;   // keep = 재고 탭 기본 칸 (비어도 보임)
     if (nar && cols.some(c => c.key)) {
       const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.strong ? 3 : c.status ? 4 : 5;
       cols = cols.map((c, i) => [c, i]).sort((x, y) => pri(x[0]) - pri(y[0]) || x[1] - y[1]).map(x => x[0]);
@@ -990,7 +1118,7 @@
     cols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
       const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '')).trim();
-      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)} — 누르면 정렬">${esc(c.name)}${ar}</th>`;
+      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬">${esc(c.name)}${ar}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
     if (list.length) {
@@ -1032,10 +1160,10 @@
     const td = $('tDate');
     td.hidden = multi || !(m && m.date);
     td.textContent = m && m.date ? `${m.date} 기준` : '';
-    const nEmpty = d ? d.cols.filter(c => c.empty && !c.key).length : 0, et = $('eTog');
+    const nEmpty = d ? d.cols.filter(c => c.empty && !c.key && !c.keep).length : 0, et = $('eTog');
     et.hidden = !nEmpty;
     et.textContent = S.showEmpty ? `빈 열 ${nEmpty}개 숨기기` : `빈 열 ${nEmpty}개 보기`;
-    et.title = nEmpty ? `내용이 하나도 없는 열: ${d.cols.filter(c => c.empty && !c.key).map(c => c.name).join(', ')}` : '';
+    et.title = nEmpty ? `내용이 하나도 없는 열: ${d.cols.filter(c => c.empty && !c.key && !c.keep).map(c => c.name).join(', ')}` : '';
     const all = curAll(), pt = $('parts');
     if (all && all.parts.length > 1) {
       const isSum = x => /SUM|합계|총계/i.test(x.caption + ' ' + x.cols.map(c => c.name).join(' '));   // 구글시트 피벗 = 집계 표
@@ -1245,6 +1373,29 @@
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveSel(e.key === 'ArrowDown' ? 1 : -1); }
     else if (e.key === 'Escape') closeDetail();
   });
+  /* '이전 N회' 에 마우스 → 발주 · 입고 전부 (오피스 물류팀 발주서의 '이전 발주' 팝업과 같은 방식 — 휴대폰은 줄을 눌러 상세 창에서) */
+  const hpop = document.createElement('div');
+  hpop.className = 'hpop';
+  hpop.hidden = true;
+  document.body.appendChild(hpop);
+  grid.addEventListener('mouseover', e => {
+    const chip = e.target.closest && e.target.closest('.hchip');
+    if (!chip) return;
+    const d = curData(), row = d && d.rows.find(x => x.r === +chip.dataset.r), col = d && d.cols.find(x => x.p === +chip.dataset.p);
+    const c = row && col && row.byP[col.p];
+    const hx = c && hxOf(c);
+    if (!hx) return;
+    // 수량 합은 안 낸다 — 최근 발주 수량은 '발주 수량' 칸에만 적히는 일이 많아 이 칸의 합이 실제와 다르다
+    hpop.innerHTML = `<div class="hp-h">${esc(col.hist)} 내역<em>${hx.all.filter(x => x.ord).length}회</em></div>${histRows(hx)}`;
+    hpop.hidden = false;
+    const r = chip.getBoundingClientRect(), w = hpop.offsetWidth, h = hpop.offsetHeight;
+    let left = r.right + 8;
+    if (left + w > innerWidth - 8) left = Math.max(8, r.left - w - 8);
+    hpop.style.left = left + 'px';
+    hpop.style.top = Math.max(8, Math.min(innerHeight - h - 8, r.top + r.height / 2 - h / 2)) + 'px';
+  });
+  grid.addEventListener('mouseout', e => { const chip = e.target.closest && e.target.closest('.hchip'); if (chip && !chip.contains(e.relatedTarget)) hpop.hidden = true; });
+  grid.addEventListener('scroll', () => { hpop.hidden = true; }, {passive: true});
   function moveSel(dir) {
     if (!S.list.length) return;
     let i = S.sel && S.sel.gid === S.cur ? S.list.findIndex(r => r.r === S.sel.r) : -1;
@@ -1266,7 +1417,10 @@
     if (c.img) return `<img class="dimg" src="${esc(c.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
     if (c.chips.length) return c.chips.map(tagHtml).join(' ');
     if (col.status) return statusHtml(c.t, true);
+    const hx = col.hist && hxOf(c);
+    if (hx) return histRows(hx);   // 발주 · 입고 전부 (최근 → 오래된)
     const st = c.st.fg ? ` style="color:${c.st.fg}"` : '';
+    if (col.lead) return `<span${st}>${esc(leadText(c.t))}</span>`;
     if (c.href) return `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${esc(c.t)}</a>`;
     if (col.type === 'num') { const n = numOf(c.t); return `<span class="${n !== null && n < 0 && !c.st.fg ? 'neg' : ''}"${st}>${esc(display(col, c))}</span>`; }
     return `<span${st}>${esc(c.t)}</span>`;
