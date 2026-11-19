@@ -1571,9 +1571,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-date{white-space:nowrap;line-height:1.15}
   .lgb-date b{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:19px;font-weight:500;color:#fbbf24;letter-spacing:.02em;text-shadow:0 0 10px rgba(251,191,36,.3);font-variant-numeric:tabular-nums}
   .lgb-date i{font-style:normal;font-size:11px;color:#9ca3af;margin-left:4px}
-  .lgb-date .lgb-nodate{color:#4b5563;text-shadow:none}
   .lgb-date em{display:block;font-style:normal;font-size:10.5px;color:#6b7280;margin-top:3px}
   .lgb-date .lgb-new{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:800;font-style:normal;color:#0b0d12;background:#fbbf24;vertical-align:3px}
+  /* 메모에 출고일이 없는 신청서 — 같은 한 줄 모양에 신청일을 회색으로, 딱지는 테두리만 (2026-11-19) */
+  .lgb-date .lgb-nd b{color:#9ca3af;text-shadow:none}
+  .lgb-date .lgb-nd .lgb-new{color:#9ca3af;background:transparent;box-shadow:inset 0 0 0 1px #4b5563}
   .lgb-m{display:inline-block;padding:3px 8px;border-radius:5px;border:1px solid rgba(156,163,175,.45);font-size:12px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;color:#9ca3af;background:rgba(156,163,175,.08)}
   .lgb-m-airpost{color:#38bdf8;border-color:rgba(56,189,248,.5);background:rgba(56,189,248,.1)}
   .lgb-m-air{color:#7dd3fc;border-color:rgba(125,211,252,.45);background:rgba(125,211,252,.08)}
@@ -30229,7 +30231,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const tag=(n!=null && n>=0) ? `<em class="lgb-new">${_lgbAgoText(n)}</em>` : '';
         dateCell=`<b>${_lgbMd(g.date)}</b><i>${_LGB_WD[new Date(y,mo-1,d).getDay()]}</i>${tag}`;
       }else{
-        dateCell=`<span title="메모에 출고일이 없음"><b class="lgb-nodate">—</b><em>신청 ${_lgbMd(ords[0]&&ords[0].date)}</em></span>`;
+        // 콰이디에어가 메모에 출고일을 안 적은 신청서 — 다른 줄과 같은 한 줄 모양으로, 신청일을 회색으로 (2026-11-19 "11.04는 쟤 왜저래")
+        const od=(ords[0]&&ords[0].date)||g.sortKey||'';
+        const [y,mo,d]=String(od).split('-').map(Number);
+        const wd=(y&&mo&&d) ? `<i>${_LGB_WD[new Date(y,mo-1,d).getDay()]}</i>` : '';
+        dateCell=`<span class="lgb-nd" title="콰이디에어 메모에 출고일이 없어 신청일을 보여 줍니다"><b>${_lgbMd(od)||'—'}</b>${wd}<em class="lgb-new">신청일</em></span>`;
       }
       const methodCell=`<span class="lgb-m lgb-m-${_LGB_CLS[g.method]||'none'}">${escapeHTML(g.method||'방식 미기재')}</span>`;
       const seen=new Set(), imgs=[];
