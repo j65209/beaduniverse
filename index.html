@@ -5106,6 +5106,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-row.unread .kko-l2 span{color:var(--text-0);font-weight:700}
   .kko-none{font-size:12.5px;color:var(--text-3);padding:6px 2px}
   .kko-more{margin-top:8px;background:none;border:0;color:var(--text-2);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;padding:4px 2px}
+  /* 줄 순서 (사장님 11-19): 안 읽음 → 답 기다림 → '답한 상담' 구분 줄 → 답한 상담(오래된 것 위, 맨 아래가 가장 최근 — 카카오톡과 반대) */
+  .kko-sep{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin:8px 2px 2px;padding-top:10px;border-top:1px dashed var(--line-2);font-size:11.5px;font-weight:700;color:var(--text-3)}
+  .kko-sep button{margin-left:auto;min-height:30px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-1);color:var(--text-2);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
+  .kko-sep button:hover{border-color:var(--line-2)}
+  /* 카카오톡 상담 ↔ 아래 CS 업무 칸 나누기 (사장님 11-19 "분리 확실하게") */
+  .kko-split{display:flex;align-items:center;gap:10px;margin:32px 0 18px;font-size:14px;font-weight:800;color:var(--text-0)}
+  .kko-split em{font-style:normal;font-size:12px;font-weight:600;color:var(--text-3);white-space:nowrap}
+  .kko-split::after{content:'';flex:1;min-width:24px;height:2px;border-radius:2px;background:var(--line-2)}
+  /* 받은 사진 — 말풍선에 마우스를 올리면 크게(PC 는 채팅방 창 왼쪽), 누르면 가운데 고정 · 휴대폰은 누르면 (사장님 11-19 "이미지도 … 마우스오버로") */
+  .kko-ph{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0;border:0;background:none;font:inherit;color:inherit;cursor:zoom-in;text-align:left}
+  .kko-ph u{text-decoration:none;font-size:11.5px;font-weight:700;color:var(--text-3);border-bottom:1px dashed var(--text-3)}
+  .kko-imgpop{position:absolute;z-index:3;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:var(--bg-1);border:1px solid var(--line-2);box-shadow:0 18px 48px rgba(0,0,0,.28);max-height:calc(100% - 32px);overflow:auto}
+  .kko-imgpop[hidden]{display:none}
+  .kko-imgpop .g{display:grid;grid-template-columns:1fr;gap:6px}
+  .kko-imgpop .g.n2{grid-template-columns:1fr 1fr}
+  .kko-imgpop img{display:block;width:100%;max-height:min(72vh,640px);object-fit:contain;border-radius:8px;background:var(--bg-2)}
+  .kko-imgpop .g.n2 img{max-height:min(36vh,320px)}
+  .kko-imgpop span{font-size:12px;color:var(--text-3);text-align:center}
+  .kko-imgpop span:empty{display:none}
+  .kko-imgpop.pin{cursor:zoom-out}
   .kko-ch{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
   .kko-ch-wrap{overflow-x:auto}
   .kko-ch table{width:100%;border-collapse:collapse;font-size:12px}
@@ -5229,7 +5249,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 휴대폰 — 오피스 모바일 기준(글씨 11px 이상 · 손가락 닿는 곳 36px) */
   @media (pointer:coarse), (max-width:600px){
     .kko-btn{min-width:36px;min-height:36px}
-    .kko-chip,.kko-brands button,.kko-learn button,.kko-find select,.kko-find input,.kko-find button{min-height:36px}
+    .kko-chip,.kko-brands button,.kko-learn button,.kko-sep button,.kko-find select,.kko-find input,.kko-find button{min-height:36px}
+    .kko-ph{min-height:36px}
     .kko-more{display:inline-flex;align-items:center;min-height:36px}
   }
   .reo-name b{font-weight:700;color:var(--text-0)}
@@ -12969,6 +12990,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <!-- 채팅방 창 (줄을 누르면) — 오피스 안에서 대화 보기, 카카오로 넘어가지 않음 (2026-11-19 사장님). kkoOpenChat · _kkoChatPaint 가 채운다 -->
       <div class="kko-chat" id="kkoChat" hidden></div>
     </section>
+    <!-- 카카오톡 상담 ↔ 아래 CS 업무 나누기 (2026-11-19 사장님 "카카오톡 상담이랑 하단이랑 분리 확실하게 해줘") -->
+    <div class="kko-split" role="separator" aria-label="여기부터 CS 업무">CS 업무 <em>반품 · 교환 · 문의 · 리뷰 · 개선 요청</em></div>
 
     <!-- ============ CS팀 탭 — ↩️ 반품·교환 분석(메인) / 🛠 개선 요청 · 작업 보드 (2026-11-13 사장님: "반품 교환을 메인으로 · 기록 · 이슈 분석은 사실상 필요없음 ·
          개선요청이랑 작업보드 메모 합쳐줘"). 📝 CS 기록 · 📊 이슈 분석은 걷어내지 않고 숨김 — 다시 쓰려면 버튼의 hidden 과 csiSwitchTab 의 CSI_TABS_HIDDEN 을 지운다 ============ -->
@@ -16499,14 +16522,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     brands.innerHTML=`<button type="button" class="${_kko.brand==='all'?'on':''}" onclick="kkoBrand('all')">전체 ${rows.filter(_kkoWaiting).length}</button>`
       + seen.filter(b=>!(typeof PAUSED_BRANDS!=='undefined' && PAUSED_BRANDS.has(b.brand)) || rows.some(r=>r.brand===b.brand) || _kko.brand===b.brand).map(b=>`<button type="button" class="reo-b-${_kkoEsc(b.brand)}${_kko.brand===b.brand?' on':''}" onclick="kkoBrand('${_kkoEsc(b.brand)}')">${_kkoEsc(b.label)} ${wcount(b.brand)}</button>`).join('')
       + `<button type="button" onclick="kkoToggleCh()" aria-expanded="${_kko.showCh}">채널 ${chans.length}개 ${_kko.showCh?'▴':'▾'}</button>`;
-    // 줄 — 서버 순서(관리자 호출 → 오래 기다린 순 → 최근 순), 기본 KKO_SHOW 개. 칩을 눌렀으면 그것만.
-    // 2줄: 위 = 브랜드 · 대화명 · 주제 · 상태, 아래 = 마지막 글. 맨 왼쪽 칸 = 안 읽음 n · 직원 필요 · 답 준비 (보이는 줄에 하나도 없으면 칸을 접음)
-    const sel=_kko.only==='staff' ? staffRows : _kko.only==='ready' ? readyRows : _kko.only==='wait' ? waitingRows : _kko.only==='unread' ? unreadRows : base;
-    const show=_kko.more ? sel : sel.slice(0,KKO_SHOW);
+    // 줄 순서 (사장님 11-19 "안읽음을 위에 · 오래 기다린사람부터 맨위로 · 제일 최근에 연락온사람은 하단으로 (카카오톡이랑 반대)"):
+    // ① 안 읽음 ② 답 기다림(읽었지만 아직 답 안 함) ③ 답한 상담 — 묶음 안에서는 오래된 것부터, 맨 아래가 가장 최근.
+    // 기본 화면 = ①② 전부 + ③ 의 가장 최근 몇 줄(합쳐 KKO_SHOW 줄, ③ 은 최소 3) — 더 이전 ③ 은 '답한 상담' 구분 줄 버튼으로 펼침.
+    // 칩을 눌렀으면 그것만 같은 순서로 전부. 2줄: 위 = 브랜드 · 대화명 · 주제 · 상태, 아래 = 마지막 글. 맨 왼쪽 칸 = 안 읽음 n · 직원 필요 · 답 준비
+    const grp=r=>r.unread>0 ? 0 : _kkoWaiting(r) ? 1 : 2;
+    const since=r=>(grp(r)<2 ? (r.waitingSince||r.lastAt) : r.lastAt) || 0;
+    const sel=(_kko.only==='staff' ? staffRows : _kko.only==='ready' ? readyRows : _kko.only==='wait' ? waitingRows : _kko.only==='unread' ? unreadRows : base).slice().sort((a,b)=>grp(a)-grp(b) || since(a)-since(b));
+    const qRows=_kko.only ? sel : sel.filter(r=>grp(r)<2), done=_kko.only ? [] : sel.filter(r=>grp(r)===2);
+    const keepN=Math.min(done.length, Math.max(3, KKO_SHOW-qRows.length)), hidden=_kko.more ? 0 : done.length-keepN;
+    const show=qRows.concat(done.slice(hidden));
     const ae=document.activeElement, focusK=(ae && ae.classList && ae.classList.contains('kko-row')) ? ae.dataset.k : '';
+    const sepFocus=!!(ae && ae.closest && ae.closest('#kkoList .kko-sep'));
     const openK=_kko.chat ? _kko.chat.key : '';
     list.classList.toggle('mk', show.some(r=>r.unread>0 || _kkoIsStaff(r) || _kkoReady(r)));
-    list.innerHTML=show.length ? show.map(r=>{
+    const sep=done.length ? `<div class="kko-sep"><span>답한 상담 ${done.length} — 위가 오래된 것 · 맨 아래가 가장 최근</span>`
+      + (hidden ? `<button type="button" onclick="kkoToggleMore()">이전 상담 ${hidden}개 더 보기 ▴</button>` : _kko.more && done.length>keepN ? `<button type="button" onclick="kkoToggleMore()">이전 상담 접기 ▾</button>` : '') + `</div>` : '';
+    const noneQ=(!_kko.only && !qRows.length && done.length) ? `<div class="kko-none">지금 안 읽은 상담 · 답 기다리는 상담이 없어요</div>` : '';
+    const rowHtml=r=>{
       const key=r.pid+':'+r.chatId, s=_kkoRowState(r), staff=_kkoIsStaff(r), ready=!staff && _kkoReady(r), why=staff ? _kkoStaffWhy(r) : '';
       const tp=(r.topics||[]).map(t=>KKO_TOPIC[t]||t).join(' · ');
       const c=chans.find(x=>x.pid===r.pid);
@@ -16514,10 +16547,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + `<span class="kko-mk">${r.unread>0?`<span class="u">안 읽음 ${r.unread}</span>`:''}${staff?'<span class="s">직원 필요</span>':''}${ready?'<span class="a">답 준비</span>':''}</span>`
         + `<span class="kko-main"><span class="kko-l1">${_kkoBrand(r.brand,c && c.label)}<b>${_kkoEsc(r.nick)}</b>${tp?`<span class="kko-tp">${_kkoEsc(tp)}</span>`:''}<span class="kko-st ${s.cls}">${_kkoEsc(s.text)}</span></span>`
         + `<span class="kko-l2"><span>${_kkoEsc(r.preview||'(사진 · 파일)')}</span><i aria-hidden="true">›</i></span></span></button>`;
-    }).join('') : `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({staff:'직원이 필요한 채팅이 없어요',ready:'에이전트가 답을 준비한 채팅이 없어요',wait:'답을 기다리는 채팅이 없어요',unread:'안 읽은 채팅이 없어요'})[_kko.only] || `최근 ${d.windowDays}일 진행 중인 상담이 없어요`}</div>`;
+    };
+    list.innerHTML=show.length ? noneQ + qRows.map(rowHtml).join('') + sep + done.slice(hidden).map(rowHtml).join('')
+      : `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({staff:'직원이 필요한 채팅이 없어요',ready:'에이전트가 답을 준비한 채팅이 없어요',wait:'답을 기다리는 채팅이 없어요',unread:'안 읽은 채팅이 없어요'})[_kko.only] || `최근 ${d.windowDays}일 진행 중인 상담이 없어요`}</div>`;
     if(focusK){ const el=[...list.querySelectorAll('.kko-row')].find(x=>x.dataset.k===focusK); if(el) el.focus({preventScroll:true}); }
-    const what={staff:'직원 필요',ready:'답 준비',wait:'답 기다림',unread:'안 읽음'}[_kko.only];
-    moreW.innerHTML=(sel.length>show.length || _kko.more) ? `<button type="button" class="kko-more" onclick="kkoToggleMore()">${_kko.more ? '접기' : what ? `${what} ${sel.length}개 모두 보기` : `최근 ${d.windowDays}일 상담 ${sel.length}개 모두 보기 (답 기다림 ${waitingRows.length})`}</button>` : '';
+    else if(sepFocus){ const bt=list.querySelector('.kko-sep button'); if(bt) bt.focus({preventScroll:true}); }
+    moreW.innerHTML='';   // '모두 보기'는 목록 안 '답한 상담' 구분 줄로 옮김 (11-19)
     // 에이전트 학습 줄 — 바뀐 게 있을 때만 다시 그림 (안의 '예상 질문 · 답' 버튼 포커스 지킴)
     const ln=document.getElementById('kkoLearn');
     if(ln){
@@ -16563,6 +16598,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function kkoChatClose(){
     const key=_kko.chat ? _kko.chat.key : '';
+    kkoImgClose(); _kkoImgClear();
     _kko.chat=null;
     const box=document.getElementById('kkoChat');
     if(box){ box.hidden=true; box.innerHTML=''; }
@@ -16570,7 +16606,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const row=key && [...document.querySelectorAll('#kkoList .kko-row')].find(el=>el.dataset.k===key);
     if(row) row.focus({preventScroll:true});
   }
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kko.chat){ e.preventDefault(); kkoChatClose(); } });
+  document.addEventListener('keydown', e=>{
+    if(e.key!=='Escape' || !_kko.chat) return;
+    e.preventDefault();
+    const pop=document.getElementById('kkoImgPop');
+    if(pop && !pop.hidden) kkoImgClose(); else kkoChatClose();   // 사진이 떠 있으면 사진만 먼저 닫음
+  });
   // 서버 답 (11-19 서버 세션): 200 = 최근 100줄(오래된 순, 더 있으면 more) · 403 = 사무실 인터넷 밖 (PIN 은 둘 다 공개 화면에 있어
   // 서버가 사무실 IP 로만 연다) → 마지막 글 + 파트너센터 링크, 5분 동안 다시 묻지 않음 · 404 = 최근 3일 목록에 없거나 아직 못 받은 방 → 마지막 글만 · 429 = 분당 60번 넘음
   async function kkoChatLoad(){
@@ -16603,7 +16644,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + `<div class="kko-chat-log" id="kkoChatLog"></div>`
         + `<div class="kko-chat-draft" id="kkoChatDraft"></div>`
         + `<div class="kko-chat-foot" id="kkoChatFoot"></div>`
-        + `</div>`;
+        + `</div>`
+        + `<div class="kko-imgpop" id="kkoImgPop" hidden onclick="kkoImgClose()" title="누르면 닫기"></div>`;
       c.sig=''; c.info=''; c.dsig=''; c.fsig='';
     }
     const d=_kko.data||{}, cd=c.data||{}, dr=_kko.drafts||{};
@@ -16670,7 +16712,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let html, sig;
     if(Array.isArray(cd.logs)){
       const L=cd.logs;
-      sig='L'+L.length+':'+((L[L.length-1]||{}).id||'')+(cd.more?'+':'');
+      sig='L'+L.length+':'+((L[L.length-1]||{}).id||'')+(cd.more?'+':'')+':'+L.filter(m=>Array.isArray(m.imgs) && m.imgs.length).length;
       html=(cd.more ? '<div class="kko-chat-note">여기는 최근 100줄 — 앞 대화는 파트너센터에서</div>' : '')
         + (L.length ? _kkoLogHtml(L) : '<div class="kko-chat-note">아직 대화가 없어요</div>');
     }else if(c.err==='lock' || c.err==='none'){
@@ -16683,6 +16725,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       html=`<div class="kko-chat-note err">대화를 불러오지 못했어요 — ${_kkoEsc(c.err)}</div>`;
     }else{ sig='…'; html='<div class="kko-chat-note">대화 불러오는 중…</div>'; }
     if(sig!==c.sig){
+      kkoImgOut();   // 마우스를 올려 둔 말풍선이 다시 그려지면 떠 있던 사진도 내림 (누른 사진은 그대로)
       const atBottom=log.scrollHeight-log.scrollTop-log.clientHeight<60;
       log.innerHTML=html; c.sig=sig;
       if(atBottom || !c.shown) log.scrollTop=log.scrollHeight;
@@ -16709,16 +16752,79 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else msg(false);
     if(el && !open) el.focus({preventScroll:true});
   }
+  /* ===== 받은 사진 보기 (2026-11-19 사장님 "이미지도 받으면 여기서 마우스오버로 볼 수 있게 해줘") =====
+     서버 /cs/kakao-chat 이 사진 줄에 imgs [{thumb, full}] 를 주면(사무실 인터넷에서만) 말풍선에 마우스를 올릴 때만 불러온다.
+     주소는 카카오 CDN(https://*.kakaocdn.net — 그대로 띄움) 또는 프록시 통로(/cs/… — PIN 을 붙여 받아 blob 으로)만 받는다.
+     PC: 채팅방 창 왼쪽 어두운 곳에 크게 · 누르면 가운데 고정(Esc · 한 번 더 누르면 닫힘). 휴대폰: 누르면 가운데. 창을 닫으면 받은 사진을 지운다. */
+  let _kkoImgList=[], _kkoImgTok=0, _kkoImgAt=-1;
+  const _kkoImgBlob=new Map();
+  function _kkoImgOk(u){
+    if(typeof u!=='string' || !u) return false;
+    if(/^\/cs\/[A-Za-z0-9_\-\/]+(\?[^\s"'<>]*)?$/.test(u)) return true;
+    try{ const x=new URL(u); return x.protocol==='https:' && /(^|\.)kakaocdn\.net$/.test(x.hostname); }catch(e){ return false; }
+  }
+  function _kkoImgs(m){
+    return (Array.isArray(m.imgs) ? m.imgs : []).map(x=>typeof x==='string' ? {thumb:x, full:x} : (x||{}))
+      .map(x=>{ const t=_kkoImgOk(x.thumb) ? x.thumb : '', f=_kkoImgOk(x.full) ? x.full : ''; return {thumb:t||f, full:f||t}; })
+      .filter(x=>x.thumb);
+  }
+  function _kkoImgSrc(u){
+    if(!u.startsWith('/cs/')) return Promise.resolve(u);
+    if(!_kkoImgBlob.has(u)){
+      const p=(async()=>{
+        const base=await loadProxyBase();
+        if(!base) throw new Error('서버 연결 안 됨');
+        const r=await fetch(base+u,{headers:{'X-Brightbeed-PIN':ghPin()},cache:'no-store'});
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const b=await r.blob();
+        if(!/^image\//.test(b.type)) throw new Error('사진이 아님');
+        return URL.createObjectURL(b);
+      })();
+      _kkoImgBlob.set(u,p); p.catch(()=>_kkoImgBlob.delete(u));
+    }
+    return _kkoImgBlob.get(u);
+  }
+  function _kkoImgClear(){ for(const p of _kkoImgBlob.values()) p.then(u=>URL.revokeObjectURL(u),()=>{}); _kkoImgBlob.clear(); }
+  function _kkoImgShow(el, pin){
+    const i=+el.dataset.i, im=_kkoImgList[i], pop=document.getElementById('kkoImgPop'), host=document.getElementById('kkoChat');
+    if(!im || !pop || !host) return;
+    const tok=++_kkoImgTok;
+    _kkoImgAt=i;
+    pop.classList.toggle('pin', !!pin);
+    pop.innerHTML=`<div class="g${im.length>1 ? ' n2' : ''}">${im.map(()=>'<img alt="받은 사진">').join('')}</div><span>사진 불러오는 중…</span>`;
+    pop.hidden=false;
+    // 자리: PC 는 채팅방 창 왼쪽(어두운 곳), 누른 경우 · 휴대폰 · 좁은 화면은 가운데
+    const box=host.querySelector('.kko-chat-box').getBoundingClientRect(), vw=host.clientWidth;
+    const side=!pin && box.left>=300, w=side ? Math.min(440, box.left-32) : Math.min(vw-24, 640);
+    pop.style.width=w+'px'; pop.style.left=Math.round(side ? box.left-w-16 : (vw-w)/2)+'px'; pop.style.top='50%'; pop.style.transform='translateY(-50%)';
+    const imgs=[...pop.querySelectorAll('img')], note=pop.querySelector('span');
+    let ok=0, bad=0;
+    const fail=k=>{ if(tok!==_kkoImgTok) return; bad++; imgs[k].remove(); note.textContent=`사진을 못 불러왔어요${im.length>1 ? ` (${bad}장)` : ''} — 파트너센터에서 봐 주세요`; };
+    im.forEach((x,k)=>_kkoImgSrc(pin ? x.full : x.thumb).then(src=>{
+      if(tok!==_kkoImgTok) return;
+      imgs[k].onload=()=>{ if(tok===_kkoImgTok && ++ok===im.length-bad) note.textContent=bad ? note.textContent : ''; };
+      imgs[k].onerror=()=>fail(k);
+      imgs[k].src=src;
+    }, ()=>fail(k)));
+  }
+  function kkoImgHover(el){ const pop=document.getElementById('kkoImgPop'); if(pop && pop.classList.contains('pin')) return; _kkoImgShow(el, false); }
+  function kkoImgOut(){ const pop=document.getElementById('kkoImgPop'); if(!pop || pop.classList.contains('pin')) return; _kkoImgTok++; pop.hidden=true; pop.innerHTML=''; }
+  function kkoImgPin(el){ const pop=document.getElementById('kkoImgPop'); if(pop && pop.classList.contains('pin') && !pop.hidden && _kkoImgAt===+el.dataset.i){ kkoImgClose(); return; } _kkoImgShow(el, true); }
+  function kkoImgClose(){ const pop=document.getElementById('kkoImgPop'); _kkoImgTok++; _kkoImgAt=-1; if(pop){ pop.hidden=true; pop.classList.remove('pin'); pop.innerHTML=''; } }
   // 말풍선 — 고객 왼쪽 흰색, 우리 쪽(직원 · 카나나 · 자동응답) 오른쪽 베이지, 안내는 가운데 회색 글. 날이 바뀌면 날짜 줄
   function _kkoLogHtml(L){
     let out='', day='', prev='';
+    _kkoImgList=[];
     for(const m of L){
       const t=new Date(m.at||0), ok=!!m.at && !isNaN(t);
       const dk=ok ? `${t.getMonth()+1}월 ${t.getDate()}일 (${'일월화수목금토'[t.getDay()]})` : '';
       if(dk && dk!==day){ out+=`<div class="kko-day">${dk}</div>`; day=dk; prev=''; }
       const who=m.who||'customer', side=who==='customer' ? 'c' : (who==='system' || who==='auto') ? 's' : 'o';
       const hm=ok ? `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}` : '';
-      const kind=(m.kind && !(m.kind==='card' && m.text)) ? `<i>(${_kkoEsc(KKO_KIND[m.kind]||m.kind)})</i>` : '';   // 카드 글(카나나 · 자동 안내)은 글만
+      const im=_kkoImgs(m);
+      const kind=im.length
+        ? `<button type="button" class="kko-ph" data-i="${_kkoImgList.push(im)-1}" onmouseenter="kkoImgHover(this)" onmouseleave="kkoImgOut()" onfocus="kkoImgHover(this)" onblur="kkoImgOut()" onclick="kkoImgPin(this)" aria-label="받은 사진 보기"><i>(${_kkoEsc(KKO_KIND[m.kind]||'사진')}${im.length>1 ? ' '+im.length+'장' : ''})</i><u>올리면 보여요</u></button>`
+        : (m.kind && !(m.kind==='card' && m.text)) ? `<i>(${_kkoEsc(KKO_KIND[m.kind]||m.kind)})</i>` : '';   // 카드 글(카나나 · 자동 안내)은 글만
       const body=kind + (m.text ? (kind ? ' ' : '')+_kkoEsc(m.text) : '');
       out+=`<div class="kko-msg ${side}">${side==='o' && who!==prev ? `<span class="who">${_kkoEsc(KKO_WHO[who]||who)}</span>` : ''}<div class="b">${body || '<i>(빈 글)</i>'}</div>${hm ? `<span class="t">${hm}</span>` : ''}</div>`;
       prev=who;
