@@ -302,6 +302,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .chat-clear{padding:10px 4px 4px}
     .foot .reset-names{padding:8px 4px}
   }
+  /* 넓은 PC 화면 (2026-11-19 사장님 "윈도우 버전은 좌/우 여백 많이 안남게") — 1240px 고정 폭을 풀고,
+     팀이 한 줄에 다 앉을 수 있으면 팀 수만큼 칸을 나눠 꽉 채운다 (--teams 는 renderDesks 가 넣음, 좁으면 예전처럼 줄바꿈) */
+  @media (min-width:1300px){
+    .top-inner,.legend,.office,.foot{max-width:none}
+    .desks{grid-template-columns:repeat(auto-fill,minmax(max(180px,calc((100% - (var(--teams,6) - 1) * 12px) / var(--teams,6))),1fr))}
+    /* 본부 — 본부장은 혼자 한 줄, 아래 사람들은 옆으로 나란히 (세로로 길게 쌓여 양옆이 비지 않게) */
+    .team-group[data-team="본부"] .team-desks{flex-direction:row;flex-wrap:wrap;justify-content:center;column-gap:36px}
+    .team-group[data-team="본부"] .team-desks > .cell.boss{flex:0 0 100%;max-width:none}
+    .team-group[data-team="본부"] .team-desks > .cell:not(.boss){flex:0 0 200px}
+  }
 </style>
 </head>
 <body>
@@ -1087,6 +1097,8 @@ function renderDesks(){
     group.members.forEach(c => deskWrap.appendChild(_buildCell(c)));
     wrap.appendChild(section);
   });
+  // 넓은 화면에서 팀을 한 줄에 다 앉히려고 칸 수를 CSS 에 알려 준다 (본부는 따로 한 줄)
+  wrap.style.setProperty('--teams', String(Math.max(1, wrap.querySelectorAll('.team-group:not([data-team="본부"])').length)));
 }
 
 function _buildCell(c){

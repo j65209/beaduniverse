@@ -11699,6 +11699,70 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     #bestRange .best-range-dates{width:100%}
     #bestRangeStart,#bestRangeEnd{flex:1 1 0;min-width:0;padding-left:4px;padding-right:2px}
   }
+  /* ===== 넓은 PC 화면 — 좌우 여백 채우기 (2026-11-19 사장님 "윈도우 버전은 좌/우 여백 많이 안남게 뭐든지 채워줘 · 공간이 너무 남으면 2열로")
+     직원 PC 는 전부 윈도우 + 1920 · 2560 모니터. 맥북 폭에 맞춰 둔 가운데 고정 폭(580 ~ 1400px)이 넓은 화면에선 양옆을 크게 비웠다.
+     ① 901px 이상은 고정 폭을 풀어 화면 끝까지 ② 한 판만 늘이면 휑한 곳은 옆 블록과 2열. 휴대폰 · 좁은 창(900px 이하)은 그대로. */
+  @media (min-width:901px){
+    /* CS팀 — 반품·교환 분석 · 문의·리뷰 · 개선 요청 탭 (위 카카오톡 상담 카드와 좌우 끝을 맞춤) */
+    .csi-tabs,.csi-wrap{max-width:none;padding-left:0;padding-right:0}
+    .csi-workpane .dsg-pane{padding-left:0 !important;padding-right:0 !important}
+    .csi-workpane .cs-grid{padding-left:0;padding-right:0}
+    /* 작업 보드(디자인팀 · CS팀) · 노션 문서 */
+    .dsg-doc,.dsg-doc-hint,.dsg-doc-add,.nt-doc,.nt-skel,.dc-notion-err{max-width:none}
+    /* 툴 화면 — 제품명 생성기 · 텍스트 토핑 · 이미지 배지 합성 · 인스타 피드 템플릿 */
+    .ng-wrap,.tp-wrap,.bdg-wrap,.ig-wrap{max-width:none}
+    /* 전략팀 월 고정비 표 */
+    .sb-fx{max-width:none}
+    /* 인사팀 직원 연락처 — 아래 2열(조직도 옆)이 되기 전 폭에선 한 줄 전체 + 연락처를 두 단으로 */
+    .hr-phone{max-width:none}
+    .hr-phone-list{display:block;column-count:2;column-gap:32px}
+    .hr-phone-row{break-inside:avoid}
+  }
+  @media (min-width:1280px){
+    /* 인사팀 — 연차 달력 | 대체휴무 승인 · 최근 신청 내역 (오른쪽 둘 다 숨어 있으면 달력이 한 줄 전체) */
+    .hr-duo-leave{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-rows:auto auto 1fr;column-gap:20px;align-items:start;margin-bottom:28px}
+    .hr-duo-leave > .leave-cal{grid-column:1;grid-row:1 / 4;margin:0}
+    .hr-duo-leave > .comp-req{grid-column:2;grid-row:1;max-width:none;margin:0 0 16px}
+    .hr-duo-leave > .leave-recent{grid-column:2;grid-row:2;max-width:none;margin:0}
+    .hr-duo-leave:not(:has(> .comp-req:not([hidden]), > .leave-recent:not([hidden]))){grid-template-columns:minmax(0,1fr)}
+    /* 제품명 생성기 — 왼쪽: 풀네임 빌더 · 후보 생성 / 오른쪽: 추출 결과 */
+    .ng-wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto 1fr;gap:18px;align-items:start}
+    .ng-wrap > .ng-panel:nth-child(1){grid-column:1;grid-row:1}
+    .ng-wrap > .ng-panel:nth-child(2){grid-column:1;grid-row:2}
+    .ng-wrap > .ng-panel:nth-child(3){grid-column:2;grid-row:1 / 4}
+    /* 텍스트 토핑 — 입력 | 결과 */
+    .tp-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px;align-items:start}
+    .tp-panel > .tp-actions,.tp-panel > .tp-hint{grid-column:1/-1}
+  }
+  @media (min-width:1400px){
+    /* 디자인팀 — 작업 보드 | 디자인 보드 (작업 보드가 한 줄 전체로 늘어나 휑하지 않게).
+       디자인 보드는 오른쪽에서 스크롤을 따라오고, 길면 그 안에서 스크롤 */
+    .dsg-team-body:not([hidden]){display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);column-gap:28px;align-items:start}
+    .dsg-team-body > .dsg-pane[data-pane="board"]{grid-column:1;grid-row:1}
+    .dsg-team-body > .dsg-pane[data-pane="posts"]{grid-column:2;grid-row:1;position:sticky;top:72px;max-height:calc(100vh - 90px);overflow:auto;margin-bottom:0 !important}
+    /* 노션 문서의 날짜별 항목 — 2열 */
+    .nt-entries:has(> .nt-entry + .nt-entry){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;align-items:start}
+    .nt-entries:has(> .nt-entry + .nt-entry) > :not(.nt-entry){grid-column:1/-1}
+    /* CS팀 메모장 | 자주 묻는 질문 (메모 칸은 옆 FAQ 높이만큼 늘어남) */
+    .csi-workpane .cs-grid > .cs-section-memo{grid-column:auto}
+  }
+  @media (min-width:1500px){
+    /* 인사팀 — 조직도 | 직원 연락처 (조직도 글씨가 작아지지 않는 폭부터 · 연락처가 숨어 있으면 조직도가 한 줄 전체) */
+    .hr-duo-top{display:flex;gap:20px;align-items:stretch;margin-bottom:24px}
+    .hr-duo-top > .org-chart-wrap{flex:2 1 0;min-width:0;margin-bottom:0;display:flex;flex-direction:column;justify-content:center}
+    .hr-duo-top > .hr-phone{flex:1 1 0;min-width:0;margin:0}
+    .hr-duo-top > .hr-phone .hr-phone-list{column-count:1}
+    /* 홈 — 팀 카드 5개씩 두 줄 (9 · 10개가 한 줄 8개 + 1 · 2개로 남지 않게) · 업무용 툴 5개씩 */
+    .hero-row.hero-row-3{grid-template-columns:repeat(5,minmax(0,1fr))}
+    .sub-modules-tools .sub-modules{grid-template-columns:repeat(5,minmax(0,1fr))}
+  }
+  @media (min-width:2300px){
+    .hr-duo-top > .hr-phone .hr-phone-list{column-count:2}
+  }
+  @media (min-width:2400px){
+    /* 아주 넓은 모니터 — 팀 카드를 한 줄에 다 */
+    .hero-row.hero-row-3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  }
 </style>
 </head>
 <body>
@@ -12087,7 +12151,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </div>
 
     <!-- 업무용 툴 (폴더 스타일) -->
-    <div class="sub-modules-section">
+    <div class="sub-modules-section sub-modules-tools">
       <div class="sub-modules-eyebrow">
         <span class="folder-icon">📂</span>
         <span class="folder-label">업무용 툴</span>
@@ -12267,6 +12331,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </form>
 
+    <!-- 넓은 PC 화면: 조직도 | 직원 연락처 2열 (좁은 화면은 위아래 그대로) -->
+    <div class="hr-duo hr-duo-top">
     <div class="org-chart-wrap">
       <svg class="org-svg" viewBox="0 0 1000 275" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bead Universe Co., Ltd. 조직도">
         <!-- ===== 연결선 ===== -->
@@ -12359,6 +12425,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="hr-phone-list" id="hrPhoneList"></div>
     </div>
+    </div><!-- /hr-duo-top -->
 
     <!-- 연차 신청하기 (CTA) -->
     <div class="leave-cta">
@@ -12420,6 +12487,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </form>
 
+    <!-- 넓은 PC 화면: 연차 달력 | (대체휴무 승인 · 최근 신청 내역) 2열. 좁은 화면 순서는 그대로 (승인 → 달력 → 내역) -->
+    <div class="hr-duo hr-duo-leave">
     <!-- 대체휴무 신청 · 대표 승인 — leave_comp_requests. '대표 승인' 버튼 하나, 대표(관리자 PIN + '나는' 이름이 전승훈 · 전수빈)만 누를 수 있다 -->
     <div class="comp-req" id="compReqPanel" hidden>
       <div class="comp-req-head">
@@ -12461,6 +12530,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="leave-recent-list" id="leaveRecentList"></div>
       <button class="leave-recent-more" id="leaveRecentMoreBtn" type="button" hidden onclick="toggleLeaveRecentExpanded()"></button>
     </div>
+    </div><!-- /hr-duo-leave -->
 
     <!-- 연차/반차 규정 안내 -->
     <div class="leave-policy">
