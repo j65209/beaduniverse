@@ -12505,28 +12505,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 홈 정리 (2026-11-20 사장님 "메인화면 깔끔하게 · 강조할 숫자는 강조 · 자주 쓰는 것 우선 · 숨김은 깔끔하게") =====
-     팀 카드(한 장 160px) → 버튼 타일 한두 줄 · 업무용 툴 · 관리자 전용 → 한 줄 카드 · 블록 사이 간격 16px 통일.
+     업무용 툴 · 관리자 전용 → 한 줄 카드 · 블록 사이 간격 16px 통일. (팀 카드는 같은 날 저녁 원래 크기로 되돌림)
      줄마다 개수(--hc)와 자주 쓰는 순서는 JS homeTidy 가 정한다. 모두 #viewHome 안에서만. */
   #viewHome{--hs:16px}
   #viewHome .sub-modules-metaads.sub-modules-section{margin:4px 0 var(--hs)}
   #viewHome .home-ops-pair{margin:0 0 var(--hs)}
-  #viewHome .home-ceocal-card{margin:0 0 var(--hs)}
+  /* 대표 캘린더 = 홈 맨 위 (2026-11-20 저녁 사장님 "대표 캘린더는 항상 최상위로") — 대표 두 분 PC 에만 보이고, 그 아래 메타 광고 */
+  #viewHome .home-ceocal-card{margin:4px 0 var(--hs)}
+  #viewHome .home-ceocal-card:not([hidden]) + .sub-modules-metaads.sub-modules-section{margin-top:0}
   #viewHome .sub-modules-tools.sub-modules-section,#viewHome .sub-modules-admin.sub-modules-section{margin:0 0 var(--hs);padding:12px 16px 16px}
   #viewHome .sub-modules-section .sub-modules-eyebrow{margin-bottom:12px;padding-bottom:10px}
   #viewHome .hero-row.hero-row-agents{margin:0 0 6px}
-  /* 팀 바로가기 */
-  #viewHome .home-teams{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:0 0 var(--hs)}
-  #viewHome .home-teams > .hero{flex:0 0 calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));max-width:calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));
-    min-width:0;margin:0;padding:0;background:none;border:0;border-radius:12px;display:block;position:relative}
-  #viewHome .home-teams > .hero[hidden]{display:none}
-  #viewHome .home-teams .hero-eyebrow{display:none}
-  #viewHome .home-teams .btn-neon{display:flex;width:100%;max-width:none;height:58px;padding:0 12px;gap:9px;border-radius:12px;
-    font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;word-break:keep-all;
-    box-shadow:0 8px 18px -12px rgba(15,23,42,.55),inset 0 1px 0 rgba(255,255,255,.35)}
-  #viewHome .home-teams .btn-neon:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 12px 22px -12px rgba(15,23,42,.6),inset 0 1px 0 rgba(255,255,255,.45)}
-  #viewHome .home-teams .btn-neon svg{width:18px;height:18px;flex:0 0 auto}
-  #viewHome .home-teams .btn-neon > span:not(.hr-comp-badge){min-width:0;overflow:hidden;text-overflow:ellipsis}
-  #viewHome .home-teams .hr-comp-badge{top:-8px;right:-6px;z-index:1;font-size:10.5px;padding:3px 8px;background:#e11d48;box-shadow:0 2px 8px rgba(225,29,72,.4)}
+  /* 팀 바로가기 — 원래 큰 카드(이름표 + 네온 버튼) 크기로 되돌림 (2026-11-20 저녁 사장님 "탭 크기 다시 살리자").
+     58px 버튼 타일은 뺐다. 이 PC 에서 많이 누른 팀이 앞으로 오는 순서(homeTidy)만 남김 */
+  #viewHome .home-teams{margin:0 0 var(--hs)}
   /* 업무용 툴 · 관리자 전용 — 아이콘 | 이름 · 설명 한 줄 */
   #viewHome .sub-modules-tools > .sub-modules,#viewHome .sub-modules-admin > .sub-modules{display:flex;flex-wrap:wrap;gap:10px;max-width:none}
   #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{
@@ -12551,10 +12543,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     #viewHome .sub-modules-eyebrow .folder-label{white-space:nowrap}
     #viewHome .sub-modules-eyebrow .folder-meta{margin-left:auto;flex-basis:auto;padding-left:0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #viewHome .sub-modules-eyebrow .fm-long{display:none}
-    #viewHome .home-teams{gap:8px}
-    #viewHome .home-teams > .hero{flex-basis:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));max-width:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2))}
-    #viewHome .home-teams .btn-neon{height:50px;padding:0 10px;gap:7px;font-size:14px;border-radius:10px}
-    #viewHome .home-teams .btn-neon svg{width:16px;height:16px}
     #viewHome .sub-modules-tools > .sub-modules,#viewHome .sub-modules-admin > .sub-modules{gap:8px}
     #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{
       flex-basis:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));max-width:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));
@@ -12665,7 +12653,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <!-- ============ 홈 뷰 ============ -->
   <div class="view" id="viewHome">
 
-    <!-- 메타 광고 분석 리포트 — 홈 첫 화면 (홈 맨 위 · 리오더 카드 위, 2026-11-16 사장님: 들어가자마자 보이게 · 오늘 매출 순) (Facebook Marketing API — 브랜드별 성과·피드백; 클릭 시 새 창) -->
+    <!-- 대표 캘린더 홈 위젯 (대표 두 분 로그인 PC 에만 노출, 마스터 전용). 2026-11-13 사장님: 입고 현황보다 위로 →
+         2026-11-17 리오더 경보 · 입고 현황 아래 → 2026-11-20 저녁 사장님 "대표 캘린더는 항상 최상위로": 홈 맨 위 (메타 광고보다 위).
+         다른 블록을 이 위에 넣지 말 것. 직원 PC 에서는 숨어 있어 메타 광고가 맨 위로 보인다 -->
+    <div id="homeCeoCalCard" class="home-ceocal-card" hidden>
+      <div class="hcc-head">
+        <div class="hcc-title">👑 <span>대표 캘린더</span></div>
+        <div class="hcc-meta" id="homeCeoCalMeta">—</div>
+        <div class="hcc-actions">
+          <button class="hcc-btn" type="button" onclick="cecOpenAddModal()">+ 일정</button>
+          <button class="hcc-btn hcc-btn-open" type="button" onclick="triggerCeoCal()">열기 →</button>
+        </div>
+      </div>
+      <div class="hcc-body" id="homeCeoCalList"></div>
+    </div>
+
+    <!-- 메타 광고 분석 리포트 — 홈 첫 화면 (리오더 카드 위, 2026-11-16 사장님: 들어가자마자 보이게 · 오늘 매출 순 · 대표 PC 에서는 대표 캘린더 바로 아래) (Facebook Marketing API — 브랜드별 성과·피드백; 클릭 시 새 창) -->
     <div class="sub-modules-section sub-modules-metaads">
       <div class="sub-modules-eyebrow">
         <span class="folder-icon">📱</span>
@@ -12777,20 +12780,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </div>
 
 
-    <!-- 대표 캘린더 홈 위젯 (대표 두 분 로그인 PC 에만 노출, 마스터 전용). 2026-11-13 사장님: 입고 현황보다 위로 →
-         2026-11-17 리오더 경보 · 입고 현황을 한 줄로 묶으면서 그 바로 아래 -->
-    <div id="homeCeoCalCard" class="home-ceocal-card" hidden>
-      <div class="hcc-head">
-        <div class="hcc-title">👑 <span>대표 캘린더</span></div>
-        <div class="hcc-meta" id="homeCeoCalMeta">—</div>
-        <div class="hcc-actions">
-          <button class="hcc-btn" type="button" onclick="cecOpenAddModal()">+ 일정</button>
-          <button class="hcc-btn hcc-btn-open" type="button" onclick="triggerCeoCal()">열기 →</button>
-        </div>
-      </div>
-      <div class="hcc-body" id="homeCeoCalList"></div>
-    </div>
-
     <!-- 입고 내역 창 -->
     <div id="rcvModal" class="rcv-modal" hidden onclick="if(event.target===this) rcvModalClose()">
       <div class="rcv-panel" role="dialog" aria-modal="true" aria-labelledby="rcvModalTitle">
@@ -12846,7 +12835,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- 팀 바로가기 (2026-11-20 홈 정리: 큰 카드 → 한두 줄 버튼, 이 PC 에서 많이 누른 팀이 앞으로 — homeTidy) -->
+    <!-- 팀 바로가기 (원래 큰 카드 크기 — 2026-11-20 홈 정리 때 한두 줄 버튼으로 줄였다가 같은 날 저녁 사장님 "탭 크기 다시 살리자"로 되돌림.
+         이 PC 에서 많이 누른 팀이 앞으로 오는 순서만 남김 — homeTidy) -->
     <div class="hero-row hero-row-3 home-teams" id="homeTeams" aria-label="팀 바로가기">
       <section class="hero hero-hr">
         <div class="hero-eyebrow">HR</div>
@@ -44882,7 +44872,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      1) 팀 바로가기 · 업무용 툴 · 관리자 전용 — 이 PC 에서 많이 누른 순서로 앞에 둔다.
         기록 = localStorage 'bb_home_usage_v1' {키:{s:점수,t:마지막}} · 점수는 30일마다 반으로 줄어 요즘 쓰는 것이 앞으로.
         정렬은 화면을 열 때 한 번만 (누르는 중에 카드가 움직이지 않게) · 기록이 거의 없으면 원래 순서 그대로.
-     2) 보이는 카드 수에 맞춰 줄마다 같은 개수 (팀 10개 → 5+5, 도구 11개 → 6+5) — 한 개만 덩그러니 남는 줄이 없게.
+     2) 보이는 카드 수에 맞춰 줄마다 같은 개수 (도구 11개 → 6+5) — 한 개만 덩그러니 남는 줄이 없게. 팀 카드는 저녁에 원래 크기로 되돌려 빼 둠.
         권한으로 숨는 카드(디자인 · 전략 · 업무일지 · 기밀 카드)가 바뀌면 다시 맞춘다 (MutationObserver). CSS 는 '홈 정리' 덩어리 */
   (function homeTidy(){
     const KEY='bb_home_usage_v1', HALF=30*864e5;
@@ -44894,7 +44884,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return [...el.classList].find(c=>/^m-/.test(c)) || '';
     };
     const GROUPS=[
-      {host:'#homeTeams', item:':scope > .hero', minW:150, minWm:140},
+      {host:'#homeTeams', item:':scope > .hero', noBalance:true},   // 팀 카드는 원래 큰 카드 · 원래 칸 나눔 (11-20 저녁 되돌림) — 순서만
       {host:'#viewHome .sub-modules-tools > .sub-modules', item:':scope > .sub-module', minW:215, minWm:150},
       {host:'#viewHome .sub-modules-admin > .sub-modules', item:':scope > .sub-module', minW:215, minWm:150},
     ];
@@ -44925,11 +44915,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const cols=n<=max ? n : Math.ceil(n/Math.ceil(n/max));
       if(host.style.getPropertyValue('--hc')!==String(cols)) host.style.setProperty('--hc', String(cols));
     }
-    function layoutAll(){ GROUPS.forEach(g=>{ const h=document.querySelector(g.host); if(h) balance(g,h); }); }
+    function layoutAll(){ GROUPS.forEach(g=>{ const h=document.querySelector(g.host); if(h && !g.noBalance) balance(g,h); }); }
     window.homeTidyLayout=layoutAll;
     GROUPS.forEach(g=>{
       const host=document.querySelector(g.host); if(!host) return;
       sortGroup(host, g.item);
+      if(g.noBalance) return;
       let raf=0;
       const again=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>balance(g,host)); setTimeout(()=>balance(g,host),60); };
       try{ new ResizeObserver(again).observe(host); }catch(e){ window.addEventListener('resize', again); }
