@@ -11889,6 +11889,270 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     body.ue-on .container{padding-bottom:230px}
     body.ue-on .toast-area{bottom:210px}
   }
+
+  /* =====================================================================
+     온라인사업팀 디자인 정리 (2026-11-20 사장님 "너무 중구난방 · 깔끔하게")
+     구역 다섯 개(실시간 매출 · 판매 순위 · 광고 시트 · 광고 전광판 · 브랜드 리포트)가 제목 모양 5가지 · 탭 3가지 ·
+     새로고침 버튼 4가지 · 검은 전광판 · 큰 브랜드 카드로 제각각이던 것을 한 틀로:
+       구역 = 흰 카드(.mkt-sec) + 제목 줄(제목 · 설명 | 탭 · 버튼)
+       큰 전환(공홈/플랫폼 · $/원) = 회색 홈 안의 흰 탭(.mkt-seg) · 고르기(브랜드 · 기간) = 둥근 칩, 고른 것은 시그니처 블루
+       버튼 = 32px 테두리 버튼(.mkt-btn) · 숫자 = 검정(빨강 X) · 장식(네온 · 그라데이션 띠 · 이모지) 없음
+     전부 #viewMarketing 안에서만 — 다른 팀 화면(같은 클래스를 쓰는 물류팀 탭 · 전략팀 새로고침 등)은 그대로.
+     ===================================================================== */
+  #viewMarketing{--mk-muted:#8a8576;--mk-tint:#eef3fb;--mk-blue-ink:#2c5aa5;--mk-r:14px;--mk-top:61px}
+  #viewMarketing .view-head{margin-bottom:12px}
+
+  /* 바로가기 — 화면을 내려도 위에 붙어 따라오고, 지금 보는 구역이 파랗게 */
+  #viewMarketing .mkt-nav{
+    position:sticky;top:var(--mk-top);z-index:9;display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+    margin:0 0 16px;padding:10px 0;background:rgba(254,252,245,.94);backdrop-filter:saturate(1.4) blur(8px);-webkit-backdrop-filter:saturate(1.4) blur(8px);
+    border-bottom:1px solid var(--line);
+  }
+  #viewMarketing .mkt-nav::-webkit-scrollbar{display:none}
+  #viewMarketing .mkt-nav button{
+    flex:0 0 auto;height:30px;padding:0 13px;border-radius:999px;border:1px solid transparent;background:transparent;
+    font:inherit;font-size:12.5px;font-weight:600;color:var(--text-3);cursor:pointer;white-space:nowrap;transition:background .12s,color .12s,border-color .12s;
+  }
+  #viewMarketing .mkt-nav button:hover{background:var(--bg-2);color:var(--text-0)}
+  #viewMarketing .mkt-nav button.is-on{background:var(--mk-tint);border-color:rgba(79,127,207,.35);color:var(--mk-blue-ink)}
+
+  /* 구역 카드 + 제목 줄 */
+  #viewMarketing .mkt-sec{
+    display:block;margin:0 0 20px;padding:20px 22px 22px;background:var(--bg-1);border:1px solid var(--line);border-radius:var(--mk-r);
+    box-shadow:0 1px 2px rgba(31,35,41,.04);position:relative;overflow:visible;scroll-margin-top:calc(var(--mk-top) + 64px);
+  }
+  #viewMarketing .mkt-sec::before,#viewMarketing .mkt-sec::after{display:none}
+  #viewMarketing .mkt-sec-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;
+    margin:0 0 16px;padding:0 0 14px;border-bottom:1px solid var(--line);
+  }
+  #viewMarketing .mkt-sec-titles{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap;min-width:0}
+  #viewMarketing .mkt-sec-title{margin:0;font-size:16px;font-weight:700;color:var(--text-0);letter-spacing:-.01em;display:inline-flex;align-items:center;gap:8px}
+  #viewMarketing .mkt-sec-tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:999px;background:var(--mk-tint);color:var(--mk-blue-ink)}
+  #viewMarketing .mkt-sec-desc{font-size:12.5px;font-weight:500;color:var(--mk-muted);margin:0;letter-spacing:0}
+  #viewMarketing .mkt-sec-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+  #viewMarketing .mkt-sec-upd,#viewMarketing .best-updated{font-family:var(--sans);font-size:12px;color:var(--mk-muted);white-space:nowrap}
+  #viewMarketing .mkt-sec-bar{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin:0 0 16px}
+  #viewMarketing .mkt-sec-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+
+  /* 버튼 — 새로고침 등 (한 가지 모양) */
+  #viewMarketing .mkt-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;min-height:32px;padding:0 12px;border-radius:8px;
+    background:var(--bg-1);border:1px solid var(--line-2);color:var(--text-2);font-family:var(--sans);font-size:12.5px;font-weight:600;
+    cursor:pointer;transition:background .12s,border-color .12s,color .12s;white-space:nowrap;box-shadow:none;margin:0;
+  }
+  #viewMarketing .mkt-btn:hover:not(:disabled){background:var(--bg-2);color:var(--text-0)}
+  #viewMarketing .mkt-btn:disabled{opacity:.55;cursor:not-allowed}
+  #viewMarketing .mkt-btn svg{width:14px;height:14px;flex:none}
+  #viewMarketing .mkt-btn.spin svg{animation:spin .9s linear infinite}
+
+  /* 큰 전환 — 회색 홈 안의 흰 탭 (공홈 / 플랫폼) */
+  #viewMarketing .lg-tabs.mkt-seg{
+    display:inline-flex;flex-wrap:nowrap;gap:2px;margin:0;padding:3px;max-width:none;border-radius:10px;background:var(--bg-2);border:1px solid var(--line);
+  }
+  #viewMarketing .mkt-seg .lg-tab{
+    flex:0 0 auto;height:28px;padding:0 12px;gap:6px;border:0;border-radius:7px;background:transparent;color:var(--text-3);
+    font-size:12.5px;font-weight:600;box-shadow:none;min-height:0;
+  }
+  #viewMarketing .mkt-seg .lg-tab:hover{background:rgba(255,255,255,.6);color:var(--text-0)}
+  #viewMarketing .mkt-seg .lg-tab.active{background:var(--bg-1);color:var(--text-0);box-shadow:0 1px 3px rgba(31,35,41,.12)}
+  #viewMarketing .mkt-seg .lg-tab-badge{font-family:var(--sans);font-size:10.5px;font-weight:700;padding:1px 6px;background:rgba(31,35,41,.06);color:var(--mk-muted)}
+  #viewMarketing .mkt-seg .lg-tab.active .lg-tab-badge{background:var(--mk-tint);color:var(--mk-blue-ink)}
+
+  /* 고르기 칩 — 브랜드 · 기간 (한 가지 모양, 고른 것은 시그니처 블루) */
+  #viewMarketing .mkt-chips{display:flex;flex-wrap:wrap;gap:8px}
+  #viewMarketing .mkt-chip,
+  #viewMarketing .signage-brand-pill,
+  #viewMarketing .adsh-brands .sub-module,
+  #viewMarketing .best-range-preset{
+    display:inline-flex;align-items:center;gap:7px;height:32px;min-height:32px;padding:0 13px;border-radius:999px;
+    background:var(--bg-1);border:1px solid var(--line-2);color:var(--text-2);font-family:var(--sans);font-size:12.5px;font-weight:600;
+    letter-spacing:0;cursor:pointer;transition:background .12s,border-color .12s,color .12s;box-shadow:none;transform:none;white-space:nowrap;flex:0 0 auto;
+  }
+  #viewMarketing .mkt-chip:hover,
+  #viewMarketing .signage-brand-pill:hover,
+  #viewMarketing .adsh-brands .sub-module:hover,
+  #viewMarketing .best-range-preset:hover{background:var(--bg-2);border-color:var(--line-2);color:var(--text-0);transform:none}
+  #viewMarketing .signage-brand-pill.is-active,
+  #viewMarketing .adsh-brands .sub-module.is-active,
+  #viewMarketing .best-range-preset.is-active{background:var(--mk-tint);border-color:var(--accent);color:var(--mk-blue-ink);box-shadow:none;padding:0 13px}
+  #viewMarketing .mkt-chip i,#viewMarketing .signage-brand-pill .pill-dot{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:none}
+  #viewMarketing .mkt-chip svg{width:14px;height:14px;flex:none}
+  #viewMarketing .mkt-chip.is-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  #viewMarketing .mkt-chip.is-primary:hover{background:#3f6dbd;border-color:#3f6dbd;color:#fff}
+
+  /* ① 실시간 매출 — 브랜드 카드 */
+  #viewMarketing #salesReportsWrap,#viewMarketing #platformReportsWrap{gap:14px}
+  #viewMarketing .akoi-section.po-section{background:var(--bg-1);border:1px solid var(--line);border-radius:12px;box-shadow:none}
+  #viewMarketing .akoi-section .po-section-head{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  #viewMarketing .akoi-section .po-section-title{font-size:14px;font-weight:700;gap:7px;flex:1 1 auto;min-width:0}
+  #viewMarketing .akoi-section .brand-dot{width:8px;height:8px;box-shadow:none}
+  #viewMarketing .akoi-sub{font-size:11.5px;font-weight:500;color:var(--mk-muted)}
+  #viewMarketing .akoi-section .po-section-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
+  #viewMarketing .akoi-section .sales-updated-tag{font-family:var(--sans);font-size:11.5px;color:var(--mk-muted);margin:0 2px 0 0;display:inline}
+  #viewMarketing .akoi-section .sales-updated-tag.is-stale{color:#b91c1c;font-weight:600}
+  #viewMarketing .akoi-section .sales-updated-tag:empty{display:none}
+  #viewMarketing .akoi-toggle-btn,#viewMarketing .akoi-section .akoi-refresh-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;height:28px;min-height:28px !important;margin:0;padding:0 10px !important;border-radius:7px;
+    background:var(--bg-1);border:1px solid var(--line-2);color:var(--text-2);font-family:var(--sans);font-size:12px !important;font-weight:600;box-shadow:none;
+  }
+  #viewMarketing .akoi-toggle-btn:hover,#viewMarketing .akoi-section .akoi-refresh-btn:hover{background:var(--bg-2);color:var(--text-0);border-color:var(--line-2)}
+  #viewMarketing .akoi-section .akoi-refresh-btn{width:28px;padding:0 !important}
+  #viewMarketing .akoi-refresh-label{display:none}
+  #viewMarketing .akoi-section .akoi-refresh-btn svg,#viewMarketing .akoi-toggle-btn svg{width:13px;height:13px}
+  #viewMarketing .akoi-summary{grid-template-columns:1fr 1fr .8fr;gap:10px;margin:0;padding:14px}
+  #viewMarketing .akoi-summary-card,#viewMarketing .akoi-summary-card.is-secondary{
+    padding:12px 12px 11px;gap:5px;background:var(--bg-0);border:1px solid var(--line);border-radius:10px;opacity:1;box-shadow:none;transform:none;
+  }
+  #viewMarketing .akoi-summary-card::before{display:none}
+  #viewMarketing .akoi-summary-card:hover{transform:none;box-shadow:none;border-color:var(--line-2)}
+  #viewMarketing .akoi-summary-label,#viewMarketing .akoi-summary-card.is-secondary .akoi-summary-label{font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--mk-muted);text-transform:none}
+  #viewMarketing .akoi-summary-card:first-child .akoi-summary-label{color:var(--accent)}
+  #viewMarketing .akoi-summary-value,#viewMarketing .akoi-summary-value.is-rev{color:var(--text-0);text-shadow:none}
+  #viewMarketing #salesReportsWrap .akoi-summary-num,#viewMarketing #platformReportsWrap .akoi-summary-num{font-size:28px;font-weight:800;letter-spacing:-.02em}
+  #viewMarketing #salesReportsWrap .akoi-summary-unit,#viewMarketing #platformReportsWrap .akoi-summary-unit{font-size:13px;font-weight:600;color:var(--mk-muted);opacity:1}
+  #viewMarketing #salesReportsWrap .akoi-summary-card.is-secondary .akoi-summary-num,
+  #viewMarketing #platformReportsWrap .akoi-summary-card.is-secondary .akoi-summary-num{font-size:19px;font-weight:700;color:var(--text-2)}
+  #viewMarketing #salesReportsWrap .akoi-summary-card.is-secondary .akoi-summary-unit,
+  #viewMarketing #platformReportsWrap .akoi-summary-card.is-secondary .akoi-summary-unit{font-size:11px}
+  #viewMarketing .akoi-summary-sub,#viewMarketing .akoi-summary-usd{font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--mk-muted);margin:0}
+  #viewMarketing .akoi-body{padding:0 14px 14px;margin:0}
+  #viewMarketing .akoi-body{gap:0}
+  #viewMarketing .akoi-row{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:10px 6px;background:transparent}
+  #viewMarketing .akoi-row:last-child{border-bottom:0}
+  #viewMarketing .akoi-row:hover{background:var(--bg-0)}
+  #viewMarketing .akoi-rank{font-family:var(--sans);font-size:13px;color:var(--mk-muted)}
+  #viewMarketing .akoi-count-num,#viewMarketing .akoi-amount-num{font-family:var(--sans);font-weight:700;color:var(--text-0)}
+  #viewMarketing .akoi-count-unit,#viewMarketing .akoi-amount-unit{font-family:var(--sans);font-size:10.5px;color:var(--mk-muted)}
+
+  /* ② 판매 순위 */
+  #viewMarketing .best-panel{margin-bottom:20px}
+  #viewMarketing .best-panel > .best-range{margin:0 0 16px;gap:6px}
+  #viewMarketing .best-range-step,#viewMarketing .best-range-date{height:32px;border-radius:8px;background:var(--bg-1);border:1px solid var(--line-2);font-family:var(--sans);font-size:12.5px}
+  #viewMarketing .best-range-step{width:32px}
+  #viewMarketing .best-range-date{padding:0 8px}
+  #viewMarketing .best-search-input{height:32px;border-radius:8px;background:var(--bg-1);border:1px solid var(--line-2);font-family:var(--sans)}
+  #viewMarketing .best-grid{gap:14px}
+  #viewMarketing .best-col{background:var(--bg-0);border:1px solid var(--line);border-radius:12px;padding:12px 12px 10px}
+  #viewMarketing .best-col-head{padding:0 4px 10px}
+  #viewMarketing .best-col-dot{width:8px;height:8px}
+  #viewMarketing .best-col-name{font-size:14px;font-weight:700}
+  #viewMarketing .best-col-site{font-family:var(--sans);font-size:11.5px;color:var(--mk-muted)}
+  #viewMarketing .best-item:hover{background:var(--bg-1)}
+  #viewMarketing .best-rank{width:22px;height:22px;font-family:var(--sans);font-size:11.5px;background:var(--bg-2);color:var(--text-3);box-shadow:none}
+  #viewMarketing .best-item[data-rank="1"] .best-rank{background:#f2b705;color:#fff;box-shadow:none}
+  #viewMarketing .best-item[data-rank="2"] .best-rank{background:#a6adb9;color:#fff}
+  #viewMarketing .best-item[data-rank="3"] .best-rank{background:#d97a3a;color:#fff}
+  #viewMarketing .best-count{font-family:var(--sans);font-size:11.5px;color:var(--mk-muted)}
+  #viewMarketing .best-count b{font-size:13px;font-weight:700;color:var(--text-0)}
+  #viewMarketing .best-link-icon:hover{color:var(--accent);background:var(--mk-tint);box-shadow:none}
+  #viewMarketing .best-more{height:30px;padding:0 14px;border-color:var(--line-2);background:var(--bg-1);font-weight:600}
+  #viewMarketing .best-foot{margin-top:14px;font-size:12px;color:var(--mk-muted)}
+  #viewMarketing .best-foot b{color:var(--text-2)}
+
+  /* ③ 광고 시트 */
+  #viewMarketing .adsh-section{padding:20px 22px 22px;background:var(--bg-1);border:1px solid var(--line);margin-bottom:20px;overflow:visible}
+  #viewMarketing .sub-modules.adsh-brands{display:flex;flex-wrap:wrap;gap:8px;margin:0;max-width:none;grid-template-columns:none}
+  #viewMarketing .adsh-brands .sub-module{flex-direction:row;position:relative;overflow:visible}
+  #viewMarketing .adsh-brands .sub-module::before{display:none}
+  #viewMarketing .adsh-brands .sub-module-icon{width:auto;height:auto;margin:0;font-size:0}
+  #viewMarketing .adsh-brands .sub-module-icon .sixstock-brand-dot{width:8px;height:8px;box-shadow:none !important}
+  #viewMarketing .adsh-brands .sub-module-title{font-size:12.5px;font-weight:600;color:inherit}
+  #viewMarketing .adsh-brands .sub-module-tag{display:none}
+  #viewMarketing .adsh-brands.is-plat .sub-module-tag{display:inline;position:static;padding:0;border:0;font-family:var(--sans);font-size:11px;font-weight:500;color:var(--mk-muted);opacity:1}
+  #viewMarketing .adsh-plat-del{position:static;width:18px;height:18px;line-height:18px;margin:0 -5px 0 0;order:5;opacity:.55}
+  #viewMarketing .adsh-brands .adsh-plat-add{border-style:dashed;color:var(--text-3)}
+  #viewMarketing .adsh-brands .adsh-plat-add.is-open{border-style:solid;border-color:var(--accent)}
+  #viewMarketing .adsh-fx{font-family:var(--sans);font-size:12px;font-weight:600;height:28px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;background:var(--bg-2);border:1px solid var(--line);color:var(--text-2)}
+  #viewMarketing .adsh-fx[hidden]{display:none}
+  #viewMarketing .adsh-save{font-size:12px;font-weight:600;min-width:0}
+  #viewMarketing .adsh-month{height:32px;border-radius:8px;border-color:var(--line-2)}
+  #viewMarketing .adsh-month button{height:100%;padding:0 10px}
+  #viewMarketing .adsh-month span{font-family:var(--sans);font-size:13px;font-weight:700}
+  #viewMarketing .adsh-plat-form{border-color:var(--accent);background:var(--mk-tint);border-radius:12px}
+  #viewMarketing .adsh-sync{border-radius:10px;padding:9px 12px;margin:0 0 14px}
+  #viewMarketing .adsh-h{font-size:13.5px;font-weight:700;margin:20px 0 8px;gap:8px}
+  #viewMarketing .adsh-h::before{width:3px;height:14px;border-radius:2px;background:var(--accent)}
+  #viewMarketing .adsh-h small{font-size:11.5px;color:var(--mk-muted)}
+  #viewMarketing .adsh-cur{gap:8px;font-size:12px;font-weight:600;color:var(--mk-muted)}
+  #viewMarketing .adsh-cur button{height:28px;padding:0 11px;border:1px solid var(--line);background:var(--bg-2);color:var(--text-3);font-size:12px;font-weight:600}
+  #viewMarketing .adsh-cur button.on{background:var(--bg-1);border-color:var(--line-2);color:var(--text-0);box-shadow:0 1px 3px rgba(31,35,41,.1)}
+  #viewMarketing .adsh-tbl th,#viewMarketing .adsh-tbl td{border-color:#e4dece}
+  #viewMarketing .adsh-tbl th{background:var(--bg-2);color:var(--text-2);font-weight:700}
+  #viewMarketing .adsh-tbl th small{color:var(--mk-muted)}
+  #viewMarketing .adsh-tbl th.in{background:#e7f1df}
+  #viewMarketing .adsh-weeks th.is-now{background:#fbedbf}
+  #viewMarketing .adsh-tbl tr.is-total td,#viewMarketing .adsh-tbl tr.is-diff td,#viewMarketing .adsh-tbl tr.is-today td.c{background:#fdf6e1}
+  #viewMarketing .adsh-chart{border:1px solid var(--line);border-radius:10px;padding:10px 8px 6px}
+  #viewMarketing .adsh-hint{font-size:11.5px;color:var(--mk-muted)}
+
+  /* ④ 광고 전광판 — 검은 판 → 다른 구역과 같은 밝은 카드 */
+  #viewMarketing .ad-signage-panel{margin-top:0;background:var(--bg-1);border:1px solid var(--line);overflow:visible}
+  #viewMarketing .signage-brand-strip{gap:8px;margin:0 0 16px;padding:0 0 2px;scrollbar-color:var(--line-2) transparent}
+  #viewMarketing .signage-brand-strip::-webkit-scrollbar-thumb{background:var(--line-2)}
+  #viewMarketing .signage-brand-pill .pill-name{font-size:12.5px;font-weight:600;color:inherit}
+  #viewMarketing .signage-brand-pill .pill-spend{font-family:var(--sans);font-weight:700;color:var(--text-0)}
+  #viewMarketing .signage-brand-pill .pill-camps{font-family:var(--sans);font-size:11px;color:var(--mk-muted);margin:0}
+  #viewMarketing .signage-brand-pill.is-active .pill-name,#viewMarketing .signage-brand-pill.is-active .pill-spend{color:var(--mk-blue-ink)}
+  #viewMarketing .signage-brand-pill.skel,#viewMarketing .signage-card.skel{
+    background:linear-gradient(90deg,var(--bg-2) 0%,var(--bg-3) 50%,var(--bg-2) 100%);background-size:200% 100%;border-color:var(--line);
+  }
+  #viewMarketing .signage-grid{gap:14px}
+  #viewMarketing .signage-card{background:var(--bg-1);border:1px solid var(--line);border-radius:12px}
+  #viewMarketing .signage-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(31,35,41,.10);border-color:var(--line-2)}
+  #viewMarketing .signage-thumb-wrap{background:var(--bg-2)}
+  #viewMarketing .signage-thumb-placeholder{color:rgba(31,35,41,.18)}
+  #viewMarketing .signage-brand-badge{display:none}
+  #viewMarketing .signage-rank-badge{width:24px;height:24px;font-family:var(--sans);font-size:11px;font-weight:700;background:rgba(17,24,39,.55);border:0;box-shadow:none}
+  #viewMarketing .signage-rank-badge.rank-1{background:#f2b705}
+  #viewMarketing .signage-rank-badge.rank-2{background:#a6adb9}
+  #viewMarketing .signage-rank-badge.rank-3{background:#d97a3a}
+  #viewMarketing .signage-video-badge{font-family:var(--sans);font-size:10.5px;font-weight:600}
+  #viewMarketing .signage-card-body{background:var(--bg-1);padding:12px 14px 14px;gap:7px}
+  #viewMarketing .signage-camp-name{font-size:13px;font-weight:700;color:var(--text-0)}
+  #viewMarketing .signage-spend{font-family:var(--sans);font-size:18px;font-weight:800;color:var(--text-0);text-shadow:none}
+  #viewMarketing .signage-roas{font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--text-2);background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+  #viewMarketing .signage-hint-pill{align-self:flex-start;font-family:var(--sans);font-size:11.5px;font-weight:600;color:var(--mk-blue-ink);background:var(--mk-tint);border:1px solid rgba(79,127,207,.25);border-radius:999px;padding:3px 9px}
+  #viewMarketing .signage-hint-link{font-size:11px;color:#fff;background:var(--accent);border-color:var(--accent);border-radius:999px;padding:0 7px}
+  #viewMarketing .signage-hint-link:hover{background:#3f6dbd;border-color:#3f6dbd}
+  #viewMarketing .signage-ad-title{font-size:12px;color:var(--mk-muted)}
+
+  /* ⑤ 브랜드 리포트 */
+  #viewMarketing #mktSecBrep{margin-bottom:8px}
+
+  @media (max-width:1180px){
+    #viewMarketing #salesReportsWrap .akoi-summary-num,#viewMarketing #platformReportsWrap .akoi-summary-num{font-size:30px}
+  }
+  @media (max-width:720px){
+    #viewMarketing .mkt-sec,#viewMarketing .adsh-section{padding:16px 14px 16px;border-radius:12px;margin-bottom:14px}
+    #viewMarketing .mkt-sec-head{margin-bottom:12px;padding-bottom:12px}
+    #viewMarketing .mkt-sec-title{font-size:15px}
+    #viewMarketing .mkt-sec-actions{width:100%;justify-content:flex-start;margin-left:0}
+    #viewMarketing .mkt-sec-actions .mkt-seg{flex:1 1 auto}
+    #viewMarketing .mkt-seg .lg-tab{flex:1 1 0;justify-content:center}
+    #viewMarketing .mkt-btn > span{display:none}
+    #viewMarketing .mkt-btn{width:36px;height:36px;padding:0}
+    #viewMarketing .mkt-sec-status{margin-left:0}
+    #viewMarketing .sub-modules.adsh-brands{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:-14px;padding-right:14px}
+    #viewMarketing .sub-modules.adsh-brands::-webkit-scrollbar{display:none}
+    #viewMarketing .mkt-sec-bar{display:block}
+    #viewMarketing .mkt-sec-bar .mkt-sec-status{margin-top:10px}
+    #viewMarketing .akoi-summary{grid-template-columns:1fr 1fr;padding:12px}
+    #viewMarketing .akoi-summary-card.is-secondary{grid-column:1 / -1}
+    #viewMarketing #salesReportsWrap .akoi-summary-num,#viewMarketing #platformReportsWrap .akoi-summary-num{font-size:24px}
+    #viewMarketing .akoi-body{padding:0 12px 12px}
+    #viewMarketing .best-search,#viewMarketing .best-search-input{width:100%}
+    #viewMarketing .best-head-right{width:100%}
+  }
+  @media (pointer:coarse), (max-width:600px){
+    #viewMarketing .mkt-chip,#viewMarketing .signage-brand-pill,#viewMarketing .adsh-brands .sub-module,#viewMarketing .best-range-preset,
+    #viewMarketing .best-range-step,#viewMarketing .best-range-date,#viewMarketing .best-search-input,#viewMarketing .adsh-month{height:36px;min-height:36px}
+    #viewMarketing .best-range-step{width:36px}
+    #viewMarketing .mkt-seg .lg-tab{height:32px}
+    #viewMarketing .akoi-toggle-btn,#viewMarketing .akoi-section .akoi-refresh-btn{height:34px;min-height:34px !important}
+    #viewMarketing .akoi-section .akoi-refresh-btn{width:34px}
+    #viewMarketing .mkt-nav button{height:34px}
+  }
 </style>
 </head>
 <body>
@@ -13567,110 +13831,62 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
         홈
       </button>
-      <h1 class="view-title">온라인사업팀<span class="view-title-sub">/ 브랜드별 실시간 매출 · 광고 전광판 · 판매 순위</span><span id="salesUpdatedTag" class="sales-updated-tag"></span></h1>
+      <h1 class="view-title">온라인사업팀<span class="view-title-sub">/ 매출 · 판매 순위 · 광고 · 브랜드 리포트</span><span id="salesUpdatedTag" class="sales-updated-tag"></span></h1>
     </div>
+
+    <!-- 2026-11-20 디자인 정리 — 다섯 구역을 같은 틀(.mkt-sec: 흰 카드 · 제목 줄 · 탭 · 버튼)로 맞추고 순서를 매출 → 판매 순위 → 광고 → 리포트로 묶음.
+         맨 위 바로가기는 화면을 내려도 따라옴(mktJump · 지금 보는 구역 표시) -->
+    <nav class="mkt-nav" id="mktNav" aria-label="온라인사업팀 바로가기">
+      <button type="button" data-mkt-jump="mktSecSales" onclick="mktJump('mktSecSales')">실시간 매출</button>
+      <button type="button" data-mkt-jump="bestPanel" onclick="mktJump('bestPanel')">판매 순위</button>
+      <button type="button" data-mkt-jump="mktSecAdsh" onclick="mktJump('mktSecAdsh')">광고 시트</button>
+      <button type="button" data-mkt-jump="adSignagePanel" onclick="mktJump('adSignagePanel')">광고 전광판</button>
+      <button type="button" data-mkt-jump="mktSecBrep" onclick="mktJump('mktSecBrep')">브랜드 리포트</button>
+    </nav>
 
     <!-- 브랜드별 실시간 매출 — 공홈(식스샵+프로) / 플랫폼(에이블리 등) 탭 -->
-    <div class="po-wrap" style="padding-bottom:0">
-      <div class="po-section" style="padding:0;background:transparent;border:none;margin-bottom:16px">
-        <div class="po-section-head" style="padding:0 0 6px">
-          <div class="po-section-title">브랜드별 실시간 매출 <span class="po-section-meta-inline">최근 30일 매출 많은 순</span></div>
-          <div class="po-section-meta">
-            <button class="btn po-import akoi-refresh-btn" type="button" onclick="mdpRefreshActive()" title="현재 탭 새로고침">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-              새로고침
-            </button>
+    <section class="mkt-sec" id="mktSecSales">
+      <div class="mkt-sec-head">
+        <div class="mkt-sec-titles">
+          <h2 class="mkt-sec-title">브랜드별 실시간 매출</h2>
+          <span class="mkt-sec-desc">최근 30일 매출 많은 순</span>
+        </div>
+        <div class="mkt-sec-actions">
+          <div class="lg-tabs mkt-seg" role="tablist">
+            <button class="lg-tab active" data-mdp="home" onclick="mdpSwitch('home')" role="tab" aria-selected="true">공홈 <span class="lg-tab-badge" id="mdpCountHome">8</span></button>
+            <button class="lg-tab" data-mdp="platform" onclick="mdpSwitch('platform')" role="tab" aria-selected="false">플랫폼 <span class="lg-tab-badge" id="mdpCountPlatform">8</span></button>
           </div>
-        </div>
-        <div class="lg-tabs" role="tablist" style="padding:0 0 12px;max-width:none;margin:0">
-          <button class="lg-tab active" data-mdp="home" onclick="mdpSwitch('home')" role="tab" aria-selected="true">공홈 <span class="lg-tab-badge" id="mdpCountHome">8</span></button>
-          <button class="lg-tab" data-mdp="platform" onclick="mdpSwitch('platform')" role="tab" aria-selected="false">플랫폼 <span class="lg-tab-badge" id="mdpCountPlatform">8</span></button>
-        </div>
-        <div class="mdp-panel" data-mdp-panel="home">
-          <div id="salesReportsWrap"></div>
-        </div>
-        <div class="mdp-panel" data-mdp-panel="platform" hidden>
-          <div id="platformReportsWrap"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 브랜드별 광고 시트 — 일자별 입력 → 전주대비 요약·그래프 자동 생성. 데이터: 비공개 brightbeed-reports office/ad-sheets/{brand}.json (프록시) -->
-    <div class="po-wrap" style="padding-bottom:0">
-      <div class="po-section adsh-section">
-        <div class="po-section-head" style="padding:0 0 6px">
-          <div class="po-section-title">브랜드별 광고 시트 <span class="po-section-meta-inline" id="adshSubtitle">노출·클릭·광고비($)·전환매출 입력 → 자동 계산</span></div>
-          <div class="po-section-meta adsh-meta">
-            <span class="adsh-fx" id="adshFxTag" title="하나은행 매매기준율 (네이버) · 평일 오전 9시 자동 갱신">환율 —</span>
-            <span class="adsh-save" id="adshSaveTag" title="입력하는 즉시 자동으로 저장됩니다 · 저장 버튼 필요 없음"><i class="adsh-live"></i>실시간 자동 저장</span>
-            <div class="adsh-month">
-              <button type="button" onclick="adshMoveMonth(-1)" aria-label="이전 달">‹</button>
-              <span id="adshMonthLabel">—</span>
-              <button type="button" onclick="adshMoveMonth(1)" aria-label="다음 달">›</button>
-            </div>
-          </div>
-        </div>
-        <!-- 공홈(메타, $) / 플랫폼(에이블리·지그재그·스마트스토어, 원화) — 실시간 매출 탭과 같은 모양 -->
-        <div class="lg-tabs" role="tablist" style="padding:0 0 12px;max-width:none;margin:0">
-          <button class="lg-tab active" data-adshmode="home" onclick="adshSwitchMode('home')" role="tab" aria-selected="true">공홈 <span class="lg-tab-badge" id="adshCountHome">8</span></button>
-          <button class="lg-tab" data-adshmode="platform" onclick="adshSwitchMode('platform')" role="tab" aria-selected="false">플랫폼 <span class="lg-tab-badge" id="adshCountPlatform">8</span></button>
-        </div>
-        <div class="sub-modules adsh-brands" id="adshTabs" role="tablist"></div>
-        <div class="adsh-plat-form" id="adshPlatForm" hidden></div>
-        <div id="adshBody"></div>
-      </div>
-    </div>
-
-    <!-- 광고 전광판 패널 -->
-    <section class="ad-signage-panel" id="adSignagePanel">
-      <div class="signage-head">
-        <div class="signage-head-left">
-          <span class="signage-eyebrow">LIVE AD BOARD</span>
-          <span class="signage-title" id="signageTitle">브랜드 선택 후 광고 확인</span>
-        </div>
-        <div class="signage-head-right">
-          <span class="signage-updated" id="signageUpdated">로딩 중…</span>
-          <button class="signage-refresh-btn" id="signageRefresh" type="button" onclick="renderAdSignage(true)" title="새로고침">
+          <button class="mkt-btn" type="button" onclick="mdpRefreshActive()" title="지금 탭 새로고침">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>새로고침</span>
           </button>
         </div>
       </div>
-      <!-- 브랜드 필터 탭 (전체 + 각 브랜드) -->
-      <div class="signage-brand-strip" id="signageBrandStrip" role="tablist">
-        <div class="signage-brand-pill skel"></div>
-        <div class="signage-brand-pill skel"></div>
-        <div class="signage-brand-pill skel"></div>
-        <div class="signage-brand-pill skel"></div>
-        <div class="signage-brand-pill skel"></div>
-        <div class="signage-brand-pill skel"></div>
-        <div class="signage-brand-pill skel"></div>
+      <div class="mdp-panel" data-mdp-panel="home">
+        <div id="salesReportsWrap"></div>
       </div>
-      <!-- 캠페인 카드 그리드 -->
-      <div class="signage-grid" id="signageGrid">
-        <div class="signage-card skel"></div>
-        <div class="signage-card skel"></div>
-        <div class="signage-card skel"></div>
-        <div class="signage-card skel"></div>
+      <div class="mdp-panel" data-mdp-panel="platform" hidden>
+        <div id="platformReportsWrap"></div>
       </div>
     </section>
 
     <!-- 판매 순위 · 제품 분석 — 공홈 상품 판매 색인 (비공개 brightbeed-reports home/{브랜드}/products.json, 맥미니 10분마다) -->
-    <section class="best-panel" id="bestPanel">
-      <div class="best-head">
-        <div class="best-head-left">
-          <span class="best-eyebrow">TOP 10</span>
-          <span class="best-title">브랜드별 판매 순위<span class="best-title-sub" id="bestSubtitle">/ 공홈 최근 30일</span></span>
+    <section class="best-panel mkt-sec" id="bestPanel">
+      <div class="best-head mkt-sec-head">
+        <div class="mkt-sec-titles">
+          <h2 class="mkt-sec-title">브랜드별 판매 순위 <span class="mkt-sec-tag">TOP 10</span></h2>
+          <span class="mkt-sec-desc" id="bestSubtitle">공홈 최근 30일</span>
         </div>
-        <div class="best-head-right">
+        <div class="best-head-right mkt-sec-actions">
           <div class="best-search" id="bestSearchWrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.2" y2="16.2"/></svg>
             <input type="search" id="bestSearch" class="best-search-input" placeholder="제품 검색 → 분석 (모든 브랜드)" autocomplete="off" spellcheck="false" role="combobox" aria-label="제품 검색 (모든 브랜드)" aria-autocomplete="list" aria-controls="bestSearchList" aria-expanded="false">
             <div class="best-search-list" id="bestSearchList" role="listbox" aria-label="검색 결과" hidden></div>
           </div>
           <span class="best-updated" id="bestUpdated"></span>
-          <button class="best-refresh" id="bestRefresh" type="button" onclick="loadBestsellers(true)" title="새로고침">
+          <button class="best-refresh mkt-btn" id="bestRefresh" type="button" onclick="loadBestsellers(true)" title="새로고침">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            새로고침
+            <span>새로고침</span>
           </button>
         </div>
       </div>
@@ -13699,6 +13915,68 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="best-col"><div class="best-col-head"><span class="best-col-dot" style="background:#f472b6"></span><span class="best-col-name">아코이하우스</span><span class="best-col-site">akoihaus1</span></div><div class="best-skel"><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div><div class="best-skel-row"></div></div></div>
       </div>
       <div class="best-foot" id="bestFoot"></div>
+    </section>
+
+    <!-- 브랜드별 광고 시트 — 일자별 입력 → 전주대비 요약·그래프 자동 생성. 데이터: 비공개 brightbeed-reports office/ad-sheets/{brand}.json (프록시) -->
+    <section class="mkt-sec adsh-section" id="mktSecAdsh">
+      <div class="mkt-sec-head">
+        <div class="mkt-sec-titles">
+          <h2 class="mkt-sec-title">브랜드별 광고 시트</h2>
+          <span class="mkt-sec-desc" id="adshSubtitle">노출·클릭·광고비($)·전환매출 입력 → 자동 계산</span>
+        </div>
+        <div class="mkt-sec-actions adsh-meta">
+          <!-- 공홈(메타, $) / 플랫폼(에이블리·지그재그·스마트스토어, 원화) — 실시간 매출 탭과 같은 모양 -->
+          <div class="lg-tabs mkt-seg" role="tablist">
+            <button class="lg-tab active" data-adshmode="home" onclick="adshSwitchMode('home')" role="tab" aria-selected="true">공홈 <span class="lg-tab-badge" id="adshCountHome">8</span></button>
+            <button class="lg-tab" data-adshmode="platform" onclick="adshSwitchMode('platform')" role="tab" aria-selected="false">플랫폼 <span class="lg-tab-badge" id="adshCountPlatform">8</span></button>
+          </div>
+          <div class="adsh-month">
+            <button type="button" onclick="adshMoveMonth(-1)" aria-label="이전 달">‹</button>
+            <span id="adshMonthLabel">—</span>
+            <button type="button" onclick="adshMoveMonth(1)" aria-label="다음 달">›</button>
+          </div>
+        </div>
+      </div>
+      <div class="mkt-sec-bar">
+        <div class="sub-modules adsh-brands" id="adshTabs" role="tablist"></div>
+        <div class="mkt-sec-status">
+          <span class="adsh-fx" id="adshFxTag" title="하나은행 매매기준율 (네이버) · 평일 오전 9시 자동 갱신">환율 —</span>
+          <span class="adsh-save" id="adshSaveTag" title="입력하는 즉시 자동으로 저장됩니다 · 저장 버튼 필요 없음"><i class="adsh-live"></i>실시간 자동 저장</span>
+        </div>
+      </div>
+      <div class="adsh-plat-form" id="adshPlatForm" hidden></div>
+      <div id="adshBody"></div>
+    </section>
+
+    <!-- 광고 전광판 — 메타 광고 집행 중 캠페인 (지난 7일) -->
+    <section class="mkt-sec ad-signage-panel" id="adSignagePanel">
+      <div class="mkt-sec-head">
+        <div class="mkt-sec-titles">
+          <h2 class="mkt-sec-title">광고 전광판</h2>
+          <span class="mkt-sec-desc" id="signageTitle">브랜드 선택 후 광고 확인</span>
+        </div>
+        <div class="mkt-sec-actions">
+          <span class="mkt-sec-upd" id="signageUpdated">로딩 중…</span>
+          <button class="mkt-btn" id="signageRefresh" type="button" onclick="renderAdSignage(true)" title="새로고침">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span>새로고침</span>
+          </button>
+        </div>
+      </div>
+      <!-- 브랜드 필터 (광고비 많은 순) -->
+      <div class="signage-brand-strip" id="signageBrandStrip" role="tablist">
+        <div class="signage-brand-pill skel"></div>
+        <div class="signage-brand-pill skel"></div>
+        <div class="signage-brand-pill skel"></div>
+        <div class="signage-brand-pill skel"></div>
+      </div>
+      <!-- 캠페인 카드 그리드 -->
+      <div class="signage-grid" id="signageGrid">
+        <div class="signage-card skel"></div>
+        <div class="signage-card skel"></div>
+        <div class="signage-card skel"></div>
+        <div class="signage-card skel"></div>
+      </div>
     </section>
 
     <!-- 제품 분석 — 순위의 상품명을 누르거나 검색해서 연다 (머리 · 본문만 다시 그리고, 기간 · 검색 칸은 그대로 둬서 입력 중 포커스를 잃지 않게) -->
@@ -13733,60 +14011,28 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </div>
 
     <!-- 일일 브랜드 리포트 — 2026-11-13 사장님 요청으로 홈에서 온라인사업팀 맨 아래로 옮김 · 2026-11-16 기간 선택 · 전체 브랜드 비교 · 채널 · 상품 분석 -->
-    <div class="sub-modules-section sub-modules-brep">
-      <div class="sub-modules-eyebrow">
-        <span class="folder-icon">📈</span>
-        <span class="folder-label">일일 브랜드 리포트</span>
-        <span class="folder-meta">기간 선택 · 채널 · 상품 · 리오더 분석 <b>매 30분 갱신</b></span>
-      </div>
-      <div class="sub-modules">
-        <div class="sub-module m-brep m-brep-all" onclick="triggerBrandReport('all')">
-          <div class="sub-module-icon">📊</div>
-          <div class="sub-module-title">전체 브랜드</div>
-          <div class="sub-module-tag">한눈에 비교</div>
-        </div>
-        <div class="sub-module m-brep m-brep-6a" onclick="triggerBrandReport('6a')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22d3ee;box-shadow:0 0 12px rgba(34,211,238,.7)"></span></div>
-          <div class="sub-module-title">식스에이</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-ct" onclick="triggerBrandReport('ct')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#22c55e;box-shadow:0 0 12px rgba(34,197,94,.7)"></span></div>
-          <div class="sub-module-title">클리어타입</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-yar" onclick="triggerBrandReport('yar')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#a78bfa;box-shadow:0 0 12px rgba(167,139,250,.7)"></span></div>
-          <div class="sub-module-title">야르</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-pp" onclick="triggerBrandReport('pp')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f59e0b;box-shadow:0 0 12px rgba(245,158,11,.7)"></span></div>
-          <div class="sub-module-title">프로덕트피알</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-akoi" onclick="triggerBrandReport('akoi')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#f472b6;box-shadow:0 0 12px rgba(244,114,182,.7)"></span></div>
-          <div class="sub-module-title">아코이하우스</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-kop" onclick="triggerBrandReport('kop')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#818cf8;box-shadow:0 0 12px rgba(129,140,248,.7)"></span></div>
-          <div class="sub-module-title">코페리</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-apt" onclick="triggerBrandReport('apt')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#fb7185;box-shadow:0 0 12px rgba(251,113,133,.7)"></span></div>
-          <div class="sub-module-title">아페티</div>
-          <div class="sub-module-tag">30분마다</div>
-        </div>
-        <div class="sub-module m-brep m-brep-koz" onclick="triggerBrandReport('koz')">
-          <div class="sub-module-icon"><span class="sixstock-brand-dot" style="background:#14b8a6;box-shadow:0 0 12px rgba(20,184,166,.7)"></span></div>
-          <div class="sub-module-title">코즈미</div>
-          <div class="sub-module-tag">30분마다</div>
+    <section class="mkt-sec" id="mktSecBrep">
+      <div class="mkt-sec-head">
+        <div class="mkt-sec-titles">
+          <h2 class="mkt-sec-title">일일 브랜드 리포트</h2>
+          <span class="mkt-sec-desc">기간 선택 · 채널 · 상품 · 리오더 분석 · 30분마다 갱신</span>
         </div>
       </div>
-    </div>
+      <div class="mkt-chips mkt-brep-chips">
+        <button type="button" class="mkt-chip is-primary m-brep-all" onclick="triggerBrandReport('all')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="5"/><line x1="18" y1="20" x2="18" y2="9"/></svg>
+          전체 브랜드 비교
+        </button>
+        <button type="button" class="mkt-chip m-brep-6a" onclick="triggerBrandReport('6a')"><i style="background:#22d3ee"></i>식스에이</button>
+        <button type="button" class="mkt-chip m-brep-ct" onclick="triggerBrandReport('ct')"><i style="background:#22c55e"></i>클리어타입</button>
+        <button type="button" class="mkt-chip m-brep-yar" onclick="triggerBrandReport('yar')"><i style="background:#a78bfa"></i>야르</button>
+        <button type="button" class="mkt-chip m-brep-pp" onclick="triggerBrandReport('pp')"><i style="background:#f59e0b"></i>프로덕트피알</button>
+        <button type="button" class="mkt-chip m-brep-akoi" onclick="triggerBrandReport('akoi')"><i style="background:#f472b6"></i>아코이하우스</button>
+        <button type="button" class="mkt-chip m-brep-kop" onclick="triggerBrandReport('kop')"><i style="background:#818cf8"></i>코페리</button>
+        <button type="button" class="mkt-chip m-brep-apt" onclick="triggerBrandReport('apt')"><i style="background:#fb7185"></i>아페티</button>
+        <button type="button" class="mkt-chip m-brep-koz" onclick="triggerBrandReport('koz')"><i style="background:#14b8a6"></i>코즈미</button>
+      </div>
+    </section>
 
   </div>
 
@@ -18963,7 +19209,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const grid=document.getElementById('bestGrid'); if(!grid) return;
     const first=_pixMinDate();
     _pixSyncRangeUi('best', _pix, first);
-    const sub=document.getElementById('bestSubtitle'); if(sub) sub.textContent='/ 공홈 '+_pixRangeLabel(_pix.start,_pix.end);
+    const sub=document.getElementById('bestSubtitle'); if(sub) sub.textContent='공홈 '+_pixRangeLabel(_pix.start,_pix.end);
     const brands=_pixBrands();
     grid.innerHTML=brands.map(_pixCol).join('');
     _pixRenderUpdated(brands);
@@ -19806,11 +20052,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <span id="salesUpd_${cfg.id}" class="sales-updated-tag"></span>
           <button class="btn po-import akoi-toggle-btn" type="button" onclick="salesToggleBody('${cfg.id}')" title="상품 top10 접기/펼치기">
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
-            <span class="akoi-toggle-label">상품 top10 펼치기</span>
+            <span class="akoi-toggle-label">TOP 10 보기</span>
           </button>
-          <button class="btn po-import akoi-refresh-btn" type="button" onclick="salesRefresh('${cfg.id}')" title="${_akoiEsc(cfg.display)} 다시 불러오기">
+          <button class="btn po-import akoi-refresh-btn" type="button" onclick="salesRefresh('${cfg.id}')" title="${_akoiEsc(cfg.display)} 다시 불러오기" aria-label="${_akoiEsc(cfg.display)} 새로고침">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            새로고침
+            <span class="akoi-refresh-label">새로고침</span>
           </button>
         </div>
       </div>
@@ -19826,11 +20072,61 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     card.dataset.expanded=expanded?'0':'1';
     body.classList.toggle('akoi-body-collapsed', expanded);
     const label=card.querySelector('.akoi-toggle-label');
-    if(label) label.textContent=expanded ? '상품 top10 펼치기' : '상품 top10 접기';
+    if(label) label.textContent=expanded ? 'TOP 10 보기' : 'TOP 10 접기';
     const chev=card.querySelector('.akoi-toggle-btn .chev');
     if(chev) chev.style.transform=expanded ? '' : 'rotate(180deg)';
   }
   window.salesToggleBody=salesToggleBody;
+
+  /* 온라인사업팀 바로가기 (2026-11-20 디자인 정리) — 누르면 그 구역으로, 내리는 동안 지금 보는 구역 표시.
+     바로가기 줄은 맨 위 머리줄(.topbar) 바로 밑에 붙는다 → 머리줄 높이를 --mk-top 으로 (휴대폰에선 높이가 다름) */
+  function _mktTopH(){
+    const tb=document.querySelector('.topbar');
+    return tb ? Math.round(tb.getBoundingClientRect().height) : 61;
+  }
+  function _mktSyncTop(){
+    const v=document.getElementById('viewMarketing');
+    if(v) v.style.setProperty('--mk-top', _mktTopH()+'px');
+  }
+  function mktJump(id){
+    const el=document.getElementById(id);
+    if(!el) return;
+    _mktSyncTop();
+    const nav=document.getElementById('mktNav');
+    const off=_mktTopH()+(nav?nav.offsetHeight:0)+8;
+    window.scrollTo({top:Math.max(0,el.getBoundingClientRect().top+window.scrollY-off),behavior:'smooth'});
+  }
+  window.mktJump=mktJump; window._mktSyncTop=_mktSyncTop;
+  let _mktSpyRaf=0;
+  function _mktSpy(){
+    _mktSpyRaf=0;
+    const v=document.getElementById('viewMarketing'), nav=document.getElementById('mktNav');
+    if(!v || v.hidden || !nav) return;
+    const line=_mktTopH()+nav.offsetHeight+24;
+    const btns=[...nav.querySelectorAll('[data-mkt-jump]')];
+    let cur=btns[0] && btns[0].dataset.mktJump;
+    for(const b of btns){
+      const el=document.getElementById(b.dataset.mktJump);
+      if(el && el.getBoundingClientRect().top<=line) cur=b.dataset.mktJump;
+    }
+    // 맨 아래까지 내리면 마지막 구역
+    if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-4 && btns.length) cur=btns[btns.length-1].dataset.mktJump;
+    btns.forEach(b=>{
+      const on=b.dataset.mktJump===cur, was=b.classList.contains('is-on');
+      b.classList.toggle('is-on', on);
+      // 휴대폰에선 바로가기 줄이 옆으로 넘친다 → 새로 켜진 버튼이 가려져 있으면 줄만 옆으로 밀어 보이게
+      if(on && !was && nav.scrollWidth>nav.clientWidth){
+        const l=b.offsetLeft, r=l+b.offsetWidth;
+        if(l<nav.scrollLeft || r>nav.scrollLeft+nav.clientWidth) nav.scrollTo({left:Math.max(0,l-12),behavior:'smooth'});
+      }
+    });
+  }
+  window._mktSpy=_mktSpy;
+  function _mktSpySoon(){ if(!_mktSpyRaf) _mktSpyRaf=requestAnimationFrame(_mktSpy); }
+  window.addEventListener('scroll',_mktSpySoon,{passive:true});
+  window.addEventListener('resize',()=>{ _mktSyncTop(); _mktSpySoon(); });
+  window.addEventListener('hashchange',()=>setTimeout(()=>{ _mktSyncTop(); _mktSpy(); },50));
+  setTimeout(()=>{ _mktSyncTop(); _mktSpy(); },0);
   function _salesInitCards(){
     const wrap=document.getElementById('salesReportsWrap');
     if(!wrap || wrap.dataset.initted) return;
@@ -21402,6 +21698,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof syncSalesArchiveFromRemote==='function') syncSalesArchiveFromRemote().catch(()=>{});
       if(typeof akoiSalesEnsureLoaded==='function') akoiSalesEnsureLoaded();
       if(typeof adshEnsureLoaded==='function') adshEnsureLoaded();
+      setTimeout(()=>{ if(window._mktSyncTop){ window._mktSyncTop(); window._mktSpy(); } },0);
     }
     if(id==='viewExecVault'){
       // 보기 PIN · 명단 밖 접근 방어 (해시 직입력 등) — 예전엔 goHome()=history.back() 이라 첫 화면이 #vault 면 빈 금고 화면에 남았다
