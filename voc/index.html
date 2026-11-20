@@ -37,7 +37,10 @@
        가독성 좋게" → 오피스 CS 업무의 '↩️ 반품·교환 분석' 탭을 걷어 여기 메뉴 맨 위 '반품 · 교환 (자동 수집)'으로 옮김
        (한눈에 보기 · 사유 · 채널 · 상품 분석 · 처리 현황 · 목록). 시트로 만든 예전 대시보드 카드(브랜드별 · 사유 분류 · 많이 나온 상품 ·
        최근 회사 사유 · 쇼핑몰별)는 자동 수집과 겹쳐 지우고, 시트에만 있는 '일지 입력 현황'만 한눈에 보기 아래에 남김.
-       색은 아낌 — 회사 사유 = 빨강, 고객 사유 = 회색, 사유 없음 = 연회색. */
+       색은 아낌 — 회사 사유 = 빨강, 고객 사유 = 회색, 사유 없음 = 연회색.
+     · 같은 날 저녁 "문의, 리뷰 목록도 같이 voc에 넣어줘" · "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리하게 해줘" →
+       '문의 · 리뷰 (자동 수집)' 메뉴(한눈에 · 목록)를 새로, 편집이 있는 개선 요청 · CS 작업 보드 · 메모장 · 자주 묻는 질문은 오피스 화면을 그대로
+       본문 자리에 띄움(메뉴 'CS 업무'). "voc 코드표, 기존 자료는 숨김처리 해주고. 시트 또한 숨김해줘" → SHEET_ON = false (걷어내지 않고 숨김만). */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -403,7 +406,7 @@
       <button type="button" class="ib menu" id="btnMenu" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓴 낱말이 모두 들어간 줄만">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="q" type="search" placeholder="상품 · 사유 · 고객 글 · 주문번호 · VOC 코드 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        <input id="q" type="search" placeholder="상품 · 사유 · 고객 글 · 주문번호 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
         <span class="qn" id="qn"></span>
         <button type="button" class="qx" id="qx" hidden aria-label="찾기 지우기">✕</button>
       </label>
@@ -537,6 +540,11 @@
   const SRC_L = {sixshop: '식스샵 프로 (공홈 · 네이버페이)', playauto: '플레이오토', zigzag: '지그재그 파트너센터'};
   const CLAIMS_MS = 5 * 60e3;
   const C = {data: null, sales: null, lines: [], at: 0, err: '', salesErr: '', busy: null, pidx: null, firstBatch: 0, off: !(SH && typeof SH.claims === 'function')};
+  const Q = {data: null, items: [], at: 0, err: '', busy: null, off: !(SH && typeof SH.inq === 'function')};   // 💬 문의 · 리뷰
+  /* 시트 · 코드표 숨김 (2026-11-20 저녁 사장님 "voc 코드표, 기존 자료는 숨김처리 해주고. 시트 또한 숨김해줘") — 걷어내지 않고 숨김만.
+     true 로 바꾸면 CS 데일리 일지 · 불량 · 재발송 · 반품 분석(시트) · 시트 사진 · VOC 코드표 메뉴, 한눈에 보기의 일지 입력 현황, 시트 링크 단추,
+     구글시트 읽기(3분) · 오피스 VOC 기록 읽기가 다시 돈다. VOC 코드는 반품 · 교환 상세 창의 '추정 VOC 코드 · 처리 기준'과 🛠 개선 요청에 계속 쓴다. */
+  const SHEET_ON = false;
 
   const $ = id => document.getElementById(id);
   const app = $('app'), grid = $('grid'), qIn = $('q');
@@ -549,7 +557,7 @@
   // cb · cc · ct = 반품 · 교환 브랜드 · 채널 · 구분(return · exchange), cmp = 비교 표 브랜드별/채널별,
   // cf = 목록 거르기(open · co · cu · memo · photo), cr = 목록 사유, pf = 상품 거르기(rep · co · rate)
   const V = {view: 'dash', period: '30', type: '', cat: '', date: '', q: '', sort: null, zero: false, part: 'codes',
-    cb: '', cc: '', ct: '', cmp: 'brand', cf: '', cr: '', pf: ''};
+    cb: '', cc: '', ct: '', cmp: 'brand', cf: '', cr: '', pf: '', qt: '', qtopic: ''};   // qt = 문의 구분(question · review · neg), qtopic = 문의 주제
 
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* 저장 못 해도 화면은 그대로 */ } };
@@ -1054,6 +1062,17 @@
     tx.textContent = k === 'load' ? '불러오는 중…' : k === 'stored' ? `저장본 ${hm(S.at)} · 새로 받는 중` : k === 'err' ? (extra || '못 읽음 — 다시') : `${hm(S.at)} 기준 · 3분마다`;
     st.title = k === 'err' ? '구글시트를 읽지 못했어요 — 누르면 다시 읽어요' : '지금 다시 읽기';
   }
+  // 시트를 숨긴 동안(SHEET_ON false) 위 상태 단추 = 자동 수집(반품 · 교환 · 문의 · 리뷰)을 마지막으로 확인한 시각 — 누르면 바로 다시
+  function setAutoSt() {
+    if (SHEET_ON) return;
+    const st = $('st'), tx = $('stText');
+    if (C.off && Q.off) { st.className = 'st'; tx.textContent = '오피스 안에서 열기'; st.title = '자동 수집 자료는 오피스 CS팀 화면 맨 아래에서 보여요'; return; }
+    const loading = (C.busy && !C.data) || (Q.busy && !Q.data), err = (C.err && !C.data) || (Q.err && !Q.data);
+    const t = new Date(Math.max(C.at || 0, Q.at || 0) || Date.now());
+    st.className = 'st' + (loading ? ' is-load' : err ? ' is-err' : '');
+    tx.textContent = loading ? '불러오는 중…' : err ? '못 읽음 — 다시' : `${pad2(t.getHours())}:${pad2(t.getMinutes())} 확인 · 5분마다`;
+    st.title = '반품 · 교환 · 문의 · 리뷰를 지금 다시 읽기';
+  }
   function saveCache() {
     try {
       lsSet(LS_CACHE, JSON.stringify({v: 1, at: S.at, models: S.models.map(m => ({name: m.name, gid: m.gid, rows: m.rows.filter(r => r.c.length), imgs: m.imgs}))}));
@@ -1172,14 +1191,15 @@
           C.err = ''; C.salesErr = r.salesErr || '';
         } else { changed = changed || C.err !== ((r && r.err) || '아직 수집 파일이 없어요'); C.err = (r && r.err) || '아직 수집 파일이 없어요'; }
       } catch (e) { C.err = (e && e.message) || String(e); changed = true; }
-      finally { C.at = Date.now(); C.busy = null; }
+      finally { C.at = Date.now(); C.busy = null; setAutoSt(); }
       if (changed) render(true);
     })();
+    setAutoSt();
     return C.busy;
   }
 
   /* ── 반품 · 교환 계산 (예전 오피스 _clm* 그대로) ── */
-  const isCView = v => v === 'dash' || /^c:/.test(v);
+  const isCView = v => v === 'dash' || /^[cix]:/.test(v);   // 시트 없이 보이는 화면 — c: 반품 · 교환, i: 문의 · 리뷰, x: 개선 요청 · 작업 보드
   const cLive = l => l.stage !== 'withdrawn' && l.stage !== 'rejected';
   const cAge = l => Math.max(0, diffD(today(), String(l.requested_at || l.date).slice(0, 10)));
   const cShown = b => CB.some(x => x.id === b);
@@ -1360,7 +1380,7 @@
   const isNew = l => { const seen = Date.parse(l.first_seen || '') || 0; return seen > C.firstBatch + 10 * 60e3 && Date.now() - seen < 24 * 3600e3 && l.date >= addDays(today(), -3); };
 
   /* ── 보기 상태 ── */
-  function savePrefs() { lsSet(LS_VIEW, JSON.stringify({view: V.view, period: V.period, zero: V.zero, part: V.part, cb: V.cb, cc: V.cc, ct: V.ct, cmp: V.cmp})); }
+  function savePrefs() { lsSet(LS_VIEW, JSON.stringify({view: V.view, period: V.period, zero: V.zero, part: V.part, cb: V.cb, cc: V.cc, ct: V.ct, cmp: V.cmp, qt: V.qt})); }
   function loadPrefs() {
     try {
       const p = JSON.parse(lsGet(LS_VIEW) || '{}');
@@ -1373,6 +1393,7 @@
       if (typeof p.cc === 'string' && (!p.cc || CH_L[p.cc])) V.cc = p.cc;
       if (p.ct === '' || p.ct === 'return' || p.ct === 'exchange') V.ct = p.ct;
       if (p.cmp === 'brand' || p.cmp === 'channel') V.cmp = p.cmp;
+      if (IQ_TYPES.some(([k]) => k === p.qt)) V.qt = p.qt;
     } catch (e) { /* noop */ }
   }
   function go(view, o) {
@@ -1380,8 +1401,9 @@
     if (view !== V.view) { V.sort = null; grid.scrollTop = 0; grid.scrollLeft = 0; }
     V.view = view;
     V.type = o.type || ''; V.cat = o.cat || ''; V.date = o.date || '';
-    V.cf = o.cf || ''; V.cr = o.cr || ''; V.pf = o.pf || '';
+    V.cf = o.cf || ''; V.cr = o.cr || ''; V.pf = o.pf || ''; V.qtopic = o.qtopic || '';
     if (o.ct != null) V.ct = o.ct;
+    if (o.qt != null) V.qt = o.qt;
     if (o.q != null) { V.q = o.q; qIn.value = o.q; }
     if (o.period) V.period = o.period;
     closeDetail();
@@ -1394,7 +1416,8 @@
   /* ── 그리기 ── */
   function render(keepScroll) {
     P = period();
-    if (!['dash', 'c:reason', 'c:prod', 'c:ops', 'c:list', 'log', 'codes', 'photos'].includes(V.view) && !/^(log|defect|tab):/.test(V.view)) V.view = 'dash';
+    if (!['dash', 'c:reason', 'c:prod', 'c:ops', 'c:list', 'i:dash', 'i:list', 'x:req', 'log', 'codes', 'photos'].includes(V.view) && !/^(log|defect|tab):/.test(V.view)) V.view = 'dash';
+    if (!SHEET_ON && !isCView(V.view)) V.view = 'dash';   // 시트 · 코드표는 숨김
     // 반품 · 교환(자동 수집) 화면은 구글시트를 기다리지 않는다. 시트 화면은 시트가 올 때까지 빈 표 모양
     if (!S.D && !isCView(V.view)) {
       renderNav();
@@ -1417,6 +1440,9 @@
     else if (V.view === 'c:prod') renderCProd();
     else if (V.view === 'c:ops') renderCOps();
     else if (V.view === 'c:list') renderCList();
+    else if (V.view === 'i:dash') renderIDash();
+    else if (V.view === 'i:list') renderIList();
+    else if (V.view === 'x:req') renderExt();
     else if (V.view === 'log' || /^log:/.test(V.view)) renderLog();
     else if (/^defect:/.test(V.view)) renderDefect();
     else if (/^tab:/.test(V.view)) renderReport();
@@ -1428,18 +1454,21 @@
     // 상세 창 — 같은 줄이 아직 있으면 다시 그림
     if (!$('detail').hidden && S.selObj) {
       const i = S.list.findIndex(x => sameObj(x, S.selObj));
-      if (i >= 0) openDetail(i, true); else if (!['case', 'defect', 'code', 'claim'].includes(S.selObj.kind)) closeDetail();
+      if (i >= 0) openDetail(i, true); else if (!['case', 'defect', 'code', 'claim', 'inq'].includes(S.selObj.kind)) closeDetail();
     }
+    if (V.view === 'x:req') closeDetail();
     const sec = secretOk();
     $('btnSheet').href = sec ? sheetUrl(curGid()) : '#';
     $('sideSheet').href = sec && BASE ? BASE + '/edit' : '#';
-    $('btnSheet').hidden = !sec; $('sideSheet').hidden = !sec;   // 구글시트 원본 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
+    $('btnSheet').hidden = !sec || !SHEET_ON; $('sideSheet').hidden = !sec || !SHEET_ON;   // 구글시트 원본 링크 = 기밀 (지희선 · 전승훈 · 전수빈만) · 시트 숨김이면 안 보임
+    $('sideAsk').hidden = !SHEET_ON;
     renderMsg();
+    extSync();   // 🛠 개선 요청 · 작업 보드 — 오피스 화면을 본문 자리에 띄우거나 내림
   }
   function renderMsg() {
     // 시트 링크 · 시트 오류 안내는 시트 화면에서만 (반품 · 교환 화면은 시트 없이도 보여서 가리지 않음 — 한눈에 보기의 일지 칸에 따로 적음)
-    const sheetView = !isCView(V.view);
-    const ask = S.askSheet || (S.noSheet && sheetView), err = !ask && sheetView && S.err && !S.models.length;
+    const sheetView = SHEET_ON && !isCView(V.view);
+    const ask = (SHEET_ON && S.askSheet) || (S.noSheet && sheetView), err = !ask && sheetView && S.err && !S.models.length;
     const box = $('msg');
     box.hidden = !ask && !err;
     if (ask) {
@@ -1453,7 +1482,7 @@
   }
   const sameObj = (a, b) => a && b && a.kind === b.kind && (a.kind === 'case' ? a.gid === b.gid && a.r === b.r && a.type === b.type && a.reason === b.reason && a.date === b.date && a.src === b.src
     : a.kind === 'defect' ? a.gid === b.gid && a.r === b.r : a.kind === 'code' ? a.code === b.code : a.kind === 'slot' ? a.gid === b.gid && a.r === b.r
-    : a.kind === 'claim' ? a.id === b.id : a.kind === 'prod' ? a.key === b.key : false);
+    : a.kind === 'claim' ? a.id === b.id : a.kind === 'prod' ? a.key === b.key : a.kind === 'inq' ? String(a.id) === String(b.id) : false);
   function curGid() {
     const D = S.D;
     if (!D) return '';
@@ -1487,8 +1516,20 @@
     item('c:prod', '상품 분석', {ic: '📦', n: nRep, warn: !!nRep});
     item('c:ops', '처리 현황', {ic: '⏳', n: nOps, warn: warnOps});
     item('c:list', '반품 · 교환 목록', {ic: '📋', n: nAll});
-    // 2) CS 직원이 매일 적는 구글시트
-    if (D) {
+    // 2) 문의 · 리뷰 — 플레이오토 문의 관리 자동 수집 (예전 오피스 '💬 문의·리뷰')
+    sec('문의 · 리뷰 (자동 수집)');
+    let qAll = '', qNeg = '';
+    if (Q.data) { const qc = iRows(P.from, P.to); qAll = fmt(qc.length); const ng = qc.filter(i => i.type === 'review' && i.neg).length; qNeg = ng ? '불만 ' + ng : ''; }
+    item('i:dash', '문의 · 리뷰', {ic: '💬', n: qNeg, warn: !!qNeg});
+    item('i:list', '문의 · 리뷰 목록', {ic: '🗒', n: qAll});
+    // 3) CS 업무 — 편집이 있는 오피스 화면을 그대로 (개선 요청 · CS 작업 보드 · 메모장 · 자주 묻는 질문)
+    sec('CS 업무');
+    let nReq = '';
+    try { if (SH && typeof SH.reqOpen === 'function') { const n = SH.reqOpen(); nReq = n ? fmt(n) : ''; } } catch (e) { /* noop */ }
+    item('x:req', '개선 요청 · 작업 보드', {ic: '🛠', n: nReq});
+    // 4) CS 직원이 매일 적는 구글시트 — 숨김 (SHEET_ON)
+    if (!SHEET_ON) { /* 숨김 */ }
+    else if (D) {
       const cnt = b => D.cases.filter(c => inP(c.date) && (!b || c.brand === b) && (c.type === '반품' || c.type === '교환')).reduce((a, c) => a + c.n, 0);
       const t = today();
       sec('CS 데일리 일지 (구글시트)');
@@ -1630,6 +1671,8 @@
   }
 
   /* ── 반품 · 교환 화면 공통 ── */
+  // 채널 고르기 — 반품 · 교환 · 문의 · 리뷰가 같이 쓴다 (문의 · 리뷰엔 공홈이 없어 noHome)
+  const chSelect = noHome => `<select class="chsel${V.cc ? ' on' : ''}" id="cChSel" aria-label="채널"><option value="">전체 채널</option>${CH.filter(([k]) => !noHome || k !== 'home' || V.cc === 'home').map(([k, l]) => `<option value="${k}"${V.cc === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   const card = (title, sub, body, o) => `<section class="card${o && o.wide ? ' wide' : ''}"><div class="card-h"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}${o && o.more ? o.more : ''}</div>${body}</section>`;
   const moreBtn = (label, go) => `<button type="button" class="more" data-go='${esc(JSON.stringify(go))}'>${esc(label)}</button>`;
   const FLEGEND = `<div class="legend">${['co', 'cu', 'na'].map(f => `<span><i style="background:${F_C[f]}"></i>${F_L[f]}</span>`).join('')}</div>`;
@@ -1637,7 +1680,7 @@
   function cHead(title, o) {
     o = o || {};
     const tools = `<div class="parts" role="group" aria-label="반품 · 교환">${[['', '반품 · 교환'], ['return', '반품'], ['exchange', '교환']].map(([k, l]) => `<button type="button" data-ct="${k}" class="${V.ct === k ? 'on' : ''}">${l}</button>`).join('')}</div>`
-      + `<select class="chsel${V.cc ? ' on' : ''}" id="cChSel" aria-label="채널"><option value="">전체 채널</option>${CH.map(([k, l]) => `<option value="${k}"${V.cc === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`
+      + chSelect(false)
       + (o.copy ? '<button type="button" class="etog" id="cCopy" title="지금 보는 기간 · 브랜드 · 채널 요약을 글로 복사 (카톡 · 메모에 붙여 넣기)">📋 요약 복사</button>' : '');
     head(title, {date: P.l, period: true, tools, cfilters: o.cfilters, upd: C.data ? `${kstHm(C.data.updated_at)} 기준 · 30분마다 자동 수집` : ''});
     const cnt = new Map();
@@ -1705,15 +1748,15 @@
       cKpis(cur, prev);
       h += cCompareCard() + cTrendCard();
     }
-    const j = journalCard();
+    const j = SHEET_ON ? journalCard() : {html: ''};
     h += j.html;
     if (j.alert) { const a = $('alert'); alertBox((a.hidden ? '' : a.querySelector('div').innerHTML + '<br>') + j.alert); }
     if (C.data) h += card('숫자 기준', '', `<div class="note">
       <b>어디서 오나요</b> — 공홈(자사몰 · 네이버페이)은 식스샵 프로, 지그재그는 파트너센터, 그 밖(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡)은 플레이오토에서 30분마다 자동으로 받아요.<br>
       <b>반품률</b> = 반품 · 교환 수량 ÷ 같은 기간 판매 수량 (결제일 기준) — 판매 기록이 있는 브랜드 · 채널만, 기록이 시작된 날부터 (공홈 코페리 10/20 · 아페티 10/22 · 야르 11/2 · 식스에이 11/3). 상품별 판매는 최근 92일만 있어요.<br>
       <b>건</b> = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · <b>날짜</b> = 접수일 (공홈의 지난 완료 건은 처리일) · <b>금액</b> = 반품한 상품의 결제 금액 (배송비 빼고) · 철회 · 거부는 빼요.<br>
-      <b>사유 없음</b> — 공홈은 11/13 전에 끝난 반품, W컨셉은 몰이 사유를 주지 않아요. 고객 이름 · 연락처 · 주소 · 환불 계좌는 받지 않고, 고객 글 속 전화번호 · 이메일 · 계좌번호는 가려요.<br>
-      <b>CS 일지</b>(왼쪽 메뉴 아래 · 구글시트)는 CS 직원이 손으로 적는 기록이라 자동 수집과 숫자가 다를 수 있어요 — 사유 글 · 처리 · 사진은 일지에.</div>`, {wide: true});
+      <b>사유 없음</b> — 공홈은 11/13 전에 끝난 반품, W컨셉은 몰이 사유를 주지 않아요. 고객 이름 · 연락처 · 주소 · 환불 계좌는 받지 않고, 고객 글 속 전화번호 · 이메일 · 계좌번호는 가려요.${SHEET_ON ? `<br>
+      <b>CS 일지</b>(왼쪽 메뉴 아래 · 구글시트)는 CS 직원이 손으로 적는 기록이라 자동 수집과 숫자가 다를 수 있어요 — 사유 글 · 처리 · 사진은 일지에.` : ''}</div>`, {wide: true});
     grid.innerHTML = h + '</div>';
     S.list = [];
   }
@@ -2077,6 +2120,186 @@
     };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
   }
+  /* ── 💬 문의 · 리뷰 (자동 수집) — 2026-11-20 사장님 "문의, 리뷰 목록도 같이 voc에 넣어줘" · "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리하게 해줘"
+     예전 오피스 CS 업무 '💬 문의·리뷰' 탭을 옮김. 데이터는 오피스가 받아 둔 것(bbVocShare().inq — 비공개 brightbeed-reports cs/inquiries.json,
+     맥미니 sixshop-collector inquiries-live 30분마다, 규칙은 그 레포 docs/INQUIRIES.md)을 읽기만 한다.
+     한 줄 = 문의 하나: brand · channel · type(question 상품문의 / review 상품평) · date · at · title · text · product · order_no · topics[] · cat · neg(불만 상품평).
+     플레이오토 문의 상태는 늘 '신규문의'라 답변 여부는 모른다 (답은 각 채널 판매자 화면에서). ── */
+  const IQ_TYPES = [['', '문의 · 리뷰'], ['question', '상품문의'], ['review', '상품평'], ['neg', '불만']];
+  // 수집기 INQ_TOPICS 와 같은 순서 · 이름 (none = 주제 못 찾음)
+  const IQ_TOPICS = [['delivery', '배송'], ['restock', '재입고 · 품절'], ['size', '사이즈 · 핏'], ['color', '색상 · 디자인'], ['claim', '교환 · 반품 · 취소'], ['defect', '불량 · 하자'], ['usage', '소재 · 사용 · 호환'], ['price', '가격 · 쿠폰'], ['none', '기타']];
+  const IQ_TOPIC_L = Object.fromEntries(IQ_TOPICS);
+  const iTopics = i => Array.isArray(i.topics) && i.topics.length ? i.topics : ['none'];
+  const iType = i => i.type === 'review' ? (i.neg ? '불만 상품평' : '상품평') : '상품문의';
+  const iPill = i => `<span class="tp ${i.type === 'review' ? (i.neg ? 'ret' : 'zero') : 'exc'}">${esc(iType(i))}</span>`;
+  const iHm = i => String(i.at || '').slice(11, 16);
+  const iText = i => [i.date, md(i.date), bName(i.brand), chL(i.channel), iType(i), i.title, i.text, i.product, i.order_no, i.cat, iTopics(i).map(k => IQ_TOPIC_L[k] || k).join(' ')].join(' ').toLowerCase();
+  function loadInq(force) {
+    if (Q.off) return Promise.resolve();
+    if (Q.busy) return Q.busy;
+    if (!force && Q.at && Date.now() - Q.at < CLAIMS_MS) return Promise.resolve();
+    Q.busy = (async () => {
+      let changed = false;
+      try {
+        const r = await SH.inq(!!force);
+        if (r && r.data && Array.isArray(r.data.items)) {
+          if (r.data !== Q.data) { Q.data = r.data; Q.items = r.data.items.map(i => Object.assign({kind: 'inq'}, i)); changed = true; }
+          if (Q.err) changed = true;
+          Q.err = '';
+        } else { const e = (r && r.err) || '아직 수집 파일이 없어요'; changed = changed || Q.err !== e; Q.err = e; }
+      } catch (e) { Q.err = (e && e.message) || String(e); changed = true; }
+      finally { Q.at = Date.now(); Q.busy = null; setAutoSt(); }
+      if (changed) render(true);
+    })();
+    setAutoSt();
+    return Q.busy;
+  }
+  // 기간 · 브랜드 · 채널 · 구분으로 거른 줄 (o.b · o.t 를 주면 그 값으로)
+  function iRows(from, to, o) {
+    o = o || {};
+    const b = o.b !== undefined ? o.b : V.cb, ty = o.t !== undefined ? o.t : V.qt;
+    return Q.items.filter(i => i.date >= from && i.date <= to && (!b || i.brand === b) && (!V.cc || i.channel === V.cc)
+      && (!ty || (ty === 'neg' ? i.type === 'review' && i.neg : i.type === ty)));
+  }
+  function iHead(title, o) {
+    o = o || {};
+    const tools = `<div class="parts" role="group" aria-label="구분">${IQ_TYPES.map(([k, l]) => `<button type="button" data-qt="${k}" class="${V.qt === k ? 'on' : ''}">${l}</button>`).join('')}</div>`
+      + chSelect(true)
+      + (o.topic ? `<select class="chsel${V.qtopic ? ' on' : ''}" id="qTopicSel" aria-label="주제"><option value="">전체 주제</option>${IQ_TOPICS.map(([k, l]) => `<option value="${k}"${V.qtopic === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>` : '');
+    head(title, {date: P.l, period: true, tools, upd: Q.data ? `${kstHm(Q.data.updated_at)} 기준 · 30분마다 자동 수집` : ''});
+    const cnt = new Map();
+    let all = 0;
+    for (const i of iRows(P.from, P.to, {b: ''})) { all++; cnt.set(i.brand, (cnt.get(i.brand) || 0) + 1); }
+    $('chips').hidden = false;
+    $('chips').innerHTML = [`<button type="button" class="chip${!V.cb ? ' on' : ''}" data-cb="">전체 브랜드 <em>${fmt(all)}</em></button>`]
+      .concat(CB.map(b => `<button type="button" class="chip${V.cb === b.id ? ' on' : ''}" data-cb="${esc(b.id)}"><i style="background:${b.color}"></i>${esc(b.name)} <em>${fmt(cnt.get(b.id) || 0)}</em></button>`)).join('');
+    const d = Q.data, L = [];
+    if (d) {
+      for (const [k, s] of Object.entries(d.sources || {})) if (s && s.ok === false) L.push(`플레이오토 ${esc(k.replace('playauto:', ''))}번 아이디를 못 받았어요${s.note ? ` — ${esc(s.note)}` : ''}`);
+      if ((d.unmapped || []).length) L.push(`표에 없는 플레이오토 계정 ${d.unmapped.length}개 (${esc(d.unmapped.slice(0, 3).join(', '))}) — 수집기 계정 표에 넣어야 보여요`);
+      const age = Date.now() - Date.parse(d.updated_at || '');
+      if (age > 3 * 3600e3) L.unshift(`<b>자동 수집이 멈춘 것 같아요</b> — ${Math.round(age / 3600e3)}시간째 그대로 (맥미니 inquiries-live)`);
+    }
+    if (L.length) alertBox(L.join('<br>') + '<br><span style="opacity:.8">못 받은 곳은 지난번까지 받은 문의를 그대로 보여 줘요</span>');
+  }
+  function iNoDataGrid() {
+    const msg = Q.off ? '문의 · 리뷰는 오피스 안(CS팀 화면 맨 아래 VOC 전산)에서 열면 보여요'
+      : Q.err ? `문의 · 리뷰를 못 불러왔어요 (${Q.err}) — 위 상태 단추를 눌러 다시 읽어 주세요` : '문의 · 리뷰를 불러오는 중…';
+    grid.classList.add('bd-mode');
+    grid.innerHTML = '<div class="board">' + card('문의 · 리뷰', '', `<div class="card-e">${esc(msg)}</div>`, {wide: true}) + '</div>';
+  }
+
+  /* ── 💬 문의 · 리뷰 한눈에 — 숫자 4칸 · 무엇을 묻나요 · 문의가 많은 상품 ── */
+  function renderIDash() {
+    iHead('문의 · 리뷰');
+    if (!Q.data) { iNoDataGrid(); return; }
+    const cur = iRows(P.from, P.to), prev = iRows(P.pfrom, P.pto);
+    const q = cur.filter(i => i.type === 'question'), r = cur.filter(i => i.type === 'review'), neg = r.filter(i => i.neg);
+    const t = today(), y = addDays(t, -1), nT = cur.filter(i => i.date === t).length, nY = cur.filter(i => i.date === y).length;
+    const topQ = countBy(q.flatMap(iTopics).filter(k => k !== 'none'), k => k).slice(0, 2).map(([k, n]) => `${IQ_TOPIC_L[k]} ${n}`).join(' · ');
+    const d = cur.length - prev.length;
+    kpis([
+      {v: fmt(cur.length), u: '건', l: `상품문의 ${fmt(q.length)} · 상품평 ${fmt(r.length)}`, d: prev.length || cur.length ? `${d > 0 ? '▲ ' + fmt(d) : d < 0 ? '▼ ' + fmt(-d) : '변화 없음'} · ${P.pl} ${fmt(prev.length)}건` : '', go: {view: 'i:list'},
+        tip: '이 기간에 고객이 남긴 상품문의 · 상품평 (플레이오토가 모은 채널만) — 누르면 목록'},
+      {v: fmt(q.length), u: '건', l: '상품문의', d: topQ || '많이 나온 주제 없음', go: {view: 'i:list', qt: 'question'}},
+      {v: fmt(neg.length), u: '건', l: '불만 상품평', d: r.length ? `상품평 ${fmt(r.length)}건 중` : '상품평 없음', cls: neg.length ? 'red' : '', go: {view: 'i:list', qt: 'neg'},
+        tip: '별로 · 실망 · 불량 · 아쉽 같은 말이 들어간 상품평 (칭찬 속 표현도 걸릴 수 있어요)'},
+      {v: `${fmt(nT)} · ${fmt(nY)}`, u: '건', l: '오늘 · 어제', d: `하루 평균 ${(cur.length / P.len).toFixed(1).replace(/\.0$/, '')}건`},
+    ]);
+    grid.classList.add('bd-mode');
+    let h = '<div class="board">';
+    // 무엇을 묻나요 — 주제 막대, 누르면 그 주제 목록
+    const tc = new Map();
+    for (const i of cur) for (const k of iTopics(i)) tc.set(k, (tc.get(k) || 0) + 1);
+    const tmax = Math.max(1, ...tc.values());
+    const order = IQ_TOPICS.filter(([k]) => tc.get(k)).sort((a, b) => (a[0] === 'none') - (b[0] === 'none') || tc.get(b[0]) - tc.get(a[0]));
+    h += card('무엇을 묻나요', '글에 나온 말로 나눈 주제 · 한 글이 여러 주제일 수 있어요 · 누르면 그 주제 목록', cur.length
+      ? '<div class="bars">' + order.map(([k, l]) => `<button type="button" class="bar-row" data-go='${esc(JSON.stringify({view: 'i:list', qtopic: k}))}'><span class="bar-l">${esc(l)}</span><span class="bar-t"><span class="bar-f" style="display:block;width:${Math.max(3, Math.round(tc.get(k) / tmax * 100))}%;background:#64748b"></span></span><span class="bar-v">${fmt(tc.get(k))}건</span></button>`).join('') + '</div>'
+      : '<div class="card-e">이 기간에는 문의 · 리뷰가 없어요</div>');
+    // 문의가 많은 상품 — 누르면 목록에서 그 상품만
+    const m = new Map();
+    for (const i of cur) {
+      if (!i.product) continue;
+      const k = i.brand + '|' + i.product;
+      const x = m.get(k) || {name: i.product, brand: i.brand, n: 0, q: 0, r: 0, neg: 0, topics: new Map()};
+      x.n++; if (i.type === 'review') x.r++; else x.q++; if (i.neg) x.neg++;
+      for (const tk of iTopics(i)) if (tk !== 'none') x.topics.set(tk, (x.topics.get(tk) || 0) + 1);
+      m.set(k, x);
+    }
+    const top = [...m.values()].sort((a, b) => b.n - a.n).slice(0, 10);
+    h += card('문의가 많은 상품', '상위 10개 · 누르면 목록에서 그 상품만', top.length
+      ? '<div class="card-b"><table class="mt"><thead><tr><th>상품</th><th class="n">상품문의</th><th class="n">상품평</th><th>많은 주제</th></tr></thead><tbody>' + top.map(x =>
+        `<tr class="click" data-go='${esc(JSON.stringify({view: 'i:list', q: x.name}))}'><td class="wrap">${V.cb ? '' : bDot(x.brand)}<b>${esc(x.name)}</b></td><td class="n">${fmt(x.q)}</td><td class="n">${fmt(x.r)}${x.neg ? ` <span class="hot" style="font-weight:700">불만 ${x.neg}</span>` : ''}</td><td class="sub">${[...x.topics.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, n]) => `${esc(IQ_TOPIC_L[k])} ${n}`).join(' · ') || '—'}</td></tr>`).join('') + '</tbody></table></div>'
+      : '<div class="card-e">이 기간에는 상품이 붙은 문의 · 리뷰가 없어요</div>');
+    const dd = Q.data, s2 = (dd.sources || {})['playauto:2'], has2 = (dd.items || []).some(i => String(i.id).startsWith('pa2:'));
+    h += card('어디서 오나요', '', `<div class="note">
+      <b>플레이오토 '문의 관리'</b>에 쌓이는 상품문의 · 상품평 (스마트스토어 · 오늘의집 · 지그재그 · EQL · 쿠팡) · 30분마다 · 180일 보관<br>
+      <b>29CM · W컨셉 · 에이블리 문의는 없어요</b> — 플레이오토가 이 세 곳의 문의는 가져오지 못해요. 각 판매자 화면에서 봐야 해요.<br>
+      ${s2 && s2.ok && !has2 ? '<b>코페리 · 아페티는 아직 0건</b> — 플레이오토 2번 아이디는 상품문의 · 상품평 수집이 꺼져 있어요. 플레이오토에서 켜면 다음 수집부터 들어와요.<br>' : ''}
+      <b>답변 여부는 몰라요</b> — 플레이오토는 문의 상태를 늘 '신규문의'로 둬요. 답은 각 채널 판매자 화면에서 해요.<br>
+      <b>주제</b>는 글에 나온 말로 나눈 것 · <b>불만</b>은 별로 · 실망 · 불량 · 아쉽 같은 말이 든 상품평 · 고객 아이디 · 이름 · 연락처는 받지 않고, 글 속 전화번호 · 이메일 · 계좌번호는 가려요.</div>`, {wide: true});
+    grid.innerHTML = h + '</div>';
+    S.list = [];
+  }
+
+  /* ── 📋 문의 · 리뷰 목록 — 최신순, 누르면 글 전체 ── */
+  function renderIList() {
+    iHead('문의 · 리뷰 목록', {topic: true});
+    if (!Q.data) { iNoDataGrid(); return; }
+    const t = terms();
+    let base = iRows(P.from, P.to, {t: ''});
+    if (V.qtopic) base = base.filter(i => iTopics(i).includes(V.qtopic));
+    if (t.length) base = base.filter(i => { const s = iText(i); return t.every(x => s.includes(x)); });
+    const tog = k => V.qt === k ? '' : k, y = addDays(today(), -1);
+    kpis([
+      {v: fmt(base.filter(i => i.type === 'question').length), u: '건', l: '상품문의', go: {qt: tog('question')}, on: V.qt === 'question'},
+      {v: fmt(base.filter(i => i.type === 'review').length), u: '건', l: '상품평', go: {qt: tog('review')}, on: V.qt === 'review'},
+      {v: fmt(base.filter(i => i.type === 'review' && i.neg).length), u: '건', l: '불만 상품평', go: {qt: tog('neg')}, on: V.qt === 'neg', cls: base.some(i => i.neg) ? 'red' : ''},
+      {v: fmt(base.filter(i => i.date >= y).length), u: '건', l: '오늘 · 어제 새로'},
+    ]);
+    const rows = base.filter(i => !V.qt || (V.qt === 'neg' ? i.type === 'review' && i.neg : i.type === V.qt));
+    if (V.q) $('qn').textContent = `${rows.length}건`;
+    const anyNew = rows.some(i => i.date >= y);
+    const cols = [
+      {k: 'date', l: '날짜', min: 92, get: i => ({t: `${md(i.date)} ${iHm(i)}`, s: String(i.at || i.date), h: `${esc(md(i.date))} <span class="mut">${esc(iHm(i))}</span>${i.date >= y ? '<span class="new">새로</span>' : ''}`, pad: anyNew ? 40 : 0})},
+    ];
+    if (!V.cb) cols.push({k: 'brand', l: '브랜드', get: i => ({t: bName(i.brand), s: bOrder(i.brand), h: bDot(i.brand) + esc(bName(i.brand)), pad: 15})});
+    cols.push(
+      {k: 'ch', l: '채널', get: i => ({t: chL(i.channel) + (i.cat ? ' ' + i.cat : ''), h: esc(chL(i.channel)) + (i.cat ? ` <span class="mut">${esc(i.cat)}</span>` : '')})},
+      {k: 'type', l: '구분', get: i => ({t: iType(i), h: iPill(i), f: F_TAG, pad: 16})},
+      {k: 'topic', l: '주제', max: 200, get: i => { const ks = iTopics(i).filter(k => k !== 'none'); return {t: ks.map(k => IQ_TOPIC_L[k]).join(' · '), h: ks.length ? esc(ks.map(k => IQ_TOPIC_L[k]).join(' · ')) : '<span class="none">—</span>'}; }},
+      {k: 'product', l: '상품', wrap: true, flex: 1, min: 160, max: 320, get: i => ({t: i.product || '', h: i.product ? hl(i.product) : '<span class="none">상품 없이 남긴 문의</span>'})},
+      {k: 'text', l: '고객이 쓴 글', wrap: true, flex: 1, min: 220, max: 520, get: i => ({t: (i.title ? i.title + ' — ' : '') + (i.text || ''), h: (i.title ? `<b>${hl(i.title)}</b> ` : '') + hl(i.text || '')})},
+    );
+    drawTable(cols, rows, {empty: V.q || V.qtopic ? '조건에 맞는 문의 · 리뷰가 없어요' : '이 기간에는 문의 · 리뷰가 없어요', rowCls: i => i.neg ? 'co' : ''});
+  }
+  function openInq(id) {
+    const c = Q.items.find(i => String(i.id) === String(id));
+    if (!c) return;
+    let i = S.list.findIndex(x => x.kind === 'inq' && String(x.id) === String(id));
+    if (i < 0) { S.list = [c]; i = 0; }
+    openDetail(i);
+  }
+
+  /* ── 🛠 개선 요청 · 작업 보드 — 2026-11-20 사장님 "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리하게 해줘"
+     편집 · 저장이 있는 화면이라 다시 만들지 않고, 오피스 CS 화면(개선 요청 표 · CS 작업 보드 · 메모장 · 자주 묻는 질문)을 그대로
+     VOC 전산 본문 자리에 띄운다 (bbVocShare().ext — 오피스가 왼쪽 메뉴 옆에 붙여 보여 줌, 저장 방식은 예전 그대로). ── */
+  function renderExt() {
+    head('개선 요청 · 작업 보드', {date: '편집하면 바로 저장'});
+    grid.classList.add('bd-mode');
+    grid.innerHTML = '<div class="board">' + card('개선 요청 · 작업 보드', '', `<div class="card-e">${SH && typeof SH.ext === 'function' ? '여는 중…' : '개선 요청 · 작업 보드는 오피스 안(CS팀 화면 맨 아래 VOC 전산)에서 열면 보여요'}</div>`, {wide: true}) + '</div>';
+    S.list = [];
+  }
+  // 오피스에 지금 모양을 알려 준다 — 왼쪽 메뉴 너비(접혔거나 좁은 화면이면 0) · 위 막대 높이 · 메뉴 서랍이 열렸는지
+  function extSync() {
+    if (!SH || typeof SH.ext !== 'function') return;
+    if (V.view !== 'x:req') { if (S.extOn) { S.extOn = false; try { SH.ext(''); } catch (e) { /* noop */ } } return; }
+    const wide = matchMedia('(min-width:1001px)').matches, sideOn = wide && !app.classList.contains('side-off');
+    const sideEl = document.querySelector('.side'), barEl = document.querySelector('.bar');
+    const lay = {side: sideOn && sideEl ? Math.round(sideEl.getBoundingClientRect().width) : 0, top: sideOn || !barEl ? 0 : Math.round(barEl.getBoundingClientRect().height), peek: app.classList.contains('nav-open')};
+    S.extOn = true;
+    try { SH.ext('req', lay); } catch (e) { console.warn('개선 요청 · 작업 보드', e); }
+  }
   function productRank(cs) {
     const g = {};
     cs.forEach(c => {
@@ -2391,8 +2614,29 @@
       const qs = it.lines.filter(said).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date))).slice(0, 4);
       if (qs.length) dl += dlRow('고객 글', qs.map(l => `<button type="button" class="quote" data-claim="${esc(l.id)}">“${esc(cut(l.memo, 120))}”<small>${esc(md(l.date))} · ${esc(chL(l.channel))} · ${esc(rsOf(l.reason).s)}</small></button>`).join(''), {html: true});
       if (it.co) dl += dlRow('개선 요청', `<button type="button" class="reqb" data-req="${esc(it.key)}">🛠 개선 요청 만들기</button><div class="muted" style="margin-top:6px">CS 업무 '🛠 개선 요청' 표에 근거 · VOC 코드 · 받는 팀을 채워 만들어요</div>`, {html: true});
+      const iq = Q.items.filter(i => i.brand === it.brand && i.product && kname(i.product) === kname(it.name) && i.date >= P.from && i.date <= P.to);
+      if (iq.length) dl += dlRow(`문의 · 리뷰 ${iq.length}건`, `<div class="hist">${iq.slice(0, 10).map(i => `<button type="button" data-inq="${esc(i.id)}"><span class="hd">${esc(md(i.date))}</span>${iPill(i)}<span class="hr">${esc(cut(i.title || i.text, 46))}</span></button>`).join('')}</div>`, {html: true});
       const ls = it.lines.slice().sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date)));
       dl += dlRow(`반품 · 교환 ${ls.length}건`, `<div class="hist">${ls.slice(0, 20).map(l => `<button type="button" data-claim="${esc(l.id)}"><span class="hd">${esc(md(l.date))}</span>${typePill(typeKo(l))}<span class="hr">${esc(rsOf(l.reason).s)}${l.option ? ' · ' + esc(cut(l.option, 24)) : ''} · ${esc(chL(l.channel))}</span></button>`).join('')}</div>`, {html: true});
+    } else if (it.kind === 'inq') {
+      // 문의 · 리뷰 한 건 (플레이오토 문의 관리)
+      title = it.title || cut(it.text, 46) || '(글 없음)';
+      sub = `${dlabel(it.date)} ${iHm(it)} · ${bName(it.brand)} · ${chL(it.channel)}${it.cat ? ' ' + it.cat : ''}`;
+      dl += dlRow('구분', iPill(it), {html: true});
+      dl += dlRow('주제', iTopics(it).map(k => IQ_TOPIC_L[k] || k).join(' · '));
+      dl += dlRow('상품', it.product || '상품 없이 남긴 문의');
+      dl += dlRow('제목', it.title);
+      dl += dlRow('고객이 쓴 글', it.text);
+      dl += dlRow('주문번호', it.order_no);
+      dl += dlRow('답변', '플레이오토는 답변 여부를 몰라요 — 답은 ' + chL(it.channel) + ' 판매자 화면에서');
+      if (it.product) {
+        const pk = kname(it.product);
+        const cl = C.lines.filter(l => l.brand === it.brand && kname(l.product) === pk && cLive(l)).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date)));
+        if (cl.length) dl += dlRow(`같은 상품 반품 · 교환 ${cl.length}건`, `<div class="hist">${cl.slice(0, 10).map(l => `<button type="button" data-claim="${esc(l.id)}"><span class="hd">${esc(md(l.date))}</span>${typePill(typeKo(l))}<span class="hr">${esc(rsOf(l.reason).s)}${l.memo ? ' · ' + esc(cut(l.memo, 40)) : ''}</span></button>`).join('')}</div>`, {html: true});
+        const oq = Q.items.filter(i => i !== it && i.brand === it.brand && i.product === it.product).sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));
+        if (oq.length) dl += dlRow(`같은 상품 문의 · 리뷰 ${oq.length}건`, `<div class="hist">${oq.slice(0, 10).map(i => `<button type="button" data-inq="${esc(i.id)}"><span class="hd">${esc(md(i.date))}</span>${iPill(i)}<span class="hr">${esc(cut(i.title || i.text, 46))}</span></button>`).join('')}</div>`, {html: true});
+      }
+      dl += dlRow('원본', '자동 수집 · 플레이오토 문의 관리');
     } else if (it.kind === 'code') {
       title = `${it.code} ${it.name}`;
       sub = `${CAT[it.cat] ? CAT[it.cat].l : it.cat} · ${it.mid} · ${TEAMS[it.team] || it.team} · 심각도 ${it.sev}`;
@@ -2433,6 +2677,8 @@
   }
 
   /* ── 이벤트 ── */
+  // 오피스가 VOC 화면을 바꿀 때 (상품 분석 🛠 개선 요청 → 개선 요청 · 작업 보드로) — bbClaimReq
+  window.vocGo = v => { if (SHEET_ON || isCView(v)) go(v); };
   $('nav').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) go(b.dataset.v); });
   document.addEventListener('click', e => {
     const g = e.target.closest('[data-go]');
@@ -2441,8 +2687,9 @@
       try { o = JSON.parse(g.dataset.go); } catch (err) { return; }
       if (o.view) go(o.view, o);
       else {
-        ['type', 'cat', 'pf', 'cf', 'cr'].forEach(k => { if (k in o) V[k] = o[k]; });
+        ['type', 'cat', 'pf', 'cf', 'cr', 'qtopic'].forEach(k => { if (k in o) V[k] = o[k]; });
         if ('ct' in o) { V.ct = o.ct; savePrefs(); }
+        if ('qt' in o) { V.qt = o.qt; savePrefs(); }
         closeDetail(); render(true);
       }
       return;
@@ -2454,6 +2701,10 @@
     if (rq) { makeReq(rq.dataset.req); return; }
     const cl0 = e.target.closest('[data-claim]');
     if (cl0) { openClaim(cl0.dataset.claim); return; }
+    const iq0 = e.target.closest('[data-inq]');
+    if (iq0) { openInq(iq0.dataset.inq); return; }
+    const qtb = e.target.closest('[data-qt]');
+    if (qtb) { V.qt = qtb.dataset.qt; savePrefs(); closeDetail(); render(true); return; }
     const cb = e.target.closest('[data-cb]');
     if (cb) { V.cb = cb.dataset.cb; savePrefs(); closeDetail(); render(true); return; }
     const cc = e.target.closest('[data-cc]');
@@ -2485,6 +2736,7 @@
   });
   document.addEventListener('change', e => {
     if (e.target && e.target.id === 'cChSel') { V.cc = e.target.value; savePrefs(); closeDetail(); render(true); }
+    if (e.target && e.target.id === 'qTopicSel') { V.qtopic = e.target.value; closeDetail(); render(true); }
   });
   grid.addEventListener('click', e => {
     if (e.target.closest('[data-req]')) return;   // 🛠 개선 요청 단추 — 줄 상세는 열지 않음 (document 쪽에서 처리)
@@ -2503,7 +2755,7 @@
   $('dPrev').onclick = () => { if (S.sel > 0) openDetail(S.sel - 1); };
   $('dNext').onclick = () => { if (S.sel < S.list.length - 1) openDetail(S.sel + 1); };
   $('lb').onclick = () => { $('lb').hidden = true; $('lbImg').removeAttribute('src'); };
-  $('st').onclick = () => { loadAll(); loadOffice(true); loadClaims(true); };
+  $('st').onclick = () => { if (SHEET_ON) { loadAll(); loadOffice(true); } loadClaims(true); loadInq(true); };
   let qT = null;
   qIn.addEventListener('input', () => {
     $('qx').hidden = !qIn.value;
@@ -2512,8 +2764,8 @@
       V.q = qIn.value;
       if (!V.q) $('qn').textContent = '';
       // 찾기 — 시트 화면(일지 · 불량 · 코드표)은 그 자리에서, 반품 · 교환 화면은 목록(상품 분석은 그 자리)으로
-      if (V.q && !(V.view === 'log' || /^log:|^defect:/.test(V.view) || V.view === 'codes' || V.view === 'c:list' || V.view === 'c:prod')) {
-        V.view = C.data || !S.D ? 'c:list' : 'log'; V.type = ''; V.cat = ''; V.date = ''; V.cf = ''; V.cr = ''; V.sort = null; savePrefs();
+      if (V.q && !(V.view === 'log' || /^log:|^defect:/.test(V.view) || V.view === 'codes' || V.view === 'c:list' || V.view === 'c:prod' || V.view === 'i:list')) {
+        V.view = /^i:/.test(V.view) ? 'i:list' : C.data || !S.D || !SHEET_ON ? 'c:list' : 'log'; V.type = ''; V.cat = ''; V.date = ''; V.cf = ''; V.cr = ''; V.qtopic = ''; V.sort = null; savePrefs();
       }
       render();
     }, 160);
@@ -2522,10 +2774,11 @@
   $('btnMenu').onclick = () => {
     if (matchMedia('(min-width:1001px)').matches) { app.classList.remove('side-off'); lsSet(LS_SIDE, ''); render(true); return; }
     app.classList.add('nav-open'); $('scrim').hidden = false;
+    extSync();
   };
-  $('scrim').onclick = () => { app.classList.remove('nav-open'); $('scrim').hidden = true; };
+  $('scrim').onclick = () => { app.classList.remove('nav-open'); $('scrim').hidden = true; extSync(); };
   $('btnFold').onclick = () => {
-    if (!matchMedia('(min-width:1001px)').matches) { app.classList.remove('nav-open'); $('scrim').hidden = true; return; }
+    if (!matchMedia('(min-width:1001px)').matches) { app.classList.remove('nav-open'); $('scrim').hidden = true; extSync(); return; }
     app.classList.add('side-off'); lsSet(LS_SIDE, '1'); render(true);
   };
   $('btnDense').onclick = () => { const on = !app.classList.contains('dense'); app.classList.toggle('dense', on); $('btnDense').classList.toggle('on', on); lsSet(LS_DENSE, on ? '1' : ''); };
@@ -2559,10 +2812,10 @@
   }
   setInterval(() => {
     if (!shown()) return;
-    if (!S.busy && Date.now() - S.at > REFRESH_MS) { loadAll(); loadOffice(false); }
-    loadClaims(false);   // 5분 지난 것만 오피스에 다시 물음 (오피스도 5분 안이면 받아 둔 것을 그대로 줌)
+    if (SHEET_ON && !S.busy && Date.now() - S.at > REFRESH_MS) { loadAll(); loadOffice(false); }
+    loadClaims(false); loadInq(false);   // 5분 지난 것만 오피스에 다시 물음 (오피스도 5분 안이면 받아 둔 것을 그대로 줌)
   }, 20e3);
-  document.addEventListener('visibilitychange', () => { if (!shown()) return; if (Date.now() - S.at > REFRESH_MS) loadAll(); loadClaims(false); });
+  document.addEventListener('visibilitychange', () => { if (!shown()) return; if (SHEET_ON && Date.now() - S.at > REFRESH_MS) loadAll(); loadClaims(false); loadInq(false); });
 
   /* ── 시작 ── */
   if (EMBED) $('sideHome').hidden = true;
@@ -2570,11 +2823,12 @@
   if (lsGet(LS_SIDE) === '1') app.classList.add('side-off');
   if (lsGet(LS_DENSE) === '1') { app.classList.add('dense'); $('btnDense').classList.add('on'); }
   loadPrefs();
-  if (loadCache()) { rebuild(); setSt('stored'); }
+  if (SHEET_ON && loadCache()) { rebuild(); setSt('stored'); }
   render();   // 시트가 아직이면 시트 화면은 빈 표 모양(SKEL), 반품 · 교환 화면은 '불러오는 중'
-  loadAll();
-  loadOffice(false);
+  if (SHEET_ON) { loadAll(); loadOffice(false); }
   loadClaims(false);
+  loadInq(false);
+  setAutoSt();
 })();
 </script>
 </body>

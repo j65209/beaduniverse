@@ -5150,6 +5150,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .voc-embed iframe{position:relative;z-index:1;display:block;width:100%;height:100%;border:0;background:transparent}
   .voc-embed-veil{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--text-3)}
   @media (max-width:720px){ .voc-embed{height:calc(100vh - 64px);height:calc(100dvh - 64px);min-height:480px;border-radius:12px} }
+  /* 🛠 개선 요청 · 작업 보드 — VOC 전산 메뉴 'CS 업무'를 누르면 iframe 본문 자리에 붙는 오피스 칸(#vocExt, bbVocExt, 2026-11-20).
+     칸 길이만큼 VOC 칸이 늘어나고 페이지가 스크롤된다 — 안쪽 스크롤이 없어 팝업 · 메뉴 위치가 예전 CS 업무 탭과 같다.
+     iframe 은 뒤에 깔려 왼쪽 메뉴(좁은 화면은 위 막대)만 보인다. --voc-side · --voc-top = VOC 가 알려 준 메뉴 너비 · 막대 높이 */
+  #vocEmbed{scroll-margin-top:72px}   /* 맨 위 고정 막대에 머리가 가리지 않게 */
+  .voc-embed.ext-on{height:auto}
+  .voc-embed.ext-on iframe{position:absolute;inset:0;width:100%;height:100%;z-index:auto}
+  .voc-ext{position:relative;margin:var(--voc-top,0px) 0 0 var(--voc-side,224px);min-height:calc(min(900px,100vh - 84px) - var(--voc-top,0px));padding:0 18px 28px;background:#f3f5f8}
+  .voc-ext[data-peek]{visibility:hidden}
+  .voc-ext-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 -18px 16px;padding:17px 18px 15px;background:#fff;border-bottom:1px solid #e3e8ef}
+  .voc-ext-head b{font-size:19px;font-weight:800;letter-spacing:-.025em;color:#0f172a}
+  .voc-ext-head span{font-size:12.5px;color:#64748b}
+  .voc-ext .csi-wrap,.voc-ext .csi-workpane{max-width:none}
+  @media (max-width:720px){ .voc-ext{padding:0 10px 22px} .voc-ext-head{margin:0 -10px 12px;padding:12px 10px} .voc-ext-head b{font-size:17px} }
   .kko-imgpop{position:absolute;z-index:3;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:var(--bg-1);border:1px solid var(--line-2);box-shadow:0 18px 48px rgba(0,0,0,.28);max-height:calc(100% - 32px);overflow:auto}
   .kko-imgpop[hidden]{display:none}
   .kko-imgpop .g{display:grid;grid-template-columns:1fr;gap:6px}
@@ -7939,67 +7952,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .csi-code-bar .csi-search{width:100%}
   }
 
-  /* ===== CS팀 공통 머리 · 숫자 칸 · 칩 (2026-11-13 ↩️ 반품·교환 분석 탭에서 시작 — 그 화면은 2026-11-20 맨 아래 VOC 전산 voc/ 로 옮김,
-     아래 .clm-* 중 남은 것은 💬 문의 · 리뷰가 같이 쓰는 것) ===== */
-  /* 숨긴 탭(📝 CS 기록 · 📊 이슈 분석) · CS 기록 전용 버튼 — .lg-tab · .csi-btn 의 display 가 hidden 을 이겨서 직접 숨김 */
+  /* ===== CS팀 — 숨긴 탭(📝 CS 기록 · 📊 이슈 분석) · CS 기록 전용 버튼 (.lg-tab · .csi-btn 의 display 가 hidden 을 이겨서 직접 숨김).
+     예전 ↩️ 반품·교환 · 💬 문의·리뷰 화면 스타일(.clm-* · .inq-*)은 2026-11-20 두 화면을 VOC 전산(voc/)으로 옮기며 지움 ===== */
   #viewCs .lg-tab[hidden],#viewCs .csi-btn[hidden]{display:none !important}
-  .clm-head{font-size:16px;font-weight:700;color:var(--text-0);letter-spacing:-.01em}
-  .clm-head span{font-size:12.5px;font-weight:500;color:var(--text-3);margin-left:8px}
-  .clm-alert{font-size:12.5px;line-height:1.55;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:9px 12px;margin-bottom:12px}
-  .clm-alert b{font-weight:700}
-  .clm-alert[hidden]{display:none}
-  /* 숫자 6칸 */
-  .clm-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
-  .clm-kpi{padding:12px 14px}
-  .clm-kpi .csi-kpi-val{font-size:24px}
-  .clm-kpi .csi-kpi-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .clm-kpi .csi-delta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  /* 칩 */
-  .clm-chip{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;white-space:nowrap;line-height:18px;background:var(--bg-2);color:var(--text-2);border:1px solid var(--line)}
-  .clm-chip.ret{background:#f4f1e8;color:var(--text-1)}
-  .clm-chip.exc{background:#e0f2fe;color:#075985;border-color:#bae6fd}
-  .clm-chip.open{background:#fef3c7;color:#92400e;border-color:#fde68a}
-  .clm-chip.done{background:transparent;color:var(--text-3)}
-  .clm-chip.new{background:#dcfce7;color:#166534;border-color:#bbf7d0;margin-left:4px}
-  /* 💬 문의 · 리뷰 (2026-11-17) */
-  .clm-chip.q{background:#ede9fe;color:#5b21b6;border-color:#ddd6fe}
-  .clm-chip.rv{background:#e0f2fe;color:#075985;border-color:#bae6fd}
-  .clm-chip.neg{background:#fee2e2;color:#991b1b;border-color:#fecaca}
-  .clm-kpis.inq-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
-  @media (max-width:900px){ .clm-kpis.inq-kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
-  .inq-list{display:flex;flex-direction:column;gap:10px}
-  .inq-item{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg-0)}
-  .inq-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:var(--text-2)}
-  .inq-ch{font-weight:700;color:var(--text-1)}
-  .inq-topic{font-size:11px;border-radius:6px;padding:1px 6px;background:var(--bg-2);color:var(--text-2)}
-  .inq-prod{margin-top:6px;font-size:12.5px;color:var(--text-2);word-break:break-word}
-  .inq-title{margin-top:6px;font-weight:700;color:var(--text-0);word-break:break-word}
-  .inq-text{margin-top:4px;white-space:pre-wrap;word-break:break-word;line-height:1.6;color:var(--text-1);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .inq-item.open .inq-text{display:block;overflow:visible}
-  .inq-more{margin-top:4px;border:0;background:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;padding:0}
-  .inq-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
-  .inq-chip{border:1px solid var(--line);background:var(--bg-0);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;color:var(--text-2);font-family:inherit}
-  .inq-chip.on{background:var(--text-0);color:var(--bg-0);border-color:var(--text-0)}
-  .inq-bars{display:flex;flex-direction:column;gap:4px}
-  .inq-bar{display:grid;grid-template-columns:118px 1fr 44px;align-items:center;gap:8px;border:0;background:none;padding:4px 6px;border-radius:8px;cursor:pointer;text-align:left;font:inherit;color:var(--text-1)}
-  .inq-bar:hover,.inq-bar.on{background:var(--bg-2)}
-  .inq-bar-l{font-size:12.5px}
-  .inq-bar-t{height:10px;border-radius:5px;background:var(--bg-2);overflow:hidden}
-  .inq-bar.on .inq-bar-t,.inq-bar:hover .inq-bar-t{background:var(--bg-3)}
-  .inq-bar-t i{display:block;height:100%;background:#8b5cf6;border-radius:5px}
-  .inq-bar-n{text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums}
-  .inq-ptbl tr[data-prod]{cursor:pointer}
-  .inq-ptbl tr[data-prod]:hover td{background:var(--bg-2)}
-  @media (max-width:640px){ .inq-bar{grid-template-columns:92px 1fr 36px} .inq-item{padding:10px 12px} }
-  .clm-more{display:block;margin:12px auto 0}
-  .clm-foot{font-size:12px;color:var(--text-3);line-height:1.65;padding:2px 4px 6px}
-  .clm-foot b{color:var(--text-2);font-weight:600}
-  @media (max-width:1280px){ .clm-kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
-  @media (max-width:600px){
-    .clm-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .clm-kpi .csi-kpi-val{font-size:21px}
-    .clm-head span{display:block;margin:2px 0 0}
-  }
 
   /* ===== 권한 (Viewer / Master) ===== */
   body.role-viewer .master-only{display:none !important}
@@ -13830,313 +13785,263 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <!-- 시나리오 북 창 — kkoBookOpen · _kkoBookPaint 가 채운다 -->
       <div class="kbk" id="kkoBook" hidden></div>
     </section>
-    <!-- 카카오톡 상담 ↔ 아래 CS 업무 나누기 (2026-11-19 사장님 "카카오톡 상담이랑 하단이랑 분리 확실하게 해줘") -->
-    <div class="kko-split" role="separator" aria-label="여기부터 CS 업무">CS 업무 <em>문의 · 리뷰 · 개선 요청 · 작업 보드 — 반품 · 교환은 맨 아래 VOC 전산</em></div>
-
-    <!-- ============ CS팀 탭 — 💬 문의·리뷰 / 🛠 개선 요청 · 작업 보드 (2026-11-13 사장님: "반품 교환을 메인으로 · 기록 · 이슈 분석은 사실상 필요없음 ·
-         개선요청이랑 작업보드 메모 합쳐줘"). 📝 CS 기록 · 📊 이슈 분석은 걷어내지 않고 숨김 — 다시 쓰려면 버튼의 hidden 과 csiSwitchTab 의 CSI_TABS_HIDDEN 을 지운다.
-         ↩️ 반품·교환 분석 탭은 2026-11-20 저녁 맨 아래 VOC 전산(voc/) 안 '반품 · 교환 (자동 수집)' 메뉴로 옮김 (사장님 "싹다 하단 voc랑 합쳐주고. 중복된거 지워주고") ============ -->
-    <div class="lg-tabs csi-tabs" role="tablist" aria-label="CS팀 화면">
-      <button class="lg-tab active" type="button" data-csi-tab="inq" role="tab" aria-selected="true" onclick="csiSwitchTab('inq')">💬 문의·리뷰</button>
-      <button class="lg-tab" type="button" data-csi-tab="req" role="tab" aria-selected="false" onclick="csiSwitchTab('req')">🛠 개선 요청 · 작업 보드</button>
-      <button class="lg-tab" type="button" data-csi-tab="sheet" role="tab" aria-selected="false" onclick="csiSwitchTab('sheet')" hidden>📝 CS 기록</button>
-      <button class="lg-tab" type="button" data-csi-tab="insight" role="tab" aria-selected="false" onclick="csiSwitchTab('insight')" hidden>📊 이슈 분석</button>
-    </div>
-
-    <!-- CS 기록 · 이슈 분석 — 데이터: Supabase cs_issues · cs_daily_notes · app_kv(cs_insight_settings). 브랜드 탭 · 기간 · 채널은 두 탭이 같이 쓴다 -->
-    <div class="csi-wrap" id="csiPane" data-csi-pane="sheet insight req" hidden>
-      <div class="csi-toolbar">
-        <div class="csi-toolbar-main">
-          <!-- CS 기록을 숨겨(2026-11-13) 새 줄 · 전달 팀 설정 버튼도 숨김 — 개선 요청은 표 위 '＋ 개선 요청' -->
-          <button class="csi-btn csi-btn-primary" type="button" onclick="csiAddRow()" title="CS 기록 표 맨 위에 새 줄을 만들어요" hidden>＋ 새 줄</button>
-          <button class="csi-btn csi-btn-ghost" type="button" onclick="csiOpenCodes()" title="VOC 코드 뜻 · 판단 기준 · 기본 처리 · 처리 기준">📖 VOC 코드표</button>
-        </div>
-        <div class="csi-toolbar-side">
-          <span class="csi-sync" id="csiSync" aria-live="polite"></span>
-          <button class="csi-btn csi-btn-ghost" type="button" onclick="csiLoad(true)" title="다시 불러오기" aria-label="다시 불러오기">↻</button>
-          <button class="csi-btn csi-btn-ghost master-only" type="button" onclick="csiOpenSettings()" hidden>⚙ 전달 팀 설정</button>
-        </div>
-      </div>
-
-      <!-- 브랜드 탭 — 전체 + 브랜드별. 숫자 = 지금 기간의 기록 수, ⚠ = 고질 문제 -->
-      <div class="csi-btabs" id="csiBrandTabs" role="tablist" aria-label="브랜드"></div>
-
-      <div class="csi-filters" role="group" aria-label="기간 · 채널">
-        <div class="csi-seg" id="csiRange" role="group" aria-label="기간"></div>
-        <label class="csi-field">기준일 <input type="date" id="csiDate" onchange="csiSetDate(this.value)"></label>
-        <label class="csi-field">채널 <select id="csiChannel" onchange="csiSetChannel(this.value)"></select></label>
-        <span class="csi-period" id="csiPeriod"></span>
-      </div>
-
-      <div class="csi-card csi-empty-line csi-mb" id="csiFirst">CS 기록을 불러오는 중…</div>
-
-      <!-- 📝 CS 기록 — 엑셀처럼 칸에서 바로 적고 고친다. 칸을 고치면 바로 저장, 새 줄은 필수 칸이 다 차면 저장 -->
-      <section class="csi-card csi-sheet-card" id="csiSheetCard" aria-label="CS 기록 표" hidden>
-        <div class="csi-card-head">
-          <div>
-            <div class="csi-card-title" id="csiSheetTitle">📝 CS 기록</div>
-            <div class="csi-card-sub" id="csiSheetSub"></div>
-          </div>
-          <div class="csi-sheet-tools">
-            <input class="csi-search" id="csiSearch" type="search" placeholder="상품 · 증상 · 내용 검색" oninput="csiSetSearch(this.value)" aria-label="기록 검색">
-            <button class="csi-btn csi-btn-primary" type="button" onclick="csiAddRow()">＋ 새 줄</button>
-          </div>
-        </div>
-        <div class="csi-sheet-wrap" id="csiSheetWrap"><table class="csi-sheet" id="csiSheet"></table></div>
-        <div class="csi-sheet-info" id="csiSheetInfo" aria-live="polite"></div>
-        <div class="csi-sheet-foot">칸을 고치면 바로 저장돼요 · 새 줄은 <b>브랜드 · 상품명 · 접수 구분 · VOC 코드</b>가 다 차면 저장되고, 그 전까지는 이 컴퓨터에 남아 있어요 · <b>사진</b>은 사진 칸의 ＋, 줄에 끌어다 놓기, 칸에서 Ctrl+V 로 넣어요 · 고객 이름 · 연락처 · 주소는 적지 마세요 (내용 속 전화번호 · 이메일은 저장할 때 가려요)</div>
-      </section>
-
-      <!-- 🛠 개선 요청 — 디자인팀 · MD팀 · 물류팀에 보낸 요청과 진행 상태. 칸을 고치면 바로 저장, 조치 전 · 후 30일 건수는 CS 기록에서 자동 -->
-      <section class="csi-card csi-sheet-card" id="csiReqCard" aria-label="개선 요청 표" hidden>
-        <div class="csi-card-head">
-          <div>
-            <div class="csi-card-title" id="csiReqTitle">🛠 개선 요청</div>
-            <div class="csi-card-sub" id="csiReqSub"></div>
-          </div>
-          <div class="csi-sheet-tools">
-            <div class="csi-seg" id="csiReqSeg" role="group" aria-label="상태로 거르기"></div>
-            <button class="csi-btn csi-btn-primary" type="button" onclick="csiReqAdd()">＋ 개선 요청</button>
-          </div>
-        </div>
-        <div class="csi-sheet-wrap" id="csiReqWrap"><table class="csi-sheet csi-req" id="csiReqSheet"></table></div>
-        <div class="csi-sheet-foot">상태: 등록 → 전달함(받는 팀에 보냄) → 검토 중 → 조치 중 → 완료 · 보류 · '완료'로 바꾸면 조치일이 오늘로 들어가요 · <b>조치 전 → 후 30일</b>은 조치일 앞뒤 30일 동안 같은 브랜드 · 상품으로 들어온 반품 · 교환 건수예요 (맨 아래 VOC 전산 '반품 · 교환' 자동 수집 — VOC 대분류를 사유로 묶어 셈: Q 불량 · D 오배송/배송 · I 정보 다름 · S 사이즈 · C 변심/주문 실수 · O 품절. 30일이 지나면 줄어듦 · 변화 없음 · 늘어남) · 상품을 비우면 브랜드 전체 · 맨 아래 VOC 전산 <b>상품 분석</b>에서 회사 사유가 반복되는 상품은 <b>🛠 개선 요청</b>으로 근거까지 채워서 바로 만들 수 있어요</div>
-        <datalist id="csiReqProducts"></datalist>
-      </section>
-
-      <!-- 📊 이슈 분석 — 고질 문제(맨 위) → 불량 많은 상품 · 유형 · 추이 · 팀별 전달 · 일일 리포트 -->
-      <div id="csiInsight" hidden>
-        <div class="csi-card csi-onboard" id="csiEmpty" hidden>
-          <div class="csi-onboard-title">아직 CS 기록이 없어요</div>
-          <ol class="csi-onboard-steps">
-            <li><b>📝 CS 기록</b> 탭에서 <b>＋ 새 줄</b>을 누르고 엑셀처럼 칸에 바로 적어요. 브랜드 탭에서 적으면 브랜드는 저절로 들어가요.</li>
-            <li>상품명 칸에 이름 일부를 치면 그 브랜드의 상품 목록이 떠요. VOC 코드 뜻과 처리 기준은 <b>📖 VOC 코드표</b>에 있어요.</li>
-            <li>기록이 쌓이면 <b>고질 문제 · 불량 많은 상품 · 상품별 반품 · 불량률 · 일일 리포트</b>가 여기 바로 만들어져요.</li>
-          </ol>
-          <div class="csi-onboard-note">고객 이름 · 연락처 · 주소는 저장하지 않아요. 내용 속 전화번호 · 이메일은 가려서 저장해요.</div>
-        </div>
-
-        <div class="csi-main" id="csiMain">
-          <div class="csi-kpis" id="csiKpis"></div>
-          <section class="csi-card csi-mb csi-chronic" id="csiChronic" aria-label="고질 문제"></section>
-          <div class="csi-grid2">
-            <section class="csi-card" id="csiProd" aria-label="불량 많은 상품"></section>
-            <section class="csi-card" id="csiCats" aria-label="유형별 CS"></section>
-          </div>
-          <section class="csi-card csi-mb" id="csiRates" aria-label="상품별 반품 · 불량률"></section>
-          <section class="csi-card csi-mb" id="csiTrend" aria-label="일별 추이"></section>
-          <section class="csi-card" id="csiReport" aria-label="일일 리포트">
-            <div class="csi-card-head">
-              <div>
-                <div class="csi-card-title">📝 일일 리포트</div>
-                <div class="csi-card-sub" id="csiReportSub"></div>
-              </div>
-              <button class="csi-btn csi-btn-primary" type="button" onclick="csiCopyReport()">📋 리포트 복사</button>
-            </div>
-            <div class="csi-report">
-              <div class="csi-note">
-                <label class="csi-note-label" for="csiNote">CS 코멘트 <span class="csi-note-state" id="csiNoteState" aria-live="polite"></span></label>
-                <textarea id="csiNote" maxlength="4000" rows="7" placeholder="오늘 눈에 띈 점, 디자인팀 · MD팀에 꼭 전할 말을 적어 주세요. 리포트 맨 아래에 같이 나가요." oninput="csiNoteInput()" onblur="csiNoteFlush()"></textarea>
-                <div class="csi-note-hint">리포트는 기준일 하루 + 최근 7일 · 30일로 만들어요 (위 기간 버튼과는 따로). 브랜드 탭 · 채널을 고르면 그 브랜드 · 채널 리포트가 돼요.</div>
-              </div>
-              <div class="csi-report-text" id="csiReportText" aria-label="리포트 미리보기"></div>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <div class="csi-tip" id="csiTip" role="tooltip" hidden></div>
-      <!-- 상품 · 옵션 칸 검색 목록 — 처음 그릴 때 body 로 옮겨 화면 기준으로 띄운다 -->
-      <div class="csi-pick-list" id="csiPickList" role="listbox" aria-label="상품 목록" hidden></div>
-
-      <!-- 전달 팀 설정 팝업 (관리자) -->
-      <div class="modal-bg" id="csiSetModal" role="dialog" aria-modal="true" aria-labelledby="csiSetTitle">
-        <div class="modal csi-modal">
-          <div class="modal-title" id="csiSetTitle">전달 팀 설정</div>
-          <div class="modal-sub">원인을 고른 기록은 원인별 팀으로, 원인이 없거나 '확인 중'이면 VOC 코드의 기본 팀으로 전달돼요. VOC 코드별 기본 팀은 📖 VOC 코드표에 있고, 여기서는 원인별 팀만 바꿔요.</div>
-          <div id="csiSetRows"></div>
-          <div class="csi-f-block" style="margin-top:14px">
-            <div class="csi-f-label">고질 문제로 보는 기준 (최근 30일, 같은 상품 · 같은 증상)</div>
-            <div class="csi-imp-map">
-              <label class="csi-f"><span>몇 건 이상</span><select id="csiSetMin"></select></label>
-              <label class="csi-f"><span>몇 주 이상에 걸쳐</span><select id="csiSetWeeks"></select></label>
-            </div>
-          </div>
-          <div class="csi-f-msg" id="csiSetMsg" aria-live="polite"></div>
-          <div class="modal-actions">
-            <button type="button" class="modal-btn" onclick="csiCloseSettings()">취소</button>
-            <button type="button" class="modal-btn modal-btn-primary" id="csiSetSave" onclick="csiSaveSettings()">저장</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 📷 사진 창 — CS 기록 한 줄의 사진 (크게 보기 · 지우기 · 더 넣기 · 예전 사진 링크) -->
-      <input type="file" id="csiPhFile" accept="image/*" multiple hidden>
-      <div class="modal-bg" id="csiPhotoModal" role="dialog" aria-modal="true" aria-labelledby="csiPhTitle">
-        <div class="modal csi-modal csi-modal-wide">
-          <div class="modal-title" id="csiPhTitle">📷 사진</div>
-          <div class="modal-sub" id="csiPhSub"></div>
-          <div class="csi-ph-grid" id="csiPhGrid"></div>
-          <label class="csi-ph-drop" id="csiPhDrop">
-            <input type="file" id="csiPhFile2" accept="image/*" multiple hidden>
-            <b>사진 고르기</b> · 여기로 끌어다 놓기 · Ctrl+V 로 붙여넣기<br>
-            <span class="csi-muted">큰 사진은 줄여서 저장해요 · 송장 · 얼굴처럼 개인정보가 보이는 사진은 넣지 마세요 · 아이폰 HEIC 는 JPG 로 바꿔서</span>
-          </label>
-          <label class="csi-f csi-ph-link"><span>사진 링크 (예전 방식 · 선택)</span><input id="csiPhLink" type="url" maxlength="500" placeholder="https://"></label>
-          <div class="modal-actions">
-            <button type="button" class="modal-btn" onclick="csiClosePhotos()">닫기</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 📖 VOC 코드표 팝업 -->
-      <div class="modal-bg" id="csiCodeModal" role="dialog" aria-modal="true" aria-labelledby="csiCodeTitle">
-        <div class="modal csi-modal csi-modal-wide">
-          <div class="modal-title" id="csiCodeTitle">📖 VOC 코드표</div>
-          <div class="modal-sub">코드는 <b>문자 = 대분류</b>, <b>첫 숫자 = 중분류</b>, <b>둘째 숫자 = 증상</b>이에요 (예: Q12 = 제품 불량 · 봉제 · 손잡이·끈 연결부 뜯어짐). 증상(VOC 코드)과 원인은 따로 골라요.</div>
-          <div class="csi-code-bar">
-            <div class="csi-seg" id="csiCodeTabs" role="group" aria-label="코드표 보기">
-              <button type="button" data-tab="codes" aria-pressed="true">VOC 코드 44개</button>
-              <button type="button" data-tab="causes" aria-pressed="false">원인 · 전달 팀</button>
-              <button type="button" data-tab="sop" aria-pressed="false">처리 기준</button>
-            </div>
-            <input class="csi-search" id="csiCodeQ" type="search" placeholder="증상 · 코드 검색 (예: 손잡이, 변색, D12)" aria-label="VOC 코드 검색">
-          </div>
-          <div class="csi-code-body" id="csiCodeBody"></div>
-          <div class="modal-actions">
-            <button type="button" class="modal-btn" onclick="csiCloseCodes()">닫기</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 💬 문의 · 리뷰 (2026-11-17 사장님 "cs팀에 cs도 같이 추가해줘") — 플레이오토 '문의 관리'에 쌓이는 상품문의 · 상품평.
-         데이터: 비공개 brightbeed-reports cs/inquiries.json (맥미니 sixshop-collector inquiries-live 30분마다, 규칙은 그 레포 docs/INQUIRIES.md). 읽기만 한다 -->
-    <div class="csi-wrap inq-wrap" id="inqPane" data-csi-pane="inq">
-      <div class="csi-toolbar">
-        <div class="csi-toolbar-main">
-          <div class="clm-head">💬 문의 · 리뷰 <span>플레이오토로 모은 상품문의 · 상품평 · 30분마다 자동 수집</span></div>
-        </div>
-        <div class="csi-toolbar-side">
-          <span class="csi-sync" id="inqSync" aria-live="polite"></span>
-          <button class="csi-btn csi-btn-ghost" type="button" onclick="inqLoad(true)" title="다시 불러오기" aria-label="다시 불러오기">↻</button>
-        </div>
-      </div>
-      <div class="clm-alert" id="inqAlert" role="status" hidden></div>
-      <div class="csi-btabs" id="inqBrandTabs" role="tablist" aria-label="브랜드"></div>
-      <div class="csi-filters" role="group" aria-label="기간 · 구분 · 채널">
-        <div class="csi-seg" id="inqRange" role="group" aria-label="기간"></div>
-        <div class="csi-seg" id="inqType" role="group" aria-label="상품문의 · 상품평"></div>
-        <label class="csi-field">채널 <select id="inqChannel" onchange="inqSetChannel(this.value)"></select></label>
-        <span class="csi-period" id="inqPeriod"></span>
-      </div>
-      <div class="csi-card csi-empty-line csi-mb" id="inqFirst">문의 · 리뷰를 불러오는 중…</div>
-      <div class="csi-main" id="inqMain" hidden>
-        <div class="clm-kpis inq-kpis" id="inqKpis"></div>
-        <div class="csi-grid2">
-          <section class="csi-card" id="inqTopics" aria-label="주제별"></section>
-          <section class="csi-card" id="inqProducts" aria-label="문의가 많은 상품"></section>
-        </div>
-        <section class="csi-card csi-mb" id="inqList" aria-label="문의 · 리뷰 목록">
-          <div class="csi-card-head">
-            <div>
-              <div class="csi-card-title">문의 · 리뷰 목록</div>
-              <div class="csi-card-sub" id="inqListSub"></div>
-            </div>
-            <div class="csi-sheet-tools">
-              <input class="csi-search" id="inqSearch" type="search" placeholder="상품 · 글 · 주문번호 검색" aria-label="목록 검색" oninput="inqSetSearch(this.value)">
-            </div>
-          </div>
-          <div class="inq-chips" id="inqTopicChips" role="group" aria-label="주제로 거르기"></div>
-          <div id="inqListBody"></div>
-        </section>
-        <div class="clm-foot" id="inqFoot"></div>
-      </div>
-    </div>
-
-    <!-- 🗂 작업 보드 · 메모장 · FAQ (원래 CS팀 화면 그대로) -->
-    <div class="csi-workpane" data-csi-pane="req" hidden>
-    <!-- ============ CS 작업 보드 — 노션 스타일 아웃라이너 (디자인팀 작업 보드와 동일) ============ -->
-    <div class="dsg-pane" data-pane="board" style="padding:0 24px;max-width:1400px;margin:0 auto 26px">
-      <div class="dsg-section-label">🗂 CS 작업 보드</div>
-      <div class="dsg-doc-toolbar">
-        <input id="csDocSearch" class="dsg-search" type="search" placeholder="검색" oninput="dsgDocRender()">
-        <label class="dsg-hide-done">
-          <input type="checkbox" id="csDocHideDone" onchange="dsgDocRender()">
-          <span>완료 숨김</span>
-        </label>
-        <div class="dsg-fs-picker" role="group" aria-label="글꼴 크기" id="csFsPicker" title="글꼴 크기 (8~28px)">
-          <button class="dsg-fs-btn" onclick="dsgDocFsStep(-1)" title="작게 (−1)">−</button>
-          <input class="dsg-fs-num" id="csFsNum" type="number" min="8" max="28" step="1" value="14" oninput="dsgDocFsSetFromInput()" onblur="dsgDocFsSnap()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" aria-label="글꼴 크기 (px)">
-          <span class="dsg-fs-suffix">px</span>
-          <button class="dsg-fs-btn" onclick="dsgDocFsStep(1)" title="크게 (+1)">+</button>
-        </div>
-        <button class="dsg-doc-btn-ghost" onclick="dsgDocExpandAll()" title="모두 펼치기">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
-          펼치기
-        </button>
-        <button class="dsg-doc-btn-ghost" onclick="dsgDocCollapseAll()" title="모두 접기">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
-          접기
-        </button>
-      </div>
-
-      <div class="dsg-doc-wrap">
-        <div class="dsg-empty" id="csEmpty" hidden>
-          <div class="dsg-empty-icon">📝</div>
-          <div class="dsg-empty-title">아직 작업이 없어요</div>
-          <div class="dsg-empty-sub">아래 <b>＋ 여기에 입력하세요</b>를 눌러 시작해 보세요.<br/>Enter로 새 줄, Tab으로 하위 항목, Cmd/Ctrl+Enter로 완료 토글.</div>
-        </div>
-        <div id="csDoc" class="dsg-doc"></div>
-
-        <div class="dsg-doc-add">
-          <button class="dsg-doc-add-item" onclick="dsgDocAppendItem()" title="새 항목 (Enter로 시작)">
-            <span class="dsg-doc-add-plus">＋</span>
-            <span>여기에 입력하세요</span>
-          </button>
-          <button class="dsg-doc-add-sec" onclick="dsgDocAddSection()" title="새 섹션">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 5v14M5 12h14"/></svg>
-            새 섹션
-          </button>
-        </div>
-
-        <div class="dsg-doc-hint">
-          <span class="dsg-hint-desktop"><b>Enter</b> 새 항목 · <b>Tab</b> 하위로 · <b>Shift+Tab</b> 상위로 · <b>Cmd/Ctrl+Enter</b> 완료 · 왼쪽 <b>＋</b>로 바로 뒤에 새 항목</span>
-          <span class="dsg-hint-mobile">각 줄 옆 <b>＋</b>를 눌러 바로 뒤에 새 항목을 추가하세요</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="cs-grid">
-      <!-- CS팀 메모장 — 항상 편집 가능 (편집 버튼 없이 바로 타이핑, 자동 저장) -->
-      <section class="cs-section cs-section-memo" id="csMemoSection">
-        <div class="cs-section-head">
-          <div class="cs-section-title">CS팀 메모장 <span class="cs-section-sub">누구나 편집 가능 · 자동 저장</span></div>
-          <span class="cs-memo-status" id="csMemoStatus" data-state="saved" aria-live="polite">✓ 저장됨</span>
-        </div>
-        <div id="csMemo" class="cs-memo cs-memo-live" contenteditable="true" spellcheck="false"
-             oninput="csMemoOnInput()"
-             onfocus="csMemoOnFocus()"
-             onblur="csMemoOnBlur()"></div>
-      </section>
-
-      <!-- FAQ — CS팀 전체가 뷰어 권한이어도 편집 가능 (최하단) -->
-      <section class="cs-section cs-section-memo" id="csFaqSection">
-        <div class="cs-section-head">
-          <div class="cs-section-title">자주 묻는 질문</div>
-          <button class="cs-add-btn" onclick="addCsItem()">＋ 추가</button>
-        </div>
-        <div id="csFaqList" class="cs-list"></div>
-      </section>
-    </div>
-    </div><!-- /csi 작업 패널 -->
+    <!-- 카카오톡 상담 ↔ 아래 VOC 전산 (2026-11-19 "카카오톡 상담이랑 하단이랑 분리 확실하게 해줘" · 11-20 "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리") -->
 
     <!-- ============ VOC 전산 — CS팀 맨 아래, 탭과 상관없이 늘 보임 (2026-11-20 사장님 "구글 시트에 있는 자료들 erp 전산 디자인으로해서 cs팀 하단에 넣어줘.
          기존에 있던 분석자료나 voc 깔끔하게 다 합쳐줘"). 본체는 voc/index.html (ERP전산팀 erp/ 와 같은 디자인) —
          구글시트 '비드유니버스 VOC'(데일리 일지 · 불량건 · 반품 분석 탭)를 바로 읽고, VOC 코드표 · 오피스 VOC 기록(cs_issues)은 bbVocShare() 로 넘겨 합친다.
          iframe 은 이 자리가 화면 가까이 내려왔을 때 한 번 띄운다 (vocEmbedOnEnter) ============ -->
-    <div class="kko-split voc-split" role="separator" aria-label="VOC 전산">VOC 전산 <em>반품 · 교환 자동 수집(모든 플랫폼 · 공홈) · 사유 · 상품 분석 · 처리 현황 · CS 일지(구글시트) · 불량 · VOC 코드표</em></div>
-    <section class="voc-embed" id="vocEmbed" aria-label="VOC 전산"><div class="voc-embed-veil">VOC 전산 여는 중…</div></section>
+    <div class="kko-split voc-split" role="separator" aria-label="VOC 전산">VOC 전산 <em>CS 전부 (카카오톡 상담 빼고)</em></div>
+    <section class="voc-embed" id="vocEmbed" aria-label="VOC 전산"><div class="voc-embed-veil">VOC 전산 여는 중…</div>
+      <!-- 🛠 개선 요청 · 작업 보드 — VOC 전산 왼쪽 메뉴 'CS 업무 › 개선 요청 · 작업 보드'를 누르면 iframe 본문 자리에 이 오피스 화면을 붙여 보여 준다(bbVocExt).
+           편집 · 저장 코드는 예전 CS 업무 탭 그대로(csi* · dsgDoc CS 보드 · csMemo · FAQ). 2026-11-20 사장님 "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리하게 해줘".
+           붙어 있는 동안은 이 칸 길이만큼 VOC 칸이 늘어나고 페이지가 스크롤된다(안쪽 스크롤 없음 — 팝업 · 메뉴 위치가 예전 그대로) -->
+      <div class="voc-ext" id="vocExt" hidden>
+        <div class="voc-ext-head"><b>🛠 개선 요청 · 작업 보드</b><span>칸을 고치면 바로 저장돼요 · 개선 요청 표 · CS 작업 보드 · CS팀 메모장 · 자주 묻는 질문</span></div>
+        <!-- CS 기록 · 이슈 분석 — 데이터: Supabase cs_issues · cs_daily_notes · app_kv(cs_insight_settings). 브랜드 탭 · 기간 · 채널은 두 탭이 같이 쓴다 -->
+        <div class="csi-wrap" id="csiPane" data-csi-pane="sheet insight req" hidden>
+          <div class="csi-toolbar">
+            <div class="csi-toolbar-main">
+              <!-- CS 기록을 숨겨(2026-11-13) 새 줄 · 전달 팀 설정 버튼도 숨김 — 개선 요청은 표 위 '＋ 개선 요청' -->
+              <button class="csi-btn csi-btn-primary" type="button" onclick="csiAddRow()" title="CS 기록 표 맨 위에 새 줄을 만들어요" hidden>＋ 새 줄</button>
+              <button class="csi-btn csi-btn-ghost" type="button" onclick="csiOpenCodes()" title="VOC 코드 뜻 · 판단 기준 · 기본 처리 · 처리 기준" hidden>📖 VOC 코드표</button><!-- 2026-11-20 사장님 "voc 코드표 … 숨김처리" — 지우지 않고 숨김 -->
+            </div>
+            <div class="csi-toolbar-side">
+              <span class="csi-sync" id="csiSync" aria-live="polite"></span>
+              <button class="csi-btn csi-btn-ghost" type="button" onclick="csiLoad(true)" title="다시 불러오기" aria-label="다시 불러오기">↻</button>
+              <button class="csi-btn csi-btn-ghost master-only" type="button" onclick="csiOpenSettings()" hidden>⚙ 전달 팀 설정</button>
+            </div>
+          </div>
+
+          <!-- 브랜드 탭 — 전체 + 브랜드별. 숫자 = 지금 기간의 기록 수, ⚠ = 고질 문제 -->
+          <div class="csi-btabs" id="csiBrandTabs" role="tablist" aria-label="브랜드"></div>
+
+          <div class="csi-filters" role="group" aria-label="기간 · 채널">
+            <div class="csi-seg" id="csiRange" role="group" aria-label="기간"></div>
+            <label class="csi-field">기준일 <input type="date" id="csiDate" onchange="csiSetDate(this.value)"></label>
+            <label class="csi-field">채널 <select id="csiChannel" onchange="csiSetChannel(this.value)"></select></label>
+            <span class="csi-period" id="csiPeriod"></span>
+          </div>
+
+          <div class="csi-card csi-empty-line csi-mb" id="csiFirst">CS 기록을 불러오는 중…</div>
+
+          <!-- 📝 CS 기록 — 엑셀처럼 칸에서 바로 적고 고친다. 칸을 고치면 바로 저장, 새 줄은 필수 칸이 다 차면 저장 -->
+          <section class="csi-card csi-sheet-card" id="csiSheetCard" aria-label="CS 기록 표" hidden>
+            <div class="csi-card-head">
+              <div>
+                <div class="csi-card-title" id="csiSheetTitle">📝 CS 기록</div>
+                <div class="csi-card-sub" id="csiSheetSub"></div>
+              </div>
+              <div class="csi-sheet-tools">
+                <input class="csi-search" id="csiSearch" type="search" placeholder="상품 · 증상 · 내용 검색" oninput="csiSetSearch(this.value)" aria-label="기록 검색">
+                <button class="csi-btn csi-btn-primary" type="button" onclick="csiAddRow()">＋ 새 줄</button>
+              </div>
+            </div>
+            <div class="csi-sheet-wrap" id="csiSheetWrap"><table class="csi-sheet" id="csiSheet"></table></div>
+            <div class="csi-sheet-info" id="csiSheetInfo" aria-live="polite"></div>
+            <div class="csi-sheet-foot">칸을 고치면 바로 저장돼요 · 새 줄은 <b>브랜드 · 상품명 · 접수 구분 · VOC 코드</b>가 다 차면 저장되고, 그 전까지는 이 컴퓨터에 남아 있어요 · <b>사진</b>은 사진 칸의 ＋, 줄에 끌어다 놓기, 칸에서 Ctrl+V 로 넣어요 · 고객 이름 · 연락처 · 주소는 적지 마세요 (내용 속 전화번호 · 이메일은 저장할 때 가려요)</div>
+          </section>
+
+          <!-- 🛠 개선 요청 — 디자인팀 · MD팀 · 물류팀에 보낸 요청과 진행 상태. 칸을 고치면 바로 저장, 조치 전 · 후 30일 건수는 CS 기록에서 자동 -->
+          <section class="csi-card csi-sheet-card" id="csiReqCard" aria-label="개선 요청 표" hidden>
+            <div class="csi-card-head">
+              <div>
+                <div class="csi-card-title" id="csiReqTitle">🛠 개선 요청</div>
+                <div class="csi-card-sub" id="csiReqSub"></div>
+              </div>
+              <div class="csi-sheet-tools">
+                <div class="csi-seg" id="csiReqSeg" role="group" aria-label="상태로 거르기"></div>
+                <button class="csi-btn csi-btn-primary" type="button" onclick="csiReqAdd()">＋ 개선 요청</button>
+              </div>
+            </div>
+            <div class="csi-sheet-wrap" id="csiReqWrap"><table class="csi-sheet csi-req" id="csiReqSheet"></table></div>
+            <div class="csi-sheet-foot">상태: 등록 → 전달함(받는 팀에 보냄) → 검토 중 → 조치 중 → 완료 · 보류 · '완료'로 바꾸면 조치일이 오늘로 들어가요 · <b>조치 전 → 후 30일</b>은 조치일 앞뒤 30일 동안 같은 브랜드 · 상품으로 들어온 반품 · 교환 건수예요 (맨 아래 VOC 전산 '반품 · 교환' 자동 수집 — VOC 대분류를 사유로 묶어 셈: Q 불량 · D 오배송/배송 · I 정보 다름 · S 사이즈 · C 변심/주문 실수 · O 품절. 30일이 지나면 줄어듦 · 변화 없음 · 늘어남) · 상품을 비우면 브랜드 전체 · 맨 아래 VOC 전산 <b>상품 분석</b>에서 회사 사유가 반복되는 상품은 <b>🛠 개선 요청</b>으로 근거까지 채워서 바로 만들 수 있어요</div>
+            <datalist id="csiReqProducts"></datalist>
+          </section>
+
+          <!-- 📊 이슈 분석 — 고질 문제(맨 위) → 불량 많은 상품 · 유형 · 추이 · 팀별 전달 · 일일 리포트 -->
+          <div id="csiInsight" hidden>
+            <div class="csi-card csi-onboard" id="csiEmpty" hidden>
+              <div class="csi-onboard-title">아직 CS 기록이 없어요</div>
+              <ol class="csi-onboard-steps">
+                <li><b>📝 CS 기록</b> 탭에서 <b>＋ 새 줄</b>을 누르고 엑셀처럼 칸에 바로 적어요. 브랜드 탭에서 적으면 브랜드는 저절로 들어가요.</li>
+                <li>상품명 칸에 이름 일부를 치면 그 브랜드의 상품 목록이 떠요. VOC 코드 뜻과 처리 기준은 <b>📖 VOC 코드표</b>에 있어요.</li>
+                <li>기록이 쌓이면 <b>고질 문제 · 불량 많은 상품 · 상품별 반품 · 불량률 · 일일 리포트</b>가 여기 바로 만들어져요.</li>
+              </ol>
+              <div class="csi-onboard-note">고객 이름 · 연락처 · 주소는 저장하지 않아요. 내용 속 전화번호 · 이메일은 가려서 저장해요.</div>
+            </div>
+
+            <div class="csi-main" id="csiMain">
+              <div class="csi-kpis" id="csiKpis"></div>
+              <section class="csi-card csi-mb csi-chronic" id="csiChronic" aria-label="고질 문제"></section>
+              <div class="csi-grid2">
+                <section class="csi-card" id="csiProd" aria-label="불량 많은 상품"></section>
+                <section class="csi-card" id="csiCats" aria-label="유형별 CS"></section>
+              </div>
+              <section class="csi-card csi-mb" id="csiRates" aria-label="상품별 반품 · 불량률"></section>
+              <section class="csi-card csi-mb" id="csiTrend" aria-label="일별 추이"></section>
+              <section class="csi-card" id="csiReport" aria-label="일일 리포트">
+                <div class="csi-card-head">
+                  <div>
+                    <div class="csi-card-title">📝 일일 리포트</div>
+                    <div class="csi-card-sub" id="csiReportSub"></div>
+                  </div>
+                  <button class="csi-btn csi-btn-primary" type="button" onclick="csiCopyReport()">📋 리포트 복사</button>
+                </div>
+                <div class="csi-report">
+                  <div class="csi-note">
+                    <label class="csi-note-label" for="csiNote">CS 코멘트 <span class="csi-note-state" id="csiNoteState" aria-live="polite"></span></label>
+                    <textarea id="csiNote" maxlength="4000" rows="7" placeholder="오늘 눈에 띈 점, 디자인팀 · MD팀에 꼭 전할 말을 적어 주세요. 리포트 맨 아래에 같이 나가요." oninput="csiNoteInput()" onblur="csiNoteFlush()"></textarea>
+                    <div class="csi-note-hint">리포트는 기준일 하루 + 최근 7일 · 30일로 만들어요 (위 기간 버튼과는 따로). 브랜드 탭 · 채널을 고르면 그 브랜드 · 채널 리포트가 돼요.</div>
+                  </div>
+                  <div class="csi-report-text" id="csiReportText" aria-label="리포트 미리보기"></div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="csi-tip" id="csiTip" role="tooltip" hidden></div>
+          <!-- 상품 · 옵션 칸 검색 목록 — 처음 그릴 때 body 로 옮겨 화면 기준으로 띄운다 -->
+          <div class="csi-pick-list" id="csiPickList" role="listbox" aria-label="상품 목록" hidden></div>
+
+          <!-- 전달 팀 설정 팝업 (관리자) -->
+          <div class="modal-bg" id="csiSetModal" role="dialog" aria-modal="true" aria-labelledby="csiSetTitle">
+            <div class="modal csi-modal">
+              <div class="modal-title" id="csiSetTitle">전달 팀 설정</div>
+              <div class="modal-sub">원인을 고른 기록은 원인별 팀으로, 원인이 없거나 '확인 중'이면 VOC 코드의 기본 팀으로 전달돼요. VOC 코드별 기본 팀은 📖 VOC 코드표에 있고, 여기서는 원인별 팀만 바꿔요.</div>
+              <div id="csiSetRows"></div>
+              <div class="csi-f-block" style="margin-top:14px">
+                <div class="csi-f-label">고질 문제로 보는 기준 (최근 30일, 같은 상품 · 같은 증상)</div>
+                <div class="csi-imp-map">
+                  <label class="csi-f"><span>몇 건 이상</span><select id="csiSetMin"></select></label>
+                  <label class="csi-f"><span>몇 주 이상에 걸쳐</span><select id="csiSetWeeks"></select></label>
+                </div>
+              </div>
+              <div class="csi-f-msg" id="csiSetMsg" aria-live="polite"></div>
+              <div class="modal-actions">
+                <button type="button" class="modal-btn" onclick="csiCloseSettings()">취소</button>
+                <button type="button" class="modal-btn modal-btn-primary" id="csiSetSave" onclick="csiSaveSettings()">저장</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 📷 사진 창 — CS 기록 한 줄의 사진 (크게 보기 · 지우기 · 더 넣기 · 예전 사진 링크) -->
+          <input type="file" id="csiPhFile" accept="image/*" multiple hidden>
+          <div class="modal-bg" id="csiPhotoModal" role="dialog" aria-modal="true" aria-labelledby="csiPhTitle">
+            <div class="modal csi-modal csi-modal-wide">
+              <div class="modal-title" id="csiPhTitle">📷 사진</div>
+              <div class="modal-sub" id="csiPhSub"></div>
+              <div class="csi-ph-grid" id="csiPhGrid"></div>
+              <label class="csi-ph-drop" id="csiPhDrop">
+                <input type="file" id="csiPhFile2" accept="image/*" multiple hidden>
+                <b>사진 고르기</b> · 여기로 끌어다 놓기 · Ctrl+V 로 붙여넣기<br>
+                <span class="csi-muted">큰 사진은 줄여서 저장해요 · 송장 · 얼굴처럼 개인정보가 보이는 사진은 넣지 마세요 · 아이폰 HEIC 는 JPG 로 바꿔서</span>
+              </label>
+              <label class="csi-f csi-ph-link"><span>사진 링크 (예전 방식 · 선택)</span><input id="csiPhLink" type="url" maxlength="500" placeholder="https://"></label>
+              <div class="modal-actions">
+                <button type="button" class="modal-btn" onclick="csiClosePhotos()">닫기</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 📖 VOC 코드표 팝업 -->
+          <div class="modal-bg" id="csiCodeModal" role="dialog" aria-modal="true" aria-labelledby="csiCodeTitle">
+            <div class="modal csi-modal csi-modal-wide">
+              <div class="modal-title" id="csiCodeTitle">📖 VOC 코드표</div>
+              <div class="modal-sub">코드는 <b>문자 = 대분류</b>, <b>첫 숫자 = 중분류</b>, <b>둘째 숫자 = 증상</b>이에요 (예: Q12 = 제품 불량 · 봉제 · 손잡이·끈 연결부 뜯어짐). 증상(VOC 코드)과 원인은 따로 골라요.</div>
+              <div class="csi-code-bar">
+                <div class="csi-seg" id="csiCodeTabs" role="group" aria-label="코드표 보기">
+                  <button type="button" data-tab="codes" aria-pressed="true">VOC 코드 44개</button>
+                  <button type="button" data-tab="causes" aria-pressed="false">원인 · 전달 팀</button>
+                  <button type="button" data-tab="sop" aria-pressed="false">처리 기준</button>
+                </div>
+                <input class="csi-search" id="csiCodeQ" type="search" placeholder="증상 · 코드 검색 (예: 손잡이, 변색, D12)" aria-label="VOC 코드 검색">
+              </div>
+              <div class="csi-code-body" id="csiCodeBody"></div>
+              <div class="modal-actions">
+                <button type="button" class="modal-btn" onclick="csiCloseCodes()">닫기</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="csi-workpane" data-csi-pane="req" hidden>
+        <!-- ============ CS 작업 보드 — 노션 스타일 아웃라이너 (디자인팀 작업 보드와 동일) ============ -->
+        <div class="dsg-pane" data-pane="board" style="padding:0 24px;max-width:1400px;margin:0 auto 26px">
+          <div class="dsg-section-label">🗂 CS 작업 보드</div>
+          <div class="dsg-doc-toolbar">
+            <input id="csDocSearch" class="dsg-search" type="search" placeholder="검색" oninput="dsgDocRender()">
+            <label class="dsg-hide-done">
+              <input type="checkbox" id="csDocHideDone" onchange="dsgDocRender()">
+              <span>완료 숨김</span>
+            </label>
+            <div class="dsg-fs-picker" role="group" aria-label="글꼴 크기" id="csFsPicker" title="글꼴 크기 (8~28px)">
+              <button class="dsg-fs-btn" onclick="dsgDocFsStep(-1)" title="작게 (−1)">−</button>
+              <input class="dsg-fs-num" id="csFsNum" type="number" min="8" max="28" step="1" value="14" oninput="dsgDocFsSetFromInput()" onblur="dsgDocFsSnap()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" aria-label="글꼴 크기 (px)">
+              <span class="dsg-fs-suffix">px</span>
+              <button class="dsg-fs-btn" onclick="dsgDocFsStep(1)" title="크게 (+1)">+</button>
+            </div>
+            <button class="dsg-doc-btn-ghost" onclick="dsgDocExpandAll()" title="모두 펼치기">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+              펼치기
+            </button>
+            <button class="dsg-doc-btn-ghost" onclick="dsgDocCollapseAll()" title="모두 접기">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+              접기
+            </button>
+          </div>
+
+          <div class="dsg-doc-wrap">
+            <div class="dsg-empty" id="csEmpty" hidden>
+              <div class="dsg-empty-icon">📝</div>
+              <div class="dsg-empty-title">아직 작업이 없어요</div>
+              <div class="dsg-empty-sub">아래 <b>＋ 여기에 입력하세요</b>를 눌러 시작해 보세요.<br/>Enter로 새 줄, Tab으로 하위 항목, Cmd/Ctrl+Enter로 완료 토글.</div>
+            </div>
+            <div id="csDoc" class="dsg-doc"></div>
+
+            <div class="dsg-doc-add">
+              <button class="dsg-doc-add-item" onclick="dsgDocAppendItem()" title="새 항목 (Enter로 시작)">
+                <span class="dsg-doc-add-plus">＋</span>
+                <span>여기에 입력하세요</span>
+              </button>
+              <button class="dsg-doc-add-sec" onclick="dsgDocAddSection()" title="새 섹션">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 5v14M5 12h14"/></svg>
+                새 섹션
+              </button>
+            </div>
+
+            <div class="dsg-doc-hint">
+              <span class="dsg-hint-desktop"><b>Enter</b> 새 항목 · <b>Tab</b> 하위로 · <b>Shift+Tab</b> 상위로 · <b>Cmd/Ctrl+Enter</b> 완료 · 왼쪽 <b>＋</b>로 바로 뒤에 새 항목</span>
+              <span class="dsg-hint-mobile">각 줄 옆 <b>＋</b>를 눌러 바로 뒤에 새 항목을 추가하세요</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cs-grid">
+          <!-- CS팀 메모장 — 항상 편집 가능 (편집 버튼 없이 바로 타이핑, 자동 저장) -->
+          <section class="cs-section cs-section-memo" id="csMemoSection">
+            <div class="cs-section-head">
+              <div class="cs-section-title">CS팀 메모장 <span class="cs-section-sub">누구나 편집 가능 · 자동 저장</span></div>
+              <span class="cs-memo-status" id="csMemoStatus" data-state="saved" aria-live="polite">✓ 저장됨</span>
+            </div>
+            <div id="csMemo" class="cs-memo cs-memo-live" contenteditable="true" spellcheck="false"
+                 oninput="csMemoOnInput()"
+                 onfocus="csMemoOnFocus()"
+                 onblur="csMemoOnBlur()"></div>
+          </section>
+
+          <!-- FAQ — CS팀 전체가 뷰어 권한이어도 편집 가능 (최하단) -->
+          <section class="cs-section cs-section-memo" id="csFaqSection">
+            <div class="cs-section-head">
+              <div class="cs-section-title">자주 묻는 질문</div>
+              <button class="cs-add-btn" onclick="addCsItem()">＋ 추가</button>
+            </div>
+            <div id="csFaqList" class="cs-list"></div>
+          </section>
+        </div>
+        </div><!-- /csi 작업 패널 -->
+      </div>
+    </section>
   </div>
 
   <!-- ============ 온라인사업팀 (2026-11-06 마케팅팀에서 이름 변경 · 내부 id/키는 mkt·Marketing 유지) ============ -->
@@ -23042,12 +22947,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     fr.setAttribute('allowfullscreen','');
     const veil=box.querySelector('.voc-embed-veil');
     const fail=()=>{ if(veil){ veil.innerHTML='VOC 전산을 열지 못했어요 · <button type="button" class="btn-back" style="margin-left:8px">다시 열기</button>'; const b=veil.querySelector('button'); if(b) b.onclick=()=>{ fr.remove(); veil.textContent='VOC 전산 여는 중…'; _vocMount(box); }; } };
+    const ext=document.getElementById('vocExt');   // 🛠 개선 요청 · 작업 보드 칸보다 앞에 — 뒤에 오는 칸이 위에 그려진다
     if(toolUnderLoader()){
-      box.appendChild(fr);
+      box.insertBefore(fr, ext);
       toolWriteFrame(t,fr).catch(err=>{ console.warn('VOC 전산',err); fail(); });
     }else{
       fr.src=toolUrl(t);
-      box.appendChild(fr);
+      box.insertBefore(fr, ext);
     }
   }
   function toolUnmount(key){
@@ -39661,17 +39567,38 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return {codes:CSI_CODES, cats:CSI_CATS, sop:CSI_SOP, sev:CSI_SEV, teams:CSI_TEAM_LABEL, company:[...CSI_COMPANY], sb:{url:SUPABASE_URL, key:SUPABASE_KEY},
       brands:BRAND_SECTIONS.map(b=>({id:b.id, name:b.display, color:b.dot})),
       claims:force=>Promise.resolve(clmLoad(!!force)).then(()=>({data:_clm.data, sales:_clm.sales, err:_clm.err, salesErr:_clm.salesErr})),
-      makeReq:bbClaimReq};
+      makeReq:bbClaimReq,
+      // 같은 날 밤 "문의, 리뷰 목록도 같이 voc에 넣어줘" · "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리" —
+      // inq(force) = 오피스가 받아 둔 문의 · 리뷰(inqLoad, 5분), ext = 개선 요청 · 작업 보드 칸을 VOC 본문 자리에, reqOpen = 아직 안 끝난 개선 요청 수(메뉴 숫자)
+      inq:force=>Promise.resolve(inqLoad(!!force)).then(()=>({data:_inq.data, err:_inq.err})),
+      ext:bbVocExt,
+      reqOpen:()=>{ try{ return [..._csi.rq.byId.values()].filter(x=>CSI_REQ_OPEN.has(x.status)).length; }catch(e){ return 0; } }};
   }
-  // VOC 전산 '상품 분석' 🛠 개선 요청 → CS 업무 🛠 개선 요청 표에 근거를 채워 만들고 그 자리로 올라간다
+  // VOC 전산 '상품 분석' 🛠 개선 요청 → 개선 요청 표에 근거를 채워 만들고, VOC 메뉴를 '개선 요청 · 작업 보드'로 넘겨 그 표를 보여 준다
   function bbClaimReq(pre){
     if(typeof csiReqAdd!=='function' || !_csi.inited){ toast('개선 요청 화면을 열지 못했어요','err'); return false; }
     if(pre && pre.brand && _csi.brand && _csi.brand!==pre.brand) _csi.brand=pre.brand;
+    const fr=document.querySelector('#vocEmbed iframe');
+    try{ if(fr && fr.contentWindow && typeof fr.contentWindow.vocGo==='function') fr.contentWindow.vocGo('x:req'); }catch(e){}
     csiReqAdd(pre||{});
-    const p=document.querySelector('#viewCs .csi-workpane[data-csi-pane="req"]');
-    if(p) p.scrollIntoView({behavior:'smooth', block:'start'});
     toast('개선 요청을 만들었어요 — 요청 내용 · 담당자를 채워 주세요');
     return true;
+  }
+  // VOC 전산 메뉴 'CS 업무 › 개선 요청 · 작업 보드' — 오피스 칸(#vocExt: 개선 요청 표 · CS 작업 보드 · 메모장 · FAQ)을 iframe 본문 자리에 붙인다.
+  // lay = {side: VOC 왼쪽 메뉴 너비(접었거나 좁은 화면이면 0), top: 위 막대 높이(메뉴가 보이면 0), peek: 좁은 화면에서 메뉴 서랍을 연 동안 잠깐 숨김}
+  function bbVocExt(which, lay){
+    const box=document.getElementById('vocEmbed'), ext=document.getElementById('vocExt');
+    if(!box || !ext) return;
+    const on=which==='req', was=box.classList.contains('ext-on');
+    if(!on){ if(was){ box.classList.remove('ext-on'); ext.hidden=true; } return; }
+    lay=lay||{};
+    box.style.setProperty('--voc-side', (Number(lay.side)||0)+'px');
+    box.style.setProperty('--voc-top', (Number(lay.top)||0)+'px');
+    if(lay.peek) ext.setAttribute('data-peek',''); else ext.removeAttribute('data-peek');
+    if(was) return;
+    box.classList.add('ext-on'); ext.hidden=false;
+    try{ csiSwitchTab('req'); }catch(e){ console.warn('개선 요청 · 작업 보드', e); }
+    const r=box.getBoundingClientRect(); if(r.top<0) box.scrollIntoView({block:'start'});
   }
   const CSI_KINDS=['교환','반품','문의','재발송 요청','기타'];
   const CSI_RETURN_KINDS=new Set(['교환','반품']);
@@ -39684,7 +39611,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const CSI_SELECT='id,issue_date,channel,brand,kind,product,product_id,photo_count,option_text,category,code,sub,cause,detail,action,photo_url,source,created_by,created_at,updated_by,updated_at,deleted_at';
 
   const _csi={byId:new Map(), gone:new Map(), duringLoad:[], rows:[], loaded:false, loading:false, reloadAgain:false, loadedFrom:'', lastSync:'', err:'', syncedAt:0,
-    tab:'inq', range:'7', date:'', dateTouched:false, brand:'', channel:'', q:'', listLimit:50, trendTable:false,
+    tab:'req', range:'7', date:'', dateTouched:false, brand:'', channel:'', q:'', listLimit:50, trendTable:false,
     settings:{causeRouting:{}, chronicMin:3, chronicWeeks:2}, settingsLoaded:false,
     note:{date:'', text:'', by:'', at:'', dirty:false, saving:false, err:false}, noteTimer:null,
     pollTimer:null, inited:false, lastFormCh:'', lastFormBrand:'', lastFormKind:'',
@@ -39773,24 +39700,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _csiLoadNote();
     _csiStartPoll();
   }
-  // 숨긴 탭 (2026-11-13 사장님 "기록 · 이슈 분석은 사실상 필요없음") — 예전 설정 · 주소로 와도 첫 탭(문의 · 리뷰)으로.
-  // ↩️ 반품·교환 분석 탭은 2026-11-20 저녁 맨 아래 VOC 전산 안으로 옮겨 걷어냄(사장님 "싹다 하단 voc랑 합쳐주고") — 'claims' 로 와도 문의 · 리뷰로
-  const CSI_TABS_HIDDEN=new Set(['sheet','insight','claims']);
+  // 숨긴 탭 (2026-11-13 사장님 "기록 · 이슈 분석은 사실상 필요없음") — 예전 설정 · 주소로 와도 개선 요청으로.
+  // ↩️ 반품·교환 분석 · 💬 문의·리뷰 탭은 2026-11-20 밤 맨 아래 VOC 전산 안으로 옮겨 걷어냄(사장님 "싹다 하단 voc랑 합쳐주고" ·
+  // "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리") — 남은 개선 요청 · 작업 보드 칸도 VOC 전산 메뉴에서 연다(bbVocExt), 탭 줄은 없음
+  const CSI_TABS_HIDDEN=new Set(['sheet','insight','claims','inq']);
   function csiSwitchTab(tab, silent){
     if(tab==='work') tab='req';   // 작업 보드 · 메모 · FAQ 는 개선 요청 탭 아래로 합침
-    if(CSI_TABS_HIDDEN.has(tab)) tab='inq';
-    _csi.tab = (tab==='req'||tab==='insight'||tab==='sheet') ? tab : 'inq';
+    if(CSI_TABS_HIDDEN.has(tab)) tab='req';
+    _csi.tab = (tab==='req'||tab==='insight'||tab==='sheet') ? tab : 'req';
     document.querySelectorAll('#viewCs [data-csi-tab]').forEach(b=>{
       const on=b.dataset.csiTab===_csi.tab; b.classList.toggle('active',on); b.setAttribute('aria-selected',on?'true':'false');
     });
     // data-csi-pane 은 보이는 탭 목록 ('sheet insight' = 기록 · 분석 둘 다)
     document.querySelectorAll('#viewCs [data-csi-pane]').forEach(p=>{ p.hidden = !p.dataset.csiPane.split(' ').includes(_csi.tab) });
     if(_csi.pk && _csi.pk.open) _csiPickClose();
-    // 💬 문의 · 리뷰 — 자동 수집 파일만 읽는다
-    if(_csi.tab==='inq'){ try{ inqShow(); }catch(e){ console.warn('문의·리뷰', e); } }
     // 개선 요청의 '조치 전 → 후' 건수는 반품 · 교환 자동 수집에서 센다
     if(_csi.tab==='req'){ try{ clmLoad(false); }catch(e){} }
-    if(!silent){ _csiSavePrefs(); csiRender(); if(_csi.tab!=='inq') csiLoad(false); }
+    if(!silent){ _csiSavePrefs(); csiRender(); csiLoad(false); }
   }
   function _csiInitControls(){
     document.getElementById('csiRange').innerHTML=CSI_RANGES.map(r=>`<button type="button" data-range="${r.key}" aria-pressed="false">${r.label}</button>`).join('');
@@ -39830,7 +39756,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const tick=()=>{
       if(document.hidden) return;
       const v=document.getElementById('viewCs'); if(!v || v.hidden || _csi.tab==='work') return;   // 기록 · 분석 탭에서 1분마다
-      if(_csi.tab==='inq'){ inqLoad(false); return; }      // 💬 문의 · 리뷰 — 5분 지난 것만 다시 받는다 (반품 · 교환은 VOC 전산이 직접 물음)
       // 밤을 넘겨 화면을 켜 두면 기준일도 오늘로
       if(!_csi.dateTouched && _csi.date!==_csiToday()){ _csi.date=_csiToday(); const di=document.getElementById('csiDate'); di.value=_csi.date; di.max=_csi.date; _csiLoadNote(); }
       csiLoad(false);
@@ -40292,250 +40217,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     window.addEventListener('scroll',hide,{passive:true});
   }
 
-  /* ── 💬 문의 · 리뷰 (2026-11-17, CS팀) ──
-     사장님 "플레이오토를 통해서 데이터를 최대한 가져오고 싶어" → "cs팀에 cs도 같이 추가해줘".
-     데이터 (비공개 brightbeed-reports, 맥미니 sixshop-collector inquiries-live 30분마다 — 규칙은 그 레포 docs/INQUIRIES.md). 여기서는 읽기만 한다:
-       cs/inquiries.json — items[] 한 줄 = 문의 하나: brand · channel · type(question 상품문의 / review 상품평) · at(고객이 남긴 시각, KST) · title · text
-         · product · order_no · topics[] · cat(채널 분류) · neg(불만 상품평). 고객 아이디 · 이름 · 전화번호는 수집기가 빼고, 글 속 연락처는 가려서 온다.
-     플레이오토 문의 상태는 늘 '신규문의'라 답변 여부는 모른다 (답은 각 채널 판매자 화면에서). 코페리 · 아페티(2번 아이디)는 플레이오토 문의 수집이 꺼져 있으면 0건.
-     화면: 브랜드 탭 → 기간 · 구분 · 채널 → 숫자 4칸 → 주제 막대 · 문의가 많은 상품 → 목록(주제 칩 · 검색, 최신순). */
-  const INQ_PATH='cs/inquiries.json', INQ_TTL=5*60*1000, INQ_PREF='inq_prefs_v1';
-  const INQ_RANGES=[{key:'7',label:'7일',days:7},{key:'30',label:'30일',days:30},{key:'90',label:'90일',days:90},{key:'180',label:'180일',days:180}];
-  const INQ_TYPES=[{key:'',label:'전체'},{key:'question',label:'상품문의'},{key:'review',label:'상품평'},{key:'neg',label:'불만 상품평'}];
-  // 수집기 INQ_TOPICS 와 같은 순서 · 이름 (none = 주제 못 찾음)
-  const INQ_TOPICS=[['delivery','배송'],['restock','재입고 · 품절'],['size','사이즈 · 핏'],['color','색상 · 디자인'],['claim','교환 · 반품 · 취소'],['defect','불량 · 하자'],['usage','소재 · 사용 · 호환'],['price','가격 · 쿠폰'],['none','기타']];
-  const INQ_TOPIC_LABEL=Object.fromEntries(INQ_TOPICS);
-  const _inq={data:null, at:0, loading:null, err:'', range:'30', type:'', channel:'', brand:'', topic:'', q:'', limit:50, inited:false, listT:null, open:new Set()};
-
-  function _inqLoadPrefs(){
-    try{
-      const p=JSON.parse(localStorage.getItem(INQ_PREF)||'{}');
-      if(INQ_RANGES.some(r=>r.key===p.range)) _inq.range=p.range;
-      if(INQ_TYPES.some(t=>t.key===p.type)) _inq.type=p.type;
-      if(p.channel==='' || CLM_CH_LABEL[p.channel]) _inq.channel=p.channel||'';
-      if(typeof p.brand==='string' && (!p.brand || BRAND_SECTIONS.some(b=>b.id===p.brand))) _inq.brand=p.brand;
-    }catch(e){}
-  }
-  function _inqSavePrefs(){ try{ localStorage.setItem(INQ_PREF, JSON.stringify({range:_inq.range, type:_inq.type, channel:_inq.channel, brand:_inq.brand})) }catch(e){} }
-  function _inqPeriod(){
-    const t=_csiToday(), d=(INQ_RANGES.find(r=>r.key===_inq.range)||INQ_RANGES[1]).days, from=_csiAdd(t,-(d-1));
-    return {from, to:t, len:d, label:`최근 ${d}일`, pfrom:_csiAdd(from,-d), pto:_csiAdd(from,-1)};
-  }
-  // 기간 · 브랜드 · 채널 · 구분으로 거른 줄 (o.brand 를 주면 그 값으로 — 브랜드 탭 숫자)
-  function _inqRows(from, to, o){
-    o=o||{};
-    const b=o.brand!==undefined?o.brand:_inq.brand;
-    const L=(_inq.data && _inq.data.items) || [];
-    return L.filter(i=>i.date>=from && i.date<=to && (!b || i.brand===b) && (!_inq.channel || i.channel===_inq.channel)
-      && (!_inq.type || (_inq.type==='neg' ? (i.type==='review' && i.neg) : i.type===_inq.type)));
-  }
-  const _inqTopicsOf=i=>(Array.isArray(i.topics) && i.topics.length) ? i.topics : ['none'];
-
-  /* ── 탭 열기 · 받기 ── */
-  function inqShow(){
-    if(!document.getElementById('inqPane')) return;
-    if(!_inq.inited){
-      _inq.inited=true;
-      _inqLoadPrefs();
-      const seg=(id, list, attr, fn)=>{
-        const el=document.getElementById(id);
-        el.innerHTML=list.map(x=>`<button type="button" data-${attr}="${x.key}" aria-pressed="false">${x.label}</button>`).join('');
-        el.addEventListener('click',e=>{ const b=e.target.closest(`[data-${attr}]`); if(b) fn(b.dataset[attr]); });
-      };
-      seg('inqRange', INQ_RANGES, 'range', inqSetRange);
-      seg('inqType', INQ_TYPES, 'type', inqSetType);
-      document.getElementById('inqChannel').innerHTML=`<option value="">전체</option>`+CLM_CHANNELS.filter(([k])=>k!=='home').map(([k,v])=>`<option value="${k}">${_esc(v)}</option>`).join('');
-      document.getElementById('inqChannel').value=_inq.channel;
-      document.getElementById('inqBrandTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-b]'); if(b) inqSetBrand(b.dataset.b) });
-      document.getElementById('inqTopics').addEventListener('click',e=>{ const b=e.target.closest('[data-topic]'); if(b) inqSetTopic(b.dataset.topic===_inq.topic?'':b.dataset.topic) });
-      document.getElementById('inqTopicChips').addEventListener('click',e=>{ const b=e.target.closest('[data-topic]'); if(b) inqSetTopic(b.dataset.topic) });
-      const prods=document.getElementById('inqProducts');
-      prods.addEventListener('click',e=>{
-        const r=e.target.closest('tr[data-prod]'); if(!r) return;
-        const s=document.getElementById('inqSearch'); if(s) s.value=r.dataset.prod;
-        inqSetSearch(r.dataset.prod, true);
-        const L=document.getElementById('inqList'); if(L) L.scrollIntoView({behavior:'smooth', block:'start'});
-      });
-      prods.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('tr[data-prod]')){ e.preventDefault(); e.target.click(); } });
-      document.getElementById('inqListBody').addEventListener('click',e=>{
-        if(e.target.closest('[data-act="more"]')){ _inq.limit+=100; _inqRenderList(); return; }
-        const t=e.target.closest('[data-open]'); if(!t) return;
-        const id=t.dataset.open, on=!_inq.open.has(id);
-        on ? _inq.open.add(id) : _inq.open.delete(id);
-        const card=t.closest('.inq-item'); if(card) card.classList.toggle('open', on);
-        t.textContent=on?'접기':'더 보기';
-      });
-    }
-    inqRender();
-    inqLoad(false);
-  }
+  /* ── 💬 문의 · 리뷰 자동 수집 — 받기만 (2026-11-17 CS팀 탭 → 2026-11-20 밤 화면은 맨 아래 VOC 전산 voc/ 로 옮김,
+     사장님 "문의, 리뷰 목록도 같이 voc에 넣어줘"). 숫자 · 주제 · 많은 상품 · 목록은 voc/index.html '문의 · 리뷰 (자동 수집)' 메뉴가 그린다 —
+     여기는 VOC 전산이 bbVocShare().inq 로 빌려 가는 통로만.
+     데이터 (비공개 brightbeed-reports cs/inquiries.json, 맥미니 sixshop-collector inquiries-live 30분마다 — 규칙은 그 레포 docs/INQUIRIES.md). 읽기만 한다. */
+  const INQ_PATH='cs/inquiries.json', INQ_TTL=5*60*1000;
+  const _inq={data:null, at:0, loading:null, err:''};
   async function inqLoad(force){
     if(_inq.loading) return _inq.loading;
     if(!force && _inq.data && Date.now()-_inq.at<INQ_TTL) return;
-    _inqSync('loading');
     _inq.loading=(async()=>{
       try{
         const d=await _clmGet(INQ_PATH);
         if(!d) throw new Error('아직 수집 파일이 없어요');
         if(!Array.isArray(d.items)) throw new Error('파일 모양이 달라요');
-        _inq.data=d; _inq.at=Date.now(); _inq.err='';
+        _inq.data=d; _inq.err='';
       }catch(e){ _inq.err=(e && e.message) || String(e); }
-      finally{ _inq.loading=null; }
-      inqRender();
+      finally{ _inq.at=Date.now(); _inq.loading=null; }
     })();
     return _inq.loading;
-  }
-  function _inqSync(state){
-    const el=document.getElementById('inqSync'); if(!el) return;
-    if(state==='loading'){ el.removeAttribute('data-state'); el.textContent=_inq.data?'다시 받는 중…':'불러오는 중…'; return; }
-    if(_inq.err && !_inq.data){ el.dataset.state='err'; el.textContent='못 불러왔어요 — ↻'; return; }
-    el.removeAttribute('data-state');
-    el.textContent=_inq.data ? `${_clmKstHm(_inq.data.updated_at)} 기준 · 30분마다 자동 수집${_inq.err?' (방금 다시 받기는 실패)':''}` : '';
-  }
-  function inqSetRange(k){ if(!INQ_RANGES.some(r=>r.key===k)) return; _inq.range=k; _inq.limit=50; _inqSavePrefs(); inqRender(); }
-  function inqSetType(k){ _inq.type=INQ_TYPES.some(t=>t.key===k)?k:''; _inq.limit=50; _inqSavePrefs(); inqRender(); }
-  function inqSetChannel(k){ _inq.channel=CLM_CH_LABEL[k]?k:''; const s=document.getElementById('inqChannel'); if(s) s.value=_inq.channel; _inq.limit=50; _inqSavePrefs(); inqRender(); }
-  function inqSetBrand(k){ _inq.brand=k||''; _inq.limit=50; _inqSavePrefs(); inqRender(); const p=document.getElementById('inqBrandTabs'); if(p && p.getBoundingClientRect().top<0) p.scrollIntoView({block:'start'}); }
-  function inqSetTopic(k){ _inq.topic=INQ_TOPIC_LABEL[k]?k:''; _inq.limit=50; _inqRenderTopics(_inqRows(_inqPeriod().from, _inqPeriod().to)); _inqRenderList(); }
-  function inqSetSearch(q, now){ _inq.q=String(q||''); _inq.limit=50; clearTimeout(_inq.listT); if(now) _inqRenderList(); else _inq.listT=setTimeout(_inqRenderList,150); }
-
-  function inqRender(){
-    const pane=document.getElementById('inqPane'); if(!pane) return;
-    _inqSync();
-    document.querySelectorAll('#inqRange [data-range]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.range===_inq.range?'true':'false'));
-    document.querySelectorAll('#inqType [data-type]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.type===_inq.type?'true':'false'));
-    const first=document.getElementById('inqFirst'), main=document.getElementById('inqMain');
-    _inqRenderAlert();
-    _inqRenderBrandTabs();
-    if(!_inq.data){
-      first.hidden=false;
-      first.textContent=_inq.err ? `문의 · 리뷰를 못 불러왔어요 (${_inq.err}) — 오른쪽 위 ↻ 로 다시` : '문의 · 리뷰를 불러오는 중…';
-      main.hidden=true; return;
-    }
-    first.hidden=true; main.hidden=false;
-    const P=_inqPeriod();
-    document.getElementById('inqPeriod').textContent=`${P.label} · ${_csiMd(P.from)} ~ ${_csiMd(P.to)} · 고객이 남긴 날 기준`;
-    const cur=_inqRows(P.from, P.to), prev=_inqRows(P.pfrom, P.pto);
-    _inqRenderKpis(P, cur, prev);
-    _inqRenderTopics(cur);
-    _inqRenderProducts(cur);
-    _inqRenderList();
-    _inqRenderFoot();
-  }
-
-  // 못 받은 아이디 · 표에 없는 플레이오토 계정 · 멈춘 수집
-  function _inqRenderAlert(){
-    const el=document.getElementById('inqAlert'); if(!el) return;
-    const d=_inq.data, lines=[];
-    if(d){
-      for(const [k,s] of Object.entries(d.sources||{})) if(s && s.ok===false) lines.push(`플레이오토 ${_esc(k.replace('playauto:',''))}번 아이디를 못 받았어요 — ${_esc(s.note||'')}`);
-      if((d.unmapped||[]).length) lines.push(`표에 없는 플레이오토 계정 ${d.unmapped.length}개 (${_esc(d.unmapped.slice(0,3).join(', '))}) — 수집기 계정 표에 넣어야 보여요`);
-      const age=Date.now()-Date.parse(d.updated_at||'');
-      if(age>3*3600e3) lines.push(`수집이 ${Math.round(age/3600e3)}시간째 멈춰 있어요 — 맥미니 inquiries-live 확인`);
-    }
-    el.hidden=!lines.length;
-    el.innerHTML=lines.length ? `⚠ ${lines.join('<br>')}<br><span class="csi-muted">못 받은 곳은 지난번까지 받은 문의를 그대로 보여 줘요</span>` : '';
-  }
-
-  function _inqRenderBrandTabs(){
-    const el=document.getElementById('inqBrandTabs'); if(!el) return;
-    const P=_inqPeriod(), cnt=new Map();
-    let all=0;
-    if(_inq.data) for(const i of _inqRows(P.from, P.to, {brand:''})){ all++; cnt.set(i.brand,(cnt.get(i.brand)||0)+1); }
-    const tabs=[{id:'', label:'전체', dot:''}].concat(BRAND_SECTIONS.map(b=>({id:b.id, label:b.display, dot:b.dot||''})));
-    el.innerHTML=tabs.map(t=>{
-      const on=_inq.brand===t.id, n=t.id?(cnt.get(t.id)||0):all;
-      return `<button type="button" class="csi-btab${on?' on':''}" role="tab" aria-selected="${on}" data-b="${_esc(t.id)}">`
-        +(/^#[0-9a-f]{3,8}$/i.test(t.dot)?`<i class="csi-bdot" style="background:${t.dot}"></i>`:'')
-        +`${_esc(t.label)}<span class="n${n?'':' z'}">${_csiN(n)}</span></button>`;
-    }).join('');
-  }
-
-  /* ── 숫자 4칸 ── */
-  function _inqRenderKpis(P, cur, prev){
-    const el=document.getElementById('inqKpis'); if(!el) return;
-    const q=cur.filter(i=>i.type==='question'), r=cur.filter(i=>i.type==='review'), neg=r.filter(i=>i.neg);
-    const t=_csiToday(), y=_csiAdd(t,-1);
-    const nT=cur.filter(i=>i.date===t).length, nY=cur.filter(i=>i.date===y).length;
-    const topQ=_csiCountBy(q.flatMap(_inqTopicsOf).filter(k=>k!=='none'), k=>k).slice(0,2).map(([k,n])=>`${INQ_TOPIC_LABEL[k]} ${n}`).join(' · ');
-    const d=cur.length-prev.length;
-    const delta=(prev.length||cur.length) ? `<div class="csi-delta"><span>앞 ${P.len}일보다 ${d>0?'+':''}${_csiN(d)}건</span></div>` : '';
-    const tile=(label,val,unit,sub,extra,cls,tip)=>`<div class="csi-kpi clm-kpi${cls?' '+cls:''}"${tip?` title="${_esc(tip)}"`:''}><div class="csi-kpi-label">${label}</div><div class="csi-kpi-val">${val}<small>${unit}</small></div><div class="csi-kpi-sub">${sub}</div>${extra||''}</div>`;
-    el.innerHTML=
-      tile('문의 · 리뷰', _csiN(cur.length), '건', `상품문의 ${_csiN(q.length)} · 상품평 ${_csiN(r.length)}`, delta, '', '이 기간에 고객이 남긴 상품문의 · 상품평 (플레이오토가 모은 채널만)')
-      +tile('상품문의', _csiN(q.length), '건', topQ?_esc(topQ):'많이 나온 주제 없음', '', '', '많이 나온 주제 — 글에 나온 말로 나눈 것')
-      +tile('불만 상품평', _csiN(neg.length), '건', r.length?`상품평 ${_csiN(r.length)}건 중`:'상품평 없음', '', neg.length?'is-warn':'', '별로 · 실망 · 불량 · 아쉽 같은 말이 들어간 상품평 (칭찬 속 표현도 걸릴 수 있어요)')
-      +tile('오늘 · 어제', `${_csiN(nT)}<small> · </small>${_csiN(nY)}`, '건', `하루 평균 ${(cur.length/P.len).toFixed(1).replace(/\.0$/,'')}건`, '', '', '오늘 · 어제 고객이 남긴 것 (지금 고른 브랜드 · 채널 · 구분)');
-  }
-
-  /* ── 주제 막대 — 누르면 목록이 그 주제로 ── */
-  function _inqRenderTopics(cur){
-    const el=document.getElementById('inqTopics'); if(!el) return;
-    const cnt=new Map(); for(const i of cur) for(const k of _inqTopicsOf(i)) cnt.set(k,(cnt.get(k)||0)+1);
-    const max=Math.max(1, ...cnt.values());
-    const order=INQ_TOPICS.filter(([k])=>cnt.get(k)).sort((a,b)=>(a[0]==='none')-(b[0]==='none') || cnt.get(b[0])-cnt.get(a[0]));
-    el.innerHTML=`<div class="csi-card-head"><div><div class="csi-card-title">무엇을 묻나요</div><div class="csi-card-sub">글에 나온 말로 나눈 주제 · 한 글이 여러 주제일 수 있어요 · 누르면 목록이 그 주제로</div></div></div>`
-      +(cur.length ? `<div class="inq-bars">${order.map(([k,label])=>`<button type="button" class="inq-bar${_inq.topic===k?' on':''}" data-topic="${k}" aria-pressed="${_inq.topic===k}"><span class="inq-bar-l">${_esc(label)}</span><span class="inq-bar-t"><i style="width:${Math.max(3,Math.round(cnt.get(k)/max*100))}%"></i></span><span class="inq-bar-n">${_csiN(cnt.get(k))}</span></button>`).join('')}</div>`
-        : '<div class="csi-empty-line">이 기간에는 문의 · 리뷰가 없어요</div>');
-  }
-
-  /* ── 문의가 많은 상품 — 누르면 목록에서 그 상품만 ── */
-  function _inqRenderProducts(cur){
-    const el=document.getElementById('inqProducts'); if(!el) return;
-    const m=new Map();
-    for(const i of cur){
-      if(!i.product) continue;
-      const k=(_inq.brand?'':i.brand+'|')+i.product;
-      const x=m.get(k)||{name:i.product, brand:i.brand, n:0, q:0, r:0, neg:0, topics:new Map()};
-      x.n++; if(i.type==='review') x.r++; else x.q++; if(i.neg) x.neg++;
-      for(const t of _inqTopicsOf(i)) if(t!=='none') x.topics.set(t,(x.topics.get(t)||0)+1);
-      m.set(k,x);
-    }
-    const top=[...m.values()].sort((a,b)=>b.n-a.n).slice(0,10);
-    el.innerHTML=`<div class="csi-card-head"><div><div class="csi-card-title">문의가 많은 상품</div><div class="csi-card-sub">상위 10개 · 누르면 목록에서 그 상품만</div></div></div>`
-      +(top.length ? `<div class="csi-scroll"><table class="csi-tbl inq-ptbl"><thead><tr><th>상품</th><th class="n">문의</th><th class="n">상품평</th><th>많은 주제</th></tr></thead><tbody>${top.map(x=>`<tr data-prod="${_esc(x.name)}" tabindex="0" title="목록에서 이 상품만 보기">
-          <td><b>${_esc(x.name)}</b>${_inq.brand?'':`<div class="csi-muted">${_esc(_csiBrandLabel(x.brand))}</div>`}</td>
-          <td class="n">${_csiN(x.q)}</td>
-          <td class="n nw">${_csiN(x.r)}${x.neg?` <span class="clm-chip neg">불만 ${x.neg}</span>`:''}</td>
-          <td class="csi-muted">${[...x.topics.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,n])=>`${_esc(INQ_TOPIC_LABEL[k])} ${n}`).join(' · ')||'—'}</td></tr>`).join('')}</tbody></table></div>`
-        : '<div class="csi-empty-line">이 기간에는 상품이 붙은 문의 · 리뷰가 없어요</div>');
-  }
-
-  /* ── 목록 — 최신순, 긴 글은 3줄까지 (더 보기) ── */
-  function _inqRenderList(){
-    const body=document.getElementById('inqListBody'), sub=document.getElementById('inqListSub'); if(!body || !_inq.data) return;
-    const P=_inqPeriod(), q=_csiKeyName(_inq.q);
-    let rows=_inqRows(P.from, P.to);
-    if(_inq.topic) rows=rows.filter(i=>_inqTopicsOf(i).includes(_inq.topic));
-    if(q) rows=rows.filter(i=>_csiKeyName([i.product,i.title,i.text,i.order_no,i.cat,_clmChLabel(i.channel),_csiBrandLabel(i.brand)].join(' ')).includes(q));
-    const chips=document.getElementById('inqTopicChips');
-    if(chips) chips.innerHTML=[['','전체 주제']].concat(INQ_TOPICS).map(([k,l])=>`<button type="button" class="inq-chip${_inq.topic===k?' on':''}" data-topic="${k}" aria-pressed="${_inq.topic===k}">${_esc(l)}</button>`).join('');
-    sub.textContent=`${P.label} · ${_csiN(rows.length)}건 · 최신순${_inq.topic?` · 주제 ${INQ_TOPIC_LABEL[_inq.topic]}`:''}${_inq.q?` · 검색 "${_inq.q}"`:''}`;
-    if(!rows.length){ body.innerHTML=`<div class="csi-empty-line">${q||_inq.topic?'조건에 맞는 문의 · 리뷰가 없어요':'이 기간에는 문의 · 리뷰가 없어요'}</div>`; return; }
-    const y=_csiAdd(_csiToday(),-1), show=rows.slice(0,_inq.limit);
-    body.innerHTML=`<div class="inq-list">${show.map(i=>{
-      const text=String(i.text||''), long=text.length>150 || text.split('\n').length>3, open=_inq.open.has(i.id);
-      return `<article class="inq-item${open?' open':''}">
-        <div class="inq-meta"><span class="nw">${_csiMd(i.date)} <span class="csi-muted">${_esc(String(i.at||'').slice(11,16))}</span></span>${i.date>=y?'<span class="clm-chip new">새로</span>':''}
-          <span class="clm-chip ${i.type==='review'?'rv':'q'}">${i.type==='review'?'상품평':'상품문의'}</span>${i.neg?'<span class="clm-chip neg">불만</span>':''}
-          <span class="inq-ch">${_esc(_clmChLabel(i.channel))}${_inq.brand?'':` · ${_esc(_csiBrandLabel(i.brand))}`}</span>${i.cat?`<span class="csi-muted">${_esc(i.cat)}</span>`:''}
-          ${_inqTopicsOf(i).filter(k=>k!=='none').map(k=>`<span class="inq-topic">${_esc(INQ_TOPIC_LABEL[k]||k)}</span>`).join('')}</div>
-        <div class="inq-prod">${i.product?_esc(i.product):'<span class="csi-muted">상품 없이 남긴 문의</span>'}${i.order_no?` <span class="csi-muted">· 주문 ${_esc(i.order_no)}</span>`:''}</div>
-        ${i.title?`<div class="inq-title">${_esc(i.title)}</div>`:''}
-        <div class="inq-text">${_esc(text)}</div>
-        ${long?`<button type="button" class="inq-more" data-open="${_esc(i.id)}">${open?'접기':'더 보기'}</button>`:''}
-      </article>`;
-    }).join('')}</div>${rows.length>show.length?`<button type="button" class="csi-btn clm-more" data-act="more">더 보기 (${_csiN(rows.length-show.length)}건 더)</button>`:''}`;
-  }
-
-  function _inqRenderFoot(){
-    const el=document.getElementById('inqFoot'); if(!el || !_inq.data) return;
-    const d=_inq.data, s2=(d.sources||{})['playauto:2'], has2=(d.items||[]).some(i=>String(i.id).startsWith('pa2:'));
-    el.innerHTML=`<b>어디서 오나요</b> — 플레이오토 '문의 관리'에 쌓이는 상품문의 · 상품평 (스마트스토어 · 오늘의집 · 지그재그 · EQL · 쿠팡) · 30분마다 · 180일 보관<br>`
-      +`<b>29CM · W컨셉 · 에이블리 문의는 없어요</b> — 플레이오토가 이 세 곳의 문의는 가져오지 못해요. 각 판매자 화면에서 봐야 해요.<br>`
-      +(s2 && s2.ok && !has2 ? `<b>코페리 · 아페티는 아직 0건</b> — 플레이오토 2번 아이디는 상품문의 · 상품평 수집이 꺼져 있어요. 플레이오토에서 켜면 다음 수집부터 들어와요.<br>` : '')
-      +`<b>답변 여부는 몰라요</b> — 플레이오토는 문의 상태를 늘 '신규문의'로 둬요. 답은 각 채널 판매자 화면에서 해요.<br>`
-      +`<b>주제</b>는 글에 나온 말로 나눈 것 · <b>불만</b>은 별로 · 실망 · 불량 · 아쉽 같은 말이 든 상품평 · 고객 아이디 · 이름 · 연락처는 받지 않고, 글 속 전화번호 · 이메일 · 계좌번호는 가려요.`;
   }
 
   /* ── ↩️ 반품 · 교환 자동 수집 — 받기만 (2026-11-13 CS팀 메인 탭 → 2026-11-20 저녁 화면은 맨 아래 VOC 전산 voc/ 로 옮김) ──
