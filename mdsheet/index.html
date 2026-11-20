@@ -255,6 +255,7 @@
   .rz-line{position:fixed;top:0;bottom:0;z-index:90;width:0;border-left:2px solid var(--info);pointer-events:none}
   .rz-tip{position:fixed;z-index:91;padding:3px 8px;border-radius:6px;background:var(--info);color:#fff;font-size:11.5px;font-weight:700;pointer-events:none;font-variant-numeric:tabular-nums}
   body.rz-drag,body.rz-drag *{cursor:col-resize!important;user-select:none!important}
+  body.cdrag,body.cdrag *{cursor:cell!important;user-select:none!important}   /* 칸 끌어 고르는 중 */
   .tbl tr.empty td{height:120px;text-align:center;color:var(--text-4);cursor:default;box-shadow:none!important}
   .tbl tfoot td{position:sticky;bottom:0;z-index:2;height:36px;background:#f1f5f9;border-top:1px solid #cbd5e1;border-bottom:0;font-weight:700;font-variant-numeric:tabular-nums}
   .tbl tfoot td.sk{z-index:3}
@@ -469,7 +470,6 @@
     </div>
     <nav class="nav" id="nav"></nav>
     <div class="side-foot">
-      <a class="side-link" id="sideSheet" href="#" target="_blank" rel="noopener" title="구글시트 원본을 새 탭으로" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>구글시트 원본 열기</a>
       <a class="side-link home" href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>오피스 홈</a>
     </div>
   </aside>
@@ -487,7 +487,6 @@
       <button type="button" class="st is-load" id="st"><i class="dot"></i><span id="stText">불러오는 중…</span></button>
       <button type="button" class="ib" id="btnDense" title="줄 간격 촘촘하게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 9.7h16M4 14.3h16M4 19h16"/></svg></button>
       <button type="button" class="ib" id="btnFull" title="전체 화면 (모니터 꽉 채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-      <a class="ib" id="btnSheet" href="#" target="_blank" rel="noopener" title="구글시트에서 이 탭 열기 (새 탭)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
     </header>
     <section class="head">
       <div class="trow"><h1 id="title">불러오는 중…</h1><button type="button" class="tfav" id="tFav" hidden title="즐겨찾기">☆</button><span class="date" id="tDate" hidden></span><span class="tcap" id="tCap" hidden></span><div class="dates" id="dates"></div><div class="tools"><div class="fmtbar" id="fmtBar" hidden title="고른 칸 서식 — Shift+누르기 · Shift+화살표로 여러 칸"><button type="button" class="fb" data-fmt="b" title="굵게 (Ctrl+B)"><b>B</b></button><button type="button" class="fb cl" data-fmt="fg" title="글자 색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L12 4l6 14M8.5 12.5h7"/></svg><i id="fgBar"></i></button><button type="button" class="fb cl" data-fmt="bg" title="칸 색 (채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15.5s2 2.2 2 3.5a2 2 0 0 1-4 0c0-1.3 2-3.5 2-3.5z"/></svg><i id="bgBar"></i></button><button type="button" class="fb" data-fmt="clear" title="서식 지우기 (굵게 · 글자 색 · 칸 색)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5l-3 14M14 14l6 6M20 14l-6 6"/></svg></button></div><button type="button" class="etog" id="addRow" hidden title="마지막 줄 다음에 새 줄 (수식 칸은 시트가 자동 계산)">＋ 새 줄</button><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
@@ -511,7 +510,6 @@
       </div>
       <div class="d-title" id="dTitle"></div>
       <div class="d-sub" id="dSub"></div>
-      <a class="d-sheet" id="dSheet" href="#" target="_blank" rel="noopener" hidden>구글시트에서 이 줄 보기 ↗</a>
       <div class="d-hint" id="dHint"></div>
     </div>
     <div class="dbody"><dl class="dl" id="dList"></dl></div>
@@ -1336,10 +1334,13 @@
     const b0 = S.books[0];
     return (tabs.find(x => b0 && x.book === b0.book && /^product\s*list$/i.test(x.name)) || tabs.find(x => /^product\s*list$/i.test(x.name)) || tabs[0]).gid;
   }
-  // 전략팀 시트 링크 (기밀 명단 PC 만 · 저장소에 넣지 않고 오피스 PIN 프록시로 링크만) — 오피스 MD팀 구글시트 모음에 있던 것
+  // 전략팀 시트 링크 (저장소에 넣지 않고 오피스 PIN 프록시로 링크만) — 오피스 MD팀 구글시트 모음에 있던 것
+  // 2026-11-20 사장님 "대표만 보게하고 숨김처리" → 기밀 명단(지희선 포함)이 아니라 대표 둘(전승훈 · 전수빈) PC 에서만 받고 그린다
+  const BOSS = new Set(['전승훈', '전수빈']);
+  const bossOk = () => secretOk() && BOSS.has(String(lsGet('brightbeed_diary_me') || '').trim());
   let stratP = null;
   function loadStrat() {
-    if (!secretOk() || stratP) return;
+    if (!bossOk() || stratP) return;
     stratP = (async () => {
       let gf = null;
       try { gf = window.parent && window.parent !== window && typeof window.parent.ghFetch === 'function' ? window.parent.ghFetch : null; } catch (e) { gf = null; }
@@ -2043,7 +2044,7 @@
     });
     const total = (showRn ? RN_W : 0) + widths.reduce((s, w) => s + w, 0), sort = v.sort;
     let h = `<table class="tbl" style="width:max(100%,${total}px)"><colgroup>${showRn ? `<col style="width:${RN_W}px">` : ''}${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead><tr>`;
-    if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="시트 줄 번호 · 누르면 원래 순서로">행</th>`;
+    if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="줄 번호 (보이는 순서 1부터) · 누르면 원래 순서로">행</th>`;
     cols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
       const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '') + (fix[k] ? ' wfix' : '')).trim();
@@ -2055,7 +2056,7 @@
     const vr = S.vr = {list, cols, posOf, showRn, stickN, span: cols.length + (showRn ? 2 : 1), on: list.length > VR_MIN, a: 0, b: 0, rowH: rowHGuess(), tb: null};
     if (!list.length) h += `<tr class="empty"><td colspan="${vr.span}">${d.rows.length ? '조건에 맞는 줄이 없어요' : '이 탭은 비어 있어요'}</td></tr>`;
     else if (vr.on) h += vrBody(vr, 0, 0);
-    else for (const row of list) h += rowHtml(row, vr);
+    else list.forEach((row, i) => { h += rowHtml(row, vr, i); });
     h += '</tbody>';
     // 맨 아래 합계 (보이는 줄만 — 걸러 보면 그 줄들의 합)
     const sums = cols.map(c => c.sum ? list.reduce((s, r) => { const x = r.byP[c.p], n = x ? numOf(x.t) : null; return s + (n || 0); }, 0) : null);
@@ -2089,17 +2090,19 @@
   const VR_MIN = 60;
   const rowKey = () => `${S.dense ? 1 : 0}${narrow.matches ? 1 : 0}`;
   const rowHGuess = () => S.rowH[rowKey()] || (S.dense ? 28 : narrow.matches ? 42 : 34);
-  function rowHtml(row, vr) {
+  // 행 번호 = 지금 보이는 순서대로 1, 2, 3 … (2026-11-20 사장님 "행 번호가 마음대로인데 행은 그냥 1번부터 다 기재" — 걸러 보기 · 정렬해도 위에서부터 1번).
+  // 함수 주소(E5 등)는 여전히 시트 줄 번호(row.r)라 그 번호는 마우스를 올리면 보인다.
+  function rowHtml(row, vr, i) {
     const cls = ((S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? 'on' : '') + (row.lv ? ' lv-' + row.lv : '') + (row.sub ? ' sub' : '')).trim();
     let s = `<tr data-r="${row.r}"${cls ? ` class="${cls}"` : ''}>`;
-    if (vr.showRn) s += `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0" title="${row.r}행 — 누르면 이 줄 전체 보기${row.lv === 'low' ? ' · 품절 임박' : row.lv === 'out' ? ' · 품절' : ''}">${row.r}</td>`;
+    if (vr.showRn) s += `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0" title="${i + 1}번 줄 (함수 주소는 ${row.r}행) — 누르면 이 줄 전체 보기${row.lv === 'low' ? ' · 품절 임박' : row.lv === 'out' ? ' · 품절' : ''}">${i + 1}</td>`;
     for (let k = 0; k < vr.cols.length; k++) s += cellHtml(row, vr.cols[k], vr.posOf[k]);
     return s + '<td class="fill"></td></tr>';
   }
   const vrGap = (vr, n) => n > 0 ? `<tr class="vsp" aria-hidden="true"><td colspan="${vr.span}" style="height:${(n * vr.rowH).toFixed(2)}px"></td></tr>` : '';
   function vrBody(vr, a, b) {
     let s = vrGap(vr, a);
-    for (let i = a; i < b; i++) s += rowHtml(vr.list[i], vr);
+    for (let i = a; i < b; i++) s += rowHtml(vr.list[i], vr, i);
     return s + vrGap(vr, vr.list.length - b);
   }
   // 그릴 범위 [a, b) = 보이는 줄 ± 한 화면, [lo, hi) = 이 안이 다 그려져 있으면 다시 안 그림 (± 반 화면)
@@ -2293,8 +2296,8 @@
       h += '</div>';
     }
     if (grp === '재고 · 발주') h += erpItem();
-    if (S.strat.length) {
-      h += '<div class="nav-gt">전략팀 (대표 · 지희선)</div>';
+    if (S.strat.length && bossOk()) {
+      h += '<div class="nav-gt">전략팀 (대표 전용)</div>';
       S.strat.forEach((x, i) => { h += `<button type="button" class="nav-item lnk-item" data-strat="${i}" title="구글시트로 열기 (새 탭)"><i class="dot" style="background:#d4af37"></i><span class="nm">${esc(x.title)}</span><span class="go">↗</span></button>`; });
     }
     S.nav = list;
@@ -2474,6 +2477,7 @@
   grid.addEventListener('click', e => {
     if (e.target.closest('.rz') || Date.now() - RZ.justDragged < 400) return;   // 칸 너비를 끈 뒤 생기는 click 은 정렬로 보지 않는다
     if (Date.now() - (CE.refAt || 0) < 500) return;   // 함수에 칸 주소를 넣은 누르기 — 고치던 칸 그대로
+    if (Date.now() - DRG.at < 400) return;   // 칸을 끌어 범위를 고른 뒤 놓기 — 고른 범위 그대로
     const th = e.target.closest('th');
     if (th) {
       if (th.classList.contains('fill')) return;
@@ -3562,6 +3566,50 @@
   }
   grid.addEventListener('mousedown', e => {   // Shift+누르기는 글자 고르기가 아니라 칸 범위
     if (e.shiftKey && e.button === 0 && cellMode() && S.cell && e.target.closest && e.target.closest('tbody td[data-p]') && !(CE.x && CE.el && /^=/.test(CE.el.value))) e.preventDefault();
+  });
+  /* ── 칸 끌어 고르기 (2026-11-20 사장님 "md팀 시트에 칸 드래그해서 삭제하는 기능") — 엑셀처럼 칸을 누른 채 다른 칸으로 끌면 네모 범위.
+     놓은 뒤 Delete · Backspace = 고른 칸 모두 비우기 (clearSel · Ctrl+Z 로 되돌림), Ctrl+C · 서식 도구도 이 범위에. PC(cellMode)만.
+     한 칸 안에서 끌면 예전처럼 글자 고르기 — 다른 칸으로 넘어가는 순간부터 범위가 된다. 함수 입력 중 칸 누르기(주소 넣기)는 위 capture 단계에서 먼저 가져간다 */
+  const DRG = {on: null, at: 0};
+  grid.addEventListener('mousedown', e => {
+    if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || !cellMode()) return;
+    const td = e.target.closest && e.target.closest('tbody td[data-p]'), tr = td && td.closest('tr[data-r]');
+    if (!td || !tr || td.classList.contains('rn') || e.target.closest('a,img,input,textarea,button')) return;
+    DRG.on = {r: +tr.dataset.r, p: +td.dataset.p, moved: false};
+  });
+  document.addEventListener('mousemove', e => {
+    const d = DRG.on;
+    if (!d) return;
+    if (!(e.buttons & 1)) { DRG.on = null; document.body.classList.remove('cdrag'); return; }
+    if (d.moved) {   // 표 가장자리로 끌면 그쪽으로 조금씩 굴린다
+      const g = grid.getBoundingClientRect();
+      if (e.clientY > g.bottom - 24) grid.scrollTop += 22; else if (e.clientY < g.top + 50) grid.scrollTop -= 22;
+      if (e.clientX > g.right - 24) grid.scrollLeft += 22; else if (e.clientX < g.left + 16) grid.scrollLeft -= 22;
+    }
+    const td = e.target.closest && e.target.closest('#grid tbody td[data-p]'), tr = td && td.closest('tr[data-r]');
+    if (!td || !tr || td.classList.contains('rn')) return;
+    const r = +tr.dataset.r, p = +td.dataset.p;
+    if (!d.moved) {
+      if (r === d.r && p === d.p) return;   // 아직 누른 칸 안 — 그냥 누르기 (바로 고치기)
+      d.moved = true;
+      if (CE.x) commitCell(0, 0, true);
+      hideTip();
+      setCell(d.r, d.p);
+      document.body.classList.add('cdrag');
+      if (document.activeElement !== grid) grid.focus({preventScroll: true});   // Delete 키를 표가 받게
+    }
+    try { const s = window.getSelection(); if (s && s.rangeCount) s.removeAllRanges(); } catch (er) { /* 무시 */ }
+    const same = r === d.r && p === d.p;
+    if (same ? !S.cell2 : (S.cell2 && S.cell2.r === r && S.cell2.p === p)) return;
+    S.cell2 = same ? null : {r, p};
+    paintRng();
+  });
+  document.addEventListener('mouseup', () => {
+    const d = DRG.on;
+    DRG.on = null;
+    if (!d || !d.moved) return;
+    DRG.at = Date.now();   // 놓을 때 생기는 click 은 고치기 · 상세 창으로 보지 않는다
+    document.body.classList.remove('cdrag');
   });
   function fmtBar() {
     const bar = $('fmtBar');
