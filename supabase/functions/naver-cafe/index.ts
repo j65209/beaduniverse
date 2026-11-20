@@ -181,8 +181,8 @@ async function writeArticle(cfg: Row, token: string, post: Row): Promise<WriteRe
   };
 }
 
-// 이 코드는 다시 해도 소용없음 → 끄고 알림 (활동 정지·스팸 차단·권한 없음)
-const STOP_CODES = new Set(["AP002", "AP003", "AP004", "AP005", "AP006", "AP007", "AP008", "CA002", "0005"]);
+// 이 코드는 다시 해도 소용없음 → 끄고 알림 (활동 정지·스팸 차단·권한 없음·카페 권한 동의 빠짐(024))
+const STOP_CODES = new Set(["AP002", "AP003", "AP004", "AP005", "AP006", "AP007", "AP008", "CA002", "0005", "024"]);
 
 async function run(force: boolean): Promise<Row> {
   const nowIso = new Date().toISOString();
@@ -265,6 +265,7 @@ async function handleConnect(url: URL): Promise<Response> {
     client_id: (await creds()).id,
     redirect_uri: CALLBACK_URL,
     state: k,
+    auth_type: "reprompt", // 동의 화면을 매번 다시 띄움(카페 권한을 빠뜨렸을 때 다시 체크할 수 있게)
   }).toString();
   return Response.redirect(auth.toString(), 302);
 }
