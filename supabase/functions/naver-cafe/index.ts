@@ -154,7 +154,9 @@ async function writeArticle(cfg: Row, token: string, post: Row): Promise<WriteRe
   const form = new FormData();
   // 문서: 제목·본문은 URL 인코딩해서 보냄(멀티파트 예제 기준)
   form.append("subject", encodeURIComponent(post.subject));
-  form.append("content", encodeURIComponent(post.content_html));
+  // 본문 HTML 속성값에 큰따옴표가 있으면 403/999 로 거절됨(네이버 답변, 2026-11-20 실제로 겪음) → 작은따옴표로
+  const html = String(post.content_html).replace(/=\s*"([^"]*)"/g, "='$1'");
+  form.append("content", encodeURIComponent(html));
   const opts = post.options || {};
   for (const k of ["openyn", "searchopen", "replyyn", "scrapyn", "metoo", "autosourcing", "rclick", "ccl"]) {
     if (k in opts) form.append(k, String(opts[k]));
