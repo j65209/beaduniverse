@@ -4121,7 +4121,9 @@
       if (!d.main.length && !d.fx.length && !d.sheet.length) body = '<div class="lch lop">바뀐 값 없음</div>';
     }
     const at = new Date(h.logged_at);
-    return `<li class="lgit" tabindex="0" role="button" data-g="${esc(h.gid)}" data-r="${h.r}"${h.p != null ? ` data-p="${h.p}"` : ''} title="눌러서 이 줄 보기 · ${esc(at.toLocaleString('ko-KR'))}">`
+    // data-k · data-o = 그때 상품명 · 옵션 — 맨 위 ⚠ 배너 줄이 생기고 지워지면 시트 줄 번호가 한 칸씩 밀리므로 누를 때 이름으로 다시 찾는다 (logJump)
+    const kAttr = kp >= 0 && v[kp] != null && String(v[kp]).trim() ? ` data-k="${esc(String(v[kp]).trim())}"${op >= 0 ? ` data-o="${esc(opt)}"` : ''}` : '';
+    return `<li class="lgit" tabindex="0" role="button" data-g="${esc(h.gid)}" data-r="${h.r}"${h.p != null ? ` data-p="${h.p}"` : ''}${kAttr} title="눌러서 이 줄 보기 · ${esc(at.toLocaleString('ko-KR'))}">`
       + `<div class="lw"><b>${esc(nm || '(이름 없는 줄)')}</b>${opt ? `<span class="lo2">${esc(opt)}</span>` : ''}<span class="lr">${h.r}행 · ${hhmm(at)}</span></div>${body}</li>`;
   }
   function renderLog() {
@@ -4182,14 +4184,21 @@
     $('logScrim').hidden = true;
     $('btnLog').classList.remove('on');
   }
-  function logJump(gid, r, p) {   // 그 탭 · 그 줄 상세 창을 열고, 고친 칸을 잠깐 노랗게
+  function logJump(gid, r, p, k, o) {   // 그 탭 · 그 줄 상세 창을 열고, 고친 칸을 잠깐 노랗게
     if (!tabOf(gid)) { toast('지금은 없는 탭이에요 (시트에서 지워졌어요)', true); return; }
     closeLog();
     if (S.cur !== gid) openTab(gid);
     let n = 0;
     (function go() {
       if (S.cur !== gid) return;
-      const d = curData(), row = d && d.rows.find(x => x.r === r);
+      const d = curData();
+      let row = d && d.rows.find(x => x.r === r);
+      // 줄 번호가 밀렸으면(맨 위 ⚠ 배너 줄이 생기거나 지워짐) 그때 상품명 · 옵션으로 다시 찾는다 — 딱 한 줄일 때만
+      if (d && k) {
+        const kc = d.cols.find(c => c.key), oc = d.cols.find(c => OPT_RE.test(norm(c.name)));
+        const same = x => kc && String(catVal(x, kc.p)).trim() === k && (o == null || !oc || String(catVal(x, oc.p)).trim() === o);
+        if (kc && (!row || !same(row))) { const m = d.rows.filter(same); if (m.length === 1) { row = m[0]; r = row.r; } }
+      }
       if (!row) { if (++n < 60) setTimeout(go, 200); else if (d) toast(`${r}행은 지금 표에 없어요 (지웠거나 비운 줄)`, true); return; }
       openDetail(r, true);
       const dd = p != null ? $('dList').querySelector(`dd[data-p="${p}"]`) : null;
@@ -4208,7 +4217,7 @@
     const a = e.target.closest('[data-act]');
     if (a) { if (a.dataset.act === 'more') logLoad(true); else logReload(); return; }
     const it = e.target.closest('.lgit');
-    if (it && !(window.getSelection && String(window.getSelection()).length)) logJump(it.dataset.g, +it.dataset.r, it.dataset.p != null ? +it.dataset.p : null);
+    if (it && !(window.getSelection && String(window.getSelection()).length)) logJump(it.dataset.g, +it.dataset.r, it.dataset.p != null ? +it.dataset.p : null, it.dataset.k || '', it.dataset.o != null ? it.dataset.o : null);
   });
   $('logList').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('lgit')) { e.preventDefault(); e.target.click(); } });
   setInterval(() => {
