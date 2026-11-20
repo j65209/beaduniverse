@@ -201,6 +201,15 @@
   .tbl tbody tr.lv-low td.rn,.tbl tbody tr.lv-out td.rn{box-shadow:inset 3px 0 0 #f87171}
   .tbl tbody tr.lv-out td.rn{box-shadow:inset 3px 0 0 #dc2626}
   .tbl td .blank{color:#dc2626;font-size:11.5px;font-weight:600}   /* 남은 재고 빈칸 = 세어서 적을 줄 */
+  /* 식스샵프로 상태 배지 (2026-11-20 사용자 "행 우측에 간단하게 판매중, 판매중지, 품절") — 색은 품절 빨강 하나, 나머지 무채색 */
+  .pro{display:inline-block;padding:1px 7px;border-radius:5px;border:1px solid;font-size:11.5px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle}
+  .pro.on{background:#fff;border-color:#cbd5e1;color:#334155}
+  .pro.sold{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+  .pro.off{background:#eef1f5;border-color:#e2e8f0;color:#64748b}
+  .pro-sub{margin-left:6px;font-size:12px;color:var(--text-3)}
+  .tbl .skr{position:sticky;z-index:1;box-shadow:inset 1px 0 0 #d5dce5}   /* 식스샵프로 칸 — 표가 넓어도 오른쪽 끝에 늘 보이게 (PC) */
+  .tbl th.skr{z-index:4}
+  .tbl tfoot td.skr{z-index:3}
   /* 엑셀처럼 고르기 · 고치기 (PC) — 고른 칸 파란 테두리, 저장 중 = 오른쪽 위 파란 점, 못 씀 = 빨간 점 */
   .tbl td.csel{box-shadow:inset 0 0 0 2px var(--info)!important}
   .tbl td.pend{position:relative}
@@ -468,6 +477,9 @@
   const LS_TABS = 'erp_tabs_v1', IDB_NAME = 'erp_cache', CACHE_VER = 3, PREFETCH_GAP = 300;
   const LS_TAB = 'erp_tab_v1', LS_DENSE = 'erp_dense_v1', LS_COLW = 'erp_colw_v1';
   const LOW_STOCK = 10;         // 품절 임박 = 남은 재고 10개 이하 (재고 연동이 식스샵프로 수량관리를 거는 기준과 같음)
+  // 식스샵프로 상태 열 (재고 탭 맨 오른쪽) — 저장소 erp_pro: 재고 연동(stock-sync, 5분)이 식스샵 옵션 ↔ 줄 연결로 센 것을 맥미니가 올림
+  const PRO_P = 9999, PRO_LABEL = {on: '판매중', sold: '품절', off: '판매중지'}, PRO_ORDER = {on: 1, sold: 2, off: 3};
+  const PRO_WHY = '식스샵프로 상태는 여기서 못 바꿔요 — 식스샵 관리자나 오피스 홈 [상품 상태](관리자)에서 바꾸면 5분 안에 따라와요';
   // 브랜드 점 색 = 오피스 '실시간 재고' 브랜드 색
   const BRANDS = [
     {k: '코페리', name: '코페리', color: '#818cf8', re: /코페리/},
@@ -528,6 +540,7 @@
     fullAt: {},           // gid → 줄 전체를 받은 시각 (그 사이엔 바뀐 줄만)
     pollMax: 0, pollAt: 0, pollBusy: false, pollErr: 0,   // 저장소에서 마지막으로 본 바뀜 번호 · 시각
     synced: {}, skew: 0,  // gid → 맥미니가 시트와 마지막으로 맞춘 시각 · 서버 시계 - 이 PC 시계
+    pro: {}, proBusy: {}, // gid → {ver, at, map: {시트행: [on|sold|off, 판매중 수, 품절 수, 판매중지 수, 세트로만]}} 식스샵프로 상태
     terms: [], hlRe: null, list: [], sel: null,
     cell: null,           // PC 에서 고른 칸 {gid, r, p} (엑셀처럼 화살표로 옮김)
     stick: new Set(),     // 걸러 보는 중에 고친 줄 — 조건에서 벗어나도 걸러보기를 바꿀 때까지 그대로 보임 (엑셀 필터처럼)
@@ -694,6 +707,12 @@
       S.pollMax = Math.max(S.pollMax, +j.max || 0);
       if (meta) loadTabs().catch(() => {});
       syncCur();
+      // 식스샵프로 상태 — 바뀐 탭은 다음에 열 때, 보고 있는 탭은 바로
+      for (const [g, a] of Object.entries(j.pro || {})) {
+        const cur = S.pro[g];
+        if (cur && +cur.ver !== +a[0]) cur.stale = true;
+        if (g === S.cur && (!cur || cur.stale)) loadPro(g);
+      }
     } catch (e) {
       S.pollErr++;
     } finally {
@@ -706,6 +725,23 @@
     const t = tabOf(S.cur), c = S.cache.get(S.cur);
     if (!t || !t.info || S.busy[S.cur]) return;
     if (!c || c.stored || c.direct || c.rowsVer < +t.info.rows_ver || Date.now() - (S.fullAt[S.cur] || 0) > FULL_MS) loadSheet(S.cur);
+  }
+
+  // 식스샵프로 상태 받기 (재고 탭만) → 그 탭 표를 다시 짠다
+  function loadPro(gid) {
+    const t = tabOf(gid), m = t ? (t.meta || classify(t.name)) : null;
+    if (!m || m.sec !== 'stock' || S.proBusy[gid]) return;
+    S.proBusy[gid] = true;
+    sbFetch(`erp_pro?select=pro,at,ver&gid=eq.${encodeURIComponent(gid)}`).then(rows => {
+      const x = rows && rows[0];
+      if (!x) return;
+      S.pro[gid] = {ver: +x.ver, at: x.at, map: x.pro || {}};
+      const ent = S.cache.get(gid);
+      if (ent && ent.model) {
+        ent.data = buildAll(ent.model, tabOf(gid));
+        if (gid === S.cur) { renderHead(); softRender(); }
+      }
+    }).catch(() => {}).finally(() => { delete S.proBusy[gid]; });
   }
 
   /* ── 한 탭 줄 받기 — erp_rows (줄 = 시트 한 줄, v = 칸 표시값). 처음 · 10분마다 전체, 그 사이엔 바뀐 줄(ver)만 ── */
@@ -898,6 +934,13 @@
     // 기밀 명단 밖 — 원가 · 단가 · 판매가 · 위안 · 공급처 열은 표 · 상세 창 · 찾기에서 아예 뺀다 (공급처 · 구글시트 링크 칸은 위 modelFromRows 에서 이미 비움)
     if (!secretOk()) for (let i = cols.length - 1; i >= 0; i--) { const c = cols[i]; if (SECRET_HEAD_RE.test(c.name) || c.yen) cols.splice(i, 1); }
     if (meta.sec === 'stock' && !side) stockLayout(cols, dataIdx.map(k => grid2[k]));
+    // 식스샵프로 상태 — 재고 탭 맨 오른쪽 (2026-11-20 사용자 "행 우측에 간단하게 판매중, 판매중지, 품절 이렇게 현재 식스샵프로 상태도 배지로")
+    const proInfo = meta.sec === 'stock' && !side && tab ? S.pro[tab.gid] || null : null;
+    if (meta.sec === 'stock' && !side) {
+      const at = proInfo && proInfo.at ? new Date(proInfo.at) : null;
+      cols.push({p: PRO_P, name: '식스샵프로', type: 'pro', pro: true, keep: true, align: '',
+        tip: `식스샵프로 지금 상태 — 판매중 · 품절(일시 품절 · 수량 0) · 판매중지${at ? `, ${pad2(at.getHours())}:${pad2(at.getMinutes())} 기준` : ''} · 재고 연동이 5분마다 확인`});
+    }
     const outRows = dataIdx.map(k => {
       const byP = grid2[k];
       let txt = '';
@@ -909,8 +952,10 @@
         if (hx) txt += ' ' + hx.all.map(histText).join(' ');   // '9/30' 으로 찾아도 나오게
         else if (col.lead && c.t) txt += ' ' + leadText(c.t);
       });
+      const pro = proInfo && proInfo.map ? proInfo.map[rows[k].r] || null : null;
+      if (pro) txt += ' ' + PRO_LABEL[pro[0]];   // '품절' · '판매중지' 로 찾아도 나오게
       const kk = txt.toLowerCase();
-      return {r: rows[k].r, byP, k: kk, k2: kk.replace(/\s+/g, '')};
+      return {r: rows[k].r, byP, k: kk, k2: kk.replace(/\s+/g, ''), pro};
     });
     const keyIdx = cols.findIndex(c => c.key);
 
@@ -1109,6 +1154,13 @@
   }
   function fitCols(d) {
     d.cols.forEach(col => {
+      if (col.pro) {   // 식스샵프로 배지 칸 — 늘 같은 폭
+        col.hm = headMin(col.name) + PAD + 4;
+        col.max = col.pref = col.min = Math.ceil(Math.max(col.hm, tw('판매중지', F_BOLD) + PAD + 18));
+        col.flex = col.sparse = col.wrap = false;
+        col.word = 0;
+        return;
+      }
       const narrowPad = col.type === 'num' || col.type === 'check' || col.type === 'img';   // 숫자 · 체크 · 사진 칸은 여백 6px
       const pad = narrowPad ? PAD - 4 : PAD, hm = headMin(col.name) + pad + 4, ws = [], w2 = [], lw = [];
       col.hm = hm;
@@ -1256,9 +1308,15 @@
       }
       else if (col.stock && row.item) inner = '<span class="blank">빈칸</span>';   // 남은 재고 빈칸 = 세어서 적을 줄
     }
+    if (col.pro && row.pro) { inner = proBadge(row.pro); title = proText(row.pro); }
     if (col.key && row.iss) title = (title ? title + '\n' : '') + '⚠ ' + row.iss.join('\n⚠ ');
     cls = cls.trim();
     return `<td data-p="${col.p}"${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
+  }
+  const proBadge = s => `<span class="pro ${s[0]}">${PRO_LABEL[s[0]] || ''}</span>`;
+  function proText(s) {   // 마우스 · 상세 창 — 연결된 식스샵 옵션 수
+    const parts = [s[1] ? `판매중 ${s[1]}` : '', s[2] ? `품절 ${s[2]}` : '', s[3] ? `판매중지 ${s[3]}` : ''].filter(Boolean);
+    return `식스샵프로 ${PRO_LABEL[s[0]]} — 이 줄에 연결된 식스샵 옵션 ${parts.join(' · ')}${s[4] ? ' (세트 상품으로만 연결)' : ''}`;
   }
   function skeleton() {
     let h = '<div class="skel">';
@@ -1275,9 +1333,10 @@
       const col = d.cols.find(c => c.p === v.sort.p), dir = v.sort.dir;
       if (col) {
         const key = r => {
+          if (col.pro) return r.pro ? PRO_ORDER[r.pro[0]] : null;   // 판매중 → 품절 → 판매중지
           const c = r.byP[col.p];
           if (!c) return null;
-          if (col.type === 'check') return c.cb === 2 ? 1 : 0;
+          if (col.type === 'check') return c.cb === 2 ? 1 : 0;   // (식스샵프로 칸은 아래 key 앞에서)
           const hx = col.hist && hxOf(c);
           if (hx) return hx.latest.ord;   // 최근 날짜 순
           if (col.lead && c.t) { const s = leadText(c.t), n = s.match(/^\d+/); return n ? +n[0] : s; }   // 소요일 수 순
@@ -1331,7 +1390,7 @@
     const nar = narrow.matches, showRn = !nar, vw = grid.clientWidth || 1000;
     let cols = d.cols.filter(c => S.showEmpty || !c.empty || c.key || c.keep), stickN = 0, keyFirst = false;   // keep = 재고 탭 기본 칸 (비어도 보임)
     if (nar && cols.some(c => c.key)) {
-      const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.strong ? 3 : c.status ? 4 : 5;
+      const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.pro ? 2.5 : c.strong ? 3 : c.status ? 4 : 5;   // 휴대폰: 식스샵프로 상태는 남은 재고 바로 뒤
       cols = cols.map((c, i) => [c, i]).sort((x, y) => pri(x[0]) - pri(y[0]) || x[1] - y[1]).map(x => x[0]);
       stickN = 1;
       keyFirst = true;
@@ -1348,6 +1407,7 @@
     let left = showRn ? RN_W : 0;
     while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (keyFirst ? 0.62 : 0.5)) stickN--;
     const posOf = cols.map((c, k) => {
+      if (c.pro && !nar) return {cls: ' skr', style: 'right:0;'};   // 식스샵프로 상태 — 오른쪽 끝 고정 (PC)
       if (k >= stickN) return null;
       const p = {cls: ` sk${k === stickN - 1 ? ' skl' : ''}`, style: `left:${left}px;`};
       left += widths[k];
@@ -1720,6 +1780,7 @@
     if (!c) useStored(gid);   // 저장본이 있으면 바로 띄우고, 새 자료(바뀐 줄)는 뒤에서
     const tt = tabOf(gid);   // 탭 정보(줄 번호표)를 아직 못 받았으면 저장본만 띄우고, 받은 뒤 loadTabs → syncCur 가 받는다
     if (tt && tt.info && (!c || c.stored || c.direct || c.rowsVer < +tt.info.rows_ver || Date.now() - (S.fullAt[gid] || 0) > FULL_MS)) loadSheet(gid);
+    if (!S.pro[gid] || S.pro[gid].stale) loadPro(gid);   // 식스샵프로 상태 (재고 탭만)
     paintStatus();
   }
 
@@ -1859,7 +1920,7 @@
     $('dSheet').hidden = !secretOk();
     // 이름 · 카테고리 확인할 것 (재고 탭) — 맨 위에 빨간 글로
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}</dd>` : '')
-      + d.cols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}</dd>`).join('');
+      + d.cols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${c.pro ? (row.pro ? `${proBadge(row.pro)}<span class="pro-sub">${esc(proText(row.pro).replace(/^식스샵프로 \S+ — /, ''))}</span>` : '<span class="none">식스샵에 연결된 상품 없음</span>') : detailVal(c, row.byP[c.p])}</dd>`).join('');
     markEditable();
     const det = $('detail'), was = det.hidden;
     det.hidden = false;
@@ -1997,6 +2058,7 @@
     const d = curData(), ent = S.cache.get(gid), t = tabOf(gid);
     if (gid !== S.cur || !d || !ent || !ent.model || !t) return null;
     const col = d.cols.find(c => c.p === p), row = d.rows.find(x => x.r === r), mc = ent.model.cols[p];
+    if (col && col.pro && row) return {gid, name: t.name, col, cell: null, p, row: r, r, sc: 0, check: false, why: PRO_WHY};
     if (!col || !row || !mc) return null;
     const cell = row.byP[p] || null;
     const why = d.side ? '집계 표는 시트가 자동으로 만든 표라 고칠 수 없어요'
