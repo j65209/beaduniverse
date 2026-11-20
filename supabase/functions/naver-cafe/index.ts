@@ -65,6 +65,23 @@ async function writeLog(ok: boolean, detail: string, postId: number | null = nul
   await db.from("naver_cafe_log").insert({ ok, detail: detail.slice(0, 2000), post_id: postId });
 }
 
+// 알림: 꿀꿀집 텔레그램(봇·방은 sns_settings 의 tg_bot_token·tg_chat_id 를 같이 씀). 실패해도 글쓰기엔 영향 없음.
+async function notify(text: string): Promise<boolean> {
+  try {
+    const { data } = await db.from("sns_settings").select("key,value").in("key", ["tg_bot_token", "tg_chat_id"]);
+    const kv = Object.fromEntries((data ?? []).map((r: Row) => [r.key, r.value]));
+    if (!kv.tg_bot_token || !kv.tg_chat_id) return false;
+    const r = await fetch(`https://api.telegram.org/bot${kv.tg_bot_token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: kv.tg_chat_id, text }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 function minutesOf(t: string): number {
   const [h, m] = String(t).split(":").map(Number);
   return h * 60 + (m || 0);
@@ -213,6 +230,7 @@ async function run(force: boolean): Promise<Row> {
       const next = nextRun(cfg, false);
       await writeLog(false, "올릴 글이 없어 건너뜀");
       await setConfig({ running_since: null, next_run_at: next.toISOString(), last_result: "올릴 글 없음" });
+      await notify(`ℹ️ 네이버 카페 · 올릴 글이 없어 오늘은 건너뛰었어요.\n다음 확인: ${kstLabel(next)}`);
       return { skipped: "no_post", next: next.toISOString() };
     }
 
@@ -232,6 +250,7 @@ async function run(force: boolean): Promise<Row> {
       const next = nextRun(cfg, false);
       await writeLog(true, `올림 ${res.url}`, post.id);
       await setConfig({ running_since: null, next_run_at: next.toISOString(), last_result: `${kstLabel(new Date())} 올림 ${res.url}` });
+      await notify(`📝 네이버 카페 글 올림 · ${cfg.menu_name ?? `게시판 ${cfg.menu_id}`}\n${post.subject}\n${res.url}\n다음 예정: ${kstLabel(next)}`);
       return { ok: true, url: res.url, next: next.toISOString() };
     }
 
@@ -243,6 +262,7 @@ async function run(force: boolean): Promise<Row> {
     if (STOP_CODES.has(res.code)) {
       if (res.code === "AP005") await db.from("naver_cafe_posts").update({ status: "failed" }).eq("id", post.id);
       await setConfig({ running_since: null, enabled: false, last_result: `멈춤 — ${detail}` });
+      await notify(`⛔ 네이버 카페 자동 글 멈춤\n${detail}\n고친 뒤 다시 켜야 올라가요.`);
       return { ok: false, stopped: true, detail };
     }
     // 일시 오류(서버 오류 등)는 20~40분 뒤 최대 3번, 그 뒤엔 내일
@@ -250,12 +270,14 @@ async function run(force: boolean): Promise<Row> {
     const next = retry ? new Date(Date.now() + (20 + Math.floor(rand01() * 20)) * 60000) : nextRun(cfg, false);
     if (!retry) await db.from("naver_cafe_posts").update({ attempts: 0 }).eq("id", post.id);
     await setConfig({ running_since: null, next_run_at: next.toISOString(), last_result: detail });
+    await notify(`⚠️ 네이버 카페 글 실패\n${detail}\n다음 시도: ${kstLabel(next)}`);
     return { ok: false, detail, next: next.toISOString() };
   } catch (e) {
     const detail = `오류 ${(e as Error).message}`;
     await writeLog(false, detail, post?.id ?? null);
     const next = nextRun(cfg, false);
     await setConfig({ running_since: null, next_run_at: next.toISOString(), last_result: detail });
+    await notify(`⚠️ 네이버 카페 글 오류\n${detail}\n다음 시도: ${kstLabel(next)}`);
     return { ok: false, detail, next: next.toISOString() };
   }
 }
@@ -336,6 +358,12 @@ Deno.serve(async (req: Request) => {
       const body: Row = await req.json().catch(() => ({}));
 
       if (action === "run") return json(await run(body.force === true));
+
+      if (action === "notify") {
+        const text = String(body.text ?? "").trim();
+        if (!text) return json({ error: "text 필요" }, 400);
+        return json({ ok: await notify(text) });
+      }
 
       if (action === "schedule") {
         const cfg = await getConfig();

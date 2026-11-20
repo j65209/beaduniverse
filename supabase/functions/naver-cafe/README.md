@@ -43,3 +43,8 @@ select * from naver_cafe_log order by id desc limit 10;
 - **403 999**: 본문 HTML 속성값의 큰따옴표(`color="#ff0000"`) 때문. 작은따옴표로 바꾸니 바로 올라감 → 함수가 보낼 때 자동으로 바꿈.
 - **말머리**: 공식 API 에 말머리 항목이 없어 말머리 없이 올라감(이 게시판은 그래도 받아줌).
 - 네이버 카페 화면은 크롬 확장·내장 브라우저 모두 안전 정책으로 막힘, 글 내용 자동 읽기(공유 링크 API)도 자동 모드 검사가 막음 → 글·사진은 사용자에게 받음.
+
+## 알림 (2026-11-20~)
+- 올림·실패·멈춤·건너뜀을 **꿀꿀집 텔레그램 '꿀꿀집 카드뉴스' 방**으로 보냄 (봇·방은 `sns_settings` 의 `tg_bot_token`·`tg_chat_id` 를 같이 씀, 봇이 보낸 글은 sns-tg 웹훅에 안 들어감)
+- 직접 보내기: `POST /naver-cafe/notify {"text":"…"}` (x-cafe-cron)
+- 사진 위치: posts.options.image_markers='end' → 본문 끝에 `<img src='#0' />`… (공식 문서엔 없음). 말머리: options.headid (번호 아직 모름, 첫 글은 사용자가 직접 '여구인' 으로 고침)
