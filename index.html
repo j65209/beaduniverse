@@ -19876,7 +19876,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(it){
       const stCls=it.status==='판매중'?'is-ok':it.status?'is-bad':'';
       if(it.status) meta.push(`<span class="pa-chip ${stCls}">${_bestEsc(it.status)}</span>`);
-      if(it.price) meta.push(`판매가 ${_pixN(it.price)}원`);
+      if(it.price && secretOk()) meta.push(`판매가 ${_pixN(it.price)}원`);   // 판매가 = 기밀 (지희선 · 전승훈 · 전수빈만, 2026-11-20)
     }else if(!p.catOnly){
       meta.push('<span class="pa-chip" title="식스샵 상품 목록에서 같은 이름 · 코드를 못 찾음 — 이름이 바뀌었거나 내린 상품">상품 목록에 없음</span>');
     }
@@ -19909,7 +19909,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       kpi('판매 수량', `${_pixN(cur.qty)}<small>개</small>`, prev?_paDelta(cur.qty,prev.qty,v=>_pixN(v)+'개'):'바로 앞 기간 자료 없음'),
       kpi('매출 (실결제)', _pixWon(cur.paid), prev?_paDelta(cur.paid,prev.paid,_pixWon):''),
       kpi('주문', `${_pixN(cur.orders)}<small>건</small>`, `하루 평균 ${_pixN(cur.qty/n)}개 판매`),
-      kpi('평균 판매가', cur.qty?`${_pixN(Math.round(avg))}<small>원</small>`:'–', cur.qty?(disc>0.0005?`쿠폰 · 적립금 등 ${_pixPct(cur.gross-cur.paid,cur.gross)} 빠진 값`:'쿠폰 · 적립금 할인 없음'):''),
+      !secretOk() ? '' : kpi('평균 판매가', cur.qty?`${_pixN(Math.round(avg))}<small>원</small>`:'–', cur.qty?(disc>0.0005?`쿠폰 · 적립금 등 ${_pixPct(cur.gross-cur.paid,cur.gross)} 빠진 값`:'쿠폰 · 적립금 할인 없음'):''),
       kpi('브랜드 안 순위', me?`${me.rank}<small>위 / ${list.length}개</small>`:'–', me?`브랜드 판매 수량의 ${_pixPct(me.qty,brandQty)}${prevList?` · 바로 앞 기간 ${prevMe?prevMe.rank+'위':'판매 없음'}`:''}`:'이 기간 판매 없음'),
       kpi('취소 · 반품', `${_pixN(cur.xqty)}<small>개</small>`, cur.qty+cur.xqty>0?`주문 수량의 ${_pixPct(cur.xqty,cur.qty+cur.xqty)}${xr>=0.1?' <span class="pa-bad">높음</span>':''}`:''),
     ].join('');
@@ -20085,7 +20085,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(m && !p.catOnly){ const t=_pixToday(), ab=_pixIdx(m,_pixAdd(t,-6),t); avg7=_pixSum(p,ab).qty/7; }
     const kv=[];
     kv.push(['상태', it.status ? _bestEsc(it.status) : '–']);
-    kv.push(['판매가', it.price ? `${_pixN(it.price)}원` : '–']);
+    if(secretOk()) kv.push(['판매가', it.price ? `${_pixN(it.price)}원` : '–']);
     const erp=_brepErpBrand(p.brand);
     if(erp){
       // 2026-11-18 재고 마스터가 실재고 — 식스샵 상품 목록의 재고 숫자는 안 씀 (사장님 "식스샵프로에 기재된 재고 불러오지말고")
@@ -29739,13 +29739,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   /* 계정 선택 팝업의 select options 를 현재 STAFF 로 재빌드.
      인사팀에서 신규 입사자가 등록되면 syncStaffAddedFromRemote 가 이 함수를 호출 → 자동 반영. */
+  /* 기밀 · 디자인팀 명단 이름(지희선 · 박시호) — 대표 이름처럼 관리자 PIN PC 에서만 고를 수 있다 (2026-11-20).
+     아무 PC 에서나 '나는 지희선' 을 고르면 단가 · 링크가 열리기 때문. 이미 이 이름으로 들어와 있는 PC 는 그대로다. */
+  function _diaryPrivName(n){
+    try{ return (typeof SECRET_ALLOWED!=='undefined' && SECRET_ALLOWED.has(n)) || (typeof DESIGN_ALLOWED!=='undefined' && DESIGN_ALLOWED.has(n)); }
+    catch(e){ return true; }
+  }
   function _diaryRefreshSetupOptions(){
     const modal = document.getElementById('diarySetupModal');
     const sel = document.getElementById('dsmSelect');
     if(!modal || !sel) return;
     if(modal.hidden) return;
     const isM = (typeof isMaster === 'function') && isMaster();
-    const staffOptions = STAFF.filter(s => isM || !s.ceo);
+    const staffOptions = STAFF.filter(s => isM || !(s.ceo || _diaryPrivName(s.name)));
     const cur = sel.value;
     sel.innerHTML = '<option value="">— 이름 선택 —</option>' +
       staffOptions.map(s=>`<option value="${_esc(s.name)}">${_esc(s.name)} · ${_esc(s.dept)}${s.team?' '+_esc(s.team):''}</option>`).join('');
@@ -29762,10 +29768,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!modal) return;
     // 이미 로그인된 상태면 팝업 다시 안 뜸 (변경 불가)
     if(_diaryGetMe()) return;
-    /* 뷰어(비마스터) PC 에서는 대표 두 분(전승훈·전수빈) 이름 아예 노출 안 함.
+    /* 뷰어(비마스터) PC 에서는 대표 두 분(전승훈·전수빈) 이름 아예 노출 안 함 — 2026-11-20 부터 기밀 · 디자인팀 명단 이름(지희선 · 박시호)도 (_diaryPrivName).
        마스터 PIN 을 아는 대표 본인만 CEO 로 선택 가능. */
     const isM = (typeof isMaster === 'function') && isMaster();
-    const staffOptions = STAFF.filter(s => isM || !s.ceo);
+    const staffOptions = STAFF.filter(s => isM || !(s.ceo || _diaryPrivName(s.name)));
     const buildOptions = ()=> '<option value="">— 이름 선택 —</option>' +
       staffOptions.map(s=>`<option value="${_esc(s.name)}">${_esc(s.name)} · ${_esc(s.dept)}${s.team?' '+_esc(s.team):''}</option>`).join('');
     /* 팝업 열 때 인사팀에서 방금 추가된 직원까지 반영하기 위해 최신 staff 를 한 번 pull.
@@ -52416,9 +52422,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _mdsApplyPrioUi();
     mdsRender();
   }
+  // 에이블리 · 지그재그 가격표 = 판매가 · 최저가뿐인 시트 — 기밀 명단(지희선 · 전승훈 · 전수빈) 밖 PC 에선 시트째 안 보인다 (2026-11-20)
+  //   (가격 열 머리글이 플랫폼 · 옵션 이름이라 열 이름으로는 다 못 거른다)
+  const MDS_PRICE_BOOKS=new Set(['ably_price','zig_price']);
   function _mdsOrderedBooks(){
     const ord=(_mds.order&&_mds.order.books)||[];
-    return (((_mds.meta&&_mds.meta.books)||[]).slice()).sort((a,b)=>{
+    const sec=secretOk();
+    return (((_mds.meta&&_mds.meta.books)||[]).filter(b=>sec||!MDS_PRICE_BOOKS.has(b.key))).sort((a,b)=>{
       const ia=ord.indexOf(a.key), ib=ord.indexOf(b.key);
       return (ia<0?999:ia)-(ib<0?999:ib);
     });
