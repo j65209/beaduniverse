@@ -9375,6 +9375,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-ls.is-clean .ls-add{background:transparent;padding:14px 0 2px}
   .tpl-ls.is-clean .ls-menu-b{color:#d6d3d1}
   .lsb[hidden]{display:none !important}
+  .tpl-kid{margin-top:18px;padding-top:12px;border-top:2px dashed #e7e3dd;display:flex;flex-direction:column;gap:8px}
+  .tpl-kid-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
+  .tpl-kid-h > b{font-size:15px;font-weight:800;color:#1c1917}
+  .tpl-kid-tag{font-size:11px;font-weight:700;color:#a8a29e;background:#f5f4f1;border-radius:999px;padding:2px 9px}
+  .tpl-kid-add{margin-top:10px}
   .mbx{background:#fff;border:1px solid #ebe7e1;border-radius:16px;padding:10px 16px 16px;box-shadow:0 1px 2px rgba(28,25,23,.04);min-width:0}
   .mbx .tpl-ed-top{position:sticky;top:var(--tb,61px);z-index:8;background:#fff;border-bottom:1px solid #f0ede8;padding:8px 0;margin:0 -2px 8px}
   .mbx .tpl-ed-title{font-size:16px}
@@ -25845,11 +25850,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _tpl.up[ref] = URL.createObjectURL(big);   // 방금 올린 사진은 받지 않고 바로 보여 준다
     return ref;
   }
-  async function _tplPhotoSet(path, file){
-    const doc = _tplCurDoc();
+  async function _tplPhotoSet(path, file, doc){
+    doc = doc || _tplCurDoc();
     if(!doc || !file) return;
     if(!/^image\//.test(file.type || '')){ toast('사진 파일만 넣을 수 있어요 (JPG · PNG · 캡처)', 'err'); return; }
-    const sel = `#tplStage .tp[data-p="${CSS.escape(path)}"]`, cell = document.querySelector(sel);
+    const sel = `#tplStage [data-doc="${doc.id}"] .tp[data-p="${CSS.escape(path)}"]`, cell = document.querySelector(sel);
     if(cell){ cell.classList.add('is-busy'); cell.innerHTML = '<span class="tp-wait"></span>'; }
     let ref = null;
     try{
@@ -25859,18 +25864,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ toast('사진을 넣지 못했어요 — 아이폰 HEIC 는 JPG 로 바꿔서, 인터넷 연결도 확인해 주세요', 'err'); }
     // 그 칸만 다시 그린다 (다른 칸에서 글자를 적는 중이어도 끊기지 않게) — 부자재 글자 칸이 같이 있는 칸은 전체를
     const now = document.querySelector(sel);
-    if(now && !now.classList.contains('has-cap') && _tplCurDoc() === doc) now.outerHTML = _tplPh(path, ref != null ? ref : _tplRefVal(doc, path), true, '', doc.kind === 'linesheet');
+    if(now && !now.classList.contains('has-cap')) now.outerHTML = _tplPh(path, ref != null ? ref : _tplRefVal(doc, path), true, '', doc.kind === 'linesheet');
     else _tplRenderPaper(true);
   }
-  function _tplPick(path){
+  function _tplPick(path, doc){
     let inp = document.getElementById('tplFile');
     if(!inp){
       inp = document.createElement('input');
       inp.type = 'file'; inp.accept = 'image/*'; inp.id = 'tplFile'; inp.hidden = true;
-      inp.addEventListener('change', () => { const f = inp.files && inp.files[0]; if(f && inp._path) _tplPhotoSet(inp._path, f); inp.value = ''; });
+      inp.addEventListener('change', () => { const f = inp.files && inp.files[0]; if(f && inp._path) _tplPhotoSet(inp._path, f, inp._doc); inp.value = ''; });
       document.body.appendChild(inp);
     }
-    inp._path = path;
+    inp._path = path; inp._doc = doc || null;
     inp.click();
   }
   function _tplBig(ref, cap){
@@ -25956,7 +25961,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       out.push(H('생산주의사항'));
       out.push(T('notes', d.notes, '공장에 꼭 전할 생산 주의사항 (예: 1. 원단 중량 꼭 확인하고 진행해주세요)', 'r-notes', C, d, 'notes', true));
     }
-    return `<div class="tpl-paper tpl-m" style="--c:${C}">${out.join('')}</div>`;
+    return `<div class="tpl-paper tpl-m" data-doc="${doc.id}" style="--c:${C}">${out.join('')}</div>`;
   }
   function _tplCostHtml(doc, o){
     const E = escapeHTML, c = doc.secret.cost || _tplBlankCost(), calc = _tplCostCalc(c), ed = !!o.edit;
@@ -25968,7 +25973,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const vat = ed ? `<button type="button" class="tcx-vat${r.vat ? ' is-on' : ''}" data-act="vat" data-i="${i}" title="VAT 10% 더하기 (한 번 더 누르면 빼기)"><span data-calc="vat:${i}">${r.vat ? E(_tplFmt(x.vat)) : '＋'}</span></button>` : `<div class="tc">${E(r.vat ? _tplFmt(x.vat) : '')}</div>`;
       return `<tr>${td(r, 'name', ce(p + 'name', r.name, '항목'))}${td(r, 'color', ce(p + 'color', r.color, ''))}${td(r, 'size', ce(p + 'size', r.size, ''))}${td(r, 'cny', ce(p + 'cny', r.cny, ''))}${td(r, 'conv', conv)}${td(r, 'krw', ce(p + 'krw', r.krw, ''))}${td(r, 'vat', vat)}${td(r, 'qty', ce(p + 'qty', r.qty, ''))}<td class="tcx-sum"><div class="tc" data-calc="sum:${i}">${E(_tplFmt(x.sum))}</div>${ed ? `<button type="button" class="tcx-del" data-act="cost-del" data-i="${i}" title="이 줄 지우기">×</button>` : ''}</td></tr>`;
     }).join('');
-    return `<div class="tpl-paper tpl-cost">
+    return `<div class="tpl-paper tpl-cost" data-doc="${doc.id}">
       <table class="tcx">
         <thead>
           <tr><th class="tcx-title" colspan="9">원가계산서</th></tr>
@@ -26003,6 +26008,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 칸 너비 — 한 화면에 더 많이 (2026-11-20 "칸 너무 넓게 썼다, 더 많이 보이게")
   function _tplLsCols(sec){ return '44px 104px 124px 124px 82px 112px 104px 52px 88px 88px 100px 250px' + (sec ? ' 210px' : ''); }
   /* 상단 한 줄 — 시즌 제목 + SKU · BAG · ACC 개수 (제품 카테고리로 저절로: 첫 낱말에 bag · 백 · backpack → BAG, acc · 키링 · 비니 · 지갑 … → ACC) */
+  /* 참고 블록 (2026-11-20 사장님 "구(리뉴얼 전) 같은 건 같은 탭에서 하단으로") — 시트에서 한 탭 아래에 있던 블록을 그 스타일 아래에 그대로 */
+  const _tplKids = doc => (_tpl.docs.matching || []).filter(d => d.data && +d.data.parent === doc.id);
+  function _tplKidsHtml(doc, o){
+    const E = escapeHTML;
+    return _tplKids(doc).map(k => `<section class="tpl-kid" data-doc="${k.id}">
+        <div class="tpl-kid-h"><b>${E(_tplTitleOf(k) || '참고 블록')}</b><span class="tpl-kid-tag">같은 탭 · 아래 참고</span>
+          <span class="tpl-tool">컬러 칸 <button type="button" class="mb-btn" data-act="slot-">−</button><b>${k.data.slots}</b><button type="button" class="mb-btn" data-act="slot+">＋</button></span>
+          <span class="tpl-tool">부자재 줄 <button type="button" class="mb-btn" data-act="hw-">−</button><b>${k.data.hw.length / k.data.slots}</b><button type="button" class="mb-btn" data-act="hw+">＋</button></span>
+          <span class="mb-sp"></span><button type="button" class="mb-btn is-danger" data-act="kid-del">이 블록 지우기</button></div>
+        <div class="tpl-scroll">${_tplMatchHtml(k, o)}</div>
+      </section>`).join('') + '<div class="tpl-kid-add"><button type="button" class="mb-btn" data-act="kid-add">＋ 아래에 참고 블록 추가 (예: 구(리뉴얼 전) 제품)</button></div>';
+  }
   function _tplLsCount(d){
     const items = (d.items || []).filter(it => it && (it.name || (it.colors || []).some(c => c && c.c)));
     let bag = 0, acc = 0;
@@ -26041,7 +26058,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
-    return `<div class="tpl-paper tpl-ls is-clean is-mob">${_tplLsTop(doc, ce)}${blocks}${add}</div>`;
+    return `<div class="tpl-paper tpl-ls is-clean is-mob" data-doc="${doc.id}">${_tplLsTop(doc, ce)}${blocks}${add}</div>`;
   }
   const _tplMob = () => _tpl.host === 'tab' && !!window.matchMedia && window.matchMedia('(max-width:760px)').matches;
   function _tplLsHtml(doc, o){
@@ -26089,7 +26106,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<div class="tpl-g ls-block" data-cut="1" data-i="${i}" style="grid-template-columns:var(--ls-cols);grid-template-rows:30px repeat(${R}, minmax(30px, auto))">${cells.join('')}</div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
-    return `<div class="tpl-paper tpl-ls${o.clean ? ' is-clean' : ''}" style="--ls-cols:${_tplLsCols(sec)}">${head}${blocks}${add}</div>`;
+    return `<div class="tpl-paper tpl-ls${o.clean ? ' is-clean' : ''}" data-doc="${doc.id}" style="--ls-cols:${_tplLsCols(sec)}">${head}${blocks}${add}</div>`;
   }
 
   /* ============ 편집 창 ============ */
@@ -26106,7 +26123,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('tplEdTitle').textContent = kind === 'matching' ? '🧵 원부자재 매칭표' : inTab ? '📋 COFERRY 라인시트' : '📋 라인시트';
     document.getElementById('tplModes').innerHTML = kind === 'matching' ? Object.entries(TPL_MODES).filter(([m, v]) => v.kind === 'matching' && (m !== 'internal' || sec))
       .map(([m, v]) => `<button type="button" class="tpl-mode${m === _tpl.mode ? ' is-on' : ''}" onclick="tplMode('${m}')"><span>${v.ico}</span><span>${E(v.label)}</span></button>`).join('') : '';
-    document.getElementById('tplChips').innerHTML = (list || []).map(x => `<button type="button" class="mb-chip${doc && x.id === doc.id ? ' is-on' : ''}" onclick="tplPick(${x.id})">${E(kind === 'linesheet' ? _tplLsTab(x) : (_tplTitleOf(x) || '(이름 없음)'))}</button>`).join('')
+    if(doc && doc.data && doc.data.parent && _tplFind(+doc.data.parent)){ _tpl.cur[kind] = +doc.data.parent; return _tplRender(); }
+    document.getElementById('tplChips').innerHTML = (list || []).filter(x => !(x.data && x.data.parent)).map(x => `<button type="button" class="mb-chip${doc && x.id === doc.id ? ' is-on' : ''}" onclick="tplPick(${x.id})">${E(kind === 'linesheet' ? _tplLsTab(x) : (_tplTitleOf(x) || '(이름 없음)'))}</button>`).join('')
       + `<button type="button" class="mb-chip tpl-new" onclick="tplNew()">＋ 새 ${kind === 'matching' ? '스타일' : '시즌'}</button>`;
     document.getElementById('tplPdfBtn').textContent = _tpl.mode === 'internal' ? '내부공유용 PDF' : _tpl.mode === 'vendor' ? '업체 전달용 PDF' : 'PDF 저장';
     ['tplPdfBtn', 'tplDelBtn', 'tplHlBtn'].forEach(id => { const b = document.getElementById(id); if(b) b.disabled = !doc; });
@@ -26142,7 +26160,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <span class="tpl-tool">공장 칸 <button type="button" class="mb-btn" data-act="fac-">−</button><b>${doc.data.factory.length}</b><button type="button" class="mb-btn" data-act="fac+">＋</button></span>
         <span class="tpl-tool">부자재 줄 <button type="button" class="mb-btn" data-act="hw-">−</button><b>${doc.data.hw.length / doc.data.slots}</b><button type="button" class="mb-btn" data-act="hw+">＋</button></span>
       </div>`;
-      html = `${tools}<div class="tpl-row"><div class="tpl-scroll">${_tplMatchHtml(doc, o)}</div>${_tpl.mode === 'internal' && designSecretOk() ? `<div class="tpl-scroll tpl-scroll-cost">${_tplCostHtml(doc, o)}</div>` : ''}</div>`;
+      html = `${tools}<div class="tpl-row"><div class="tpl-scroll">${_tplMatchHtml(doc, o)}</div>${_tpl.mode === 'internal' && designSecretOk() ? `<div class="tpl-scroll tpl-scroll-cost">${_tplCostHtml(doc, o)}</div>` : ''}</div>` + _tplKidsHtml(doc, o);
     }else html = `<div class="tpl-scroll">${_tplMob() ? _tplLsMobileHtml(doc, o) : _tplLsHtml(doc, o)}</div>`;
     st.innerHTML = html + `<div class="tpl-meta">${doc.updated_at ? `마지막 저장 ${new Date(doc.updated_at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'})}${doc.updated_by ? ' · ' + escapeHTML(doc.updated_by) : ''}` : ''}</div>`;
     const sc = st.querySelector('.tpl-scroll');
@@ -26247,7 +26265,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     return doc;
   }
-  async function _tplCreate(kind, data, secret, me){
+  async function _tplCreate(kind, data, secret, me, opts){
     try{
       const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?select=${TPL_COLS}${designSecretOk() ? ',secret' : ''}`, {method:'POST', headers:_sbHeaders({'Prefer':'return=representation'}),
         body:JSON.stringify({kind, title:String(data.title || '').trim(), data, secret:designSecretOk() ? secret : {}, created_by:me, updated_by:me})});
@@ -26256,22 +26274,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const doc = _tplNorm(Object.assign(x, designSecretOk() ? {} : {secret:{}}));
       (_tpl.docs[kind] = _tpl.docs[kind] || []).push(doc);
       _tpl.loaded[kind] = _tpl.loaded[kind] || Date.now();
-      if(_tpl.open && _tpl.open.kind === kind) tplPick(doc.id); else _tpl.cur[kind] = doc.id;
+      if(opts && opts.stay){}   // 참고 블록 — 지금 보는 스타일 그대로
+      else if(_tpl.open && _tpl.open.kind === kind) tplPick(doc.id); else _tpl.cur[kind] = doc.id;
       return doc;
     }catch(e){ toast('만들지 못했어요 — 인터넷 연결을 확인해 주세요', 'err'); return null; }
   }
-  async function tplDelete(){
-    const doc = _tplCurDoc();
+  async function tplDelete(one){
+    const doc = one && one.id ? one : _tplCurDoc();
     if(!doc) return;
-    const what = doc.kind === 'matching' ? `'${_tplTitleOf(doc) || '(이름 없음)'}' 스타일` : `'${_tplLsTab(doc)}' 시즌 라인시트(상품 ${doc.data.items.length}개)`;
+    const kids = doc.kind === 'matching' && !doc.data.parent ? _tplKids(doc) : [];
+    const what = doc.data.parent ? `'${_tplTitleOf(doc) || '참고 블록'}' 블록` : doc.kind === 'matching' ? `'${_tplTitleOf(doc) || '(이름 없음)'}' 스타일${kids.length ? `(아래 참고 블록 ${kids.length}개 포함)` : ''}` : `'${_tplLsTab(doc)}' 시즌 라인시트(상품 ${doc.data.items.length}개)`;
     if(!confirm(`${what}을 지울까요?${doc.kind === 'matching' ? '\n(내부공유용 · 업체 전달용 둘 다 지워져요)' : ''}`)) return;
     try{
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?id=eq.${doc.id}`, {method:'PATCH', headers:_sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({deleted_at:new Date().toISOString(), updated_by:_tplMe()})});
+      const ids = [doc.id, ...kids.map(k => k.id)];
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?id=in.(${ids.join(',')})`, {method:'PATCH', headers:_sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({deleted_at:new Date().toISOString(), updated_by:_tplMe()})});
       if(!r.ok) throw new Error('http_' + r.status);
-      _tpl.dirty.delete(doc.id);
+      ids.forEach(id => _tpl.dirty.delete(id));
       const kind = doc.kind;
-      _tpl.docs[kind] = (_tpl.docs[kind] || []).filter(d => d.id !== doc.id);
-      _tpl.cur[kind] = (_tpl.docs[kind][0] || {}).id || null;
+      _tpl.docs[kind] = (_tpl.docs[kind] || []).filter(d => !ids.includes(d.id));
+      if(!doc.data.parent) _tpl.cur[kind] = ((_tpl.docs[kind] || []).find(d => !d.data.parent) || {}).id || null;
       _tpl.sig = '';
       _tplRender();
       toast('지웠어요', 'ok');
@@ -26280,7 +26301,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function tplHl(){ tplPaint('y'); }
   /* 칸 색 · 굵게 — 칸을 누른 뒤 위 색 단추 (같은 색을 한 번 더 누르면 지움, ⊘ = 색 없애기, B = 굵게 켜고 끄기) */
   function tplPaint(c){
-    const doc = _tplCurDoc(), path = _tpl.focusF;
+    const fe = _tpl.focusEl && document.body.contains(_tpl.focusEl) ? _tpl.focusEl : null;
+    const doc = fe ? _tplDocOf(fe) : _tplCurDoc(), path = _tpl.focusF;
     if(!doc || !path){ toast('색을 바꿀 칸을 먼저 누른 뒤 색을 골라 주세요', 'err'); return; }
     const ref = _tplRef(doc, path);
     if(!ref) return;
@@ -26293,7 +26315,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     _tplTouch(doc, ref.root);
     if(ref.root === 'secret' && doc.secret.cost) doc.secret.cost.touched = true;
-    const el = document.querySelector(`#tplStage [data-f="${CSS.escape(path)}"]`), box = el && el.closest('.tx, td');
+    const el = fe && fe.dataset.f === path ? fe : document.querySelector(`#tplStage [data-doc="${doc.id}"] [data-f="${CSS.escape(path)}"]`), box = el && el.closest('.tx, td');
     if(box) box.className = box.className.replace(/\s*\b(is-hl|is-b|hl-[a-z])\b/g, '') + _tplCls(o, ref.f);
     if(el && (!window.matchMedia || window.matchMedia('(hover:hover)').matches)) el.focus();
   }
@@ -26341,8 +26363,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ── 입력 ── */
+  // 칸 · 단추가 속한 문서 (참고 블록이면 그 블록 문서, 아니면 지금 고른 문서)
+  function _tplDocOf(el){
+    const host = el && el.closest ? el.closest('[data-doc]') : null, id = host ? +host.dataset.doc : null;
+    return (id && _tplFind(id)) || _tplCurDoc();
+  }
   function _tplOnInput(el){
-    const doc = _tplCurDoc();
+    const doc = _tplDocOf(el);
     if(!doc) return;
     let path = el.dataset.f, val = el.innerText.replace(/\r/g, '').replace(/\n$/, '');
     if(path === 'cost.rate' || /^cost\.rows\.\d+\.conv$/.test(path) || path === 'cost.mult') val = val.trim();
@@ -26366,7 +26393,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
   }
   function _tplAct(act, btn){
-    const doc = _tplCurDoc();
+    const doc = _tplDocOf(btn);
     if(!doc) return;
     const d = doc.data, i = +btn.dataset.i;
     const filled = o => o && Object.entries(o).some(([k, v]) => k !== 'u' && k !== 'hl' && k !== 'w' && k !== 'rows' && v != null && v !== '' && !(Array.isArray(v) && !v.some(x => x != null && (typeof x !== 'object' || filled(x)))));
@@ -26394,6 +26421,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }else if(act === 'vat'){ const r = doc.secret.cost.rows[i]; r.vat = !r.vat; doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); btn.classList.toggle('is-on', r.vat); _tplCostPaint(doc); return; }
     else if(act === 'cost-add'){ doc.secret.cost.rows.push({u:_tplUid(), name:'', color:'', size:'', cny:'', conv:'', krw:'', vat:false, qty:'1', hl:{}}); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
     else if(act === 'cost-del'){ const r = doc.secret.cost.rows[i]; if(r && (r.name || r.cny || r.krw) && !confirm(`'${r.name || '이 줄'}' 줄을 지울까요?`)) return; doc.secret.cost.rows.splice(i, 1); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
+    else if(act === 'kid-add'){
+      const data = _tplBlankMatch();
+      _tplSetSlots(data, 4);
+      Object.assign(data, {title:'구(리뉴얼 전) 제품(참고용)', ref:true, parent:doc.id});
+      _tplCreate('matching', data, {p:{}}, _tplMe(), {stay:true}).then(k => { if(k){ _tpl.sig = ''; _tplRenderPaper(true); const t = document.querySelector(`#tplStage .tpl-kid[data-doc="${k.id}"]`); if(t) t.scrollIntoView({block:'start', behavior:'smooth'}); } });
+      return;
+    }
+    else if(act === 'kid-del'){ tplDelete(doc); return; }
     else if(act === 'ls-add'){ const it = _tplBlankLsItem(); it.no = String(d.items.filter(x => x.name || x.no).length + 1); d.items.push(it); }
     else if(act === 'ls-menu'){ _tplLsMenu(btn, i); return; }
     else if(act === 'ls-up' || act === 'ls-down'){ const j = i + (act === 'ls-up' ? -1 : 1); if(j < 0 || j >= d.items.length) return; [d.items[i], d.items[j]] = [d.items[j], d.items[i]]; }
@@ -26435,7 +26470,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!st) return;
     _tpl.bound = true;
     st.addEventListener('input', e => { const el = e.target.closest('[data-f]'); if(el){ _tplOnInput(el); _tplSugShow(el); } });
-    st.addEventListener('focusin', e => { const el = e.target.closest('[data-f]'); if(el){ _tpl.focusF = el.dataset.f; _tplSugShow(el); } });
+    st.addEventListener('focusin', e => { const el = e.target.closest('[data-f]'); if(el){ _tpl.focusF = el.dataset.f; _tpl.focusEl = el; _tplSugShow(el); } });
     st.addEventListener('focusout', e => {
       const el = e.target.closest('[data-f]');
       if(el){ const sg = document.getElementById('tplSug'); if(sg && sg._cell === el) _tplSugHide(); }
@@ -26454,10 +26489,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const b = e.target.closest('[data-act]');
       if(b && st.contains(b)){
         const act = b.dataset.act, tp = b.closest('.tp[data-p]');
-        if(act === 'ph-pick' && tp){ e.stopPropagation(); _tplPick(tp.dataset.p); return; }
+        if(act === 'ph-pick' && tp){ e.stopPropagation(); _tplPick(tp.dataset.p, _tplDocOf(tp)); return; }
         if(act === 'ph-del' && tp){
           e.stopPropagation();
-          const doc = _tplCurDoc();
+          const doc = _tplDocOf(tp);
           if(doc){ _tplPathSet(doc, tp.dataset.p, null); _tplTouch(doc, 'data'); _tplRenderPaper(true); }
           return;
         }
@@ -26466,14 +26501,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       const tp = e.target.closest('.tp[data-p]');
       if(!tp) return;
-      const doc = _tplCurDoc(), ref = doc ? _tplRefVal(doc, tp.dataset.p) : null;
+      const doc = _tplDocOf(tp), ref = doc ? _tplRefVal(doc, tp.dataset.p) : null;
       if(ref != null) _tplBig(ref, '');
-      else _tplPick(tp.dataset.p);
+      else _tplPick(tp.dataset.p, doc);
     });
     st.addEventListener('paste', e => {
       const tp = e.target.closest && e.target.closest('.tp[data-p]');
       const files = [...((e.clipboardData || {}).files || [])].filter(f => /^image\//.test(f.type || ''));
-      if(tp && files.length){ e.preventDefault(); e.stopPropagation(); _tplPhotoSet(tp.dataset.p, files[0]); return; }
+      if(tp && files.length){ e.preventDefault(); e.stopPropagation(); _tplPhotoSet(tp.dataset.p, files[0], _tplDocOf(tp)); return; }
       const ce = e.target.closest && e.target.closest('[contenteditable]');
       if(ce && ce.getAttribute('contenteditable') !== 'plaintext-only'){
         e.preventDefault();
@@ -26494,7 +26529,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       e.preventDefault();
       tp.classList.remove('is-drop');
       const f = [...((e.dataTransfer || {}).files || [])].find(x => /^image\//.test(x.type || ''));
-      if(f) _tplPhotoSet(tp.dataset.p, f);
+      if(f) _tplPhotoSet(tp.dataset.p, f, _tplDocOf(tp));
     });
     // 사진에 마우스를 올리면 크게 (매칭보드와 같은 미리보기 창)
     const canHover = () => !window.matchMedia || window.matchMedia('(hover:hover)').matches;
@@ -26810,7 +26845,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           Object.keys(o).forEach(kk => { const v = o[kk]; if(kk === 'img' || kk === 'tag') o[kk] = swap(v); else if(v && typeof v === 'object') walk(v); });
         };
         walk(pt.data);
-        const doc = await _tplCreate(kind, pt.data, pt.secret, me);
+        if(pt.data.ref && made[0]) pt.data.parent = made[0].id;   // 참고용 블록 = 같은 탭 아래 (칩에는 안 나옴)
+        const doc = await _tplCreate(kind, pt.data, pt.secret, me, {stay:!!pt.data.parent});
         if(doc) made.push(doc);
       }
       _tpl.sig = '';
@@ -26912,7 +26948,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return mode === 'internal' ? `[내부공유용] ${t} 원부자재 매칭표` : `[업체 전달용] ${t} 원부자재 매칭표`;
   }
   async function _tplPdfMatching(doc, mode){
-    const pages = [{html:_tplMatchHtml(doc, {edit:false})}];
+    const pages = [{html:_tplMatchHtml(doc, {edit:false})}, ..._tplKids(doc).map(k => ({html:_tplMatchHtml(k, {edit:false})}))];
     if(mode === 'internal' && designSecretOk() && _mbCostHas(doc)) pages.push({html:`<div class="tpl-paper tpl-cost-pg"><div class="tcx-pg-t">${escapeHTML(_tplTitleOf(doc))}</div>${_tplCostHtml(doc, {edit:false})}</div>`});
     await _tplPdf(pages, _tplPdfName(mode, _tplTitleOf(doc)));
   }
@@ -27069,7 +27105,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   /* 사진 크게 보기 — 마우스를 올리면 옆에 큰 사진 (폰 · 터치는 눌러서 크게) */
   function _tplHoverShow(tp){
-    const doc = _tplCurDoc(), ref = doc && tp.dataset.p ? _tplRefVal(doc, tp.dataset.p) : null;
+    const doc = _tplDocOf(tp), ref = doc && tp.dataset.p ? _tplRefVal(doc, tp.dataset.p) : null;
     const url = _tplImgUrl(ref, false);
     if(!url) return;
     _tpl.hoverEl = tp; _tpl.hoverAt = Date.now();
