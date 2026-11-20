@@ -9361,6 +9361,32 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-spin{width:20px;height:20px;border-radius:50%;border:3px solid #e7e5e4;border-top-color:#f97316;animation:tplSpin .8s linear infinite}
   .tpl-print-host{position:absolute;left:0;top:0;z-index:-1;background:#fff;pointer-events:none}
   .tpl-print-host .tpl-paper{box-shadow:none}
+  /* ── 매칭보드 · 보드맵 자체 저장 (2026-11-20) — 추가 · 수정 버튼 · 원가계산서 · 편집 창 ── */
+  .mb-btn.is-add,.lsb-btn.is-add{background:#1c1917;border-color:#1c1917;color:#fff}
+  .mb-btn.is-add:hover,.lsb-btn.is-add:hover{background:#000;border-color:#000;color:#fff}
+  .mb-btn.is-edit,.lsb-btn.is-edit{border-color:#fdba74;color:#c2410c;font-weight:700}
+  .mb-btn:disabled{opacity:.45;cursor:default}
+  .mb-btn.is-danger:hover{border-color:#dc2626;color:#dc2626}
+  .mb-chip.is-ref{border-style:dashed}
+  .mb-ref{display:inline-block;margin-left:8px;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#f5f5f4;color:var(--text-3);vertical-align:middle}
+  .mb-sec-sub{font-weight:600;color:var(--text-3);margin-left:6px;font-size:11.5px}
+  .mb-empty-s{padding:6px 2px;font-size:12.5px}
+  .mb-notes{white-space:pre-wrap;font-size:13px;line-height:1.6;color:var(--text-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  .mb-captxt{font-weight:700;color:var(--text-2);padding:8px;text-align:center;word-break:keep-all}
+  html.tpl-ed-open,html.tpl-ed-open body{overflow:hidden}
+  .tpl-ed{position:fixed;inset:0;z-index:60;background:#f5f4f1;overflow:auto;padding:0 18px 60px;display:flex;flex-direction:column;gap:10px}
+  .tpl-ed[hidden]{display:none}
+  .tpl-ed-top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 0 10px;background:#f5f4f1;border-bottom:1px solid var(--line)}
+  .tpl-ed-title{font-size:17px;font-weight:800;color:#1c1917;margin-right:6px;white-space:nowrap}
+  .tpl-ed-done{font:800 13.5px var(--sans);padding:9px 16px;border:0;border-radius:9px;background:#f97316;color:#fff;cursor:pointer;white-space:nowrap}
+  .tpl-ed-done:hover{background:#ea580c}
+  .tpl-ed .tpl-mode{padding:6px 12px;font-size:12.5px;border-radius:8px}
+  .tpl-ed .tpl-chips{display:flex;gap:6px;flex-wrap:wrap}
+  .tpl-ed .tpl-scroll{overflow-x:auto}
+  .tpl-ls .ls-block.is-focus{outline:3px solid #f97316;outline-offset:-2px;position:relative;z-index:2}
+  button.lsb-link{border:0;background:transparent;padding:0;cursor:pointer;font-family:inherit}
+  button.lsb-link:hover{color:#c2410c}
+  @media (max-width:700px){ .tpl-ed{padding:0 8px 50px} .tpl-ed-title{font-size:15px} }
   @media (max-width:700px){
     .tpl-mode{padding:8px 11px;font-size:12.5px}
     .tpl-scroll{padding:8px;border-radius:10px}
@@ -13305,7 +13331,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- ============ 탭 바 (디자인센터 · 견적서 · 매칭보드 · 양식) ============
+    <!-- ============ 탭 바 (디자인센터 · 견적서 · 매칭보드) ============
          2026-10-26 디자인센터를 메인(기본) 화면으로 올렸고,
          2026-10-27 디자인팀(디자인 보드 + 작업 보드)은 디자인센터 맨 아래로 합쳤다(관리자가 모두에게 숨길 수 있음). -->
     <div class="dsg-tabs" role="tablist" aria-label="디자인팀 뷰">
@@ -13319,22 +13345,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <button class="dsg-tab" id="dsgTabMatch" role="tab" onclick="dsgSwitchTab('match')">
         <span>🧵</span><span>매칭보드</span>
       </button>
-      <button class="dsg-tab" id="dsgTabTpl" role="tab" onclick="dsgSwitchTab('tpl')">
-        <span>📐</span><span>양식</span>
-      </button>
     </div>
 
     <!-- ============ 디자인센터 (노션 미러: 업무일지 · 콰이디 업무 공유) ============ -->
     <div class="dsg-pane" data-pane="coferry" hidden>
-      <!-- 보드맵 — 구글시트 COFERRY LINE SHEET 실시간 (2026-10-27) -->
+      <!-- 보드맵 — COFERRY LINE SHEET 실시간 (2026-10-27, 2026-11-20 구글시트 → 오피스 자체 저장 · [＋ 상품 추가] [✏️ 수정]) -->
       <section class="lsb" id="lsb" aria-label="코페리 라인시트 보드맵">
         <div class="lsb-top">
           <span class="lsb-live"><i></i>LIVE</span>
           <b class="lsb-name">COFERRY 보드맵</b>
           <span class="lsb-stamp" id="lsbStamp"></span>
           <span class="lsb-sp"></span>
-          <button type="button" class="lsb-btn" onclick="lsbRefresh()" title="시트에서 지금 다시 불러오기">↻ 새로고침</button>
-          <a class="lsb-btn design-secret" href="https://docs.google.com/spreadsheets/d/1Q3eMHCnPsbt3ijGv3Gswym9Q_ao_fJsPSZg8n7R-tng/edit" target="_blank" rel="noopener" title="구글시트에서 열기">시트 ↗</a>
+          <button type="button" class="lsb-btn is-add" onclick="lsbAdd(this)" title="상품 하나 더 — 라인시트 양식이 열리고 칸마다 바로 적어요">＋ 상품 추가</button>
+          <button type="button" class="lsb-btn is-edit" onclick="lsbEdit()" title="라인시트 양식에서 고치기 (시즌 추가 · 사진 · 일정)">✏️ 수정</button>
+          <button type="button" class="lsb-btn" onclick="lsbRefresh(true)" title="지금 다시 불러오기">↻ 새로고침</button>
           <button type="button" class="lsb-btn" id="lsbFoldBtn" aria-expanded="true" aria-controls="lsbCols" onclick="lsbFold()">접기</button>
         </div>
         <div class="lsb-tabs" id="lsbTabs" role="tablist" aria-label="시즌"></div>
@@ -13508,31 +13532,35 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="qt-list" id="qtList"></div>
     </div>
 
-    <!-- ============ 매칭보드 — 구글시트 원부자재 매칭표를 가방별로 ============ -->
+    <!-- ============ 매칭보드 — 원부자재 매칭표를 스타일(가방)마다 (2026-11-20 구글시트 → 오피스 자체 저장, [추가] [수정] = 시트 양식 편집 창) ============ -->
     <div class="dsg-pane mb-wrap" data-pane="match" hidden>
       <div class="mb-bar">
         <div class="mb-chips" id="mbChips"></div>
         <span class="mb-sp"></span>
         <span class="mb-at" id="mbAt"></span>
-        <a class="mb-btn" id="mbSheet" target="_blank" rel="noopener" hidden>시트 열기</a>
-        <button type="button" class="mb-btn" id="mbPdfBtn" onclick="mbPdf()" title="지금 보고 있는 가방을 업체 전달용 양식(원가계산서 없음, 시트 [투엘] 파일과 같은 모양)으로 PDF 저장">업체 전달용 PDF</button>
+        <button type="button" class="mb-btn is-add" onclick="mbAdd()" title="새 스타일 — 원부자재 매칭표 양식이 열리고 칸마다 바로 적어요">＋ 스타일 추가</button>
+        <button type="button" class="mb-btn is-edit" id="mbEditBtn" onclick="mbEdit()" title="지금 보고 있는 스타일을 매칭표 양식에서 고치기 (사진 · 원가계산서 포함)">✏️ 수정</button>
+        <button type="button" class="mb-btn" id="mbPdfBtn" onclick="mbPdf('vendor')" title="업체 전달용 — 원가계산서가 빠진 매칭표 (시트 [투엘] 파일과 같은 모양)">업체 전달용 PDF</button>
+        <button type="button" class="mb-btn" id="mbPdfInBtn" onclick="mbPdf('internal')" title="내부공유용 — 매칭표 + 원가계산서" hidden>내부공유용 PDF</button>
         <button type="button" class="mb-btn" onclick="mbInit(true)">새로고침</button>
       </div>
       <div id="mbBoard"></div>
     </div>
 
-    <!-- ============ 📐 양식 — 라인시트 · 원부자재 매칭표(내부공유용 · 업체 전달용)를 오피스 안에서 쓰고 PDF 로 (2026-11-20) ============ -->
-    <div class="dsg-pane tpl-wrap" data-pane="tpl" id="tplWrap" hidden>
-      <div class="tpl-modes" id="tplModes" role="group" aria-label="양식 종류"></div>
-      <div class="tpl-bar">
-        <div class="tpl-chips" id="tplChips"></div>
+    <!-- ============ ✏️ 디자인팀 시트 편집 창 — 매칭보드 · 보드맵의 [추가] [수정]이 연다 (구글시트 양식 그대로 · 칸마다 바로 입력 · 사진) ============ -->
+    <div class="tpl-ed" id="tplEd" hidden role="dialog" aria-modal="true" aria-labelledby="tplEdTitle">
+      <div class="tpl-ed-top">
+        <b class="tpl-ed-title" id="tplEdTitle"></b>
+        <div class="tpl-modes" id="tplModes" role="group" aria-label="보기"></div>
         <span class="mb-sp"></span>
         <span class="tpl-save" id="tplSave"></span>
-        <button type="button" class="mb-btn" id="tplImpBtn" onclick="tplImportMenu(this)" title="지금 구글시트 탭 하나를 새 양식 문서로 옮겨 오기 (사진 포함)">시트에서 가져오기</button>
         <button type="button" class="mb-btn" id="tplHlBtn" onmousedown="event.preventDefault()" onclick="tplHl()" title="누른 칸을 노랗게 칠하기 (한 번 더 누르면 지우기)">🟨 칸 강조</button>
-        <button type="button" class="mb-btn" id="tplDelBtn" onclick="tplDelete()">지우기</button>
-        <button type="button" class="mb-btn is-main" id="tplPdfBtn" onclick="tplPdf()">PDF 저장</button>
+        <button type="button" class="mb-btn" id="tplPdfBtn" onclick="tplPdf()">PDF 저장</button>
+        <button type="button" class="mb-btn" id="tplImpBtn" onclick="tplImportMenu(this)" title="옛 구글시트 탭 하나를 새 문서로 옮겨 오기 (사진 포함)">옛 시트에서 가져오기</button>
+        <button type="button" class="mb-btn is-danger" id="tplDelBtn" onclick="tplDelete()">지우기</button>
+        <button type="button" class="tpl-ed-done" onclick="tplClose()">✓ 수정 완료</button>
       </div>
+      <div class="tpl-chips" id="tplChips"></div>
       <div class="tpl-note" id="tplNote"></div>
       <div class="tpl-stage" id="tplStage"></div>
     </div>
@@ -23380,7 +23408,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   let _dsgRefs  = [];
   let _dsgPosts = [];                       // 디자인 보드 게시글 배열 (디자인 뷰 전용)
-  let _dsgCurTab = 'center';                // 기본 = 디자인센터 (그 외 'quote' = 견적서, 'match' = 매칭보드, 'tpl' = 양식)
+  let _dsgCurTab = 'center';                // 기본 = 디자인센터 (그 외 'quote' = 견적서, 'match' = 매칭보드)
   let _dsgCurBoard = 'moodboard';
   let _dsgCurPostId = null;
   let _dsgModalRefId  = null;
@@ -24591,37 +24619,33 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _dsgApplyFs();
   }
 
-  /* 탭 — 디자인센터(기본) · 견적서 · 매칭보드 · 양식(2026-11-20). 2026-10-27 디자인팀 탭은 디자인센터 맨 아래로 합쳤다.
+  /* 탭 — 디자인센터(기본) · 견적서 · 매칭보드. 2026-10-27 디자인팀 탭은 디자인센터 맨 아래로 합쳤다.
      옛 선호값(coferry·design·posts·board)은 모두 디자인센터로 연다. */
   function dsgSwitchTab(tab){
-    tab = tab === 'quote' || tab === 'match' || tab === 'tpl' ? tab : 'center';
+    if(tab === 'tpl') tab = 'match';   // 2026-11-20 '양식' 탭은 매칭보드 · 보드맵의 [추가] [수정] 편집 창으로 합쳤다
+    tab = tab === 'quote' || tab === 'match' ? tab : 'center';
     if(tab === 'quote' && !designHasAccess()) tab = 'center';   // 견적서 = 디자인팀 명단(박시호 · 전승훈 · 전수빈) — 사장님 "시호한테는 견적들 다 오픈" (2026-11-20)
     _dsgCurTab = tab;
     const bc = document.getElementById('dsgTabCoferry'), bq = document.getElementById('dsgTabQuote'), bm = document.getElementById('dsgTabMatch');
     if(bc) bc.classList.toggle('active', tab === 'center');
     if(bq) bq.classList.toggle('active', tab === 'quote');
     if(bm) bm.classList.toggle('active', tab === 'match');
-    const bt = document.getElementById('dsgTabTpl');
-    if(bt) bt.classList.toggle('active', tab === 'tpl');
     const cof = document.querySelector('#viewDesign .dsg-pane[data-pane="coferry"]');
     if(cof) cof.hidden = tab !== 'center';
     const qp = document.querySelector('#viewDesign .dsg-pane[data-pane="quote"]');
     if(qp) qp.hidden = tab !== 'quote';
     const mp = document.querySelector('#viewDesign .dsg-pane[data-pane="match"]');
     if(mp) mp.hidden = tab !== 'match';
-    const tpp = document.querySelector('#viewDesign .dsg-pane[data-pane="tpl"]');
-    if(tpp) tpp.hidden = tab !== 'tpl';
     _dsgTeamApply();
     if(!_dsgTeamLoaded) _dsgTeamLoad();
     const subEl = document.getElementById('dsgTitleSub');
-    if(subEl) subEl.textContent = tab === 'quote' ? '/ 견적서' : tab === 'match' ? '/ 매칭보드' : tab === 'tpl' ? '/ 양식' : '/ 디자인센터';
+    if(subEl) subEl.textContent = tab === 'quote' ? '/ 견적서' : tab === 'match' ? '/ 매칭보드' : '/ 디자인센터';
     if(tab === 'center'){
       if(typeof lsbInit === 'function') lsbInit();
       if(typeof dcInit === 'function') dcInit();
       if(typeof dsgPostsRender === 'function') dsgPostsRender();
       if(typeof dsgDocRender === 'function') dsgDocRender();
     }else if(tab === 'quote') qtInit();
-    else if(tab === 'tpl') tplInit();
     else mbInit();
     try{ localStorage.setItem('dsgCurTab', tab); }catch(e){}
   }
@@ -25269,14 +25293,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.qtKindFilter = qtKindFilter; window.qtEditStart = qtEditStart; window.qtEditField = qtEditField; window.qtEditItem = qtEditItem;
   window.qtEditRow = qtEditRow; window.qtEditCancel = qtEditCancel; window.qtEditSave = qtEditSave;
 
-  /* ===== 매칭보드 — 구글시트 '원부자재 매칭표'를 가방별로 정리해 보여 준다 (시트 탭 하나 = 가방 하나, 새 탭은 저절로 잡힌다) =====
-     · 글자 · 병합 · 사진 위치는 시트 웹 보기(htmlview/sheet) 한 장에서 읽는다. 표는 3칸이 컬러 하나다 (A~C, D~F …)
-     · 사진은 다른 사이트의 <img> 로는 막혀 있지만 fetch 는 열려 있어 blob 으로 받아 띄운다. 주소는 곧 만료되니 저장하지 않는다
-     · 공장 연락처 · 원단 단가가 들어 있어 라인시트처럼 공개 레포로 옮기지 않는다. 시트 주소도 코드 대신 design_center_settings 에 둔다 */
-  const MB_THUMB = '=w480-h480-rw', MB_BIG = '=w1600-h1600-rw', MB_WORKERS = 3, MB_FRESH = 60000;
-  const _mb = {id:null, tabs:null, cur:null, docs:{}, img:{}, at:0, busy:false, err:'', bound:false, hover:null};
-  const _mbSlot = c => Math.floor(c / 3);
-  const _mbSheetUrl = path => `https://docs.google.com/spreadsheets/d/${_mb.id}/${path}`;
+  /* ===== 매칭보드 — 원부자재 매칭표를 스타일(가방)마다 정리해 보여 준다 =====
+     2026-11-20 사장님 "디자인팀 시트를 뷰어로 불러오는 게 아니라 자체적으로 수정" → 구글시트 읽기를 끊고 오피스 저장소(design_tpl_docs)에서 읽는다.
+     · [＋ 스타일 추가] [✏️ 수정] = 구글시트와 같은 양식의 편집 창 (칸마다 바로 입력 · 사진 넣기) — 아래 '디자인팀 시트 편집 창'
+     · 스타일마다 견적 · 원가계산서(내부공유용 시트에 있던 것)를 그대로 — 디자인팀 기밀 명단(designSecretOk)만
+     · 사진 = Supabase Storage design-tpl (보드는 작은 사진 _t, 올리면 큰 사진) */
+  const MB_WORKERS = 3;
+  const _mb = {cur:null, busy:false, bound:false, hover:null};
+  // 구글시트 웹 보기 · 사진 받기 — '시트에서 가져오기'(옛 시트 탭 옮기기)에만 쓴다
   async function _mbText(url){
     const r = await fetch(url, {cache:'no-store'});
     if(!r.ok) throw new Error('http_' + r.status);
@@ -25290,174 +25314,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(r.status !== 429 || i >= 5) throw new Error('http_' + r.status);
       await new Promise(res => setTimeout(res, 700 * 2 ** i));
     }
-  }
-  async function _mbLoadTabs(){
-    const h = await _mbText(_mbSheetUrl('htmlview')), out = [];
-    for(const m of h.matchAll(/items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"/g)){
-      let name = m[1];
-      try{ name = JSON.parse(`"${m[1]}"`); }catch(e){}
-      out.push({name, gid:m[2]});
-    }
-    return out;
-  }
-  /* 웹 보기 표 → 줄마다 [{r, c, cs, rs, text, src}] — 병합으로 가려진 칸을 건너뛰어 실제 열 번호를 맞춘다 */
-  function _mbGrid(html){
-    const doc = new DOMParser().parseFromString(html, 'text/html'), rows = [], taken = {};
-    doc.querySelectorAll('table.waffle tbody tr').forEach(tr => {
-      const m = (tr.querySelector('th[id]') || {id:''}).id.match(/R(\d+)$/);
-      if(!m) return;
-      const r = +m[1], cells = [];
-      let c = 0;
-      tr.querySelectorAll('td').forEach(td => {
-        if(td.classList.contains('freezebar-cell')) return;
-        while(taken[r] && taken[r].has(c)) c++;
-        const cs = +td.getAttribute('colspan') || 1, rs = +td.getAttribute('rowspan') || 1, img = td.querySelector('img');
-        const src = img ? (img.getAttribute('src') || '').replace(/=(?:w\d+-h\d+|s\d+)(?:-[a-z]+)*$/, '') : '';
-        const text = _qtT(td.textContent);
-        if(text || src) cells.push({r, c, cs, rs, text, src});
-        for(let y = r + 1; y < r + rs; y++) for(let x = c; x < c + cs; x++) (taken[y] = taken[y] || new Set()).add(x);
-        c += cs;
-      });
-      rows.push({r, cells});
-    });
-    return rows;
-  }
-  /* 시트 양식 → 가방 하나. '메인 원단' 같은 머리글 줄로 구역을 나누고, 사진은 k(탭:행:열)로만 가리킨다 (주소는 srcs 에 따로) */
-  function _mbBuild(rows, gid){
-    const HEAD = {'공장정보':'factory', 'image':'photo', '메인원단':'fabric', '안감':'lining', '부자재':'hardware'};
-    const secs = {}, srcs = {};
-    let sec = 'top';
-    rows.forEach(row => {
-      const a = row.cells[0], key = a ? _qtK(a.text).toLowerCase() : '';
-      if(row.cells.length === 1 && a.c === 0 && (HEAD[key] || key.startsWith('size'))){ sec = HEAD[key] || 'size'; return; }
-      if(row.cells.length) (secs[sec] = secs[sec] || []).push(row);
-    });
-    const keyOf = x => { if(!x.src) return ''; const k = `${gid}:${x.r}:${x.c}`; srcs[k] = x.src; return k; };
-    const bag = {gid, title:'', specs:[], factory:[], colors:{}, fabric:[], lining:[], hardware:[]};
-    bag.title = ((secs.top || [])[0] || {cells:[{}]}).cells[0].text || '';
-    (secs.size || []).forEach(({cells}) => {
-      for(let i = 0; i < cells.length; i++){
-        const label = cells[i], val = cells[i + 1];
-        if(!val || val.c !== label.c + label.cs) continue;
-        bag.specs.push({label:label.text.split('/').pop().trim(), value:/^\d+(\.\d+)?$/.test(val.text) ? `${val.text}cm` : val.text});
-        i++;
-      }
-    });
-    (secs.factory || []).forEach(({cells}) => cells.forEach(x => {
-      let f = bag.factory.find(v => x.c < v.c + v.cs && v.c < x.c + x.cs);
-      if(!f){ f = {c:x.c, cs:x.cs, text:'', k:''}; bag.factory.push(f); }
-      if(x.text) f.text = f.text ? `${f.text} · ${x.text}` : x.text;
-      if(x.src) f.k = keyOf(x);
-    }));
-    (secs.photo || []).forEach(({cells}) => {
-      const isName = cells.some(x => _qtK(x.text) === '컬러명');
-      cells.forEach(x => {
-        const c = bag.colors[_mbSlot(x.c)] = bag.colors[_mbSlot(x.c)] || {en:'', ko:'', k:''};
-        if(x.src) c.k = keyOf(x);
-        else if(isName && _qtK(x.text) !== '컬러명') c[x.c % 3 === 2 ? 'ko' : 'en'] = x.text;
-      });
-    });
-    Object.keys(bag.colors).forEach(s => { const c = bag.colors[s]; if(!c.en && !c.ko && !c.k) delete bag.colors[s]; });   // '컬러명' 글자만 있는 빈 칸
-    // 사진 줄 + 그 아래 글자 줄. 글자는 바로 위 사진의 같은 칸 밑에 붙는다 (같은 칸의 글자는 한 줄로)
-    const blocks = rows2 => {
-      const out = [];
-      let last = null;
-      (rows2 || []).forEach(({cells}) => {
-        if(cells.some(x => x.src)){
-          last = cells.map(x => ({s0:_mbSlot(x.c), s1:_mbSlot(x.c + x.cs - 1), k:keyOf(x), lines:x.text ? [x.text] : []}));
-          out.push(last);
-          return;
-        }
-        if(!last){ last = []; out.push(last); }
-        const line = new Map();
-        cells.forEach(x => {
-          const s = _mbSlot(x.c);
-          let b = last.find(v => v.s0 <= s && s <= v.s1);
-          if(!b){ b = {s0:s, s1:_mbSlot(x.c + x.cs - 1), k:'', lines:[]}; last.push(b); }
-          line.set(b, [...(line.get(b) || []), x.text]);
-        });
-        line.forEach((parts, b) => b.lines.push(parts.join(' · ')));
-      });
-      return out;
-    };
-    bag.fabric = blocks(secs.fabric);
-    bag.lining = blocks(secs.lining);
-    bag.hardware = blocks(secs.hardware).flat().sort((a, b) => a.s0 - b.s0);
-    // 원단 · 부자재 단가 = 기밀 — 디자인팀 명단(박시호 · 대표 2명) 밖 PC 에선 금액 · 단가가 적힌 줄을 아예 뺀다 (2026-11-20)
-    if(!designSecretOk()){
-      const PRICE = /단가|가격|원가|공급가|금액|[₩￦¥￥]|위안|\d[\d,.]*\s*(원|위안|元)(?![가-힣])/;
-      const strip = b => { b.lines = (b.lines || []).filter(t => !PRICE.test(String(t || ''))); };
-      [...bag.fabric.flat(), ...bag.lining.flat(), ...bag.hardware].forEach(strip);
-      bag.factory.forEach(f => { f.text = String(f.text || '').split(' · ').filter(t => !PRICE.test(t)).join(' · '); });
-      bag.specs = bag.specs.filter(x => !PRICE.test(`${x.label} ${x.value}`));
-    }
-    return {bag, srcs};
-  }
-  async function _mbLoadDoc(gid, force){
-    const {bag, srcs} = _mbBuild(_mbGrid(await _mbText(_mbSheetUrl(`htmlview/sheet?headers=true&gid=${gid}`))), gid);
-    const sig = JSON.stringify(bag), old = _mb.docs[gid];
-    Object.entries(srcs).forEach(([k, src]) => {
-      const im = _mb.img[k];
-      if(im && !force && old && old.sig === sig){ im.src = src; im.failed = false; return; }   // 내용이 같으면 받아 둔 사진을 쓰고 주소만 새것으로
-      if(im && im.big) URL.revokeObjectURL(im.big);
-      _mb.img[k] = {src, thumb:im && im.thumb, stale:!!(im && im.thumb)};   // 새 사진이 올 때까지 옛 사진을 그대로 보여 준다
-    });
-    _mb.docs[gid] = {bag, sig, keys:Object.keys(srcs), at:Date.now()};
-  }
-  function _mbImgBody(k, cap){
-    const im = _mb.img[k];
-    if(im && im.thumb) return `<img src="${im.thumb}" alt="${escapeHTML(cap)}" draggable="false">`;
-    return im && im.failed ? '<span class="mb-miss">사진을 못 불러왔어요</span>' : '';
-  }
-  function _mbImgHtml(k, cap, cls){
-    const im = _mb.img[k], cls2 = im && im.thumb ? '' : ' is-wait';
-    return `<button type="button" class="mb-img ${cls}${cls2}" data-k="${k}" data-cap="${escapeHTML(cap)}" aria-label="${escapeHTML(cap)} 크게 보기">${_mbImgBody(k, cap)}</button>`;
-  }
-  function _mbPaint(k){
-    document.querySelectorAll(`#mbBoard .mb-img[data-k="${k}"]`).forEach(el => {
-      el.innerHTML = _mbImgBody(k, el.dataset.cap);
-      el.classList.toggle('is-wait', !(_mb.img[k] && (_mb.img[k].thumb || _mb.img[k].failed)));
-    });
-  }
-  async function _mbLoadThumbs(gid){
-    const doc = _mb.docs[gid];
-    if(!doc) return;
-    const todo = doc.keys.filter(k => { const im = _mb.img[k]; return im && !im.loading && !im.failed && (!im.thumb || im.stale); });
-    const worker = async () => {
-      for(let k; (k = todo.shift());){
-        const im = _mb.img[k];
-        if(!im) continue;
-        im.loading = true;
-        try{
-          const url = await _mbBlobUrl(im.src + MB_THUMB), prev = im.thumb;
-          im.thumb = url; im.stale = false;
-          if(prev) URL.revokeObjectURL(prev);
-        }catch(e){ if(!im.thumb) im.failed = true; }
-        im.loading = false;
-        _mbPaint(k);
-      }
-    };
-    await Promise.all(Array.from({length:MB_WORKERS}, worker));
-  }
-  /* 크게 보기용 사진 — 올렸을 때 처음 받는다. 주소가 만료됐으면 시트를 다시 읽어 한 번 더 */
-  function _mbBig(k){
-    const im = _mb.img[k];
-    if(!im) return Promise.resolve(null);
-    if(im.big) return Promise.resolve(im.big);
-    if(im.bigWait) return im.bigWait;
-    im.bigWait = (async () => {
-      try{ im.big = await _mbBlobUrl(im.src + MB_BIG); }
-      catch(e){
-        try{
-          await _mbLoadDoc(k.split(':')[0]);
-          const now = _mb.img[k];
-          if(now){ now.big = await _mbBlobUrl(now.src + MB_BIG); return now.big; }
-        }catch(e2){}
-      }
-      im.bigWait = null;
-      return im.big || null;
-    })();
-    return im.bigWait;
   }
   function _mbLayer(id, cls){
     let el = document.getElementById(id);
@@ -25480,16 +25336,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     box.style.top = Math.max(8, Math.min(r.top + r.height / 2 - h / 2, innerHeight - h - 8)) + 'px';
   }
   function _mbHover(el){
-    const k = el.dataset.k, im = _mb.img[k];
-    if(!im || !im.thumb) return;
+    const ref = el.dataset.ref;
+    if(!ref) return;
     const box = _mbLayer('mbPrev', 'mb-prev'), pic = box.querySelector('img');
     _mb.hover = el;
     pic.onload = () => { if(_mb.hover === el) _mbPlace(el); };
-    pic.src = im.big || im.thumb;
+    pic.src = _tplImgUrl(ref, false);
     box.querySelector('.mb-layer-cap').textContent = el.dataset.cap || '';
     box.hidden = false;
     _mbPlace(el);
-    if(!im.big) _mbBig(k).then(url => { if(url && _mb.hover === el) pic.src = url; });
   }
   function _mbUnhover(){
     _mb.hover = null;
@@ -25497,16 +25352,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(box) box.hidden = true;
   }
   function _mbOpen(el){
-    const k = el.dataset.k, im = _mb.img[k];
-    if(!im || !im.thumb) return;
+    if(!el.dataset.ref) return;
     _mbUnhover();
-    const lb = _mbLayer('mbLb', 'mb-lb'), pic = lb.querySelector('img');
-    if(!lb._bound){ lb._bound = true; lb.addEventListener('click', () => { lb.hidden = true; }); }
-    lb.dataset.k = k;
-    pic.src = im.big || im.thumb;
-    lb.querySelector('.mb-layer-cap').textContent = el.dataset.cap || '';
-    lb.hidden = false;
-    if(!im.big) _mbBig(k).then(url => { if(url && !lb.hidden && lb.dataset.k === k) pic.src = url; });
+    _tplBig(el.dataset.ref, el.dataset.cap || '');
   }
   function _mbBind(){
     if(_mb.bound) return;
@@ -25530,155 +25378,145 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(lb) lb.hidden = true;
     });
     document.addEventListener('visibilitychange', () => {
-      if(!document.hidden && _dsgCurTab === 'match' && !document.getElementById('viewDesign')?.hidden) mbInit();
+      if(!document.hidden && _dsgCurTab === 'match' && !document.getElementById('viewDesign')?.hidden && document.getElementById('tplEd')?.hidden) mbInit();
     });
   }
-  function _mbBagHtml(bag){
-    const E = escapeHTML;
-    const single = [...bag.fabric, ...bag.lining].flat().filter(b => b.s0 === b.s1).map(b => b.s0);
-    const used = [...new Set([...Object.keys(bag.colors).map(Number), ...single])].sort((a, b) => a - b);
+  // 칸 값 — 공개 칸이 비었으면 기밀 칸(단가 등)을 명단 PC 에서만
+  function _mbVal(doc, it, f){
+    if(!it) return '';
+    const s = (((doc.secret || {}).p || {})[it.u] || {})[f];
+    return String(it[f] || (designSecretOk() && s ? s : '') || '');
+  }
+  function _mbImgHtml(ref, cap, cls){
+    const E = escapeHTML, url = _tplImgUrl(ref, true);
+    return `<button type="button" class="mb-img ${cls}${url ? '' : ' is-wait'}" data-ref="${E(ref)}" data-cap="${E(cap)}" aria-label="${E(cap)} 크게 보기">${url ? `<img src="${E(url)}" alt="${E(cap)}" loading="lazy" decoding="async" draggable="false">` : ''}</button>`;
+  }
+  const _mbCostHas = doc => !!(doc.secret && doc.secret.cost && doc.secret.cost.touched && (doc.secret.cost.rows || []).length);
+  function _mbDocHtml(doc){
+    const E = escapeHTML, d = doc.data, N = d.slots, V = (it, f) => _mbVal(doc, it, f);
+    const join = (...xs) => xs.map(x => String(x || '').replace(/\s*\n+\s*/g, ' ')).filter(Boolean).join(' · ');
+    const used = [];
+    for(let s = 0; s < N; s++){
+      const c = d.colors[s] || {}, f = d.fab[s] || {}, l = d.lin[s] || {};
+      if(c.en || c.ko || c.img != null || f.img != null || f.tag != null || f.a || f.b || V(f, 'c') || l.img != null || l.a || l.b || V(l, 'c') || V(l, 'd')) used.push(s);
+    }
     if(!used.length) used.push(0);
-    const place = b => {
-      const inside = used.filter(s => s >= b.s0 && s <= b.s1);
-      return `grid-column:${used.indexOf(inside.length ? inside[0] : used[0]) + 2} / span ${Math.max(1, inside.length)}`;
-    };
-    const lines = b => b.lines.length ? `<div class="mb-lines">${b.lines.map(l => `<div>${E(l)}</div>`).join('')}</div>` : '';
     const out = [];
     let y = 1;
     const label = t => out.push(`<div class="mb-label" style="grid-row:${y}">${t}</div>`);
+    const cell = (i, html) => out.push(`<div class="mb-cell" style="grid-column:${i + 2};grid-row:${y}">${html}</div>`);
+    const lines = arr => { const a = arr.filter(Boolean); return a.length ? `<div class="mb-lines">${a.map(t => `<div>${E(t)}</div>`).join('')}</div>` : ''; };
     label('컬러');
-    used.forEach((s, i) => {
-      const c = bag.colors[s] || {};
-      out.push(`<div class="mb-color" style="grid-column:${i + 2};grid-row:${y}"><b>${E(c.en || c.ko || '—')}</b>${c.en && c.ko ? `<span>${E(c.ko)}</span>` : ''}</div>`);
-    });
+    used.forEach((s, i) => { const c = d.colors[s]; out.push(`<div class="mb-color" style="grid-column:${i + 2};grid-row:${y}"><b>${E(c.en || c.ko || '—')}</b>${c.en && c.ko ? `<span>${E(c.ko)}</span>` : ''}</div>`); });
     y++;
-    if(used.some(s => bag.colors[s] && bag.colors[s].k)){
+    if(used.some(s => d.colors[s].img != null)){
       label('제품');
-      used.forEach((s, i) => {
-        const c = bag.colors[s] || {};
-        if(c.k) out.push(`<div class="mb-cell" style="grid-column:${i + 2};grid-row:${y}">${_mbImgHtml(c.k, `${c.en || c.ko} 제품`, 'mb-photo')}</div>`);
-      });
+      used.forEach((s, i) => { const c = d.colors[s]; if(c.img != null) cell(i, _mbImgHtml(c.img, `${c.en || c.ko} 제품`, 'mb-photo')); });
       y++;
     }
-    // 메인 원단 — 맨 아래 사진 줄이 컬러별 원단이고, 그 위 줄들은 원단 라벨 · 업체 카드다
-    if(bag.fabric.length){
+    if(used.some(s => { const f = d.fab[s]; return f.img != null || f.a || f.b || V(f, 'c'); })){
       label('메인 원단');
-      bag.fabric[bag.fabric.length - 1].forEach(b => out.push(`<div class="mb-cell" style="${place(b)};grid-row:${y}">${b.k ? _mbImgHtml(b.k, b.lines[0] || '메인 원단', 'mb-swatch') : ''}${lines(b)}</div>`));
+      used.forEach((s, i) => { const f = d.fab[s]; cell(i, `${f.img != null ? _mbImgHtml(f.img, join(f.a, f.b) || '메인 원단', 'mb-swatch') : ''}${lines([join(f.a, f.b, V(f, 'c'))])}`); });
       y++;
-      const info = {};
-      bag.fabric.slice(0, -1).flat().forEach(b => { const id = `${b.s0}-${b.s1}`; (info[id] = info[id] || {s0:b.s0, s1:b.s1, list:[]}).list.push(b); });
-      if(Object.keys(info).length){
-        label('원단 라벨');
-        Object.values(info).forEach(g => out.push(`<div class="mb-cell" style="${place(g)};grid-row:${y}"><div class="mb-tags">${g.list.map(b => b.k ? _mbImgHtml(b.k, '원단 라벨', 'mb-card') : '').join('')}</div>${g.list.map(lines).join('')}</div>`));
-        y++;
-      }
     }
-    bag.lining.forEach(row => {
-      label('안감');
-      row.forEach(b => out.push(`<div class="mb-cell" style="${place(b)};grid-row:${y}">${b.k ? _mbImgHtml(b.k, b.lines[0] || '안감', 'mb-wide') : ''}${lines(b)}</div>`));
+    if(used.some(s => d.fab[s].tag != null)){
+      label('원단 라벨');
+      used.forEach((s, i) => { const f = d.fab[s]; if(f.tag != null) cell(i, `<div class="mb-tags">${_mbImgHtml(f.tag, '원단 라벨', 'mb-card')}</div>`); });
       y++;
-    });
-    const fac = bag.factory.map(f => `<div class="mb-fac">${f.k ? _mbImgHtml(f.k, `공장 연락처 ${f.text}`, 'mb-card') : ''}<div class="mb-fac-t">${E(f.text)}</div></div>`).join('');
-    const hw = bag.hardware.map(b => `<div class="mb-hw-item">${b.k ? _mbImgHtml(b.k, b.lines[0] || '부자재', 'mb-swatch') : '<div class="mb-noimg">사진 없음</div>'}${lines(b)}</div>`).join('');
+    }
+    if(used.some(s => { const l = d.lin[s]; return l.img != null || l.a || l.b || V(l, 'c') || V(l, 'd'); })){
+      label('안감');
+      used.forEach((s, i) => { const l = d.lin[s]; cell(i, `${l.img != null ? _mbImgHtml(l.img, join(l.a, l.b) || '안감', 'mb-wide') : ''}${lines([join(l.a, l.b), join(V(l, 'c'), V(l, 'd'))])}`); });
+      y++;
+    }
+    const hw = d.hw.map(h => ({h, cap:V(h, 'cap'), a:V(h, 'a'), b:V(h, 'b'), c:V(h, 'c')})).filter(x => x.h.img != null || x.cap || x.a || x.b || x.c)
+      .map(x => `<div class="mb-hw-item">${x.h.img != null ? _mbImgHtml(x.h.img, x.cap || x.a || '부자재', 'mb-swatch') : x.cap ? `<div class="mb-noimg mb-captxt">${E(x.cap)}</div>` : '<div class="mb-noimg">사진 없음</div>'}${lines([x.h.img != null ? join(x.cap) : '', join(x.a, x.b, x.c)])}</div>`).join('');
+    const fac = d.factory.filter(f => f.text || f.img != null).map(f => `<div class="mb-fac">${f.img != null ? _mbImgHtml(f.img, `공장 연락처 ${join(f.text)}`, 'mb-card') : ''}<div class="mb-fac-t">${E(join(f.text))}</div></div>`).join('');
+    const specs = d.specs.filter(s => s.v).map(s => `<span class="mb-spec">${E(String(s.l || '').split('/').pop().trim())}<b>${E(/^\d+(\.\d+)?$/.test(s.v) ? s.v + 'cm' : s.v)}</b></span>`).join('');
+    const notes = String(d.notes || '').trim();
+    let cost = '';
+    if(designSecretOk()) cost = `<section class="mb-cost"><div class="mb-sec-t">견적 · 원가계산서 <span class="mb-sec-sub">내부 — 업체 전달용 PDF 에는 빠져요</span></div>${_mbCostHas(doc) ? `<div class="mb-scroll">${_tplCostHtml(doc, {edit:false})}</div>` : '<div class="mb-empty mb-empty-s">아직 적힌 견적이 없어요 — <b>✏️ 수정</b>을 눌러 원가계산서 칸에 적으면 여기에 그대로 보여요.</div>'}</section>`;
     return `<article class="mb-bag">
-      <header><div class="mb-title">${E(bag.title || '(제목 없음)')}</div>
-        ${bag.specs.length ? `<div class="mb-specs">${bag.specs.map(s => `<span class="mb-spec">${E(s.label)}<b>${E(s.value)}</b></span>`).join('')}</div>` : ''}</header>
+      <header><div class="mb-title">${E(_tplTitleOf(doc) || '(제목 없음)')}${d.ref ? '<span class="mb-ref">참고용</span>' : ''}</div>
+        ${specs ? `<div class="mb-specs">${specs}</div>` : ''}</header>
+      ${cost}
       <div class="mb-scroll"><div class="mb-grid${used.length === 1 ? ' is-one' : ''}" style="--mb-n:${used.length}">${out.join('')}</div></div>
       ${hw ? `<section><div class="mb-sec-t">부자재</div><div class="mb-hw">${hw}</div></section>` : ''}
+      ${notes ? `<section><div class="mb-sec-t">생산주의사항</div><div class="mb-notes">${E(notes)}</div></section>` : ''}
       ${fac ? `<section><div class="mb-sec-t">공장 정보</div><div class="mb-facs">${fac}</div></section>` : ''}
     </article>`;
   }
   function _mbRender(){
     const board = document.getElementById('mbBoard');
     if(!board) return;
-    const E = escapeHTML, chips = document.getElementById('mbChips'), at = document.getElementById('mbAt'), open = document.getElementById('mbSheet');
-    if(chips) chips.innerHTML = (_mb.tabs || []).map(t => `<button type="button" class="mb-chip${t.gid === _mb.cur ? ' is-on' : ''}" onclick="mbPick('${E(t.gid)}')">${E(t.name)}</button>`).join('');
-    if(at) at.textContent = _mb.busy ? '불러오는 중…' : _mb.at ? new Date(_mb.at).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'}) + ' 기준' : '';
-    if(open && _mb.id){ open.href = designSecretOk() ? _mbSheetUrl('edit') : '#'; open.hidden = !designSecretOk(); }   // 구글시트 링크 = 디자인팀 명단(박시호 · 대표 2명)
-    const doc = _mb.docs[_mb.cur];
+    const E = escapeHTML, list = _tpl.docs.matching || [], chips = document.getElementById('mbChips'), at = document.getElementById('mbAt');
+    if(!list.some(d => d.id === _mb.cur)){
+      let saved = null;
+      try{ saved = +localStorage.getItem('mbCurDoc'); }catch(e){}
+      _mb.cur = (list.find(d => d.id === saved) || list[0] || {}).id || null;
+    }
+    if(chips) chips.innerHTML = list.map(d => `<button type="button" class="mb-chip${d.id === _mb.cur ? ' is-on' : ''}${d.data.ref ? ' is-ref' : ''}" onclick="mbPick(${d.id})">${E(_tplTitleOf(d) || '(이름 없음)')}</button>`).join('');
+    const doc = list.find(d => d.id === _mb.cur) || null;
+    if(at) at.textContent = doc && doc.updated_at ? `${new Date(doc.updated_at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'})}${doc.updated_by ? ' · ' + doc.updated_by : ''} 수정` : '';
+    ['mbEditBtn', 'mbPdfBtn', 'mbPdfInBtn'].forEach(id => { const b = document.getElementById(id); if(b) b.disabled = !doc; });
+    const inBtn = document.getElementById('mbPdfInBtn');
+    if(inBtn) inBtn.hidden = !designSecretOk();
     if(!doc){
-      board._mbSig = null;
-      board.innerHTML = `<div class="mb-empty">${_mb.err ? E(_mb.err) : '시트를 읽고 있어요…'}</div>`;
+      board._sig = null;
+      board.innerHTML = `<div class="mb-empty">${_tpl.err.matching && !list.length ? E(_tpl.err.matching) : !_tpl.loaded.matching ? '불러오는 중…' : '아직 스타일이 없어요 — <b>＋ 스타일 추가</b>를 눌러 매칭표 양식에 바로 적어 주세요.'}</div>`;
       return;
     }
-    if(board._mbSig === doc.sig) return;   // 내용이 같으면 그대로 둔다 (사진 깜빡임 · 스크롤 유지)
-    board._mbSig = doc.sig;
+    const sig = JSON.stringify([doc.id, doc.updated_at, doc.data, designSecretOk() ? doc.secret : 0]);
+    if(board._sig === sig) return;   // 내용이 같으면 그대로 둔다 (사진 깜빡임 · 스크롤 유지)
+    board._sig = sig;
     _mbUnhover();
-    board.innerHTML = _mbBagHtml(doc.bag);
+    board.innerHTML = _mbDocHtml(doc);
   }
   async function mbInit(force){
     _mbBind();
     _mbRender();
     if(_mb.busy) return;
-    if(!force && Date.now() - _mb.at < MB_FRESH){ _mbLoadThumbs(_mb.cur); return; }
-    _mb.busy = true; _mb.err = '';
-    _mbRender();
-    try{
-      if(!_mb.id){
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/design_center_settings?key=eq.matching_sheet_id&select=value`, {headers:_sbHeaders(), cache:'no-cache'});
-        if(!r.ok) throw new Error('http_' + r.status);
-        const [row] = await r.json();
-        _mb.id = row ? row.value : null;
-        if(!_mb.id) throw new Error('연결된 시트가 없어요.');
-      }
-      const tabs = await _mbLoadTabs();
-      if(tabs.length) _mb.tabs = tabs;
-      if(!_mb.tabs) throw new Error('시트를 읽지 못했어요. 시트 공유가 "링크가 있는 모든 사용자"인지 확인해 주세요.');
-      if(!_mb.tabs.some(t => t.gid === _mb.cur)){
-        let saved = null;
-        try{ saved = localStorage.getItem('mbCurGid'); }catch(e){}
-        _mb.cur = _mb.tabs.some(t => t.gid === saved) ? saved : _mb.tabs[0].gid;
-      }
-      await _mbLoadDoc(_mb.cur, force);
-      _mb.at = Date.now();
-    }catch(e){
-      _mb.err = /^http_|Failed to fetch|NetworkError|Load failed/.test(e.message) ? '시트를 읽지 못했어요. 잠시 후 새로고침해 주세요.' : e.message;
-      if(_mb.docs[_mb.cur]) toast(_mb.err, 'err');
-    }
+    _mb.busy = true;
+    await _tplLoad('matching', force);
     _mb.busy = false;
     _mbRender();
-    _mbLoadThumbs(_mb.cur);
   }
-  async function mbPick(gid){
-    if(_mb.cur === gid) return;
-    _mb.cur = gid;
-    try{ localStorage.setItem('mbCurGid', gid); }catch(e){}
-    _mb.err = '';
+  function mbPick(id){
+    _mb.cur = id;
+    try{ localStorage.setItem('mbCurDoc', String(id)); }catch(e){}
     _mbRender();
-    const doc = _mb.docs[gid];
-    if(!doc || Date.now() - doc.at > MB_FRESH){
-      try{ await _mbLoadDoc(gid); }
-      catch(e){ if(!doc) _mb.err = '시트를 읽지 못했어요. 잠시 후 새로고침해 주세요.'; }
-      if(_mb.cur === gid) _mbRender();
-    }
-    _mbLoadThumbs(gid);
   }
-  window.mbInit = mbInit; window.mbPick = mbPick;
+  function mbAdd(){ tplOpen('matching', null, {add:true}); }
+  function mbEdit(){ if(_mb.cur) tplOpen('matching', _mb.cur); }
+  async function mbPdf(mode){
+    const doc = (_tpl.docs.matching || []).find(d => d.id === _mb.cur);
+    if(!doc){ toast('스타일을 먼저 골라 주세요', 'err'); return; }
+    await _tplPdfMatching(doc, mode === 'internal' && designSecretOk() ? 'internal' : 'vendor');
+  }
+  window.mbInit = mbInit; window.mbPick = mbPick; window.mbAdd = mbAdd; window.mbEdit = mbEdit; window.mbPdf = mbPdf;
 
   /* ============================================================
-     디자인팀 📐 양식 (2026-11-20) — 구글시트 3개를 오피스 안에서 바로 쓰는 양식으로 옮겼다
-       · 라인시트            = 'COFERRY LINE SHEET' (상품 블록: 검은 머리글 줄 + 컬러별 샘플 일정 8줄)
-       · 원부자재 매칭표 · 내부공유용 = '[내부공유용] 원부자재 매칭표' (퍼스트큐 백 탭의 원가계산서까지)
-       · 원부자재 매칭표 · 업체 전달용 = '[투엘] 원부자재 매칭표' — 내부공유용에서 원가계산서만 뺀 같은 문서
-     보드맵 · 매칭보드(시트를 그대로 읽는 전광판)는 그대로 두고, 매칭보드에는 '업체 전달용 PDF' 버튼만 더했다.
-     · 저장 = Supabase design_tpl_docs (문서 한 장 = 줄 하나, data = 공개 칸 / secret = 단가 · 정상가 · 라벨 단가 · 원가계산서)
-              design_tpl_photos (사진 = 줄인 JPEG base64 + 작은 사진). 칸을 고치면 1초 뒤 저절로 저장
-     · 기밀 = secret 칸은 디자인팀 기밀 명단(designSecretOk = 박시호 · 대표 2명 · 지희선) PC 만 받고 그린다. 명단 밖이면 그 칸은 비어 보이고 PDF 에도 안 나온다.
-       명단 PC 에서 매칭표 칸에 '13.5원/m' 처럼 단가를 적으면 저절로 secret 쪽으로 옮겨 저장한다
-     · 시트에서 가져오기 = 지금 시트 탭 하나를 새 양식 문서로 (사진도 같이 옮긴다). 내부공유용 시트 주소는 design_center_settings 'matching_internal_sheet_id'
+     디자인팀 시트 편집 창 (2026-11-20) — 구글시트 3개(COFERRY LINE SHEET · [내부공유용] · [투엘] 원부자재 매칭표)와 같은 양식
+       · 매칭보드 [＋ 스타일 추가] [✏️ 수정] → 원부자재 매칭표 (내부공유용 = 원가계산서까지 / 업체 전달용 = 원가계산서만 뺌, 같은 문서)
+       · 보드맵   [＋ 상품 추가] [✏️ 수정]     → 라인시트 (시즌 하나 = 문서 하나, 홀딩도 문서 하나)
+     · 칸을 누르면 바로 적고 1초 뒤 저절로 저장. 사진 칸은 누르기 · 끌어다 놓기 · Ctrl+V. 🟨 칸 강조
+     · 저장 = Supabase design_tpl_docs (data = 공개 칸 / secret = 단가 · 정상가 · 라벨 단가 · 원가계산서), 사진 = Storage design-tpl
+     · 기밀 = secret 칸은 디자인팀 기밀 명단(designSecretOk) PC 만 받고 그린다. 명단 PC 에서 매칭표 원단 · 안감 · 부자재 칸에
+       '13.5원/m' 처럼 단가를 적으면 저절로 secret 쪽으로 옮겨 저장한다
+     · 시트에서 가져오기 = 옛 구글시트 탭 하나를 새 문서로 (사진도 같이). 내부공유용 시트 주소는 design_center_settings 'matching_internal_sheet_id'
      · PDF = html2canvas + jsPDF (누를 때만 불러온다) · A4 가로. 내부공유용 = 1쪽 매칭표 + 2쪽 원가계산서, 업체 전달용 = 매칭표만
      ============================================================ */
   const TPL_MODES = {
     linesheet:{kind:'linesheet', label:'라인시트', ico:'📋'},
-    internal:{kind:'matching', label:'원부자재 매칭표 · 내부공유용', ico:'🔒'},
-    vendor:{kind:'matching', label:'원부자재 매칭표 · 업체 전달용', ico:'📦'}
+    internal:{kind:'matching', label:'내부공유용', ico:'🔒'},
+    vendor:{kind:'matching', label:'업체 전달용', ico:'📦'}
   };
   const TPL_COLS = 'id,kind,title,data,sort,created_at,updated_at,updated_by';
-  const TPL_SAVE_MS = 1000, TPL_PH_MAX = 1400, TPL_PH_THUMB = 480, TPL_SLOT_MIN = 4, TPL_SLOT_MAX = 8, TPL_LS_ROWS = 8;
+  const TPL_SAVE_MS = 1000, TPL_PH_MAX = 1600, TPL_PH_THUMB = 520, TPL_SLOT_MIN = 4, TPL_SLOT_MAX = 8, TPL_LS_ROWS = 8, TPL_BUCKET = 'design-tpl';
   const TPL_PRICE = /단가|가격|원가|공급가|금액|[₩￦¥￥]|위안|\d[\d,.]*\s*(원|위안|元)(?![가-힣])/;
   const TPL_LIBS = ['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'];
-  const _tpl = {mode:null, docs:{}, cur:{}, loaded:{}, busy:{}, err:{}, ph:{}, phWait:{}, ext:{}, dirty:new Map(), timer:0, saving:false,
-                focusF:'', bound:false, sheetIds:null, sig:'', importing:false};
+  const _tpl = {mode:'internal', mMode:null, docs:{}, cur:{}, loaded:{}, busy:{}, err:{}, ext:{}, dirty:new Map(), timer:0, saving:false,
+                focusF:'', bound:false, sheetIds:null, sig:'', importing:false, open:null, up:{}};
   const _tplUid = () => Math.random().toString(36).slice(2, 10);
   const _tplMe = () => { try{ return String(localStorage.getItem('brightbeed_diary_me') || '').trim(); }catch(e){ return ''; } };
   const _tplKind = () => TPL_MODES[_tpl.mode].kind;
@@ -25699,18 +25537,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       specs:[{l:'Height / 가로', v:''}, {l:'Weight / 세로', v:''}, {l:'Strap length / 스트랩 길이', v:''}, {l:'Strap Height / 스트랩 높이', v:''}, {l:'내부 포켓 1', v:''}, {l:'내부 포켓 2', v:''}],
       factory:[{u:_tplUid(), w:1, text:'', img:null}], colors:[], fab:[], lin:[], hw:[], notes:''};
   }
-  // 원가계산서 — 퍼스트큐 백 시트의 줄 그대로 (본체 · 스트랩 단가는 비우고 더스트백 · 라벨 · 통관비는 그 시트 값)
+  // 원가계산서 — 퍼스트큐 백 시트의 줄 그대로 (본체 · 스트랩 단가는 비우고 더스트백 · 라벨 · 통관비는 그 시트 값). touched = 한 번이라도 적은 표만 보드에 보인다
   function _tplBlankCost(){
     const r = (name, size, cny, krw, vat, qty, hl) => ({u:_tplUid(), name, color:'', size, cny, conv:'', krw, vat, qty, hl:hl ? {name:true} : {}});
-    return {rate:'220', mult:'', rows:[
+    return {rate:'220', mult:'', touched:false, rows:[
       r('가방본체', '-', '', '', false, '1'), r('스트랩', '-', '', '', false, '1'), r('스트랩 캡', '-', '', '', false, ''),
       r('더스트백', '30*40', '1.09', '', false, '1', 1), r('메인라벨', '50*25mm', '', '45', true, '1', 1), r('포인트라벨', '25*12mm', '', '30', true, '0', 1),
       r('케어라벨', '-', '', '26', true, '0', 1), r('통관&물류비(어바웃)', '-', '', '1500', false, '1', 1)]};
   }
   function _tplBlankLsItem(){
-    return {u:_tplUid(), no:'', season:'', name:'', vendor:'', fabric:'', factory:'', note:'', cat:'', first:'', solo:'', imgs:[null, null, null, null], colors:[], rows:TPL_LS_ROWS};
+    return {u:_tplUid(), no:'', season:'', name:'', vendor:'', fabric:'', factory:'', note:'', reason:'', cat:'', first:'', solo:'', imgs:[null, null, null, null], colors:[], rows:TPL_LS_ROWS};
   }
-  function _tplBlankLs(){ return {title:'', bag:'', acc:'', items:[_tplBlankLsItem()]}; }
+  function _tplBlankLs(){ return {title:'', tab:'', bag:'', acc:'', items:[_tplBlankLsItem()]}; }
+  // 시즌 이름(보드맵 탭) — 적어 둔 탭 이름, 없으면 제목에서 'COFERRY LINE SHEET' 를 뺀 것
+  function _tplLsTab(doc){
+    const d = doc.data || {};
+    return String(d.tab || String(d.title || '').replace(/COFERRY|LINE\s*SHEET/gi, '').replace(/\s+/g, ' ').trim() || '새 시즌');
+  }
+  const _tplLsHold = doc => /홀딩|hold/i.test(`${(doc.data || {}).tab || ''} ${(doc.data || {}).title || ''}`);
   // 컬러 칸 수(N)에 맞춰 컬러 · 원단 · 안감 칸을 채우고, 부자재는 N 칸씩 줄을 맞춘다
   function _tplSetSlots(d, n){
     d.slots = Math.max(TPL_SLOT_MIN, Math.min(TPL_SLOT_MAX, n | 0 || 5));
@@ -25735,7 +25579,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!Array.isArray(d.factory) || !d.factory.length) d.factory = b.factory;
       d.factory.forEach(f => { if(!f.u) f.u = _tplUid(); });
       _tplSetSlots(d, d.slots);
-      if(designSecretOk() && !doc.secret.cost) doc.secret.cost = _tplBlankCost();
     }else{
       if(!Array.isArray(d.items)) d.items = [];
       d.items.forEach(it => {
@@ -25744,12 +25587,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         it.colors = (it.colors || []).map(c => c || {});
         if(!it.rows) it.rows = TPL_LS_ROWS;
       });
-      ['title', 'bag', 'acc'].forEach(k => { if(d[k] == null) d[k] = ''; });
+      ['title', 'tab', 'bag', 'acc'].forEach(k => { if(d[k] == null) d[k] = ''; });
     }
     if(!doc.secret.p) doc.secret.p = {};
     return doc;
   }
-  const _tplDocs = () => _tpl.docs[_tplKind()] || [];
   const _tplCurDoc = () => { const k = _tplKind(); return (_tpl.docs[k] || []).find(d => d.id === _tpl.cur[k]) || null; };
   const _tplFind = id => Object.values(_tpl.docs).flat().find(d => d && d.id === id) || null;
   const _tplTitleOf = doc => String(doc.data.title || '').replace(/\s+/g, ' ').trim();
@@ -25787,6 +25629,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!o || Array.isArray(o)) return null;
     return {obj:o, f:parts[parts.length - 1], root:sec ? 'secret' : 'data'};
   }
+  function _tplRefVal(doc, path){
+    let o = doc.data;
+    for(const k of path.split('.')){ if(o == null) return null; o = o[k]; }
+    return o == null ? null : o;
+  }
   /* 목록 항목의 칸 하나 — 기밀 칸(값이 secret 에 있거나, 단가 자리인데 비어 있음)이면 명단 PC 만 '$u.f' 로 쓰고 나머지는 잠근다 */
   function _tplF(doc, list, i, f, desig){
     const it = (doc.data[list] || [])[i] || {}, sp = (doc.secret.p || {})[it.u] || {};
@@ -25796,73 +25643,54 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   const _tplHl = (obj, f) => !!(obj && obj.hl && obj.hl[f]);
 
-  /* ── 사진 ── 서버 사진(숫자 id) · 시트에서 막 받은 사진('x:…' / 'ls:…')을 같은 칸 그림으로 */
-  function _tplB64Url(b64, type){
-    const bin = atob(b64), a = new Uint8Array(bin.length);
-    for(let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-    return URL.createObjectURL(new Blob([a], {type:type || 'image/jpeg'}));
+  /* ── 사진 ── 저장 사진 = 'tpl/…' (Storage 경로, 큰 사진 .jpg · 작은 사진 _t.jpg), 시트에서 막 받은 사진 = 'x:…' / 'ls:…' (이 창 안에서만) */
+  function _tplImgUrl(ref, thumb){
+    if(ref == null || ref === '') return '';
+    if(typeof ref === 'string' && ref.startsWith('tpl/')) return `${SUPABASE_URL}/storage/v1/object/public/${TPL_BUCKET}/${ref}${thumb ? '_t' : ''}.jpg`;
+    return _tpl.up[ref] || _tpl.ext[ref] || '';
   }
-  function _tplImgUrl(ref){
-    if(ref == null) return '';
-    if(typeof ref === 'number'){ const p = _tpl.ph[ref]; return p ? (p.full || p.thumb || '') : ''; }
-    return _tpl.ext[ref] || '';
-  }
-  async function _tplLoadPhotos(ids, full){
-    ids = [...new Set(ids.filter(id => typeof id === 'number' && !(_tpl.ph[id] && (full ? _tpl.ph[id].full : (_tpl.ph[id].thumb || _tpl.ph[id].full))) && !_tpl.phWait[id + (full ? 'f' : 't')]))];
-    if(!ids.length) return;
-    ids.forEach(id => { _tpl.phWait[id + (full ? 'f' : 't')] = 1; });
-    for(let i = 0; i < ids.length; i += 6){
-      const part = ids.slice(i, i + 6);
-      try{
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_photos?id=in.(${part.join(',')})&select=id,${full ? 'image_b64' : 'thumb_b64'}`, {headers:_sbHeaders()});
-        if(!r.ok) throw new Error('http_' + r.status);
-        (await r.json()).forEach(x => {
-          const p = _tpl.ph[x.id] = _tpl.ph[x.id] || {};
-          const b64 = full ? x.image_b64 : x.thumb_b64;
-          if(b64) p[full ? 'full' : 'thumb'] = _tplB64Url(b64);
-        });
-      }catch(e){ part.forEach(id => { (_tpl.ph[id] = _tpl.ph[id] || {}).failed = true; }); }
-      part.forEach(id => { delete _tpl.phWait[id + (full ? 'f' : 't')]; _tplPaintPh(id); });
-    }
-  }
-  function _tplPaintPh(id){
-    const url = _tplImgUrl(id);
-    document.querySelectorAll(`#tplStage .tp[data-ph="${id}"]`).forEach(el => {
-      const w = el.querySelector('.tp-wait');
-      if(url && w) w.outerHTML = `<img src="${url}" alt="" draggable="false">`;
-      else if(!url && w && _tpl.ph[id] && _tpl.ph[id].failed) w.outerHTML = '<span class="tp-miss">사진을 못 불러왔어요</span>';
-    });
-  }
-  function _tplPh(path, ref, edit, cls){
-    const E = escapeHTML, url = _tplImgUrl(ref);
-    const inner = ref != null ? (url ? `<img src="${url}" alt="" draggable="false">` : '<span class="tp-wait"></span>') : (edit ? '<span class="tp-add">＋ 사진</span>' : '');
+  function _tplPh(path, ref, edit, cls, thumb){
+    const E = escapeHTML, url = _tplImgUrl(ref, thumb);
+    const inner = ref != null ? (url ? `<img src="${E(url)}" alt="" draggable="false" crossorigin="anonymous" decoding="async">` : '<span class="tp-wait"></span>') : (edit ? '<span class="tp-add">＋ 사진</span>' : '');
     const tools = edit && ref != null ? '<span class="tp-tools"><button type="button" class="tp-b" data-act="ph-pick" title="다른 사진으로 바꾸기">바꾸기</button><button type="button" class="tp-b" data-act="ph-del" title="사진 빼기">×</button></span>' : '';
-    return `<div class="tp${cls ? ' ' + cls : ''}${ref != null ? ' has-img' : ''}${edit ? ' is-ed' : ''}"${edit ? ` tabindex="0" data-p="${E(path)}" title="${ref != null ? '사진 크게 보기' : '눌러서 사진 고르기 · 끌어다 놓기 · 이 칸을 누른 뒤 Ctrl+V'}"` : ''}${typeof ref === 'number' ? ` data-ph="${ref}"` : ''}>${inner}${tools}</div>`;
+    return `<div class="tp${cls ? ' ' + cls : ''}${ref != null ? ' has-img' : ''}${edit ? ' is-ed' : ''}"${edit ? ` tabindex="0" data-p="${E(path)}" title="${ref != null ? '사진 크게 보기' : '눌러서 사진 고르기 · 끌어다 놓기 · 이 칸을 누른 뒤 Ctrl+V'}"` : ''}>${inner}${tools}</div>`;
   }
-  async function _tplUpload(blob, docId){
-    const big = await _csiShrinkImg(blob, TPL_PH_MAX, .86), th = await _csiShrinkImg(blob, TPL_PH_THUMB, .8);
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_photos?select=id`, {method:'POST', headers:_sbHeaders({'Prefer':'return=representation'}),
-      body:JSON.stringify({doc_id:docId, mime:'image/jpeg', width:big.w, height:big.h, size:big.size, thumb_b64:th.b64, image_b64:big.b64, created_by:_tplMe()})});
-    if(!r.ok) throw new Error('http_' + r.status);
-    const [x] = await r.json();
-    _tpl.ph[x.id] = {thumb:_tplB64Url(th.b64), full:_tplB64Url(big.b64)};
-    return x.id;
+  async function _tplShrink(file, max, q){
+    const img = await createImageBitmap(file);   // 휴대폰 사진 방향(EXIF)은 브라우저가 맞춰 준다
+    const k = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+    if(img.close) img.close();
+    return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('사진을 줄이지 못했어요')), 'image/jpeg', q));
+  }
+  async function _tplUpload(blob){
+    const [big, th] = await Promise.all([_tplShrink(blob, TPL_PH_MAX, .86), _tplShrink(blob, TPL_PH_THUMB, .8)]);
+    const d = new Date(), ref = `tpl/${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}/${_tplUid()}${_tplUid()}`;
+    const put = async (name, b) => {
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${TPL_BUCKET}/${name}`, {method:'POST', headers:{'apikey':SUPABASE_KEY, 'Authorization':`Bearer ${SUPABASE_KEY}`, 'Content-Type':'image/jpeg', 'Cache-Control':'31536000', 'x-upsert':'false'}, body:b});
+      if(!r.ok) throw new Error('http_' + r.status);
+    };
+    await Promise.all([put(ref + '.jpg', big), put(ref + '_t.jpg', th)]);
+    _tpl.up[ref] = URL.createObjectURL(big);   // 방금 올린 사진은 받지 않고 바로 보여 준다
+    return ref;
   }
   async function _tplPhotoSet(path, file){
     const doc = _tplCurDoc();
     if(!doc || !file) return;
     if(!/^image\//.test(file.type || '')){ toast('사진 파일만 넣을 수 있어요 (JPG · PNG · 캡처)', 'err'); return; }
-    const cell = document.querySelector(`#tplStage .tp[data-p="${CSS.escape(path)}"]`);
+    const sel = `#tplStage .tp[data-p="${CSS.escape(path)}"]`, cell = document.querySelector(sel);
     if(cell){ cell.classList.add('is-busy'); cell.innerHTML = '<span class="tp-wait"></span>'; }
-    let id = null;
+    let ref = null;
     try{
-      id = await _tplUpload(file, doc.id);
-      _tplPathSet(doc, path, id);
+      ref = await _tplUpload(file);
+      _tplPathSet(doc, path, ref);
       _tplTouch(doc, 'data');
     }catch(e){ toast('사진을 넣지 못했어요 — 아이폰 HEIC 는 JPG 로 바꿔서, 인터넷 연결도 확인해 주세요', 'err'); }
     // 그 칸만 다시 그린다 (다른 칸에서 글자를 적는 중이어도 끊기지 않게) — 부자재 글자 칸이 같이 있는 칸은 전체를
-    const now = document.querySelector(`#tplStage .tp[data-p="${CSS.escape(path)}"]`);
-    if(now && !now.classList.contains('has-cap') && _tplCurDoc() === doc) now.outerHTML = _tplPh(path, id != null ? id : _tplRefVal(doc, path), true);
+    const now = document.querySelector(sel);
+    if(now && !now.classList.contains('has-cap') && _tplCurDoc() === doc) now.outerHTML = _tplPh(path, ref != null ? ref : _tplRefVal(doc, path), true, '', doc.kind === 'linesheet');
     else _tplRenderPaper(true);
   }
   function _tplPick(path){
@@ -25877,16 +25705,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     inp.click();
   }
   function _tplBig(ref, cap){
-    const show = url => {
-      if(!url) return;
-      const lb = _mbLayer('mbLb', 'mb-lb'), pic = lb.querySelector('img');
-      if(!lb._bound){ lb._bound = true; lb.addEventListener('click', () => { lb.hidden = true; }); }
-      pic.src = url;
-      lb.querySelector('.mb-layer-cap').textContent = cap || '';
-      lb.hidden = false;
-    };
-    show(_tplImgUrl(ref));
-    if(typeof ref === 'number' && !(_tpl.ph[ref] && _tpl.ph[ref].full)) _tplLoadPhotos([ref], true).then(() => { const lb = document.getElementById('mbLb'); if(lb && !lb.hidden) show(_tplImgUrl(ref)); });
+    const url = _tplImgUrl(ref, false);
+    if(!url) return;
+    const lb = _mbLayer('mbLb', 'mb-lb'), pic = lb.querySelector('img');
+    if(!lb._bound){ lb._bound = true; lb.addEventListener('click', () => { lb.hidden = true; }); }
+    pic.src = url;
+    lb.querySelector('.mb-layer-cap').textContent = cap || '';
+    lb.hidden = false;
   }
 
   /* ── 원가계산서 계산 — 시트 수식 그대로: 한화 변환 = 위안 × 환율(직접 적으면 그 값), VAT = 10%, 계 = (한화 + 원 + VAT) × 수량,
@@ -25951,9 +25776,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     out.push(H('부자재'));
     for(let g = 0; g < d.hw.length; g += N){
       for(let i = g; i < g + N; i++){
-        const h = d.hw[i], url = h.img != null;
-        if(!url && h.cap && !ed) out.push(T(null, h.cap, '', 'r-hw', 3, h, 'cap'));
-        else if(!url && h.cap) out.push(`<div class="tx tpx r-hw"${span(3)}>${_tplPh(`hw.${i}.img`, null, true, 'has-cap')}<div class="tp-cap">${ce(`hw.${i}.cap`, h.cap, '', true)}</div></div>`);
+        const h = d.hw[i], cap = _tplF(doc, 'hw', i, 'cap');
+        if(h.img == null && cap.val && !ed) out.push(T(null, cap.val, '', 'r-hw', 3, h, 'cap'));
+        else if(h.img == null && cap.val && !cap.lock) out.push(`<div class="tx tpx r-hw"${span(3)}>${_tplPh(`hw.${i}.img`, null, true, 'has-cap')}<div class="tp-cap">${ce(cap.path, cap.val, '', true)}</div></div>`);
         else out.push(P(`hw.${i}.img`, h.img, 'r-hw'));
       }
       for(let i = g; i < g + N; i++){ out.push(L('hw', i, 'a', '부자재 이름', 'r-txt')); out.push(L('hw', i, 'b', '소재 · 컬러', 'r-txt')); out.push(L('hw', i, 'c', '수량', 'r-txt')); }
@@ -26008,12 +25833,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ============ 라인시트 종이 ============ */
   function _tplLsCols(sec){ return '56px 120px 150px 150px 94px 128px 118px 70px 94px 94px 110px 330px' + (sec ? ' 250px' : ''); }
   function _tplLsHtml(doc, o){
-    const E = escapeHTML, d = doc.data, ed = !!o.edit, sec = designSecretOk(), NC = sec ? 13 : 12;
+    const E = escapeHTML, d = doc.data, ed = !!o.edit, sec = designSecretOk(), NC = sec ? 13 : 12, hold = _tplLsHold(doc), nf = hold ? 'reason' : 'note';
     const ce = (path, val, ph, ml) => ed && path ? `<div class="tc" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-ph="${E(ph || '')}"${ml ? ' data-ml="1"' : ''}>${E(val)}</div>` : `<div class="tc">${E(val)}</div>`;
     const at = (r0, c0, r1, c1) => ` style="grid-area:${r0} / ${c0} / ${r1} / ${c1}"`;
     const X = (r0, c0, r1, c1, inner, cls, obj, f) => `<div class="tx${cls ? ' ' + cls : ''}${_tplHl(obj, f) ? ' is-hl' : ''}"${at(r0, c0, r1, c1)}>${inner}</div>`;
     const head = [
-      X(1, 1, 2, 13, ce('title', d.title, '시즌 COFERRY LINE SHEET (예: 27SS COFERRY LINE SHEET)'), 'ls-title', d, 'title'),
+      X(1, 1, 2, 13, ce('title', d.title, hold ? '홀딩' : '시즌 COFERRY LINE SHEET (예: 27FW COFERRY LINE SHEET)'), 'ls-title', d, 'title'),
       sec ? X(1, 13, 2, 14, '', '') : '',
       X(2, 1, 4, 2, '<div class="tc">NO.</div>', 'ls-no-h'), X(2, 2, 4, 3, '<div class="tc">SKU</div>', 'ls-sku'),
       X(2, 3, 3, 4, '<div class="tc">BAG</div>', 'ls-cnt-l'), X(2, 4, 3, 13, ce('bag', d.bag, '가방 수'), 'ls-cnt', d, 'bag'),
@@ -26029,7 +25854,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       cells.push(X(1, 1, 2, 2, ed ? `<button type="button" class="ls-menu-b" data-act="ls-menu" data-i="${i}" title="상품 옮기기 · 줄 더하기 · 지우기">⋯</button>` : '', 'th'));
       cells.push(HD(2, '시즌 카테고리'));
       cells.push(X(1, 3, 2, 5, ce(p + 'name', it.name, '상품명 / 한글명'), 'th ls-name', it, 'name'));
-      ['진행업체', 'FABRIC', 'COLOR', '샘플 차수', '샘플 요청일', '샘플 입고일', '진행공장', '개발 특이사항 및 진행상황'].forEach((t, k) => cells.push(HD(5 + k, t)));
+      ['진행업체', 'FABRIC', 'COLOR', '샘플 차수', '샘플 요청일', '샘플 입고일', '진행공장', hold ? '홀딩 사유' : '개발 특이사항 및 진행상황'].forEach((t, k) => cells.push(HD(5 + k, t)));
       if(sec) cells.push(HD(13, '라벨 추가 시 단가'));
       cells.push(X(2, 1, end, 2, ce(p + 'no', it.no, String(i + 1)), 'ls-no', it, 'no'));
       // B열 — 시즌 구분 · 제품 카테고리 · 정상가(기밀) · 첫발주일 · 단독여부 (검은 칸 = 이름표, 그 아래 = 값)
@@ -26044,7 +25869,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(r < end) cells.push(X(r, 2, end, 3, '', ''));
       // 사진 2 × 2
       const h = Math.ceil(R / 2);
-      [[2, 3, 2 + h, 4], [2, 4, 2 + h, 5], [2 + h, 3, end, 4], [2 + h, 4, end, 5]].forEach((g, k) => cells.push(`<div class="tx tpx"${at(...g)}>${_tplPh(p + 'imgs.' + k, it.imgs[k], ed)}</div>`));
+      [[2, 3, 2 + h, 4], [2, 4, 2 + h, 5], [2 + h, 3, end, 4], [2 + h, 4, end, 5]].forEach((g, k) => cells.push(`<div class="tx tpx"${at(...g)}>${_tplPh(p + 'imgs.' + k, it.imgs[k], ed, '', true)}</div>`));
       cells.push(V(2, 5, end, 6, 'vendor', '진행업체', 'ls-vendor'));
       cells.push(V(2, 6, end, 7, 'fabric', 'Main / Inside 원단', '', true));
       for(let j = 0; j < R; j++){
@@ -26054,16 +25879,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         cells.push(X(2 + j, 9, 3 + j, 10, ce(q + 'q', c.q || '', j ? '' : '2026.11.20'), '', c, 'q'));
         cells.push(X(2 + j, 10, 3 + j, 11, ce(q + 'a', c.a || '', ''), '', c, 'a'));
       }
-      cells.push(V(2, 11, end, 12, 'factory', '진행공장'));
-      cells.push(V(2, 12, end, 13, 'note', '개발 특이사항 · 진행상황', 'ls-note', true));
+      cells.push(V(2, 11, end, 12, 'factory', '진행공장', '', true));
+      cells.push(V(2, 12, end, 13, nf, hold ? '홀딩 사유' : '개발 특이사항 · 진행상황', 'ls-note', true));
       if(sec) cells.push(V(2, 13, end, 14, 'label', '1) 메인라벨 - 0.2위안', 'ls-note', true, true));
-      return `<div class="tpl-g ls-block" data-cut="1" style="grid-template-columns:var(--ls-cols);grid-template-rows:34px repeat(${R}, minmax(34px, auto))">${cells.join('')}</div>`;
+      return `<div class="tpl-g ls-block" data-cut="1" data-i="${i}" style="grid-template-columns:var(--ls-cols);grid-template-rows:34px repeat(${R}, minmax(34px, auto))">${cells.join('')}</div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
     return `<div class="tpl-paper tpl-ls" style="--ls-cols:${_tplLsCols(sec)}"><div class="tpl-g ls-head" style="grid-template-columns:var(--ls-cols);grid-template-rows:72px 40px 40px 8px">${head}</div>${blocks}${add}</div>`;
   }
 
-  /* ============ 화면 ============ */
+  /* ============ 편집 창 ============ */
   function _tplStatus(s){
     const el = document.getElementById('tplSave');
     if(!el) return;
@@ -26071,29 +25896,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     el.textContent = s === 'saving' ? '저장 중…' : s === 'err' ? '⚠ 저장 못 함 — 다시 시도 중' : s === 'saved' ? '✓ 저장됨' : '';
   }
   function _tplRender(){
-    const wrap = document.getElementById('tplWrap');
-    if(!wrap) return;
-    const E = escapeHTML, sec = designSecretOk();
-    if(!_tpl.mode || !TPL_MODES[_tpl.mode] || (_tpl.mode === 'internal' && !sec)) _tpl.mode = sec ? 'internal' : 'vendor';
-    const kind = _tplKind(), list = _tpl.docs[kind], doc = _tplCurDoc();
-    document.getElementById('tplModes').innerHTML = Object.entries(TPL_MODES).filter(([m]) => m !== 'internal' || sec)
-      .map(([m, v]) => `<button type="button" class="tpl-mode${m === _tpl.mode ? ' is-on' : ''}" onclick="tplMode('${m}')"><span>${v.ico}</span><span>${E(v.label)}</span></button>`).join('');
-    document.getElementById('tplChips').innerHTML = (list || []).map(x => `<button type="button" class="mb-chip${doc && x.id === doc.id ? ' is-on' : ''}" onclick="tplPick(${x.id})">${E(_tplTitleOf(x) || '(이름 없음)')}</button>`).join('')
-      + `<button type="button" class="mb-chip tpl-new" onclick="tplNew()">＋ 새 ${kind === 'matching' ? '매칭표' : '라인시트'}</button>`;
+    const ed = document.getElementById('tplEd');
+    if(!ed || ed.hidden) return;
+    const E = escapeHTML, sec = designSecretOk(), kind = _tplKind(), list = _tpl.docs[kind], doc = _tplCurDoc();
+    if(_tpl.mode === 'internal' && !sec) _tpl.mode = 'vendor';
+    document.getElementById('tplEdTitle').textContent = kind === 'matching' ? '🧵 원부자재 매칭표' : '📋 라인시트';
+    document.getElementById('tplModes').innerHTML = kind === 'matching' ? Object.entries(TPL_MODES).filter(([m, v]) => v.kind === 'matching' && (m !== 'internal' || sec))
+      .map(([m, v]) => `<button type="button" class="tpl-mode${m === _tpl.mode ? ' is-on' : ''}" onclick="tplMode('${m}')"><span>${v.ico}</span><span>${E(v.label)}</span></button>`).join('') : '';
+    document.getElementById('tplChips').innerHTML = (list || []).map(x => `<button type="button" class="mb-chip${doc && x.id === doc.id ? ' is-on' : ''}" onclick="tplPick(${x.id})">${E(kind === 'linesheet' ? _tplLsTab(x) : (_tplTitleOf(x) || '(이름 없음)'))}</button>`).join('')
+      + `<button type="button" class="mb-chip tpl-new" onclick="tplNew()">＋ 새 ${kind === 'matching' ? '스타일' : '시즌'}</button>`;
     document.getElementById('tplPdfBtn').textContent = _tpl.mode === 'internal' ? '내부공유용 PDF' : _tpl.mode === 'vendor' ? '업체 전달용 PDF' : 'PDF 저장';
     ['tplPdfBtn', 'tplDelBtn', 'tplHlBtn'].forEach(id => { const b = document.getElementById(id); if(b) b.disabled = !doc; });
+    const del = document.getElementById('tplDelBtn');
+    if(del) del.textContent = kind === 'matching' ? '이 스타일 지우기' : '이 시즌 지우기';
     const note = document.getElementById('tplNote');
-    if(note) note.innerHTML = _tpl.mode === 'internal' ? '내부공유용 = 매칭표 + 원가계산서. <b>업체 전달용</b>을 누르면 같은 문서에서 원가계산서만 빠진 모습이에요.'
-      : _tpl.mode === 'vendor' ? (sec ? '업체 전달용 = 원가계산서가 빠진 매칭표 (구글시트 [투엘] 파일과 같은 모양). 내용은 내부공유용과 같은 문서예요.' : '업체 전달용 = 원가계산서가 빠진 매칭표 (구글시트 [투엘] 파일과 같은 모양).')
-      : '구글시트 COFERRY LINE SHEET 와 같은 모양 — 상품 하나 = 검은 머리글 줄 + 컬러별 샘플 일정. 맨 위 보드맵은 지금처럼 구글시트를 읽어요.';
+    if(note) note.innerHTML = _tpl.mode === 'internal' ? '칸을 눌러 바로 적으면 저절로 저장돼요 · 사진 칸은 눌러서 고르기 · 끌어다 놓기 · Ctrl+V · 오른쪽 <b>원가계산서</b>는 내부용 (업체 전달용 PDF 에는 빠져요)'
+      : _tpl.mode === 'vendor' ? '업체 전달용 = 원가계산서가 빠진 모습 (구글시트 [투엘] 파일과 같은 모양). 내용은 내부공유용과 같은 문서예요.'
+      : '칸을 눌러 바로 적으면 저절로 저장돼요 · 상품 왼쪽 위 <b>⋯</b> = 옮기기 · 컬러 줄 더하기 · 지우기 · 맨 아래 <b>＋ 상품 추가</b>';
     _tplRenderPaper(false);
-  }
-  function _tplPhotoRefs(doc){
-    const d = doc.data, out = [];
-    if(doc.kind === 'matching'){
-      d.factory.forEach(f => out.push(f.img)); d.colors.forEach(c => out.push(c.img)); d.fab.forEach(f => out.push(f.tag, f.img)); d.lin.forEach(f => out.push(f.img)); d.hw.forEach(h => out.push(h.img));
-    }else d.items.forEach(it => out.push(...it.imgs));
-    return out.filter(x => x != null);
   }
   function _tplRenderPaper(force){
     const st = document.getElementById('tplStage');
@@ -26102,8 +25922,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!doc){
       _tpl.sig = '';
       const list = _tpl.docs[kind];
-      st.innerHTML = `<div class="mb-empty">${_tpl.busy[kind] && !list ? '양식을 불러오는 중…' : _tpl.err[kind] && !list ? escapeHTML(_tpl.err[kind])
-        : `아직 만든 ${kind === 'matching' ? '매칭표' : '라인시트'}가 없어요. <b>＋ 새 ${kind === 'matching' ? '매칭표' : '라인시트'}</b>로 빈 양식을 열거나 <b>시트에서 가져오기</b>로 지금 구글시트 탭을 옮겨 오세요.`}</div>`;
+      st.innerHTML = `<div class="mb-empty">${_tpl.busy[kind] && !list ? '불러오는 중…' : _tpl.err[kind] && !list ? escapeHTML(_tpl.err[kind])
+        : `아직 ${kind === 'matching' ? '스타일' : '시즌'}이 없어요. 위 <b>＋ 새 ${kind === 'matching' ? '스타일' : '시즌'}</b>을 눌러 주세요.`}</div>`;
       return;
     }
     const sig = `${_tpl.mode}|${doc.id}|${designSecretOk()}`;
@@ -26113,6 +25933,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const o = {edit:true};
     let html;
     if(kind === 'matching'){
+      if(_tpl.mode === 'internal' && designSecretOk() && !doc.secret.cost) doc.secret.cost = _tplBlankCost();   // 처음 여는 스타일 — 퍼스트큐 백 원가계산서 줄로 시작 (적기 전엔 보드에 안 보임)
       const tools = `<div class="tpl-tools">
         <span class="tpl-tool">컬러 칸 <button type="button" class="mb-btn" data-act="slot-" title="맨 오른쪽 컬러 칸 빼기">−</button><b>${doc.data.slots}</b><button type="button" class="mb-btn" data-act="slot+" title="컬러 칸 더하기 (최대 ${TPL_SLOT_MAX})">＋</button></span>
         <span class="tpl-tool">공장 칸 <button type="button" class="mb-btn" data-act="fac-">−</button><b>${doc.data.factory.length}</b><button type="button" class="mb-btn" data-act="fac+">＋</button></span>
@@ -26123,50 +25944,86 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     st.innerHTML = html + `<div class="tpl-meta">${doc.updated_at ? `마지막 저장 ${new Date(doc.updated_at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'})}${doc.updated_by ? ' · ' + escapeHTML(doc.updated_by) : ''}` : ''}</div>`;
     const sc = st.querySelector('.tpl-scroll');
     if(sc) sc.scrollLeft = keepX;
-    _tplLoadPhotos(_tplPhotoRefs(doc), kind === 'matching');
   }
   async function _tplLoad(kind, force){
-    if(_tpl.busy[kind]) return;
+    if(_tpl.busy[kind]) return _tpl.busy[kind];
     if(!force && _tpl.loaded[kind] && Date.now() - _tpl.loaded[kind] < 60e3) return;
-    _tpl.busy[kind] = true; _tpl.err[kind] = '';
-    try{
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?kind=eq.${kind}&deleted_at=is.null&select=${TPL_COLS}${designSecretOk() ? ',secret' : ''}&order=created_at.asc`, {headers:_sbHeaders(), cache:'no-cache'});
-      if(!r.ok) throw new Error('http_' + r.status);
-      const rows = await r.json(), old = _tpl.docs[kind] || [];
-      _tpl.docs[kind] = rows.map(x => { const o = old.find(d => d.id === x.id); return o && (_tpl.dirty.has(o.id) || o.updated_at === x.updated_at) ? o : _tplNorm(x); });
-      _tpl.loaded[kind] = Date.now();
-    }catch(e){ _tpl.err[kind] = '양식을 불러오지 못했어요. 잠시 후 다시 들어와 주세요.'; }
-    _tpl.busy[kind] = false;
+    _tpl.err[kind] = '';
+    _tpl.busy[kind] = (async () => {
+      try{
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?kind=eq.${kind}&deleted_at=is.null&select=${TPL_COLS}${designSecretOk() ? ',secret' : ''}&order=sort.asc.nullslast,created_at.asc`, {headers:_sbHeaders(), cache:'no-cache'});
+        if(!r.ok) throw new Error('http_' + r.status);
+        const rows = await r.json(), old = _tpl.docs[kind] || [];
+        _tpl.docs[kind] = rows.map(x => { const o = old.find(d => d.id === x.id); return o && (_tpl.dirty.has(o.id) || o.updated_at === x.updated_at) ? o : _tplNorm(x); });
+        _tpl.loaded[kind] = Date.now();
+      }catch(e){ _tpl.err[kind] = '불러오지 못했어요. 잠시 후 다시 들어와 주세요.'; }
+    })();
+    await _tpl.busy[kind];
+    _tpl.busy[kind] = null;
     const list = _tpl.docs[kind] || [];
-    if(!list.some(d => d.id === _tpl.cur[kind])){
-      let saved = null;
-      try{ saved = +localStorage.getItem('tplCur_' + kind); }catch(e){}
-      _tpl.cur[kind] = (list.find(d => d.id === saved) || list[list.length - 1] || {}).id || null;
-    }
+    if(!list.some(d => d.id === _tpl.cur[kind])) _tpl.cur[kind] = (list[0] || {}).id || null;
   }
-  async function tplInit(){
+  /* 편집 창 열기 — kind 'matching' | 'linesheet', id = 문서 (없으면 첫 문서), opts.add = 새 스타일 / 새 상품, opts.item = 라인시트 상품 번호 */
+  async function tplOpen(kind, id, opts){
+    opts = opts || {};
     _tplBind();
-    if(!_tpl.mode){ try{ _tpl.mode = localStorage.getItem('tplMode'); }catch(e){} }
+    const ed = document.getElementById('tplEd');
+    if(!ed) return;
+    _tpl.mode = kind === 'linesheet' ? 'linesheet' : designSecretOk() ? (_tpl.mMode || 'internal') : 'vendor';
+    if(id != null) _tpl.cur[kind] = id;
+    _tpl.open = {kind};
+    ed.hidden = false;
+    document.documentElement.classList.add('tpl-ed-open');
+    ed.scrollTop = 0;
+    _tpl.sig = '';
     _tplRender();
-    const kind = _tplKind(), ae = document.activeElement, editing = ae && ae.closest && ae.closest('#tplStage');
-    if(editing) return;   // 고치는 중엔 다시 받지 않는다
-    const before = JSON.stringify((_tpl.docs[kind] || []).map(d => [d.id, d.updated_at]));
     await _tplLoad(kind);
-    const now = JSON.stringify((_tpl.docs[kind] || []).map(d => [d.id, d.updated_at]));
-    if(before !== now) _tpl.sig = '';
+    if(id != null && (_tpl.docs[kind] || []).some(d => d.id === id)) _tpl.cur[kind] = id;
+    _tpl.sig = '';
     _tplRender();
+    if(opts.add && kind === 'matching') await tplNew();
+    else if(opts.add){
+      const doc = _tplCurDoc();
+      if(!doc) await tplNew();
+      else _tplAct('ls-add', {dataset:{}});
+      const blocks = document.querySelectorAll('#tplStage .ls-block');
+      _tplFocusItem(blocks.length - 1);
+    }else if(opts.item != null) _tplFocusItem(opts.item);
+  }
+  function _tplFocusItem(i){
+    const b = document.querySelectorAll('#tplStage .ls-block')[i];
+    if(!b) return;
+    b.scrollIntoView({block:'center', behavior:'instant'});
+    b.classList.add('is-focus');
+    setTimeout(() => b.classList.remove('is-focus'), 2200);
+    const name = b.querySelector('.ls-name [contenteditable]');
+    if(name && !name.textContent) name.focus();
+  }
+  async function tplClose(){
+    const ed = document.getElementById('tplEd');
+    if(!ed || ed.hidden) return;
+    if(document.activeElement && ed.contains(document.activeElement)) document.activeElement.blur();
+    if(_tpl.dirty.size) await _tplFlush();
+    ed.hidden = true;
+    document.documentElement.classList.remove('tpl-ed-open');
+    const kind = _tpl.open && _tpl.open.kind;
+    _tpl.open = null;
+    if(kind === 'matching'){
+      const cur = _tpl.cur.matching;
+      if(cur){ _mb.cur = cur; try{ localStorage.setItem('mbCurDoc', String(cur)); }catch(e){} }
+      const b = document.getElementById('mbBoard');
+      if(b) b._sig = null;
+      _mbRender();
+    }else if(kind === 'linesheet'){ _lsb.tried = 0; _lsb.docSig = ''; lsbRefresh(); }
   }
   function tplMode(m){
-    if(!TPL_MODES[m] || (m === 'internal' && !designSecretOk())) return;
-    _tpl.mode = m;
-    try{ localStorage.setItem('tplMode', m); }catch(e){}
+    if(!TPL_MODES[m] || TPL_MODES[m].kind !== _tplKind() || (m === 'internal' && !designSecretOk())) return;
+    _tpl.mode = m; _tpl.mMode = m;
     _tpl.sig = '';
-    tplInit();
+    _tplRender();
   }
   function tplPick(id){
-    const kind = _tplKind();
-    _tpl.cur[kind] = id;
-    try{ localStorage.setItem('tplCur_' + kind, String(id)); }catch(e){}
+    _tpl.cur[_tplKind()] = id;
     _tpl.sig = '';
     _tplRender();
   }
@@ -26176,7 +26033,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(kind === 'matching') _tplSetSlots(data, 5);
     const secret = kind === 'matching' && designSecretOk() ? {p:{}, cost:_tplBlankCost()} : {p:{}};
     const doc = await _tplCreate(kind, data, secret, me);
-    if(doc){ toast(`빈 ${kind === 'matching' ? '매칭표' : '라인시트'}를 만들었어요 — 칸을 눌러 바로 적으세요`, 'ok'); setTimeout(() => { const t = document.querySelector('#tplStage [data-f="title"]'); if(t) t.focus(); }, 60); }
+    if(doc){
+      toast(kind === 'matching' ? '새 스타일 양식을 열었어요 — 칸을 눌러 바로 적으세요' : '새 시즌 라인시트를 열었어요 — 맨 위에 시즌 이름부터 적어 주세요', 'ok');
+      setTimeout(() => { const t = document.querySelector('#tplStage [data-f="title"]'); if(t) t.focus(); }, 60);
+    }
+    return doc;
   }
   async function _tplCreate(kind, data, secret, me){
     try{
@@ -26186,21 +26047,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const [x] = await r.json();
       const doc = _tplNorm(Object.assign(x, designSecretOk() ? {} : {secret:{}}));
       (_tpl.docs[kind] = _tpl.docs[kind] || []).push(doc);
-      tplPick(doc.id);
+      _tpl.loaded[kind] = _tpl.loaded[kind] || Date.now();
+      if(_tpl.open && _tpl.open.kind === kind) tplPick(doc.id); else _tpl.cur[kind] = doc.id;
       return doc;
-    }catch(e){ toast('양식을 만들지 못했어요 — 인터넷 연결을 확인해 주세요', 'err'); return null; }
+    }catch(e){ toast('만들지 못했어요 — 인터넷 연결을 확인해 주세요', 'err'); return null; }
   }
   async function tplDelete(){
     const doc = _tplCurDoc();
     if(!doc) return;
-    if(!confirm(`'${_tplTitleOf(doc) || '(이름 없음)'}' ${doc.kind === 'matching' ? '매칭표' : '라인시트'}를 지울까요?\n(내부공유용 · 업체 전달용 둘 다 지워져요)`)) return;
+    const what = doc.kind === 'matching' ? `'${_tplTitleOf(doc) || '(이름 없음)'}' 스타일` : `'${_tplLsTab(doc)}' 시즌 라인시트(상품 ${doc.data.items.length}개)`;
+    if(!confirm(`${what}을 지울까요?${doc.kind === 'matching' ? '\n(내부공유용 · 업체 전달용 둘 다 지워져요)' : ''}`)) return;
     try{
       const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?id=eq.${doc.id}`, {method:'PATCH', headers:_sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({deleted_at:new Date().toISOString(), updated_by:_tplMe()})});
       if(!r.ok) throw new Error('http_' + r.status);
       _tpl.dirty.delete(doc.id);
       const kind = doc.kind;
       _tpl.docs[kind] = (_tpl.docs[kind] || []).filter(d => d.id !== doc.id);
-      _tpl.cur[kind] = (_tpl.docs[kind][_tpl.docs[kind].length - 1] || {}).id || null;
+      _tpl.cur[kind] = (_tpl.docs[kind][0] || {}).id || null;
       _tpl.sig = '';
       _tplRender();
       toast('지웠어요', 'ok');
@@ -26215,6 +26078,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     o.hl = o.hl || {};
     if(o.hl[ref.f]) delete o.hl[ref.f]; else o.hl[ref.f] = true;
     _tplTouch(doc, ref.root);
+    if(ref.root === 'secret' && doc.secret.cost) doc.secret.cost.touched = true;
     const el = document.querySelector(`#tplStage [data-f="${CSS.escape(path)}"]`), box = el && el.closest('.tx, td');
     if(box) box.classList.toggle('is-hl', !!o.hl[ref.f]);
   }
@@ -26230,7 +26094,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   async function _tplFlush(keep){
     clearTimeout(_tpl.timer);
-    if(_tpl.saving){ _tpl.timer = setTimeout(_tplFlush, 400); return; }
+    if(_tpl.saving){ await new Promise(r => setTimeout(r, 300)); return _tplFlush(keep); }
     const jobs = [..._tpl.dirty.entries()];
     if(!jobs.length) return;
     _tpl.dirty.clear();
@@ -26243,7 +26107,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const body = {title:_tplTitleOf(doc), data:doc.data, updated_at:at, updated_by:_tplMe()};
       if(parts.has('secret') && designSecretOk()) body.secret = doc.secret;
       try{
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?id=eq.${id}`, {method:'PATCH', keepalive:!!keep, headers:_sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify(body)});
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/design_tpl_docs?id=eq.${id}`, {method:'PATCH', keepalive:keep === true, headers:_sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify(body)});
         if(!r.ok) throw new Error('http_' + r.status);
         doc.updated_at = at; doc.updated_by = body.updated_by; doc.title = body.title;
       }catch(e){
@@ -26276,19 +26140,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const root = _tplPathSet(doc, path, val);
     _tplTouch(doc, root);
     if(path.startsWith('cost.')){
+      doc.secret.cost.touched = true;
       if(/\.conv$/.test(path)) el.classList.toggle('is-auto', !val);
       _tplCostPaint(doc);
     }
     if(path === 'title'){
       const chip = document.querySelector('#tplChips .mb-chip.is-on');
-      if(chip) chip.textContent = _tplTitleOf(doc) || '(이름 없음)';
+      if(chip) chip.textContent = doc.kind === 'linesheet' ? _tplLsTab(doc) : (_tplTitleOf(doc) || '(이름 없음)');
     }
   }
   function _tplAct(act, btn){
     const doc = _tplCurDoc();
     if(!doc) return;
     const d = doc.data, i = +btn.dataset.i;
-    const filled = o => o && Object.entries(o).some(([k, v]) => k !== 'u' && k !== 'hl' && k !== 'w' && v != null && v !== '' && !(Array.isArray(v) && !v.some(x => x != null)));
+    const filled = o => o && Object.entries(o).some(([k, v]) => k !== 'u' && k !== 'hl' && k !== 'w' && k !== 'rows' && v != null && v !== '' && !(Array.isArray(v) && !v.some(x => x != null && (typeof x !== 'object' || filled(x)))));
     if(act === 'slot+' || act === 'slot-'){
       const n = d.slots + (act === 'slot+' ? 1 : -1);
       if(n < TPL_SLOT_MIN || n > TPL_SLOT_MAX){ toast(`컬러 칸은 ${TPL_SLOT_MIN}~${TPL_SLOT_MAX}칸이에요`, 'err'); return; }
@@ -26296,10 +26161,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const s = d.slots - 1, hwLast = d.hw.filter((h, k) => k % d.slots === s);
         if([d.colors[s], d.fab[s], d.lin[s], ...hwLast].some(filled) && !confirm('맨 오른쪽 컬러 칸(부자재 포함)에 적힌 내용이 있어요. 빼고 지울까요?')) return;
         d.colors.splice(s, 1); d.fab.splice(s, 1); d.lin.splice(s, 1);
-        // 부자재는 줄마다 맨 오른쪽 칸을 뺀다
-        d.hw = d.hw.filter((h, k) => k % d.slots !== s);
+        d.hw = d.hw.filter((h, k) => k % d.slots !== s);   // 부자재는 줄마다 맨 오른쪽 칸을 뺀다
       }else{
-        const hw = []; for(let g = 0; g < d.hw.length; g += d.slots){ hw.push(...d.hw.slice(g, g + d.slots), {u:_tplUid(), img:null, cap:'', a:'', b:'', c:''}); } d.hw = hw;
+        const hw = [];
+        for(let g = 0; g < d.hw.length; g += d.slots) hw.push(...d.hw.slice(g, g + d.slots), {u:_tplUid(), img:null, cap:'', a:'', b:'', c:''});
+        d.hw = hw;
       }
       _tplSetSlots(d, n);
     }else if(act === 'fac+'){ if(d.factory.length >= d.slots) return; d.factory.push({u:_tplUid(), w:1, text:'', img:null}); d.factory.forEach(f => { f.w = 1; }); }
@@ -26307,21 +26173,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else if(act === 'hw+'){ for(let k = 0; k < d.slots; k++) d.hw.push({u:_tplUid(), img:null, cap:'', a:'', b:'', c:''}); }
     else if(act === 'hw-'){
       if(d.hw.length <= d.slots) return;
-      const last = d.hw.slice(-d.slots);
-      if(last.some(filled) && !confirm('마지막 부자재 줄에 적힌 내용이 있어요. 지울까요?')) return;
+      if(d.hw.slice(-d.slots).some(filled) && !confirm('마지막 부자재 줄에 적힌 내용이 있어요. 지울까요?')) return;
       d.hw.splice(-d.slots);
-    }else if(act === 'vat'){ const r = doc.secret.cost.rows[i]; r.vat = !r.vat; _tplTouch(doc, 'secret'); btn.classList.toggle('is-on', r.vat); _tplCostPaint(doc); return; }
-    else if(act === 'cost-add'){ doc.secret.cost.rows.push({u:_tplUid(), name:'', color:'', size:'', cny:'', conv:'', krw:'', vat:false, qty:'1', hl:{}}); _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
-    else if(act === 'cost-del'){ const r = doc.secret.cost.rows[i]; if(r && (r.name || r.cny || r.krw) && !confirm(`'${r.name || '이 줄'}' 줄을 지울까요?`)) return; doc.secret.cost.rows.splice(i, 1); _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
-    else if(act === 'ls-add'){ const it = _tplBlankLsItem(); it.no = String(d.items.length + 1); d.items.push(it); }
+    }else if(act === 'vat'){ const r = doc.secret.cost.rows[i]; r.vat = !r.vat; doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); btn.classList.toggle('is-on', r.vat); _tplCostPaint(doc); return; }
+    else if(act === 'cost-add'){ doc.secret.cost.rows.push({u:_tplUid(), name:'', color:'', size:'', cny:'', conv:'', krw:'', vat:false, qty:'1', hl:{}}); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
+    else if(act === 'cost-del'){ const r = doc.secret.cost.rows[i]; if(r && (r.name || r.cny || r.krw) && !confirm(`'${r.name || '이 줄'}' 줄을 지울까요?`)) return; doc.secret.cost.rows.splice(i, 1); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
+    else if(act === 'ls-add'){ const it = _tplBlankLsItem(); it.no = String(d.items.filter(x => x.name || x.no).length + 1); d.items.push(it); }
     else if(act === 'ls-menu'){ _tplLsMenu(btn, i); return; }
     else if(act === 'ls-up' || act === 'ls-down'){ const j = i + (act === 'ls-up' ? -1 : 1); if(j < 0 || j >= d.items.length) return; [d.items[i], d.items[j]] = [d.items[j], d.items[i]]; }
     else if(act === 'ls-row+'){ const it = d.items[i]; it.rows = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0) + 1; }
     else if(act === 'ls-row-'){
       const it = d.items[i], R = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0);
       if(R <= TPL_LS_ROWS){ toast(`상품 칸은 ${TPL_LS_ROWS}줄이 기본이에요`, 'err'); return; }
-      const last = it.colors[R - 1];
-      if(filled(last) && !confirm('마지막 컬러 줄에 적힌 내용이 있어요. 지울까요?')) return;
+      if(filled(it.colors[R - 1]) && !confirm('마지막 컬러 줄에 적힌 내용이 있어요. 지울까요?')) return;
       it.colors.length = Math.min(it.colors.length, R - 1); it.rows = R - 1;
     }else if(act === 'ls-del'){
       const it = d.items[i];
@@ -26418,15 +26282,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     window.addEventListener('pagehide', () => { if(_tpl.dirty.size) _tplFlush(true); });
     document.addEventListener('visibilitychange', () => { if(document.hidden && _tpl.dirty.size) _tplFlush(true); });
   }
-  function _tplRefVal(doc, path){
-    const parts = path.split('.');
-    let o = doc.data;
-    for(const k of parts){ if(o == null) return null; o = o[k]; }
-    return o == null ? null : o;
-  }
 
-  /* ============ 구글시트 → 양식 ============ */
-  // 시트 웹 보기 표 → 줄마다 칸 [{r, c, cs, rs, text, src, bg}] (매칭보드 _mbGrid 와 같고, 줄바꿈 · 칸 색을 더 읽는다)
+  /* ============ 옛 구글시트 → 문서 (시트에서 가져오기) ============ */
+  // 시트 웹 보기 표 → 줄마다 칸 [{r, c, cs, rs, text, src, bg}] (병합으로 가려진 칸을 건너뛰어 실제 열 번호를 맞춘다 · 줄바꿈 · 칸 색도)
   function _tplGrid(html){
     const doc = new DOMParser().parseFromString(html, 'text/html'), rows = [], taken = {}, bg = {};
     doc.querySelectorAll('style').forEach(s => {
@@ -26457,34 +26315,42 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return rows;
   }
   const _tplYellow = c => /^#(ff0|ffff00|fff200|ffeb3b|fff2cc|ffe599)$/i.test(c || '');
-  /* 원부자재 매칭표 탭 → 매칭표 문서 {data, secret, srcs}. 사진은 'x:n' 으로 가리키고 주소는 srcs 에.
+  // 탭 하나에 블록이 여럿일 때 (예: 코발트니 백 아래 '구(리뉴얼 전) 제품(참고용)') — 그 줄부터 따로 나눈다
+  function _tplSplitGrid(rows){
+    const K = v => String(v || '').replace(/\s/g, '');
+    const parts = [[]];
+    let seenImage = false;
+    rows.forEach(row => {
+      const a = row.cells[0];
+      if(a && a.c === 0 && K(a.text).toLowerCase() === 'image') seenImage = true;
+      if(seenImage && a && a.c === 0 && row.cells.filter(x => x.c < 16).length === 1 && (/^구\(/.test(K(a.text)) || /참고용/.test(K(a.text)))){ parts.push([]); seenImage = false; }
+      parts[parts.length - 1].push(row);
+    });
+    return parts.filter(p => p.some(r => r.cells.length));
+  }
+  /* 원부자재 매칭표 탭(한 블록) → 매칭표 문서 {data, secret, srcs}. 사진은 'x:n' 으로 가리키고 주소는 srcs 에.
      단가처럼 보이는 글자는 secret 쪽에 (명단 밖이면 아예 버린다) */
   function _tplMatchFromGrid(rows){
     const K = v => String(v || '').replace(/\s/g, '').toLowerCase(), sec = designSecretOk();
     const srcs = {};
-    let n = 0;
-    const ref = src => { if(!src) return null; const k = 'x:' + (++n); srcs[k] = src; return k; };
+    const ref = src => { if(!src) return null; const k = 'x:' + _tplUid(); srcs[k] = src; return k; };
     let cost = null;
     rows.forEach(row => row.cells.forEach(x => { if(!cost && K(x.text) === '원가계산서') cost = {c0:x.c, r0:x.r, r1:x.r + 40}; }));
     if(cost) rows.forEach(row => row.cells.forEach(x => { if(x.c === cost.c0 && x.r > cost.r0 && /^판매가/.test(K(x.text))) cost.r1 = Math.min(cost.r1, x.r); }));
     const inCost = x => cost && x.c >= cost.c0 && x.r >= cost.r0 && x.r <= cost.r1;
     const HEAD = {'공장정보':'factory', 'image':'photo', '메인원단':'fabric', '안감':'lining', '부자재':'hardware', '생산주의사항':'notes'};
     const secs = {};
-    let at = 'top', stop = false;
+    let at = 'top';
     rows.forEach(row => {
-      if(stop) return;
       const cells = row.cells.filter(x => !inCost(x));
       if(!cells.length) return;
       const a = cells[0], key = K(a.text);
-      if(cells.length === 1 && a.c === 0){
-        if(HEAD[key] || key.startsWith('size')){ at = HEAD[key] || 'size'; return; }
-        if(at !== 'top' && (/^구\(/.test(key) || /참고용/.test(key))){ stop = true; return; }
-      }
+      if(cells.length === 1 && a.c === 0 && (HEAD[key] || key.startsWith('size'))){ at = HEAD[key] || 'size'; return; }
       (secs[at] = secs[at] || []).push({r:row.r, cells});
     });
     const slotOf = c => Math.floor(c / 3);
     let maxC = 0;
-    ['photo', 'fabric', 'lining', 'hardware'].forEach(k => (secs[k] || []).forEach(row => row.cells.forEach(x => { if(K(x.text) !== '컬러명' || x.c) maxC = Math.max(maxC, x.c + x.cs - 1); })));
+    ['photo', 'fabric', 'lining', 'hardware'].forEach(k => (secs[k] || []).forEach(row => row.cells.forEach(x => { maxC = Math.max(maxC, x.c + x.cs - 1); })));
     const data = _tplBlankMatch(), secret = {p:{}, cost:null};
     _tplSetSlots(data, slotOf(maxC) + 1);
     const N = data.slots;
@@ -26549,25 +26415,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     data.notes = (secs.notes || []).map(r => r.cells.map(x => x.text).filter(Boolean).join('\n')).filter(Boolean).join('\n');
     _tplSetSlots(data, N);
     if(cost && sec){
-      const c = {rate:'220', mult:'', rows:[]};
+      const c = {rate:'220', mult:'', touched:true, rows:[]};
       rows.forEach(row => {
         if(row.r <= cost.r0 || row.r > cost.r1) return;
         const cells = row.cells.filter(inCost);
         if(!cells.length) return;
-        const at = k => { const x = cells.find(v => v.c <= cost.c0 + k && cost.c0 + k < v.c + v.cs); return x || {text:'', bg:''}; };
-        const name = at(0).text, k0 = K(name);
+        const cAt = k => cells.find(v => v.c <= cost.c0 + k && cost.c0 + k < v.c + v.cs) || {text:'', bg:''};
+        const name = cAt(0).text, k0 = K(name);
         const rm = cells.map(x => x.text).join(' ').match(/환율[^0-9]*([\d.]+)/);
         if(rm){ c.rate = rm[1]; return; }
         if(k0 === '항목' || k0 === '계') return;
-        if(/^판매가/.test(k0)){ c.mult = at(7).text; return; }
-        const t = k => at(k).text, nn = _tplNum;
+        if(/^판매가/.test(k0)){ c.mult = cAt(7).text; return; }
+        const t = k => cAt(k).text, nn = _tplNum;
         const r = {u:_tplUid(), name, color:t(1), size:t(2), cny:t(3), conv:'', krw:t(5), vat:false, qty:t(7), hl:{}};
         const auto = nn(r.cny) != null ? nn(r.cny) * (nn(c.rate) || 0) : null;
         if(t(4) && (auto == null || Math.abs(nn(t(4)) - auto) > 0.01)) r.conv = t(4);
         const base = (nn(r.conv) ?? auto ?? 0) + (nn(r.krw) || 0), q = nn(r.qty) ?? 1, w = nn(t(6)) || 0, s = nn(t(8));
         // VAT 칸에 금액이 있고 계에 들어가 있으면 VAT 켬 (수량 0 이면 계로는 알 수 없으니 VAT 칸만 보고)
         if(w && (q === 0 || (s != null && Math.abs((base + w) * q - s) < 0.05 && Math.abs(base * q - s) >= 0.05))) r.vat = true;
-        ['name', 'color', 'size', 'cny', 'krw', 'qty'].forEach((f, k) => { if(_tplYellow(at([0, 1, 2, 3, 5, 7][k]).bg)) r.hl[f] = true; });
+        ['name', 'color', 'size', 'cny', 'krw', 'qty'].forEach((f, k) => { if(_tplYellow(cAt([0, 1, 2, 3, 5, 7][k]).bg)) r.hl[f] = true; });
         c.rows.push(r);
       });
       if(c.rows.length) secret.cost = c;
@@ -26575,9 +26441,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return {data, secret, srcs};
   }
   /* 라인시트 탭(CSV) → 라인시트 문서. 사진은 linesheet/images.json 의 '번호|상품명' 으로 붙인다 ('ls:파일') */
-  function _tplLsFromCsv(rows, imgs){
+  function _tplLsFromCsv(rows, imgs, tab){
     const T = v => String(v ?? '').replace(/\r/g, '').trim(), K = v => T(v).replace(/\s/g, '');
-    const data = {title:'', bag:'', acc:'', items:[]}, secret = {p:{}}, sec = designSecretOk();
+    const data = {title:'', tab:tab || '', bag:'', acc:'', items:[]}, secret = {p:{}}, sec = designSecretOk();
     let cur = null, cols = {}, label = null;
     rows.forEach((row, r) => {
       row = row || [];
@@ -26605,8 +26471,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(cur._first){
         cur._first = false;
         cur.no = T(row[0]).replace(/\.0+$/, '');
-        cur.season = b; cur.vendor = at(cols.vendor); cur.fabric = at(cols.fabric); cur.factory = at(cols.factory); cur.note = at(cols.note);
-        if(at(cols.reason)) cur.note = (cur.note ? cur.note + '\n\n' : '') + '홀딩 사유: ' + at(cols.reason);
+        cur.season = b; cur.vendor = at(cols.vendor); cur.fabric = at(cols.fabric); cur.factory = at(cols.factory); cur.note = at(cols.note); cur.reason = at(cols.reason);
         if(at(cols.label) && sec) (secret.p[cur.u] = secret.p[cur.u] || {}).label = at(cols.label);
       }else if(label){
         if(label === 'price'){ if(b && sec) (secret.p[cur.u] = secret.p[cur.u] || {}).price = b; }
@@ -26616,10 +26481,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       else if(kb === '정상가') label = 'price';
       else if(kb === '첫발주일') label = 'first';
       else if(kb === '단독여부') label = 'solo';
+      else if(/^단독[OX○×ox]$/.test(kb)) cur.solo = kb.slice(2).toUpperCase();
       const color = at(cols.color), q = at(cols.req), a = at(cols.arr);
       if(color || q || a) cur.colors.push({c:color, r:at(cols.round), q, a});
     });
-    data.items = data.items.filter(it => it.name || it.colors.length || it.note);
+    data.items = data.items.filter(it => it.name || it.colors.length || it.note || it.reason);
     data.items.forEach(it => {
       const key = `${it.no}|${it.name}`;
       let hit = (imgs || []).filter(x => x && x.k === key && /^[0-9a-f]{16}$/.test(x.f));
@@ -26629,6 +26495,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       it.rows = Math.max(TPL_LS_ROWS, it.colors.length);
       delete it._row; delete it._first;
     });
+    if(!data.title) data.title = tab || '';
     return {data, secret};
   }
   async function _tplSheetIds(){
@@ -26650,9 +26517,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       document.addEventListener('pointerdown', e => { if(!m.hidden && !m.contains(e.target) && !e.target.closest('#tplImpBtn')) m.hidden = true; }, true);
     }
     const r = btn.getBoundingClientRect();
-    m.style.left = Math.max(8, Math.min(innerWidth - 260, r.left)) + 'px';
+    m.style.left = Math.max(8, Math.min(innerWidth - 290, r.left)) + 'px';
     m.style.top = (r.bottom + 4) + 'px';
-    m.innerHTML = '<div class="tpl-pop-t">시트 탭 읽는 중…</div>';
+    m.innerHTML = '<div class="tpl-pop-t">옛 구글시트 탭 읽는 중…</div>';
     m.hidden = false;
     const kind = _tplKind();
     try{
@@ -26662,56 +26529,64 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(!id) throw new Error('연결된 매칭표 시트가 없어요');
         const h = await _mbText(`https://docs.google.com/spreadsheets/d/${id}/htmlview`);
         for(const x of h.matchAll(/items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"/g)) tabs.push({name:_lsbUnesc(x[1]), gid:x[2]});
-      }else{
-        await _lsbDiscover();
-        tabs = (_lsb.tabs || LSB_TABS).slice();
-      }
+      }else tabs = LSB_TABS.slice();
       if(!tabs.length) throw new Error('시트 탭을 찾지 못했어요');
-      m.innerHTML = `<div class="tpl-pop-t">어느 탭을 새 ${kind === 'matching' ? '매칭표' : '라인시트'}로 옮길까요?${kind === 'matching' && designSecretOk() ? '<br><small>[내부공유용] 시트에서 — 원가계산서도 같이</small>' : ''}</div>`
+      m.innerHTML = `<div class="tpl-pop-t">옛 구글시트의 어느 탭을 새 ${kind === 'matching' ? '스타일' : '시즌'}으로 옮길까요?${kind === 'matching' && designSecretOk() ? '<br><small>[내부공유용] 시트에서 — 원가계산서도 같이</small>' : ''}</div>`
         + tabs.map(t => `<button type="button" data-gid="${escapeHTML(t.gid)}" data-name="${escapeHTML(t.name)}">${escapeHTML(t.name)}</button>`).join('');
     }catch(e){ m.innerHTML = `<div class="tpl-pop-t">시트를 읽지 못했어요 — ${escapeHTML(/^http_|fetch/i.test(e.message) ? '잠시 후 다시 해 주세요' : e.message)}</div>`; }
   }
-  async function tplImport(gid, name){
-    if(_tpl.importing) return;
+  /* 시트 탭 하나 → 새 문서(들). 매칭표 탭에 참고용 블록이 있으면 문서가 하나 더 생긴다 (제목 = 그 블록 이름, 참고용 표시) */
+  async function tplImport(gid, name, quiet){
+    if(_tpl.importing) return null;
     _tpl.importing = true;
-    const kind = _tplKind(), me = _tplMe();
+    const kind = _tplKind(), me = _tplMe(), made = [];
     const cover = _tplCover(`'${name}' 탭 읽는 중…`);
     try{
-      let data, secret, fetchers = {};
+      const parts = [];
       if(kind === 'matching'){
         const ids = await _tplSheetIds(), id = designSecretOk() ? ids.internal : ids.vendor;
-        const x = _tplMatchFromGrid(_tplGrid(await _mbText(`https://docs.google.com/spreadsheets/d/${id}/htmlview/sheet?headers=true&gid=${gid}`)));
-        data = x.data; secret = x.secret;
-        Object.entries(x.srcs).forEach(([k, src]) => { fetchers[k] = async () => { const u = await _mbBlobUrl(src + '=w1600-h1600-rw'); const b = await (await fetch(u)).blob(); URL.revokeObjectURL(u); return b; }; });
-        if(!secret.cost && designSecretOk()) secret.cost = _tplBlankCost();
+        _tplSplitGrid(_tplGrid(await _mbText(`https://docs.google.com/spreadsheets/d/${id}/htmlview/sheet?headers=true&gid=${gid}`))).forEach((rows, k) => {
+          const x = _tplMatchFromGrid(rows);
+          if(k > 0) x.data.ref = true;
+          const fetchers = {};
+          Object.entries(x.srcs).forEach(([key, src]) => { fetchers[key] = async () => { const u = await _mbBlobUrl(src + '=w1600-h1600-rw'); const b = await (await fetch(u)).blob(); URL.revokeObjectURL(u); return b; }; });
+          parts.push({data:x.data, secret:x.secret, fetchers});
+        });
       }else{
         const [csv, ij] = await Promise.all([_lsbText(`https://docs.google.com/spreadsheets/d/${LSB_ID}/export?format=csv&gid=${gid}`), fetch('linesheet/images.json', {cache:'no-cache'}).then(r => r.ok ? r.json() : null).catch(() => null)]);
-        const x = _tplLsFromCsv(_mdsParseCsv(csv), ij && ij.tabs ? ij.tabs[gid] : []);
-        data = x.data; secret = x.secret;
-        if(!data.title) data.title = name;
-        data.items.forEach(it => it.imgs.forEach(k => { if(k) fetchers[k] = async () => { const r = await fetch(_lsbImgSrc(k.slice(3))); if(!r.ok) throw new Error('http_' + r.status); return r.blob(); }; }));
+        const x = _tplLsFromCsv(_mdsParseCsv(csv), ij && ij.tabs ? ij.tabs[gid] : [], name);
+        const fetchers = {};
+        x.data.items.forEach(it => it.imgs.forEach(k => { if(k) fetchers[k] = async () => { const r = await fetch(`linesheet/img/${k.slice(3)}.webp`); if(!r.ok) throw new Error('http_' + r.status); return r.blob(); }; }));
+        parts.push({data:x.data, secret:x.secret, fetchers});
       }
-      // 사진 받기 → 문서 만들기 → 사진 올리기 → 사진 번호로 바꿔 저장
-      const keys = Object.keys(fetchers);
-      const doc = await _tplCreate(kind, kind === 'matching' ? Object.assign({}, data) : data, secret, me);
-      if(!doc) throw new Error('make');
-      const ids = {};
-      let k = 0, fail = 0;
-      for(const key of keys){
-        cover.set(`사진 옮기는 중… ${++k} / ${keys.length}`);
-        try{ ids[key] = await _tplUpload(await fetchers[key](), doc.id); }catch(e){ fail++; }
+      let total = 0, fail = 0;
+      for(const pt of parts){
+        // 사진 먼저 올리고 → 사진 경로로 바꿔 → 문서 만들기
+        const keys = Object.keys(pt.fetchers), refs = {};
+        let k = 0;
+        await Promise.all(Array.from({length:MB_WORKERS}, async () => {
+          for(let key; (key = keys.shift());){
+            cover.set(`사진 옮기는 중… ${++k} / ${Object.keys(pt.fetchers).length}`);
+            try{ refs[key] = await _tplUpload(await pt.fetchers[key]()); }catch(e){ fail++; }
+          }
+        }));
+        total += Object.keys(pt.fetchers).length;
+        const swap = v => typeof v === 'string' && /^(x|ls):/.test(v) ? (refs[v] ?? null) : v;
+        const walk = o => {
+          if(Array.isArray(o)) return o.forEach((v, i) => { o[i] = swap(v); if(v && typeof v === 'object') walk(v); });
+          Object.keys(o).forEach(kk => { const v = o[kk]; if(kk === 'img' || kk === 'tag') o[kk] = swap(v); else if(v && typeof v === 'object') walk(v); });
+        };
+        walk(pt.data);
+        const doc = await _tplCreate(kind, pt.data, pt.secret, me);
+        if(doc) made.push(doc);
       }
-      const swap = v => typeof v === 'string' && /^(x|ls):/.test(v) ? (ids[v] ?? null) : v;
-      const walk = o => { if(Array.isArray(o)) return o.forEach((v, i) => { o[i] = swap(v); if(v && typeof v === 'object') walk(v); }); Object.keys(o).forEach(kk => { const v = o[kk]; if(['img', 'tag'].includes(kk)) o[kk] = swap(v); else if(v && typeof v === 'object') walk(v); }); };
-      walk(doc.data);
-      _tplTouch(doc, 'data');
-      await _tplFlush();
       _tpl.sig = '';
       _tplRender();
-      toast(`'${name}' 탭을 새 ${kind === 'matching' ? '매칭표' : '라인시트'}로 옮겼어요${keys.length ? ` · 사진 ${keys.length - fail}장` : ''}${fail ? ` (${fail}장은 못 옮김)` : ''}`, fail ? 'err' : 'ok');
-    }catch(e){ if(e.message !== 'make') toast('시트를 옮기지 못했어요 — 잠시 후 다시 해 주세요', 'err'); console.warn('tplImport', e); }
+      if(!quiet) toast(`'${name}' 탭을 옮겼어요${made.length > 1 ? ` (참고용 블록 포함 ${made.length}개)` : ''}${total ? ` · 사진 ${total - fail}장` : ''}${fail ? ` (${fail}장은 못 옮김)` : ''}`, fail ? 'err' : 'ok');
+    }catch(e){ toast('시트를 옮기지 못했어요 — 잠시 후 다시 해 주세요', 'err'); console.warn('tplImport', e); }
     cover.close();
     _tpl.importing = false;
+    return made;
   }
 
   /* ============ PDF ============ */
@@ -26737,7 +26612,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function _tplPrepImgs(root){
     await Promise.all([...root.querySelectorAll('.tp img')].map(async im => {
       try{
-        if(!im.complete || !im.naturalWidth) await new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 8000); });
+        if(!im.complete || !im.naturalWidth) await new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 10000); });
         if(!im.naturalWidth) return;
         const box = im.parentElement, w = box.clientWidth, h = box.clientHeight;
         if(!w || !h) return;
@@ -26805,41 +26680,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   async function _tplPdfMatching(doc, mode){
     const pages = [{html:_tplMatchHtml(doc, {edit:false})}];
-    if(mode === 'internal' && designSecretOk() && doc.secret.cost) pages.push({html:`<div class="tpl-paper tpl-cost-pg"><div class="tcx-pg-t">${escapeHTML(_tplTitleOf(doc))}</div>${_tplCostHtml(doc, {edit:false})}</div>`});
+    if(mode === 'internal' && designSecretOk() && _mbCostHas(doc)) pages.push({html:`<div class="tpl-paper tpl-cost-pg"><div class="tcx-pg-t">${escapeHTML(_tplTitleOf(doc))}</div>${_tplCostHtml(doc, {edit:false})}</div>`});
     await _tplPdf(pages, _tplPdfName(mode, _tplTitleOf(doc)));
   }
   async function tplPdf(){
     const doc = _tplCurDoc();
     if(!doc) return;
     if(_tpl.dirty.size) await _tplFlush();
-    const refs = _tplPhotoRefs(doc);
-    await _tplLoadPhotos(refs, doc.kind === 'matching');
     if(doc.kind === 'matching') await _tplPdfMatching(doc, _tpl.mode);
     else await _tplPdf([{html:_tplLsHtml(doc, {edit:false}), split:true}], _tplTitleOf(doc) || 'COFERRY LINE SHEET');
   }
-  /* 매칭보드 → 지금 보고 있는 가방을 업체 전달용 양식 그대로 PDF (시트 [투엘] 파일 = 업체 전달용) */
-  async function mbPdf(){
-    if(!_mb.id || !_mb.cur){ toast('시트를 다 읽은 뒤에 눌러 주세요', 'err'); return; }
-    const cover = _tplCover('시트 읽는 중…');
-    const made = [];
-    try{
-      const x = _tplMatchFromGrid(_tplGrid(await _mbText(_mbSheetUrl(`htmlview/sheet?headers=true&gid=${_mb.cur}`))));
-      const keys = Object.keys(x.srcs);
-      let k = 0;
-      await Promise.all(Array.from({length:MB_WORKERS}, async () => {
-        for(let key; (key = keys.shift());){
-          cover.set(`사진 받는 중… ${++k} / ${Object.keys(x.srcs).length}`);
-          try{ const u = await _mbBlobUrl(x.srcs[key] + '=w1200-h1200-rw'); _tpl.ext[key] = u; made.push(key); }catch(e){}
-        }
-      }));
-      cover.close();
-      const doc = {id:0, kind:'matching', data:x.data, secret:x.secret};
-      await _tplPdfMatching(doc, 'vendor');
-    }catch(e){ cover.close(); toast('시트를 읽지 못했어요 — 잠시 후 다시 해 주세요', 'err'); }
-    made.forEach(key => { URL.revokeObjectURL(_tpl.ext[key]); delete _tpl.ext[key]; });
-  }
-  window.tplInit = tplInit; window.tplMode = tplMode; window.tplPick = tplPick; window.tplNew = tplNew; window.tplDelete = tplDelete;
-  window.tplHl = tplHl; window.tplPdf = tplPdf; window.tplImportMenu = tplImportMenu; window.mbPdf = mbPdf;
+  window.tplOpen = tplOpen; window.tplClose = tplClose; window.tplMode = tplMode; window.tplPick = tplPick; window.tplNew = tplNew; window.tplDelete = tplDelete;
+  window.tplHl = tplHl; window.tplPdf = tplPdf; window.tplImportMenu = tplImportMenu;
 
   /* ============================================================
      디자인센터 보드맵 — 구글시트 'COFERRY LINE SHEET' 를 끌어와 맨 위에 3열 단계판(기획·요청 → 샘플 진행 → 발주 확정)으로 띄운다
@@ -26854,7 +26706,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      ============================================================ */
   const LSB_ID = '1Q3eMHCnPsbt3ijGv3Gswym9Q_ao_fJsPSZg8n7R-tng';
   const LSB_TABS = [{name:'26WINTER', gid:'0'}, {name:'27SS', gid:'417455932'}, {name:'홀딩', gid:'534097050'}];
-  const LSB_K = {cache:'brightbeed_lsb_cache_v1', tab:'brightbeed_lsb_tab_v2', fold:'brightbeed_lsb_fold_v1'};
+  const LSB_K = {cache:'brightbeed_lsb_cache_v2', tab:'brightbeed_lsb_tab_v2', fold:'brightbeed_lsb_fold_v1'};
   const LSB_EVERY = 15e3, LSB_SLOW = 180e3, LSB_TIMEOUT = 15e3, LSB_IMG_EVERY = 60e3;
   const _lsb = {tabs:null, tabsAt:0, data:{}, img:{}, imgAt:0, imgErrAt:0, at:0, tried:0, busy:false, err:'', sig:'', tab:null, fold:false,
                 open:{}, wait:LSB_EVERY, cardSig:null, flash:null, changedN:0, changedAt:0,
@@ -27009,38 +26861,95 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _lsbImgs(gid, it){
     const list = _lsb.img[gid];
     if(!Array.isArray(list)) return [];
-    let hit = list.filter(x => x && x.k === `${it.no}|${it.name}` && /^[0-9a-f]{16}$/.test(x.f));
+    let hit = list.filter(x => x && x.k === `${it.no}|${it.name}` && /^([0-9a-f]{16}|tpl\/[\w\/-]+)$/.test(x.f));
     const rows = [...new Set(hit.map(x => x.r))];
     if(rows.length > 1 && it.row != null){ const best = rows.reduce((a, b) => Math.abs(b - it.row) < Math.abs(a - it.row) ? b : a); hit = hit.filter(x => x.r === best); }
     return hit.map(x => x.f);
   }
-  function _lsbImgSrc(f){ return `linesheet/img/${f}.webp`; }
+  function _lsbImgSrc(f){ return /^tpl\//.test(f) ? _tplImgUrl(f, true) : `linesheet/img/${f}.webp`; }
   // 사진 파일이 없어졌으면(목록이 바뀐 직후) 숨기고, 2분에 한 번까지 목록을 다시 받게 한다
   function lsbImgErr(el){
     const box = el.closest('.lsb-ph, .lsb-gal a');
     if(box) box.classList.add('is-broken'); else el.remove();
     if(Date.now() - _lsb.imgErrAt > 120e3){ _lsb.imgErrAt = Date.now(); _lsb.imgAt = 0; }
   }
-  async function lsbRefresh(){
+  /* 2026-11-20 — 라인시트 문서(design_tpl_docs kind=linesheet, 시즌 하나 = 문서 하나) → 시트를 읽던 때와 같은 모양 {title, counts, items} */
+  function _lsbFromDoc(doc){
+    const d = doc.data || {}, sp = (doc.secret && doc.secret.p) || {};
+    const items = (d.items || []).map((it, i) => ({
+      name:String(it.name || '').replace(/\s+/g, ' ').trim(), no:String(it.no || ''), season:it.season || '', fabric:it.fabric || '', factory:it.factory || '',
+      note:it.note || '', reason:it.reason || '',
+      colors:(it.colors || []).filter(c => c && (c.c || c.q || c.a)).map(c => ({color:c.c || '', round:c.r || '', req:c.q || '', arr:c.a || ''})),
+      meta:{'제품카테고리':it.cat || '', '정상가':(sp[it.u] || {}).price || '', '첫발주일':it.first || '', '단독여부':it.solo || ''}, row:i
+    })).filter(it => it.name || it.colors.length || it.note || it.reason);
+    return {title:d.title || '', counts:{BAG:+d.bag || 0, ACC:+d.acc || 0}, items, heads:[]};
+  }
+  function _lsbDocImgs(doc){
+    return ((doc.data || {}).items || []).flatMap((it, i) => (it.imgs || []).filter(Boolean).map(f => ({k:`${String(it.no || '')}|${String(it.name || '').replace(/\s+/g, ' ').trim()}`, r:i, f})));
+  }
+  async function _lsbLoadDocs(force){
+    const q = `${SUPABASE_URL}/rest/v1/design_tpl_docs?kind=eq.linesheet&deleted_at=is.null&order=sort.asc.nullslast,created_at.asc`;
+    const r = await fetch(q + '&select=id,updated_at', {headers:_sbHeaders(), cache:'no-store'});
+    if(!r.ok) throw new Error('http_' + r.status);
+    const sig = JSON.stringify(await r.json()) + designSecretOk();
+    if(force || sig !== _lsb.docSig || !_lsb.docs){
+      const r2 = await fetch(q + `&select=${TPL_COLS}${designSecretOk() ? ',secret' : ''}`, {headers:_sbHeaders(), cache:'no-store'});
+      if(!r2.ok) throw new Error('http_' + r2.status);
+      _lsb.docs = (await r2.json()).map(_tplNorm);
+      _lsb.docSig = sig;
+    }
+    return _lsb.docs;
+  }
+  // 보드맵에서 편집 창 열기 — 지금 보는 시즌(전체면 가장 가까운 시즌)
+  function _lsbCurDocId(){
+    const cur = _lsbCur(), t = cur && cur.gid !== 'all' ? cur : _lsbSeasons()[0] || _lsbTabs()[0];
+    return t && /^d\d+$/.test(t.gid) ? +t.gid.slice(1) : null;
+  }
+  function lsbEdit(){ tplOpen('linesheet', _lsbCurDocId()); }
+  // 상품 추가 — 시즌 하나를 보고 있으면 거기에, '전체'면 어느 시즌에 넣을지 먼저 고른다
+  function lsbAdd(btn){
+    const cur = _lsbCur(), docs = _lsb.docs || [];
+    if(cur && /^d\d+$/.test(cur.gid)) return tplOpen('linesheet', +cur.gid.slice(1), {add:true});
+    if(docs.length <= 1 || !btn) return tplOpen('linesheet', _lsbCurDocId(), {add:true});
+    let m = document.getElementById('lsbAddMenu');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'lsbAddMenu'; m.className = 'tpl-pop'; m.hidden = true;
+      document.body.appendChild(m);
+      m.addEventListener('click', e => { const b = e.target.closest('[data-id]'); if(!b) return; m.hidden = true; tplOpen('linesheet', +b.dataset.id, {add:true}); });
+      document.addEventListener('pointerdown', e => { if(!m.hidden && !m.contains(e.target) && !e.target.closest('.lsb-btn.is-add')) m.hidden = true; }, true);
+    }
+    const first = _lsbCurDocId();
+    m.innerHTML = '<div class="tpl-pop-t">어느 시즌에 상품을 넣을까요?</div>' + docs.slice().sort((a, b) => (b.id === first) - (a.id === first))
+      .map(d => `<button type="button" data-id="${d.id}">${escapeHTML(_tplLsTab(d))}${d.id === first ? ' <small>(지금 시즌)</small>' : ''}</button>`).join('');
+    const r = btn.getBoundingClientRect();
+    m.style.left = Math.max(8, Math.min(innerWidth - 290, r.left)) + 'px';
+    m.style.top = (r.bottom + 4) + 'px';
+    m.hidden = false;
+  }
+  function lsbEditItem(gid, row){ if(/^d\d+$/.test(gid)) tplOpen('linesheet', +gid.slice(1), {item:row}); }
+  window.lsbEdit = lsbEdit; window.lsbAdd = lsbAdd; window.lsbEditItem = lsbEditItem;
+  async function lsbRefresh(force){
+    if(force === true){ _lsb.docSig = ''; _lsb.tried = 0; }
     if(_lsb.busy) return;
     _lsb.busy = true; _lsb.tried = Date.now();
     const errBefore = _lsb.err;
     let changed = false;
     _lsbStamp();
     try{
-      await _lsbDiscover();
-      const tabs = _lsb.tabs.slice(), wantImg = Date.now() - _lsb.imgAt >= LSB_IMG_EVERY;
-      if(wantImg) _lsb.imgAt = Date.now();   // 실패해도 1분 뒤에 다시
-      const [res, idx] = await Promise.all([Promise.allSettled(tabs.map(_lsbFetchTab)),
-        // 사진 목록 — 주소 끝에 '분' 값을 붙여 GitHub Pages 의 10분 캐시를 건너뛴다
-        wantImg ? _lsbText('linesheet/images.json?v=' + Math.floor(Date.now() / 60e3)).then(JSON.parse).catch(() => null) : null]);
-      if(idx && idx.tabs && typeof idx.tabs === 'object') _lsb.img = idx.tabs;
+      // 2026-11-20 — 구글시트 대신 오피스 라인시트 문서 (시즌 하나 = 문서 하나, 탭 gid = 'd' + 문서 번호)
+      const docs = await _lsbLoadDocs();
+      _lsb.tabs = docs.map(d => ({name:_tplLsTab(d), gid:'d' + d.id}));
+      const tabs = _lsb.tabs.slice();
+      const res = docs.map(d => ({status:'fulfilled', value:_lsbFromDoc(d)}));
+      _lsb.img = {};
+      docs.forEach(d => { _lsb.img['d' + d.id] = _lsbDocImgs(d); });
       let ok = 0;
       res.forEach((x, i) => { if(x.status === 'fulfilled'){ _lsb.data[tabs[i].gid] = x.value; ok++; } });
-      _lsb.err = !ok ? '시트를 못 불러왔어요' : ok < res.length ? '일부 탭을 못 받았어요' : '';
+      _lsb.err = !ok && res.length ? '라인시트를 못 불러왔어요' : '';
       // 다 받으면 다시 15초, 하나라도 실패하면 간격을 두 배로 (구글이 잦은 요청을 막는 경우 대비, 최대 3분)
       _lsb.wait = ok === res.length ? LSB_EVERY : Math.min(_lsb.wait * 2, LSB_SLOW);
-      if(ok){
+      if(ok || !res.length){
         _lsb.at = Date.now();
         const keep = {}, img = {}; tabs.forEach(t => { if(_lsb.data[t.gid]) keep[t.gid] = _lsb.data[t.gid]; if(_lsb.img[t.gid]) img[t.gid] = _lsb.img[t.gid]; });
         _lsb.data = keep; _lsb.img = img;
@@ -27050,7 +26959,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(changed) _lsbMarkChanges();
         try{ localStorage.setItem(LSB_K.cache, JSON.stringify({at:_lsb.at, tabs, tabsAt:_lsb.tabsAt, data:keep, img, imgAt:_lsb.imgAt})); }catch(e){}
       }
-    }catch(e){ _lsb.err = '시트를 못 불러왔어요'; _lsb.wait = Math.min(_lsb.wait * 2, LSB_SLOW); }
+    }catch(e){ _lsb.err = '라인시트를 못 불러왔어요'; _lsb.wait = Math.min(_lsb.wait * 2, LSB_SLOW); }
     finally{ _lsb.busy = false; }
     if(changed || _lsb.err !== errBefore || !_lsbTabs().length) lsbRender();
     else _lsbStamp();
@@ -27116,7 +27025,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!el) return;
     const ago = _lsb.at ? _lsbAgo(_lsb.at) : '', chg = _lsb.changedN && Date.now() - _lsb.changedAt < 60e3 ? ` · 상품 ${_lsb.changedN}개 바뀜` : '';
     el.textContent = _lsb.busy && !_lsb.at ? '불러오는 중…' : _lsb.err ? `⚠ ${_lsb.err}${ago ? ` · ${ago} 기준` : ''}` : ago ? `${ago} 갱신${chg}` : '';
-    el.title = `디자인센터가 열려 있는 동안 ${Math.round(_lsb.wait / 1000)}초마다 시트를 확인해요${_lsb.wait > LSB_EVERY ? ' (연결이 불안정해 천천히 확인 중)' : ''} · 사진은 5분마다`;
+    el.title = `디자인센터가 열려 있는 동안 ${Math.round(_lsb.wait / 1000)}초마다 새로 고친 내용이 있는지 확인해요${_lsb.wait > LSB_EVERY ? ' (연결이 불안정해 천천히 확인 중)' : ''}`;
     if(root) root.classList.toggle('is-err', !!_lsb.err);
   }
   function _lsbEvents(){
@@ -27205,7 +27114,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let det = '';
     if(open){
       // 펼치면: 컬러별 차수·날짜, 공장·원단·정상가, 메모 전체, 사진 전부(누르면 구글시트의 그 상품 자리로)
-      const at = `https://docs.google.com/spreadsheets/d/${LSB_ID}/edit#gid=${encodeURIComponent(gid)}${it.row != null ? `&range=A${it.row + 1}` : ''}`;
       const rows = it.colors.map(x => {
         const s = _lsbColorState(x), rd = /^\d+$/.test(x.round) ? x.round + '차' : x.round;
         const when = s.k === 'due' ? `${_lsbMd(s.d)} 입고 · D-${s.n}` : s.k === 'arr' ? `${_lsbMd(s.d)} 입고` : s.k === 'req' ? `${_lsbMd(s.d)} 요청` : '—';
@@ -27217,8 +27125,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const dl = (k, v) => v ? `<div class="lsb-dl"><b>${k}</b>${E(v)}</div>` : '';
       det = `<div class="lsb-det">${rows}
         ${dl(hold ? '홀딩 사유' : '진행 메모', hold ? (it.reason || it.note) : it.note)}${dl('공장', fac)}${dl('원단', it.fabric.replace(/\n+/g, ' · '))}${dl('정상가', price)}
-        ${imgs.length ? `<div class="lsb-gal">${imgs.map(f => sec ? `<a href="${E(at)}" target="_blank" rel="noopener" title="구글시트에서 이 상품 보기" onclick="event.stopPropagation()">${img(f)}</a>` : img(f)).join('')}</div>` : ''}
-        ${sec ? `<a class="lsb-link" href="${E(at)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트에서 보기 ↗</a>` : ''}</div>`;
+        ${imgs.length ? `<div class="lsb-gal">${imgs.map(f => `<a href="${E(_tplImgUrl(f, false) || _lsbImgSrc(f))}" target="_blank" rel="noopener" title="크게 보기" onclick="event.stopPropagation()">${img(f)}</a>`).join('')}</div>` : ''}
+        <button type="button" class="lsb-link" onclick="event.stopPropagation(); lsbEditItem('${E(gid)}', ${it.row == null ? 'null' : it.row})">✏️ 이 상품 수정</button></div>`;
     }
     const hot = st.k === 'due' && st.n <= 3;
     const flash = !!_lsb.flash && _lsb.flash.has(key);
@@ -27235,7 +27143,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!el) return;
     if(!cur){
       el.className = 'lsb-cols';
-      el.innerHTML = `<div class="lsb-empty">${_lsb.busy || !_lsb.tried ? '라인시트 불러오는 중…' : `라인시트를 못 불러왔어요 — 시트 공유가 '링크가 있는 모든 사용자'인지 확인해 주세요. <button type="button" class="lsb-btn" onclick="lsbRefresh()">다시 시도</button>`}</div>`;
+      el.innerHTML = `<div class="lsb-empty">${_lsb.busy || !_lsb.tried ? '라인시트 불러오는 중…' : `라인시트가 아직 없거나 못 불러왔어요 — 위 <b>✏️ 수정</b>에서 시즌을 만들거나 잠시 후 다시 시도해 주세요. <button type="button" class="lsb-btn" onclick="lsbRefresh()">다시 시도</button>`}</div>`;
       return;
     }
     const keys = cards.map(c => c.key);
@@ -28986,7 +28894,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       ae.tagName==='TEXTAREA' || ae.isContentEditable
     );
     if(isTextEdit) return;
-    if(_dsgCurTab === 'match' || _dsgCurTab === 'tpl') return;
+    if(_dsgCurTab === 'match' || !document.getElementById('tplEd')?.hidden) return;
     if(_dsgCurTab === 'quote'){
       const files = [...((e.clipboardData||{}).files || [])];
       if(files.length){ e.preventDefault(); qtOnFiles(files); }
