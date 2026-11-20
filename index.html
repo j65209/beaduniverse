@@ -12496,6 +12496,95 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   @media (min-width:1101px){
     #viewDesign .lsb-cols:not(.is-hold){gap:10px}
   }
+
+  /* ===== 홈 정리 (2026-11-20 사장님 "메인화면 깔끔하게 · 강조할 숫자는 강조 · 자주 쓰는 것 우선 · 숨김은 깔끔하게") =====
+     팀 카드(한 장 160px) → 버튼 타일 한두 줄 · 업무용 툴 · 관리자 전용 → 한 줄 카드 · 블록 사이 간격 16px 통일.
+     줄마다 개수(--hc)와 자주 쓰는 순서는 JS homeTidy 가 정한다. 모두 #viewHome 안에서만. */
+  #viewHome{--hs:16px}
+  #viewHome .sub-modules-metaads.sub-modules-section{margin:4px 0 var(--hs)}
+  #viewHome .home-ops-pair{margin:0 0 var(--hs)}
+  #viewHome .home-ceocal-card{margin:0 0 var(--hs)}
+  #viewHome .sub-modules-tools.sub-modules-section,#viewHome .sub-modules-admin.sub-modules-section{margin:0 0 var(--hs);padding:12px 16px 16px}
+  #viewHome .sub-modules-section .sub-modules-eyebrow{margin-bottom:12px;padding-bottom:10px}
+  #viewHome .hero-row.hero-row-agents{margin:0 0 6px}
+  /* 팀 바로가기 */
+  #viewHome .home-teams{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:0 0 var(--hs)}
+  #viewHome .home-teams > .hero{flex:0 0 calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));max-width:calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));
+    min-width:0;margin:0;padding:0;background:none;border:0;border-radius:12px;display:block;position:relative}
+  #viewHome .home-teams > .hero[hidden]{display:none}
+  #viewHome .home-teams .hero-eyebrow{display:none}
+  #viewHome .home-teams .btn-neon{display:flex;width:100%;max-width:none;height:58px;padding:0 12px;gap:9px;border-radius:12px;
+    font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;word-break:keep-all;
+    box-shadow:0 8px 18px -12px rgba(15,23,42,.55),inset 0 1px 0 rgba(255,255,255,.35)}
+  #viewHome .home-teams .btn-neon:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 12px 22px -12px rgba(15,23,42,.6),inset 0 1px 0 rgba(255,255,255,.45)}
+  #viewHome .home-teams .btn-neon svg{width:18px;height:18px;flex:0 0 auto}
+  #viewHome .home-teams .btn-neon > span:not(.hr-comp-badge){min-width:0;overflow:hidden;text-overflow:ellipsis}
+  #viewHome .home-teams .hr-comp-badge{top:-8px;right:-6px;z-index:1;font-size:10.5px;padding:3px 8px;background:#e11d48;box-shadow:0 2px 8px rgba(225,29,72,.4)}
+  /* 업무용 툴 · 관리자 전용 — 아이콘 | 이름 · 설명 한 줄 */
+  #viewHome .sub-modules-tools > .sub-modules,#viewHome .sub-modules-admin > .sub-modules{display:flex;flex-wrap:wrap;gap:10px;max-width:none}
+  #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{
+    flex:0 0 calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));max-width:calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));min-width:0;
+    display:grid;grid-template-columns:32px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:10px;row-gap:1px;align-items:center;
+    padding:10px 12px;min-height:58px;border-radius:9px}
+  #viewHome .sub-modules-tools .sub-module[hidden],#viewHome .sub-modules-admin .sub-module[hidden]{display:none}
+  #viewHome .sub-modules-tools .sub-module-icon,#viewHome .sub-modules-admin .sub-module-icon{grid-column:1;grid-row:1 / span 2;width:32px;height:32px;margin:0;font-size:18px;border-radius:8px;background:var(--bg-2)}
+  #viewHome .sub-modules-tools .sub-module-title,#viewHome .sub-modules-admin .sub-module-title{grid-column:2;grid-row:1;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #viewHome .sub-modules-tools .sub-module-sub,#viewHome .sub-modules-admin .sub-module-sub{grid-column:2 / span 2;grid-row:2;font-family:var(--sans);font-size:11.5px;line-height:1.4;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
+  #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{align-items:start}
+  #viewHome .sub-modules-tools .sub-module-icon,#viewHome .sub-modules-admin .sub-module-icon{align-self:center}
+  #viewHome .sub-modules-tools .sub-module-tag,#viewHome .sub-modules-admin .sub-module-tag{display:none}
+  #viewHome .sub-modules-tools .sub-module-tag.is-keep,#viewHome .sub-modules-tools #modelsTag.is-count{display:inline-block;grid-column:3;grid-row:1;position:static;justify-self:end;font-size:10px;line-height:1.3}
+  #viewHome .sub-modules-tools .sub-module-tag.is-new{color:#e11d48;border:1px solid rgba(225,29,72,.4);font-weight:700}
+  #viewHome .sub-modules-tools #modelsTag.is-count{color:#fff;background:#e11d48;border:0;border-radius:999px;padding:2px 8px;font:800 11px/1.3 var(--sans);box-shadow:0 2px 6px rgba(225,29,72,.3)}
+  /* 폴더 머리줄 — 휴대폰에서 '11 도구' 가 다음 줄로 밀리지 않게, 긴 설명은 숨김 */
+  @media (min-width:601px){ #viewHome .fm-long + .folder-meta-upd:not(:empty)::before{content:' · '} }
+  @media (max-width:600px){
+    #viewHome .sub-modules-eyebrow{flex-wrap:nowrap}
+    #viewHome .sub-modules-eyebrow .folder-label{white-space:nowrap}
+    #viewHome .sub-modules-eyebrow .folder-meta{margin-left:auto;flex-basis:auto;padding-left:0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #viewHome .sub-modules-eyebrow .fm-long{display:none}
+    #viewHome .home-teams{gap:8px}
+    #viewHome .home-teams > .hero{flex-basis:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));max-width:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2))}
+    #viewHome .home-teams .btn-neon{height:50px;padding:0 10px;gap:7px;font-size:14px;border-radius:10px}
+    #viewHome .home-teams .btn-neon svg{width:16px;height:16px}
+    #viewHome .sub-modules-tools > .sub-modules,#viewHome .sub-modules-admin > .sub-modules{gap:8px}
+    #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{
+      flex-basis:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));max-width:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));
+      grid-template-columns:28px minmax(0,1fr) auto;column-gap:8px;padding:9px 10px;min-height:54px}
+    #viewHome .sub-modules-tools .sub-module-icon,#viewHome .sub-modules-admin .sub-module-icon{width:28px;height:28px;font-size:16px}
+    #viewHome .sub-modules-tools .sub-module-title,#viewHome .sub-modules-admin .sub-module-title{font-size:13px;white-space:normal;word-break:keep-all;line-height:1.3;
+      display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+    #viewHome .sub-modules-tools #modelsTag .mt-l{display:none}
+    #viewHome .sub-modules-tools .sub-module-sub,#viewHome .sub-modules-admin .sub-module-sub{font-size:11px}
+    #viewHome .sub-modules-tools .sub-module-tag.is-keep:not(.is-new){display:none}
+  }
+  /* 메타 광고 — 어제 대비 ▲▼ · 오늘 ROAS 1 미만이면 숫자 빨강 */
+  .m-metaads .mar-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px}
+  .m-metaads .mar-d{font:800 11.5px/1.25 var(--sans);padding:2px 8px;border-radius:999px;white-space:nowrap;letter-spacing:0}
+  .m-metaads .mar-d.is-up{color:#047857;background:rgba(16,185,129,.13)}
+  .m-metaads .mar-d.is-down{color:#b91c1c;background:rgba(239,68,68,.11)}
+  .m-metaads .mar-d.is-flat{color:var(--text-3);background:var(--bg-2)}
+  .m-metaads .is-today.is-low .mar-v{color:#dc2626}
+  /* 대표 캘린더 — 일정 없으면 머리줄 한 줄만, 넓은 화면은 일정 두 칸씩 */
+  #viewHome .home-ceocal-card.is-empty{padding-top:10px;padding-bottom:10px}
+  #viewHome .home-ceocal-card.is-empty .hcc-head{margin-bottom:0}
+  #viewHome .home-ceocal-card.is-empty .hcc-body{display:none}
+  @media (min-width:1100px){
+    #viewHome .hcc-body{grid-template-columns:repeat(2,max-content max-content minmax(0,1fr));column-gap:10px}
+    #viewHome .hcc-row{grid-column:auto / span 3}
+  }
+  /* 에이전트 오피스 띠 — 얇게 (휴대폰은 한 줄) */
+  #viewHome .hero.hero-agents{padding:14px 18px}
+  #viewHome .hero-agents-title{font-size:16px}
+  #viewHome .hero-agents-cta{padding:9px 16px;font-size:13px}
+  @media (max-width:500px){
+    #viewHome .hero.hero-agents{grid-template-columns:minmax(0,1fr) auto;text-align:left;padding:12px 14px;gap:10px}
+    #viewHome .hero-agents-mini{display:none}
+    #viewHome .hero-agents-right{flex-direction:row}
+    #viewHome .hero-agents-eyebrow{font-size:10px;letter-spacing:.14em}
+    #viewHome .hero-agents-sub{font-size:11.5px}
+  }
 </style>
 </head>
 <body>
@@ -12574,7 +12663,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="sub-modules-eyebrow">
         <span class="folder-icon">📱</span>
         <span class="folder-label">메타 광고 분석 리포트</span>
-        <span class="folder-meta">Facebook Marketing API · 성과 + 자동 피드백<span class="folder-meta-upd" id="metaadsUpdated"></span></span>
+        <span class="folder-meta"><span class="fm-long">Facebook Marketing API · 성과 + 자동 피드백</span><span class="folder-meta-upd" id="metaadsUpdated"></span></span>
       </div>
       <div class="sub-modules">
         <div class="sub-module m-metaads m-metaads-6a" onclick="openMetaAdsReport('6a')">
@@ -12750,8 +12839,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- 팀 카드: 3열 그리드 통합 (인사·업무일지·물류 / MD·마케팅·디자인·벤더·전략) -->
-    <div class="hero-row hero-row-3">
+    <!-- 팀 바로가기 (2026-11-20 홈 정리: 큰 카드 → 한두 줄 버튼, 이 PC 에서 많이 누른 팀이 앞으로 — homeTidy) -->
+    <div class="hero-row hero-row-3 home-teams" id="homeTeams" aria-label="팀 바로가기">
       <section class="hero hero-hr">
         <div class="hero-eyebrow">HR</div>
         <button class="btn-neon btn-hr" id="hrBtn" onclick="triggerHR()">
@@ -12895,7 +12984,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="sub-modules-eyebrow">
         <span class="folder-icon">📂</span>
         <span class="folder-label">업무용 툴</span>
-        <span class="folder-meta"><b id="subModulesCount">—</b> 도구</span>
+        <span class="folder-meta"><b id="subModulesCount">—</b> 도구<span class="fm-long"> · 자주 쓰는 순</span></span>
       </div>
       <div class="sub-modules">
         <!-- 재고 ERP 마스터 = 구글시트 '식스샵 ERP MASTER' (2026-11-13 실시간 재고 폴더에서 옮겨 옴, 사장님 이름 지정) -->
@@ -12905,14 +12994,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-icon">📦</div>
           <div class="sub-module-title">재고 ERP 마스터</div>
           <div class="sub-module-sub">7 브랜드 남은 재고 · 입고 · 판매 반영 (구글시트 · 새 탭)</div>
-          <div class="sub-module-tag">구글시트 ↗</div>
+          <div class="sub-module-tag is-keep" title="구글시트 · 새 탭">↗</div>
         </a>
         <!-- 시딩 마스터 = 자체 저장 엑셀식 프로그램 (seeding/, 2026-11-20 — 구글시트 'x시딩 및 시호님시딩' 에서 옮김, 전 직원, 따로 앱으로도 설치) -->
         <div class="sub-module m-seeding" onclick="openSeedingPage()">
           <div class="sub-module-icon">🎁</div>
           <div class="sub-module-title">시딩 마스터</div>
           <div class="sub-module-sub">브랜드별 X · 인스타 시딩 — 엑셀처럼 바로 고치기 · 수식 · 보냄 · DM 양식 · 이모지</div>
-          <div class="sub-module-tag">NEW</div>
+          <div class="sub-module-tag is-keep is-new">NEW</div>
         </div>
         <div class="sub-module m-notice" onclick="triggerNotice()">
           <div class="sub-module-icon">🔐</div>
@@ -16025,7 +16114,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   <footer class="footer">
     <div>© 2025 Bead Universe Co., Ltd. · 내부 사용 전용</div>
-    <div>버전 1.6 · 빌드 <span class="mono">2026.05.13</span></div>
+    <div>버전 1.7 · 빌드 <span class="mono">2026.11.20</span></div>
   </footer>
 </div>
 
@@ -23184,7 +23273,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const run=()=>{ try{
       fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/model_applicants?select=id&deleted_at=is.null&status=eq.'+encodeURIComponent('새 지원'),
         {headers:{apikey:MK,Authorization:'Bearer '+MK,Prefer:'count=exact',Range:'0-0'}})
-      .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t) t.textContent=n?('새 지원 '+n):'NEW'; }).catch(()=>{});
+      .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t){ if(n) t.innerHTML='<span class="mt-l">새 지원 </span>'+n; else t.textContent='NEW'; t.classList.toggle('is-count',!!n); } }).catch(()=>{});
     }catch(_){} };
     setTimeout(run,1500); setInterval(()=>{ if(!document.hidden) run(); },120000);
   })();
@@ -38351,7 +38440,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           subEl.innerHTML = `<span class="mar-msg" style="color:#b45309">${roasText}</span>`;
         } else {
           roasText = `오늘 ${todayV === null ? '미연동' : todayV} · 어제 ${ydayV === null ? '미연동' : ydayV} (ROAS)`;
-          subEl.innerHTML = `<div class="mar-pair">${cell('오늘', todayV, ' is-today')}${cell('어제', ydayV, '')}</div><span class="mar-u">ROAS</span>`;
+          // 어제 대비 ▲▼ % (2026-11-20 홈 정리 "강조할 숫자는 강조") — 둘 다 숫자일 때만, 오늘 ROAS 1 미만이면 숫자 빨강
+          const tN = (todayV !== null && todayV !== '-') ? Number(todayV) : null;
+          const yN = (ydayV !== null && ydayV !== '-') ? Number(ydayV) : null;
+          let dHtml = '';
+          if(tN != null && yN != null && yN > 0){
+            const pct = Math.round((tN - yN) / yN * 100);
+            dHtml = Math.abs(pct) < 1 ? `<span class="mar-d is-flat">어제와 같음</span>`
+              : `<span class="mar-d ${pct > 0 ? 'is-up' : 'is-down'}" title="어제 ${ydayV} → 오늘 ${todayV}">${pct > 0 ? '▲' : '▼'} ${Math.abs(pct)}%</span>`;
+          }
+          subEl.innerHTML = `<div class="mar-pair">${cell('오늘', todayV, ' is-today' + (tN != null && tN < 1 ? ' is-low' : ''))}${cell('어제', ydayV, '')}</div><div class="mar-foot"><span class="mar-u">ROAS</span>${dHtml}</div>`;
         }
         subEl.style.color = '';
         _metaadsMeta[brand] = { ready:true, dateStr, roasText, genAt:genDate, idle:(roasText === '최근 광고 집행 없음'),
@@ -38398,7 +38496,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       .sort((a,b) => b.at - a.at);
     if(!rows.length){ el.textContent=''; el.title=''; el.classList.remove('is-stale'); return; }
     const newest = rows[0].at;
-    el.textContent = ` · 최신화 ${_metaadsFmtDate(newest)}`;
+    el.textContent = `최신화 ${_metaadsFmtDate(newest)}`;   // 앞 ' · ' 는 CSS (휴대폰은 설명 글을 숨기고 시각만)
     el.title = rows.map(r => `${r.name}  ${_metaadsFmtDate(r.at)}`).join('\n');
     el.classList.toggle('is-stale', (Date.now() - newest.getTime()) > 90*60*1000);
   }
@@ -44688,6 +44786,71 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window._refreshModuleCounts=_refreshModuleCounts;
   _refreshModuleCounts();
 
+  /* ===== 홈 정리 (2026-11-20 사장님 "메인화면 깔끔하게 · 자주 쓰는 것 우선배치 · 숨김은 깔끔하게") =====
+     1) 팀 바로가기 · 업무용 툴 · 관리자 전용 — 이 PC 에서 많이 누른 순서로 앞에 둔다.
+        기록 = localStorage 'bb_home_usage_v1' {키:{s:점수,t:마지막}} · 점수는 30일마다 반으로 줄어 요즘 쓰는 것이 앞으로.
+        정렬은 화면을 열 때 한 번만 (누르는 중에 카드가 움직이지 않게) · 기록이 거의 없으면 원래 순서 그대로.
+     2) 보이는 카드 수에 맞춰 줄마다 같은 개수 (팀 10개 → 5+5, 도구 11개 → 6+5) — 한 개만 덩그러니 남는 줄이 없게.
+        권한으로 숨는 카드(디자인 · 전략 · 업무일지 · 기밀 카드)가 바뀌면 다시 맞춘다 (MutationObserver). CSS 는 '홈 정리' 덩어리 */
+  (function homeTidy(){
+    const KEY='bb_home_usage_v1', HALF=30*864e5;
+    const load=()=>{ try{ return JSON.parse(localStorage.getItem(KEY)||'{}')||{}; }catch(e){ return {}; } };
+    const score=(u,k)=>{ const e=u&&u[k]; return e ? (+e.s||0)*Math.pow(.5,(Date.now()-(+e.t||0))/HALF) : 0; };
+    const keyOf=el=>{
+      if(!el) return '';
+      if(el.classList.contains('hero')){ const b=el.querySelector('button[id]'); return b ? b.id : ''; }
+      return [...el.classList].find(c=>/^m-/.test(c)) || '';
+    };
+    const GROUPS=[
+      {host:'#homeTeams', item:':scope > .hero', minW:150, minWm:140},
+      {host:'#viewHome .sub-modules-tools > .sub-modules', item:':scope > .sub-module', minW:215, minWm:150},
+      {host:'#viewHome .sub-modules-admin > .sub-modules', item:':scope > .sub-module', minW:215, minWm:150},
+    ];
+    const ITEM_SEL='#homeTeams > .hero, .sub-modules-tools > .sub-modules > .sub-module, .sub-modules-admin > .sub-modules > .sub-module';
+    function bump(k){
+      if(!k) return;
+      const u=load(); u[k]={s:Math.round((score(u,k)+1)*100)/100, t:Date.now()};
+      try{ localStorage.setItem(KEY, JSON.stringify(u)); }catch(e){}
+    }
+    function sortGroup(host, sel){
+      const u=load();
+      const items=[...host.querySelectorAll(sel)];
+      items.forEach((el,i)=>{ if(el.dataset.ord==null) el.dataset.ord=String(i); });
+      const total=items.reduce((a,el)=>a+score(u,keyOf(el)),0);
+      if(total<3) return;
+      // 점수는 정수로 묶어서 비교 — 한두 번 차이로 자리가 뒤바뀌지 않게, 같으면 원래 순서
+      const sc=el=>Math.floor(score(u,keyOf(el)));
+      items.sort((a,b)=>(sc(b)-sc(a)) || (+a.dataset.ord - +b.dataset.ord)).forEach(el=>host.appendChild(el));
+    }
+    const shown=el=>!el.hidden && getComputedStyle(el).display!=='none';
+    function balance(g, host){
+      const items=[...host.querySelectorAll(g.item)].filter(shown);
+      const n=items.length, W=host.clientWidth;
+      if(!n || !W) return;
+      const gap=parseFloat(getComputedStyle(host).columnGap)||10;
+      const minW=W<600 ? g.minWm : g.minW;
+      const max=Math.max(1, Math.floor((W+gap)/(minW+gap)));
+      const cols=n<=max ? n : Math.ceil(n/Math.ceil(n/max));
+      if(host.style.getPropertyValue('--hc')!==String(cols)) host.style.setProperty('--hc', String(cols));
+    }
+    function layoutAll(){ GROUPS.forEach(g=>{ const h=document.querySelector(g.host); if(h) balance(g,h); }); }
+    window.homeTidyLayout=layoutAll;
+    GROUPS.forEach(g=>{
+      const host=document.querySelector(g.host); if(!host) return;
+      sortGroup(host, g.item);
+      let raf=0;
+      const again=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>balance(g,host)); setTimeout(()=>balance(g,host),60); };
+      try{ new ResizeObserver(again).observe(host); }catch(e){ window.addEventListener('resize', again); }
+      try{ new MutationObserver(again).observe(host,{subtree:true, childList:true, attributes:true, attributeFilter:['hidden','style','class']}); }catch(e){}
+      balance(g,host);
+    });
+    // 누른 기록 — 카드 안 어디를 눌러도 (인사팀 '승인 대기' 배지 포함) 그 카드 한 번
+    document.getElementById('viewHome')?.addEventListener('click', e=>{
+      const el=e.target.closest(ITEM_SEL);
+      if(el) bump(keyOf(el));
+    }, true);
+  })();
+
   /* ===== 관리자 전용 · 고정비용 캘린더 =====
      진실 = Supabase fixed_costs (삭제는 deleted_at, 모든 변경은 fixed_costs_history 에 남음).
      localStorage 는 화면 캐시 + 아직 못 보낸 변경 대기열일 뿐이다.
@@ -45488,6 +45651,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     _cecFlush();   // 지난번에 못 보낸 변경
     await _cecSbFetchAll();
+    _cecRerender();   // 서버에서 받은 일정으로 홈 카드 다시 그림 (2026-11-20: 처음 여는 PC · 다른 PC 에서 넣은 일정이 홈에 '일정 없음'으로 남던 문제)
     _cecInitRealtime();
     window.addEventListener('online', ()=>{ _cecFlush(); });
     document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) _cecFlush(); });
@@ -45830,8 +45994,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const list = document.getElementById('homeCeoCalList');
     if(!list) return;
     const shown = upcoming.slice(0, 4);
+    // 일정이 없으면 빈 상자 없이 머리줄 한 줄만 (2026-11-20 홈 정리)
+    card.classList.toggle('is-empty', !shown.length);
     if(!shown.length){
-      list.innerHTML = `<div class="hcc-empty">등록된 일정이 없습니다. 우측 <b>+ 일정</b>으로 시작하세요.</div>`;
+      list.innerHTML = '';
       return;
     }
     list.innerHTML = shown.map(ev=>{
