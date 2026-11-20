@@ -5309,6 +5309,91 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .kko-chip,.kko-brands button,.kko-grp button,.kko-find select,.kko-find input,.kko-find button{min-height:38px}
     .kko-tabs button{min-height:44px}
   }
+  /* ===== 시나리오 북 (11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") — 에이전트 학습 탭 [시나리오 북] → 화면 전체 창.
+     왼쪽 차례 · 위 브랜드 고르기 · 찾기. 고객에게 나가는 말 = 노란 말풍선(카카오톡 우리 쪽), 고객이 하는 말 = 회색 ===== */
+  .kko-bookbtn{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:14px 16px;border:0;border-radius:12px;background:var(--kko-yellow);color:var(--kko-ink);font:inherit;text-align:left;cursor:pointer}
+  .kko-bookbtn:hover{background:var(--kko-yellow-h)}
+  .kko-bookbtn .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .kko-bookbtn b{font-size:15px;font-weight:800}
+  .kko-bookbtn small{font-size:12px;font-weight:600;color:#4d4400}
+  .kko-bookbtn .go{flex:none;font-size:13px;font-weight:800;white-space:nowrap}
+  .kbk{position:fixed;inset:0;z-index:9992;background:#fff;color:var(--kko-ink)}
+  .kbk[hidden]{display:none}
+  .kbk-in{display:flex;flex-direction:column;height:100%}
+  .kbk-head{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ececec}
+  .kbk-head h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.3px}
+  .kbk-head .sub{font-size:12px;color:var(--kko-gray)}
+  .kbk-head .ctl{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .kbk-head select,.kbk-head input{min-height:36px;padding:4px 12px;border:1px solid transparent;border-radius:8px;background:var(--kko-pill);color:var(--kko-ink);font:inherit;font-size:13px}
+  .kbk-head input{width:220px}
+  .kbk-head select:focus,.kbk-head input:focus{outline:none;border-color:var(--kko-ink);background:#fff}
+  .kbk-found{font-size:12px;font-weight:700;color:var(--kko-gray);white-space:nowrap}
+  .kbk-found:empty{display:none}
+  .kbk-x{flex:none;width:36px;height:36px;border:0;border-radius:999px;background:var(--kko-pill);color:var(--kko-ink);font-size:15px;font-family:inherit;cursor:pointer}
+  .kbk-x:hover{background:#e8e8e8}
+  .kbk-body{flex:1;min-height:0;display:grid;grid-template-columns:230px minmax(0,1fr)}
+  .kbk-nav{overflow:auto;padding:12px 8px 24px;border-right:1px solid #f0f0f0}
+  .kbk-nav button{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;min-height:32px;padding:6px 10px;border:0;border-radius:8px;background:none;color:#333;font:inherit;font-size:13px;font-weight:800;text-align:left;cursor:pointer}
+  .kbk-nav button:hover{background:#f6f6f6}
+  .kbk-nav button.sub{padding-left:22px;font-size:12.5px;font-weight:600;color:#666}
+  .kbk-nav button em{font-style:normal;font-weight:600;color:#aaa;font-variant-numeric:tabular-nums}
+  .kbk-main{overflow:auto;overscroll-behavior:contain;padding:16px 24px 56px}
+  .kbk-sec{max-width:980px;margin:0 0 30px;scroll-margin-top:8px}
+  .kbk-sec[hidden],.kbk-gw[hidden],.kbk-it[hidden]{display:none}
+  .kbk-sec>h3{margin:0 0 4px;font-size:16px;font-weight:800}
+  .kbk-sec>p{margin:0 0 12px;font-size:12.5px;line-height:1.55;color:var(--kko-gray)}
+  .kbk-grp{margin:18px 0 8px;font-size:13px;font-weight:800;color:#555;scroll-margin-top:8px}
+  .kbk-card{margin-bottom:8px;padding:12px 14px;border:1px solid #ececec;border-radius:12px;background:#fff}
+  .kbk-h{display:flex;align-items:baseline;gap:6px 8px;flex-wrap:wrap}
+  .kbk-h b{font-size:14px;font-weight:800}
+  .kbk-n{flex:none;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--kko-ink);color:#fff;font-size:11.5px;font-weight:800}
+  .kbk-tag{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--kko-pill);color:#555;font-size:11px;font-weight:800;white-space:nowrap}
+  .kbk-tag.agent{background:var(--kko-ink);color:#fff}
+  .kbk-tag.staff{background:var(--kko-red);color:#fff}
+  .kbk-tag.none{background:#fff;color:#777;box-shadow:inset 0 0 0 1px #ddd}
+  .kbk-say{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .kbk-say span{padding:3px 10px;border-radius:12px;background:#f2f2f2;color:#333;font-size:12.5px}
+  .kbk-lbl{margin-top:10px;font-size:11.5px;font-weight:800;color:var(--kko-gray)}
+  .kbk-bub{display:inline-block;max-width:min(600px,100%);margin-top:4px;padding:8px 12px;border-radius:12px;border-top-right-radius:3px;background:var(--kko-yellow);font-size:13.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+  .kbk-bub.c{background:#f2f2f2;border-top-right-radius:12px;border-top-left-radius:3px}
+  .kbk-note{margin-top:6px;font-size:12px;line-height:1.5;color:#666}
+  .kbk-miss{color:var(--kko-redt);font-weight:700}
+  .kbk-num{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#666;font-variant-numeric:tabular-nums}
+  .kbk-bar{flex:0 0 110px;height:6px;border-radius:999px;background:#f3c7c3;overflow:hidden}
+  .kbk-bar i{display:block;height:100%;background:var(--kko-ink)}
+  .kbk-ex{margin-top:6px}
+  .kbk-ex summary{display:flex;align-items:center;min-height:30px;font-size:12.5px;font-weight:700;color:#444;cursor:pointer}
+  .kbk-exi{margin-top:6px;padding:8px 10px;border-radius:10px;background:#f6f8fa;font-size:12.5px;line-height:1.5}
+  .kbk-exi .m{font-size:11px;color:#999}
+  .kbk-exi .q{color:#222}
+  .kbk-exi .r{color:#5c5200}
+  .kbk-exi .x{color:#555}
+  .kbk-over{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+  .kbk-tbl{overflow:auto;border:1px solid #ececec;border-radius:10px}
+  .kbk-tbl table{border-collapse:collapse;min-width:100%;font-size:12px}
+  .kbk-tbl th,.kbk-tbl td{min-width:110px;max-width:280px;padding:6px 8px;border-bottom:1px solid #f0f0f0;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+  .kbk-tbl thead th{position:sticky;top:0;background:#fafafa;font-weight:800;white-space:nowrap}
+  .kbk-tbl tbody th{font-weight:700;color:#444;white-space:nowrap}
+  .kbk-tbl .on{background:#fffbd6}
+  .kbk-tbl thead .on{background:#fff3a3}
+  .kbk-tbl td i{font-style:normal;font-weight:700;color:var(--kko-redt)}
+  .kbk-tbl td.own::before{content:'';display:inline-block;width:6px;height:6px;margin-right:5px;border-radius:50%;background:#c9a500;vertical-align:2px}
+  .kbk-empty{padding:16px;font-size:13px;color:var(--kko-gray)}
+  .kbk ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.6;color:#444}
+  @media (max-width:760px){
+    .kbk-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+    .kbk-nav{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;border-right:0;border-bottom:1px solid #f0f0f0}
+    .kbk-nav button{flex:none;width:auto;white-space:nowrap;padding:6px 12px;border-radius:999px;background:var(--kko-pill)}
+    .kbk-nav button.sub{display:none}
+    .kbk-main{padding:12px 14px 40px}
+    .kbk-head{padding:10px 12px}
+    .kbk-head .ctl{margin-left:0;width:100%}
+    .kbk-head input{flex:1;width:auto;min-width:0}
+  }
+  @media (pointer:coarse), (max-width:600px){
+    .kbk-nav button,.kbk-head select,.kbk-head input{min-height:38px}
+    .kbk-ex summary{min-height:36px}
+  }
   .reo-name b{font-weight:700;color:var(--text-0)}
   .reo-name i{font-style:normal;color:var(--text-3);margin-left:4px}
   .reo-name .tag{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:var(--bg-3);color:var(--text-2)}
@@ -13461,11 +13546,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="kko-find-out" id="kkoFindOut"></div>
       </div>
       <div class="kko-pane" id="kkoPaneLearn" role="tabpanel" aria-labelledby="kkoTabLearn" hidden>
+        <!-- 시나리오 북 (2026-11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") — 누르면 화면 전체 창 #kkoBook -->
+        <button type="button" class="kko-bookbtn" onclick="kkoBookOpen()"><span class="t"><b>시나리오 북</b><small>에이전트가 어떤 글에 무엇을 하는지 · 브랜드별로 나가는 말 · 지난 6개월 대화 예시</small></span><span class="go">열기 ›</span></button>
         <div class="kko-learn" id="kkoLearn" aria-label="에이전트 학습"></div>
         <div class="kko-faq" id="kkoFaq" hidden></div>
       </div>
       <!-- 채팅방 창 (줄을 누르면) — 오피스 안에서 대화 보기, 카카오로 넘어가지 않음 (2026-11-19 사장님). kkoOpenChat · _kkoChatPaint 가 채운다 -->
       <div class="kko-chat" id="kkoChat" hidden></div>
+      <!-- 시나리오 북 창 — kkoBookOpen · _kkoBookPaint 가 채운다 -->
+      <div class="kbk" id="kkoBook" hidden></div>
     </section>
     <!-- 카카오톡 상담 ↔ 아래 CS 업무 나누기 (2026-11-19 사장님 "카카오톡 상담이랑 하단이랑 분리 확실하게 해줘") -->
     <div class="kko-split" role="separator" aria-label="여기부터 CS 업무">CS 업무 <em>반품 · 교환 · 문의 · 리뷰 · 개선 요청</em></div>
@@ -17472,6 +17561,172 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + (own.length ? `<div class="kko-qa-group">${_kkoEsc(KKO_LABEL[b]||b)} 전용</div>${own.map(it=>_kkoQaHtml(it,facts)).join('')}` : '')
       + Object.keys(groups).map(k=>`<div class="kko-qa-group">${_kkoEsc(KKO_INTENT[k]||k)}</div>${groups[k].map(it=>_kkoQaHtml(it,facts)).join('')}`).join('');
     if(html!==_kko.faqHtml){ box.innerHTML=html; _kko.faqHtml=html; }
+  }
+
+  /* ===== 시나리오 북 (2026-11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") =====
+     서버 /cs/kakao-book = 맥미니 kakao-book(sixshop-collector, 10분마다 보고 바뀔 때만 새로) — 에이전트가 어떤 글에 무엇을 하는지 한 권:
+     한눈에 · 판단 순서 · 시나리오(항목별 고객 말 · 할 일 · 고객에게 나가는 말 · 횟수 · 예시) · 주문을 찾아 답하는 말 · 고정 문장 · 직원 호출 이유 · 기준 · 브랜드 정보 · 말투.
+     에이전트 학습 탭 [시나리오 북] → 화면 전체 창(#kkoBook). 브랜드를 고르면 그 브랜드 정보로 채운 문장, 찾기는 다시 그리지 않고 숨기기만.
+     예시 글은 가린 지난 대화 — 사무실 밖이면 서버가 비워서 준다(outside). 보기만 한다 (고치기는 아직 없음). */
+  const _kkoBk={data:null,err:'',loading:false,brand:'',q:'',open:false,ret:null,t:null,ov:''};
+  const KBK_WHO={agent:'에이전트',staff:'직원',none:'끼어들지 않음',both:'에이전트 · 직원'};
+  async function kkoBookLoad(){
+    if(_kkoBk.loading) return;
+    _kkoBk.loading=true;
+    try{
+      const base=await loadProxyBase();
+      if(!base) throw new Error('서버 연결 안 됨');
+      const r=await fetch(`${base}/cs/kakao-book`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      _kkoBk.data=j; _kkoBk.err='';
+    }catch(e){ _kkoBk.err=(e && e.message) || String(e); }
+    finally{ _kkoBk.loading=false; if(_kkoBk.open) _kkoBookPaint(); }
+  }
+  function kkoBookOpen(){
+    const box=document.getElementById('kkoBook');
+    if(!box) return;
+    _kkoBk.open=true; _kkoBk.ret=document.activeElement;
+    box.hidden=false;
+    _kkoBk.ov=document.body.style.overflow; document.body.style.overflow='hidden';   // 뒤 화면이 같이 스크롤되지 않게
+    _kkoBookPaint();
+    const x=document.getElementById('kbkX'); if(x) x.focus({preventScroll:true});
+    kkoBookLoad();   // 열 때마다 새로 (맥미니가 10분마다 바뀐 걸 반영)
+  }
+  function kkoBookClose(){
+    const box=document.getElementById('kkoBook');
+    if(!box || !_kkoBk.open) return;
+    _kkoBk.open=false; box.hidden=true; box.innerHTML='';
+    document.body.style.overflow=_kkoBk.ov||'';
+    const r=_kkoBk.ret; if(r && r.focus && r.isConnected) r.focus({preventScroll:true});
+  }
+  // Esc = 시나리오 북 먼저 닫기 (뒤에 채팅방 창이 떠 있어도 그건 그대로)
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kkoBk.open){ e.preventDefault(); e.stopImmediatePropagation(); kkoBookClose(); } }, true);
+  function kkoBookBrand(b){ _kkoBk.brand=b; _kkoBookPaint(); }
+  function kkoBookFind(v){ _kkoBk.q=String(v||''); clearTimeout(_kkoBk.t); _kkoBk.t=setTimeout(_kkoBookFilter,120); }
+  function kkoBookGo(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({block:'start'}); }
+  // 찾기 — 다시 그리지 않고 data-s(찾을 글)로 숨기기만. 찾은 게 없는 묶음 · 칸도 숨김
+  function _kkoBookFilter(){
+    const root=document.getElementById('kkoBook');
+    if(!root || !_kkoBk.open) return;
+    const q=_kkoBk.q.trim().toLowerCase();
+    let n=0;
+    root.querySelectorAll('.kbk-it').forEach(el=>{ const hit=!q || (el.dataset.s||'').includes(q); el.hidden=!hit; if(hit && q) n++; });
+    root.querySelectorAll('.kbk-gw').forEach(g=>{ g.hidden=!!q && !g.querySelector('.kbk-it:not([hidden])'); });
+    root.querySelectorAll('.kbk-sec[data-f]').forEach(s=>{ s.hidden=!!q && !s.querySelector('.kbk-it:not([hidden])'); });
+    const f=document.getElementById('kbkFound');
+    if(f) f.textContent=q ? `찾은 것 ${n}개` : '';
+  }
+  function _kkoBookPaint(){
+    const box=document.getElementById('kkoBook');
+    if(!box || !_kkoBk.open) return;
+    const E=_kkoEsc, d=_kkoBk.data, brands=d ? (d.brands||[]) : [];
+    if(d && !brands.some(b=>b.brand===_kkoBk.brand)) _kkoBk.brand=(brands.find(b=>b.brand===_kko.brand)||brands[0]||{}).brand||'';
+    const B=_kkoBk.brand, L=b=>((brands.find(x=>x.brand===b)||{}).label||KKO_LABEL[b]||b);
+    const N=v=>Number(v||0).toLocaleString('ko-KR');
+    const when=s=>{ const t=new Date(s); return isNaN(t) ? '' : `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; };
+    const fid=(document.activeElement && box.contains(document.activeElement)) ? document.activeElement.id : '';
+    const head=`<div class="kbk-head"><h2 id="kbkTitle">시나리오 북</h2>`
+      + `<span class="sub">${d ? `${E(when(d.generatedAt))} 기준 · 예상 질문 · 답 ${E(d.faq.status||'')}${d.faq.updatedAt ? ' ('+E(d.faq.updatedAt)+')' : ''}` : ''}</span>`
+      + `<div class="ctl">${d ? `<select id="kbkBrand" aria-label="브랜드" onchange="kkoBookBrand(this.value)">${brands.map(b=>`<option value="${E(b.brand)}"${b.brand===B ? ' selected' : ''}>${E(b.label)}</option>`).join('')}</select>` : ''}`
+      + `<input type="search" id="kbkQ" placeholder="찾기 — 변색 · 환불 · 송장" value="${E(_kkoBk.q)}" oninput="kkoBookFind(this.value)" aria-label="시나리오 북에서 찾기" autocomplete="off"><span class="kbk-found" id="kbkFound" aria-live="polite"></span>`
+      + `<button type="button" class="kbk-x" id="kbkX" onclick="kkoBookClose()" aria-label="닫기" title="닫기 (Esc)">✕</button></div></div>`;
+    if(!d){
+      box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="kbkTitle">${head}<div class="kbk-empty">${_kkoBk.err ? '불러오지 못했어요 — '+E(_kkoBk.err) : '불러오는 중…'}</div></div>`;
+      return;
+    }
+    // 찾을 글 붙은 칸 (kbk-it) — 찾기는 data-s 만 본다
+    const it=(s, inner, cls='kbk-card')=>`<article class="${cls} kbk-it" data-s="${E(String(s||'').toLowerCase())}">${inner}</article>`;
+    const tag=(who, text)=>`<span class="kbk-tag ${who||''}">${E(text||KBK_WHO[who]||who)}</span>`;
+    const num=(st, onlyN)=>{
+      if(!st || !st.n) return '<div class="kbk-num">지난 대화에서 0번</div>';
+      const by=Object.entries(st.byBrand||{}).sort((a,b)=>b[1]-a[1]).map(([b,n])=>`${L(b)} ${N(n)}`).join(' · ');
+      return `<div class="kbk-num" title="${E(by)}"><span>지난 대화 ${N(st.n)}번${onlyN ? '' : ` · 에이전트 ${N(st.agent)} · 직원 ${N(st.staff)}`}</span>`
+        + (onlyN ? '' : `<span class="kbk-bar" aria-hidden="true"><i style="width:${Math.round(st.agent/st.n*100)}%"></i></span>`) + `</div>`;
+    };
+    const exs=xs=>!xs || !xs.length ? '' : `<details class="kbk-ex"><summary>지난 대화 예시 ${xs.length}개</summary>`
+      + xs.map(x=>`<div class="kbk-exi"><div class="m">${E(x.day)} · ${E(L(x.brand))} · ${x.owner==='agent' ? '에이전트 몫' : '직원 몫'+(x.why ? ' — '+E(x.why) : '')}</div>`
+        + `<div class="q">고객: ${E(x.q)}</div>${x.reply ? `<div class="r">에이전트 초안: ${E(x.reply)}</div>` : ''}${x.real ? `<div class="x">실제 ${E(x.realWho)} 답: ${E(x.real)}</div>` : ''}</div>`).join('') + `</details>`;
+    const off=!!((_kko.drafts||{}).off);
+    // 한눈에
+    const t=d.totals||{}, pct=t.total ? Math.round(t.agent/t.total*100) : 0;
+    const ov=`<section class="kbk-sec" id="kbk-ov"><h3>한눈에</h3><p>지난 대화(${E(t.from)} ~ ${E(t.to)})를 지금 규칙으로 다시 돌려 본 결과입니다. 실제로 보낸 답이 아니고, 에이전트는 ${off ? '지금 꺼 둔 상태(설계 중)' : '아직 고객에게 보내지 않는 상태'}예요.</p>`
+      + `<div class="kbk-over">${[['채팅방',N(t.chats)+'방',''],['고객이 묻고 채널이 답한 순간',N(t.moments)+'번',''],['직원이 상담하던 대화',N(t.staffActive)+'번','끼어들지 않음'],['그 밖',N(t.total)+'번',`에이전트 ${N(t.agent)} (${pct}%) · 직원 ${N(t.staff)}`]]
+        .map(([k,v,s])=>`<div class="kko-stat"><span class="k">${E(k)}</span><b>${E(v)}</b>${s ? `<span class="s">${E(s)}</span>` : ''}</div>`).join('')}</div>`
+      + (d.outside ? '<p class="kbk-note">사무실 밖이라 지난 대화 예시 글은 숨겼어요 — 숫자 · 규칙 · 답 문장은 그대로예요.</p>' : '') + `</section>`;
+    // 판단 순서
+    const flow=`<section class="kbk-sec" id="kbk-flow" data-f><h3>판단 순서</h3><p>고객 글이 오면 위에서부터 보고 처음 맞는 줄대로 합니다. 숫자는 지난 대화에서 그 줄로 간 횟수예요.</p>`
+      + (d.flow||[]).map((f,i)=>it(`${f.when} ${f.then}`, `<div class="kbk-h"><span class="kbk-n">${i+1}</span><b>${E(f.when)}</b>${tag(f.who)}</div><div class="kbk-note">→ ${E(f.then)}</div>${num(f.stats, f.who==='none' || f.who==='staff' || f.who==='agent')}${exs(f.examples)}`)).join('')
+      + `</section>`;
+    // 시나리오 — 고른 브랜드에 쓰는 항목만
+    const facts=((d.facts||{}).byBrand||{})[B]||{};
+    const sc=(d.scenarios||[]).filter(s=>(s.brands||[]).includes(B)), hidN=(d.scenarios||[]).length-sc.length;
+    const scCard=s=>{
+      const x=s.byBrand[B]||{};
+      const who=x.owner==='agent' ? tag('agent','에이전트가 답') : tag('staff','직원이 처리');
+      return it(`${s.title} ${(s.variants||[]).join(' ')} ${x.sent||''} ${x.text||''} ${s.note||''} ${s.group}`,
+        `<div class="kbk-h"><b>${E(s.title)}</b>${tag('',s.actionTitle)}${who}${s.source==='brand' ? tag('',L(B)+' 전용') : ''}${s.forKind==='jewelry' ? tag('','주얼리만') : ''}</div>`
+        + ((s.variants||[]).length ? `<div class="kbk-lbl">고객이 이렇게도 말해요</div><div class="kbk-say">${s.variants.map(v=>`<span>${E(v)}</span>`).join('')}</div>` : '')
+        + `<div class="kbk-lbl">고객에게 나가는 말</div><div><div class="kbk-bub">${E(x.sent||'')}</div></div>`
+        + (x.note ? `<div class="kbk-note">${E(x.note)}</div>` : '')
+        + ((x.missing||[]).length ? `<div class="kbk-note"><span class="kbk-miss">브랜드 정보 빈칸: ${x.missing.map(E).join(', ')}</span></div>` : '')
+        + (x.text && x.text!==x.sent ? `<details class="kbk-ex"><summary>원래 답 문구 보기</summary><div class="kbk-bub c">${_kkoFill(s.answer, facts)}</div></details>` : '')
+        + (s.note ? `<div class="kbk-note">에이전트 메모: ${E(s.note)}</div>` : '')
+        + ((s.collect||[]).length ? `<div class="kbk-note">받을 정보: ${s.collect.map(E).join(' · ')}</div>` : '')
+        + ((s.choices||[]).length ? `<div class="kbk-note">고르게 할 것: ${s.choices.map(E).join(' · ')}</div>` : '')
+        + num(s.stats) + exs(s.examples));
+    };
+    const scHtml=`<section class="kbk-sec" id="kbk-sc" data-f><h3>시나리오 — ${E(L(B))}</h3><p>예상 질문 · 답 항목마다 고객이 하는 말, 에이전트가 하는 일, 고객에게 실제로 나가는 말이에요.${hidN ? ` 이 브랜드에 안 쓰는 항목 ${hidN}개는 숨김 (위에서 브랜드를 바꾸면 보여요).` : ''}</p>`
+      + (d.groups||[]).map(g=>{ const xs=sc.filter(s=>s.intent===g.id); return xs.length ? `<div class="kbk-gw"><div class="kbk-grp" id="kbk-g-${E(g.id)}">${E(g.title)}</div>${xs.map(scCard).join('')}</div>` : ''; }).join('')
+      + `</section>`;
+    // 주문을 찾아 답하는 말
+    const cases=((d.orders||{}).cases||[]).filter(c=>c.byBrand && c.byBrand[B]);
+    const cg=[...new Set(cases.map(c=>c.group))];
+    const orHtml=`<section class="kbk-sec" id="kbk-or" data-f><h3>주문을 찾아 답하는 말 — ${E(L(B))}</h3><p>${E((d.orders||{}).note||'')}</p>`
+      + cg.map(g=>`<div class="kbk-gw"><div class="kbk-grp">${E(g)}</div>${cases.filter(c=>c.group===g).map(c=>{ const x=c.byBrand[B];
+          return it(`${g} ${c.title} ${x.reply} ${x.why}`, `<div class="kbk-h"><b>${E(c.title)}</b>${x.owner==='agent' ? tag('agent','에이전트가 답') : tag('staff','직원이 처리')}</div><div><div class="kbk-bub">${E(x.reply)}</div></div>`
+            + (x.why ? `<div class="kbk-note">${E(x.why)}</div>` : '') + ((x.choices||[]).length ? `<div class="kbk-note">고르게 할 것: ${x.choices.map(E).join(' · ')}</div>` : '')); }).join('')}</div>`).join('')
+      + `</section>`;
+    // 고정 문장
+    const lnHtml=`<section class="kbk-sec" id="kbk-ln" data-f><h3>고정 문장</h3><p>항목 답 말고 에이전트가 쓰는 말이에요. 같은 말이 매번 똑같으면 티가 나서 몇 가지를 돌려 써요.</p>`
+      + (d.lines||[]).map(l=>{ const xs=l.byBrand ? (l.byBrand[B]||[]) : (l.items||[]); return xs.length ? it(`${l.title} ${l.note} ${xs.join(' ')}`, `<div class="kbk-h"><b>${E(l.title)}</b></div>${l.note ? `<div class="kbk-note">${E(l.note)}</div>` : ''}${xs.map(s=>`<div><div class="kbk-bub">${E(s)}</div></div>`).join('')}`) : ''; }).join('')
+      + `</section>`;
+    // 직원 호출 이유
+    const stHtml=`<section class="kbk-sec" id="kbk-st" data-f><h3>직원 호출 이유</h3><p>에이전트가 답하지 않고 직원에게 넘긴 이유와 지난 대화 횟수예요 (직원이 상담하던 대화는 빼고).</p>`
+      + (d.staff||[]).map(s=>it(s.why, `<div class="kbk-h"><b>${E(s.why)}</b></div>${num(s.stats, true)}${exs(s.examples)}`)).join('')
+      + `</section>`;
+    // 기준 · 결정 · 확인 목록 · 배운 값
+    const P=d.policies||{};
+    const ck=(Array.isArray(d.checks) ? d.checks : []).filter(c=>!c.brand || c.brand===B), lr=(Array.isArray(d.learned) ? d.learned : []).filter(x=>x.brand===B);
+    const poHtml=`<section class="kbk-sec" id="kbk-po" data-f><h3>기준 · 결정</h3><p>사장님이 정한 기준과 결정이에요${P.decidedAt ? ` (${E(P.decidedAt)}${P.by ? ' · '+E(P.by) : ''})` : ''}.</p>`
+      + (P.rules||[]).map(r=>it(`${r.title||''} ${r.rule||''} ${r.agent||''}`, `<div class="kbk-h"><b>${E(r.title||r.id)}</b></div><div class="kbk-note">기준: ${E(r.rule||'')}</div>${r.agent ? `<div class="kbk-note">에이전트: ${E(r.agent)}</div>` : ''}${r.data ? `<div class="kbk-note">근거: ${E(r.data)}</div>` : ''}`)).join('')
+      + ((P.choices||[]).length ? `<div class="kbk-gw"><div class="kbk-grp">고객에게 고르게 할 것</div>${P.choices.map(c=>it(`${c.when} ${(c.options||[]).join(' ')}`, `<div class="kbk-h"><b>${E(c.when)}</b></div><div class="kbk-say">${(c.options||[]).map(o=>`<span>${E(o)}</span>`).join('')}</div>`)).join('')}</div>` : '')
+      + ((Array.isArray(d.decisions) ? d.decisions : []).length ? `<div class="kbk-gw"><div class="kbk-grp">결정 기록</div>${d.decisions.map(x=>it(String(x), `<div class="kbk-note" style="margin:0">${E(String(x))}</div>`)).join('')}</div>` : '')
+      + (ck.length ? `<div class="kbk-gw"><div class="kbk-grp">확인 필요 — ${E(L(B))} · 공통</div>${ck.map(c=>it(c.text, `<div class="kbk-note" style="margin:0"><span class="kbk-miss">확인 필요</span> ${E(c.text)}</div>`)).join('')}</div>` : '')
+      + (lr.length ? `<div class="kbk-gw"><div class="kbk-grp">배운 값 — ${E(L(B))}</div>${lr.map(x=>it(`${x.key} ${x.value} ${x.src||''}`, `<div class="kbk-h"><b>${E(x.key)}</b><span>${E(x.value)}</span></div>${x.src ? `<div class="kbk-note">근거: ${E(x.src)}</div>` : ''}`)).join('')}</div>` : '')
+      + `</section>`;
+    // 브랜드 정보 — 줄 = 항목, 칸 = 브랜드 (고른 브랜드 노랑, 점 = 공통과 다르게 이 브랜드만 쓰는 값)
+    const F=d.facts||{}, keys=(F.keys||[]).filter(k=>k!=='분류');
+    const fcHtml=`<section class="kbk-sec" id="kbk-fc" data-f><h3>브랜드 정보</h3><p>답 속 {자리}에 들어가는 값이에요. 노란 칸 = 고른 브랜드, 점 = 공통과 다르게 이 브랜드만 쓰는 값, 빨강 = 빈칸(그 답은 직원에게).</p>`
+      + `<div class="kbk-tbl"><table><thead><tr><th>항목</th><th>공통</th>${brands.map(b=>`<th class="${b.brand===B ? 'on' : ''}">${E(b.label)}</th>`).join('')}</tr></thead><tbody>`
+      + keys.map(k=>`<tr class="kbk-it" data-s="${E((k+' '+brands.map(b=>String(((F.byBrand||{})[b.brand]||{})[k] ?? '')).join(' ')).toLowerCase())}"><th>${E(k)}</th><td>${(F.common||{})[k]!=null && (F.common||{})[k]!=='' ? E((F.common||{})[k]) : '—'}</td>`
+        + brands.map(b=>{ const v=((F.byBrand||{})[b.brand]||{})[k], own=((F.own||{})[b.brand]||[]).includes(k); return `<td class="${b.brand===B ? 'on ' : ''}${own ? 'own' : ''}">${v==null || v==='' ? '<i>빈칸</i>' : E(v)}</td>`; }).join('') + `</tr>`).join('')
+      + `</tbody></table></div></section>`;
+    // 말투 · 원칙
+    const toHtml=`<section class="kbk-sec" id="kbk-to" data-f><h3>말투 · 원칙</h3>`
+      + it((d.tone||[]).join(' '), `<div class="kbk-h"><b>말투</b></div><ul>${(d.tone||[]).map(x=>`<li>${E(x)}</li>`).join('')}</ul>`)
+      + it((d.principles||[]).join(' '), `<div class="kbk-h"><b>에이전트 원칙</b></div><ul>${(d.principles||[]).map(x=>`<li>${E(x)}</li>`).join('')}</ul>`)
+      + `</section>`;
+    // 차례
+    const nb=(id,label,n,sub)=>`<button type="button"${sub ? ' class="sub"' : ''} onclick="kkoBookGo('${id}')">${E(label)}${n!=null ? `<em>${N(n)}</em>` : ''}</button>`;
+    const nav=`<nav class="kbk-nav" aria-label="시나리오 북 차례">${nb('kbk-ov','한눈에')}${nb('kbk-flow','판단 순서',(d.flow||[]).length)}${nb('kbk-sc','시나리오',sc.length)}`
+      + (d.groups||[]).filter(g=>sc.some(s=>s.intent===g.id)).map(g=>nb('kbk-g-'+g.id,g.title,sc.filter(s=>s.intent===g.id).length,true)).join('')
+      + `${nb('kbk-or','주문을 찾아 답하는 말',cases.length)}${nb('kbk-ln','고정 문장')}${nb('kbk-st','직원 호출 이유',(d.staff||[]).length)}${nb('kbk-po','기준 · 결정')}${nb('kbk-fc','브랜드 정보')}${nb('kbk-to','말투 · 원칙')}</nav>`;
+    const main=document.getElementById('kbkMain'), top=main ? main.scrollTop : 0;
+    box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="kbkTitle">${head}<div class="kbk-body">${nav}<div class="kbk-main" id="kbkMain">${ov}${flow}${scHtml}${orHtml}${lnHtml}${stHtml}${poHtml}${fcHtml}${toHtml}</div></div></div>`;
+    const m2=document.getElementById('kbkMain'); if(m2) m2.scrollTop=top;
+    _kkoBookFilter();
+    if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); if(el.id==='kbkQ'){ const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} } } }
   }
 
   // 주문 찾기 — 주문번호 / 이름 + 전화 뒷 4자리 / 전화 전체
