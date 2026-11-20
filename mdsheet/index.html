@@ -536,6 +536,9 @@
     try { if (window.parent !== window && typeof window.parent.secretOk === 'function') return !!window.parent.secretOk(); } catch (e) { /* 다른 출처 */ }
     try { return SECRET_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me') || '').trim()); } catch (e) { return false; }
   };
+  // 에이블리 · 지그재그 가격표 = 판매가 · 최저가뿐인 시트 (가격 열 이름이 플랫폼 · 옵션이라 열 이름으로 못 거름) — 기밀 명단 밖 PC 에선 시트째 안 보인다 (오피스 MDS_PRICE_BOOKS 와 같음)
+  const PRICE_BOOKS = new Set(['ably_price', 'zig_price']);
+  const bookVisible = b => !!b && (!b.admin || lsGet('brightbeed_role') === 'master') && (secretOk() || !PRICE_BOOKS.has(b.book));
   const CAT_RE = /^(카테고리|쇼핑몰|브랜드|플랫폼|분류)$/;            // 걸러보기 칩 열
   const ZERO_RE = /^(-|0|0\.0+|0%|0\.0+%|[₩￦]\s?0|#(DIV\/0!|N\/A|VALUE!|REF!|NUM!|ERROR!|NAME\?|NULL!)|FALSE|TRUE)$/i;   // 수식만 남은 줄의 값
   const KEY_RE = /^(상품명|상품이름|온라인상품명|품목명|제품명)$/;   // 상품 이름 열 = 왼쪽에 고정 · 상세 창 제목
@@ -689,7 +692,7 @@
     S.tabsBusy = (async () => {
       try {
         const j = await mdx('mdx_meta');
-        const books = (j && j.books || []).filter(b => !b.admin || lsGet('brightbeed_role') === 'master');
+        const books = (j && j.books || []).filter(bookVisible);
         if (!books.length || !(j.tabs || []).length) throw new Error('no_tabs');
         S.books = books;
         S.booksOk = true;
@@ -2959,8 +2962,9 @@
     let known = null;
     try { known = JSON.parse(lsGet(LS_TABS) || 'null'); } catch (e) { known = null; }
     if (known && Array.isArray(known.tabs) && known.tabs.length) {
-      S.books = (known.books || []).filter(b => b && b.book);
-      S.tabs = known.tabs.filter(t => t && t.tk && t.book).map(t => mkTab({tk: t.tk, gid: t.gid, book: t.book, name: t.name}));
+      S.books = (known.books || []).filter(bookVisible);
+      const vis = new Set(S.books.map(b => b.book));
+      S.tabs = known.tabs.filter(t => t && t.tk && t.book && vis.has(t.book)).map(t => mkTab({tk: t.tk, gid: t.gid, book: t.book, name: t.name}));
     }
     if (S.tabs.length) {
       const first = pickTab(want, saved);
