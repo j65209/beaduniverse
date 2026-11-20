@@ -40,7 +40,9 @@
        색은 아낌 — 회사 사유 = 빨강, 고객 사유 = 회색, 사유 없음 = 연회색.
      · 같은 날 저녁 "문의, 리뷰 목록도 같이 voc에 넣어줘" · "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리하게 해줘" →
        '문의 · 리뷰 (자동 수집)' 메뉴(한눈에 · 목록)를 새로, 편집이 있는 개선 요청 · CS 작업 보드 · 메모장 · 자주 묻는 질문은 오피스 화면을 그대로
-       본문 자리에 띄움(메뉴 'CS 업무'). "voc 코드표, 기존 자료는 숨김처리 해주고. 시트 또한 숨김해줘" → SHEET_ON = false (걷어내지 않고 숨김만). */
+       본문 자리에 띄움(메뉴 'CS 업무'). "voc 코드표, 기존 자료는 숨김처리 해주고. 시트 또한 숨김해줘" → SHEET_ON = false (걷어내지 않고 숨김만).
+     · 같은 날 밤 "제품의 불량 이미지가 채팅으로 유입되면 자동으로 채팅내용을 보고 상품명을 보고 상품 분석에 넣어줘. 이미지" →
+       상품 분석에 '📷 카톡 불량' 칸 · '상품 확인 필요' 목록 · 상세 창 사진 (맥미니 kakao-defects → /cs/kakao-defects, bbVocShare().defects · csImg). */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -351,6 +353,8 @@
   .stage.late{background:#fef2f2;color:#b91c1c}
   .reqb{height:28px;padding:0 10px;border-radius:8px;border:1px solid #fecaca;background:#fff;color:#b91c1c;font-size:12px;font-weight:700;white-space:nowrap}
   .reqb:hover{background:#fef2f2}
+  .dbtn{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--text-2)}
+  .dbtn:hover{border-color:#cbd5e1;color:var(--text)}
   .chsel{height:30px;padding:0 8px;border-radius:9px;border:1px solid var(--line);background:#fff;font:inherit;font-size:12.5px;color:var(--text-2);cursor:pointer}
   .chsel:focus{outline:0;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
   .chsel.on{border-color:var(--text);color:var(--text);font-weight:700}
@@ -541,6 +545,7 @@
   const CLAIMS_MS = 5 * 60e3;
   const C = {data: null, sales: null, lines: [], at: 0, err: '', salesErr: '', busy: null, pidx: null, firstBatch: 0, off: !(SH && typeof SH.claims === 'function')};
   const Q = {data: null, items: [], at: 0, err: '', busy: null, off: !(SH && typeof SH.inq === 'function')};   // 💬 문의 · 리뷰
+  const K = {data: null, items: [], at: 0, err: '', busy: null, outside: false, off: !(SH && typeof SH.defects === 'function')};   // 📷 카카오톡 불량 사진
   /* 시트 · 코드표 숨김 (2026-11-20 저녁 사장님 "voc 코드표, 기존 자료는 숨김처리 해주고. 시트 또한 숨김해줘") — 걷어내지 않고 숨김만.
      true 로 바꾸면 CS 데일리 일지 · 불량 · 재발송 · 반품 분석(시트) · 시트 사진 · VOC 코드표 메뉴, 한눈에 보기의 일지 입력 현황, 시트 링크 단추,
      구글시트 읽기(3분) · 오피스 VOC 기록 읽기가 다시 돈다. VOC 코드는 반품 · 교환 상세 창의 '추정 VOC 코드 · 처리 기준'과 🛠 개선 요청에 계속 쓴다. */
@@ -1203,7 +1208,8 @@
   const cLive = l => l.stage !== 'withdrawn' && l.stage !== 'rejected';
   const cAge = l => Math.max(0, diffD(today(), String(l.requested_at || l.date).slice(0, 10)));
   const cShown = b => CB.some(x => x.id === b);
-  const kname = s => String(s == null ? '' : s).replace(/\s+/g, '').toLowerCase();
+  // 상품 이름 키 — 공백 · 대소문자에 더해 꾸밈 부호도 뗀다 (야르 주문에 'd֑r֑e֑s֑d֑e֑n֑ S֑9֑2֑5֑…' 같은 이름이 섞여 반품 줄이 둘로 갈리던 것, 11-20)
+  const kname = s => String(s == null ? '' : s).normalize('NFKD').replace(/\p{M}/gu, '').normalize('NFC').replace(/\s+/g, '').toLowerCase();
   const cut = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
   const said = l => String(l.memo || '').replace(/[^\p{L}\p{N}]/gu, '').length >= 6;   // '*재배치*' 같은 처리 표시는 빼고 문장만
   const pctR = (r, d) => r == null || !isFinite(r) ? '—' : (r * 100).toFixed(d == null ? 1 : d).replace(/\.0$/, '') + '%';
@@ -1315,10 +1321,11 @@
   // 상품마다 — 같은 브랜드 · 같은 이름(띄어쓰기 · 대소문자 무시). 채널마다 이름이 다르면 따로 센다
   function cProducts() {
     const rows = cRows(P.from, P.to), idx = cProdIdx(), by = new Map();
+    const mk = (k, brand) => ({kind: 'prod', key: k, brand, names: new Map(), n: 0, ret: 0, exc: 0, co: 0, reasons: new Map(), ch: new Map(), opts: new Map(), memo: null, lines: [], kd: []});
     for (const l of rows) {
       const k = l.brand + '|' + kname(l.product);
       let x = by.get(k);
-      if (!x) { x = {kind: 'prod', key: k, brand: l.brand, names: new Map(), n: 0, ret: 0, exc: 0, co: 0, reasons: new Map(), ch: new Map(), opts: new Map(), memo: null, lines: []}; by.set(k, x); }
+      if (!x) { x = mk(k, l.brand); by.set(k, x); }
       x.n++; if (l.type === 'exchange') x.exc++; else x.ret++;
       if (fOf(l.reason) === 'co') x.co++;
       x.names.set(l.product, (x.names.get(l.product) || 0) + 1);
@@ -1328,8 +1335,19 @@
       x.lines.push(l);
       if (said(l) && (!x.memo || String(l.requested_at || l.date) > String(x.memo.requested_at || x.memo.date))) x.memo = l;
     }
+    // 📷 카카오톡 불량 사진 건 (상품을 찾은 것) — 반품 · 교환이 없는 상품도 줄로. 채널을 고르면 뺌 (카톡은 판매 채널이 아님)
+    if (!V.cc) for (const d of kRows()) {
+      if (d.needsCheck || !d.product) continue;
+      const k = d.brand + '|' + kname(d.product);
+      let x = by.get(k);
+      if (!x) { x = mk(k, d.brand); by.set(k, x); }
+      x.kd.push(d);
+      if (!x.lines.length) x.names.set(d.product, (x.names.get(d.product) || 0) + 1);
+    }
     for (const x of by.values()) {
       x.name = major(x.names);
+      x.kdn = x.kd.length;
+      x.hot = x.co + x.kdn >= REPEAT_CO;   // ⚠ 반품 회사 사유 + 카톡 불량이 3건 넘음 → 🛠 개선 요청
       const s = cProdSold(idx.get(x.key), P.from, P.to, V.cc);
       x.sold = s ? s.qty : null;
       x.rate = s && s.qty ? cRateQty(x.lines, s) / s.qty : null;
@@ -1350,8 +1368,10 @@
   }
   // 상품의 대표 VOC 코드 — 회사 사유 줄에서 가장 많이 나온 코드
   function prodCode(x) {
-    const co = x.lines.filter(l => fOf(l.reason) === 'co');
-    const by = countBy(co.length ? co : x.lines, cCode).filter(([c]) => c);
+    // 반품 회사 사유 줄 + 카톡 불량 건의 코드를 같이 세서 가장 많은 것 (둘 다 없으면 반품 줄 전체)
+    const codes = x.lines.filter(l => fOf(l.reason) === 'co').map(cCode).concat((x.kd || []).map(kCode)).filter(Boolean);
+    if (codes.length) return countBy(codes, c => c)[0][0];
+    const by = countBy(x.lines, cCode).filter(([c]) => c);
     return by.length ? by[0][0] : '';
   }
   // 추이 칸 — 31일까지는 하루씩(최소 14칸), 넘으면 월요일 시작 주
@@ -1454,7 +1474,7 @@
     // 상세 창 — 같은 줄이 아직 있으면 다시 그림
     if (!$('detail').hidden && S.selObj) {
       const i = S.list.findIndex(x => sameObj(x, S.selObj));
-      if (i >= 0) openDetail(i, true); else if (!['case', 'defect', 'code', 'claim', 'inq'].includes(S.selObj.kind)) closeDetail();
+      if (i >= 0) openDetail(i, true); else if (!['case', 'defect', 'code', 'claim', 'inq', 'kdef'].includes(S.selObj.kind)) closeDetail();
     }
     if (V.view === 'x:req') closeDetail();
     const sec = secretOk();
@@ -1482,7 +1502,7 @@
   }
   const sameObj = (a, b) => a && b && a.kind === b.kind && (a.kind === 'case' ? a.gid === b.gid && a.r === b.r && a.type === b.type && a.reason === b.reason && a.date === b.date && a.src === b.src
     : a.kind === 'defect' ? a.gid === b.gid && a.r === b.r : a.kind === 'code' ? a.code === b.code : a.kind === 'slot' ? a.gid === b.gid && a.r === b.r
-    : a.kind === 'claim' ? a.id === b.id : a.kind === 'prod' ? a.key === b.key : a.kind === 'inq' ? String(a.id) === String(b.id) : false);
+    : a.kind === 'claim' ? a.id === b.id : a.kind === 'prod' ? a.key === b.key : a.kind === 'inq' ? String(a.id) === String(b.id) : a.kind === 'kdef' ? a.id === b.id : false);
   function curGid() {
     const D = S.D;
     if (!D) return '';
@@ -1963,34 +1983,43 @@
     cHead('상품 분석', {copy: true});
     if (!C.data) { cNoDataGrid(); return; }
     const all = cProducts(), t = terms();
-    const rep = all.filter(x => x.co >= REPEAT_CO), coL = all.filter(x => x.co > 0), rated = all.filter(x => x.sold != null && x.sold >= MIN_SOLD), hi = rated.filter(x => x.rate >= 0.05);
+    const hot = all.filter(x => x.hot), coL = all.filter(x => x.co > 0), rated = all.filter(x => x.sold != null && x.sold >= MIN_SOLD), hi = rated.filter(x => x.rate >= 0.05);
+    const kAll = V.cc ? [] : kRows(), kOk = kAll.filter(d => !d.needsCheck), kChk = kAll.filter(d => d.needsCheck), kdOnly = all.filter(x => !x.n).length;
     const tog = k => V.pf === k ? '' : k;
     kpis([
-      {v: fmt(all.length), u: '개', l: '반품 · 교환 상품', d: '채널마다 이름이 다르면 따로 셈', go: {pf: ''}, on: !V.pf},
-      {v: fmt(rep.length), u: '개', l: `⚠ 회사 사유 ${REPEAT_CO}건 이상`, d: '🛠 개선 요청으로', cls: rep.length ? 'red' : '', go: {pf: tog('rep')}, on: V.pf === 'rep'},
-      {v: fmt(coL.length), u: '개', l: '회사 사유 있음', go: {pf: tog('co')}, on: V.pf === 'co'},
+      {v: fmt(all.length), u: '개', l: '상품', d: kdOnly ? `카톡 불량만 들어온 ${fmt(kdOnly)}개 포함` : '채널마다 이름이 다르면 따로 셈', go: {pf: ''}, on: !V.pf},
+      {v: fmt(hot.length), u: '개', l: `⚠ 불량 · 회사 사유 ${REPEAT_CO}건 이상`, d: '반품 회사 사유 + 카톡 불량 · 🛠 개선 요청으로', cls: hot.length ? 'red' : '', go: {pf: tog('rep')}, on: V.pf === 'rep'},
+      {v: fmt(coL.length), u: '개', l: '반품 회사 사유 있음', go: {pf: tog('co')}, on: V.pf === 'co'},
       {v: fmt(hi.length), u: '개', l: '반품률 5% 이상', d: `판매 ${MIN_SOLD}개 이상인 ${fmt(rated.length)}개 중`, cls: hi.length ? 'red' : '', go: {pf: tog('rate')}, on: V.pf === 'rate'},
+      {v: fmt(kOk.length), u: '건', l: '📷 카톡 불량 사진', d: K.off ? '오피스 안에서 보여요' : K.err && !K.data ? '못 불러옴' : V.cc ? '채널을 고르면 빼요' : `${fmt(all.filter(x => x.kdn).length)}개 상품에 붙음`, go: {pf: tog('kd')}, on: V.pf === 'kd',
+        tip: '카카오톡 상담으로 들어온 불량 사진 + 글 — 채팅 내용 · 주문으로 상품을 찾아 이 상품 줄에 붙였어요 (5분마다)'},
+      {v: fmt(kChk.length), u: '건', l: '상품 확인 필요', d: '카톡 불량 중 상품을 못 찾은 것', cls: kChk.length ? 'amber' : '', go: {pf: tog('kdcheck')}, on: V.pf === 'kdcheck'},
     ]);
+    if (V.pf === 'kdcheck') { renderKdCheck(); return; }
     if (P.from < cProdStart()) alertBox(`${md(cProdStart())}보다 앞선 날이 들어간 기간은 상품별 판매를 몰라 반품률이 비어요 (상품별 판매는 최근 92일만 있어요)`, true);
-    let list = V.pf === 'rep' ? rep : V.pf === 'co' ? coL : V.pf === 'rate' ? rated : all;
-    list = list.slice().sort(V.pf === 'rate' ? (a, b) => (b.rate || 0) - (a.rate || 0) || b.n - a.n : V.pf ? (a, b) => b.co - a.co || b.n - a.n : (a, b) => b.n - a.n || b.co - a.co);
-    if (t.length) list = list.filter(x => { const s = [x.name, ...x.names.keys(), bName(x.brand), topOpt(x), x.memo ? x.memo.memo : ''].join(' ').toLowerCase(); return t.every(w => s.includes(w)); });
+    let list = V.pf === 'rep' ? hot : V.pf === 'co' ? coL : V.pf === 'rate' ? rated : V.pf === 'kd' ? all.filter(x => x.kdn) : all;
+    list = list.slice().sort(V.pf === 'rate' ? (a, b) => (b.rate || 0) - (a.rate || 0) || b.n - a.n
+      : V.pf === 'kd' ? (a, b) => b.kdn - a.kdn || b.n - a.n
+      : V.pf ? (a, b) => (b.co + b.kdn) - (a.co + a.kdn) || b.n - a.n
+      : (a, b) => (b.n + b.kdn) - (a.n + a.kdn) || b.co - a.co);
+    if (t.length) list = list.filter(x => { const s = [x.name, ...x.names.keys(), bName(x.brand), topOpt(x), x.memo ? x.memo.memo : '', ...x.kd.map(d => d.symptom + ' ' + d.text)].join(' ').toLowerCase(); return t.every(w => s.includes(w)); });
     if (V.q) $('qn').textContent = `${list.length}개`;
     const maxRate = Math.max(0, ...list.map(x => x.sold >= MIN_SOLD ? x.rate || 0 : 0));
     const cols = [];
     if (!V.cb) cols.push({k: 'brand', l: '브랜드', get: x => ({t: bName(x.brand), s: bOrder(x.brand), h: bDot(x.brand) + esc(bName(x.brand)), pad: 15})});
     cols.push(
       {k: 'name', l: '상품', wrap: true, flex: 1, min: 180, max: 340, get: x => ({t: x.name, h: `<b>${hl(x.name)}</b>`})},
-      {k: 'ch', l: '채널', max: 190, get: x => ({t: chTxt(x)})},
+      {k: 'ch', l: '채널', max: 190, get: x => ({t: chTxt(x) || (x.kdn ? '카카오톡' : ''), h: x.ch.size ? esc(chTxt(x)) : '<span class="mut">카카오톡</span>'})},
       {k: 'sold', l: '판매', num: true, min: 54, get: x => ({t: x.sold == null ? '—' : fmt(x.sold), s: x.sold == null ? -1 : x.sold, h: x.sold == null ? '<span class="z">—</span>' : fmt(x.sold)})},
-      {k: 'n', l: '반품 · 교환', num: true, min: 84, get: x => ({t: `${x.n}${x.exc ? ` 교환 ${x.exc}` : ''}`, s: x.n, h: `<b>${x.n}</b>${x.exc ? ` <span class="mut">교환 ${x.exc}</span>` : ''}`})},
+      {k: 'n', l: '반품 · 교환', num: true, min: 84, get: x => ({t: `${x.n}${x.exc ? ` 교환 ${x.exc}` : ''}`, s: x.n, h: x.n ? `<b>${x.n}</b>${x.exc ? ` <span class="mut">교환 ${x.exc}</span>` : ''}` : '<span class="z">0</span>'})},
       {k: 'rate', l: '반품률', min: 128, get: x => ({t: x.rate == null ? '—' : pctR(x.rate), s: x.rate == null || x.sold < MIN_SOLD ? -1 : x.rate, h: x.rate == null ? '<span class="z">—</span>' : rateCell(x.rate, maxRate, x.sold), pad: 72})},
-      {k: 'co', l: '회사 사유', num: true, min: 66, get: x => ({t: String(x.co), s: x.co, h: x.co ? `<b${x.co >= REPEAT_CO ? ' class="hot"' : ''}>${x.co}</b>` : '<span class="z">0</span>'})},
-      {k: 'rs', l: '많은 사유', min: 150, max: 240, get: x => ({t: x.rs.slice(0, 2).map(([r, n]) => `${rsOf(r).s} ${n}`).join(' · '), s: x.rs.length ? RS_KEYS.indexOf(x.rs[0][0]) : 99, h: x.rs.slice(0, 2).map(([r, n]) => `${fDot(r)}${esc(rsOf(r).s)} ${n}`).join(' <span class="z">·</span> '), pad: 28})},
-      {k: 'memo', l: '최근 고객 글', wrap: true, flex: 1, min: 160, max: 380, get: x => ({t: x.memo ? x.memo.memo : '', h: x.memo ? '“' + hl(cut(x.memo.memo, 100)) + '”' : '<span class="none">—</span>'})},
-      {k: 'req', l: '개선 요청', min: 104, get: x => ({t: x.co >= REPEAT_CO ? '🛠 개선 요청' : '', s: x.co >= REPEAT_CO ? 0 : 1, h: x.co >= REPEAT_CO ? `<button type="button" class="reqb" data-req="${esc(x.key)}" title="이 상품으로 🛠 개선 요청을 만들어요 (근거 · VOC 코드 · 받는 팀 자동)">🛠 개선 요청</button>` : '', pad: 22})},
+      {k: 'co', l: '회사 사유', num: true, min: 66, get: x => ({t: String(x.co), s: x.co, h: x.co ? `<b${x.hot ? ' class="hot"' : ''}>${x.co}</b>` : '<span class="z">0</span>'})},
+      {k: 'kd', l: '카톡 불량', num: true, min: 74, get: x => ({t: x.kdn ? `${x.kdn} ${[...new Set(x.kd.map(d => d.symptom))].join(' ')}` : '0', s: x.kdn, h: x.kdn ? `<b class="hot" title="${esc([...new Set(x.kd.map(d => d.symptom).filter(Boolean))].join(' · '))}">📷 ${x.kdn}</b>` : '<span class="z">0</span>', pad: 20})},
+      {k: 'rs', l: '많은 사유', min: 150, max: 240, get: x => { const sy = [...new Set(x.kd.map(d => d.symptom).filter(Boolean))]; return {t: x.rs.length ? x.rs.slice(0, 2).map(([r, n]) => `${rsOf(r).s} ${n}`).join(' · ') : sy.join(' · '), s: x.rs.length ? RS_KEYS.indexOf(x.rs[0][0]) : 99, h: x.rs.length ? x.rs.slice(0, 2).map(([r, n]) => `${fDot(r)}${esc(rsOf(r).s)} ${n}`).join(' <span class="z">·</span> ') : sy.length ? `<span class="mut">카톡 · ${esc(sy.slice(0, 2).join(' · '))}</span>` : '<span class="none">—</span>', pad: 28}; }},
+      {k: 'memo', l: '최근 고객 글', wrap: true, flex: 1, min: 160, max: 380, get: x => { const kd = x.kd.find(d => d.text); const m = x.memo ? x.memo.memo : kd ? kd.text : ''; return {t: m, h: m ? (x.memo ? '' : '<span class="mut">카톡 </span>') + '“' + hl(cut(m, 100)) + '”' : '<span class="none">—</span>'}; }},
+      {k: 'req', l: '개선 요청', min: 104, get: x => ({t: x.hot ? '🛠 개선 요청' : '', s: x.hot ? 0 : 1, h: x.hot ? `<button type="button" class="reqb" data-req="${esc(x.key)}" title="이 상품으로 🛠 개선 요청을 만들어요 (근거 · VOC 코드 · 받는 팀 자동)">🛠 개선 요청</button>` : '', pad: 22})},
     );
-    drawTable(cols, list, {empty: V.q ? '찾는 말이 든 상품이 없어요' : V.pf === 'rate' ? `판매 ${MIN_SOLD}개 이상인 상품이 없어요` : V.pf ? '해당하는 상품이 없어요' : '이 기간에는 반품 · 교환이 없어요', rowCls: x => x.co >= REPEAT_CO ? 'co' : ''});
+    drawTable(cols, list, {empty: V.q ? '찾는 말이 든 상품이 없어요' : V.pf === 'rate' ? `판매 ${MIN_SOLD}개 이상인 상품이 없어요` : V.pf === 'kd' ? '이 기간에는 상품을 찾은 카톡 불량 사진이 없어요' : V.pf ? '해당하는 상품이 없어요' : '이 기간에는 반품 · 교환이 없어요', rowCls: x => x.hot ? 'co' : ''});
   }
   // 🛠 개선 요청 — 오피스 CS 업무 '개선 요청' 표에 근거 · VOC 코드 · 받는 팀 · 우선순위를 채워 만든다 (오피스 bbVocShare().makeReq)
   function makeReq(key) {
@@ -2001,8 +2030,9 @@
     const coTxt = x.rs.filter(([k]) => fOf(k) === 'co').map(([k, n]) => `${rsOf(k).l} ${n}`).join(' · ') || '없음';
     const chs = [...x.ch.entries()].sort((a, b) => b[1] - a[1]).map(([ch, n]) => `${chL(ch)} ${n}`).join(' · ');
     const memo = x.memo ? ` · 고객 글 "${cut(x.memo.memo, 80)}"` : '';
-    SH.makeReq({brand: x.brand, product: x.name, code: code || '', team: c ? c.team : '', priority: x.co >= 5 ? '높음' : '보통',
-      evidence: `${md(P.from)}~${md(P.to)} 반품 · 교환 ${x.n}건 중 회사 사유 ${x.co}건 (${coTxt})${x.rate != null ? ` · 반품률 ${pctR(x.rate)} (판매 ${x.sold}개)` : ''} · ${chs}${memo} — VOC 전산 상품 분석에서`});
+    const kd = x.kdn ? ` · 카톡 불량 사진 ${x.kdn}건 (${countBy(x.kd, d => d.symptom || '불량').map(([sy, n]) => `${sy} ${n}`).join(' · ')})` : '';
+    SH.makeReq({brand: x.brand, product: x.name, code: code || '', team: c ? c.team : '', priority: x.co + x.kdn >= 5 ? '높음' : '보통',
+      evidence: `${md(P.from)}~${md(P.to)} 반품 · 교환 ${x.n}건 중 회사 사유 ${x.co}건 (${coTxt})${kd}${x.rate != null ? ` · 반품률 ${pctR(x.rate)} (판매 ${x.sold}개)` : ''}${chs ? ' · ' + chs : ''}${memo} — VOC 전산 상품 분석에서`});
   }
 
   /* ── ⏳ 처리 현황 — 지금 처리 중인 것 (단계 × 경과일 · 오래 걸리는 것 · 확인 필요) ── */
@@ -2299,6 +2329,76 @@
     const lay = {side: sideOn && sideEl ? Math.round(sideEl.getBoundingClientRect().width) : 0, top: sideOn || !barEl ? 0 : Math.round(barEl.getBoundingClientRect().height), peek: app.classList.contains('nav-open')};
     S.extOn = true;
     try { SH.ext('req', lay); } catch (e) { console.warn('개선 요청 · 작업 보드', e); }
+  }
+  /* ── 📷 카카오톡 불량 사진 → 상품 분석 (2026-11-20 밤 사장님 "제품의 불량 이미지가 채팅으로 유입되면 자동으로 채팅내용을 보고 상품명을 보고 상품 분석에 넣어줘. 이미지")
+     맥미니 sixshop-collector kakao-defects(5분) → 프록시 /cs/kakao-defects 를 오피스가 받아 넘겨 준다(bbVocShare().defects). 사진은 /cs/kakao-img(PIN · 사무실 인터넷만)을
+     오피스가 받아 blob 주소로(csImg). 한 건 = 고객이 사진 + 불량 글을 보낸 채팅방 하나: brand · date · at · product · productKey · matchedBy · needsCheck ·
+     candidates · symptom · text(가린 글) · photos · videos · images[{thumb, full}]. 상품을 찾은 건은 반품 · 교환 상품 줄에 붙고(같은 brand + kname),
+     못 찾은 건(needsCheck)은 '상품 확인 필요'로 따로. 사무실 밖이면 글 · 사진이 빈다(outside). 11-19 저녁 전 건은 사진 장 수만 있음. ── */
+  const KD_MB = {orderId: '고객이 쓴 주문번호로 찾음', phone: '고객이 쓴 전화번호의 주문으로 찾음', 'orderId+text': '주문번호의 상품 중 글로 고름', 'phone+text': '전화번호 주문의 상품 중 글로 고름', text: '글에 상품 이름이 나옴'};
+  function loadDefects(force) {
+    if (K.off) return Promise.resolve();
+    if (K.busy) return K.busy;
+    if (!force && K.at && Date.now() - K.at < CLAIMS_MS) return Promise.resolve();
+    K.busy = (async () => {
+      let changed = false;
+      try {
+        const r = await SH.defects(!!force);
+        if (r && r.data && Array.isArray(r.data.items)) {
+          if (r.data !== K.data) { K.data = r.data; K.outside = !!r.data.outside; K.items = r.data.items.map(d => Object.assign({kind: 'kdef'}, d)); changed = true; }
+          if (K.err) changed = true;
+          K.err = '';
+        } else { const e = (r && r.err) || '아직 불량 사진 자료가 없어요'; changed = changed || K.err !== e; K.err = e; }
+      } catch (e) { K.err = (e && e.message) || String(e); changed = true; }
+      finally { K.at = Date.now(); K.busy = null; }
+      if (changed && (V.view === 'c:prod' || V.view === 'dash')) render(true);
+    })();
+    return K.busy;
+  }
+  // 기간 · 브랜드로 거른 불량 건 (새 건이 위)
+  const kRows = () => K.items.filter(d => d.date >= P.from && d.date <= P.to && (!V.cb || d.brand === V.cb));
+  const kHm = d => { const t = Date.parse(d.at || ''); if (!t) return ''; const s = new Date(t + 9 * 3600e3).toISOString(); return s.slice(11, 16); };
+  const kCode = d => { const g = guessCode([d.symptom, d.text].filter(Boolean).join(' '), '반품', d.brand); return g && g !== 'E12' ? g : 'Q91'; };
+  const kMedia = d => `${d.photos ? `사진 ${d.photos}장` : ''}${d.photos && d.videos ? ' · ' : ''}${d.videos ? `영상 ${d.videos}개` : ''}`;
+  // 사진 작은 칸 — 오피스가 PIN 으로 받아 준 blob 주소로 채운다 (hydrateCs)
+  const csThumbs = arr => `<div class="dthumbs">${arr.map(im => `<img data-csimg="${esc(im.thumb)}" data-csfull="${esc(im.full || im.thumb)}" alt="불량 사진" title="누르면 크게">`).join('')}</div>`;
+  function hydrateCs(root) {
+    if (!SH || typeof SH.csImg !== 'function') return;
+    (root || document).querySelectorAll('img[data-csimg]:not([data-ld])').forEach(img => {
+      img.dataset.ld = '1';
+      SH.csImg(img.dataset.csimg).then(b => { img.src = b; }, () => { img.classList.add('broken'); img.title = '사진을 받지 못했어요 (사무실 인터넷에서만 보여요)'; });
+    });
+  }
+  function openCsFull(u) {
+    if (!SH || typeof SH.csImg !== 'function') return;
+    const lb = $('lb'), im = $('lbImg');
+    im.removeAttribute('src');
+    lb.hidden = false;
+    SH.csImg(u).then(b => { if (!lb.hidden) im.src = b; }, () => { lb.hidden = true; toast('사진을 받지 못했어요 — 사무실 인터넷에서만 보여요'); });
+  }
+  function openKdef(id) {
+    const c = K.items.find(d => d.id === id);
+    if (!c) return;
+    let i = S.list.findIndex(x => x.kind === 'kdef' && x.id === id);
+    if (i < 0) { S.list = [c]; i = 0; }
+    openDetail(i);
+  }
+  // 상품 확인 필요 — 상품을 못 찾은 불량 건 (사진 · 글 · 후보 상품을 보고 직원이 정함)
+  function renderKdCheck(head0) {
+    const t = terms();
+    let rows = kRows().filter(d => d.needsCheck);
+    if (t.length) rows = rows.filter(d => { const s = [d.date, md(d.date), bName(d.brand), d.label, d.symptom, d.text, (d.candidates || []).join(' ')].join(' ').toLowerCase(); return t.every(w => s.includes(w)); });
+    if (V.q) $('qn').textContent = `${rows.length}건`;
+    if (K.outside) alertBox('사무실 밖이라 고객 글 · 사진은 비어 있어요 — 사무실 인터넷에서 열면 보여요', true);
+    else if (head0) alertBox(head0, true);
+    drawTable([
+      {k: 'date', l: '날짜', min: 92, get: d => ({t: `${md(d.date)} ${kHm(d)}`, s: d.at || d.date, h: `${esc(md(d.date))} <span class="mut">${esc(kHm(d))}</span>`})},
+      {k: 'brand', l: '브랜드', get: d => ({t: bName(d.brand) + (d.label && d.label !== bName(d.brand) ? ' ' + d.label : ''), s: bOrder(d.brand), h: bDot(d.brand) + esc(bName(d.brand)) + (d.label && d.label !== bName(d.brand) ? ` <span class="mut">${esc(d.label)}</span>` : ''), pad: 15})},
+      {k: 'symptom', l: '증상', max: 180, get: d => ({t: d.symptom || '', h: d.symptom ? `<b>${hl(d.symptom)}</b>` : '<span class="none">—</span>'})},
+      {k: 'text', l: '고객이 쓴 글', wrap: true, flex: 1, min: 220, max: 520, get: d => ({t: d.text || '', h: d.text ? hl(d.text) : `<span class="none">${K.outside ? '사무실 인터넷에서만 보여요' : '—'}</span>`})},
+      {k: 'media', l: '사진', min: 70, get: d => ({t: kMedia(d), s: (d.photos || 0) + (d.videos || 0), h: (d.images && d.images.length ? '📷 ' : '') + esc(kMedia(d) || '—')})},
+      {k: 'cand', l: '후보 상품', wrap: true, max: 300, get: d => ({t: (d.candidates || []).join(' · '), h: d.candidates && d.candidates.length ? hl(d.candidates.join(' · ')) : '<span class="none">없음 — 대화를 보고 정해 주세요</span>'})},
+    ], rows, {empty: K.err && !K.data ? `불량 사진 자료를 못 불러왔어요 (${K.err})` : '이 기간에는 상품 확인이 필요한 불량 건이 없어요'});
   }
   function productRank(cs) {
     const g = {};
@@ -2613,7 +2713,11 @@
       if (pc) dl += codeBlock(pc, null);
       const qs = it.lines.filter(said).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date))).slice(0, 4);
       if (qs.length) dl += dlRow('고객 글', qs.map(l => `<button type="button" class="quote" data-claim="${esc(l.id)}">“${esc(cut(l.memo, 120))}”<small>${esc(md(l.date))} · ${esc(chL(l.channel))} · ${esc(rsOf(l.reason).s)}</small></button>`).join(''), {html: true});
-      if (it.co) dl += dlRow('개선 요청', `<button type="button" class="reqb" data-req="${esc(it.key)}">🛠 개선 요청 만들기</button><div class="muted" style="margin-top:6px">CS 업무 '🛠 개선 요청' 표에 근거 · VOC 코드 · 받는 팀을 채워 만들어요</div>`, {html: true});
+      if (it.co || it.kdn) dl += dlRow('개선 요청', `<button type="button" class="reqb" data-req="${esc(it.key)}">🛠 개선 요청 만들기</button><div class="muted" style="margin-top:6px">CS 업무 '🛠 개선 요청' 표에 근거 · VOC 코드 · 받는 팀을 채워 만들어요</div>`, {html: true});
+      if (it.kd && it.kd.length) {
+        const ims = it.kd.flatMap(d => d.images || []).slice(0, 10);
+        dl += dlRow(`📷 카톡 불량 ${it.kd.length}건`, (ims.length ? csThumbs(ims) : '') + `<div class="hist">${it.kd.slice(0, 12).map(d => `<button type="button" data-kdef="${esc(d.id)}"><span class="hd">${esc(md(d.date))}</span><span class="tp etc">${esc(d.symptom || '불량')}</span><span class="hr">${esc(cut(d.text || kMedia(d), 46))}</span></button>`).join('')}</div>`, {html: true});
+      }
       const iq = Q.items.filter(i => i.brand === it.brand && i.product && kname(i.product) === kname(it.name) && i.date >= P.from && i.date <= P.to);
       if (iq.length) dl += dlRow(`문의 · 리뷰 ${iq.length}건`, `<div class="hist">${iq.slice(0, 10).map(i => `<button type="button" data-inq="${esc(i.id)}"><span class="hd">${esc(md(i.date))}</span>${iPill(i)}<span class="hr">${esc(cut(i.title || i.text, 46))}</span></button>`).join('')}</div>`, {html: true});
       const ls = it.lines.slice().sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date)));
@@ -2637,6 +2741,25 @@
         if (oq.length) dl += dlRow(`같은 상품 문의 · 리뷰 ${oq.length}건`, `<div class="hist">${oq.slice(0, 10).map(i => `<button type="button" data-inq="${esc(i.id)}"><span class="hd">${esc(md(i.date))}</span>${iPill(i)}<span class="hr">${esc(cut(i.title || i.text, 46))}</span></button>`).join('')}</div>`, {html: true});
       }
       dl += dlRow('원본', '자동 수집 · 플레이오토 문의 관리');
+    } else if (it.kind === 'kdef') {
+      // 카카오톡 불량 사진 한 건
+      title = it.product || '상품 확인 필요';
+      sub = `${dlabel(it.date)} ${kHm(it)} · ${bName(it.brand)}${it.label && it.label !== bName(it.brand) ? ' ' + it.label : ''} · 카카오톡 상담`;
+      dl += dlRow('증상', it.symptom ? `<b>${esc(it.symptom)}</b>` : '', {html: true});
+      dl += dlRow('고객이 쓴 글', it.text || (K.outside ? '사무실 인터넷에서만 보여요' : ''));
+      dl += dlRow('사진', it.images && it.images.length ? csThumbs(it.images) + (kMedia(it) ? `<div class="muted">${esc(kMedia(it))}</div>` : '') : kMedia(it) ? `${kMedia(it)} — ${K.outside ? '사무실 인터넷에서만 보여요' : '11/19 저녁 전 건이라 사진은 보관 안 됨'}` : '', {html: !!(it.images && it.images.length)});
+      dl += dlRow('상품', it.product ? `${it.product}\n${KD_MB[it.matchedBy] || ''}` : '못 찾음 — 대화를 보고 상품을 정해 주세요');
+      if (it.candidates && it.candidates.length) dl += dlRow('후보 상품', it.candidates.join('\n'));
+      dl += codeBlock(kCode(it), null);
+      if (it.product) {
+        const pk = kname(it.product);
+        const cl = C.lines.filter(l => l.brand === it.brand && kname(l.product) === pk && cLive(l)).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date)));
+        if (cl.length) dl += dlRow(`같은 상품 반품 · 교환 ${cl.length}건`, `<div class="hist">${cl.slice(0, 10).map(l => `<button type="button" data-claim="${esc(l.id)}"><span class="hd">${esc(md(l.date))}</span>${typePill(typeKo(l))}<span class="hr">${esc(rsOf(l.reason).s)}${l.memo ? ' · ' + esc(cut(l.memo, 40)) : ''}</span></button>`).join('')}</div>`, {html: true});
+        const ok = K.items.filter(d => d !== it && d.brand === it.brand && d.product && kname(d.product) === pk);
+        if (ok.length) dl += dlRow(`같은 상품 카톡 불량 ${ok.length}건`, `<div class="hist">${ok.slice(0, 10).map(d => `<button type="button" data-kdef="${esc(d.id)}"><span class="hd">${esc(md(d.date))}</span><span class="tp etc">${esc(d.symptom || '불량')}</span><span class="hr">${esc(cut(d.text || kMedia(d), 40))}</span></button>`).join('')}</div>`, {html: true});
+      }
+      if (SH && typeof SH.openChat === 'function' && it.pid && it.chatId) dl += dlRow('대화', `<button type="button" class="dbtn" data-chat="${esc(it.pid + ':' + it.chatId)}">카카오톡 상담에서 대화 보기 ↑</button>`, {html: true});
+      dl += dlRow('원본', '자동 수집 · 카카오톡 상담 (맥미니 kakao-defects 5분)');
     } else if (it.kind === 'code') {
       title = `${it.code} ${it.name}`;
       sub = `${CAT[it.cat] ? CAT[it.cat].l : it.cat} · ${it.mid} · ${TEAMS[it.team] || it.team} · 심각도 ${it.sev}`;
@@ -2652,6 +2775,7 @@
     $('dSheet').href = secretOk() ? sheetUrl(gid, r) : '#';
     $('dList').innerHTML = dl;
     hydrate($('dList'));
+    hydrateCs($('dList'));
     grid.querySelectorAll('tbody tr.on').forEach(x => x.classList.remove('on'));
     const tr = S.list === S.drawn ? grid.querySelector(`tbody tr[data-i="${i}"]`) : null;
     if (tr) { tr.classList.add('on'); if (!keep) tr.scrollIntoView({block: 'nearest'}); }
@@ -2703,6 +2827,12 @@
     if (cl0) { openClaim(cl0.dataset.claim); return; }
     const iq0 = e.target.closest('[data-inq]');
     if (iq0) { openInq(iq0.dataset.inq); return; }
+    const kd0 = e.target.closest('[data-kdef]');
+    if (kd0) { openKdef(kd0.dataset.kdef); return; }
+    const csf = e.target.closest('img[data-csfull]');
+    if (csf) { openCsFull(csf.dataset.csfull); return; }
+    const ch0 = e.target.closest('[data-chat]');
+    if (ch0) { if (SH && typeof SH.openChat === 'function') SH.openChat(ch0.dataset.chat); return; }
     const qtb = e.target.closest('[data-qt]');
     if (qtb) { V.qt = qtb.dataset.qt; savePrefs(); closeDetail(); render(true); return; }
     const cb = e.target.closest('[data-cb]');
@@ -2755,7 +2885,7 @@
   $('dPrev').onclick = () => { if (S.sel > 0) openDetail(S.sel - 1); };
   $('dNext').onclick = () => { if (S.sel < S.list.length - 1) openDetail(S.sel + 1); };
   $('lb').onclick = () => { $('lb').hidden = true; $('lbImg').removeAttribute('src'); };
-  $('st').onclick = () => { if (SHEET_ON) { loadAll(); loadOffice(true); } loadClaims(true); loadInq(true); };
+  $('st').onclick = () => { if (SHEET_ON) { loadAll(); loadOffice(true); } loadClaims(true); loadInq(true); loadDefects(true); };
   let qT = null;
   qIn.addEventListener('input', () => {
     $('qx').hidden = !qIn.value;
@@ -2813,9 +2943,9 @@
   setInterval(() => {
     if (!shown()) return;
     if (SHEET_ON && !S.busy && Date.now() - S.at > REFRESH_MS) { loadAll(); loadOffice(false); }
-    loadClaims(false); loadInq(false);   // 5분 지난 것만 오피스에 다시 물음 (오피스도 5분 안이면 받아 둔 것을 그대로 줌)
+    loadClaims(false); loadInq(false); loadDefects(false);   // 5분 지난 것만 오피스에 다시 물음 (오피스도 5분 안이면 받아 둔 것을 그대로 줌)
   }, 20e3);
-  document.addEventListener('visibilitychange', () => { if (!shown()) return; if (SHEET_ON && Date.now() - S.at > REFRESH_MS) loadAll(); loadClaims(false); loadInq(false); });
+  document.addEventListener('visibilitychange', () => { if (!shown()) return; if (SHEET_ON && Date.now() - S.at > REFRESH_MS) loadAll(); loadClaims(false); loadInq(false); loadDefects(false); });
 
   /* ── 시작 ── */
   if (EMBED) $('sideHome').hidden = true;
@@ -2828,6 +2958,7 @@
   if (SHEET_ON) { loadAll(); loadOffice(false); }
   loadClaims(false);
   loadInq(false);
+  loadDefects(false);
   setAutoSt();
 })();
 </script>
