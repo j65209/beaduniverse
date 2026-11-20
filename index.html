@@ -49901,8 +49901,56 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.igDownload = igDownload;
   window.igReset = igReset;
 
-  /* ===== 기획전 계산기 v3 (Google Sheet · tier 기반 쿠폰 · 셀러/에이블리 부담 분리) ===== */
-  const PC_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1bnKosG3_Ytjg-maMKt1SeaO-ojeQemKp_mzyjnWscD0/gviz/tq?tqx=out:csv&gid=0';
+  /* ===== 기획전 계산기 v3 (MD coferry 시트 · tier 기반 쿠폰 · 셀러/에이블리 부담 분리) ===== */
+  /* 상품 목록 = MD coferry '(기획전) 플랫폼 리스트' 탭. 2026-11-20 사장님 "구글시트 전부 이전이야" → 구글시트(gviz CSV) 대신
+     오피스 저장소(Supabase mdx_rows — MD팀 시트 화면과 같은 곳, 맥미니 md-db-sync 가 구글시트와 3분마다 맞춤 · 끊은 뒤엔 저장소가 원본)에서 읽는다.
+     원가 · 판매가가 있어 anon 이 표를 못 읽는다 → MD팀 시트(mdsheet/)와 같은 열쇠(비공개 office/mdx-key.json 을 PIN 프록시 ghFetch 로,
+     이 브라우저 localStorage mdx_key_v1)로 열쇠 함수 mdx_rows_get 만. 구글에서 숨긴 줄(신상 · 촬영용 치마 · 더스트백 같은 줄)은 뺀다 — 예전 gviz 와 같은 목록.
+     (대조 2026-11-20: 숨긴 줄을 빼면 82개 상품 그대로 — sixshop-collector docs/MD-STORE.md) */
+  const PC_TK = 'coferry:1201679575';
+  const MDX_KEY_LS = 'mdx_key_v1';
+  const MDX_KEY_PATH = 'https://api.github.com/repos/j65209/brightbeed-reports/contents/office/mdx-key.json?ref=main';
+  async function _mdxKey(fresh){
+    if(!fresh){ try{ const k=localStorage.getItem(MDX_KEY_LS); if(k && k.length>=32) return k; }catch(e){} }
+    const r=await ghFetch(MDX_KEY_PATH,{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'});
+    if(!r.ok) throw new Error('MD팀 시트 열쇠를 못 받았어요 ('+r.status+')');
+    let j=await r.json();
+    if(j && typeof j.content==='string' && j.encoding==='base64') j=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\n/g,'')),c=>c.charCodeAt(0))));
+    if(!j || typeof j.key!=='string' || j.key.length<32) throw new Error('MD팀 시트 열쇠를 못 받았어요');
+    try{ localStorage.setItem(MDX_KEY_LS,j.key); }catch(e){ /* 꽉 참 — 다음에 다시 받음 */ }
+    return j.key;
+  }
+  async function _mdxRpc(fn,body){
+    const call=async key=>{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:_sbHeaders({'Content-Type':'application/json'}),body:JSON.stringify(Object.assign({p_key:key},body||{})),cache:'no-store'});
+      const t=await r.text();
+      if(!r.ok){ let m=t; try{ m=JSON.parse(t).message||t; }catch(e){} throw new Error(String(m).slice(0,160)); }
+      return t?JSON.parse(t):null;
+    };
+    try{ return await call(await _mdxKey(false)); }
+    catch(e){ if(!/denied/.test(e.message||'')) throw e; return call(await _mdxKey(true)); }   // 열쇠가 바뀌었으면 한 번 새로
+  }
+  /** 저장소 탭 → 시트 모양 칸 배열 (1행부터 · 빈 줄 제자리 · 줄마다 칸 수 맞춤 · 숨긴 줄 뺌 = 예전 gviz CSV 와 같은 줄) */
+  async function mdxTabRows(tk){
+    const got=new Map(); let after=0, nCols=0, hidden=[];
+    for(let page=0; page<40; page++){
+      const j=await _mdxRpc('mdx_rows_get',{p_tk:tk,p_since:0,p_after:after,p_limit:5000,p_fx:false});
+      nCols=Math.max(nCols,+j.n_cols||0);
+      hidden=Array.isArray(j.hidden)?j.hidden:[];
+      for(const x of (j.rows||[])) if(!x.d) got.set(x.r,x.v||[]);
+      if(!j.more || !(j.rows||[]).length) break;
+      after=j.rows[j.rows.length-1].r;
+    }
+    if(!got.size) throw new Error('MD팀 시트 저장소에 줄이 없어요');
+    const hid=new Set(hidden.map(Number)), last=Math.max(...got.keys()), out=[];
+    for(let r=1;r<=last;r++){
+      if(hid.has(r)) continue;
+      const v=(got.get(r)||[]).map(c=>c==null?'':String(c));
+      while(v.length<nCols) v.push('');
+      out.push(v);
+    }
+    return out;
+  }
   const PC_FEE_RATE = 0.275;   // 실매출 × 27.5%
   const PC_FIX_COST = 2699;    // 고정 비용
   const PC_LS = {
@@ -49938,26 +49986,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return (Math.round(n*10)/10)+'%';
   }
 
-  // --- CSV parser (handles quoted fields with commas) ---
-  function _pcParseCSV(text){
-    const rows=[]; let row=[]; let cur=''; let inQ=false;
-    for(let i=0;i<text.length;i++){
-      const c=text[i];
-      if(inQ){
-        if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else {inQ=false;} }
-        else cur+=c;
-      } else {
-        if(c===','){row.push(cur);cur='';}
-        else if(c==='\n'){row.push(cur);cur='';rows.push(row);row=[];}
-        else if(c==='\r'){/* skip */}
-        else if(c==='"'){inQ=true;}
-        else cur+=c;
-      }
-    }
-    if(cur.length||row.length){row.push(cur);rows.push(row);}
-    return rows;
-  }
-
   async function pcInit(){
     pcRestoreConditions();
     pcRestoreColors();
@@ -49982,12 +50010,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(stEl){stEl.textContent='시트 불러오는 중…'; stEl.className='pc-panel-meta';}
     if(btnEl){btnEl.disabled=true; btnEl.textContent='동기화 중…';}
     try{
-      // Cache-buster: Google gviz caches for ~5-15 min; append timestamp so we always get fresh sheet data
-      const url=PC_SHEET_URL+'&_t='+Date.now();
-      const r=await fetch(url,{cache:'no-store'});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const csv=await r.text();
-      const rows=_pcParseCSV(csv);
+      // MD coferry 시트 — 오피스 저장소에서 (숨긴 줄 뺌)
+      const rows=await mdxTabRows(PC_TK);
       // First row is header (mostly empty), skip it
       const dataRows=rows.slice(1);
       const seen=new Set();
@@ -50030,11 +50054,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){
       console.error('pcLoadCatalog',e);
       if(stEl){
-        stEl.innerHTML='⚠ 시트 로드 실패 — <button class="pc-btn ghost" style="padding:3px 10px;font-size:11px" onclick="pcReloadCatalog()">재시도</button>';
+        stEl.innerHTML='⚠ MD팀 시트를 못 읽었어요 — <button class="pc-btn ghost" style="padding:3px 10px;font-size:11px" onclick="pcReloadCatalog()">재시도</button>';
         stEl.className='pc-panel-meta err';
       }
       const tb=document.getElementById('pcProductBody');
-      if(tb) tb.innerHTML='<tr><td colspan="7" class="pc-product-empty">시트 로드 실패. 인터넷 연결 또는 시트 공개 여부를 확인하세요.</td></tr>';
+      if(tb) tb.innerHTML='<tr><td colspan="7" class="pc-product-empty">MD팀 시트(오피스 저장소)를 못 읽었어요 — 인터넷 · 오피스 PIN 로그인을 확인하세요. '+_pcEsc(String(e&&e.message||e).slice(0,80))+'</td></tr>';
       if(force) pcToast('동기화 실패 — 인터넷 확인');
     }finally{
       s.loading=false;

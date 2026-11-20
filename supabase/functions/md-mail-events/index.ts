@@ -7,7 +7,7 @@
 // 뽑는 규칙은 여기에만 있다 — 고치면 {action:'reparse'} 로 저장된 원문을 다시 뽑는다.
 // 브랜드 (2026-11-13 사장님 "브랜드 미지정은 코페리꺼 아니야? 엑셀 열어서 제품명 확인하고 매칭해줘" — 미지정 없이):
 //   ① 브랜드 이름 — 첨부 파일명 · 제목 · 내 본문 · 첨부 엑셀 글자('코페리의 산뜻한 여름 컬러 코발트니백')
-//   ② 상품명 — 같은 글들의 상품명을 오피스 MD팀 구글시트(코페리 · 아페티 · 코즈미) 상품 목록과 대조
+//   ② 상품명 — 같은 글들의 상품명을 오피스 MD팀 시트(코페리 · 아페티 · 코즈미) 상품 목록과 대조 (2026-11-20 부터 구글시트가 아니라 오피스 저장소 mdx_rows)
 //      (29CM 일괄할인 · 가격 변경 엑셀은 '브랜드 명' 칸이 비고 'Mush bag' 같은 상품명만 있다)
 //   ③ 계정 — 이 지메일(샤인비드)의 29CM · W컨셉 셀러 계정은 코페리뿐 → 29CM 잡화 MD 전체 공지처럼 둘 다 없는 메일
 //
@@ -30,40 +30,40 @@ const PLATFORM_LABEL: Record<string, string> = { wconcept: 'W컨셉', '29cm': '2
 // 다른 브랜드가 이 계정으로 들어가면 그 메일은 ① · ② 로 가려진다 (엑셀 파일명 · 상품명)
 const ACCOUNT_BRAND: Record<string, string> = { '29cm': 'kop', wconcept: 'kop' };
 
-// 상품 목록 — MD팀 구글시트(링크 공개 gviz CSV) 탭 · 상품명 열(0부터). sixshop-collector ably-cost.ts · home-brands.ts 와 같은 표
-const PRODUCT_SHEETS: { brand: string; sheet: string; gid: string; cols: number[] }[] = [
-  { brand: 'kop', sheet: '1bnKosG3_Ytjg-maMKt1SeaO-ojeQemKp_mzyjnWscD0', gid: '0', cols: [2, 15] }, // 코페리 — 기획전 플랫폼 리스트 C · P열
-  { brand: 'kop', sheet: '1bnKosG3_Ytjg-maMKt1SeaO-ojeQemKp_mzyjnWscD0', gid: '705952769', cols: [2] }, // 코페리 — Product List
-  { brand: 'apt', sheet: '1u6u15dxSUthAYKxqjYH8zLSdOAeWAiFtM24dVYZwOS0', gid: '1838386820', cols: [2] }, // 아페티 — Product List
-  { brand: 'koz', sheet: '1TS-HqffOap11AdGwiffMr38KwHAUq1fmcjmmBPdKLMU', gid: '1819637012', cols: [2] }, // 코즈미 — Product List
+// 상품 목록 — MD팀 시트 탭(오피스 저장소 mdx_rows, tk = 시트:탭 번호) · 상품명 열(0부터). sixshop-collector ably-cost.ts · home-brands.ts 와 같은 표.
+// 2026-11-20 "구글시트 전부 이전" — 예전엔 구글시트 gviz CSV(숨긴 줄 빠짐)를 읽었다 → 저장소에서 머리글(1행) · 숨긴 줄(mdx_tabs.hidden_rows)을 빼고 읽는다.
+// 표는 원가가 있어 anon 은 못 읽고 이 함수는 service role 이라 바로 읽는다. 대조: 상품명 274개 그대로 (sixshop-collector docs/MD-STORE.md)
+const PRODUCT_TABS: { brand: string; tk: string; cols: number[] }[] = [
+  { brand: 'kop', tk: 'coferry:1201679575', cols: [2, 15] }, // 코페리 — (기획전) 플랫폼 리스트 C · P열
+  { brand: 'kop', tk: 'coferry:705952769', cols: [2] }, // 코페리 — Product List
+  { brand: 'apt', tk: 'apeti:1838386820', cols: [2] }, // 아페티(주얼리 MD) — Product List
+  { brand: 'koz', tk: 'kozmi:1819637012', cols: [2] }, // 코즈미 — Product List
 ];
+/** 탭 줄 (1행 머리글 · 숨긴 줄 · 지운 줄 빼고) — 1000줄씩 */
+async function tabRows(tk: string): Promise<string[][]> {
+  const { data: tab, error: te } = await sb.from('mdx_tabs').select('hidden_rows').eq('tk', tk).maybeSingle();
+  if (te || !tab) throw new Error(`no_tab ${tk}`);
+  const hidden = new Set<number>((tab.hidden_rows ?? []).map(Number));
+  const out: string[][] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from('mdx_rows').select('r,v').eq('tk', tk).is('deleted_at', null).order('r').range(from, from + 999);
+    if (error) throw error;
+    for (const x of data ?? []) if (x.r > 1 && !hidden.has(x.r)) out.push((x.v ?? []).map((c: unknown) => (c == null ? '' : String(c))));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
 /** 글자 · 숫자만 남김 — 엑셀 글자는 칸이 붙어서 온다('확인Mush bag판매가') */
 const flat = (s: string) => String(s || '').toLowerCase().replace(/[^0-9a-z가-힣]+/g, '');
 let products: { at: number; keys: [string, string][] } | null = null; // [상품명(flat, 색상 괄호 뺌), 브랜드]
-function csvRows(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [], cell = '', q = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; continue; }
-    if (c === '"') q = true;
-    else if (c === ',') { row.push(cell); cell = ''; }
-    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
-    else if (c !== '\r') cell += c;
-  }
-  if (cell || row.length) { row.push(cell); rows.push(row); }
-  return rows;
-}
 async function loadProducts() {
   if (products && Date.now() - products.at < 6 * 3600e3) return;
   const owner = new Map<string, Set<string>>();
   let ok = 0;
-  await Promise.all(PRODUCT_SHEETS.map(async (s) => {
+  await Promise.all(PRODUCT_TABS.map(async (s) => {
     try {
-      const r = await fetch(`https://docs.google.com/spreadsheets/d/${s.sheet}/gviz/tq?tqx=out:csv&gid=${s.gid}`);
-      if (!r.ok) return;
       let n = 0;
-      for (const row of csvRows(await r.text()).slice(1)) for (const c of s.cols) {
+      for (const row of await tabRows(s.tk)) for (const c of s.cols) {
         const k = flat(String(row[c] ?? '').replace(/\([^)]*\)/g, ' '));
         // 'n01' · 'gleam' 처럼 짧은 이름은 아무 글에나 들어 있어서 뺀다
         if (k.length < 7 || !/[a-z가-힣]/.test(k)) continue;
@@ -72,7 +72,7 @@ async function loadProducts() {
         n++;
       }
       if (n) ok++;
-    } catch { /* 시트를 못 읽으면 상품명 대조만 건너뛴다 → ③ 계정 브랜드 */ }
+    } catch { /* 저장소를 못 읽으면 상품명 대조만 건너뛴다 → ③ 계정 브랜드 */ }
   }));
   if (!ok) return; // 다 못 읽으면 지난 목록 그대로
   // 두 브랜드에 다 있는 이름(Big star ring 등)은 못 가린다 → 뺀다
