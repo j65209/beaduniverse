@@ -13791,7 +13791,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
              pomLoad() 가 /erp/po-match 를 받아 요약 · 확인 필요 목록 · 줄마다 ERP 표시(kd-erp)를 채운다 -->
         <div class="pom" id="pomBox" hidden>
           <div class="pom-head">
-            <span class="pom-title">재고 마스터 발주일 자동 매칭</span>
+            <span class="pom-title">ERP 발주일 자동 매칭</span>
             <span class="pom-sub" id="pomSub">콰이디에어에 올라온 발주를 송장출력 '발주일 및 수량'에 5분마다 적어요</span>
             <span class="pom-stats" id="pomStats"></span>
             <button type="button" class="pom-toggle" id="pomToggle" onclick="pomToggle()" aria-expanded="false">자세히</button>
@@ -16542,7 +16542,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return `<span class="reo-brand">${_reoEsc(_reoLabel(it.b))}</span><b>${_reoEsc(it.n)}</b>${it.o ? `<i>${_reoEsc(it.o)}</i>` : ''}`
       + (it.pend ? `<span class="reo-pend" title="송장출력 시트 발주 잔량${it.rdate ? ' · 입고일 ' + _reoEsc(it.rdate) : ''}">발주 잔량 ${_reoN(it.pend)}</span>` : '')
       + (it.st ? `<span class="tag stop">${_reoEsc(it.st)}</span>` : '')
-      + (it.mark ? '<span class="tag mark" title="재고 마스터 시트의 품절 / 예정 칸에 체크된 상품">시트 품절 체크</span>' : '');
+      + (it.mark ? '<span class="tag mark" title="ERP 의 품절 / 예정 칸에 체크된 상품">ERP 품절 체크</span>' : '');
   }
   function _reoPaceHtml(it){
     // 조각마다 줄바꿈 안 함 — 휴대폰에서 '최근 7일 중 7 / 일' 처럼 끊기지 않게
@@ -16682,7 +16682,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           return `<div class="reo-group"><span class="reo-sev ${REO_SEV[k].cls}">${REO_SEV[k].t}</span>${REO_SEV[k].g} · ${g.length}개</div>`
             + g.map(it => {
                 const bi = brands[it.b] || {};
-                const link = (it.row && bi.gid && d.sheet && secretOk()) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="재고 마스터 시트의 이 상품 남은 재고 칸">시트 ↗</a>` : '<span class="reo-sheet-none"></span>';
+                const link = (it.row && bi.gid && d.sheet && secretOk()) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="구글시트(11-20 18:29 에 멈춘 사본)의 이 상품 칸">시트 ↗</a>` : '<span class="reo-sheet-none"></span>';
                 return `<div class="reo-mrow reo-b-${_reoEsc(it.b)}"><span class="reo-sev ${REO_SEV[it.sev].cls}">${REO_SEV[it.sev].t}</span>`
                   + `${_reoMainHtml(it)}${_reoLeftHtml(it)}${link}</div>`;
               }).join('');
@@ -16697,10 +16697,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       needBox.hidden = !nd.length;
       if(nd.length){
         needBox.innerHTML = `<div class="reo-need-head">📝 시트에 실제 개수가 필요한 상품 ${nd.length}개</div>`
-          + `<div class="reo-need-sub">품절이 아니에요. 식스샵에서 '수량관리 안함'인 상품이라 재고 마스터가 빈칸으로 시작했고, 판매분만 빠져 마이너스가 됐어요. 시트 남은 재고 칸에 실제 개수를 넣으면 그때부터 경보에 들어갑니다.</div>`
+          + `<div class="reo-need-sub">품절이 아니에요. 식스샵에서 '수량관리 안함'인 상품이라 ERP 가 빈칸으로 시작했고, 판매분만 빠져 마이너스가 됐어요. ERP 남은 재고 칸에 실제 개수를 넣으면 그때부터 경보에 들어갑니다.</div>`
           + nd.map(it => {
               const bi = brands[it.b] || {};
-              const link = (it.row && bi.gid && d.sheet && secretOk()) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="이 상품 남은 재고 칸">시트 ↗</a>` : '';
+              const link = (it.row && bi.gid && d.sheet && secretOk()) ? `<a class="reo-sheet" href="https://docs.google.com/spreadsheets/d/${encodeURIComponent(d.sheet)}/edit#gid=${encodeURIComponent(bi.gid)}&range=L${it.row}" target="_blank" rel="noopener" title="구글시트(11-20 18:29 에 멈춘 사본)의 이 상품 칸">시트 ↗</a>` : '';
               const stock = it.stock == null ? '빈칸' : (it.stock < 0 ? '−' + _reoN(-it.stock) : _reoN(it.stock));
               return `<div class="reo-exp-row reo-b-${_reoEsc(it.b)}"><span class="reo-name">${_reoNameHtml(it)}</span>`
                 + `<span class="reo-exp-num">시트 ${stock} · 하루 ${_reoN(it.rate)}개 팔림${it.act7 ? ` · 최근 7일 중 ${it.act7}일 출고` : ''}</span>${link}</div>`;
@@ -16721,15 +16721,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     const basis = document.getElementById('reoModalBasis');
     if(basis){
-      const src = {erp:'재고 마스터 시트', pro:'식스샵 재고 (실사 전)'};
+      const src = {erp:'ERP', pro:'식스샵 재고 (실사 전)'};
       const lines = Object.keys(brands).map(b => {
         const x = brands[b];
-        const how = x.basis === 'sheet' ? `재고 마스터 출고 기록 ${x.diaryDays}일` : '채널 판매 (최근 7 · 14일 중 빠른 쪽)';
+        const how = x.basis === 'sheet' ? `ERP 출고 기록 ${x.diaryDays}일` : '채널 판매 (최근 7 · 14일 중 빠른 쪽)';
         const cov = x.coverage == null ? '' : ` · 채널 판매 상품 맞춘 비율 ${Math.round(x.coverage * 100)}%`;
         return `<b>${_reoEsc(x.label)}</b> 재고: ${src[x.stockSource] || x.stockSource} · 판매 속도: ${how}${cov}`;
       });
       basis.innerHTML = lines.join('<br>')
-        + '<br>재고 · 판매 속도 모두 재고 마스터만 봅니다 (채널 판매 집계는 섞지 않아요). 7일 안에 바닥나는 상품만, 최근 7일 중 3일 이상 출고됐거나 하루 1개 이상 나가는 상품만 띄웁니다. B급 · 하루 0.2개 미만은 뺍니다.'
+        + '<br>재고 · 판매 속도 모두 ERP 만 봅니다 (채널 판매 집계는 섞지 않아요). 7일 안에 바닥나는 상품만, 최근 7일 중 3일 이상 출고됐거나 하루 1개 이상 나가는 상품만 띄웁니다. B급 · 하루 0.2개 미만은 뺍니다.'
         + '<br>경보에 뜬 지 7일이 지나면 내립니다 — 그동안 리오더 안 한 걸로 봅니다. 입고로 재고가 늘면 다시 셉니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
     }
   }
@@ -18663,7 +18663,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="brep-col">${_brepTopCard(brand, P, ctx)}</div>
         </div>`
       + (erp
-        ? `<div class="brep-sec"><span>지금 상태</span><em>재고 = 재고 마스터(실재고) · 판매 속도 — 30분마다 (위 기간과 무관)</em>${_reo.data&&_reo.data.fetchedAt?`<em>${_brepEsc(new Date(_reo.data.fetchedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} 계산</em>`:''}</div>`
+        ? `<div class="brep-sec"><span>지금 상태</span><em>재고 = ERP(실재고) · 판매 속도 — 30분마다 (위 기간과 무관)</em>${_reo.data&&_reo.data.fetchedAt?`<em>${_brepEsc(new Date(_reo.data.fetchedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} 계산</em>`:''}</div>`
         : `<div class="brep-sec"><span>지금 상태</span><em>재고와 판매 속도 — 어제까지 기준 · 30분마다 (위 기간과 무관)</em>${R&&R.fetchedAt?`<em>${_brepEsc(new Date(R.fetchedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))} 계산</em>`:''}</div>`)
       + `<div class="brep-grid brep-grid-even">
           <div class="brep-col">${erp?_brepErpReorderCard(brand):(R?brepCardReorder(R):_brepRepEmpty(rep,'리오더 필요','⚠️'))}</div>
@@ -18742,7 +18742,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const re=erpB ? (((_reo.data||{}).items)||[]).filter(i=>i.b===B.key).map(i=>({severity:i.sev})) : (R ? (R.reorder||[]) : []);
     {
       const out0=re.filter(r=>r.severity==='out').length, urg=re.filter(r=>r.severity==='urgent').length;
-      if(out0||urg) out.push(`🚨 ${out0?`품절 ${out0}개`:''}${out0&&urg?' · ':''}${urg?`7일 안에 떨어질 상품 ${urg}개`:''} — 아래 리오더 확인${erpB?' <span class="brep-muted">(재고 마스터 기준)</span>':''}`);
+      if(out0||urg) out.push(`🚨 ${out0?`품절 ${out0}개`:''}${out0&&urg?' · ':''}${urg?`7일 안에 떨어질 상품 ${urg}개`:''} — 아래 리오더 확인${erpB?' <span class="brep-muted">(ERP 기준)</span>':''}`);
     }
     return out.slice(0,6);
   }
@@ -19028,13 +19028,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const head=`<div class="brep-card-head">
         <span class="brep-card-ico">⚠️</span>
         <span class="brep-card-title">리오더 필요</span>
-        <span class="brep-card-note">재고 마스터 · 7일 안</span>
+        <span class="brep-card-note">ERP · 7일 안</span>
         <span class="brep-card-count ${items.length?'is-alert':''}">${d?items.length:'–'}</span>
       </div>`;
     if(!d) return `<div class="brep-card">${head}<div class="brep-empty">${_reo.err?`불러오지 못했습니다 · ${_brepEsc(_reo.err)}`:'불러오는 중…'}</div></div>`;
-    const needLine=need.length ? `<div class="brep-hint">📝 아직 안 센 상품 <b>${need.length}</b>개 — 품절 아님, 재고 마스터에 세어 적으면 그때부터 빠져요</div>` : '';
+    const needLine=need.length ? `<div class="brep-hint">📝 아직 안 센 상품 <b>${need.length}</b>개 — 품절 아님, ERP 에 세어 적으면 그때부터 빠져요</div>` : '';
     const more=`<button type="button" class="hro-more brep-more-btn" onclick="brepOpenReo('${_brepEsc(brand)}')">리오더 경보 전체 보기 ›</button>`;
-    if(!items.length) return `<div class="brep-card">${head}<div class="brep-empty"><b>7일 안에 바닥날 상품 없음 ✅</b>재고 마스터 남은 재고 · 판매 속도 기준</div>${needLine}${more}</div>`;
+    if(!items.length) return `<div class="brep-card">${head}<div class="brep-empty"><b>7일 안에 바닥날 상품 없음 ✅</b>ERP 남은 재고 · 판매 속도 기준</div>${needLine}${more}</div>`;
     const rows=items.slice(0,12).map((it,i)=>_brepRow({
       rank:i+1, name:it.n+(it.o?` / ${it.o}`:''), sev:it.sev,
       sub:`<span class="brep-chip ${it.sev}">${REO_SEV[it.sev].t}</span>`
@@ -20315,7 +20315,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const erp=_brepErpBrand(p.brand);
     if(erp){
       // 2026-11-18 재고 마스터가 실재고 — 식스샵 상품 목록의 재고 숫자는 안 씀 (사장님 "식스샵프로에 기재된 재고 불러오지말고")
-      kv.push(['재고', '재고 마스터에서 관리 <span class="pa-note">(식스샵프로 재고 숫자는 안 씀 — 운송장 출력된 주문만 빠짐 · 홈 리오더 경보)</span>']);
+      kv.push(['재고', 'ERP 에서 관리 <span class="pa-note">(식스샵프로 재고 숫자는 안 씀 — 운송장 출력된 주문만 빠짐 · 홈 리오더 경보)</span>']);
     }else if(tracked.length){
       const days=avg7>0 ? stock/avg7 : null;
       const cls=days!=null && days<7 ? 'pa-bad' : days!=null && days<14 ? 'pa-warn' : '';
@@ -34128,7 +34128,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!g || _lgbBusy.has(key)) return;
     const ords=[...g.orders.values()].map(o=>o.ord_no);
     const what=[g.date?_lgbMd(g.date)+' 출고':'출고일 미기재', g.method||'방식 미기재', g.items.length+'품목'].join(' · ');
-    if(!confirm(`출고 전광판에서 이 줄을 삭제할까요? (입고 확인)\n\n${what}\n신청서 ${ords.join(', ')}\n\n재고 마스터 '발주일 및 수량'에서 이 출고로 다 들어온 발주의 줄을 몇 분 안에 지워요 — 일부만 들어온 발주는 남은 물건이 올 때까지 그대로, 발주 수량은 안 건드려요.\n콰이디에어 신청서와 아래 발주 내역 표는 그대로예요.\n삭제한 시각은 판 아래 '삭제한 줄'에 남고, 거기서 되살리면 지운 발주일 줄도 다시 들어가요.`)) return;
+    if(!confirm(`출고 전광판에서 이 줄을 삭제할까요? (입고 확인)\n\n${what}\n신청서 ${ords.join(', ')}\n\nERP '발주일' 칸에서 이 출고로 다 들어온 발주의 줄을 몇 분 안에 지워요 — 일부만 들어온 발주는 남은 물건이 올 때까지 그대로, 발주 수량은 안 건드려요.\n콰이디에어 신청서와 아래 발주 내역 표는 그대로예요.\n삭제한 시각은 판 아래 '삭제한 줄'에 남고, 거기서 되살리면 지운 발주일 줄도 다시 들어가요.`)) return;
     _lgbBusy.add(key);
     if(btn) btn.disabled=true;
     try{
@@ -34142,7 +34142,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _lgbDelsGen++;
       _lgbDels=[rec, ..._lgbDels]; _lgbDelsSig='';
       _lgbPaint();
-      toast(`전광판에서 삭제했어요 · ${_lgbWhen(rec.deleted_at)} — 재고 마스터 발주일 줄은 몇 분 안에 지워져요`,'ok');
+      toast(`전광판에서 삭제했어요 · ${_lgbWhen(rec.deleted_at)} — ERP 발주일 줄은 몇 분 안에 지워져요`,'ok');
       _lgbKickErp();
     }catch(e){
       if(btn) btn.disabled=false;
@@ -34191,7 +34191,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(c.partial) parts.push(`일부 입고 ${c.partial}`);
     if(c.check) parts.push(`확인 필요 ${c.check}`);
     return {text: parts.length?('ERP '+parts.join(' · ')):'ERP 지울 발주일 줄 없음', warn: !!c.check,
-            tip: '재고 마스터 송장출력 \'발주일 및 수량\' — 이 출고로 다 들어온 발주의 줄을 지워요 (일부만 들어온 발주는 남은 물건이 올 때까지 그대로, 샘플 · 부자재는 줄이 없음)'};
+            tip: 'ERP 재고 탭 \'발주일\' — 이 출고로 다 들어온 발주의 줄을 지워요 (일부만 들어온 발주는 남은 물건이 올 때까지 그대로, 샘플 · 부자재는 줄이 없음)'};
   }
   // 신청서 칩 → 아래 '최근 발주 내역' 표에서 그 신청서만 보이게
   function lgbFocusOrder(ord){
@@ -34396,7 +34396,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const when=r.at?_lgbWhenSafe(r.at):'';
     const head=`${when?when+' ':''}출고 전광판 휴지통${r.by?'('+r.by+')':''}`;
     switch(r.status){
-      case 'removed': return `${head} — 재고 마스터 '발주일 및 수량'에서 "${r.line||''}" 줄을 지움 (발주 수량은 그대로)`;
+      case 'removed': return `${head} — ERP '발주일'에서 "${r.line||''}" 줄을 지움 (발주 수량은 그대로)`;
       case 'removing': return `${head} — "${r.line||''}" 줄을 곧 지워요`;
       case 'restoring': return `전광판에서 되살림 — 지웠던 "${r.line||''}" 줄을 다시 넣는 중`;
       case 'none': return `${head} — 지울 발주일 줄 없음 (${r.why||'샘플 · 부자재 · 행 없음'})`;
@@ -34443,18 +34443,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(r.status==='removed') return {cls:'', html:`ERP 입고 · 발주일 줄 지움 · <b>${nm}</b>`, tip};
         return {cls:'', html:`ERP 입고${it.n?` · <b>${nm}</b>`:''}`, tip};
       }
-      case 'written': return {cls:'', html:`ERP ✓ 자동으로 적음 · <b>${nm}</b>`, tip:`${it.writtenAt||''} 재고 마스터 '발주일 및 수량'에 자동으로 적음 (${it.date} ${it.planQty||it.qty}개)`};
-      case 'entered': return {cls:'', html:`ERP ✓ <b>${nm}</b>`, tip:`재고 마스터에 이미 적혀 있음 — 발주일 ${it.claim||''}`};
-      case 'pending': return {cls:'', html:`ERP 적는 중 · <b>${nm}</b>`, tip:'재고 마스터에 적는 중 (몇 분 걸려요)'};
+      case 'written': return {cls:'', html:`ERP ✓ 자동으로 적음 · <b>${nm}</b>`, tip:`${it.writtenAt||''} ERP '발주일'에 자동으로 적음 (${it.date} ${it.planQty||it.qty}개)`};
+      case 'entered': return {cls:'', html:`ERP ✓ <b>${nm}</b>`, tip:`ERP 에 이미 적혀 있음 — 발주일 ${it.claim||''}`};
+      case 'pending': return {cls:'', html:`ERP 적는 중 · <b>${nm}</b>`, tip:'ERP 에 적는 중 (몇 분 걸려요)'};
       case 'todo': return it.why&&!it.planQty
         ? {cls:'warn', html:`ERP 확인 필요 · <b>${nm}</b>`, tip:it.why}
-        : {cls:'', html:`ERP 곧 적음 · <b>${nm}</b>`, tip:it.why||'다음 차례(5분 안)에 재고 마스터에 적어요'};
+        : {cls:'', html:`ERP 곧 적음 · <b>${nm}</b>`, tip:it.why||'다음 차례(5분 안)에 ERP 에 적어요'};
       case 'check': return {cls:_pomNeedsCheck(it)?'warn':'', html:`ERP ? <b>${nm}</b>`, tip:it.why||'같은 1688 상품으로 찾은 행 — 맞으면 사람이 적어 주세요'};
       case 'ambiguous': return {cls:_pomNeedsCheck(it)?'warn':'', html:`ERP ? 후보 ${(it.cands||[]).length}개`, tip:(it.cands||[]).map(c=>_pomName(c)).join(' / ')};
       case 'skipped': return {cls:'', html:`ERP — <b>${nm}</b>`, tip:it.why||'자동으로 적지 않음'};
       case 'unmatched': return _pomNeedsCheck(it)
-        ? {cls:'warn', html:'ERP 행 못 찾음', tip:(it.hint?`메모의 이름 '${it.hint}' 가 재고 마스터에 없어요 — `:'')+'메모에 "[아페티] 반지 OO라고 표기" 처럼 브랜드 · 이름을 적으면 자동으로 맞춰요'}
-        : {cls:'', html:'ERP 행 없음', tip:'재고 마스터에서 이 발주의 행을 못 찾음 (이미 출고됐거나 3주 지난 발주)'};
+        ? {cls:'warn', html:'ERP 행 못 찾음', tip:(it.hint?`메모의 이름 '${it.hint}' 가 ERP 에 없어요 — `:'')+'메모에 "[아페티] 반지 OO라고 표기" 처럼 브랜드 · 이름을 적으면 자동으로 맞춰요'}
+        : {cls:'', html:'ERP 행 없음', tip:'ERP 에서 이 발주의 행을 못 찾음 (이미 출고됐거나 3주 지난 발주)'};
       default: return null;
     }
   }
@@ -34488,7 +34488,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       `<span>오늘 자동으로 적음 <b>${writtenToday.length}</b></span>`,
       going.length?`<span>적는 중 <b>${going.length}</b></span>`:'',
       `<span>이미 적혀 있음 <b>${entered.length}</b></span>`,
-      recvToday.length?`<span title="출고 전광판 휴지통(입고)으로 재고 마스터 발주일 줄을 지운 발주">오늘 입고로 지움 <b>${recvToday.length}</b></span>`:'',
+      recvToday.length?`<span title="출고 전광판 휴지통(입고)으로 ERP 발주일 줄을 지운 발주">오늘 입고로 지움 <b>${recvToday.length}</b></span>`:'',
       `<span class="${need.length?'alarm':''}">확인 필요 <b>${need.length}</b></span>`,
       stale?`<span class="alarm">⚠ 매칭이 멈춤${job.error_code?` (${escapeHTML(job.error_code)})`:''}</span>`:'',
       d.writeOn===false?'<span class="alarm">시트 쓰기 꺼짐</span>':'',
@@ -34507,7 +34507,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>`;
     const recent=written.slice().sort((a,b)=>String(b.writtenAt||'').localeCompare(String(a.writtenAt||''))).slice(0,12);
     list.innerHTML=
-      (need.length?`<div class="pom-group">확인 필요 ${need.length}건 — 사람이 재고 마스터에 적거나, 다음 발주부터 메모에 "[브랜드] 상품명이라고 표기"</div>`+need.map(it=>row(it, it.why||(it.state==='ambiguous'?'후보가 여럿이라 자동으로 안 적음':it.state==='unmatched'?(it.hint?`메모의 이름 '${it.hint}' 가 재고 마스터에 없음`:'메모로 상품을 못 찾음'):it.state==='pending'?`${it.tries}번 보냈는데 안 적힘${it.lastTry&&it.lastTry.reason?' — '+it.lastTry.reason:''}`:''))).join(''):'<div class="pom-group">확인 필요 없음</div>')
+      (need.length?`<div class="pom-group">확인 필요 ${need.length}건 — 사람이 ERP 에 적거나, 다음 발주부터 메모에 "[브랜드] 상품명이라고 표기"</div>`+need.map(it=>row(it, it.why||(it.state==='ambiguous'?'후보가 여럿이라 자동으로 안 적음':it.state==='unmatched'?(it.hint?`메모의 이름 '${it.hint}' 가 ERP 에 없음`:'메모로 상품을 못 찾음'):it.state==='pending'?`${it.tries}번 보냈는데 안 적힘${it.lastTry&&it.lastTry.reason?' — '+it.lastTry.reason:''}`:''))).join(''):'<div class="pom-group">확인 필요 없음</div>')
       +(going.length?`<div class="pom-group">적는 중 ${going.length}건</div>`+going.map(it=>row(it,'')).join(''):'')
       +(recent.length?`<div class="pom-group">최근 자동으로 적은 발주</div>`+recent.map(it=>row(it,'')).join(''):'')
       +(recvOut.length?`<div class="pom-group">출고 전광판 휴지통(입고)으로 지운 발주일 줄</div>`+recvOut.slice().sort((a,b)=>String(b.recv.at||'').localeCompare(String(a.recv.at||''))).slice(0,12).map(it=>row(it, `${_lgbWhenSafe(it.recv.at)} ${it.recv.by||''} — "${it.recv.line||''}" ${it.recv.status==='removing'?'지우는 중':'지움'}`)).join(''):'');

@@ -713,7 +713,7 @@
   const PRICE_P = 9998, PRICE_WHY = '식스샵프로 판매가는 여기서 못 바꿔요 — 식스샵 관리자에서 바꾸면 5분 안에 따라와요';
   const priceText = s => (s && typeof s[5] === 'number' ? s[5].toLocaleString('ko-KR') + (typeof s[6] === 'number' && s[6] !== s[5] ? '~' + s[6].toLocaleString('ko-KR') : '') + '원' : '');
   const PAST_R0 = 1e6;   // 지난 상품 줄 번호 (시트 줄과 안 겹치게 — buildAll _past)
-  const PAST_WHY = '재고 마스터(시트)에 줄이 없는 지난 상품이라 여기서 고칠 수 없어요 — 다시 팔려면 시트에 줄을 넣고 식스샵에서 판매 상태를 바꿔 주세요';
+  const PAST_WHY = 'ERP 에 줄이 없는 지난 상품이라 여기서 고칠 수 없어요 — 다시 팔려면 ERP 에 줄을 먼저 넣고 식스샵에서 판매 상태를 바꿔 주세요';
   const PIN_WHY = {1: '재고 0 이하인데 식스샵프로 판매중 — 품절 처리하거나 재고 확인', 2: '매핑 확인 필요 — 카테고리 칸 [⚠ 매핑하기]로 어느 재고 줄에서 뺄지 정해 주세요', 3: '리오더 시급 — 발주 필요'};   // 맨 위로 올린 까닭 (buildAll pin)
   const PRO_WHY = '식스샵프로 상태는 여기서 못 바꿔요 — 식스샵 관리자나 오피스 홈 [상품 상태](관리자)에서 바꾸면 5분 안에 따라와요';
   // 브랜드 점 색 = 오피스 '실시간 재고' 브랜드 색
@@ -1599,7 +1599,7 @@
     }
     if (col.stock && row.redStk) { cls += ' stk-red'; title = (title ? title + '\n' : '') + `식스샵프로 판매중인데 남은 재고 ${LOW_STOCK}개 이하`; }
     if (col.price) { inner = esc(priceText(row.pro)); if (row.pro && typeof row.pro[5] === 'number') title = '식스샵프로 판매가 — 이 줄로 이어지는 낱개 옵션' + (row.pro[6] !== undefined && row.pro[6] !== row.pro[5] ? ' (옵션마다 다름)' : ''); }
-    if (col.pro && row.pro) { inner = proBadge(row.pro, row.pin === 1); title = row.past ? `식스샵프로 ${PRO_LABEL[row.pro[0]]} — 옵션 ${row.past.n}개 · 재고 마스터에 줄 없음 · ${row.past.info}` : proText(row.pro) + (row.pin === 1 ? '\n⚠ ' + PIN_WHY[1] : ''); }
+    if (col.pro && row.pro) { inner = proBadge(row.pro, row.pin === 1); title = row.past ? `식스샵프로 ${PRO_LABEL[row.pro[0]]} — 옵션 ${row.past.n}개 · ERP 에 줄 없음 · ${row.past.info}` : proText(row.pro) + (row.pin === 1 ? '\n⚠ ' + PIN_WHY[1] : ''); }
     if (row.map && norm(col.name) === '카테고리') { inner = `<button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>`; title = '시트에 없던 주문 이름 (⚠ 매핑 확인 필요) — 눌러서 어느 재고 줄에서 뺄지 정하기'; }
     else if (row.map && col.key && narrow.matches) inner = `<button type="button" class="mapb sm" data-map="${row.r}">⚠ 매핑</button>` + inner;   // 휴대폰은 카테고리 칸이 오른쪽 멀리 — 상품명 앞에도
     if (col.key && row.iss) title = (title ? title + '\n' : '') + '⚠ ' + row.iss.join('\n⚠ ');
@@ -1771,7 +1771,7 @@
   function rowHtml(row, vr) {
     const cls = ((S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? 'on' : '') + (row.lv ? ' lv-' + row.lv : '') + (row.pin ? ' pin' + row.pin : '') + (row.pinEnd ? ' pin-end' : '') + (row.past ? ' past' : '')).trim();
     let s = `<tr data-r="${row.r}"${cls ? ` class="${cls}"` : ''}>`;
-    if (vr.showRn) s += row.past ? `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0" title="재고 마스터에 줄 없는 지난 상품 — 누르면 자세히">–</td>`
+    if (vr.showRn) s += row.past ? `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0" title="ERP 에 줄 없는 지난 상품 — 누르면 자세히">–</td>`
       : `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0" title="${row.r}행 — 누르면 이 줄 전체 보기${row.lv === 'low' ? ' · 품절 임박' : row.lv === 'out' ? ' · 품절' : ''}${row.pin ? ' · ' + PIN_WHY[row.pin] : ''}">${row.r}</td>`;
     for (let k = 0; k < vr.cols.length; k++) s += cellHtml(row, vr.cols[k], vr.posOf[k]);
     return s + '<td class="fill"></td></tr>';
@@ -2242,7 +2242,7 @@
     $('dTitle').textContent = kv || `${r}행`;
     const ent = S.cache.get(S.cur), raw = ent && ent.rows ? ent.rows.get(r) : null;
     const ed = raw && raw.src === 'office' && raw.edited_by ? ` · 마지막으로 오피스에서 고친 사람 ${raw.edited_by}${raw.edited_at ? ` (${new Date(raw.edited_at).toLocaleString('ko-KR', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})})` : ''}` : '';
-    $('dSub').textContent = row.past ? [...subs, '재고 마스터에 줄 없음'].join(' · ')
+    $('dSub').textContent = row.past ? [...subs, 'ERP 에 줄 없음'].join(' · ')
       : [...subs, `시트 ${r}행`].join(' · ') + ed + (row.lv === 'low' ? ` · 품절 임박 (${LOW_STOCK}개 이하)` : row.lv === 'out' ? ' · 품절 (0 이하)' : '') + (row.pin ? ' · ⚠ ' + PIN_WHY[row.pin] : '');
     $('dSheet').href = secretOk() && !row.past ? `${BASE}/edit#gid=${S.cur}&range=A${r}` : '#';
     $('dSheet').hidden = !secretOk() || !!row.past || cutTab(S.cur);   // 끊긴 탭은 시트가 옛 값이라 안 보임
