@@ -1,0 +1,1774 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>VOC 전산 · CS팀 · 비드유니버스 오피스</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>
+  /* 오피스 잠금 연동 (erp/ · models/ 와 같은 방식) — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음.
+     보통은 오피스 CS팀 맨 아래 iframe(index.html '#vocEmbed')으로 열린다. 주소 /voc/ 로 바로 열면 혼자 뜨지만,
+     VOC 코드표 · 오피스 VOC 기록은 오피스(부모 창)의 bbVocShare() 에서 받으므로 오피스 안에서 열어야 다 보인다. */
+  (function () {
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbVocShare === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    try { if (window.parent === window && localStorage.getItem('brightbeed_unlocked') !== '1') { location.replace(home + '?from=voc'); return; } } catch (e) { /* noop */ }
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) { a.href = home; });
+    });
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  /* VOC 전산 — CS팀 맨 아래 (2026-11-20 사장님 "구글 시트에 있는 자료들 erp 전산 디자인으로해서 cs팀 하단에 넣어줘.
+     기존에 있던 분석자료나 voc 깔끔하게 다 합쳐줘")
+     · 자료 = 구글시트 '비드유니버스 VOC'(CS 직원이 매일 적는 브랜드별 '데일리' 탭 · 불량건 탭 · 반품 분석 탭)를 '웹 보기'로 바로 읽는다
+       (링크 보기 공개 시트, CORS 허용, 서버 · 키 없음 — erp/ 와 같은 방식). 고치기는 없고 보기 · 분석만.
+     · 합친 것: 날짜 · 브랜드마다 따로 적힌 표(옛 줄 양식 11/3~11/11 + 날짜 블록 양식 11/11~)를 한 줄 = 한 사유로 풀어 한 표로,
+       사유 글로 오피스 VOC 코드(📖 VOC 코드표 — index.html CSI_CODES)를 '추정'해 붙이고, 오피스 VOC 기록(Supabase cs_issues)과
+       같은 건은 그 코드를 '확정'으로. 불량건 탭 · 반품 분석 탭(코페리 · 아페티) · 시트에 붙은 사진도 같은 화면 메뉴로.
+     · 디자인은 ERP전산팀(erp/)과 같다 — 어두운 왼쪽 메뉴 · 요약 카드 · 칸 너비 자동 표 · 줄을 누르면 상세 창. 색만 CS팀 파랑.
+     · 이름 · 연락처 칸은 읽을 때 가린다(배○○ · 010-****-0729) — 이 브라우저 저장본에도 가린 채로. */
+  :root{
+    --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+    --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
+    --text:#0f172a; --text-2:#334155; --text-3:#64748b; --text-4:#94a3b8;
+    --accent:#0284c7; --accent-ink:#0369a1; --accent-soft:#e0f2fe;
+    --side:#0f172a; --side-text:#cbd5e1; --side-mute:#64748b;
+    --danger:#dc2626; --warn:#d97706; --info:#2563eb;
+    --row-h:34px; --side-w:224px; --detail-w:420px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+  a{color:inherit}
+  .app{height:100vh;height:100dvh;display:flex;overflow:hidden}
+
+  /* ── 왼쪽 메뉴 ── */
+  .side{flex:none;width:var(--side-w);display:flex;flex-direction:column;background:var(--side);color:var(--side-text)}
+  .side-top{flex:none;display:flex;align-items:center;gap:11px;height:58px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .logo{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,#38bdf8,#0369a1);box-shadow:0 2px 10px rgba(14,165,233,.35)}
+  .logo svg{width:16px;height:16px;color:#fff}
+  .side-top b{display:block;font-size:15px;font-weight:800;color:#fff;letter-spacing:-.02em}
+  .side-top small{display:block;margin-top:1px;font-size:11px;color:var(--side-mute)}
+  .side-fold{flex:none;margin-left:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--side-mute)}
+  .side-fold:hover{background:rgba(255,255,255,.08);color:#fff}
+  .side-fold svg{width:17px;height:17px}
+  .app.side-off .menu{display:grid}
+  @media (min-width:1001px){ .app.side-off .side{display:none} }
+  .nav{flex:1;min-height:0;overflow:auto;padding:6px 10px 16px;scrollbar-width:thin;scrollbar-color:#334155 transparent}
+  .nav-sec{margin:16px 0 6px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--side-mute)}
+  .nav-item{position:relative;width:100%;display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;font-size:13.5px;text-align:left;color:var(--side-text)}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.on{background:rgba(14,165,233,.18);color:#fff;font-weight:700}
+  .nav-item.on::before{content:'';position:absolute;left:-10px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:#38bdf8}
+  .nav-item .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#475569}
+  .nav-item .ic{flex:none;width:16px;text-align:center;font-size:13px;line-height:1}
+  .nav-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-item .nd{flex:none;font-size:11px;color:var(--side-mute);font-variant-numeric:tabular-nums}
+  .nav-item .nd.warn{color:#fbbf24}
+  .nav-item.on .nd{color:#7dd3fc}
+  .side-foot{flex:none;padding:10px 10px 14px;border-top:1px solid rgba(255,255,255,.07)}
+  .side-link{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:8px;font-size:12.5px;color:var(--side-text);text-decoration:none}
+  .side-link:hover{background:rgba(255,255,255,.06);color:#fff}
+  .side-link svg{width:15px;height:15px;opacity:.8}
+  .scrim,.dscrim{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:45}
+
+  /* ── 본문 ── */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .bar{flex:none;display:flex;align-items:center;gap:8px;height:58px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .menu{display:none}
+  .find{flex:0 1 420px;min-width:0;display:flex;align-items:center;gap:7px;height:38px;padding:0 8px 0 13px;border-radius:10px;background:#f1f4f8;border:1px solid transparent;cursor:text}
+  .find:focus-within{background:#fff;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .find svg{flex:none;width:16px;height:16px;color:var(--text-4)}
+  .find input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font:inherit;font-size:13.5px;color:var(--text)}
+  .find input::-webkit-search-cancel-button{display:none}
+  .qn{flex:none;font-size:12px;font-weight:700;color:var(--info);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .qx{flex:none;width:24px;height:24px;border-radius:50%;color:var(--text-4);font-size:12px}
+  .qx:hover{background:#e2e8f0;color:var(--text)}
+  .sp{flex:1;min-width:0}
+  .st{flex:none;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:9px;font-size:12.5px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .st:hover{background:#f1f4f8;color:var(--text)}
+  .st .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#0ea5e9;box-shadow:0 0 0 3px rgba(14,165,233,.18)}
+  .st.is-load .dot{background:transparent;box-shadow:none;width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:var(--accent);animation:spin .8s linear infinite}
+  .st.is-stored{color:#b45309;background:#fffbeb}
+  .st.is-err{color:#b91c1c}
+  .st.is-err .dot{background:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ib{flex:none;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--text-3);text-decoration:none}
+  .ib:hover{background:#f1f4f8;color:var(--text)}
+  .ib.on{background:#e8f0fe;color:var(--info)}
+  .ib svg{width:18px;height:18px}
+
+  .head{flex:none;padding:14px 18px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+  .trow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:30px}
+  .trow h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.025em}
+  .date{font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);border:1px solid #bae6fd;border-radius:999px;padding:3px 10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .fpill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 6px 0 11px;border-radius:999px;background:var(--text);color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+  .fpill button{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:10px;color:#cbd5e1}
+  .fpill button:hover{background:rgba(255,255,255,.15);color:#fff}
+  .tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .etog{height:30px;padding:0 12px;border-radius:999px;border:1px dashed #cbd5e1;background:#fff;font-size:12px;color:var(--text-3);white-space:nowrap}
+  .etog:hover{border-color:#94a3b8;color:var(--text)}
+  .etog.on{border-style:solid;border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft);font-weight:700}
+  .parts{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:#f1f4f8}
+  .parts button{height:28px;padding:0 11px;border-radius:7px;font-size:12.5px;color:var(--text-3);white-space:nowrap}
+  .parts button:hover{color:var(--text)}
+  .parts button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
+  .alert{margin-top:12px;display:flex;gap:10px;padding:10px 13px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12.5px;line-height:1.6}
+  .alert.info{background:#f0f9ff;border-color:#bae6fd;color:#075985}
+  .alert svg{flex:none;width:17px;height:17px;margin-top:1px;color:#d97706}
+  .alert.info svg{color:#0284c7}
+  .alert b{font-weight:700}
+  .kpis{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+  .kpi{min-width:118px;height:62px;display:flex;flex-direction:column;justify-content:center;padding:0 15px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:left;cursor:default}
+  .kpi b{font-size:21px;font-weight:800;letter-spacing:-.025em;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--text)}
+  .kpi b small{font-size:12px;font-weight:700;margin-left:3px;color:var(--text-3)}
+  .kpi span{margin-top:3px;font-size:11.5px;color:var(--text-3);white-space:nowrap}
+  .kpi.click{cursor:pointer}
+  .kpi.click:hover{border-color:#cbd5e1;background:#fafbfc}
+  .kpi.red b{color:var(--danger)}
+  .kpi.amber b{color:var(--warn)}
+  .kpi.blue b{color:var(--info)}
+  .kpi.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(2,132,199,.14);background:#fff}
+  .chips{margin-top:12px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;color:var(--text-2);white-space:nowrap}
+  .chip:hover{border-color:#cbd5e1}
+  .chip i{flex:none;width:8px;height:8px;border-radius:50%}
+  .chip em{font-style:normal;font-size:11.5px;color:var(--text-4);font-variant-numeric:tabular-nums}
+  .chip.on{background:var(--text);border-color:var(--text);color:#fff;font-weight:700}
+  .chip.on em{color:#cbd5e1}
+  .chip-sep{flex:none;width:1px;height:18px;margin:6px 4px 0;background:var(--line)}
+
+  /* ── 표 (ERP 와 같은 모양) ── */
+  .gwrap{flex:1;min-height:0;position:relative;background:var(--card)}
+  .grid{position:absolute;inset:0;overflow:auto;outline:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .grid.bd-mode{background:var(--bg)}
+  .tbl{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:13px;color:var(--text)}
+  .tbl th{position:sticky;top:0;z-index:3;height:42px;padding:5px 8px;background:var(--head);color:var(--text-3);font-size:12px;font-weight:700;line-height:1.3;text-align:left;vertical-align:middle;white-space:normal;word-break:keep-all;overflow:hidden;border-bottom:1px solid var(--line);border-right:1px solid var(--line-2);cursor:pointer;user-select:none}
+  .tbl th:hover{color:var(--text)}
+  .tbl th .ar{margin-left:4px;font-size:9px;color:var(--accent)}
+  .tbl td{height:var(--row-h);padding:0 8px;background:#fff;border-bottom:1px solid var(--line-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .app.dense .tbl td{height:28px}
+  .tbl .cl{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.25;word-break:keep-all;overflow-wrap:break-word}
+  .app.dense .tbl .cl{-webkit-line-clamp:1}
+  .tbl .r{font-variant-numeric:tabular-nums}
+  .tbl .rn{color:var(--text-4);font-size:11.5px;font-variant-numeric:tabular-nums;padding:0 7px 0 10px}
+  .tbl tbody tr{cursor:pointer}
+  .tbl tbody tr:hover td{box-shadow:inset 0 0 0 999px rgba(15,23,42,.035)}
+  .tbl tbody tr.on td{box-shadow:inset 0 0 0 999px rgba(37,99,235,.075)}
+  .tbl tbody tr.on td:first-child{box-shadow:inset 3px 0 0 var(--info),inset 0 0 0 999px rgba(37,99,235,.075)}
+  .tbl tbody tr.co td:first-child{box-shadow:inset 3px 0 0 #fca5a5}
+  .tbl tbody tr.dim td{color:var(--text-4)}
+  .tbl tr.empty td{height:120px;text-align:center;color:var(--text-4);cursor:default;box-shadow:none!important}
+  .tbl tfoot td{position:sticky;bottom:0;z-index:2;height:36px;background:#f1f5f9;border-top:1px solid #cbd5e1;border-bottom:0;font-weight:700;font-variant-numeric:tabular-nums}
+  .tbl tfoot .ft{font-size:12px;color:var(--text-3)}
+  .z{color:#c3cad4}
+  .none{color:var(--text-4)}
+  mark{background:#fef08a;color:inherit;border-radius:2px;padding:0 1px}
+  .bdot{display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
+  .tp{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.4;vertical-align:middle;white-space:nowrap}
+  .tp.ret{background:#fef2f2;color:#b91c1c}
+  .tp.exc{background:#eff6ff;color:#1d4ed8}
+  .tp.etc{background:#fffbeb;color:#b45309}
+  .tp.zero{background:#f1f5f9;color:#64748b}
+  .tp.blank{background:#fff7ed;color:#c2410c}
+  .ctag{display:inline-block;max-width:100%;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.4;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .code{font-weight:700;font-variant-numeric:tabular-nums}
+  .code.est{color:var(--text-3);font-weight:600}
+  .code-n{margin-left:5px;font-weight:400;color:var(--text-2)}
+  .sure{display:inline-block;margin-left:5px;padding:0 5px;border-radius:4px;background:#dcfce7;color:#15803d;font-size:10.5px;font-weight:700;vertical-align:1px}
+  .est-b{display:inline-block;margin-left:5px;padding:0 5px;border-radius:4px;background:#f1f5f9;color:#64748b;font-size:10.5px;font-weight:700;vertical-align:1px}
+  .cam{margin-left:5px;font-size:11.5px}
+  .skel{padding:6px 0}
+  .skel div{display:flex;gap:22px;align-items:center;height:34px;padding:0 16px;border-bottom:1px solid var(--line-2)}
+  .skel i{display:block;height:9px;border-radius:5px;background:#edf1f5}
+  .msg{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 32px));padding:22px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 12px 34px rgba(15,23,42,.14);font-size:13.5px;line-height:1.6;color:var(--text-2);z-index:20;text-align:center}
+  .msg b{display:block;font-size:15.5px;color:var(--text);margin-bottom:6px}
+  .msg button{margin-top:14px;height:36px;padding:0 18px;border-radius:9px;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
+  .msg button.ghost{background:#f1f4f8;color:var(--text-2)}
+  .msg input{display:block;width:100%;margin-top:14px;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:13px;color:var(--text);outline:0}
+  .msg input:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .msg-btns{display:flex;justify-content:center;gap:8px}
+
+  /* ── 대시보드 · 보고서 카드 ── */
+  .board{padding:16px 18px 30px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,470px),1fr));gap:14px;align-content:start}
+  .card{min-width:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card.wide{grid-column:1/-1}
+  .card-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:13px 16px 11px;border-bottom:1px solid var(--line-2)}
+  .card-h b{font-size:14px;font-weight:800;letter-spacing:-.02em}
+  .card-h span{font-size:12px;color:var(--text-3)}
+  .card-h .more{margin-left:auto;font-size:12px;font-weight:600;color:var(--info)}
+  .card-h .more:hover{text-decoration:underline}
+  .card-b{overflow:auto}
+  .card-e{padding:22px 16px;font-size:13px;color:var(--text-4);text-align:center}
+  .mt{width:100%;border-collapse:collapse;font-size:13px}
+  .mt th{position:sticky;top:0;z-index:1;background:var(--head);padding:8px 12px;font-size:11.5px;font-weight:700;color:var(--text-3);text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  .mt td{padding:8px 12px;border-bottom:1px solid var(--line-2);white-space:nowrap;font-variant-numeric:tabular-nums;vertical-align:middle}
+  .mt td.wrap{white-space:normal;min-width:160px;line-height:1.45;word-break:keep-all;overflow-wrap:anywhere}
+  .mt tr:last-child td{border-bottom:0}
+  .mt tr.click,.mt td.click{cursor:pointer}
+  .mt tr.click:hover td,.mt td.click:hover{background:#f8fafc}
+  .mt .sub{color:var(--text-3);font-size:12px}
+  .mt .b{font-weight:700}
+  .mt .rv{color:#b91c1c;font-weight:700}
+  .mt .ev{color:#1d4ed8;font-weight:700}
+  .mt .ok{color:#15803d;font-weight:700}
+  .mt .na{color:#c2410c;font-weight:700;font-size:12px}
+  .mt .sticky{position:sticky;left:0;z-index:1;background:#fff}
+  .mt th.sticky{z-index:2;background:var(--head)}
+  .mx td{font-size:12.5px}
+  .bars{padding:8px 0 10px}
+  .bar-row{width:100%;display:grid;grid-template-columns:minmax(96px,150px) 1fr 86px;align-items:center;gap:10px;padding:6px 16px;font-size:13px;text-align:left}
+  .bar-row:hover{background:#f8fafc}
+  .bar-l{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-l i{flex:none;width:8px;height:8px;border-radius:50%}
+  .bar-t{height:10px;border-radius:5px;background:#f1f5f9;overflow:hidden}
+  .bar-f{height:100%;border-radius:5px;min-width:2px}
+  .bar-v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .bar-v small{margin-left:4px;font-weight:500;color:var(--text-3);font-size:11.5px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;padding:0 16px 12px;font-size:11.5px;color:var(--text-3)}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:0}
+  .rep-lines{padding:6px 18px 16px}
+  .rep-h{margin:16px 0 4px;font-size:13px;font-weight:800;color:var(--accent-ink)}
+  .rep-h:first-child{margin-top:8px}
+  .rep-line{display:flex;gap:12px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:13.5px;line-height:1.5}
+  .rep-line b{flex:none;min-width:140px;font-weight:700;color:var(--text)}
+  .rep-line span{color:var(--text-2);white-space:pre-wrap;overflow-wrap:anywhere}
+  .rep-line.sub{padding-left:16px}
+  .rep-line.sub b{min-width:124px;font-weight:600}
+  .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;padding:14px 16px 16px}
+  .gal figure{margin:0;min-width:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#f8fafc;cursor:zoom-in}
+  .gal img{display:block;width:100%;height:150px;object-fit:cover;background:#f1f5f9}
+  .gal.big{grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr))}
+  .gal.big img{height:auto;max-height:560px;object-fit:contain;background:#fff}
+  .gal img,.dthumbs img{color:transparent}   /* 받는 동안 alt 글자가 비치지 않게 */
+  .gal.big img:not([src]){height:260px}
+  img.broken{opacity:.45}
+  .gal figcaption{padding:7px 10px;font-size:12px;color:var(--text-2);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sop{display:grid;grid-template-columns:110px 1fr;font-size:13px}
+  .sop dt{padding:8px 16px;color:var(--text-3);border-bottom:1px solid var(--line-2)}
+  .sop dd{margin:0;padding:8px 16px 8px 0;line-height:1.5;border-bottom:1px solid var(--line-2);overflow-wrap:anywhere}
+
+  /* ── 상세 창 (줄을 누르면) ── */
+  .detail{position:fixed;top:0;right:0;bottom:0;z-index:40;width:var(--detail-w);max-width:100%;display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--line);box-shadow:-14px 0 34px rgba(15,23,42,.1)}
+  @media (min-width:1280px){ .app.has-detail .main{margin-right:var(--detail-w)} .detail{box-shadow:none} }
+  .dh{flex:none;padding:14px 18px 14px;border-bottom:1px solid var(--line)}
+  .dh-top{display:flex;align-items:center;gap:8px}
+  .dh-cap{flex:1;font-size:12px;font-weight:700;color:var(--text-3)}
+  .dh-top button{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--text-3)}
+  .dh-top button:hover{background:#f1f4f8;color:var(--text)}
+  .dh-top svg{width:17px;height:17px}
+  .d-title{margin-top:6px;font-size:18px;font-weight:800;line-height:1.35;letter-spacing:-.02em;word-break:break-word}
+  .d-sub{margin-top:4px;font-size:12.5px;color:var(--text-3);line-height:1.5}
+  .d-sheet{display:inline-flex;align-items:center;gap:5px;margin-top:10px;height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--text-2);text-decoration:none}
+  .d-sheet:hover{border-color:#cbd5e1;color:var(--text)}
+  .dbody{flex:1;min-height:0;overflow:auto;padding:4px 18px 22px}
+  .dl{display:grid;grid-template-columns:104px 1fr;margin:0}
+  .dl dt{padding:10px 0;font-size:12.5px;color:var(--text-3);border-bottom:1px solid var(--line-2)}
+  .dl dd{margin:0;padding:10px 0 10px 12px;font-size:13.5px;line-height:1.5;border-bottom:1px solid var(--line-2);word-break:break-word;white-space:pre-wrap}
+  .dl dd.r{font-variant-numeric:tabular-nums;font-weight:700}
+  .dl .muted{color:var(--text-3);font-size:12.5px}
+  .dthumbs{display:flex;flex-wrap:wrap;gap:6px;white-space:normal}
+  .dthumbs img{width:76px;height:76px;border-radius:8px;object-fit:cover;cursor:zoom-in;background:#f1f5f9}
+  .hist{display:grid;gap:2px;white-space:normal}
+  .hist button{display:grid;grid-template-columns:62px 44px 1fr;gap:8px;align-items:baseline;width:100%;text-align:left;padding:5px 6px;border-radius:6px;font-size:12.5px;line-height:1.4}
+  .hist button:hover{background:#f1f5f9}
+  .hist button.on{background:var(--accent-soft)}
+  .hist .hd{font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums}
+  .hist .hr{color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lb{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(15,23,42,.82);cursor:zoom-out;padding:24px}
+  .lb img{max-width:100%;max-height:100%;border-radius:12px;background:#fff}
+  .toast{position:fixed;left:50%;bottom:22px;z-index:80;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 16px;border-radius:10px;background:#0f172a;color:#fff;font-size:13px;font-weight:600;line-height:1.45;box-shadow:0 12px 30px rgba(15,23,42,.25)}
+
+  /* ── 좁은 화면 ── */
+  @media (max-width:1000px){
+    .side{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);transition:transform .18s ease}
+    .app.nav-open .side{transform:none;box-shadow:12px 0 34px rgba(15,23,42,.3)}   /* 닫혀 있을 땐 그림자도 없게 (좁은 화면 왼쪽 끝에 비침) */
+    .menu{display:grid}
+  }
+  @media (max-width:720px){
+    :root{--row-h:42px}
+    .bar{height:54px;padding:0 8px;gap:4px}
+    .find{flex:1 1 auto;height:38px}
+    .st{padding:0 8px}
+    .st #stText,#btnFull,#btnDense{display:none}
+    .st.is-err #stText,.st.is-stored #stText{display:inline;font-size:11.5px}
+    .head{padding:12px 12px 10px}
+    .trow h1{font-size:17px}
+    .tools{margin-left:0;width:100%}
+    .kpis{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-12px;margin-right:-12px;padding:0 12px}
+    .kpis::-webkit-scrollbar{display:none}
+    .kpi{flex:none;min-width:100px;height:56px;padding:0 12px}
+    .kpi b{font-size:18px}
+    .chips{margin-left:-12px;margin-right:-12px;padding:0 12px}
+    .board{padding:12px 10px 24px;gap:10px}
+    .detail{top:auto;left:0;width:100%;height:82vh;height:82dvh;border-left:0;border-radius:18px 18px 0 0;box-shadow:0 -14px 34px rgba(15,23,42,.2);padding-bottom:env(safe-area-inset-bottom)}
+    .dl{grid-template-columns:96px 1fr}
+    .rep-line{flex-direction:column;gap:2px}
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" aria-label="메뉴">
+    <div class="side-top">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span>
+      <div><b>VOC 전산</b><small>CS팀 · VOC 시트</small></div>
+      <button type="button" class="side-fold" id="btnFold" title="메뉴 접기 (표를 넓게)" aria-label="메뉴 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <a class="side-link" id="sideSheet" href="#" target="_blank" rel="noopener" title="구글시트 원본을 새 탭으로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>구글시트 원본 열기</a>
+      <a class="side-link" id="sideAsk" href="#" title="VOC 구글시트가 바뀌었을 때 — 새 링크를 넣으면 모든 직원 화면에 적용"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>시트 링크 바꾸기</a>
+      <a class="side-link" id="sideHome" href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>오피스 홈</a>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="main">
+    <header class="bar">
+      <button type="button" class="ib menu" id="btnMenu" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓴 낱말이 모두 들어간 줄만">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="상품 · 사유 · 쇼핑몰 · VOC 코드 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        <span class="qn" id="qn"></span>
+        <button type="button" class="qx" id="qx" hidden aria-label="찾기 지우기">✕</button>
+      </label>
+      <div class="sp"></div>
+      <button type="button" class="st is-load" id="st" title="지금 다시 읽기"><i class="dot"></i><span id="stText">불러오는 중…</span></button>
+      <button type="button" class="ib" id="btnDense" title="줄 간격 촘촘하게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 9.7h16M4 14.3h16M4 19h16"/></svg></button>
+      <button type="button" class="ib" id="btnFull" title="전체 화면 (모니터 꽉 채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <a class="ib" id="btnSheet" href="#" target="_blank" rel="noopener" title="구글시트에서 이 탭 열기 (새 탭)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
+    </header>
+    <section class="head">
+      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><span id="fpills"></span><div class="tools" id="tools"></div></div>
+      <div class="alert" id="alert" hidden></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="chips" id="chips" hidden></div>
+    </section>
+    <div class="gwrap">
+      <div class="grid" id="grid" tabindex="0" aria-label="VOC 표"></div>
+      <div class="msg" id="msg" hidden></div>
+    </div>
+  </div>
+  <aside class="detail" id="detail" hidden aria-label="상세 정보">
+    <div class="dh">
+      <div class="dh-top">
+        <span class="dh-cap" id="dCap">상세</span>
+        <button type="button" id="dPrev" title="이전 줄 (↑)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+        <button type="button" id="dNext" title="다음 줄 (↓)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button type="button" id="dClose" title="닫기 (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="d-title" id="dTitle"></div>
+      <div class="d-sub" id="dSub"></div>
+      <a class="d-sheet" id="dSheet" href="#" target="_blank" rel="noopener">구글시트에서 이 줄 보기 ↗</a>
+    </div>
+    <div class="dbody"><dl class="dl" id="dList"></dl></div>
+  </aside>
+  <div class="dscrim" id="dscrim" hidden></div>
+</div>
+<div class="lb" id="lb" hidden><img id="lbImg" alt="" referrerpolicy="no-referrer"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+(function () {
+  'use strict';
+
+  /* ── 설정 ── */
+  /* 구글시트 '비드유니버스 VOC' (CS 직원 원본, 링크 보기 공개) — 시트 주소는 이 레포(공개)에 적지 않는다.
+     링크 공개 시트라 주소가 곧 열쇠이고, 불량건 탭엔 고객 이름 · 전화가 있다 (mdsheet/ 와 같은 원칙).
+     주소는 오피스 Supabase app_kv 'voc_sheet' ({id}) 에 두고 읽어 이 브라우저(voc_sheet_v1)에 기억한다.
+     없거나 시트를 바꾸면 화면에서 링크를 한 번 붙여 넣으면 app_kv 에 저장돼 모두에게 적용된다. */
+  let SHEET_ID = '', BASE = '';
+  const KV_SHEET = 'voc_sheet', LS_SHEET = 'voc_sheet_v1';
+  const LS_CACHE = 'voc_cache_v1', LS_VIEW = 'voc_view_v1', LS_SIDE = 'voc_side_v1', LS_DENSE = 'voc_dense_v1';
+  const REFRESH_MS = 3 * 60e3;   // 시트를 다시 읽는 간격 (화면이 보일 때만)
+  const OFFICE_MS = 10 * 60e3;   // 오피스 VOC 기록(cs_issues)
+  const TIMEOUT_MS = 25e3, CONC = 3;
+  const EMBED = new URLSearchParams(location.search).has('embed') || (function () { try { return window.parent !== window; } catch (e) { return true; } })();
+  // 브랜드 점 색 = 오피스 · ERP 와 같음. id = 오피스 브랜드 id (cs_issues.brand)
+  const BRANDS = [
+    {id: 'kop', name: '코페리', color: '#818cf8', re: /코페리|coferry/i},
+    {id: 'apt', name: '아페티', color: '#fb7185', re: /아페티|apeti/i},
+    {id: '6a', name: '식스에이', color: '#22d3ee', re: /식스에이|6a/i},
+    {id: 'yar', name: '야르', color: '#a78bfa', re: /야르/},
+    {id: 'pp', name: '프로덕트피알', color: '#f59e0b', re: /프로덕트피알|프피/},
+    {id: 'koz', name: '코즈미', color: '#14b8a6', re: /코즈미/},
+    {id: 'akoi', name: '아코이하우스', color: '#f472b6', re: /아코이/},
+  ];
+  const PERIODS = [{k: 'today', l: '오늘'}, {k: 'yday', l: '어제'}, {k: '7', l: '7일'}, {k: '30', l: '30일'}, {k: 'all', l: '전체'}];
+  const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+  const F_CELL = `400 13px ${FONT}`, F_HEAD = `700 12px ${FONT}`, F_TAG = `600 12px ${FONT}`;
+  const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
+  const ICON_INFO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>';
+
+  /* ── 오피스와 같이 쓰는 것 — VOC 코드표 · 처리 기준 · Supabase (index.html bbVocShare) ── */
+  let SH = null;
+  try { if (window.parent !== window && typeof window.parent.bbVocShare === 'function') SH = window.parent.bbVocShare(); } catch (e) { SH = null; }
+  const CAT = {
+    Q: {l: '제품 불량', c: '#dc2626'}, S: {l: '사양·디자인', c: '#ea580c'}, I: {l: '상품 정보·이미지', c: '#d97706'}, D: {l: '배송·출고', c: '#7c3aed'},
+    C: {l: '고객 사유', c: '#64748b'}, O: {l: '주문·재고', c: '#0891b2'}, V: {l: '응대·서비스', c: '#0d9488'}, E: {l: '기타 문의', c: '#94a3b8'},
+  };
+  const CAT_ORDER = ['Q', 'S', 'I', 'D', 'C', 'O', 'V', 'E'];
+  if (SH && Array.isArray(SH.cats)) SH.cats.forEach(c => { if (CAT[c.key]) CAT[c.key].l = c.label; });
+  const COMPANY = new Set(SH && Array.isArray(SH.company) ? SH.company : ['Q', 'S', 'I', 'D']);
+  const CODES = SH && Array.isArray(SH.codes) ? SH.codes : [];
+  const CODE = Object.fromEntries(CODES.map(c => [c.code, c]));
+  const SOP = (SH && SH.sop) || {};
+  const SEV = (SH && SH.sev) || [];
+  const TEAMS = (SH && SH.teams) || {};
+  const faultOf = cat => !cat ? '' : COMPANY.has(cat) ? 'co' : cat === 'C' ? 'cu' : 'na';
+  const FAULT_L = {co: '회사 사유', cu: '고객 사유', na: '기타', '': '사유 없음'};
+
+  const $ = id => document.getElementById(id);
+  const app = $('app'), grid = $('grid'), qIn = $('q');
+  const S = {
+    models: [], at: 0, stored: false, busy: null, err: '',
+    office: null, officeAt: 0, officeBusy: null,
+    D: null, list: [], sel: -1, selObj: null, lastView: '',
+  };
+  const V = {view: 'dash', period: '30', type: '', cat: '', date: '', q: '', sort: null, zero: false, part: 'codes'};
+
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* 저장 못 해도 화면은 그대로 */ } };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));   // ' 도 — data-go='…' 속성에 상품명("99's bag")이 들어감
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const pad2 = n => String(n).padStart(2, '0');
+  const norm = s => String(s || '').replace(/\s+/g, '');
+  const fmt = n => Number(n || 0).toLocaleString('ko-KR');
+  const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+  const brandById = id => BRANDS.find(b => b.id === id) || null;
+  const brandOf = s => BRANDS.find(b => b.re.test(String(s || ''))) || null;
+  const bOrder = id => { const i = BRANDS.findIndex(b => b.id === id); return i < 0 ? 99 : i; };
+  function numOf(s) {
+    const t = String(s == null ? '' : s).replace(/[,\s]/g, '').replace(/(건|개)$/, '');
+    if (t === '-' || t === '—') return 0;
+    return /^-?\d+$/.test(t) ? parseInt(t, 10) : null;
+  }
+  // 쇼핑몰 이름 맞추기 — '공홈(+네이퍼페이같이)' · '공홈/네이버페이' → 공홈
+  function chLabel(s) {
+    const t = String(s || '').replace(/\(.*?\)/g, '').split('/')[0].trim();
+    if (/^29\s*cm$/i.test(t)) return '29CM';
+    if (/^w\s*컨셉$/i.test(t)) return 'W컨셉';
+    return t;
+  }
+
+  /* ── 날짜 ── */
+  const W = '일월화수목금토';
+  const ymd = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
+  const dObj = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
+  const toYmd = dt => ymd(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+  const today = () => toYmd(new Date());
+  const addDays = (s, n) => { const d = dObj(s); d.setDate(d.getDate() + n); return toYmd(d); };
+  const md = s => { if (!s) return ''; const [, m, d] = s.split('-'); return `${+m}/${+d}`; };
+  const dlabel = s => s ? `${md(s)}(${W[dObj(s).getDay()]})` : '';
+  function mdToYmd(t) {   // '11/3' → 올해 (지금보다 두 달 넘게 앞선 달은 작년)
+    const m = String(t || '').match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+    if (!m) return '';
+    const now = new Date(), mo = +m[1];
+    const y = mo > now.getMonth() + 3 ? now.getFullYear() - 1 : now.getFullYear();
+    return ymd(y, mo, +m[2]);
+  }
+  function period() {
+    const t = today();
+    switch (V.period) {
+      case 'today': return {from: t, to: t, l: `오늘 ${dlabel(t)}`};
+      case 'yday': { const y = addDays(t, -1); return {from: y, to: y, l: `어제 ${dlabel(y)}`}; }
+      case '7': return {from: addDays(t, -6), to: t, l: `${md(addDays(t, -6))} ~ ${md(t)} · 최근 7일`};
+      case 'all': return {from: '', to: '9999', l: '전체 기간'};
+      default: return {from: addDays(t, -29), to: t, l: `${md(addDays(t, -29))} ~ ${md(t)} · 최근 30일`};
+    }
+  }
+  let P = period();
+  const inP = d => !!d && d >= P.from && d <= P.to;
+
+  /* ── 구글에서 받기 (erp/ 와 같음) — 시간 제한 · 429 는 잠깐 쉬고 다시 · 연결 끊김은 한 번 더 ── */
+  async function getText(url) {
+    for (let i = 0; ; i++) {
+      const ac = new AbortController(), timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+      try {
+        const r = await fetch(url, {cache: 'no-store', credentials: 'omit', signal: ac.signal});
+        if (r.status === 429 && i < 4) { await sleep(900 * 2 ** i); continue; }
+        if (!r.ok) throw Object.assign(new Error('http_' + r.status), {fatal: true});
+        if (/accounts\.google\.com|ServiceLogin/.test(r.url)) throw Object.assign(new Error('login'), {fatal: true});
+        return await r.text();
+      } catch (e) {
+        if (e.fatal) throw e;
+        if (i < 1) { await sleep(1200); continue; }
+        throw new Error(e && e.name === 'AbortError' ? 'timeout' : 'network');
+      } finally { clearTimeout(timer); }
+    }
+  }
+  function unesc(s) { try { return JSON.parse('"' + s.replace(/\\x([0-9a-fA-F]{2})/g, '\\u00$1') + '"'); } catch (e) { return s; } }
+  async function loadTabList() {
+    const h = await getText(`${BASE}/htmlview`), out = [];
+    const re = /items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"/g;
+    let m;
+    while ((m = re.exec(h))) out.push({name: unesc(m[1]), gid: m[2]});
+    if (!out.length) throw new Error(/waffle|sheets-viewport/.test(h) ? 'no_tabs' : 'login');
+    return out;
+  }
+
+  /* ── 한 탭 읽기 — 칸 글자(줄바꿈 살림)와 사진(칸 안 · 칸 위에 띄운 것)만 뽑는다 ── */
+  const cleanText = s => s.replace(/ /g, ' ').replace(/[​-‍﻿]/g, '').replace(/\r/g, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  function walk(node, o) {
+    for (const n of node.childNodes) {
+      if (n.nodeType === 3) { o.t += n.nodeValue; continue; }
+      if (n.nodeType !== 1) continue;
+      const tag = n.nodeName.toLowerCase();
+      if (tag === 'br') { o.t += '\n'; continue; }
+      if (tag === 'script' || tag === 'style') continue;
+      if (tag === 'img') { const src = n.getAttribute('src') || ''; if (/^https:\/\//i.test(src)) o.img.push(src); continue; }
+      walk(n, o);
+    }
+  }
+  function parseSheet(html, gid) {
+    const a = html.indexOf('<table'), b = html.lastIndexOf('</table>');
+    if (a < 0 || b < 0) throw new Error(/accounts\.google\.com|ServiceLogin/.test(html) ? 'login' : 'no_grid');
+    const doc = new DOMParser().parseFromString(html.slice(a, b + 8), 'text/html');
+    const rows = [], imgs = [], taken = {}, trs = [];
+    doc.querySelectorAll('table').forEach(t => Array.from(t.tBodies).forEach(tb => trs.push(...tb.rows)));
+    for (const tr of trs) {
+      const th = tr.cells[0] && tr.cells[0].tagName === 'TH' ? tr.cells[0] : null;
+      const mm = th && (th.id || '').match(/R(\d+)$/);
+      if (!mm) continue;
+      const r = +mm[1], c = [];
+      let p = 0;
+      for (const td of tr.cells) {
+        if (td.tagName !== 'TD' || td.classList.contains('freezebar-cell')) continue;
+        while (taken[r] && taken[r].has(p)) p++;
+        const cs = Math.max(1, +td.getAttribute('colspan') || 1), rs = Math.max(1, +td.getAttribute('rowspan') || 1);
+        const o = {t: '', img: []};
+        walk(td, o);
+        c[p] = cleanText(o.t);
+        o.img.forEach(src => imgs.push({src, row: r, col: p}));
+        for (let y = r + 1; y < r + rs; y++) for (let x = p; x < p + cs; x++) (taken[y] = taken[y] || new Set()).add(x);
+        p += cs;
+      }
+      for (let i = 0; i < c.length; i++) if (c[i] == null) c[i] = '';
+      while (c.length && c[c.length - 1] === '') c.pop();
+      rows.push({r, c});
+    }
+    // 칸 위에 띄운 사진 — 위치는 posObj(gid, id, 줄, 칸, …)
+    const srcOf = {};
+    for (const m of html.matchAll(/<div id='(embed_\d+)' class='waffle-embedded-object-overlay'[^>]*><img src='([^']+)'/g)) srcOf[m[1]] = m[2].replace(/&amp;/g, '&');
+    for (const m of html.matchAll(/posObj\('(\d+)', '(embed_\d+)', (\d+), (\d+)/g)) if (m[1] === String(gid) && srcOf[m[2]]) imgs.push({src: srcOf[m[2]], row: +m[3], col: +m[4], id: gid + ':' + m[2]});
+    while (rows.length && !rows[rows.length - 1].c.length) rows.pop();
+    maskPII(rows);
+    return {rows, imgs};
+  }
+
+  /* ── 시트 사진 — 구글이 다른 사이트의 <img> 로 바로 넣는 건 막아 둔다(Cross-Origin-Resource-Policy: same-site).
+     대신 CORS 로 받는 건 열려 있어(Access-Control-Allow-Origin: *) fetch 로 받아 blob 주소로 보여 준다.
+     사진 주소는 서명이 붙어 시간이 지나면 만료(403)되고 시트를 읽을 때마다 바뀐다 → 늘 가장 최근에 읽은 주소로 받고,
+     받은 사진은 칸 위 사진 id(posObj 의 embed_…) + 크기로 기억해 3분마다 다시 읽어도 또 받지 않는다 ── */
+  const IMG = new Map();   // 키 → Promise<blob 주소>
+  const sized = (u, s) => /=s\d+$/.test(u) ? u.replace(/=s\d+$/, '=s' + s) : u;
+  const imgQ = [];
+  let imgActive = 0, imgRetryAt = 0;
+  function pumpImg() {
+    while (imgActive < 4 && imgQ.length) {
+      const job = imgQ.shift();
+      imgActive++;
+      fetch(job.u, {mode: 'cors', credentials: 'omit'})
+        .then(r => { if (!r.ok) throw new Error('http_' + r.status); return r.blob(); })
+        .then(b => job.res(URL.createObjectURL(b)), job.rej)
+        .finally(() => { imgActive--; pumpImg(); });
+    }
+  }
+  function imgBlob(u, key) {
+    const k = key || u;
+    if (IMG.has(k)) return IMG.get(k);
+    const p = new Promise((res, rej) => { imgQ.push({u, res, rej}); pumpImg(); });
+    IMG.set(k, p);
+    p.catch(() => IMG.delete(k));
+    return p;
+  }
+  // <img data-img="주소" data-key="사진 id:크기"> 를 채운다 (그린 뒤에 부름)
+  function hydrate(root) {
+    (root || document).querySelectorAll('img[data-img]:not([data-ld])').forEach(img => {
+      img.dataset.ld = '1';
+      imgBlob(img.dataset.img, img.dataset.key).then(b => { img.src = b; img.classList.remove('broken'); }, () => {
+        img.classList.add('broken');
+        img.title = '사진 주소가 만료됐어요 — 시트를 다시 읽는 중';
+        if (Date.now() - imgRetryAt > 120e3) { imgRetryAt = Date.now(); loadAll(); }
+      });
+    });
+  }
+  const imgTag = (p, size, o) => `<img data-img="${esc(sized(p.src, size))}"${p.id ? ` data-key="${esc(p.id + ':' + size)}"` : ''} data-src="${esc(p.src)}"${p.id ? ` data-sid="${esc(p.id)}"` : ''} alt="${esc((o && o.alt) || '')}">`;
+  function openLightbox(src, sid) {
+    const lb = $('lb'), im = $('lbImg');
+    im.removeAttribute('src');
+    lb.hidden = false;
+    imgBlob(sized(src, 2048), sid ? sid + ':2048' : '').then(b => { if (!lb.hidden) im.src = b; }, () => { lb.hidden = true; toast('사진을 받지 못했어요 — 잠시 뒤 다시 눌러 주세요'); });
+  }
+  let toastT = null;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600); }
+
+  /* ── 개인정보 가리기 — 머리글(위 8줄 안)이 이름 · 연락처 · 주소인 칸, 그리고 어느 칸이든 휴대폰 번호 ── */
+  const PII = [
+    ['name', /^(이름|성명|고객명|주문자|수령인|수취인|구매자|주문인|받는(분|사람|이)|고객|보내는(분|사람|이)|발송인)(이름|명|성명)?$/],
+    ['phone', /(연락처|전화|휴대폰|핸드폰|휴대전화)/],
+    ['addr', /(주소|우편번호)/],
+    ['mail', /(이메일|메일주소|e-?mail)/i],
+  ];
+  const MASK = {
+    name: s => /^[-–—.·\s]+$/.test(s) ? s : Array.from(s).map((ch, i) => i === 0 || /\s/.test(ch) ? ch : '○').join(''),
+    phone: s => { const n = (s.match(/\d/g) || []).length; let i = 0; return s.replace(/\d/g, d => (++i <= 3 || i > n - 4) ? d : '*'); },
+    addr: s => { const w = s.split(/\s+/); return w.length > 1 ? w.slice(0, Math.min(2, w.length - 1)).join(' ') + ' ○○○' : '○○○'; },
+    mail: s => s.replace(/^([^@]{0,2})[^@]*@/, '$1***@'),
+  };
+  const PHONE_RE = /01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/g;
+  function maskPII(rows) {
+    const cols = {};
+    rows.slice(0, 8).forEach((row, i) => row.c.forEach((t0, p) => {
+      const t = norm(t0);
+      if (!t || t.length > 12 || cols[p]) return;
+      const hit = PII.find(x => x[1].test(t));
+      if (hit) cols[p] = {kind: hit[0], from: i + 1};
+    }));
+    rows.forEach((row, i) => row.c.forEach((t, p) => {
+      if (!t) return;
+      const pc = cols[p];
+      if (pc && i >= pc.from) row.c[p] = MASK[pc.kind](t);
+      else if (PHONE_RE.test(t)) row.c[p] = t.replace(PHONE_RE, MASK.phone);
+      PHONE_RE.lastIndex = 0;
+    }));
+  }
+
+  /* ── 탭 종류 — '데일리 ○○' = 브랜드별 일지 · '○○_불량건' = 불량 · 그 밖(코페리 · 아페티) = 반품 분석 ── */
+  function kindOf(name) {
+    const n = String(name || '').trim();
+    if (/^데일리/.test(n)) return {kind: 'daily', brand: brandOf(n.replace(/^데일리\s*/, ''))};
+    if (/불량|재발송/.test(n)) return {kind: 'defect', brand: brandOf(n)};
+    return {kind: 'report', brand: brandOf(n)};
+  }
+
+  /* ── VOC 코드 추정 — 사유 글 → 오피스 VOC 코드 (📖 VOC 코드표). 오피스 기록과 같은 건은 그 코드가 '확정' ── */
+  function guessCode(text, type, brand) {
+    const s = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!s) return '';
+    const jewel = /^(apt|6a|yar|koz)$/.test(brand || '');
+    if (/^(단순\s*)?변심/.test(s)) {
+      if (/구체적\s*사유\s*없|사유\s*없/.test(s)) return 'C13';
+      if (type === '교환' || /컬러\s*(변경|교환)|색상\s*(변경|교환)|=>|->/.test(s)) return 'C12';
+      return 'C11';
+    }
+    // '분홍호피부분'(호피 + 부분) 같은 글에 걸리지 않게 피부는 증상 낱말과 같이 있을 때만
+    if (/피부\s*(트러블|발진|이상|자극|염|가려|따가|붉)|알레르기|알러지|가려움|가렵|두드러기|붉어졌|발진/.test(s)) return 'S22';
+    if (/오배송|다른\s*(상품|옵션|색|제품)/.test(s)) return 'D11';
+    if (/누락|안\s*왔|오지\s*않|빠져\s*있|안\s*들어/.test(s)) return /수량/.test(s) ? 'D13' : 'D12';
+    if (/(택배|배송\s*중).{0,10}(파손|찌그|젖)/.test(s)) return 'D22';
+    if (/분실/.test(s)) return 'D23';
+    if (/배송\s*(이\s*)?지연|늦게\s*(와|도착|옴)|지연/.test(s)) return 'D21';
+    if (/(끈|손잡이|스트랩|이음새|연결부?).{0,12}(끊|뜯|떨어)/.test(s)) return 'Q12';
+    if (/끊어|끊김|끊겼|끊긴/.test(s)) return jewel ? 'Q43' : 'Q12';   // '제품 끊어짐' — 반지 · 목걸이는 부러짐, 가방은 끈 연결부
+    if (/박음질|바느질|실밥|봉제|재봉/.test(s)) return 'Q11';
+    if (/찢|구멍|해짐/.test(s)) return 'Q21';
+    if (jewel && /변색|까맣|검게|착색|색\s*빠|녹\s*슬/.test(s)) return 'Q41';
+    if (/오염|얼룩|물\s*빠|이물질|머리카락|냄새|비린내|색\s*빠|변색/.test(s)) return 'Q22';
+    if (/지퍼|자석|버클|똑딱/.test(s)) return 'Q31';
+    if (/도금/.test(s)) return 'Q42';
+    if (/부러|휘어|휨/.test(s) || (jewel && /파손|큐빅|장식.{0,6}(빠|없)/.test(s))) return 'Q43';
+    if (/(고리|부자재|장식).{0,8}(없|빠|떨어)/.test(s)) return 'Q32';
+    if (/꺼끌|날카|거칠|따가/.test(s)) return 'Q51';
+    if (/스크래치|흠집|찍힘|본드|기스/.test(s)) return 'Q52';
+    if (/작동|충전|인식\s*(이\s*)?안|안\s*켜/.test(s)) return 'Q61';
+    if (/측정|재는\s*기준|치수|(길이|사이즈).{0,8}(설명|표기|정보|기준)/.test(s)) return 'I21';
+    if (/색(상|이)?.{0,8}(다르|달라)/.test(s)) return 'I11';
+    if (/상세\s*(페이지|이미지|사진)|실물|사진(과|이랑)|이미지(와|랑)/.test(s)) return 'I12';
+    if (/은이\s*아닌|진짜\s*은|소재/.test(s)) return 'I22';
+    if (/불량|파손|하자|털.{0,8}빠/.test(s)) return 'Q91';
+    if (/주문\s*실수|잘못\s*(주문|구매|선택)|타입으로/.test(s)) return 'C21';
+    if (/사이즈|호수/.test(s)) return /(크|커|헐렁)/.test(s) ? 'S12' : 'S11';
+    if (/품절/.test(s)) return 'O12';
+    if (type === '교환' && /컬러|색상/.test(s)) return 'C12';
+    if (/기대|별로|마음에\s*안|맘에\s*안|생각(과|보다)/.test(s)) return 'C13';
+    return 'E12';
+  }
+
+  /* ── 시트 → 한 표로 풀기 ──
+     케이스(case) = 한 날 · 한 브랜드 · 한 쇼핑몰 · 반품/교환 · 사유 한 줄. 사유 줄과 상품 줄이 같은 수면 줄끼리 짝짓고,
+     상품 칸의 ' / ' 는 상품 여러 개. 건수는 시트 숫자 그대로 (사유 줄마다 나눌 땐 상품 수 → 줄 수 → 나머지 순).
+     슬롯(slot) = 날 · 브랜드 · 쇼핑몰 한 칸 (입력했는지 · 0건인지) — 대시보드 '입력 현황'. */
+  const lines = s => String(s || '').split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const itemsOf = s => String(s || '').split(/\s*\/\s*/).map(x => x.trim()).filter(Boolean);
+  const pkey = s => String(s || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/_.*$/, '').replace(/[^a-z0-9가-힣]+/g, ' ').trim();
+  const pmatch = (a, b) => !!a && !!b && Math.min(a.length, b.length) >= 4 && (a.includes(b) || b.includes(a));
+  function pairUp(reasons, plines) {
+    if (!reasons.length && !plines.length) return [{reason: '', items: []}];
+    if (reasons.length <= 1) return [{reason: reasons[0] || '', items: plines.flatMap(itemsOf)}];
+    if (plines.length === reasons.length) return reasons.map((r, i) => ({reason: r, items: itemsOf(plines[i])}));
+    if (plines.length <= 1) {
+      const it = plines.length ? itemsOf(plines[0]) : [];
+      if (it.length === reasons.length) return reasons.map((r, i) => ({reason: r, items: [it[i]]}));
+      return reasons.map((r, i) => ({reason: r, items: i === 0 ? it : []}));
+    }
+    const g = reasons.map((r, i) => ({reason: r, items: i < plines.length ? itemsOf(plines[i]) : []}));
+    plines.slice(reasons.length).forEach(pl => g[g.length - 1].items.push(...itemsOf(pl)));
+    return g;
+  }
+  function splitN(groups, n) {
+    if (groups.length === 1) { groups[0].n = n; return; }
+    const tot = groups.reduce((a, g) => a + Math.max(1, g.items.length), 0);
+    if (tot === n) { groups.forEach(g => { g.n = Math.max(1, g.items.length); }); return; }
+    if (groups.length === n) { groups.forEach(g => { g.n = 1; }); return; }
+    groups.forEach((g, i) => { g.n = i < groups.length - 1 ? 1 : Math.max(1, n - (groups.length - 1)); });
+  }
+  let CID = 0;
+  function mkCase(o) {
+    return Object.assign({kind: 'case', id: ++CID, brand: '', date: '', ch: '', chRaw: '', type: '', n: 1, reason: '', items: [], action: '', note: '',
+      src: 'daily', gid: '', r: -1, code: '', sure: null, cat: '', fault: '', photos: [], blockKey: ''}, o);
+  }
+  function typeOfAct(a, note) {
+    const t = String(a || '') || String(note || '');   // 처리 칸이 비면 특이사항 글에서 ('…끊어짐/재발송')
+    if (/교환/.test(t)) return '교환';
+    if (/반품|환불/.test(t)) return '반품';
+    if (/재발송/.test(t)) return '재발송';
+    if (/반려/.test(t)) return '반려';
+    return '기타';
+  }
+  const CH_RE = /^(공홈|지그재그|에이블리|스마트스토어|29\s*CM|W\s*컨셉|오늘의집|EQL|쿠팡|한섬|카카오톡?|네이버페이)[^/>]*\/\s*/i;
+  function parseNote(s) {
+    let ch = '', rest = String(s || '').trim();
+    const m = rest.match(CH_RE);
+    if (m) { ch = chLabel(m[1]); rest = rest.slice(m[0].length); }
+    let prod = '', reason = rest;
+    const k = rest.indexOf('>');
+    if (k > 0) { prod = rest.slice(0, k).trim(); reason = rest.slice(k + 1).trim(); }
+    else {
+      const mm = rest.match(/^([A-Za-z0-9][A-Za-z0-9 .'()&+#\/\-]*?)\s+(?=[가-힣])/);
+      if (mm) { prod = mm[1].trim(); reason = rest.slice(mm[0].length).trim(); }
+    }
+    return {ch, prod, reason};
+  }
+  function idxOf(c, re) { return c.findIndex(x => re.test(norm(x))); }
+  function hdrNew(c) {
+    const h = {ch: 0, rn: -1, rr: -1, rp: -1, en: -1, er: -1, ep: -1};
+    c.forEach((x, i) => {
+      const t = norm(x);
+      if (t === '반품') h.rn = i; else if (t === '교환') h.en = i;
+      else if (/^반품.*사유/.test(t)) h.rr = i; else if (/^반품.*(상품|제품)/.test(t)) h.rp = i;
+      else if (/^교환.*사유/.test(t)) h.er = i; else if (/^교환.*(상품|제품)/.test(t)) h.ep = i;
+    });
+    return h;
+  }
+  const cellAt = (c, i) => i >= 0 ? String(c[i] || '').trim() : '';
+
+  function parseDaily(m, D) {
+    const b = m.brand;
+    if (!b) return;
+    const blocks = [], olds = [];
+    let cur = null, oldH = null;
+    for (const row of m.rows) {
+      const c = row.c, f = String(c[0] || '').trim();
+      const dm = f.match(/^(\d{4})\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})/);
+      if (dm) { cur = {date: ymd(+dm[1], +dm[2], +dm[3]), r: row.r, end: row.r, h: null, rows: [], closed: false}; blocks.push(cur); oldH = null; continue; }
+      if (!c.some(x => x)) { if (cur && cur.rows.length) cur.closed = true; continue; }
+      if (norm(f) === '쇼핑몰' && cur && !cur.h) { cur.h = hdrNew(c); cur.end = row.r; continue; }
+      if (norm(f) === '날짜') { oldH = {note: idxOf(c, /^(특이사항|비고|메모|내용)/), act: idxOf(c, /^처리/)}; cur = null; continue; }
+      if (oldH && /^\d{1,2}\s*\/\s*\d{1,2}$/.test(f)) { olds.push({row, h: oldH}); continue; }
+      if (cur && cur.h && !cur.closed) {
+        const h = cur.h, side = (n, r, p) => ({n: numOf(cellAt(c, n)), reason: cellAt(c, r), prod: cellAt(c, p)});
+        cur.rows.push({r: row.r, chRaw: cellAt(c, h.ch), ch: chLabel(cellAt(c, h.ch)), ret: side(h.rn, h.rr, h.rp), exc: side(h.en, h.er, h.ep)});
+        cur.end = row.r;
+      }
+    }
+    // 사진 → 그 줄이 든 날짜 블록 (블록 앞 = 옛 양식 11/3~11/11 쪽)
+    const firstBlockR = blocks.length ? blocks[0].r : Infinity;
+    const photosOf = {};
+    m.imgs.forEach(im => {
+      let key = 'old', label = '옛 양식 기록';
+      if (im.row >= firstBlockR) {
+        let bk = blocks[0];
+        blocks.forEach(x => { if (x.r <= im.row) bk = x; });
+        key = bk.date; label = dlabel(bk.date) + ' 기록';
+      }
+      const ph = {src: im.src, id: im.id, brand: b.id, gid: m.gid, row: im.row, key, label: `${b.name} · ${label}`};
+      (photosOf[key] = photosOf[key] || []).push(ph);
+      D.photos.push(ph);
+    });
+    // 날짜 블록 → 슬롯 · 케이스
+    blocks.forEach(bk => {
+      if (!bk.h) return;
+      bk.rows.forEach(rw => {
+        D.slots.push({brand: b.id, date: bk.date, ch: rw.ch, ret: rw.ret.n, exc: rw.exc.n, filled: rw.ret.n != null || rw.exc.n != null, gid: m.gid, r: rw.r});
+        [['반품', rw.ret], ['교환', rw.exc]].forEach(([type, sd]) => {
+          if (!sd.n || sd.n < 0) return;
+          const g = pairUp(lines(sd.reason), lines(sd.prod));
+          splitN(g, sd.n);
+          g.forEach(x => {
+            // 사유 칸에 '상품>사유'로 적은 줄 ('cobaltiny bag (Teal blue)>주머니안쪽 구멍 생김') — 상품 부분은 떼어 상품 칸으로
+            let reason = x.reason, items = x.items;
+            const k = reason.indexOf('>');
+            if (k > 0 && reason[k - 1] !== '=' && reason[k - 1] !== '-') {
+              const left = reason.slice(0, k).trim(), lk = pkey(left);
+              if (/^[A-Za-z0-9]/.test(left) && lk && (!items.length || items.some(p => pmatch(pkey(p), lk)))) { if (!items.length) items = [left]; reason = reason.slice(k + 1).trim(); }
+            }
+            D.cases.push(mkCase({brand: b.id, date: bk.date, ch: rw.ch, chRaw: rw.chRaw, type, n: x.n, reason, items,
+              src: 'daily', gid: m.gid, r: rw.r, photos: photosOf[bk.date] || [], blockKey: bk.date}));
+          });
+        });
+      });
+    });
+    // 옛 줄 양식 (날짜 · 반품 수 · 교환 수 · 특이사항 · 처리) — 숫자 칸은 머리글이 밀려 있어도 숫자가 든 앞 두 칸 = 반품 · 교환
+    if (olds.length) {
+      const h = olds[0].h, lim = h.note > 0 ? h.note : 6, numCols = [];
+      for (let i = 1; i < lim; i++) if (olds.some(o => numOf(o.row.c[i]) != null && String(o.row.c[i]).trim() !== '')) numCols.push(i);
+      const [ri, ei] = numCols;
+      // 옛 줄과 날짜 블록에 같은 날이 둘 다 적혔으면(코페리 11/11) 날짜 블록만 센다 — 두 번 세지 않게
+      const blockDates = new Set(blocks.filter(x => x.h).map(x => x.date));
+      olds.forEach(o => {
+        const c = o.row.c, date = mdToYmd(c[0]);
+        if (!date || blockDates.has(date)) return;
+        const ret = ri != null && cellAt(c, ri) !== '' ? numOf(c[ri]) : null, exc = ei != null && cellAt(c, ei) !== '' ? numOf(c[ei]) : null;
+        const note = cellAt(c, h.note), act = cellAt(c, h.act);
+        D.slots.push({brand: b.id, date, ch: '', ret, exc, filled: ret != null || exc != null || !!note, gid: m.gid, r: o.row.r, old: 1});
+        let usedR = 0, usedE = 0;
+        const base = {brand: b.id, date, src: 'old', gid: m.gid, r: o.row.r, photos: photosOf.old || [], blockKey: 'old'};
+        if (note && !/^(없음|-|x|해당\s*없음)$/i.test(note)) {
+          const p = parseNote(note), type = typeOfAct(act, note);
+          D.cases.push(mkCase(Object.assign({}, base, {ch: p.ch, chRaw: p.ch, type, n: 1, reason: p.reason || note, items: p.prod ? [p.prod] : [], action: act, note})));
+          if (type === '반품') usedR = 1;
+          if (type === '교환') usedE = 1;
+        }
+        if (ret > usedR) D.cases.push(mkCase(Object.assign({}, base, {type: '반품', n: ret - usedR})));
+        if (exc > usedE) D.cases.push(mkCase(Object.assign({}, base, {type: '교환', n: exc - usedE})));
+      });
+    }
+    D.daily.push({brand: b, gid: m.gid, name: m.name, blocks: blocks.length, first: olds.length ? mdToYmd(olds[0].row.c[0]) : (blocks[0] ? blocks[0].date : '')});
+  }
+
+  function parseDefect(m, D) {
+    let h = null;
+    const out = {gid: m.gid, name: m.name, brand: m.brand, head: [], rows: []};
+    for (const row of m.rows) {
+      const c = row.c;
+      if (!h) {
+        if (c.some(x => /제품명|상품명/.test(norm(x))) && c.some(x => /증상|처리|사유/.test(norm(x)))) { h = c.map(x => String(x || '').trim()); out.head = h; }
+        continue;
+      }
+      if (!c.some(x => x)) continue;
+      const get = re => { const i = h.findIndex(x => re.test(norm(x))); return i >= 0 ? cellAt(c, i) : ''; };
+      const act = get(/^처리/), dm = act.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+      const rec = {kind: 'defect', id: ++CID, brand: m.brand ? m.brand.id : '', gid: m.gid, r: row.r, cells: h.map((_, i) => cellAt(c, i)),
+        ch: chLabel(get(/^(판매처|쇼핑몰|채널)/)), prod: get(/^(제품명|상품명)/), act, reason: get(/^(증상|사유|불량)/), order: get(/주문번호/),
+        date: dm ? mdToYmd(dm[0]) : '', photos: m.imgs.filter(im => im.row === row.r).map(im => ({src: im.src, id: im.id, label: `${m.name} · ${row.r + 1}줄`})), code: '', sure: null, case: null};
+      rec.code = guessCode(rec.reason, typeOfAct(act), rec.brand);
+      out.rows.push(rec);
+    }
+    // 시트 사진 중 줄에 안 붙은 것도 사진 모음에
+    m.imgs.forEach(im => D.photos.push({src: im.src, id: im.id, brand: m.brand ? m.brand.id : '', gid: m.gid, row: im.row, key: 'defect', label: `${m.name} · ${im.row + 1}줄`}));
+    D.defects.push(out);
+  }
+
+  function rebuild() {
+    CID = 0;
+    const D = {cases: [], slots: [], daily: [], defects: [], reports: [], photos: [], tabs: S.models.map(m => ({name: m.name, gid: m.gid}))};
+    S.models.forEach(m => {
+      const k = kindOf(m.name);
+      m.kind = k.kind; m.brand = k.brand;
+      if (k.kind === 'daily') parseDaily(m, D);
+      else if (k.kind === 'defect') parseDefect(m, D);
+      else {
+        D.reports.push(m);
+        m.imgs.forEach(im => D.photos.push({src: im.src, id: im.id, brand: k.brand ? k.brand.id : '', gid: m.gid, row: im.row, key: 'report', label: `${m.name} 탭`, big: 1}));
+      }
+    });
+    // 불량건 탭 → 데일리 일지보다 앞선 날짜 줄만 케이스로 (그 뒤는 데일리에 이미 있음)
+    const firstOf = {};
+    D.daily.forEach(x => { if (x.first) firstOf[x.brand.id] = x.first; });
+    D.defects.forEach(df => df.rows.forEach(rec => {
+      if (!rec.brand || !rec.date || (firstOf[rec.brand] && rec.date >= firstOf[rec.brand])) return;
+      const type = typeOfAct(rec.act);
+      rec.case = mkCase({brand: rec.brand, date: rec.date, ch: rec.ch, chRaw: rec.ch, type: type === '기타' ? '재발송' : type, n: 1, reason: rec.reason, items: rec.prod ? [rec.prod] : [],
+        action: rec.act, src: 'defect', gid: rec.gid, r: rec.r, photos: rec.photos, defect: rec});
+      D.cases.push(rec.case);
+    }));
+    // 오피스 VOC 기록(cs_issues)과 합치기 — 같은 건이면 코드 '확정', 시트에 없는 건은 그대로 한 줄
+    (S.office || []).forEach(it => {
+      const pk = pkey(it.product);
+      const hit = D.cases.find(x => x.brand === it.brand && x.date === it.issue_date && !x.sure &&
+        (x.items.some(p => pmatch(pkey(p), pk)) || pmatch(pkey(x.reason + ' ' + x.note), pk)));
+      if (hit) { hit.code = it.code || hit.code; hit.sure = it; if (hit.defect) { hit.defect.code = hit.code; hit.defect.sure = it; } return; }
+      let dfx = null;
+      D.defects.forEach(df => df.rows.forEach(rec => { if (!dfx && rec.brand === it.brand && rec.date === it.issue_date && pmatch(pkey(rec.prod), pk)) dfx = rec; }));
+      if (dfx) { dfx.code = it.code || dfx.code; dfx.sure = it; if (dfx.case) { dfx.case.code = dfx.code; dfx.case.sure = it; } return; }
+      D.cases.push(mkCase({brand: it.brand, date: it.issue_date, ch: it.channel || '', chRaw: it.channel || '', type: it.kind || '기타', n: 1, reason: it.detail || it.sub || '',
+        items: it.product ? [it.product + (it.option_text ? ` (${it.option_text})` : '')] : [], action: it.action || '', src: 'office', code: it.code || '', sure: it}));
+    });
+    D.cases.forEach(c => {
+      if (!c.sure) c.code = guessCode(c.reason || c.note, c.type, c.brand);
+      c.cat = c.code ? c.code[0] : '';
+      c.fault = faultOf(c.cat);
+    });
+    // 불량건 탭 줄 중 데일리 일지에도 있는 건(같은 상품 · 하루 안) — 일지 쪽 코드를 같이 써서 두 화면 코드가 같게
+    const dayGap = (a, b) => Math.abs((dObj(a) - dObj(b)) / 864e5);
+    D.defects.forEach(df => df.rows.forEach(rec => {
+      if (!rec.case && !rec.sure && rec.date) {
+        const pk = pkey(rec.prod);
+        const c = D.cases.find(x => x.brand === rec.brand && x.code && x.date && dayGap(x.date, rec.date) <= 1 && x.items.some(p => pmatch(pkey(p), pk)));
+        if (c) { rec.code = c.code; rec.sure = c.sure; rec.linked = c; }
+      }
+      rec.cat = rec.code ? rec.code[0] : ''; rec.fault = faultOf(rec.cat);
+    }));
+    D.cases.sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || bOrder(a.brand) - bOrder(b.brand) || a.r - b.r || a.id - b.id);
+    D.dates = [...new Set(D.slots.map(s => s.date))].sort().reverse();
+    S.D = D;
+  }
+
+  /* ── 불러오기 ── */
+  function setSt(k, extra) {
+    const st = $('st'), tx = $('stText');
+    st.className = 'st' + (k === 'load' ? ' is-load' : k === 'stored' ? ' is-stored' : k === 'err' ? ' is-err' : '');
+    const hm = t => { const d = new Date(t); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+    tx.textContent = k === 'load' ? '불러오는 중…' : k === 'stored' ? `저장본 ${hm(S.at)} · 새로 받는 중` : k === 'err' ? (extra || '못 읽음 — 다시') : `${hm(S.at)} 기준 · 3분마다`;
+    st.title = k === 'err' ? '구글시트를 읽지 못했어요 — 누르면 다시 읽어요' : '지금 다시 읽기';
+  }
+  function saveCache() {
+    try {
+      lsSet(LS_CACHE, JSON.stringify({v: 1, at: S.at, models: S.models.map(m => ({name: m.name, gid: m.gid, rows: m.rows.filter(r => r.c.length), imgs: m.imgs}))}));
+    } catch (e) { /* 너무 크면 저장 안 함 */ }
+  }
+  function loadCache() {
+    try {
+      const j = JSON.parse(lsGet(LS_CACHE) || 'null');
+      if (!j || j.v !== 1 || !Array.isArray(j.models)) return false;
+      S.models = j.models; S.at = j.at || 0; S.stored = true;
+      return true;
+    } catch (e) { return false; }
+  }
+  async function pool(items, n, fn) {
+    const out = new Array(items.length);
+    let i = 0;
+    await Promise.all(Array.from({length: Math.min(n, items.length)}, async () => { while (i < items.length) { const k = i++; out[k] = await fn(items[k]); } }));
+    return out;
+  }
+  /* ── 시트 주소 — 오피스 app_kv 'voc_sheet' → 이 브라우저 기억 (레포엔 안 적음, 위 설정 주석) ── */
+  function setSheet(id) { SHEET_ID = id || ''; BASE = SHEET_ID ? `https://docs.google.com/spreadsheets/d/${SHEET_ID}` : ''; }
+  const sbHead = extra => Object.assign({apikey: SH.sb.key, Authorization: `Bearer ${SH.sb.key}`}, extra || {});
+  async function resolveSheet() {
+    let id = '';
+    if (SH && SH.sb && SH.sb.url) {
+      try {
+        const r = await fetch(`${SH.sb.url}/rest/v1/app_kv?key=eq.${KV_SHEET}&select=value`, {headers: sbHead(), cache: 'no-cache'});
+        if (r.ok) { const j = await r.json(); id = (j[0] && j[0].value && j[0].value.id) || ''; }
+      } catch (e) { /* 못 읽으면 기억해 둔 값 */ }
+    }
+    if (!id) id = lsGet(LS_SHEET) || '';
+    if (/^[A-Za-z0-9_-]{20,}$/.test(id)) { lsSet(LS_SHEET, id); setSheet(id); S.sheetAt = Date.now(); }
+    return SHEET_ID;
+  }
+  async function saveSheet(text) {
+    const t = String(text || '').trim(), m = t.match(/\/d\/([A-Za-z0-9_-]{20,})/) || t.match(/^([A-Za-z0-9_-]{30,})$/);
+    if (!m) { toast('구글시트 링크가 아니에요 — 주소창의 docs.google.com/spreadsheets/d/… 를 통째로 넣어 주세요'); return false; }
+    const id = m[1];
+    if (SH && SH.sb && SH.sb.url) {
+      try {
+        const r = await fetch(`${SH.sb.url}/rest/v1/app_kv?on_conflict=key`, {method: 'POST', headers: sbHead({'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal'}),
+          body: JSON.stringify({key: KV_SHEET, value: {id, at: new Date().toISOString()}, updated_by: 'VOC 전산'})});
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+      } catch (e) { toast('오피스에 저장하지 못해 이 브라우저에만 기억해요'); }
+    }
+    lsSet(LS_SHEET, id); setSheet(id); S.sheetAt = Date.now(); S.noSheet = false;
+    S.models = []; S.stored = false; lsSet(LS_CACHE, '');
+    if (S.busy) await S.busy.catch(() => {});
+    loadAll();
+    return true;
+  }
+  function loadAll() {
+    if (S.busy) return S.busy;
+    setSt(S.stored && S.models.length ? 'stored' : 'load');
+    S.busy = (async () => {
+      try {
+        // 시트 주소는 열 때 한 번 오피스에서 다시 확인 (바뀌었을 수 있음) — 그 뒤엔 30분마다
+        if (!SHEET_ID || !S.sheetAt || Date.now() - S.sheetAt > 30 * 60e3) {
+          const before = SHEET_ID;
+          await resolveSheet();
+          if (before && SHEET_ID !== before) { S.models = []; lsSet(LS_CACHE, ''); }
+        }
+        if (!SHEET_ID) { S.noSheet = true; throw new Error('no_sheet'); }
+        S.noSheet = false;
+        const tabs = await loadTabList();
+        const models = await pool(tabs, CONC, async t => {
+          try { return Object.assign({name: t.name, gid: t.gid}, parseSheet(await getText(`${BASE}/htmlview/sheet?headers=true&gid=${t.gid}`), t.gid)); }
+          catch (e) { const old = S.models.find(x => x.gid === t.gid); if (old) return old; throw e; }
+        });
+        S.models = models; S.at = Date.now(); S.stored = false; S.err = '';
+        saveCache();
+        setSt('ok');
+      } catch (e) {
+        S.err = (e && e.message) || String(e);
+        setSt('err', S.err === 'no_sheet' ? '시트 링크 필요' : S.models.length ? '새로 못 읽음 — 다시' : '못 읽음 — 다시');
+      } finally { S.busy = null; }
+      rebuild();
+      render(true);
+    })();
+    return S.busy;
+  }
+  function loadOffice(force) {
+    if (!SH || !SH.sb || !SH.sb.url) return;
+    if (S.officeBusy || (!force && S.office && Date.now() - S.officeAt < OFFICE_MS)) return;
+    S.officeBusy = (async () => {
+      try {
+        const sel = 'id,issue_date,channel,brand,kind,product,option_text,category,code,sub,cause,detail,action';
+        const r = await fetch(`${SH.sb.url}/rest/v1/cs_issues?select=${sel}&deleted_at=is.null&order=id.asc&limit=1000`,
+          {headers: {apikey: SH.sb.key, Authorization: `Bearer ${SH.sb.key}`}, cache: 'no-cache'});
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        S.office = (await r.json()).filter(x => !/^\[테스트\]/.test(x.product || ''));
+        S.officeAt = Date.now();
+        if (S.models.length) { rebuild(); render(true); }
+      } catch (e) { console.warn('오피스 VOC 기록', e); }
+      finally { S.officeBusy = null; }
+    })();
+  }
+
+  /* ── 보기 상태 ── */
+  function savePrefs() { lsSet(LS_VIEW, JSON.stringify({view: V.view, period: V.period, zero: V.zero, part: V.part})); }
+  function loadPrefs() {
+    try {
+      const p = JSON.parse(lsGet(LS_VIEW) || '{}');
+      if (typeof p.view === 'string') V.view = p.view;
+      if (PERIODS.some(x => x.k === p.period)) V.period = p.period;
+      V.zero = !!p.zero;
+      if (['codes', 'sop', 'sev'].includes(p.part)) V.part = p.part;
+    } catch (e) { /* noop */ }
+  }
+  function go(view, o) {
+    o = o || {};
+    if (view !== V.view) { V.sort = null; grid.scrollTop = 0; grid.scrollLeft = 0; }
+    V.view = view;
+    V.type = o.type || ''; V.cat = o.cat || ''; V.date = o.date || '';
+    if (o.q != null) { V.q = o.q; qIn.value = o.q; }
+    if (o.period) V.period = o.period;
+    closeDetail();
+    savePrefs();
+    app.classList.remove('nav-open'); $('scrim').hidden = true;
+    render();
+  }
+  const viewBrand = () => { const m = V.view.match(/^log:(.+)$/); return m ? m[1] : ''; };
+
+  /* ── 그리기 ── */
+  function render(keepScroll) {
+    P = period();
+    if (!S.D) { renderNav(); return; }
+    const t = grid.scrollTop, l = grid.scrollLeft, same = S.lastView === V.view;
+    // 없어진 보기(탭이 지워짐)면 대시보드로
+    if (/^(defect|tab):/.test(V.view) && !S.D.tabs.some(x => x.gid === V.view.split(':')[1])) V.view = 'dash';
+    renderNav();
+    $('alert').hidden = true; $('chips').hidden = true; $('kpis').innerHTML = ''; $('tools').innerHTML = ''; $('fpills').innerHTML = ''; $('tDate').hidden = true;
+    grid.classList.remove('bd-mode');
+    $('qn').textContent = '';
+    S.list = [];
+    if (V.view === 'dash') renderDash();
+    else if (V.view === 'log' || /^log:/.test(V.view)) renderLog();
+    else if (/^defect:/.test(V.view)) renderDefect();
+    else if (/^tab:/.test(V.view)) renderReport();
+    else if (V.view === 'codes') renderCodes();
+    else if (V.view === 'photos') renderPhotos();
+    else { V.view = 'dash'; renderDash(); }
+    if (keepScroll && same) { grid.scrollTop = t; grid.scrollLeft = l; }
+    S.lastView = V.view;
+    // 상세 창 — 같은 줄이 아직 있으면 다시 그림
+    if (!$('detail').hidden && S.selObj) {
+      const i = S.list.findIndex(x => sameObj(x, S.selObj));
+      if (i >= 0) openDetail(i, true); else if (S.selObj.kind !== 'case' && S.selObj.kind !== 'defect' && S.selObj.kind !== 'code') closeDetail();
+    }
+    $('btnSheet').href = sheetUrl(curGid());
+    $('sideSheet').href = BASE ? BASE + '/edit' : '#';
+    renderMsg();
+  }
+  function renderMsg() {
+    const ask = S.noSheet || S.askSheet, err = !ask && S.err && !S.models.length;
+    const box = $('msg');
+    box.hidden = !ask && !err;
+    if (ask) {
+      if (box.querySelector('#sheetIn')) return;   // 입력 중이면 그대로
+      box.innerHTML = `<b>VOC 구글시트 링크를 넣어 주세요</b>CS팀 구글시트 '비드유니버스 VOC'를 열고 주소창의 링크를 통째로 붙여 넣으면 오피스에 저장돼 모든 직원 화면에 적용돼요. 시트 공유는 '링크가 있는 모든 사용자 · 뷰어'여야 읽혀요.` +
+        `<input id="sheetIn" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off" spellcheck="false"><div class="msg-btns">${S.askSheet && SHEET_ID ? '<button type="button" class="ghost" id="sheetCancel">취소</button>' : ''}<button type="button" id="sheetSave">저장하고 읽기</button></div>`;
+      setTimeout(() => { const i = $('sheetIn'); if (i) i.focus(); }, 30);
+      return;
+    }
+    if (err) box.innerHTML = `<b>구글시트를 읽지 못했어요</b>${S.err === 'login' ? "시트 공유가 '링크가 있는 모든 사용자 · 뷰어'인지 확인해 주세요." : '인터넷 연결을 확인하고 다시 읽어 주세요.'}<br><button type="button" id="msgRetry">다시 읽기</button>`;
+  }
+  const sameObj = (a, b) => a && b && a.kind === b.kind && (a.kind === 'case' ? a.gid === b.gid && a.r === b.r && a.type === b.type && a.reason === b.reason && a.date === b.date && a.src === b.src
+    : a.kind === 'defect' ? a.gid === b.gid && a.r === b.r : a.kind === 'code' ? a.code === b.code : a.kind === 'slot' ? a.gid === b.gid && a.r === b.r : false);
+  function curGid() {
+    const D = S.D;
+    if (!D) return '';
+    const b = viewBrand();
+    if (b) { const d = D.daily.find(x => x.brand.id === b); return d ? d.gid : ''; }
+    const m = V.view.match(/^(defect|tab):(\d+)$/);
+    return m ? m[2] : '';
+  }
+  const sheetUrl = (gid, r) => !BASE ? '#' : `${BASE}/edit` + (gid !== '' && gid != null ? `#gid=${gid}` + (r != null && r >= 0 ? `&range=A${r + 1}` : '') : '');
+
+  function renderNav() {
+    const D = S.D, h = [];
+    const item = (key, label, o) => {
+      o = o || {};
+      const on = V.view === key;
+      h.push(`<button type="button" class="nav-item${on ? ' on' : ''}" data-v="${esc(key)}">${o.color ? `<i class="dot" style="background:${o.color}"></i>` : `<span class="ic">${o.ic || '·'}</span>`}<span class="nm">${esc(label)}</span>${o.n != null && o.n !== '' ? `<span class="nd${o.warn ? ' warn' : ''}">${esc(o.n)}</span>` : ''}</button>`);
+    };
+    const sec = t => h.push(`<div class="nav-sec">${esc(t)}</div>`);
+    sec('개요');
+    item('dash', '대시보드', {ic: '📊'});
+    if (D) {
+      const cnt = b => D.cases.filter(c => inP(c.date) && (!b || c.brand === b) && (c.type === '반품' || c.type === '교환')).reduce((a, c) => a + c.n, 0);
+      const t = today();
+      sec('데일리 일지 · 반품 · 교환');
+      item('log', '전체 브랜드', {ic: '📋', n: cnt('')});
+      D.daily.forEach(x => {
+        const todaySlots = D.slots.filter(s => s.brand === x.brand.id && s.date === t && !s.old);
+        const miss = todaySlots.length && todaySlots.some(s => !s.filled);
+        item('log:' + x.brand.id, x.brand.name, {color: x.brand.color, n: miss ? '미입력' : cnt(x.brand.id), warn: miss});
+      });
+      if (D.defects.length) { sec('불량 · 재발송'); D.defects.forEach(df => item('defect:' + df.gid, df.name.replace(/_/g, ' '), {ic: '🧷', n: df.rows.length})); }
+      if (D.reports.length) { sec('반품 분석 (시트)'); D.reports.forEach(m => item('tab:' + m.gid, m.brand ? `${m.brand.name} 반품 분석` : m.name, m.brand ? {color: m.brand.color} : {ic: '📈'})); }
+      sec('VOC 기준 · 자료');
+      item('codes', 'VOC 코드표', {ic: '📖', n: CODES.length || ''});
+      if (D.photos.length) item('photos', '시트 사진', {ic: '📷', n: D.photos.length});
+    }
+    $('nav').innerHTML = h.join('');
+  }
+
+  function head(title, o) {
+    o = o || {};
+    $('title').textContent = title;
+    if (o.date) { $('tDate').hidden = false; $('tDate').textContent = o.date; }
+    const tools = [];
+    if (o.period) tools.push(`<div class="parts" role="group" aria-label="기간">${PERIODS.map(p => `<button type="button" data-period="${p.k}" class="${V.period === p.k ? 'on' : ''}">${p.l}</button>`).join('')}</div>`);
+    if (o.tools) tools.push(o.tools);
+    $('tools').innerHTML = tools.join('');
+    const fp = [];
+    if (V.date && o.filters) fp.push(`<span class="fpill">${esc(dlabel(V.date))}<button type="button" data-clear="date" aria-label="날짜 풀기">✕</button></span>`);
+    $('fpills').innerHTML = fp.join(' ');
+  }
+  function kpis(list) {
+    $('kpis').innerHTML = list.map(k => `<div class="kpi${k.cls ? ' ' + k.cls : ''}${k.go ? ' click' : ''}${k.on ? ' on' : ''}"${k.go ? ` data-go='${esc(JSON.stringify(k.go))}' role="button" tabindex="0"` : ''} title="${esc(k.tip || '')}"><b>${k.v}${k.u ? `<small>${k.u}</small>` : ''}</b><span>${esc(k.l)}</span></div>`).join('');
+  }
+  function alertBox(html, info) {
+    const a = $('alert');
+    a.hidden = !html;
+    a.className = 'alert' + (info ? ' info' : '');
+    if (html) a.innerHTML = (info ? ICON_INFO : ICON_WARN) + `<div>${html}</div>`;
+  }
+
+  /* ── 공통 조각 ── */
+  const bName = id => { const b = brandById(id); return b ? b.name : (id || '—'); };
+  const bDot = id => { const b = brandById(id); return `<i class="bdot" style="background:${b ? b.color : '#cbd5e1'}"></i>`; };
+  const typeCls = t => t === '반품' ? 'ret' : t === '교환' ? 'exc' : t === '0건' ? 'zero' : t === '미입력' ? 'blank' : 'etc';
+  const typePill = t => `<span class="tp ${typeCls(t)}">${esc(t)}</span>`;
+  function catTag(cat) {
+    if (!cat) return '<span class="none">사유 없음</span>';
+    const c = CAT[cat] || {l: cat, c: '#94a3b8'};
+    return `<span class="ctag" style="background:${c.c}1a;color:${c.c}">${esc(c.l)}</span>`;
+  }
+  function codeHtml(code, sure) {
+    if (!code) return '<span class="none">—</span>';
+    const c = CODE[code];
+    return `<span class="code${sure ? '' : ' est'}">${esc(code)}</span>${c ? `<span class="code-n">${esc(c.name)}</span>` : ''}`;
+  }
+  const codeText = code => { const c = CODE[code]; return code ? code + (c ? ' ' + c.name : '') : ''; };
+  const sumN = (arr, f) => arr.reduce((a, c) => a + (!f || f(c) ? c.n : 0), 0);
+  function terms() { return V.q.trim().toLowerCase().split(/\s+/).filter(Boolean); }
+  function hl(s) {
+    const t = terms();
+    let h = esc(s);
+    if (!t.length) return h;
+    const re = new RegExp('(' + t.map(x => esc(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
+    return h.replace(re, '<mark>$1</mark>');
+  }
+  const caseText = c => [c.date, md(c.date), bName(c.brand), c.ch, c.chRaw, c.type, c.reason, c.note, c.items.join(' '), c.action, c.code, codeText(c.code), CAT[c.cat] ? CAT[c.cat].l : ''].join(' ').toLowerCase();
+
+  /* ── 칸 너비 자동 (erp/ 처럼 — 들어간 글자 길이로, 화면 폭에 맞춤) ── */
+  let CTX = null;
+  const tw = (s, font) => { if (!CTX) CTX = document.createElement('canvas').getContext('2d'); CTX.font = font; return CTX.measureText(String(s)).width; };
+  function widths(cols, cells) {
+    const ws = cols.map((c, j) => {
+      const head = Math.min(tw(c.l, F_HEAD), c.max || 150) + 22;
+      // 빈 칸은 빼고 잰다 — 드문 칸(처리 · 액션)이 머리글 폭으로 줄어 글이 다 잘리지 않게
+      const vals = cells.slice(0, 800).filter(r => String(r[j].t || '') !== '').map(r => { const x = r[j]; return Math.max(0, ...String(x.t || '').split('\n').map(s => tw(s, x.f || F_CELL))) + (x.pad || 0); }).sort((a, b) => a - b);
+      const p = vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.9))] : 0;
+      let w = Math.max(head, p + 18, c.min || 44);
+      if (c.max) w = Math.min(w, c.max);
+      return Math.ceil(w);
+    });
+    const avail = grid.clientWidth - 2;
+    const tot = ws.reduce((a, b) => a + b, 0);
+    if (avail > 0 && tot < avail) {
+      const flex = cols.map((c, j) => c.flex ? j : -1).filter(j => j >= 0);
+      const add = Math.floor((avail - tot) / (flex.length || 1));
+      if (flex.length) flex.forEach(j => { ws[j] += add; }); else ws[ws.length - 1] += avail - tot;
+    } else if (avail > 0 && tot > avail) {
+      // 넘치면 글자 칸부터 줄인다 (두 줄로 접힘) — 낱말 하나보다는 좁히지 않음
+      let over = tot - avail;
+      cols.forEach((c, j) => { if (over <= 0 || !c.wrap) return; const floor = Math.max(c.min || 120, 120); const cut = Math.min(over, Math.max(0, ws[j] - floor)); ws[j] -= cut; over -= cut; });
+    }
+    return ws;
+  }
+  // cols: [{k, l, get(row) → {t, h, s, f, pad}, min, max, flex, wrap, num}] — rows 는 S.list 에 넣고 줄 번호로 상세 창
+  function drawTable(cols, rows, o) {
+    o = o || {};
+    S.list = rows;
+    const cells = rows.map(r => cols.map(c => c.get(r)));
+    if (V.sort) {
+      const j = cols.findIndex(c => c.k === V.sort.k);
+      if (j >= 0) {
+        const idx = rows.map((_, i) => i);
+        idx.sort((a, b) => {
+          const x = cells[a][j], y = cells[b][j];
+          const xa = x.s != null ? x.s : x.t, ya = y.s != null ? y.s : y.t;
+          const r = typeof xa === 'number' && typeof ya === 'number' ? xa - ya : String(xa).localeCompare(String(ya), 'ko');
+          return V.sort.dir * r || a - b;
+        });
+        S.list = idx.map(i => rows[i]);
+        const c2 = idx.map(i => cells[i]);
+        cells.length = 0; cells.push(...c2);
+      }
+    }
+    const ws = widths(cols, cells), total = ws.reduce((a, b) => a + b, 0);
+    let h = `<table class="tbl" style="width:${total}px"><colgroup>${ws.map(w => `<col style="width:${w}px">`).join('')}</colgroup><thead><tr>`;
+    h += cols.map(c => `<th data-sort="${c.k}" title="누르면 정렬">${esc(c.l)}${V.sort && V.sort.k === c.k ? `<span class="ar">${V.sort.dir > 0 ? '▲' : '▼'}</span>` : ''}</th>`).join('');
+    h += '</tr></thead><tbody>';
+    if (!S.list.length) h += `<tr class="empty"><td colspan="${cols.length}">${esc(o.empty || '해당하는 줄이 없어요')}</td></tr>`;
+    S.list.forEach((r, i) => {
+      const cls = [o.rowCls ? o.rowCls(r) : '', S.selObj && sameObj(r, S.selObj) ? 'on' : ''].filter(Boolean).join(' ');
+      h += `<tr data-i="${i}"${cls ? ` class="${cls}"` : ''}>` + cells[i].map((x, j) => {
+        const c = cols[j], tt = String(x.t || '');
+        const inner = x.h != null ? x.h : hl(tt);
+        return `<td${c.num ? ' class="r"' : ''}${tt && (c.wrap || tt.length > 18) ? ` title="${esc(tt)}"` : ''}>${c.wrap ? `<div class="cl">${inner}</div>` : inner}</td>`;
+      }).join('') + '</tr>';
+    });
+    h += '</tbody>';
+    if (o.foot && S.list.length) h += `<tfoot><tr>${cols.map((c, j) => `<td${c.num ? ' class="r"' : ''}>${j === 0 ? '<span class="ft">합계</span>' : (o.foot(c, S.list) || '')}</td>`).join('')}</tr></tfoot>`;
+    grid.innerHTML = h + '</table>';
+  }
+
+  /* ── 📊 대시보드 ── */
+  function renderDash() {
+    const D = S.D, t = today();
+    const cs = D.cases.filter(c => inP(c.date));
+    const ret = sumN(cs, c => c.type === '반품'), exc = sumN(cs, c => c.type === '교환'), etc = sumN(cs, c => c.type !== '반품' && c.type !== '교환');
+    const all = ret + exc + etc, co = sumN(cs, c => c.fault === 'co'), q = sumN(cs, c => c.cat === 'Q'), nocat = sumN(cs, c => !c.cat);
+    // 오늘 입력 현황 — 오늘 날짜 블록이 있는 브랜드 중 칸을 다 채운 곳
+    const tb = D.daily.map(x => {
+      const sl = D.slots.filter(s => s.brand === x.brand.id && s.date === t && !s.old);
+      return {b: x.brand, has: sl.length > 0, done: sl.filter(s => s.filled).length, tot: sl.length};
+    });
+    const withBlock = tb.filter(x => x.has), doneB = withBlock.filter(x => x.done === x.tot).length;
+    head('대시보드', {date: P.l, period: true});
+    kpis([
+      {v: fmt(ret), u: '건', l: '반품', cls: 'red', go: {view: 'log', type: '반품'}},
+      {v: fmt(exc), u: '건', l: '교환', cls: 'blue', go: {view: 'log', type: '교환'}},
+      {v: fmt(co), u: '건', l: `회사 사유 · ${pct(co, all)}`, cls: co ? 'amber' : '', go: {view: 'log', cat: 'co'}, tip: '불량 · 사양 · 상품 정보 · 배송 (VOC Q·S·I·D)'},
+      {v: fmt(q), u: '건', l: '제품 불량', cls: q ? 'red' : '', go: {view: 'log', cat: 'Q'}},
+      {v: fmt(nocat), u: '건', l: '사유 안 적음', go: {view: 'log', cat: '-'}, tip: '숫자만 있고 사유 칸이 빈 건'},
+      {v: withBlock.length ? `${doneB}/${withBlock.length}` : '—', l: `오늘 입력 완료 (${md(t)})`, cls: withBlock.length && doneB < withBlock.length ? 'amber' : ''},
+    ]);
+    const miss = tb.filter(x => x.has && x.done < x.tot);
+    const noBlock = tb.filter(x => !x.has);
+    if (miss.length) alertBox(`오늘(${dlabel(t)}) 아직 숫자를 안 적은 쇼핑몰이 있어요 — ` + miss.map(x => `<b>${esc(x.b.name)}</b> ${x.tot - x.done}곳`).join(' · ') + (noBlock.length ? ` · 오늘 칸이 아직 없는 브랜드: ${noBlock.map(x => esc(x.b.name)).join(' · ')}` : ''));
+    grid.classList.add('bd-mode');
+    const card = (title, sub, body, o) => `<section class="card${o && o.wide ? ' wide' : ''}"><div class="card-h"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}${o && o.more ? o.more : ''}</div>${body}</section>`;
+    let h = '<div class="board">';
+
+    // 1) 브랜드별
+    let bt = '<div class="card-b"><table class="mt"><thead><tr><th>브랜드</th><th>반품</th><th>교환</th><th>기타</th><th>회사 사유</th><th>불량</th><th>많은 사유</th><th>오늘 입력</th></tr></thead><tbody>';
+    D.daily.forEach(x => {
+      const a = cs.filter(c => c.brand === x.brand.id);
+      const r = sumN(a, c => c.type === '반품'), e = sumN(a, c => c.type === '교환'), o2 = sumN(a, c => c.type !== '반품' && c.type !== '교환');
+      const cc = sumN(a, c => c.fault === 'co'), qq = sumN(a, c => c.cat === 'Q');
+      const byCat = {};
+      a.forEach(c => { if (c.cat) byCat[c.cat] = (byCat[c.cat] || 0) + c.n; });
+      const top = Object.entries(byCat).sort((m, n) => n[1] - m[1])[0];
+      const st = tb.find(z => z.b.id === x.brand.id);
+      const stH = !st.has ? '<span class="sub">오늘 칸 없음</span>' : st.done === st.tot ? '<span class="ok">✓ 완료</span>' : `<span class="na">미입력 ${st.tot - st.done}곳</span>`;
+      bt += `<tr class="click" data-go='${esc(JSON.stringify({view: 'log:' + x.brand.id}))}'><td class="b">${bDot(x.brand.id)}${esc(x.brand.name)}</td><td>${r ? `<span class="rv">${r}</span>` : '<span class="z">0</span>'}</td><td>${e ? `<span class="ev">${e}</span>` : '<span class="z">0</span>'}</td><td>${o2 || '<span class="z">0</span>'}</td><td>${cc ? `<b>${cc}</b> <span class="sub">${pct(cc, r + e + o2)}</span>` : '<span class="z">0</span>'}</td><td>${qq ? `<span class="rv">${qq}</span>` : '<span class="z">0</span>'}</td><td>${top ? catTag(top[0]) + ` <span class="sub">${top[1]}</span>` : '<span class="z">—</span>'}</td><td>${stH}</td></tr>`;
+    });
+    bt += '</tbody></table></div>';
+    h += card('브랜드별', '누르면 그 브랜드 일지', bt, {wide: true});
+
+    // 2) 날짜 × 브랜드
+    const dates = D.dates.filter(d => inP(d)).slice(0, 21);
+    let mx = '<div class="card-b"><table class="mt mx"><thead><tr><th class="sticky">날짜</th>' + D.daily.map(x => `<th>${bDot(x.brand.id)}${esc(x.brand.name)}</th>`).join('') + '<th>합계</th></tr></thead><tbody>';
+    dates.forEach(d => {
+      let tr = 0, te = 0;
+      mx += `<tr><td class="sticky b">${esc(dlabel(d))}</td>` + D.daily.map(x => {
+        const sl = D.slots.filter(s => s.brand === x.brand.id && s.date === d);
+        if (!sl.length) return '<td><span class="z">·</span></td>';
+        const filled = sl.filter(s => s.filled);
+        const a = cs.filter(c => c.brand === x.brand.id && c.date === d);
+        const r = sumN(a, c => c.type === '반품'), e = sumN(a, c => c.type === '교환');
+        tr += r; te += e;
+        const go = esc(JSON.stringify({view: 'log:' + x.brand.id, date: d}));
+        if (!filled.length) return `<td class="click" data-go='${go}'><span class="na">미입력</span></td>`;
+        const part = filled.length < sl.length ? ` <span class="na" title="${sl.length - filled.length}곳 미입력">…</span>` : '';
+        if (!r && !e) return `<td class="click" data-go='${go}'><span class="z">0</span>${part}</td>`;
+        return `<td class="click" data-go='${go}'>${r ? `<span class="rv">반 ${r}</span>` : ''}${r && e ? ' · ' : ''}${e ? `<span class="ev">교 ${e}</span>` : ''}${part}</td>`;
+      }).join('') + `<td class="b">${tr + te ? `${tr ? `<span class="rv">${tr}</span>` : '0'} · ${te ? `<span class="ev">${te}</span>` : '0'}` : '<span class="z">0</span>'}</td></tr>`;
+    });
+    if (!dates.length) mx += `<tr><td colspan="${D.daily.length + 2}" class="sub">이 기간에 적힌 날이 없어요</td></tr>`;
+    mx += '</tbody></table></div>';
+    h += card('날짜별 · 브랜드', '반 = 반품 · 교 = 교환 · 칸을 누르면 그날 일지', mx, {wide: true});
+
+    // 3) 사유 분류 (VOC 대분류)
+    const byCat = {};
+    cs.forEach(c => { const k = c.cat || '-'; byCat[k] = (byCat[k] || 0) + c.n; });
+    const catRows = CAT_ORDER.filter(k => byCat[k]).map(k => [k, byCat[k]]).concat(byCat['-'] ? [['-', byCat['-']]] : []);
+    const maxC = Math.max(1, ...catRows.map(x => x[1]));
+    const bars = catRows.length ? '<div class="bars">' + catRows.map(([k, n]) => {
+      const c = k === '-' ? {l: '사유 안 적음', c: '#cbd5e1'} : CAT[k];
+      return `<button type="button" class="bar-row" data-go='${esc(JSON.stringify({view: 'log', cat: k}))}'><span class="bar-l"><i style="background:${c.c}"></i>${esc(c.l)}${k !== '-' ? ` <span class="sub" style="color:var(--text-4)">${k}</span>` : ''}</span><span class="bar-t"><span class="bar-f" style="display:block;width:${Math.round(n / maxC * 100)}%;background:${c.c}"></span></span><span class="bar-v">${n}건<small>${pct(n, all)}</small></span></button>`;
+    }).join('') + '</div><div class="legend"><span>사유 글로 VOC 코드를 추정해 묶었어요 · 오피스 VOC 기록과 같은 건은 확정 코드</span></div>' : '<div class="card-e">이 기간 기록이 없어요</div>';
+    h += card('사유 분류', 'VOC 대분류 · 누르면 그 사유만', bars);
+
+    // 4) 많이 나온 상품
+    const prods = productRank(cs).slice(0, 10);
+    let pt = prods.length ? '<div class="card-b"><table class="mt"><thead><tr><th>상품</th><th>건수</th><th>반품 · 교환</th><th>사유</th></tr></thead><tbody>' + prods.map(p => {
+      const cats = Object.entries(p.cats).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => catTag(k === '-' ? '' : k)).join(' ');
+      return `<tr class="click" data-go='${esc(JSON.stringify({view: 'log:' + p.brand, q: p.name}))}'><td class="wrap">${bDot(p.brand)}<b>${esc(p.name)}</b>${p.co >= 2 ? ' <span class="na" title="회사 사유 2건 이상">⚠ 회사 사유 ' + p.co + '</span>' : ''}</td><td class="b">${p.n}</td><td>${p.r ? `<span class="rv">${p.r}</span>` : '<span class="z">0</span>'} · ${p.e ? `<span class="ev">${p.e}</span>` : '<span class="z">0</span>'}</td><td>${cats}</td></tr>`;
+    }).join('') + '</tbody></table></div>' : '<div class="card-e">상품이 적힌 기록이 없어요</div>';
+    h += card('많이 나온 상품', '상품 칸 기준 · 색은 묶음', pt);
+
+    // 5) 최근 회사 사유
+    const recent = cs.filter(c => c.fault === 'co').slice(0, 10);
+    let rt = recent.length ? '<div class="card-b"><table class="mt"><thead><tr><th>날짜</th><th>상품</th><th>사유</th><th>VOC</th></tr></thead><tbody>' + recent.map((c, i) =>
+      `<tr class="click" data-case="${c.id}"><td>${esc(md(c.date))}</td><td class="wrap">${bDot(c.brand)}${esc(c.items.join(' · ') || '—')}</td><td class="wrap">${esc(c.reason || '—')}</td><td>${codeHtml(c.code, !!c.sure)}</td></tr>`).join('') + '</tbody></table></div>' : '<div class="card-e">이 기간 회사 사유 건이 없어요</div>';
+    h += card('최근 회사 사유', '불량 · 사양 · 정보 · 배송 · 누르면 상세', rt, {more: `<button type="button" class="more" data-go='${esc(JSON.stringify({view: 'log', cat: 'co'}))}'>전체 보기 →</button>`});
+
+    // 6) 쇼핑몰별
+    const byCh = {};
+    cs.forEach(c => { const k = c.ch || '(쇼핑몰 미기재)'; const o = byCh[k] || (byCh[k] = {r: 0, e: 0, co: 0, n: 0}); o.n += c.n; if (c.type === '반품') o.r += c.n; if (c.type === '교환') o.e += c.n; if (c.fault === 'co') o.co += c.n; });
+    const chRows = Object.entries(byCh).sort((a, b) => b[1].n - a[1].n);
+    let ct = chRows.length ? '<div class="card-b"><table class="mt"><thead><tr><th>쇼핑몰</th><th>반품</th><th>교환</th><th>회사 사유</th></tr></thead><tbody>' + chRows.map(([k, o]) =>
+      `<tr class="click" data-go='${esc(JSON.stringify({view: 'log', q: k.startsWith('(') ? '' : k}))}'><td class="b">${esc(k)}</td><td>${o.r ? `<span class="rv">${o.r}</span>` : '<span class="z">0</span>'}</td><td>${o.e ? `<span class="ev">${o.e}</span>` : '<span class="z">0</span>'}</td><td>${o.co ? `${o.co} <span class="sub">${pct(o.co, o.n)}</span>` : '<span class="z">0</span>'}</td></tr>`).join('') + '</tbody></table></div>' : '<div class="card-e">이 기간 기록이 없어요</div>';
+    h += card('쇼핑몰별', '', ct);
+
+    h += '</div>';
+    grid.innerHTML = h;
+    S.list = recent;
+  }
+  function productRank(cs) {
+    const g = {};
+    cs.forEach(c => {
+      const its = c.items.length ? c.items : [];
+      its.forEach(it => {
+        const k = c.brand + '|' + pkey(it);
+        if (!pkey(it)) return;
+        const w = its.length === 1 ? c.n : 1;
+        const o = g[k] || (g[k] = {brand: c.brand, key: pkey(it), names: {}, n: 0, r: 0, e: 0, co: 0, cats: {}});
+        const base = it.replace(/\s*\(.*?\)\s*/g, ' ').replace(/_.*$/, '').trim() || it;
+        o.names[base] = (o.names[base] || 0) + 1;
+        o.n += w; if (c.type === '반품') o.r += w; if (c.type === '교환') o.e += w; if (c.fault === 'co') o.co += w;
+        const ck = c.cat || '-'; o.cats[ck] = (o.cats[ck] || 0) + w;
+      });
+    });
+    return Object.values(g).map(o => Object.assign(o, {name: Object.entries(o.names).sort((a, b) => b[1] - a[1])[0][0]})).sort((a, b) => b.n - a.n || b.co - a.co);
+  }
+
+  /* ── 📋 데일리 일지 (전체 · 브랜드) ── */
+  function logRows() {
+    const D = S.D, b = viewBrand(), t = terms();
+    let rows = D.cases.filter(c => (V.date ? c.date === V.date : inP(c.date)) && (!b || c.brand === b));
+    if (V.zero) {
+      const t0 = D.slots.filter(s => !s.old && (V.date ? s.date === V.date : inP(s.date)) && (!b || s.brand === b) && (!s.filled || (!s.ret && !s.exc)))
+        .map(s => ({kind: 'slot', id: 's' + s.gid + ':' + s.r, brand: s.brand, date: s.date, ch: s.ch, chRaw: s.ch, type: s.filled ? '0건' : '미입력', n: 0, reason: '', items: [], action: '', note: '', code: '', cat: '', fault: '', gid: s.gid, r: s.r, photos: [], src: 'slot'}));
+      rows = rows.concat(t0).sort((a, b2) => (b2.date > a.date ? 1 : b2.date < a.date ? -1 : 0) || bOrder(a.brand) - bOrder(b2.brand) || a.r - b2.r);
+    }
+    const base = rows;
+    if (t.length) rows = rows.filter(c => { const s = caseText(c); return t.every(x => s.includes(x)); });
+    return {base, rows};
+  }
+  function catOk(c) { return !V.cat || (V.cat === 'co' ? c.fault === 'co' : V.cat === '-' ? !c.cat && c.kind === 'case' : c.cat === V.cat); }
+  function typeOk(c) { return !V.type || (V.type === '기타' ? c.type !== '반품' && c.type !== '교환' : c.type === V.type); }
+  function renderLog() {
+    const b = viewBrand(), br = brandById(b);
+    const {base, rows: r0} = logRows();
+    const rows = r0.filter(c => typeOk(c) && catOk(c));
+    const cs = r0.filter(c => c.kind === 'case');
+    head(br ? `데일리 일지 · ${br.name}` : '데일리 일지 · 전체 브랜드', {date: V.date ? '' : P.l, period: !V.date, filters: true,
+      tools: `<button type="button" class="etog${V.zero ? ' on' : ''}" id="zeroTog" title="0건으로 적은 칸 · 아직 숫자를 안 적은 칸도 줄로">${V.zero ? '✓ ' : ''}0건 · 미입력 칸도 보기</button>`});
+    const ret = sumN(cs, c => c.type === '반품'), exc = sumN(cs, c => c.type === '교환'), etc = sumN(cs, c => c.type !== '반품' && c.type !== '교환');
+    const co = sumN(cs, c => c.fault === 'co'), q = sumN(cs, c => c.cat === 'Q'), nocat = sumN(cs, c => !c.cat);
+    kpis([
+      {v: fmt(ret), u: '건', l: '반품', cls: 'red', go: {type: V.type === '반품' ? '' : '반품'}, on: V.type === '반품'},
+      {v: fmt(exc), u: '건', l: '교환', cls: 'blue', go: {type: V.type === '교환' ? '' : '교환'}, on: V.type === '교환'},
+      {v: fmt(etc), u: '건', l: '재발송 · 반려 · 기타', go: {type: V.type === '기타' ? '' : '기타'}, on: V.type === '기타'},
+      {v: fmt(co), u: '건', l: `회사 사유 · ${pct(co, ret + exc + etc)}`, cls: co ? 'amber' : '', go: {cat: V.cat === 'co' ? '' : 'co'}, on: V.cat === 'co'},
+      {v: fmt(q), u: '건', l: '제품 불량', cls: q ? 'red' : '', go: {cat: V.cat === 'Q' ? '' : 'Q'}, on: V.cat === 'Q'},
+      {v: fmt(nocat), u: '건', l: '사유 안 적음', go: {cat: V.cat === '-' ? '' : '-'}, on: V.cat === '-'},
+    ]);
+    // 칩 — 분류
+    const byCat = {};
+    cs.filter(typeOk).forEach(c => { const k = c.cat || '-'; byCat[k] = (byCat[k] || 0) + c.n; });
+    const chips = [`<button type="button" class="chip${!V.cat ? ' on' : ''}" data-cat="">전체 분류</button>`]
+      .concat(CAT_ORDER.filter(k => byCat[k]).map(k => `<button type="button" class="chip${V.cat === k ? ' on' : ''}" data-cat="${k}"><i style="background:${CAT[k].c}"></i>${esc(CAT[k].l)} <em>${byCat[k]}</em></button>`))
+      .concat(byCat['-'] ? [`<button type="button" class="chip${V.cat === '-' ? ' on' : ''}" data-cat="-"><i style="background:#cbd5e1"></i>사유 안 적음 <em>${byCat['-']}</em></button>`] : []);
+    $('chips').hidden = false;
+    $('chips').innerHTML = chips.join('');
+    if (V.q) $('qn').textContent = `${rows.length}줄`;
+    const anyAct = rows.some(c => c.action);
+    const cols = [
+      {k: 'date', l: '날짜', min: 70, get: c => ({t: dlabel(c.date), s: c.date + (c.kind === 'slot' ? '0' : '1'), h: esc(dlabel(c.date)) + (c.photos && c.photos.length && c.blockKey !== 'old' ? `<span class="cam" title="이날 시트 사진 ${c.photos.length}장">📷</span>` : ''), pad: c.photos && c.photos.length ? 20 : 0})},
+    ];
+    if (!b) cols.push({k: 'brand', l: '브랜드', get: c => ({t: bName(c.brand), s: bOrder(c.brand), h: bDot(c.brand) + esc(bName(c.brand)), pad: 15})});
+    cols.push(
+      {k: 'ch', l: '쇼핑몰', get: c => ({t: c.ch || '—', h: c.ch ? hl(c.ch) : '<span class="none">—</span>'})},
+      {k: 'type', l: '구분', get: c => ({t: c.type, h: typePill(c.type), f: F_TAG, pad: 16})},
+      {k: 'n', l: '건수', num: true, min: 50, get: c => ({t: String(c.n), s: c.n, h: c.n ? String(c.n) : '<span class="z">0</span>'})},
+      {k: 'reason', l: '사유', wrap: true, flex: 1, min: 160, max: 440, get: c => ({t: c.reason || (c.kind === 'case' ? '사유 안 적음' : ''), h: c.reason ? hl(c.reason) : (c.kind === 'case' ? '<span class="none">사유 안 적음</span>' : '')})},
+      {k: 'cat', l: '분류', get: c => ({t: c.cat ? CAT[c.cat].l : (c.kind === 'case' ? '사유 없음' : ''), s: c.cat ? CAT_ORDER.indexOf(c.cat) : 99, h: c.kind === 'case' ? catTag(c.cat) : '', f: F_TAG, pad: 18})},
+      {k: 'code', l: 'VOC 코드', max: 220, get: c => ({t: codeText(c.code), s: c.code || 'zz', h: c.kind === 'case' ? codeHtml(c.code, !!c.sure) + (c.sure ? '<span class="sure" title="오피스 VOC 기록과 같은 건 — 코드 확정">확정</span>' : '') : '', pad: c.sure ? 34 : 0})},
+      {k: 'items', l: '상품', wrap: true, flex: 1, min: 150, max: 380, get: c => ({t: c.items.join(' · '), h: c.items.length ? hl(c.items.join(' · ')) : (c.kind === 'case' ? '<span class="none">—</span>' : '')})},
+    );
+    if (anyAct) cols.push({k: 'action', l: '처리', max: 200, get: c => ({t: c.action || '', h: c.action ? hl(c.action) : ''})});
+    drawTable(cols, rows, {
+      empty: V.q ? '찾는 말이 든 줄이 없어요' : base.length ? '고른 구분 · 분류에 해당하는 줄이 없어요' : (V.date ? '이날 적힌 반품 · 교환이 없어요' : '이 기간 적힌 반품 · 교환이 없어요'),
+      rowCls: c => c.kind === 'slot' ? 'dim' : c.fault === 'co' ? 'co' : '',
+      foot: (c, list) => c.k === 'n' ? String(sumN(list.filter(x => x.kind === 'case'))) : c.k === 'reason' ? `<span class="ft">${list.filter(x => x.kind === 'case').length}줄</span>` : '',
+    });
+  }
+
+  /* ── 🧷 불량 · 재발송 ── */
+  function renderDefect() {
+    const gid = V.view.split(':')[1], df = S.D.defects.find(x => x.gid === gid);
+    if (!df) { go('dash'); return; }
+    const t = terms();
+    const rows = df.rows.filter(r => !t.length || t.every(x => (r.cells.join(' ') + ' ' + codeText(r.code)).toLowerCase().includes(x)));
+    head(`불량 · 재발송 · ${df.name.replace(/_/g, ' ')}`, {date: `${df.rows.length}건 · 시트 그대로`});
+    const ph = df.rows.reduce((a, r) => a + r.photos.length, 0);
+    const byCh = {};
+    df.rows.forEach(r => { if (r.ch) byCh[r.ch] = (byCh[r.ch] || 0) + 1; });
+    kpis([
+      {v: fmt(df.rows.length), u: '건', l: '불량 · 재발송'},
+      {v: fmt(df.rows.filter(r => r.cat === 'Q').length), u: '건', l: '제품 불량 (VOC Q)', cls: 'red'},
+      {v: fmt(ph), u: '장', l: '사진'},
+    ].concat(Object.entries(byCh).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => ({v: fmt(n), u: '건', l: k}))));
+    alertBox('이름 · 연락처는 가려서 보여요 (시트 원본은 그대로). 이 탭은 링크가 있는 누구나 볼 수 있는 시트라 <b>고객 이름 · 전화번호는 시트에서도 지우거나 오피스로 옮기는 것</b>을 권해요.', true);
+    const cols = df.head.map((hname, i) => {
+      const n = norm(hname);
+      if (/^사진/.test(n)) return {k: 'c' + i, l: hname || '사진', get: r => ({t: r.photos.length ? `📷 ${r.photos.length}` : '', h: r.photos.length ? `📷 ${r.photos.length}장` : '<span class="none">—</span>'})};
+      const wrap = /증상|사유|처리|제품|상품|메모/.test(n);
+      return {k: 'c' + i, l: hname || '', wrap, flex: /증상|사유|제품|상품/.test(n) ? 1 : 0, max: wrap ? 320 : 220, num: /주문번호/.test(n) ? false : false,
+        get: r => ({t: r.cells[i] || '', h: r.cells[i] ? hl(r.cells[i]) : '<span class="none">—</span>'})};
+    }).filter((c, i) => df.head[i] || df.rows.some(r => r.cells[i]));
+    cols.push({k: 'code', l: 'VOC 코드', max: 220, get: r => ({t: codeText(r.code), s: r.code || 'zz', h: codeHtml(r.code, !!r.sure) + (r.sure ? '<span class="sure">확정</span>' : ''), pad: r.sure ? 34 : 0})});
+    drawTable(cols, rows, {empty: '찾는 말이 든 줄이 없어요', rowCls: r => r.cat === 'Q' ? 'co' : ''});
+  }
+
+  /* ── 📈 반품 분석 탭 (코페리 · 아페티) — 시트 글 + 시트에 붙인 그래프 · 표 캡처 ── */
+  function renderReport() {
+    const gid = V.view.split(':')[1], m = S.D.reports.find(x => x.gid === gid);
+    if (!m) { go('dash'); return; }
+    head(m.brand ? `${m.brand.name} 반품 분석` : m.name, {date: '시트 ' + m.name + ' 탭'});
+    grid.classList.add('bd-mode');
+    const rows = m.rows.filter(r => r.c.some(x => x));
+    let h = '<div class="board" style="grid-template-columns:minmax(0,1fr)">';
+    let lh = '<div class="rep-lines">', first = true;
+    rows.forEach((row, i) => {
+      const cells = row.c.map((x, p) => ({x, p})).filter(o => o.x);
+      if (first && cells.length === 1 && i === 0 && m.brand && brandOf(cells[0].x)) { first = false; return; }   // 맨 위 브랜드 이름 줄
+      first = false;
+      if (cells.length === 1 && /^>/.test(cells[0].x)) { lh += `<div class="rep-line sub"><span>${esc(cells[0].x)}</span></div>`; return; }
+      if (cells.length === 1 && cells[0].x.length <= 14 && !/\d/.test(cells[0].x)) { lh += `<div class="rep-h">${esc(cells[0].x)}</div>`; return; }
+      const sub = cells[0].p >= 3 || /^>/.test(cells[0].x);
+      const k = cells[0].x, rest = cells.slice(1).map(o => o.x).join('  ·  ');
+      lh += `<div class="rep-line${sub ? ' sub' : ''}"><b>${esc(k)}</b><span>${esc(rest)}</span></div>`;
+    });
+    lh += '</div>';
+    h += `<section class="card"><div class="card-h"><b>시트에 적힌 내용</b><span>${esc(m.name)} 탭 · 줄 순서 그대로</span><a class="more" href="${sheetUrl(m.gid)}" target="_blank" rel="noopener">시트에서 보기 ↗</a></div>${rows.length ? lh : '<div class="card-e">적힌 글이 없어요</div>'}</section>`;
+    if (m.imgs.length) h += `<section class="card"><div class="card-h"><b>시트에 붙인 그래프 · 표</b><span>${m.imgs.length}장 · 누르면 크게</span></div><div class="gal big">${m.imgs.map((im, i) => `<figure data-src="${esc(im.src)}" data-sid="${esc(im.id || '')}">${imgTag(im, 1600, {alt: `${m.name} ${i + 1}`})}<figcaption>${esc(m.name)} · ${i + 1}</figcaption></figure>`).join('')}</div></section>`;
+    // 같은 브랜드의 데일리 일지에서 지금 기간 많이 나온 상품 (이어 보기)
+    if (m.brand) {
+      const cs = S.D.cases.filter(c => c.brand === m.brand.id && inP(c.date));
+      const pr = productRank(cs).slice(0, 8);
+      if (pr.length) h += `<section class="card"><div class="card-h"><b>지금 데일리 일지에서 많이 나온 상품</b><span>${esc(P.l)} · ${esc(m.brand.name)}</span></div><div class="card-b"><table class="mt"><thead><tr><th>상품</th><th>건수</th><th>반품 · 교환</th><th>사유</th></tr></thead><tbody>` +
+        pr.map(p => `<tr class="click" data-go='${esc(JSON.stringify({view: 'log:' + p.brand, q: p.name}))}'><td class="wrap"><b>${esc(p.name)}</b></td><td class="b">${p.n}</td><td><span class="rv">${p.r}</span> · <span class="ev">${p.e}</span></td><td>${Object.entries(p.cats).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => catTag(k === '-' ? '' : k)).join(' ')}</td></tr>`).join('') + '</tbody></table></div></section>';
+    }
+    grid.innerHTML = h + '</div>';
+    hydrate(grid);
+  }
+
+  /* ── 📖 VOC 코드표 (오피스 CSI_CODES 그대로) + 이 기간 건수 ── */
+  function renderCodes() {
+    head('VOC 코드표', {date: CODES.length ? `코드 ${CODES.length}개 · 건수는 ${P.l}` : '', period: V.part === 'codes',
+      tools: `<div class="parts" role="group" aria-label="보기">${[['codes', '코드'], ['sop', '처리 기준'], ['sev', '심각도']].map(([k, l]) => `<button type="button" data-part="${k}" class="${V.part === k ? 'on' : ''}">${l}</button>`).join('')}</div>`});
+    if (!CODES.length) {
+      alertBox('VOC 코드표는 오피스 안(CS팀 화면 맨 아래)에서 열면 보여요 — 코드표 원본이 오피스에 있어요.', true);
+      grid.innerHTML = '';
+      return;
+    }
+    const cnt = {}, cases = S.D.cases.filter(c => inP(c.date));
+    cases.forEach(c => { if (c.code) cnt[c.code] = (cnt[c.code] || 0) + c.n; });
+    const used = Object.keys(cnt).length;
+    kpis([
+      {v: fmt(CODES.length), u: '개', l: 'VOC 코드'},
+      {v: fmt(used), u: '개', l: '이 기간 쓰인 코드'},
+      {v: fmt(sumN(cases, c => !!c.sure)), u: '건', l: '확정 (오피스 기록)', cls: 'blue'},
+      {v: fmt(sumN(cases, c => c.code && !c.sure)), u: '건', l: '추정 (사유 글로)'},
+    ]);
+    if (V.part === 'sop') {
+      grid.classList.add('bd-mode');
+      const F = [['first', '첫 응대'], ['proof', '받을 증빙'], ['how', '처리'], ['fee', '배송비'], ['due', '기한'], ['report', '전달 · 보고'], ['law', '법 기준']];
+      grid.innerHTML = '<div class="board">' + CAT_ORDER.filter(k => SOP[k]).map(k => `<section class="card"><div class="card-h"><b><i class="bdot" style="background:${CAT[k].c}"></i>${k} · ${esc(CAT[k].l)}</b><span>${COMPANY.has(k) ? '회사 사유' : k === 'C' ? '고객 사유' : ''}</span></div><dl class="sop">${F.filter(([f]) => SOP[k][f]).map(([f, l]) => `<dt>${l}</dt><dd>${esc(SOP[k][f])}</dd>`).join('')}</dl></section>`).join('') + '</div>';
+      return;
+    }
+    if (V.part === 'sev') {
+      S.list = [];
+      grid.innerHTML = '<table class="tbl" style="width:100%"><colgroup><col style="width:90px"><col><col></colgroup><thead><tr><th>심각도</th><th>기준</th><th>처리</th></tr></thead><tbody>' +
+        SEV.map(s => `<tr><td><b>${esc(s[0])}</b></td><td><div class="cl" style="-webkit-line-clamp:3">${esc(s[1])}</div></td><td><div class="cl" style="-webkit-line-clamp:3">${esc(s[2])}</div></td></tr>`).join('') + '</tbody></table>';
+      return;
+    }
+    const byCat = {};
+    CODES.forEach(c => { byCat[c.cat] = (byCat[c.cat] || 0) + 1; });
+    $('chips').hidden = false;
+    $('chips').innerHTML = [`<button type="button" class="chip${!V.cat ? ' on' : ''}" data-cat="">전체 <em>${CODES.length}</em></button>`, `<button type="button" class="chip${V.cat === 'used' ? ' on' : ''}" data-cat="used">이 기간 쓰인 코드 <em>${used}</em></button>`, '<span class="chip-sep"></span>']
+      .concat(CAT_ORDER.filter(k => byCat[k]).map(k => `<button type="button" class="chip${V.cat === k ? ' on' : ''}" data-cat="${k}"><i style="background:${CAT[k].c}"></i>${k} ${esc(CAT[k].l)} <em>${byCat[k]}</em></button>`)).join('');
+    const t = terms();
+    const rows = CODES.filter(c => (!V.cat || (V.cat === 'used' ? cnt[c.code] : c.cat === V.cat)) &&
+      (!t.length || t.every(x => [c.code, c.mid, c.name, c.def, c.likely, c.basic, c.ex, CAT[c.cat] ? CAT[c.cat].l : ''].join(' ').toLowerCase().includes(x))))
+      .map(c => Object.assign({kind: 'code', n: cnt[c.code] || 0}, c));
+    const sevRank = {긴급: 0, 높음: 1, 보통: 2, 낮음: 3};
+    drawTable([
+      {k: 'code', l: '코드', min: 58, get: c => ({t: c.code, h: `<b>${hl(c.code)}</b>`})},
+      {k: 'cat', l: '대분류', get: c => ({t: CAT[c.cat] ? CAT[c.cat].l : c.cat, s: CAT_ORDER.indexOf(c.cat), h: catTag(c.cat), f: F_TAG, pad: 18})},
+      {k: 'mid', l: '중분류', get: c => ({t: c.mid})},
+      {k: 'name', l: '증상', max: 240, wrap: true, get: c => ({t: c.name})},
+      {k: 'n', l: '건수', num: true, min: 50, get: c => ({t: String(c.n), s: c.n, h: c.n ? `<b>${c.n}</b>` : '<span class="z">0</span>'})},
+      {k: 'team', l: '전달 팀', get: c => ({t: TEAMS[c.team] || c.team || ''})},
+      {k: 'sev', l: '심각도', get: c => ({t: c.sev, s: sevRank[c.sev] != null ? sevRank[c.sev] : 9, h: c.sev === '긴급' || c.sev === '높음' ? `<b style="color:${c.sev === '긴급' ? '#b91c1c' : '#c2410c'}">${esc(c.sev)}</b>` : esc(c.sev)})},
+      {k: 'def', l: '판단 기준', wrap: true, flex: 1, min: 180, max: 420, get: c => ({t: c.def})},
+      {k: 'basic', l: '기본 처리', wrap: true, flex: 1, min: 160, max: 360, get: c => ({t: c.basic})},
+      {k: 'ex', l: '실제 사례', wrap: true, min: 140, max: 320, get: c => ({t: c.ex || '', h: c.ex ? hl(c.ex) : '<span class="none">—</span>'})},
+    ], rows, {empty: '해당하는 코드가 없어요', rowCls: c => c.n ? '' : 'dim'});
+  }
+
+  /* ── 📷 시트 사진 ── */
+  function renderPhotos() {
+    const ph = S.D.photos;
+    head('시트 사진', {date: `${ph.length}장 · 누르면 크게`});
+    grid.classList.add('bd-mode');
+    const groups = {};
+    ph.forEach(p => { (groups[p.label] = groups[p.label] || []).push(p); });
+    grid.innerHTML = '<div class="board" style="grid-template-columns:minmax(0,1fr)">' + Object.entries(groups).map(([label, arr]) =>
+      `<section class="card"><div class="card-h"><b>${esc(label)}</b><span>${arr.length}장</span><a class="more" href="${sheetUrl(arr[0].gid, arr[0].row)}" target="_blank" rel="noopener">시트에서 보기 ↗</a></div><div class="gal${arr[0].big ? ' big' : ''}">${arr.map((p, i) => `<figure data-src="${esc(p.src)}" data-sid="${esc(p.id || '')}">${imgTag(p, p.big ? 1600 : 400, {alt: `${label} ${i + 1}`})}<figcaption>${esc(label)} · ${i + 1}</figcaption></figure>`).join('')}</div></section>`).join('') + '</div>';
+    hydrate(grid);
+  }
+
+  /* ── 상세 창 ── */
+  function dlRow(k, v, o) { return v === '' || v == null ? '' : `<dt>${esc(k)}</dt><dd${o && o.r ? ' class="r"' : ''}>${o && o.html ? v : esc(v)}</dd>`; }
+  function codeBlock(code, sure) {
+    if (!code) return '';
+    const c = CODE[code], sop = SOP[code[0]];
+    let h = dlRow('VOC 코드', `${codeHtml(code, !!sure)}${sure ? '<span class="sure">확정</span>' : '<span class="est-b">사유 글로 추정</span>'}`, {html: true});
+    if (c) {
+      h += dlRow('판단 기준', c.def);
+      h += dlRow('기본 처리', c.basic);
+      h += dlRow('전달 팀', `${TEAMS[c.team] || c.team} · 심각도 ${c.sev}`);
+    }
+    if (sop) h += dlRow('처리 기준', [sop.fee ? `배송비: ${sop.fee}` : '', sop.due ? `기한: ${sop.due}` : '', sop.report ? `전달: ${sop.report}` : ''].filter(Boolean).join('\n'));
+    return h;
+  }
+  const thumbs = arr => arr && arr.length ? `<div class="dthumbs">${arr.map(p => imgTag(p, 240)).join('')}</div>` : '';
+  function openDetail(i, keep) {
+    const it = S.list[i];
+    if (!it) return;
+    S.sel = i; S.selObj = it;
+    const d = $('detail');
+    d.hidden = false; app.classList.add('has-detail');
+    $('dscrim').hidden = !matchMedia('(max-width:720px)').matches;
+    $('dCap').textContent = `${i + 1} / ${S.list.length}`;
+    let title = '', sub = '', dl = '', gid = '', r = -1;
+    if (it.kind === 'case' || it.kind === 'slot') {
+      title = it.items.join(', ') || it.reason || (it.kind === 'slot' ? `${it.ch} · ${it.type}` : '(상품 미기재)');
+      sub = `${dlabel(it.date)} · ${bName(it.brand)}${it.ch ? ' · ' + it.ch : ''} · ${it.type}${it.n ? ' ' + it.n + '건' : ''}`;
+      gid = it.gid; r = it.r;
+      dl += dlRow('구분', typePill(it.type), {html: true});
+      if (it.kind === 'case') dl += dlRow('건수', it.n + '건', {r: 1});
+      dl += dlRow('쇼핑몰', it.chRaw || it.ch || '');
+      if (it.kind === 'case') dl += dlRow('사유', it.reason || '사유 안 적음 (숫자만 적힘)');
+      if (it.note && it.note !== it.reason) dl += dlRow('시트 원문', it.note);
+      if (it.kind === 'case') dl += dlRow('분류', `${catTag(it.cat)} <span class="muted">${FAULT_L[it.fault] || ''}</span>`, {html: true});
+      dl += codeBlock(it.code, it.sure);
+      if (it.items.length) dl += dlRow('상품', it.items.join('\n'));
+      dl += dlRow('처리', it.action);
+      if (it.sure) {
+        const o = it.sure;
+        dl += dlRow('오피스 기록', [o.sub ? `증상: ${o.sub}` : '', o.cause ? `원인: ${o.cause}` : '', o.action ? `처리: ${o.action}` : '', o.detail ? `내용: ${o.detail}` : ''].filter(Boolean).join('\n'));
+      }
+      if (it.photos && it.photos.length) dl += dlRow(it.blockKey === 'old' ? '시트 사진' : '이날 시트 사진', thumbs(it.photos) + (it.blockKey === 'old' ? '<div class="muted">옛 양식(11/3~11/11) 칸에 붙은 사진이에요</div>' : ''), {html: true});
+      const src = {daily: '데일리 일지', old: '데일리 일지 (옛 줄 양식)', defect: '불량건 탭', office: '오피스 VOC 기록 (시트에 없음)', slot: '데일리 일지'}[it.src] || '';
+      const tab = S.D.tabs.find(x => x.gid === it.gid);
+      dl += dlRow('원본', `${src}${tab ? ` · ${tab.name} 탭 ${it.r + 1}줄` : ''}`);
+      // 같은 상품 다른 기록
+      if (it.kind === 'case' && it.items.length) {
+        const keys = it.items.map(pkey).filter(Boolean);
+        const others = S.D.cases.filter(c => c !== it && c.brand === it.brand && c.items.some(p => keys.some(k => pmatch(pkey(p), k))));
+        if (others.length) dl += dlRow(`같은 상품 ${others.length}건`, `<div class="hist">${others.slice(0, 12).map(c => `<button type="button" data-case="${c.id}"><span class="hd">${esc(md(c.date))}</span>${typePill(c.type)}<span class="hr">${esc(c.reason || '사유 안 적음')}${c.items.length ? ' · ' + esc(c.items.join(', ')) : ''}</span></button>`).join('')}</div>`, {html: true});
+      }
+    } else if (it.kind === 'defect') {
+      const df = S.D.defects.find(x => x.gid === it.gid);
+      title = it.prod || '(제품명 없음)';
+      sub = `${bName(it.brand)}${it.ch ? ' · ' + it.ch : ''}${it.act ? ' · ' + it.act : ''}`;
+      gid = it.gid; r = it.r;
+      (df ? df.head : []).forEach((hn, j) => { if (!/^사진/.test(norm(hn))) dl += dlRow(hn || `${j + 1}번 칸`, it.cells[j] || ''); });
+      dl += codeBlock(it.code, it.sure);
+      if (it.photos.length) dl += dlRow('사진', thumbs(it.photos), {html: true});
+      const keys = [pkey(it.prod)];
+      const others = S.D.cases.filter(c => c.brand === it.brand && c.items.some(p => keys.some(k => pmatch(pkey(p), k))));
+      if (others.length) dl += dlRow(`데일리 일지 ${others.length}건`, `<div class="hist">${others.slice(0, 12).map(c => `<button type="button" data-case="${c.id}"><span class="hd">${esc(md(c.date))}</span>${typePill(c.type)}<span class="hr">${esc(c.reason || '사유 안 적음')}</span></button>`).join('')}</div>`, {html: true});
+    } else if (it.kind === 'code') {
+      title = `${it.code} ${it.name}`;
+      sub = `${CAT[it.cat] ? CAT[it.cat].l : it.cat} · ${it.mid} · ${TEAMS[it.team] || it.team} · 심각도 ${it.sev}`;
+      dl += dlRow('판단 기준', it.def) + dlRow('의심 원인', it.likely) + dlRow('기본 처리', it.basic) + dlRow('실제 사례', it.ex);
+      const sop = SOP[it.cat];
+      if (sop) dl += dlRow('처리 기준', [sop.first ? `첫 응대: ${sop.first}` : '', sop.proof ? `증빙: ${sop.proof}` : '', sop.fee ? `배송비: ${sop.fee}` : '', sop.due ? `기한: ${sop.due}` : '', sop.report ? `전달: ${sop.report}` : ''].filter(Boolean).join('\n'));
+      const cs = S.D.cases.filter(c => c.code === it.code);
+      dl += dlRow(`이 코드 기록 ${sumN(cs)}건`, cs.length ? `<div class="hist">${cs.slice(0, 20).map(c => `<button type="button" data-case="${c.id}"><span class="hd">${esc(md(c.date))}</span>${typePill(c.type)}<span class="hr">${bDot(c.brand)}${esc(c.items.join(', ') || c.reason || '—')}</span></button>`).join('')}</div>` : '<span class="muted">아직 없음</span>', {html: true});
+    }
+    $('dTitle').textContent = title;
+    $('dSub').textContent = sub;
+    $('dSheet').hidden = !gid;
+    $('dSheet').href = sheetUrl(gid, r);
+    $('dList').innerHTML = dl;
+    hydrate($('dList'));
+    grid.querySelectorAll('tbody tr.on').forEach(x => x.classList.remove('on'));
+    const tr = grid.querySelector(`tbody tr[data-i="${i}"]`);
+    if (tr) { tr.classList.add('on'); if (!keep) tr.scrollIntoView({block: 'nearest'}); }
+  }
+  function openCase(id) {
+    const c = S.D && S.D.cases.find(x => x.id === +id);
+    if (!c) return;
+    let i = S.list.findIndex(x => x === c);
+    if (i < 0) { S.list = [c]; i = 0; }
+    openDetail(i);
+  }
+  function closeDetail() {
+    $('detail').hidden = true; $('dscrim').hidden = true; app.classList.remove('has-detail');
+    S.sel = -1; S.selObj = null;
+    grid.querySelectorAll('tbody tr.on').forEach(x => x.classList.remove('on'));
+  }
+
+  /* ── 이벤트 ── */
+  $('nav').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) go(b.dataset.v); });
+  document.addEventListener('click', e => {
+    const g = e.target.closest('[data-go]');
+    if (g && !e.target.closest('.nav')) {
+      let o = {};
+      try { o = JSON.parse(g.dataset.go); } catch (err) { return; }
+      if (o.view) go(o.view, o);
+      else { if ('type' in o) V.type = o.type; if ('cat' in o) V.cat = o.cat; closeDetail(); render(); }
+      return;
+    }
+    const cs = e.target.closest('[data-case]');
+    if (cs) { openCase(cs.dataset.case); return; }
+    const p = e.target.closest('[data-period]');
+    if (p) { V.period = p.dataset.period; V.date = ''; savePrefs(); render(); return; }
+    const pt = e.target.closest('[data-part]');
+    if (pt) { V.part = pt.dataset.part; V.cat = ''; savePrefs(); render(); return; }
+    const ct = e.target.closest('#chips [data-cat]');
+    if (ct) { V.cat = ct.dataset.cat; render(true); return; }
+    const cl = e.target.closest('[data-clear]');
+    if (cl) { if (cl.dataset.clear === 'date') V.date = ''; render(); return; }
+    if (e.target.closest('#zeroTog')) { V.zero = !V.zero; savePrefs(); render(true); return; }
+    if (e.target.closest('#msgRetry')) { loadAll(); return; }
+    if (e.target.closest('#sheetSave')) {
+      const i = $('sheetIn');
+      saveSheet(i ? i.value : '').then(ok => { if (ok) { S.askSheet = false; $('msg').innerHTML = ''; renderMsg(); } });
+      return;
+    }
+    if (e.target.closest('#sheetCancel')) { S.askSheet = false; $('msg').innerHTML = ''; renderMsg(); return; }
+    if (e.target.closest('#sideAsk')) { e.preventDefault(); S.askSheet = true; $('msg').innerHTML = ''; app.classList.remove('nav-open'); $('scrim').hidden = true; renderMsg(); return; }
+    const im = e.target.closest('[data-src]');
+    if (im && (e.target.tagName === 'IMG' || im.tagName === 'FIGURE')) { openLightbox(im.dataset.src, im.dataset.sid); return; }
+  });
+  grid.addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]');
+    if (th) {
+      const k = th.dataset.sort;
+      V.sort = !V.sort || V.sort.k !== k ? {k, dir: 1} : V.sort.dir > 0 ? {k, dir: -1} : null;
+      render(true); return;
+    }
+    const tr = e.target.closest('tbody tr[data-i]');
+    if (tr) openDetail(+tr.dataset.i);
+  });
+  $('kpis').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-go]')) { e.preventDefault(); e.target.click(); } });
+  $('dClose').onclick = closeDetail;
+  $('dscrim').onclick = closeDetail;
+  $('dPrev').onclick = () => { if (S.sel > 0) openDetail(S.sel - 1); };
+  $('dNext').onclick = () => { if (S.sel < S.list.length - 1) openDetail(S.sel + 1); };
+  $('lb').onclick = () => { $('lb').hidden = true; $('lbImg').removeAttribute('src'); };
+  $('st').onclick = () => { loadAll(); loadOffice(true); };
+  let qT = null;
+  qIn.addEventListener('input', () => {
+    $('qx').hidden = !qIn.value;
+    clearTimeout(qT);
+    qT = setTimeout(() => {
+      V.q = qIn.value;
+      if (!V.q) $('qn').textContent = '';
+      if (V.q && !(V.view === 'log' || /^log:|^defect:/.test(V.view) || V.view === 'codes')) { V.view = 'log'; V.type = ''; V.cat = ''; V.date = ''; savePrefs(); }
+      render();
+    }, 160);
+  });
+  $('qx').onclick = () => { qIn.value = ''; V.q = ''; $('qx').hidden = true; $('qn').textContent = ''; render(); qIn.focus(); };
+  $('btnMenu').onclick = () => {
+    if (matchMedia('(min-width:1001px)').matches) { app.classList.remove('side-off'); lsSet(LS_SIDE, ''); render(true); return; }
+    app.classList.add('nav-open'); $('scrim').hidden = false;
+  };
+  $('scrim').onclick = () => { app.classList.remove('nav-open'); $('scrim').hidden = true; };
+  $('btnFold').onclick = () => {
+    if (!matchMedia('(min-width:1001px)').matches) { app.classList.remove('nav-open'); $('scrim').hidden = true; return; }
+    app.classList.add('side-off'); lsSet(LS_SIDE, '1'); render(true);
+  };
+  $('btnDense').onclick = () => { const on = !app.classList.contains('dense'); app.classList.toggle('dense', on); $('btnDense').classList.toggle('on', on); lsSet(LS_DENSE, on ? '1' : ''); };
+  $('btnFull').onclick = () => {
+    try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) { /* noop */ }
+  };
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); qIn.focus(); qIn.select(); return; }
+    if (e.key === 'Escape') {
+      if (!$('lb').hidden) { $('lb').hidden = true; return; }
+      if (!$('detail').hidden) { closeDetail(); return; }
+      if (document.activeElement === qIn && qIn.value) { $('qx').click(); return; }
+    }
+    if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'sheetIn') { e.preventDefault(); const b = $('sheetSave'); if (b) b.click(); return; }
+    if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if (!$('detail').hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault();
+      if (e.key === 'ArrowDown' && S.sel < S.list.length - 1) openDetail(S.sel + 1);
+      if (e.key === 'ArrowUp' && S.sel > 0) openDetail(S.sel - 1);
+    }
+  });
+  let rT = null;
+  window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => render(true), 180); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (S.D) render(true); });   // Pretendard 가 늦게 오면 칸 너비 다시 재기
+
+  // 화면이 보일 때만 다시 읽기 — 오피스 CS팀 화면이 숨으면(다른 팀 화면) iframe 이 숨어 멈춘다
+  function shown() {
+    if (document.visibilityState !== 'visible') return false;
+    try { const fe = window.frameElement; if (fe && !fe.offsetParent && !document.fullscreenElement) return false; } catch (e) { /* noop */ }
+    return true;
+  }
+  setInterval(() => { if (shown() && !S.busy && Date.now() - S.at > REFRESH_MS) { loadAll(); loadOffice(false); } }, 20e3);
+  document.addEventListener('visibilitychange', () => { if (shown() && Date.now() - S.at > REFRESH_MS) loadAll(); });
+
+  /* ── 시작 ── */
+  if (EMBED) $('sideHome').hidden = true;
+  setSheet(/^[A-Za-z0-9_-]{20,}$/.test(lsGet(LS_SHEET) || '') ? lsGet(LS_SHEET) : '');   // 기억해 둔 주소로 먼저 (오피스 값은 loadAll 이 확인)
+  if (lsGet(LS_SIDE) === '1') app.classList.add('side-off');
+  if (lsGet(LS_DENSE) === '1') { app.classList.add('dense'); $('btnDense').classList.add('on'); }
+  loadPrefs();
+  if (loadCache()) { rebuild(); render(); setSt('stored'); }
+  else { renderNav(); grid.innerHTML = '<div class="skel">' + Array.from({length: 10}, () => '<div><i style="width:60px"></i><i style="width:90px"></i><i style="width:220px"></i><i style="width:140px"></i></div>').join('') + '</div>'; }
+  loadAll();
+  loadOffice(false);
+})();
+</script>
+</body>
+</html>

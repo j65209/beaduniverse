@@ -5146,6 +5146,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-ph .more{position:absolute;right:0;bottom:0;display:flex;align-items:center;justify-content:center;width:calc(50% - 1px);height:104px;background:rgba(0,0,0,.45);color:#fff;font-size:15px;font-weight:800}
   .kko-ph-no{display:flex;align-items:center;justify-content:center;min-height:60px;padding:8px 12px;font-size:12px;color:#555;background:rgba(255,255,255,.7)}
   .kko-ph:focus-visible{outline:2px solid var(--kko-ink);outline-offset:2px}
+  /* VOC 전산 (voc/) — CS팀 맨 아래 앱 창 (2026-11-20). 가림막은 iframe 아래에 깔려 있다가 페이지가 그려지면 덮인다 */
+  .voc-split{margin-top:40px}
+  .voc-embed{position:relative;height:min(900px,calc(100vh - 84px));height:min(900px,calc(100dvh - 84px));min-height:560px;margin:0 0 28px;border:1px solid var(--line-2);border-radius:14px;overflow:hidden;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.06)}
+  .voc-embed iframe{position:relative;z-index:1;display:block;width:100%;height:100%;border:0;background:transparent}
+  .voc-embed-veil{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;color:var(--text-3)}
+  @media (max-width:720px){ .voc-embed{height:calc(100vh - 64px);height:calc(100dvh - 64px);min-height:480px;border-radius:12px} }
   .kko-imgpop{position:absolute;z-index:3;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:var(--bg-1);border:1px solid var(--line-2);box-shadow:0 18px 48px rgba(0,0,0,.28);max-height:calc(100% - 32px);overflow:auto}
   .kko-imgpop[hidden]{display:none}
   .kko-imgpop .g{display:grid;grid-template-columns:1fr;gap:6px}
@@ -13505,7 +13511,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
         홈
       </button>
-      <h1 class="view-title">CS팀<span class="view-title-sub">/ 카카오톡 상담 · 반품 · 교환 분석 · 문의 · 리뷰 · 개선 요청 · 작업 보드</span></h1>
+      <h1 class="view-title">CS팀<span class="view-title-sub">/ 카카오톡 상담 · 반품 · 교환 분석 · 문의 · 리뷰 · 개선 요청 · 작업 보드 · VOC 전산</span></h1>
       <div class="dsg-head-actions" style="margin-left:auto">
         <span class="dsg-save-tag" id="csSaveTag" data-state="saved" title="현재 저장 상태">✓ 저장됨</span>
       </div>
@@ -13911,6 +13917,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </section>
     </div>
     </div><!-- /csi 작업 패널 -->
+
+    <!-- ============ VOC 전산 — CS팀 맨 아래, 탭과 상관없이 늘 보임 (2026-11-20 사장님 "구글 시트에 있는 자료들 erp 전산 디자인으로해서 cs팀 하단에 넣어줘.
+         기존에 있던 분석자료나 voc 깔끔하게 다 합쳐줘"). 본체는 voc/index.html (ERP전산팀 erp/ 와 같은 디자인) —
+         구글시트 '비드유니버스 VOC'(데일리 일지 · 불량건 · 반품 분석 탭)를 바로 읽고, VOC 코드표 · 오피스 VOC 기록(cs_issues)은 bbVocShare() 로 넘겨 합친다.
+         iframe 은 이 자리가 화면 가까이 내려왔을 때 한 번 띄운다 (vocEmbedOnEnter) ============ -->
+    <div class="kko-split voc-split" role="separator" aria-label="VOC 전산">VOC 전산 <em>구글시트 데일리 반품 · 교환 일지 · 불량 · 반품 분석 · VOC 코드표</em></div>
+    <section class="voc-embed" id="vocEmbed" aria-label="VOC 전산"><div class="voc-embed-veil">VOC 전산 여는 중…</div></section>
   </div>
 
   <!-- ============ 온라인사업팀 (2026-11-06 마케팅팀에서 이름 변경 · 내부 id/키는 mkt·Marketing 유지) ============ -->
@@ -21979,6 +21992,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof dsgInit==='function') dsgInit();
       try{ if(typeof kkoOnEnter==='function') kkoOnEnter(); }catch(e){ console.warn('카카오톡 상담', e); }   // CS팀 맨 위 카카오톡 상담 (2026-11-19)
       try{ if(typeof csiOnEnter==='function') csiOnEnter(); }catch(e){ console.warn('CS 이슈 분석', e); }   // 📊 CS 이슈 분석 — 실패해도 화면 전환은 계속
+      try{ if(typeof vocEmbedOnEnter==='function') vocEmbedOnEnter(); }catch(e){ console.warn('VOC 전산', e); }   // CS팀 맨 아래 VOC 전산 (2026-11-20)
     }
     if(id==='viewVendor'){
       if(typeof bpsEnsureLoaded==='function') bpsEnsureLoaded();
@@ -22737,6 +22751,36 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const doc=fr.contentDocument;
     doc.open(); doc.write(html); doc.close();
     fr.dataset.written='1';
+  }
+  /* ===== VOC 전산 — CS팀 맨 아래 iframe (2026-11-20). 도구 화면(TOOL_PAGES)과 같은 방식으로 voc/ 를 연다:
+     옛 주소는 voc/?embed=1 을 그대로, 회사 주소(입구 loader.js)는 HTML 을 받아 빈 iframe 에 쓴다 (같은 출처라 잠금값 · bbVocShare 가 보임).
+     CS팀에 들어올 때마다 다시 만들지 않고 한 번 띄운 화면을 둔다 — 숨어 있는 동안은 voc/ 가 스스로 자동 갱신을 멈춘다. ===== */
+  let _vocIO=null;
+  function vocEmbedOnEnter(){
+    const box=document.getElementById('vocEmbed');
+    if(!box||box.querySelector('iframe')) return;
+    const go=()=>{ if(_vocIO){ _vocIO.disconnect(); _vocIO=null; } _vocMount(box); };
+    if(!('IntersectionObserver' in window)){ go(); return; }
+    if(_vocIO) return;
+    _vocIO=new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)) go(); },{rootMargin:'900px 0px'});
+    _vocIO.observe(box);
+  }
+  function _vocMount(box){
+    if(box.querySelector('iframe')) return;
+    const t={path:'voc/',title:'VOC 전산'};
+    const fr=document.createElement('iframe');
+    fr.title='VOC 전산';
+    fr.allow='clipboard-read; clipboard-write; fullscreen';
+    fr.setAttribute('allowfullscreen','');
+    const veil=box.querySelector('.voc-embed-veil');
+    const fail=()=>{ if(veil){ veil.innerHTML='VOC 전산을 열지 못했어요 · <button type="button" class="btn-back" style="margin-left:8px">다시 열기</button>'; const b=veil.querySelector('button'); if(b) b.onclick=()=>{ fr.remove(); veil.textContent='VOC 전산 여는 중…'; _vocMount(box); }; } };
+    if(toolUnderLoader()){
+      box.appendChild(fr);
+      toolWriteFrame(t,fr).catch(err=>{ console.warn('VOC 전산',err); fail(); });
+    }else{
+      fr.src=toolUrl(t);
+      box.appendChild(fr);
+    }
   }
   function toolUnmount(key){
     const el=document.getElementById(TOOL_PAGES[key].view);
@@ -38202,6 +38246,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 원인 → 기본 전달 팀 (관리자가 ⚙ 에서 바꿀 수 있다). '확인 중'은 VOC 코드 기본 팀을 따른다
   const CSI_CAUSES=[['제조 불량','md'],['입고 검수 누락','lg'],['디자인·구조','design'],['상세페이지 사진','design'],['상세페이지 정보','md'],['출고·포장 실수','lg'],['택배사','lg'],['고객 사유','cs'],['확인 중','']];
   const CSI_CAUSE_DEFAULT=Object.fromEntries(CSI_CAUSES);
+  // VOC 전산(voc/, CS팀 맨 아래 iframe)이 코드표 · 처리 기준 · 오피스 VOC 기록을 같이 쓴다 — 코드표 복사본을 따로 두지 않게 (2026-11-20)
+  function bbVocShare(){
+    return {codes:CSI_CODES, cats:CSI_CATS, sop:CSI_SOP, sev:CSI_SEV, teams:CSI_TEAM_LABEL, company:[...CSI_COMPANY], sb:{url:SUPABASE_URL, key:SUPABASE_KEY}};
+  }
   const CSI_KINDS=['교환','반품','문의','재발송 요청','기타'];
   const CSI_RETURN_KINDS=new Set(['교환','반품']);
   const CSI_ACTIONS=['교환 재발송','부분 재발송','반품 환불','부분 환불','수선','안내 종결','반려','처리 중'];
