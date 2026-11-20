@@ -11928,12 +11928,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   body.ue-on .container{padding-bottom:170px}
   body.ue-on .toast-area{bottom:150px}
   body.ue-on [contenteditable]{outline:2px solid var(--accent) !important;outline-offset:2px;cursor:text;user-select:text;-webkit-user-select:text;caret-color:var(--accent);background:rgba(79,127,207,.07)}
-  .ue-box{position:fixed;left:0;top:0;pointer-events:none;z-index:99990;border-radius:5px;display:none;box-sizing:border-box}
+  .ue-box{position:fixed;left:0;top:0;pointer-events:none;z-index:2147483600;border-radius:5px;display:none;box-sizing:border-box}
   .ue-box-hover{border:1.5px dashed rgba(79,127,207,.85);background:rgba(79,127,207,.05)}
   .ue-box-sel{border:2px solid var(--accent);box-shadow:0 0 0 4px rgba(79,127,207,.16)}
   .ue-box-tag{position:absolute;left:-2px;bottom:100%;margin-bottom:3px;background:var(--accent);color:#fff;font:700 11px/1 var(--sans);padding:4px 8px;border-radius:6px;white-space:nowrap}
   .ue-box-tag:empty{display:none}
-  .ue-dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:100001;width:max-content;max-width:calc(100vw - 20px);box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line-2);border-radius:16px;box-shadow:0 16px 44px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.06);padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-family:var(--sans);color:var(--text-1)}
+  .ue-dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:2147483646;width:max-content;max-width:calc(100vw - 20px);box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line-2);border-radius:16px;box-shadow:0 16px 44px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.06);padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-family:var(--sans);color:var(--text-1)}
   .ue-dock-info{display:flex;align-items:center;gap:8px;font-size:12.5px;min-width:0}
   .ue-dock-badge{flex-shrink:0;background:var(--accent);color:#fff;font-weight:800;font-size:11.5px;padding:4px 9px;border-radius:999px}
   .ue-dock-what{color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -11953,7 +11953,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .ue-dock-text input{height:32px;width:220px;max-width:50vw;border:1.5px solid var(--accent);border-radius:8px;padding:0 10px;font:600 13px var(--sans);color:var(--text-0);background:var(--bg-1);outline:none;box-sizing:border-box}
   .ue-dock-text.is-off input{border-color:var(--line);background:var(--bg-0);font-weight:500;font-size:12px}
   .ue-dock-text.is-off input::placeholder{color:var(--text-3);opacity:.75}
-  .ue-list{position:fixed;left:50%;transform:translateX(-50%);bottom:130px;z-index:100002;width:min(560px,calc(100vw - 20px));max-height:min(52vh,520px);overflow:auto;box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line-2);border-radius:14px;box-shadow:0 16px 44px rgba(0,0,0,.18);font-family:var(--sans);color:var(--text-1)}
+  .ue-list{position:fixed;left:50%;transform:translateX(-50%);bottom:130px;z-index:2147483647;width:min(560px,calc(100vw - 20px));max-height:min(52vh,520px);overflow:auto;box-sizing:border-box;background:var(--bg-1);border:1px solid var(--line-2);border-radius:14px;box-shadow:0 16px 44px rgba(0,0,0,.18);font-family:var(--sans);color:var(--text-1)}
   .ue-list[hidden]{display:none}
   .ue-list-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg-1)}
   .ue-list-head b{font-size:13.5px}
@@ -11969,6 +11969,28 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .ue-li .ue-tb{border:1px solid var(--line);height:28px;flex-shrink:0}
   .ue-li.is-hid .ue-li-main b{text-decoration:line-through;color:var(--text-3)}
   .ue-list-note,.ue-list-empty{padding:10px 14px;font-size:12px;color:var(--text-3)}
+  /* ✓ 수정완료 — 고르는 중인 부분 오른쪽 (글자 입력 중엔 늘, 바뀌면 초록으로 채움) */
+  .ue-done{position:fixed;left:0;top:0;z-index:2147483645;display:none;align-items:center;gap:4px;height:30px;padding:0 12px 0 10px;border-radius:999px;border:1.5px solid #16a34a;background:#fff;color:#15803d;font:800 12.5px/1 var(--sans);cursor:pointer;white-space:nowrap;box-shadow:0 6px 16px rgba(22,163,74,.22);transition:box-shadow .2s,background .15s,color .15s}
+  .ue-done.is-changed{background:#16a34a;color:#fff}
+  .ue-done.is-hint{box-shadow:0 0 0 6px rgba(22,163,74,.32),0 6px 16px rgba(22,163,74,.3)}
+  .ue-done:hover{filter:brightness(1.06)}
+  /* 바뀐 곳 ✓ (초록 = 저장됨, 주황 = 저장 전) */
+  .ue-mark{position:fixed;z-index:2147483644;width:18px;height:18px;border-radius:50%;border:2px solid #fff;background:#16a34a;color:#fff;font:900 10px/1 var(--sans);display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+  .ue-mark.is-unsaved{background:#ea580c}
+  .ue-flash{position:fixed;pointer-events:none;z-index:2147483643;border:2px solid #16a34a;border-radius:6px;background:rgba(22,163,74,.08);box-sizing:border-box;transition:opacity .5s ease .6s}
+  .ue-flash-tag{position:absolute;right:-2px;bottom:100%;margin-bottom:3px;background:#16a34a;color:#fff;font:800 11px/1 var(--sans);padding:4px 8px;border-radius:6px;white-space:nowrap}
+  /* [취소] 를 눌렀을 때 — 엔터 · 스페이스로 안 닫히는 작은 창 */
+  .ue-ask{position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.18);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+  .ue-ask[hidden]{display:none}
+  .ue-ask-card{background:var(--bg-1);border:1px solid var(--line-2);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.2);padding:18px 18px 14px;display:flex;flex-direction:column;gap:6px;max-width:360px;font-family:var(--sans);color:var(--text-1)}
+  .ue-ask-card b{font-size:15px}
+  .ue-ask-card span{font-size:12.5px;color:var(--text-3)}
+  .ue-ask-btns{display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
+  .ue-ask-btns .ue-tb{border:1px solid var(--line-2);height:32px;padding:0 12px}
+  .ue-ask-btns .ue-ask-drop{color:#be123c;border-color:#fecdd3}
+  .ue-ask-btns .ue-ask-drop:hover{background:#fff1f2}
+  .ue-ask-btns .ue-ask-save{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ue-ask-btns .ue-ask-save:hover{background:var(--accent);filter:brightness(1.07)}
   @media (max-width:600px){
     .ue-top-lbl{display:none}
     .ue-top-btn{padding:0 10px;height:30px}
@@ -53229,6 +53251,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function ueEff(){ return (_ue.on?_ue.draft:_ue.saved)||{}; }
   function ueTxtNodes(el){ return [...el.childNodes].filter(n=>n.nodeType===3); }
   function ueSplitWs(s){ const m=String(s).match(/^(\s*)([\s\S]*?)(\s*)$/); return m?[m[1],m[2],m[3]]:['',String(s),'']; }
+  // 고친 글자 정리 — 입력하다 생긴 nbsp 는 보통 띄어쓰기로, 앞뒤 빈칸은 뗀다 (원래 글자와 같은지도 이걸로 비교)
+  function ueNormText(s){ return String(s==null?'':s).replace(/ /g,' ').trim(); }
   function ueIsLeafText(el){ return !!el && !(el instanceof SVGElement) && el.children.length===0 && !UE_NOTEXT.test(el.tagName) && el.textContent.trim()!==''; }
   // 안에 다른 칸이 있는 묶음 — 그 묶음에 바로 붙은 글자(가장 긴 것) 자리. 없으면 -1
   function ueMixedIdx(el){
@@ -53354,7 +53378,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _ue.moTimer=setTimeout(()=>{
         _ue.moTimer=null;
         ueObsPause();
-        try{ ueApplyAll(); }catch(e){ console.warn('[화면 수정]',e); }
+        try{ ueApplyAll(); if(_ue.on) ueOverlaySync(); }catch(e){ console.warn('[화면 수정]',e); }
         ueObsResume();
       },80);
     });
@@ -53387,7 +53411,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const d=_ue.draft; if(!d||!key) return;
     const e=Object.assign({},d[key]||{k1:ueK1(el),lb:ueLabel(el),vw:ueViewName(el)});
     for(const p in patch){ if(patch[p]===undefined) delete e[p]; else e[p]=patch[p]; }
-    if(typeof e.t==='string' && e.t===e.o){ delete e.t; delete e.o; delete e.tn; }
+    if(typeof e.t==='string' && ueNormText(e.t)===ueNormText(e.o)){ delete e.t; delete e.o; delete e.tn; }
     if(UE_PROPS.some(p=>e[p]!==undefined)){ e.at=new Date().toISOString(); e.by=execGetMe()||UE_OWNER; d[key]=e; }
     else delete d[key];
     _ue.sessionKeys.add(key);
@@ -53435,9 +53459,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else try{ getSelection().removeAllRanges(); }catch(_){}
     ueDockRender();
     // 아이콘 · 숫자가 같이 든 탭 · 버튼 — 아래 [글자] 칸에 바로 커서를 넣어, 누르고 바로 입력하면 되게
+    // (전체를 잡아 두면 스페이스 한 번에 글자가 다 지워져서, 커서만 맨 끝에 둔다)
     if(!noText && !_ue.editEl){
       const inp=document.getElementById('ueMixedIn');
-      if(inp){ try{ inp.focus({preventScroll:true}); inp.select(); }catch(_){} }
+      if(inp) ueFocusInput(inp);
     }
   }
   function ueDeselect(){ ueEndText(true); _ue.sel=null; _ue.selKey=null; ueDockRender(); }
@@ -53466,15 +53491,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function ueOnTextInput(){
     const el=_ue.editEl; if(!el||!_ue.selKey) return;
-    ueSetProp(_ue.selKey,el,{t:el.textContent,o:_ue.textBase,tn:undefined},true);
+    ueSetProp(_ue.selKey,el,{t:ueNormText(el.textContent),o:_ue.textBase,tn:undefined},true);
   }
   function ueEndText(keepSel){
     const el=_ue.editEl; if(!el) return;
     el.removeEventListener('input',ueOnTextInput);
     el.removeEventListener('paste',ueOnPaste);
-    if(el.isConnected){
-      if(el.children.length){ const t=el.textContent; el.textContent=t; }   // 입력하다 생긴 <br> 정리
-      if(_ue.selKey && _ue.draft) ueSetProp(_ue.selKey,el,{t:el.textContent,o:_ue.textBase,tn:undefined},true);
+    if(el.isConnected && _ue.selKey && _ue.draft){
+      // 화면 글자를 저장값과 똑같이 맞춘다 (<br> · 끝 빈칸 · nbsp 정리) — 그래야 [원래대로]가 글자를 정확히 되돌린다
+      const t=ueNormText(el.textContent), base=_ue.textBase;
+      const changed=t!==ueNormText(base), want=changed?t:base;
+      if(el.children.length || el.textContent!==want) el.textContent=want;
+      ueSetProp(_ue.selKey,el,changed?{t,o:base,tn:undefined}:{t:undefined,o:undefined,tn:undefined},true);
     }
     el.removeAttribute('contenteditable'); el.removeAttribute('spellcheck');
     _ue.editEl=null;
@@ -53488,7 +53516,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const idx=cur.tn!=null?cur.tn:ueMixedIdx(el); if(idx<0) return;
     const n=ueTxtNodes(el)[idx];
     const o=(typeof cur.t==='string'&&typeof cur.o==='string')?cur.o:(n?n.nodeValue.trim():'');
-    ueSetProp(key,el,{t:String(val).trim(),o,tn:idx});
+    ueSetProp(key,el,{t:ueNormText(val),o,tn:idx});
   }
 
   /* --- 도구 막대 명령 --- */
@@ -53503,6 +53531,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
     const cur=_ue.draft[key]||{};
+    if(cmd==='h' && !cur.h && !ueCanHide(el)){ toast('이 부분은 지울 수 없어요 — 수정 버튼이 든 상단 바 · 로그인 창 · 화면 전체를 덮는 창','err'); return; }
     ueSnap();
     if(cmd==='al') ueSetProp(key,el,{al:cur.al===val?undefined:val});
     else if(cmd==='b'){
@@ -53519,6 +53548,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function uePassToggle(force){
     _ue.pass=force==null?!_ue.pass:!!force;
     if(_ue.pass){ ueEndText(true); _ue.sel=null; _ue.selKey=null; _ue.hoverEl=null; }
+    else{   // 화면 이동 때 누른 앱 버튼 · 입력 칸에 포커스가 남아 있으면 뺀다 (엔터 · 스페이스로 눌리지 않게)
+      const a=document.activeElement;
+      if(a && a!==document.body && !(a.closest && a.closest('.ue-ui'))) try{ a.blur(); }catch(_){}
+    }
     document.body.classList.toggle('ue-pass',_ue.pass);
     ueDockRender();
     if(_ue.pass && force==null) toast('화면 이동 켬 — 화면을 원래처럼 누를 수 있어요. 고칠 화면에 오면 [🖱 화면 이동]을 다시 눌러 끄세요');
@@ -53530,20 +53563,132 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const r=document.createElement('div'); r.id='ueRoot'; r.className='ue-ui'; r.hidden=true;
     r.innerHTML='<div class="ue-box ue-box-hover" id="ueBoxHover"></div>'
       +'<div class="ue-box ue-box-sel" id="ueBoxSel"><span class="ue-box-tag" id="ueBoxTag"></span></div>'
+      +'<div class="ue-marks" id="ueMarks"></div>'
+      +'<button type="button" class="ue-done" id="ueDone" onclick="ueDone()" title="이 부분 고치기 끝 (Esc 도 같음) — 저장은 오른쪽 위 💾 저장">✓ 수정완료</button>'
       +'<div class="ue-list" id="ueList" hidden></div>'
+      +'<div class="ue-ask" id="ueAsk" hidden></div>'
       +'<div class="ue-dock" id="ueDock" role="toolbar" aria-label="화면 수정 도구"></div>';
     document.body.appendChild(r);
     _ue.root=r;
     // 도구를 눌러도 글자 입력 중인 칸의 커서가 안 빠지게 (입력 칸은 그대로 받음)
     r.addEventListener('mousedown',e=>{ if(!e.target.closest('input,textarea')) e.preventDefault(); });
+    document.getElementById('ueAsk').addEventListener('click',e=>{ if(e.target.id==='ueAsk') ueAskClose(); });   // 바깥 누르면 계속 수정
+    // 고친 곳 ✓ 표시를 누르면 그 부분을 고른다
+    document.getElementById('ueMarks').addEventListener('click',e=>{
+      const m=e.target.closest('.ue-mark'); if(!m) return;
+      let el=null; try{ el=document.querySelector(m.dataset.k); }catch(_){}
+      if(el) ueSelect(el,null,true);
+    });
+  }
+  /* --- ✓ 수정완료 (2026-11-20 사장님 "수정되면 우측에 수정완료 아이콘") ---
+     · 고르는 중인 부분 오른쪽에 [✓ 수정완료] — 글자를 입력하는 동안 늘 보이고, 실제로 바뀌면 초록으로 채워진다. 누르면 그 부분 고치기 끝.
+     · 수정 모드에서 바뀐 곳마다 오른쪽 위 모서리에 작은 ✓ (초록 = 저장됨, 주황 = 저장 전). 누르면 그 부분을 고른다. */
+  function ueSelChanged(){
+    const k=_ue.selKey; if(!k) return false;
+    return ueCanon((_ue.draft||{})[k])!==ueCanon((_ue.saved||{})[k]);
+  }
+  function ueDone(){
+    if(!_ue.on) return;
+    const el=_ue.sel, key=_ue.selKey;
+    if(ueDockTyping()) try{ document.activeElement.blur(); }catch(_){}
+    if(_ue.editEl) ueEndText(true);
+    const changed=!!key && ueCanon((_ue.draft||{})[key])!==ueCanon((_ue.saved||{})[key]);
+    _ue.sel=null; _ue.selKey=null;
+    ueDockRender();
+    if(el && el.isConnected) ueFlash(el,changed?'✓ 수정완료':'✓ 그대로');
+    if(changed && !_ue.doneHinted){ _ue.doneHinted=true; toast('수정완료 — 다 고친 뒤 오른쪽 위 [💾 저장]을 눌러야 직원 화면에도 바뀌어요','ok'); }
+  }
+  // 엔터를 눌렀을 때 — 닫지 않고 [✓ 수정완료] 를 잠깐 진하게 보여 준다
+  function ueDoneHint(){
+    const b=document.getElementById('ueDone'); if(!b) return;
+    b.classList.add('is-hint');
+    clearTimeout(_ue.hintTimer);
+    _ue.hintTimer=setTimeout(()=>b.classList.remove('is-hint'),700);
+  }
+  function ueFlash(el,label){
+    if(!_ue.root) return;
+    const r=el.getBoundingClientRect(); if(!r.width&&!r.height) return;
+    const f=document.createElement('div'); f.className='ue-flash';
+    f.style.left=(r.left-3)+'px'; f.style.top=(r.top-3)+'px'; f.style.width=(r.width+6)+'px'; f.style.height=(r.height+6)+'px';
+    f.innerHTML=`<span class="ue-flash-tag">${ueEsc(label)}</span>`;
+    _ue.root.appendChild(f);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ f.style.opacity='0'; }));
+    setTimeout(()=>f.remove(),1400);
+  }
+  // 버튼 안 글자면 그 버튼 바깥 모서리를 기준으로 (✓ 가 버튼 글자를 덮지 않게)
+  function ueAnchorRect(el){
+    const r=el.getBoundingClientRect();
+    const host=el.closest && el.closest('button,a,[role="button"]');
+    if(host && host!==el){
+      const h=host.getBoundingClientRect();
+      if(h.width && h.width<=640 && h.height<=160) return {left:r.left,top:h.top,right:h.right,bottom:h.bottom,width:h.right-r.left,height:h.height,mid:r.top+r.height/2};
+    }
+    return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height,mid:r.top+r.height/2};
+  }
+  function uePlaceDone(){
+    const b=document.getElementById('ueDone'); if(!b) return;
+    const el=_ue.sel;
+    const show=!!el && el.isConnected && !_ue.pass && (_ue.editEl===el || ueDockTyping() || ueSelChanged());
+    let r=show?ueAnchorRect(el):null;
+    if(r && ((!r.width&&!r.height) || r.bottom<0 || r.top>innerHeight)) r=null;
+    if(!r){ if(b.style.display!=='none') b.style.display='none'; return; }
+    const changed=ueSelChanged();
+    if(b.classList.contains('is-changed')!==changed) b.classList.toggle('is-changed',changed);
+    if(b.style.display!=='inline-flex') b.style.display='inline-flex';
+    const w=b.offsetWidth||96, h=b.offsetHeight||30;
+    let x=r.right+10, y=r.mid-h/2;
+    if(x+w>innerWidth-8){ x=r.right-w; y=r.top-h-8; if(y<8) y=r.bottom+8; }   // 오른쪽 자리가 없으면 오른쪽 위 (그것도 없으면 아래)
+    x=Math.max(8,Math.min(innerWidth-w-8,x)); y=Math.max(8,Math.min(innerHeight-h-8,y));
+    const s=Math.round(x)+','+Math.round(y);
+    if(b.dataset.pos!==s){ b.dataset.pos=s; b.style.left=Math.round(x)+'px'; b.style.top=Math.round(y)+'px'; }
+  }
+  function ueMarksUpdate(){
+    const box=document.getElementById('ueMarks'); if(!box) return;
+    const d=_ue.draft||{}, s=_ue.saved||{}, out=[];
+    if(!_ue.pass){
+      for(const k in d){
+        const v=d[k]; if(!v || v.h || k===_ue.selKey) continue;   // 지운 곳은 빨간 점선이 표시, 고르는 중인 곳은 [✓ 수정완료]
+        let el=null; try{ el=document.querySelector(k); }catch(_){}
+        if(!el || (v.k1 && !el.classList.contains(v.k1))) continue;
+        if(!el.getClientRects().length) continue;   // 안 보이는 화면
+        const r=ueAnchorRect(el);
+        if((!r.width&&!r.height) || r.bottom<0 || r.top>innerHeight || r.right<0 || r.left>innerWidth) continue;
+        out.push({k,x:Math.round(Math.max(2,Math.min(innerWidth-20,r.right-9))),y:Math.round(Math.max(2,Math.min(innerHeight-20,r.top-9))),un:ueCanon(v)!==ueCanon(s[k])});
+      }
+    }
+    while(box.children.length<out.length){ const m=document.createElement('button'); m.type='button'; m.className='ue-mark'; m.textContent='✓'; box.appendChild(m); }
+    [...box.children].forEach((m,i)=>{
+      const o=out[i];
+      if(!o){ if(m.style.display!=='none'){ m.style.display='none'; m.dataset.sig=''; } return; }
+      const sig=o.x+','+o.y+','+o.un+','+o.k;
+      if(m.dataset.sig===sig) return;
+      m.dataset.sig=sig; m.dataset.k=o.k;
+      m.style.display=''; m.style.left=o.x+'px'; m.style.top=o.y+'px';
+      m.classList.toggle('is-unsaved',o.un);
+      m.title=o.un?'수정완료 · 저장 전 (오른쪽 위 💾 저장)':'수정완료 · 저장됨';
+    });
+  }
+  // 지우면 안 되는 곳 — 수정 버튼을 품은 상단 바(지우면 다시 못 켬) · 로그인 창 · 잠금 화면 · 화면 전체를 덮는 창
+  function ueCanHide(el){
+    if(!el) return false;
+    const btn=document.getElementById('ueEditBtn');
+    if(btn && el.contains(btn)) return false;
+    if(el.matches && el.matches('#diarySetupModal,#lock,.lock')) return false;
+    try{
+      if(getComputedStyle(el).position==='fixed'){
+        const r=el.getBoundingClientRect();
+        if(r.width>=innerWidth*0.9 && r.height>=innerHeight*0.9) return false;
+      }
+    }catch(_){}
+    return true;
   }
   function ueDescOf(el){
     if(!el) return {tag:'',txt:'바꿀 곳을 누르세요 · 글자는 누르고 바로 입력 · Ctrl+클릭은 원래처럼 열기'};
     const v=(_ue.draft||{})[_ue.selKey]||{};
     const snip=s=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>28?s.slice(0,28)+'…':s; };
     if(v.h) return {tag:'지운 부분',txt:'지운 부분이에요 (직원 화면엔 안 보임) — [👁 다시 보이기] 또는 [↺ 원래대로]로 되살려요'};
-    if(_ue.editEl===el||ueIsLeafText(el)) return {tag:'글자 · 바로 입력',txt:`글자 "${snip(_ue.editEl===el?_ue.textBase:el.textContent)}" — 바로 입력하고 Enter`};
-    if(ueMixedIdx(el)>=0) return {tag:'글자 · 바로 입력',txt:'바로 입력하면 아래 [글자] 칸으로 바뀌어요 · Enter 로 끝'};
+    if(_ue.editEl===el||ueIsLeafText(el)) return {tag:'글자 · 바로 입력',txt:`글자 "${snip(_ue.editEl===el?_ue.textBase:el.textContent)}" — 바로 입력하고, 다 고치면 오른쪽 [✓ 수정완료]`};
+    if(ueMixedIdx(el)>=0) return {tag:'글자 · 바로 입력',txt:'바로 입력하면 아래 [글자] 칸으로 바뀌어요 · 다 고치면 오른쪽 [✓ 수정완료]'};
     return {tag:'묶음',txt:`묶음 "${snip(el.textContent)||el.tagName.toLowerCase()}" — 정렬 · 지우기 · 색 가능, 안의 글자는 그 글자를 직접 누르세요`};
   }
   function ueDockRender(){
@@ -53557,7 +53702,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(el && mi>=0 && !v.h){
       const n=ueTxtNodes(el)[mi];
       const val=typeof v.t==='string'?v.t:(n?n.nodeValue.trim():'');
-      mixed=`<label class="ue-dock-text"><span>글자</span><input type="text" id="ueMixedIn" value="${ueEsc(val)}" autocomplete="off" oninput="ueMixedInput(this.value)" onfocus="ueSnap()" onkeydown="if(event.key==='Enter'||event.key==='Escape')this.blur()"></label>`;
+      mixed=`<label class="ue-dock-text"><span>글자</span><input type="text" id="ueMixedIn" value="${ueEsc(val)}" autocomplete="off" oninput="ueMixedInput(this.value)" onfocus="ueSnap()"></label>`;
     }else{
       const ph=!el?'글자를 누르면 고칠 수 있어요':(v.h?'지운 부분':(_ue.editEl===el||ueIsLeafText(el))?'화면에서 바로 입력하세요':'안의 글자를 직접 누르세요');
       mixed=`<label class="ue-dock-text is-off"><span>글자</span><input type="text" disabled placeholder="${ueEsc(ph)}"></label>`;
@@ -53574,7 +53719,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
         <div class="ue-grp">${UE_COLORS.map(([c,nm])=>`<button type="button" class="ue-sw${on(!!el&&(v.c||'')===c)}"${dis} onclick="ueCmd('c','${c}')" title="${nm}"${c?` style="background:${c}"`:''}>${c?'':'✕'}</button>`).join('')}</div>
         <div class="ue-grp">
-          <button type="button" class="ue-tb ue-tb-del${on(v.h)}"${dis} onclick="ueCmd('h')" title="화면에서 지워요 (데이터는 그대로 · [원래대로]로 되살림) · Delete 키">${v.h?'👁 다시 보이기':'🗑 지우기'}</button>
+          <button type="button" class="ue-tb ue-tb-del${on(v.h)}"${(el&&(v.h||ueCanHide(el)))?'':' disabled'} onclick="ueCmd('h')" title="화면에서 지워요 (데이터는 그대로 · [원래대로]로 되살림) · Delete 키">${v.h?'👁 다시 보이기':'🗑 지우기'}</button>
           <button type="button" class="ue-tb"${el&&key&&(_ue.draft||{})[key]?'':' disabled'} onclick="ueCmd('reset')" title="이 부분을 처음 모습으로">↺ 원래대로</button>
           <button type="button" class="ue-tb"${dis} onclick="ueCmd('up')" title="이 부분을 감싼 바깥 묶음 고르기 (카드 · 칸 통째로)">⬆ 바깥</button>
         </div>
@@ -53586,6 +53731,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>`;
     ueTopSync();
     if(_ue.listOpen) ueListRender();
+    ueOverlaySync();
+  }
+  // 상자 · [✓ 수정완료] · ✓ 표시를 바로 맞춘다 — 평소엔 화면 그릴 때마다(rAF) 돌지만, 창이 뒤에 있으면 rAF 가 멈춰서 상태가 바뀔 때 · 스크롤 때도 부른다
+  function ueOverlaySync(){
+    if(!_ue.on) return;
+    uePlaceBox(document.getElementById('ueBoxSel'),_ue.sel);
+    uePlaceDone();
+    ueMarksUpdate();
+  }
+  function ueOnScroll(){
+    const now=performance.now();
+    if(now-(_ue.scrollTs||0)<40) return;
+    _ue.scrollTs=now;
+    ueOverlaySync();
+    uePlaceBox(document.getElementById('ueBoxHover'),null);
   }
   function ueSummary(e){
     const p=[], cut=s=>{ s=String(s||'').replace(/\s+/g,' ').trim(); return s.length>18?s.slice(0,18)+'…':s; };
@@ -53658,6 +53818,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       uePlaceBox(sel,_ue.sel);
       uePlaceBox(hov,(!_ue.pass && _ue.hoverEl!==_ue.sel)?_ue.hoverEl:null);
+      uePlaceDone();
+      const now=performance.now();
+      if(now-(_ue.markTs||0)>150){ _ue.markTs=now; ueMarksUpdate(); }   // 바뀐 곳 ✓ — 0.15초마다
       _ue.raf=requestAnimationFrame(step);
     };
     _ue.raf=requestAnimationFrame(step);
@@ -53670,6 +53833,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function ueTopSync(){
     const lc=document.getElementById('ueListCnt'); if(lc) lc.textContent=String(Object.keys(_ue.draft||{}).length);
+    if(_ue.on) uePlaceDone();   // 글자를 바꾸는 순간 [✓ 수정완료] 가 초록으로
     const c=document.getElementById('ueTopN'); if(!c) return;
     const n=_ue.on?ueDirtyCount():0;
     c.textContent=n?String(n):''; c.hidden=!n;
@@ -53688,13 +53852,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const t=e.target;
     if(t && t.closest && t.closest('.ue-ui')) return;          // 수정 도구 · 톱바 수정 버튼
     if(_ue.pass || e.ctrlKey || e.metaKey) return;            // 화면 이동 · Ctrl+클릭 = 원래처럼
+    // 글자 입력 중 키보드로 생긴 클릭(스페이스 · 엔터가 버튼을 누른 것, detail 0)은 버린다 — 버튼 안 글자를 고치다 스페이스를 누르면
+    // 브라우저가 그 버튼을 클릭해서 고르기가 바깥 버튼으로 바뀌고 입력이 닫히던 것 (2026-11-20 '재고 ERP' 뒤가 잘림)
+    if(e.type==='click' && e.detail===0 && ueTyping()){ e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault(); return; }
     const inEdit=!!(_ue.editEl && t && _ue.editEl.contains(t));
     e.stopPropagation(); e.stopImmediatePropagation();         // 앱의 클릭 동작은 막는다
-    if(inEdit) return;                                         // 글자 입력 중 — 커서 옮기기 · 끌어 고르기는 그대로
+    if(inEdit){                                                // 글자 입력 중 — 커서 옮기기 · 끌어 고르기는 그대로
+      if(/^(click|auxclick|submit|dragstart)$/.test(e.type) && e.cancelable) e.preventDefault();   // 링크 이동 · 접기 · 제출은 안 되게
+      return;
+    }
     // mousedown 을 막아야 입력 칸에 포커스가 안 간다 (pointerdown 만 막으면 크롬은 포커스를 옮김)
     if(e.cancelable && !/^(pointer|touch)/.test(e.type)) e.preventDefault();
     if(e.type==='click'){ const el=ueTarget(t); if(el) ueSelect(el,e); else ueDeselect(); }
   }
+  function ueDockTyping(){ const a=document.activeElement; return !!(a && a.id==='ueMixedIn'); }
+  function ueTyping(){ return !!_ue.editEl || ueDockTyping(); }
   // 그래도 앱 입력 칸에 포커스가 가면 바로 뺀다 — 수정 중에 앱 데이터가 바뀌지 않게
   function ueOnFocus(e){
     if(!_ue.on || _ue.pass) return;
@@ -53702,21 +53874,65 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!t || t===_ue.editEl || (t.closest && t.closest('.ue-ui'))) return;
     if(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) try{ t.blur(); }catch(_){}
   }
+  /* 키보드 — 글자 입력 중엔 엔터 · 스페이스로 닫히지 않는다 (2026-11-20 사장님 "엔터나 스페이스바 눌러도 바로 닫기 안되게").
+     끝내기는 오른쪽 [✓ 수정완료] 또는 Esc. 한글 조합 중(229)인 키는 입력기에 그대로 맡긴다 */
   function ueOnKey(e){
     if(!_ue.on) return;
     const k=e.key, mod=e.ctrlKey||e.metaKey, t=e.target;
+    const composing=e.isComposing||e.keyCode===229;
     if(mod && (k==='s'||k==='S')){ e.preventDefault(); e.stopPropagation(); ueSave(); return; }
     if(_ue.pass) return;
     if(_ue.editEl && t && _ue.editEl.contains(t)){
-      if(k==='Enter'||k==='Escape'){ e.preventDefault(); e.stopPropagation(); ueEndText(true); ueDockRender(); }
-      else e.stopPropagation();   // 글자 입력 — 앱 단축키로 안 넘김
+      e.stopPropagation();   // 글자 입력 — 앱 단축키로 안 넘김
+      if(composing) return;
+      if(k==='Enter'||k==='Tab'){ e.preventDefault(); ueDoneHint(); return; }   // 줄바꿈 · 버튼 누름 · 칸 이동 없이 그대로
+      if(k===' ' && !e.altKey && !mod){   // 버튼 안 글자에서도 띄어쓰기만 들어가게 (브라우저가 버튼을 누르지 않게)
+        e.preventDefault();
+        try{ document.execCommand('insertText',false,' '); }catch(_){}
+        return;
+      }
+      if(k==='Escape'){ e.preventDefault(); ueDone(); }
+      return;
+    }
+    // 톱바 [취소] [저장] 은 마우스로만 — 취소를 한 번 누른 뒤 포커스가 남아 엔터로 다시 눌려 닫히지 않게
+    if(t && t.closest && t.closest('#ueTopEdit') && (k==='Enter'||k===' ')){ e.preventDefault(); e.stopPropagation(); return; }
+    if(t && t.id==='ueMixedIn'){   // 아래 [글자] 칸
+      e.stopPropagation();
+      if(composing) return;
+      if(k==='Enter'){ e.preventDefault(); ueDoneHint(); return; }
+      if(k==='Escape'){ e.preventDefault(); ueDone(); }
       return;
     }
     if(t && t.closest && t.closest('.ue-ui')) return;
     if(mod && (k==='z'||k==='Z')){ e.preventDefault(); e.stopPropagation(); ueUndo(); return; }
     if(mod && (k==='a'||k==='A')){ e.preventDefault(); e.stopPropagation(); return; }   // 화면 전체가 파랗게 잡히지 않게
+    const ask=document.getElementById('ueAsk');
+    if(k==='Escape' && ask && !ask.hidden){ e.stopPropagation(); ueAskClose(); return; }   // 묻는 창은 Esc = 계속 수정
     if(k==='Escape'){ e.stopPropagation(); ueDeselect(); return; }
-    if((k==='Delete'||k==='Backspace') && _ue.sel){ e.preventDefault(); e.stopPropagation(); ueCmd('h'); }
+    if(k==='Delete' && _ue.sel){ e.preventDefault(); e.stopPropagation(); ueCmd('h'); return; }   // 백스페이스는 안 씀 — 글자 지우려다 칸이 사라지지 않게
+    // 앱 버튼에 포커스가 남아 있으면(화면 이동 때 누른 것) 엔터 · 스페이스로 눌리지 않게
+    if((k==='Enter'||k===' ') && t && t!==document.body && t!==document.documentElement){ e.preventDefault(); e.stopPropagation(); return; }
+    // 골라 둔 글자에서 바로 타자를 치면 입력 시작 (아래 [글자] 칸 또는 화면 글자)
+    if(_ue.sel && !mod && !e.altKey && (k.length===1 || composing)){
+      const v=(_ue.draft||{})[_ue.selKey]||{};
+      if(v.h) return;
+      const inp=document.getElementById('ueMixedIn');
+      if(inp){ ueFocusInput(inp); return; }
+      if(ueIsLeafText(_ue.sel)){ ueStartText(_ue.sel,null); ueDockRender(); }
+    }
+  }
+  // 엔터 · 탭 · 스페이스(누름)는 앱으로 안 넘김 — keydown 만 막으면 keyup 으로 동작하는 앱 코드가 있어서
+  function ueOnKeyOther(e){
+    if(!_ue.on || _ue.pass) return;
+    const t=e.target;
+    const inEdit=!!(_ue.editEl && t && _ue.editEl.contains(t)), inInput=!!(t && t.id==='ueMixedIn');
+    if(inEdit || inInput){ e.stopPropagation(); if(!(e.isComposing||e.keyCode===229) && (e.key===' '||e.key==='Enter') && e.type==='keyup') e.preventDefault(); return; }
+    if(t && t.closest && t.closest('#ueTopEdit') && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); e.stopPropagation(); return; }
+    if(t && t.closest && t.closest('.ue-ui')) return;
+    if((e.key==='Enter'||e.key===' ') && t && t!==document.body && t!==document.documentElement){ e.preventDefault(); e.stopPropagation(); }
+  }
+  function ueFocusInput(inp){
+    try{ inp.focus({preventScroll:true}); const n=inp.value.length; inp.setSelectionRange(n,n); }catch(_){}
   }
   function ueOnMove(e){
     if(!_ue.on || _ue.pass) return;
@@ -53728,8 +53944,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     UE_PTR_EVTS.forEach(ev=>window[f](ev,ueOnPtr,{capture:true}));
     UE_TOUCH_EVTS.forEach(ev=>window[f](ev,ueOnPtr,{capture:true,passive:true}));
     window[f]('keydown',ueOnKey,{capture:true});
+    window[f]('keyup',ueOnKeyOther,{capture:true});
+    window[f]('keypress',ueOnKeyOther,{capture:true});
     window[f]('pointermove',ueOnMove,{capture:true,passive:true});
     window[f]('focusin',ueOnFocus,{capture:true});
+    window[f]('scroll',ueOnScroll,{capture:true,passive:true});
+    window[f]('resize',ueOnScroll,{passive:true});
   }
 
   /* --- 켜기 · 끄기 · 저장 --- */
@@ -53758,6 +53978,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     cancelAnimationFrame(_ue.raf);
     document.body.classList.remove('ue-on','ue-pass');
     if(_ue.root) _ue.root.hidden=true;
+    ueAskClose();
+    const db=document.getElementById('ueDone'); if(db){ db.style.display='none'; db.dataset.pos=''; }
+    const mk=document.getElementById('ueMarks'); if(mk) mk.innerHTML='';
     ueRefresh();
     ueTopRender();
   }
@@ -53781,13 +54004,32 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ok=await ueWaitFlush();
     toast(ok?`✅ 저장했어요 · ${n}곳 · 전 직원 화면에 반영돼요`:'이 PC 에는 저장됐어요. 서버로는 자동으로 다시 보내요',ok?'ok':'err');
   }
+  /* [취소] — 저장 안 한 변경이 있으면 묻는다. 브라우저 확인 창은 엔터 한 번에 '확인'(버리기)이 눌려서,
+     엔터 · 스페이스로는 안 닫히는 작은 창으로 (마우스로 [버리고 닫기]를 눌러야만 버림) */
   function ueCancel(){
     if(!_ue.on) return;
     ueEndText(true);
+    try{ const a=document.activeElement; if(a && a.closest && a.closest('#ueTopEdit')) a.blur(); }catch(_){}
     const n=ueDirtyCount();
-    if(n && !confirm(`저장 안 한 변경 ${n}곳을 버릴까요?`)) return;
+    if(!n){ ueExitMode(); return; }
+    const box=document.getElementById('ueAsk'); if(!box) return;
+    box.innerHTML=`<div class="ue-ask-card" role="dialog" aria-label="저장 안 한 변경">
+        <b>저장 안 한 변경 ${n}곳</b>
+        <span>버리면 이번에 고친 것이 모두 원래대로 돌아가요.</span>
+        <div class="ue-ask-btns">
+          <button type="button" class="ue-tb ue-ask-keep" onclick="ueAskClose()">계속 수정</button>
+          <button type="button" class="ue-tb ue-ask-drop" onclick="ueCancelDrop()">버리고 닫기</button>
+          <button type="button" class="ue-tb ue-ask-save" onclick="ueAskClose();ueSave()">💾 저장하고 닫기</button>
+        </div>
+      </div>`;
+    box.hidden=false;
+  }
+  function ueAskClose(){ const box=document.getElementById('ueAsk'); if(box){ box.hidden=true; box.innerHTML=''; } }
+  function ueCancelDrop(){
+    ueAskClose();
+    if(!_ue.on) return;
     ueExitMode();
-    if(n) toast('변경을 버렸어요');
+    toast('변경을 버렸어요');
   }
   // 앱 진입 때 (show) — 이 PC 사본으로 바로 입히고, 서버 값을 받아 맞춘다. 직원 PC 도 똑같이 돈다
   function ueBoot(){
@@ -53819,6 +54061,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.ueEnter=ueEnter; window.ueSave=ueSave; window.ueCancel=ueCancel; window.ueCmd=ueCmd; window.ueUndo=ueUndo;
   window.uePassToggle=uePassToggle; window.ueListToggle=ueListToggle; window.ueListGo=ueListGo; window.ueListReset=ueListReset;
   window.ueMixedInput=ueMixedInput; window.ueSnap=ueSnap; window.ueBoot=ueBoot; window.ueRefreshAccess=ueRefreshAccess;
+  window.ueDone=ueDone; window.ueAskClose=ueAskClose; window.ueCancelDrop=ueCancelDrop;
 
   init();
 </script>
