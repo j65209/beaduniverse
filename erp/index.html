@@ -760,7 +760,10 @@
   const sbRpc = (fn, body) => sbFetch(`rpc/${fn}`, {method: 'POST', body: JSON.stringify(body || {})});
 
   /* ── 탭 목록 = 저장소 erp_tabs (지금 시트에 보이는 탭 · 시트 순서 — 맥미니가 5분마다 시트 메뉴와 맞춤) ── */
-  const TAB_COLS = 'gid,name,pos,alive,kind,n_rows,n_cols,pii_cols,pii_from,masked,fx,fx_ro,fx_deny,synced_at,rows_ver,ver,ofmt';
+  const TAB_COLS = 'gid,name,pos,alive,kind,n_rows,n_cols,pii_cols,pii_from,masked,fx,fx_ro,fx_deny,synced_at,rows_ver,ver,ofmt,sheet_link';
+  // 구글시트를 끊은 탭 (erp_tabs.sheet_link = false — 2026-11-20 사장님 "구글시트는 이제 연결 안 함 · 주된 프로그램은 오피스앱 재고 erp"):
+  // 오피스 저장소가 원본 — 고치면 저장소에만 (시트 브리지 안 거침, 그사이 바뀌었으면 저장소 값으로 덮어쓰기를 묻는다), 시트 맞춤 시각 · 구글시트 바로 읽기 없음
+  const cutTab = gid => { const t = tabOf(gid); return !!(t && t.info && t.info.sheet_link === false); };
   function loadTabs() {
     if (S.tabsBusy) return S.tabsBusy;
     S.tabsBusy = (async () => {
@@ -2102,7 +2105,7 @@
     $('dSub').textContent = row.past ? [...subs, '재고 마스터에 줄 없음'].join(' · ')
       : [...subs, `시트 ${r}행`].join(' · ') + ed + (row.lv === 'low' ? ` · 품절 임박 (${LOW_STOCK}개 이하)` : row.lv === 'out' ? ' · 품절 (0 이하)' : '') + (row.pin ? ' · ⚠ ' + PIN_WHY[row.pin] : '');
     $('dSheet').href = secretOk() && !row.past ? `${BASE}/edit#gid=${S.cur}&range=A${r}` : '#';
-    $('dSheet').hidden = !secretOk() || !!row.past;
+    $('dSheet').hidden = !secretOk() || !!row.past || cutTab(S.cur);   // 끊긴 탭은 시트가 옛 값이라 안 보임
     // 이름 · 카테고리 확인할 것 (재고 탭) — 맨 위에 빨간 글로
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}${row.map ? `<br><button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>` : ''}</dd>` : '')
       + d.cols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${c.pro ? (row.pro ? `${proBadge(row.pro, row.pin === 1)}<span class="pro-sub">${esc(proText(row.pro).replace(/^식스샵프로 \S+ — /, ''))}</span>` : '<span class="none">식스샵에 연결된 상품 없음</span>') : detailVal(c, row.byP[c.p])}</dd>`).join('');
@@ -2202,7 +2205,7 @@
     pii_cell: '가린 개인정보 칸은 오피스에서 고칠 수 없어요 — 구글시트에서 고쳐 주세요',
   };
   const RO_TAB = '자동 계산(QUERY 등)이 들어간 탭이라 오피스에서는 고치지 않아요 — 구글시트에서 고쳐 주세요';
-  const editErr = m => EDIT_ERR[m] || (/^http_|^cfg$|Failed to fetch|NetworkError|Load failed/.test(m) ? '구글시트에 저장하지 못했어요 — 인터넷 연결을 확인하고 다시 해 주세요' : `저장하지 못했어요 (${m})`);
+  const editErr = m => EDIT_ERR[m] || (/^http_|^cfg$|Failed to fetch|NetworkError|Load failed|^network$|^timeout$/.test(m) ? '저장하지 못했어요 — 인터넷 연결을 확인하고 다시 해 주세요' : `저장하지 못했어요 (${m})`);
 
   function bridgeCfg() {
     if (E.cfg) return Promise.resolve(E.cfg);
@@ -2269,7 +2272,8 @@
     if (!S.sel || !t || !d) return;
     const info = tabInfo(S.cur);
     const tabWhy = d.side ? '집계 표는 고칠 수 없어요' : info && info.fx_deny ? editErr(info.fx_deny) : info && info.fx_ro ? RO_TAB : '';
-    hint.textContent = tabWhy || '값을 누르면 고칠 수 있어요 · 저장하면 구글시트와 오피스 저장소에 바로 적혀요 (합계 같은 수식 칸은 자동 계산)';
+    hint.textContent = tabWhy || (cutTab(S.cur) ? '값을 누르면 고칠 수 있어요 · 저장하면 오피스 저장소에 바로 적혀요 (구글시트와는 끊김 · 합계 · 잔량은 자동 계산)'
+      : '값을 누르면 고칠 수 있어요 · 저장하면 구글시트와 오피스 저장소에 바로 적혀요 (합계 같은 수식 칸은 자동 계산)');
     hint.classList.toggle('no', !!tabWhy);
     $('dList').querySelectorAll('dd[data-p]').forEach(dd => {
       const why = roWhy(editCtx(S.cur, S.sel.r, +dd.dataset.p));
@@ -2325,6 +2329,7 @@
     rerender(x.gid);
   }
   async function writeOnce(x, v, old, prev, key) {
+    if (cutTab(x.gid)) return writeDb(x, v, old, prev, key);
     try {
       const j = await bridge('write', {book: BOOK, sheet: (tabOf(x.gid) || {}).name || x.name, edits: [{r: x.r, c: x.sc, v, old}]});
       const res = (j.results || [])[0] || {};
@@ -2354,6 +2359,32 @@
       if (dbErr) S.dbErrAt = Date.now();
       logEdit(x, prev, v, true);
       return {ok: true, shown: arr ? arr[x.sc - 1] : null, dbErr};
+    } catch (e) {
+      settle(x, key, false);
+      logEdit(x, prev, v, false, (e && e.message) || String(e));
+      throw e;
+    }
+  }
+  // 구글시트를 끊은 탭 — 오피스 저장소에만 (old 를 주면 저장소의 지금 값과 같을 때만, 다르면 덮어쓰기를 묻는다).
+  // 합계 · 잔량은 저장소가 다시 계산해 돌려준 줄로 (erp_calc_stock 트리거)
+  async function writeDb(x, v, old, prev, key) {
+    try {
+      const d = await sbRpc('erp_cell_edit', {p_gid: x.gid, p_r: x.r, p_p: x.p, p_new: String(v), p_row: null, p_who: whoAmI() || null, p_old: old == null ? null : String(old)});
+      if (d && d.conflict) {
+        if (norm(d.current) === norm(old) || norm(d.current) === norm(v)) return writeDb(x, v, null, prev, key);   // 띄어쓰기만 다름 · 이미 그 값
+        settle(x, key, false, null, d.current);
+        return {conflict: true, current: d.current};
+      }
+      if (!d || !d.ok || !Array.isArray(d.v)) throw new Error('db_error');
+      const t = tabOf(x.gid);
+      if (d.rows_ver && t && t.info) {   // 내가 쓴 것 — 다음 확인 때 다시 받지 않게 번호표를 앞당긴다
+        const ent = S.cache.get(x.gid);
+        if (ent && ent.rowsVer >= +t.info.rows_ver) ent.rowsVer = +d.rows_ver;
+        t.info.rows_ver = Math.max(+t.info.rows_ver, +d.rows_ver);
+      }
+      settle(x, key, true, d.v);
+      logEdit(x, prev, v, true);
+      return {ok: true, shown: d.v[x.p] != null ? d.v[x.p] : v};
     } catch (e) {
       settle(x, key, false);
       logEdit(x, prev, v, false, (e && e.message) || String(e));
@@ -2408,9 +2439,10 @@
   function askConflict(x, v, current, anchorOf) {
     closeEditor();
     const box = $('edbox');
-    box.innerHTML = `<div class="ed-cap">${esc(x.col.name)} · 시트 ${colName(x.sc - 1)}${x.r}</div>`
-      + `<div class="ed-row"><div class="ed-msg err">그사이 시트 값이 '${esc(short(current))}'(으)로 바뀌었어요. '${esc(short(v))}'(으)로 덮어쓸까요?</div></div>`
-      + '<div class="ed-row"><div class="ed-msg"></div><button type="button" class="ed-cancel">시트 값 두기</button><button type="button" class="ed-force">덮어쓰기</button></div>';
+    const cut = cutTab(x.gid);   // 구글시트를 끊은 탭은 '저장소 값' (자동 차감 · 다른 직원이 그사이 바꿈)
+    box.innerHTML = `<div class="ed-cap">${esc(x.col.name)} · ${cut ? `${x.r}행` : `시트 ${colName(x.sc - 1)}${x.r}`}</div>`
+      + `<div class="ed-row"><div class="ed-msg err">그사이 ${cut ? '' : '시트 '}값이 '${esc(short(current))}'(으)로 바뀌었어요. '${esc(short(v))}'(으)로 덮어쓸까요?</div></div>`
+      + `<div class="ed-row"><div class="ed-msg"></div><button type="button" class="ed-cancel">${cut ? '바뀐 값 두기' : '시트 값 두기'}</button><button type="button" class="ed-force">덮어쓰기</button></div>`;
     E.x = x;
     E.at = {kind: 'ask', r: x.row, p: x.p};
     E.anchor = (anchorOf && anchorOf()) || cellTd(x.row, x.p) || null;
@@ -3368,14 +3400,15 @@
   }
   const agoMs = ms => ms < 50e3 ? '방금' : ms < 3600e3 ? `${Math.round(ms / 60e3)}분 전` : ms < 86400e3 ? `${Math.floor(ms / 3600e3)}시간 전` : `${Math.floor(ms / 86400e3)}일 전`;
   function paintStatus() {
-    const st = $('st'), s = S.st[S.cur] || {k: 'load'}, c = S.cache.get(S.cur), age = syncAge(S.cur), lim = syncLimits(S.cur);
+    const st = $('st'), s = S.st[S.cur] || {k: 'load'}, c = S.cache.get(S.cur), age = syncAge(S.cur), lim = syncLimits(S.cur), cut = cutTab(S.cur);
     let k = s.k, txt = '', tip = '';
-    const late = c && !c.direct && age > lim.bad ? 'bad' : c && !c.direct && age > lim.warn ? 'warn' : '';
+    const late = cut ? '' : c && !c.direct && age > lim.bad ? 'bad' : c && !c.direct && age > lim.warn ? 'warn' : '';
     if (k === 'load') txt = c ? (c.stored ? (narrow.matches ? '저장본' : `${hhmm(c.at)} 저장본 · 새로 받는 중…`) : s.direct ? '구글시트 읽는 중…' : '갱신 중…') : '불러오는 중…';
     else if (k === 'err') txt = errShort(s.err);
     else if (c && c.direct) txt = narrow.matches ? '구글시트 바로' : `구글시트에서 바로 읽음 · ${hhmm(c.at)}`;
     else if (c && c.stored) txt = `${hhmm(c.at)} 저장본`;
     else if (late) txt = narrow.matches ? `맞춤 ${agoMs(age)}` : `시트와 맞춘 지 ${agoMs(age)} · ${late === 'bad' ? '누르면 구글시트에서 바로' : '맥미니 확인 중'}`;
+    else if (c && cut) txt = narrow.matches ? '최신' : '오피스 ERP 원본 · 최신';
     else if (c) txt = narrow.matches ? '최신' : `시트와 맞춤 ${isFinite(age) ? agoMs(age) : '—'} · 오피스 저장소`;
     if (k === 'ok' && late === 'bad') k = 'err';
     st.className = `st is-${k}`;
@@ -3385,6 +3418,7 @@
     const m = c && c.model;
     tip = c && c.direct ? `오피스 저장소가 ${isFinite(age) ? agoMs(age) : '오래'} 맞춰지지 않아 이 탭은 구글시트를 바로 읽어 보여 주는 중 (${hhmm(c.at)})`
       : c && c.stored ? `이 브라우저에 저장해 둔 ${hhmm(c.at)} 자료를 먼저 보여 주는 중 — 새 자료가 오면 바로 바뀌어요`
+      : cut ? `구글시트와 끊긴 탭 — 오피스 저장소가 원본이에요. 자동 차감 · 고친 값이 여기에 바로 적히고, 화면은 ${POLL_MS / 1000}초마다 바뀐 줄만 받아요`
       : `오피스 저장소에서 읽음 — 맥미니가 구글시트와 맞추고(재고 탭 1분 · 오늘 주문 탭 2분 · 지난 탭 15분마다), 화면은 ${POLL_MS / 1000}초마다 바뀐 줄만 받아요`
         + (isFinite(age) ? `\n이 탭을 시트와 마지막으로 맞춘 때: ${agoMs(age)}` : '');
     st.title = tip + (m && m.masked ? `\n주문자 이름 등 개인정보 ${m.masked.toLocaleString('ko-KR')}칸은 가려서 보여 줌` : '')
@@ -3393,7 +3427,7 @@
   function paintCount() { $('qn').textContent = S.terms.length && curData() ? `${fmt(S.list.length)}줄` : ''; }
   function reloadNow() {
     const c = S.cache.get(S.cur), s = S.st[S.cur] || {};
-    if (S.cur && (syncAge(S.cur) > syncLimits(S.cur).bad || (s.k === 'err' && !s.direct && !c))) { loadDirect(S.cur); return; }
+    if (S.cur && !cutTab(S.cur) && (syncAge(S.cur) > syncLimits(S.cur).bad || (s.k === 'err' && !s.direct && !c))) { loadDirect(S.cur); return; }
     if (S.cur) loadSheet(S.cur, {full: true});
     if (!S.tabsBusy) loadTabs().catch(() => {});
   }
