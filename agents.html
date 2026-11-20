@@ -423,7 +423,7 @@ const CHARACTERS = [
   {
     id:'chief', name:'리안', team:'본부',
     hairColor:'#1a1a1a', cloth:'#78350f',
-    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match','po-audit','review-guard'],
+    agentIds:['kd-brightbeed','kd-shinebeed','vendor-fetch','withdrawal-nag','pro-sales','admin-sales','platform-sales','brand-report','bestsellers','ably-daily','fb-ads','ad-sheet-sync','ably-ads','fx-usd','reorder-alert','erp-audit','po-match','po-audit','review-guard','new-products'],
     taskLabel:'전 에이전트 자동업무 검수', scheduleLabel:'상시 감시', intervalSec:1800,
     role:'자동화 검수관 · 이상 감지',
     knows:[
@@ -483,6 +483,27 @@ const CHARACTERS = [
       {label:'새 발주', cmd:'새 발주 들어갔어?'},
       {label:'휴지통 · 입고', cmd:'휴지통 지운 거 확인'},
       {label:'지금 다시 검수', cmd:'지금 다시 검수'},
+    ],
+  },
+  {
+    /* 2026-11-20 엠디1팀 신상 등록 — 식스샵프로 신상 불러오기 (맥미니 new-products 30분, 쓰기는 apeti-erp erp-new-products) */
+    id:'newprod', name:'새롬', team:'엠디1팀',
+    hairColor:'#4a2c1a', cloth:'#0d9488',
+    agentIds:['new-products'],
+    taskLabel:'식스샵프로 신상 → 재고 ERP 줄 등록', scheduleLabel:'30분마다', intervalSec:1800,
+    role:'신상 등록 · 식스샵프로 새 상품을 재고 ERP 에 줄로',
+    knows:[
+      '30분마다 7개 브랜드 식스샵프로 상품을 보고, 새로 올린 상품 옵션이 재고 ERP 송장출력에 없으면 마지막 상품 줄 아래에 넣어요 — 카테고리 · 상품명 · 옵션 · 합계/잔량 수식',
+      '남은 재고 · 발주 칸은 비워 둬요 — 콰이디에어 메모에 상품명을 적어 발주하면 콜리가 발주일 · 발주 수량을, 입고되면 모아가 남은 재고를 채워요',
+      '세트 · 묶음 · 1+1 · 여러 개 고르는 옵션은 줄을 안 만들어요 (낱개 줄로 빠짐) · 개인결제창 · A/S · 배너 · 샘플도 빼요',
+      '직원이 이름을 다듬는 동안(마지막 수정 10분)은 기다리고, 넣기 전에 다른 상품 연결이 안 바뀌는지 차감 규칙으로 미리 풀어 봐요',
+      '카테고리는 그 브랜드 기존 줄에서 배워 채우고, 확실하지 않으면 빈칸으로 둬요 · 판매가는 시트에 안 적어요(기밀)',
+    ],
+    quick:[
+      {label:'신상 현황', cmd:'신상 현황'},
+      {label:'확인 필요', cmd:'확인 필요한 신상'},
+      {label:'세트 · 제외', cmd:'안 넣은 신상'},
+      {label:'전문 분야', cmd:'전문 분야'},
     ],
   },
   {
@@ -1444,6 +1465,8 @@ async function handle(c, text){
   if(c.id === 'audit'){ await auditAgent(c, text, t); return; }
   /* 하린 — "새 발주 다 들어갔어?" 같은 말도 공통 '업무 보고' 로 새지 않게 먼저 */
   if(c.id === 'poaudit'){ await poAuditAgent(c, text, t); return; }
+  /* 새롬 — "신상 들어갔어?" 같은 말도 공통 '업무 보고' 로 새지 않게 먼저 */
+  if(c.id === 'newprod'){ await newProdAgent(c, text, t); return; }
   /* 리안 검수 — 실제 상태(에이전트 · 상태판 · 서버 디스크)를 읽어 답한다. 보기 전용 권한에서도 돈다 */
   if(c.id === 'chief' && has(t, ['검수','이상','문제','점검','요약','디스크','용량','저장 공간','서버'])){ await chiefInspect(c, t); return; }
   /* 별이 — "숨긴 리뷰 몇 개야?" 같은 말은 공통 '업무 보고' 보다 먼저 */
@@ -1651,6 +1674,36 @@ function _poRowKey(k){
 function _poWhen(iso){
   const t = new Date(String(iso||'').replace(/\.(\d+)/, (m,f)=>'.'+(f+'00').slice(0,3)));
   return isNaN(t) ? '' : `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+}
+/* 새롬 — 식스샵프로 신상 불러오기 결과 (맥미니 sixshop-collector erp/new-products.mjs 30분 → 프록시 /erp/new-products, 금액 없음) */
+const NP_WORD = {exists:'이미 있음', done:'넣음', set:'세트 (줄 안 만듦)', skip:'재고 상품 아님', wait:'기다림', plan:'넣을 차례', sent:'넣는 중', hold:'확인 필요', fail:'실패', cut:'시트 끊김', new:'새로 봄'};
+async function newProdAgent(c, raw, t){
+  if(has(t, ['전문 분야','전문분야','뭐 할 줄','뭘 할 줄','도움말','help','사용법'])){
+    say('agent', `제 전문 분야입니다.\n\n${c.knows.map(k => '· ' + k).join('\n')}`, {chips: c.quick.filter(q => q.cmd !== '전문 분야')});
+    return;
+  }
+  if(has(t, ['업무 보고'])){ await reportStatus(c); return; }
+  let d;
+  try{ d = await api('/erp/new-products'); }
+  catch(e){ say('agent', `신상 현황을 못 읽었어요. 서버 연결을 확인해 주세요. (${e.message||e})`, {kind:'err'}); return; }
+  if(!d || !d.at){ say('agent', (d && d.error) || '아직 결과가 없어요. 30분마다 돌아요.'); return; }
+  const rec = d.recent || [];
+  const at = new Date(d.at), p2 = n => String(n).padStart(2, '0');
+  const when = `${at.getMonth() + 1}/${at.getDate()} ${p2(at.getHours())}:${p2(at.getMinutes())}`;
+  const line = x => `${x.label} · ${x.name}${x.opt ? ' / ' + x.opt : ''}${x.cat ? ` [${x.cat}]` : ''} — ${NP_WORD[x.st] || x.st}${x.why ? ` (${x.why})` : ''}`;
+  let pick, title;
+  if(has(t, ['확인','문제','실패','안 됨','안됨','오류'])){ pick = rec.filter(x => ['hold','fail','cut'].includes(x.st) || x.lost); title = '확인이 필요한 신상'; }
+  else if(has(t, ['세트','제외','안 넣','빠진','뺀'])){ pick = rec.filter(x => ['set','skip'].includes(x.st)); title = '줄을 안 만든 신상 (세트 · 재고 상품 아님)'; }
+  else { pick = rec.filter(x => ['done','sent','plan','wait','exists','new'].includes(x.st)); title = '신상 현황'; }
+  const counts = Object.entries(d.counts || {}).map(([k, n]) => `${NP_WORD[k] || k} ${n}`).join(' · ') || '새 옵션 없음';
+  const lines = [`네 사장님, ${title}입니다 — ${when} 기준 (${String(d.since || '').slice(0, 10)} 뒤 식스샵프로에 새로 생긴 옵션)`,
+    `${d.apply ? '' : '⏸ 지금은 계산만 해요 (시트에 아직 안 넣음) · '}${counts}`];
+  pick.slice(0, 20).forEach(x => lines.push('· ' + line(x)));
+  if(pick.length > 20) lines.push(`… 외 ${pick.length - 20}개`);
+  if(!pick.length) lines.push('해당하는 신상이 없어요.');
+  (d.fails || []).slice(0, 3).forEach(f => lines.push('⚠ ' + f));
+  const chips = [{label:'신상 현황', cmd:'신상 현황'}, {label:'확인 필요', cmd:'확인 필요한 신상'}, {label:'세트 · 제외', cmd:'안 넣은 신상'}];
+  say('agent', lines.join('\n'), {chips: chips.filter(x => x.cmd !== raw)});
 }
 async function poAuditAgent(c, raw, t){
   if(has(t, ['전문 분야','전문분야','뭐 할 줄','뭘 할 줄','도움말','help','사용법'])){
