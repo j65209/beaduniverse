@@ -18904,18 +18904,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       ? `<span class="best-thumb-wrap"><img class="${cls}" src="${_bestEsc(src)}" alt="" loading="lazy" decoding="async"><span class="best-thumb-preview" data-bg="${_bestEsc(src)}" aria-hidden="true"></span></span>`
       : `<span class="best-thumb-wrap"><span class="${cls} is-none" aria-hidden="true"></span></span>`;
   }
-  // 순위 목록에 보일 이름 — [SILVER925] · S925 · 925 · Open Ring 같은 소재 · 종류 말은 빼고 제품명만 (원래 이름은 마우스 올림 설명에 그대로)
+  // 순위 목록에 보일 이름 — [SILVER925] · S925 · 925 · Open Ring 같은 소재 · 종류 말은 빼고 제품명만,
+  // 괄호 () [] 는 기호만 지우고 안의 글(색 · Set 등)은 남김, (할인가 적용) · [3차 리오더] · (9/8일 순차배송) 같은 판매 메모는 통째로 뺌
+  // (원래 이름은 마우스 올림 설명에 그대로)
   function _pixShowName(name){
     const raw=String(name||'');
-    const t=raw
+    const tidy=s=>s
+      .replace(/[\[\](){}（）【】<>]/g,' ')
+      .replace(/\s{2,}/g,' ')
+      .replace(/^[\s\-–·|/,]+|[\s\-–·|/,]+$/g,'');
+    const t=tidy(raw
+      .replace(/[\[(（【]\s*(?:할인가\s*적용|\d+\s*차\s*리오더|[^\])）】]*순차\s*배송)\s*[\])）】]/g,' ')
       .replace(/\[\s*(?:silver|sv|s)?\s*925\s*\]/gi,' ')
       .replace(/\b(?:sterling\s+)?silver\s*925\b|\b925\s*silver\b/gi,' ')
       .replace(/\bs?925\b/gi,' ')
       .replace(/\bopen\s*ring\b/gi,' ')
-      .replace(/실버\s*925|925\s*실버|오픈\s*링/g,' ')
-      .replace(/\s{2,}/g,' ')
-      .replace(/^[\s\-–·|/]+|[\s\-–·|/]+$/g,'');
-    return /[A-Za-z0-9가-힣]/.test(t) ? t : raw;
+      .replace(/실버\s*925|925\s*실버|오픈\s*링/g,' '));
+    return /[A-Za-z0-9가-힣]/.test(t) ? t : tidy(raw);
   }
   function _pixRow(x, prev){
     const p=x.p, it=_pixCatOf(p), url=_pixUrl(p.brand,it);
