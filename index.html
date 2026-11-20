@@ -18904,6 +18904,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       ? `<span class="best-thumb-wrap"><img class="${cls}" src="${_bestEsc(src)}" alt="" loading="lazy" decoding="async"><span class="best-thumb-preview" data-bg="${_bestEsc(src)}" aria-hidden="true"></span></span>`
       : `<span class="best-thumb-wrap"><span class="${cls} is-none" aria-hidden="true"></span></span>`;
   }
+  // 순위 목록에 보일 이름 — [SILVER925] · S925 · 925 · Open Ring 같은 소재 · 종류 말은 빼고 제품명만 (원래 이름은 마우스 올림 설명에 그대로)
+  function _pixShowName(name){
+    const raw=String(name||'');
+    const t=raw
+      .replace(/\[\s*(?:silver|sv|s)?\s*925\s*\]/gi,' ')
+      .replace(/\b(?:sterling\s+)?silver\s*925\b|\b925\s*silver\b/gi,' ')
+      .replace(/\bs?925\b/gi,' ')
+      .replace(/\bopen\s*ring\b/gi,' ')
+      .replace(/실버\s*925|925\s*실버|오픈\s*링/g,' ')
+      .replace(/\s{2,}/g,' ')
+      .replace(/^[\s\-–·|/]+|[\s\-–·|/]+$/g,'');
+    return /[A-Za-z0-9가-힣]/.test(t) ? t : raw;
+  }
   function _pixRow(x, prev){
     const p=x.p, it=_pixCatOf(p), url=_pixUrl(p.brand,it);
     let delta='';
@@ -18919,7 +18932,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return `<li class="best-item" data-rank="${x.rank}" data-pa="${_bestEsc(p.key)}" title="${_bestEsc(tip)}">
         <span class="best-rank">${x.rank}</span>
         ${_pixThumb(it,'best-thumb')}
-        <button type="button" class="best-name">${_bestEsc(p.name)}</button>
+        <button type="button" class="best-name">${_bestEsc(_pixShowName(p.name))}</button>
         ${link}
         <span class="best-count"><span><b>${_pixN(x.qty)}</b>개</span>${delta}</span>
       </li>`;
@@ -18933,7 +18946,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const rows=items.map((it,i)=>{
       const url=String(it.url||'');
       const link=url ? `<a class="best-link-icon" href="${_bestEsc(url)}" target="_blank" rel="noopener noreferrer" title="상품 페이지 열기" aria-label="상품 페이지 열기">${PIX_LINK_SVG}</a>` : '';
-      return `<li class="best-item" data-rank="${i+1}"><span class="best-rank">${i+1}</span>${_pixThumb({thumb:it.thumb},'best-thumb')}<span class="best-name" title="${_bestEsc(it.name)}">${_bestEsc(it.name)}</span>${link}<span class="best-count"><span><b>${_pixN(it.count)}</b>개</span></span></li>`;
+      return `<li class="best-item" data-rank="${i+1}"><span class="best-rank">${i+1}</span>${_pixThumb({thumb:it.thumb},'best-thumb')}<span class="best-name" title="${_bestEsc(it.name)}">${_bestEsc(_pixShowName(it.name))}</span>${link}<span class="best-count"><span><b>${_pixN(it.count)}</b>개</span></span></li>`;
     }).join('');
     return `<div class="best-fb-note">${why} — 대신 실시간 순위(최근 30일, 날짜 선택 안 됨)</div><ul class="best-list">${rows}</ul>`;
   }
