@@ -211,7 +211,8 @@ function imgFb(el) {
 }
 const fsz = (n) => !n ? '' : n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
 // 네이버 '대용량 첨부'(파일 대신 다운로드 링크)로 온 메일 — 엣지 함수가 링크에서 받아 넣는다
-const hasBig = (r) => /대용량\s*첨부/.test(r.body || '');
+const hasBig = (r) => /대용량\s*(첨부|파일)/.test(r.body || '');
+const fromBig = (p) => /^(naver|daum)/.test(p.from || '');
 const igUrl = (v) => { const m = String(v || '').match(/[A-Za-z0-9._]{2,30}/g); if (!m) return ''; const h = /instagram\.com\/([A-Za-z0-9._]+)/.exec(v); return 'https://instagram.com/' + (h ? h[1] : m[m.length - 1]); };
 
 async function load(manual) {
@@ -254,7 +255,7 @@ function render() {
     return `<div class="ap" onclick="openDr(${r.id})">
       <div class="ph">
         ${cover ? `<img class="cv" src="${esc(thumb(cover, 600))}" data-orig="${esc(cover)}" alt="" loading="lazy" decoding="async" onerror="imgFb(this)">`
-          : `<div class="none">사진 없음${hasBig(r) ? '<small>네이버 대용량 첨부로 옴</small>' : others(r).length ? `<small>📎 파일 ${others(r).length}개</small>` : ''}</div>`}
+          : `<div class="none">사진 없음${hasBig(r) ? '<small>대용량 첨부로 옴</small>' : others(r).length ? `<small>📎 파일 ${others(r).length}개</small>` : ''}</div>`}
         <span class="st badge ${scls(r.status)}">${esc(r.status)}</span>
         ${im.length > 1 ? `<span class="n">📷 ${im.length}</span>` : ''}
       </div>
@@ -284,8 +285,8 @@ function openDr(id, keepScroll) {
       <span class="badge ${scls(r.status)}">${esc(r.status)}</span>
       <button class="x" onclick="closeDr()" aria-label="닫기">×</button></div>
     ${im.length ? `<div class="gal">${im.map((p, i) => `<img src="${esc(thumb(p.url, 500))}" data-orig="${esc(p.url)}" alt="" loading="lazy" decoding="async" onerror="imgFb(this)" onclick="openLb(${r.id},${i})">`).join('')}</div>` : '<p class="muted">첨부 사진 없음 — 메일 본문에 링크가 있는지 아래에서 확인해 주세요.</p>'}
-    ${ot.length ? `<div class="files">${ot.map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(p.name)}">${p.link ? '🔗' : '📎'} ${esc(p.name)}<span class="fz">${esc([fsz(p.size), p.link ? '네이버 링크' + (p.until ? ' · ' + String(p.until).slice(5) + '까지' : '') : ''].filter(Boolean).join(' · '))}</span></a>`).join('')}</div>` : ''}
-    ${hasBig(r) && !(r.photos || []).some((p) => p.from === 'naver' || p.from === 'naver-zip') ? '<p class="bignote">네이버 <b>대용량 첨부</b>(파일 대신 다운로드 링크)로 온 메일이에요. 아직 못 가져왔어요 — 몇 분 뒤에도 비어 있으면 원본 메일(brightbeed@bead-uni.com)에서 받아 주세요.</p>' : ''}
+    ${ot.length ? `<div class="files">${ot.map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(p.name)}">${p.link ? '🔗' : '📎'} ${esc(p.name)}<span class="fz">${esc([fsz(p.size), p.link ? (p.from === 'daum' ? '다음' : '네이버') + ' 링크' + (p.until ? ' · ' + String(p.until).slice(5) + '까지' : '') : ''].filter(Boolean).join(' · '))}</span></a>`).join('')}</div>` : ''}
+    ${hasBig(r) && !(r.photos || []).some(fromBig) ? '<p class="bignote"><b>대용량 첨부</b>(파일 대신 다운로드 링크)로 온 메일이에요. 아직 못 가져왔어요 — 몇 분 뒤에도 비어 있으면 원본 메일(brightbeed@bead-uni.com)에서 받아 주세요.</p>' : ''}
     <div class="sec"><h3>진행 상태</h3>
       <div class="stbtns">${STATUSES.map((s) => `<button class="${scls(s)} ${r.status === s ? 'on' : ''}" onclick="save(${r.id},{status:'${s}'})">${s}</button>`).join('')}</div>
       <div class="rate">${[1, 2, 3, 4, 5].map((n) => `<button class="${(r.rating || 0) >= n ? 'on' : ''}" onclick="save(${r.id},{rating:${(r.rating === n) ? 'null' : n}})">★</button>`).join('')}<span class="muted">별점 (같은 별 다시 누르면 지움)</span></div>

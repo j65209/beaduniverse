@@ -11,6 +11,7 @@
 //   POST {action:'apply', key, msg:{id, threadId, date, fromName, fromEmail, subject, body, html?}}  → {id, isNew, big}
 //   POST {action:'file',  key, gmailId, name, mime, size, b64}                                       → {ok, url}
 //   POST {action:'big',   key, gmailId | id, html?, wait?}   네이버 대용량 첨부 다시 받기 (wait 면 끝까지 기다려 결과)
+//   POST {action:'docs',  key, id?, wait?}                   받아 둔 PPT · PDF 포트폴리오에서 사진 꺼내기 (id 없으면 전부)
 //   POST {action:'reparse', key}   본문에서 이름 · 키 등을 다시 뽑기 (뽑는 규칙을 고친 뒤)
 //
 // 네이버 '대용량 첨부' (2026-11-20 사장님 "왜 이미지가 안 불러와지지?"):
@@ -19,6 +20,8 @@
 //   → 본문(평문) · Apps Script 가 보낸 html 에서 링크를 찾아 이 함수가 직접 받아 버킷에 넣는다 (apply 는 뒤에서, 응답은 바로).
 //     사진 · 25MB 이하 파일 = 버킷에 복사 / 더 큰 파일 = 링크만(link:true, until) / zip = 안의 사진만 풀어 넣음(zip 60MB 까지).
 //   photos 덧붙이기는 DB 함수 model_applicant_add_file 로 한 줄씩 (메일 첨부와 동시에 들어와도 안 덮어씀, 이름 + 크기 같으면 건너뜀).
+//   다음(카카오) 메일 '대용량파일'(attach.mail.daum.net/bigfile)도 같은 방식 — from 'daum'.
+//   남은 구멍: 네이버 메일 '앱'으로 보낸 메일은 링크가 HTML 에만 있어 평문 본문엔 없다 → Apps Script 가 html 을 보내야 받힘(gmail-sync.gs 갱신본).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { unzipSync } from 'npm:fflate@0.8.2';
@@ -132,8 +135,17 @@ export function bigLinks(text: string): Big[] {
     seen.add(fid);
     out.push({ name: '', size: null, url: u, until: null });
   }
-  // 보관 기한 "~ 2026/12/16" — 링크 바로 뒤, 없으면 메일 안 첫 기한 (같이 보낸 파일은 기한이 같다)
   const plain = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+  // 3) 다음(카카오) 메일 '대용량파일' — attach.mail.daum.net/bigfile 링크 (로그인 없이 받힘). 이름은 링크 바로 뒤 글자
+  for (const m of t.matchAll(/https?:\/\/attach\.mail\.daum\.net\/bigfile\/[^\s<>"']+/g)) {
+    const u = m[0].replace(/^http:/, 'https:').replace(/[>)\].,]+$/, '');
+    if (seen.has(u)) continue;
+    seen.add(u);
+    const at = (m.index ?? 0) + m[0].length;
+    const nm = plain(t.slice(at, at + 300)).replace(/^[>\s]+/, '').match(/^([^<>\[\]]+?\.[A-Za-z0-9]{2,5})(?=\s|\(|$)/)?.[1]?.trim() || '';
+    out.push({ name: nm.slice(0, 120), size: null, url: u, until: null });
+  }
+  // 보관 기한 "~ 2026/12/16" — 링크 바로 뒤, 없으면 메일 안 첫 기한 (같이 보낸 파일은 기한이 같다)
   const anyUntil = plain(t).match(/~\s*(20\d\d[./-]\d{1,2}[./-]\d{1,2})/)?.[1] || null;
   for (const b of out) {
     const fid = fidOf(b.url);
@@ -158,6 +170,88 @@ function sniff(u: Uint8Array): { mime: string; ext: string } | null {
   return null;
 }
 const isZipBytes = (u: Uint8Array) => u.length > 4 && u[0] === 0x50 && u[1] === 0x4b && u[2] === 0x03 && u[3] === 0x04;
+
+/* ---------- PPT · PDF 포트폴리오 안의 사진 꺼내기 (2026-11-20 사장님 "이미지만 꼭 되게 해줘 다른사람들 다") ----------
+   사진 대신 PPT · PDF 포트폴리오만 보내는 지원자가 있다 → 카드가 '사진 없음' 이었다.
+   pptx · docx · key · hwpx = zip 이라 안의 media 사진을, pdf = JPEG(DCTDecode) 그림을 그대로 꺼내 사진으로 넣는다.
+   작은 아이콘 · 로고(짧은 변 300px 미만)는 빼고, PPT 와 PDF 에 같은 사진(가로 × 세로 같음)은 한 번만. */
+const DOC_ZIP = /\.(pptx|docx|key|hwpx)$/i;
+const DOC_PDF = /\.pdf$/i;
+const isDoc = (name: string) => DOC_ZIP.test(name || '') || DOC_PDF.test(name || '');
+const MIN_SIDE = 300;
+const MAX_DOC_IMAGES = 30;
+
+function dims(u: Uint8Array): [number, number] | null {
+  if (u.length > 24 && u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4e && u[3] === 0x47) {
+    return [((u[16] << 24) | (u[17] << 16) | (u[18] << 8) | u[19]) >>> 0, ((u[20] << 24) | (u[21] << 16) | (u[22] << 8) | u[23]) >>> 0];
+  }
+  if (u.length > 4 && u[0] === 0xff && u[1] === 0xd8) {
+    let i = 2;
+    while (i < u.length - 9) {
+      if (u[i] !== 0xff) { i++; continue; }
+      const m = u[i + 1];
+      if (m === 0xff) { i++; continue; }
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return [(u[i + 7] << 8) | u[i + 8], (u[i + 5] << 8) | u[i + 6]];
+      if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+      i += 2 + ((u[i + 2] << 8) | u[i + 3]);
+    }
+  }
+  return null;
+}
+
+function docImages(name: string, bytes: Uint8Array): Uint8Array[] {
+  const out: Uint8Array[] = [];
+  const isPdf = DOC_PDF.test(name) || (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46);
+  if (isPdf) {
+    // PDF 의 사진은 보통 JPEG 그대로(/DCTDecode) 들어 있다 — 그 stream 을 잘라낸다 (다른 압축 그림은 건너뜀)
+    const s = new TextDecoder('latin1').decode(bytes);
+    let k = 0;
+    while (out.length < MAX_DOC_IMAGES * 3) {
+      k = s.indexOf('/DCTDecode', k);
+      if (k < 0) break;
+      let st = s.indexOf('stream', k);
+      if (st < 0) break;
+      st += 6;
+      if (s[st] === '\r' && s[st + 1] === '\n') st += 2; else if (s[st] === '\n' || s[st] === '\r') st += 1;
+      const en = s.indexOf('endstream', st);
+      if (en < 0) break;
+      let e = en;
+      while (e > st && (s[e - 1] === '\n' || s[e - 1] === '\r')) e--;
+      out.push(bytes.slice(st, e));
+      k = en + 9;
+    }
+  } else if (DOC_ZIP.test(name) || isZipBytes(bytes)) {
+    const files = unzipSync(bytes, {
+      filter: (f) => IMG_EXT.test(f.name) && !/thumbnail/i.test(f.name) && f.originalSize >= MIN_IMAGE && f.originalSize <= MAX_FILE,
+    });
+    const num = (n: string) => Number(n.match(/(\d+)\.[A-Za-z]+$/)?.[1] ?? 1e9);   // image1, image2 … 순서대로
+    for (const [, d] of Object.entries(files).sort((x, y) => num(x[0]) - num(y[0]))) out.push(d);
+  }
+  return out;
+}
+
+async function importDocImages(a: { id: number; photos: any[] }, docName: string, bytes: Uint8Array) {
+  const stem = docName.replace(/\.[A-Za-z0-9]{1,5}$/, '');
+  const seenWH = new Set(a.photos.filter((x) => x.from === 'doc' && x.w).map((x) => `${x.w}x${x.h}`));
+  let i = 0, added = 0;
+  for (const data of docImages(docName, bytes)) {
+    if (i >= MAX_DOC_IMAGES) break;
+    const sn = sniff(data);
+    if (!sn || data.length < MIN_IMAGE) continue;
+    const wh = dims(data);
+    if (wh && Math.min(wh[0], wh[1]) < MIN_SIDE) continue;
+    if (wh && seenWH.has(`${wh[0]}x${wh[1]}`)) continue;       // PPT 와 PDF 에 같은 사진
+    i++;
+    const nm = `${stem} ${i}.${sn.ext}`.slice(0, 120);
+    if (a.photos.some((x) => x.name === nm && Number(x.size) === data.length)) continue;
+    const url = await put(a.id, data, sn.ext, sn.mime);
+    if (await addFile(a, { url, name: nm, mime: sn.mime, size: data.length, image: true, from: 'doc', doc: docName, w: wh?.[0] ?? null, h: wh?.[1] ?? null })) {
+      added++;
+      if (wh) seenWH.add(`${wh[0]}x${wh[1]}`);
+    }
+  }
+  return added;
+}
 
 function cdName(cd: string) {
   const star = cd.match(/filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/);
@@ -195,11 +289,13 @@ async function importBig(a: { id: number; photos: any[] }, links: Big[]) {
   a.photos = Array.isArray(a.photos) ? a.photos : [];
   const sum = { found: links.length, added: 0, linked: 0, skipped: 0, errors: [] as string[] };
   const have = (name: string, size: number | null) => !!name && a.photos.some((x) => x.name === name && (size == null || Number(x.size) === size));
+  const srcOf = (b: Big) => /daum\.net/.test(b.url) ? 'daum' : 'naver';
   const linkOnly = async (b: Big, name: string, size: number | null, mime = '') => {
-    if (await addFile(a, { url: b.url, name: name || '대용량 첨부', size, mime, image: false, link: true, until: b.until, from: 'naver' })) sum.linked++;
+    if (await addFile(a, { url: b.url, name: name || '대용량 첨부', size, mime, image: false, link: true, until: b.until, from: srcOf(b) })) sum.linked++;
     else sum.skipped++;
   };
   for (const b of links) {
+    const src = srcOf(b);
     try {
       if (have(b.name, b.size)) { sum.skipped++; continue; }
       const zipByName = /\.zip$/i.test(b.name);
@@ -233,7 +329,7 @@ async function importBig(a: { id: number; photos: any[] }, links: Big[]) {
           const nm = (/^[\x20-\x7E]+$/.test(base) ? base : `${stem} ${i}.${sn.ext}`).slice(0, 120);
           if (have(nm, data.length)) { sum.skipped++; continue; }
           const url = await put(a.id, data, sn.ext, sn.mime);
-          if (await addFile(a, { url, name: nm, mime: sn.mime, size: data.length, image: true, from: 'naver-zip', zip: name })) sum.added++;
+          if (await addFile(a, { url, name: nm, mime: sn.mime, size: data.length, image: true, from: src + '-zip', zip: name })) sum.added++;
           else sum.skipped++;
         }
         await linkOnly(b, name, size, 'application/zip');
@@ -245,8 +341,9 @@ async function importBig(a: { id: number; photos: any[] }, links: Big[]) {
       const ext = sn?.ext || (name.match(/\.([A-Za-z0-9]{1,5})$/)?.[1] || 'bin').toLowerCase();
       const mime = sn?.mime || EXT_MIME[ext] || 'application/octet-stream';
       const url = await put(a.id, bytes, ext, mime);
-      if (await addFile(a, { url, name, mime, size, image: !!sn, from: 'naver', until: null })) sum.added++;
+      if (await addFile(a, { url, name, mime, size, image: !!sn, from: src, until: null })) sum.added++;
       else sum.skipped++;
+      if (!sn && isDoc(name)) sum.added += await importDocImages(a, name, bytes);   // PPT · PDF 안의 사진도
     } catch (e) {
       sum.errors.push(`${b.name || 'file'}: ${(e as Error)?.message || e}`);
     }
@@ -318,7 +415,9 @@ Deno.serve(async (req) => {
     const isImage = /^image\//.test(p.mime || '') || /\.(jpe?g|png|gif|webp|heic)$/i.test(name);
     try {
       const url = await put(a.id, bytes, ext, p.mime || 'application/octet-stream');
-      await addFile({ id: a.id, photos }, { url, name, mime: p.mime || '', size: p.size || bytes.length, image: isImage });
+      const ap = { id: a.id, photos };
+      await addFile(ap, { url, name, mime: p.mime || '', size: p.size || bytes.length, image: isImage });
+      if (!isImage && isDoc(name)) inBackground(a.id, importDocImages(ap, name, bytes).then((n) => ({ doc: name, added: n })));
       return json({ ok: true, url });
     } catch (e) {
       return json({ error: (e as Error)?.message || String(e) }, 500);
@@ -335,6 +434,28 @@ Deno.serve(async (req) => {
     if (p.wait) return json({ ok: true, ...(await importBig(a, links)) });
     inBackground(a.id, importBig(a, links));
     return json({ ok: true, found: links.length, queued: true });
+  }
+
+  if (p.action === 'docs') {
+    // 이미 받아 둔 PPT · PDF 에서 사진 꺼내기 (id 없으면 전부) — 같은 사진은 건너뛰니 여러 번 돌려도 됨
+    let q = sb.from('model_applicants').select('id, photos').is('deleted_at', null);
+    if (p.id) q = q.eq('id', p.id);
+    const { data } = await q;
+    const job = (async () => {
+      const res: Record<string, number> = {};
+      for (const a of data || []) {
+        a.photos = Array.isArray(a.photos) ? a.photos : [];
+        for (const f of a.photos.slice()) {
+          if (f.image || f.link || !isDoc(f.name)) continue;
+          const d = await download(f.url, MAX_FILE);
+          if (d.bytes) res[a.id] = (res[a.id] || 0) + await importDocImages(a, f.name, d.bytes);
+        }
+      }
+      return res;
+    })();
+    if (p.wait) return json({ ok: true, added: await job });
+    inBackground(0, job);
+    return json({ ok: true, queued: true });
   }
 
   if (p.action === 'reparse') {
