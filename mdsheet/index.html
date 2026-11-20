@@ -46,8 +46,10 @@
          ERP MASTER 는 ERP전산팀 화면으로 바로 간다. 전략팀 시트 링크는 기밀 명단(대표 둘 · 지희선) PC 에만.
        · 기밀(같은 날 "단가, 가격, 링크정보 같은 기밀은 희선이랑 대표 2명만"): 명단 밖 PC 는 원가 · 단가 · 판매가 · 위안 · 마진 · 공급처 열과
          구글시트 · 공급처 링크를 표 · 상세 창 · 찾기 · 요약 카드 · 함수 줄에서 아예 뺀다 (매출 · 광고비는 그대로).
-       · 고치기는 erp/ 와 같다 (PC 는 칸을 눌러 바로 · 휴대폰은 상세 창) — 고칠 수 있는 시트(브리지 book)만 · 관리자와 MD팀만.
-         구글시트(브리지)에 먼저 쓰고 같은 줄을 저장소에도 (mdx_cell_edit). 끊는 날까지 원가 보고서 · 가격 감시가 구글시트를 읽기 때문.
+       · 2026-11-20 18:05 MD 시트 5개 구글 끊음 → 같은 날 사장님 "이제 구글시트 연결 끊고 단독적으로 md시트 운영하자. 이젠 md시트는 오피스앱 1개다":
+         MD팀 시트 화면은 구글시트 · 구글 연결(Apps Script 브리지)을 부르지 않는다. 고치기 = 오피스 저장소에만 (mdx_cell_edit p_old · mdx_ofx_set · mdx_ofmt_set),
+         구글 함수 · 오피스 함수 값은 맥미니 md-db-sync 계산 패스가 1분 안에 (화면은 FX 로 바로). 고치기는 관리자와 MD팀만, PC 는 칸을 눌러 바로 · 휴대폰은 상세 창.
+         MD 시트가 아닌 시트(발주 리스트 · 광고 · 디자인 · 벤더 · 보관용)는 아직 그 팀 구글시트가 원본이라 보기만 (맥미니가 구글에서 맞춤).
        · 함수 = 오피스 함수 (2026-11-20 사장님 "구글시트를 이제 안쓸건데? 기능을 오피스앱 내부 엠디팀 시트에 넣어주면 안돼?"):
          '=' 로 시작하게 적으면 오피스가 계산한다 (FX — SUM · IF · VLOOKUP · SUMIF · ROUND · TEXT · EDATE 등, 같은 탭 칸만).
          함수는 저장소 mdx_ofx 에 (mdx_ofx_set), 계산된 값은 저장소 줄 + 구글시트에 '값'으로 — 구글을 끊기 전까지 맞춤(md-db-sync)이 지우지 않게.
@@ -322,7 +324,7 @@
   .lb{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(15,23,42,.82);cursor:zoom-out;padding:24px}
   .lb img{max-width:100%;max-height:100%;border-radius:12px;background:#fff}
 
-  /* ── 고치기 (표 칸 두 번 누르기 · 상세 창 값 누르기 → 구글시트에 바로) ── */
+  /* ── 고치기 (표 칸 누르기 · 상세 창 값 누르기 → 오피스 저장소에 바로) ── */
   .d-hint{margin-top:9px;font-size:11.5px;line-height:1.45;color:var(--text-4)}
   .d-hint.no{color:var(--warn)}
   .dl dd.ed-ok{cursor:text;position:relative;padding-right:52px}
@@ -2717,6 +2719,7 @@
     read_only_book: '이 시트는 아직 구글시트에서만 고쳐요 (발주 · 광고 · 디자인 · 벤더 시트는 그 팀 작업을 옮길 때 함께)',
     not_formula: "함수는 '=' 로 시작해야 해요 (예: =E2*2 · =SUM(E2:E9))",
     unauthorized: '구글시트 연결 토큰이 맞지 않아요 — 관리자에게 알려 주세요',
+    google_off: '구글시트 연결은 끊었어요 — MD팀 시트는 오피스에서만 고쳐요 (화면을 새로 고쳐 주세요)',
     not_connected: '구글시트 연결 정보가 없어요 — 관리자에게 알려 주세요',
     formula_cell: '구글시트 함수가 든 칸이에요 — 구글을 끊기 전엔 오피스에서 못 고쳐요',
     fx_col: '보이는 칸만 함수에 쓸 수 있어요 — 가린 칸(원가 · 단가 등)을 쓰는 함수는 대표님 · 희선 님만 넣을 수 있어요',
@@ -2751,20 +2754,8 @@
     return E.cfgP;
   }
   // text/plain POST 라 preflight 없이 Apps Script 로 간다 (MD팀과 같은 방식)
-  async function bridge(action, extra) {
-    const cfg = await bridgeCfg();
-    const ac = new AbortController(), timer = setTimeout(() => ac.abort(), WRITE_TIMEOUT);
-    try {
-      const r = await fetch(cfg.url, {method: 'POST', body: JSON.stringify(Object.assign({action, token: cfg.token}, extra || {})), signal: ac.signal});
-      if (!r.ok) throw new Error('http_' + r.status);
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error || 'error');
-      return j;
-    } catch (e) {
-      if (e && e.message === 'unauthorized') E.cfg = null;   // 관리자가 다시 연결했을 수 있음 → 다음엔 새로 받기
-      throw e && e.name === 'AbortError' ? new Error('timeout') : e;
-    } finally { clearTimeout(timer); }
-  }
+  // 구글 연결(Apps Script 브리지)은 끊었다 (2026-11-20) — MD팀 시트는 오피스 저장소 하나. 혹시 옛 길로 들어오면 쓰지 않고 멈춘다
+  async function bridge() { throw new Error('google_off'); }
   // 수식 칸 · 막힌 탭 = 맥미니가 저장소 erp_tabs 에 적은 것 (fx = [[열, 시작줄, 끝줄]] 0부터 · fx_ro · fx_deny). 아직 모르면 고치게 두고 브리지가 수식 칸은 거절한다
   const tabInfo = gid => { const t = tabOf(gid); return t && t.info ? t.info : null; };
   const isFxCell = (info, r, p) => !!(info && Array.isArray(info.fx) && info.fx.some(run => run[0] === p && r - 1 >= run[1] && r - 1 <= run[2]));
@@ -2818,7 +2809,7 @@
   /* 구글시트를 끊은 시트 (mdx_books.cut_at — '구글 끊기' 맥미니 명령 node md/md-db-sync.mjs cut <시트> --yes). 끊으면 저장소가 원본:
      고치기는 저장소에만 (브리지 안 부름), 함수 값은 맥미니 계산 패스가 1분 안에 (화면은 FX 로 바로 보여 주기만), 구글 함수 칸도 고칠 수 있다 —
      '=' 면 오피스 함수, 값이면 그 값을 내는 오피스 함수(=1200 · ="글")로 (값만 쓰면 계산 패스가 구글 함수 값으로 다시 덮으므로). docs/MD-STORE.md 5 · 6장 */
-  function isCut(gid) { const t = tabOf(gid), b = t && bookOf(t.book); return !!((b && b.cut_at) || (t && t.info && t.info.cut_at)); }
+  function isCut(gid) { const t = tabOf(gid), b = t && bookOf(t.book); return !!((b && (b.cut_at || b.edit)) || (t && t.info && t.info.cut_at)); }   // MD 시트는 오피스 하나 — 고칠 수 있는 시트는 늘 저장소가 원본
   function constFx(s) {
     const t = String(s == null ? '' : s).trim();
     if (t === '') return '=""';
@@ -3002,8 +2993,8 @@
     const cell = row.byP[p] || null;
     const why = d.side ? '집계 표는 시트가 자동으로 만든 표라 고칠 수 없어요'
       : (cell && cell.pii) || piiCol(col.name) ? EDIT_ERR.pii_cell
-      : cell && cell.img ? '사진 칸은 구글시트에서 바꿔 주세요'
-      : !cell ? '이 칸은 구글시트에서 고쳐 주세요' : '';
+      : cell && cell.img ? '사진 칸 — 사진 주소가 적힌 칸을 고치면 사진도 바뀌어요'
+      : !cell ? '이 칸은 고칠 수 없어요' : '';
     const b = bookOf(t.book), info = tabInfo(gid), cr = (cell && cell.r) || r;
     const of = ofxGet(info, cr, p), gf0 = fxText(info, cr, p), oc = !!of && ofxConst(of);   // oc = 끊은 시트에서 값을 적은 칸 (값을 내는 오피스 함수 — 값 칸처럼)
     const fx0 = oc ? '' : (of || gf0);   // 오피스 함수 먼저, 없으면 구글시트 함수
@@ -3031,13 +3022,13 @@
     const info = tabInfo(S.cur);
     const b = bookOf(t.book);
     const tabWhy = !canEdit() ? NO_EDIT : !(b && b.edit) ? RO_BOOK : d.side ? '옆 표는 고칠 수 없어요' : isCut(S.cur) ? (/TOP\s*10/i.test(t.name) ? '판매원본에서 자동으로 계산하는 탭이라 고치지 않아요' : '') : info && info.fx_deny ? editErr(info.fx_deny) : info && info.fx_ro ? RO_TAB : '';
-    hint.textContent = tabWhy || "값을 누르면 고칠 수 있어요 · 저장하면 오피스 저장소와 구글시트에 바로 · '=' 로 시작하면 함수 (수식 칸은 자동 계산)";
+    hint.textContent = tabWhy || "값을 누르면 고칠 수 있어요 · 저장하면 오피스에 바로 · '=' 로 시작하면 함수";
     hint.classList.toggle('no', !!tabWhy);
     $('dList').querySelectorAll('dd[data-p]').forEach(dd => {
       const why = roWhy(editCtx(S.cur, S.sel.r, +dd.dataset.p));
       dd.classList.toggle('ed-ok', !why);
       dd.classList.toggle('ed-ro', !!why);
-      dd.title = why || '눌러서 고치기 — 저장하면 구글시트에 바로 적혀요';
+      dd.title = why || '눌러서 고치기 — 저장하면 오피스에 바로';
     });
   }
 
@@ -4164,7 +4155,7 @@
     else if (c && c.direct) txt = narrow.matches ? '구글시트 바로' : `구글시트에서 바로 읽음 · ${hhmm(c.at)}`;
     else if (c && c.stored) txt = `${hhmm(c.at)} 저장본`;
     else if (late) txt = narrow.matches ? `맞춤 ${agoMs(age)}` : `시트와 맞춘 지 ${agoMs(age)} · 맥미니 확인 중`;
-    else if (c && cutNow) txt = narrow.matches ? '오피스 원본' : '오피스가 원본 · 구글시트 끊음';
+    else if (c && cutNow) txt = narrow.matches ? '오피스 원본' : '오피스 MD팀 시트 (구글 연결 없음)';
     else if (c) txt = narrow.matches ? '최신' : `시트와 맞춤 ${isFinite(age) ? agoMs(age) : '—'} · 오피스 저장소`;
     if (k === 'ok' && late === 'bad') k = 'err';
     st.className = `st is-${k}`;

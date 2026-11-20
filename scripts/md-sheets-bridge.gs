@@ -1,8 +1,8 @@
 /**
- * Bead Universe Office ↔ 구글시트 브리지 (MD팀 탭)
+ * Bead Universe Office ↔ 구글시트 브리지 — 지금은 ERP MASTER(재고 마스터) 하나 (ERP전산팀 · 물류 자동 작업이 칸을 고칠 때)
  *
- * 오피스 MD팀 탭이 아래 6개 구글시트를 실시간으로 읽고, 오피스에서 고친 칸을 구글시트에 바로 써넣는다.
- * 수식·자동수집 스크립트는 구글시트에서 그대로 돌아가고, 오피스는 "보이는 값(표시값)"을 그대로 보여준다.
+ * 2026-11-20 MD 시트 5개(주얼리 MD · MD 코페리 · MD 코즈미 · 에이블리 · 지그재그 가격표)는 구글을 끊었다 — 오피스 MD팀 시트(mdsheet/)가 원본이고
+ * 이 브리지를 부르지 않는다. 아래 BOOKS 에서도 뺐다 (배포돼 있는 Apps Script 는 다음 새 버전 배포 때 같이 빠짐 — 화면은 이미 안 부름).
  *
  * ── 설치 (한 번만) ──────────────────────────────────────────────
  *  1. https://script.google.com → 새 프로젝트 → 이 파일 내용 전체를 붙여넣고 저장
@@ -18,12 +18,8 @@
  *  코드를 고친 뒤에는 [배포] → [배포 관리] → 연필 → 버전: 새 버전 → [배포] (URL 유지)
  */
 
+// 2026-11-20 MD 시트 5개(에이블리 · 지그재그 가격표 · 코페리 · 주얼리 MD · 코즈미)는 구글을 끊고 오피스 MD팀 시트가 원본 — 이 연결로는 ERP MASTER 만 읽고 쓴다
 const BOOKS = {
-  ably_price: '1AxXEFYfGx_IK8AOj83b8qZQW7F9J1IBHiTLkJ5c_wEQ',
-  zig_price:  '1aMAQncyPOwaoWkkwtL6U-JD0ziv_60E9eRmr1gWjZLk',
-  coferry:    '1bnKosG3_Ytjg-maMKt1SeaO-ojeQemKp_mzyjnWscD0',
-  apeti:      '1u6u15dxSUthAYKxqjYH8zLSdOAeWAiFtM24dVYZwOS0',
-  kozmi:      '1TS-HqffOap11AdGwiffMr38KwHAUq1fmcjmmBPdKLMU',
   invoice:    '1hE7jVLZvE3gBYWflk6d3p2vZroQC9Hz3HY7jf2eqIcA',
 };
 
@@ -50,7 +46,6 @@ function route_(p) {
       case 'meta':  return json_(meta_(p.fresh === '1' || p.fresh === true));
       case 'read':  return json_(read_(p.book, p.sheet, p.have || null, p.parts || ''));
       case 'write': return json_(write_(p.book, p.sheet, p.edits || []));
-      case 'audit_fix': return json_(auditFix_(!(p.apply === true || p.apply === '1'), p.babyB === '16400'));
       default:      return json_({ ok: false, error: 'unknown_action' });
     }
   } catch (err) {
@@ -309,11 +304,6 @@ function readStructure_(sh, nRows, nCols, ckey) {
 }
 
 // 편집기에서 실행해 큰 탭 읽기 속도를 본다 (두 번째 실행은 캐시 효과)
-function perfTest() {
-  const t = Date.now();
-  const r = read_('coferry', 'Product List', null);
-  Logger.log('total ' + (Date.now() - t) + 'ms ' + JSON.stringify(r.ms) + ' size ' + JSON.stringify(r).length);
-}
 
 function dvSpec_(v, rangeCache) {
   const type = v.getCriteriaType(), args = v.getCriteriaValues();
@@ -389,88 +379,4 @@ function coerce_(cell, input) {
   if (/^-?\d+(\.\d+)?%$/.test(t)) return parseFloat(t) / 100;
   if (/^-?\d+(\.\d+)?$/.test(t) && !/^0\d/.test(t)) return parseFloat(t);
   return s;
-}
-
-/* ── 2026-10-27 로직 점검에서 찾은 수식 오류 3건 수정 ──
- * 정해진 세 가지만 고치고, 지금 수식이 "고장 난 모양" 그대로일 때만 바꾼다 → 여러 번 돌려도 안전하다.
- * 웹에서는 action=audit_fix (apply 없으면 미리보기만), 편집기에서는 fixAuditErrors 를 실행하면 바로 적용된다.
- *  1) 코즈미 [50%할인이벤트] C열: 지워진 칸 참조(=#REF!*9.5) → =B×9.5 (공급가×9.5, Product List 공홈 최저 판매가와 같은 규칙)
- *  2) 아페티 [플랫폼 세트] K·L열: 다른 행의 플랫폼 최저가($J윗행)로 마진율을 계산한 칸 → 자기 행 $J
- *  3) 에이블리 가격표 [아페티] H열: =G×0.85 인데 G(세트 할인가)가 비면 0이 되는 칸 → G가 비면 F(최종 판매가)로
- *     babyB16400 이면 Baby-B 의 비어 있는 G 칸에 Baby-A 와 같은 세트 할인가 16,400 을 넣는다
- */
-function fixAuditErrors() {
-  const r = auditFix_(false, false);
-  Logger.log(JSON.stringify(r, null, 2));
-  return r;
-}
-
-function auditFix_(dry, babyB16400) {
-  const out = { ok: true, dry: dry, changes: [], at: new Date().toISOString() };
-  const note = function (book, sheet, a1, before, after) { out.changes.push({ book: book, sheet: sheet, cell: a1, before: before, after: after }); };
-
-  // 1) 코즈미 50%할인이벤트 C열 — 연속된 #REF! 구간 단위로 한 번에 넣는다 (수백 칸)
-  (function () {
-    const sh = openBook_('kozmi').getSheetByName('50%할인이벤트');
-    if (!sh || sh.getLastRow() < 2) return;
-    const n = sh.getLastRow() - 1;
-    const fs = sh.getRange(2, 3, n, 1).getFormulas();
-    let runStart = -1;
-    const flush = function (endIdx) {
-      if (runStart < 0) return;
-      const from = runStart + 2, to = endIdx + 1, rows = [];
-      for (let r = from; r <= to; r++) rows.push(['=B' + r + '*9.5']);
-      note('kozmi', '50%할인이벤트', 'C' + from + ':C' + to, '=#REF!*9.5', '=B' + from + '*9.5 … (' + rows.length + '칸)');
-      if (!dry) sh.getRange(from, 3, rows.length, 1).setFormulas(rows);
-      runStart = -1;
-    };
-    for (let i = 0; i < n; i++) {
-      if (/^=#REF!\*9\.5$/i.test(fs[i][0])) { if (runStart < 0) runStart = i; }
-      else flush(i);
-    }
-    flush(n);
-  })();
-
-  // 2) 아페티 플랫폼 세트 K(에이블리)·L(지그재그) 마진율 — $J 가 자기 행이 아닌 칸
-  (function () {
-    const sh = openBook_('apeti').getSheetByName('플랫폼 세트');
-    if (!sh || sh.getLastRow() < 2) return;
-    const n = sh.getLastRow() - 1;
-    const fs = sh.getRange(2, 11, n, 2).getFormulas();
-    for (let i = 0; i < n; i++) {
-      const row = i + 2;
-      for (let k = 0; k < 2; k++) {
-        const f = fs[i][k];
-        const refs = (f.match(/\$J(\d+)/g) || []).map(function (x) { return Number(x.slice(2)); });
-        if (!refs.length || refs.every(function (x) { return x === row; })) continue;
-        const after = f.replace(/\$J\d+/g, '$J' + row);
-        note('apeti', '플랫폼 세트', (k ? 'L' : 'K') + row, f, after);
-        if (!dry) sh.getRange(row, 11 + k).setFormula(after);
-      }
-    }
-  })();
-
-  // 3) 에이블리 가격표 아페티 H열 — =G×0.85 (세트 할인가 기준) 칸에 G 가 비었을 때 F 로 대신 계산
-  (function () {
-    const sh = openBook_('ably_price').getSheetByName('아페티');
-    if (!sh || sh.getLastRow() < 2) return;
-    const n = sh.getLastRow() - 1;
-    const rg = sh.getRange(2, 5, n, 4); // E(옵션명) F G H
-    const fs = rg.getFormulas(), vs = rg.getDisplayValues();
-    for (let i = 0; i < n; i++) {
-      const row = i + 2, f = fs[i][3];
-      const m = f.match(/^=G(\d+)\*0\.85$/i);
-      if (!m || Number(m[1]) !== row) continue;
-      if (babyB16400 && vs[i][0] === 'Baby-B' && vs[i][2] === '') {
-        note('ably_price', '아페티', 'G' + row, '(빈칸)', '16400');
-        if (!dry) sh.getRange(row, 7).setValue(16400);
-      }
-      const after = '=IF(G' + row + '="",F' + row + ',G' + row + ')*0.85';
-      note('ably_price', '아페티', 'H' + row, f, after);
-      if (!dry) sh.getRange(row, 8).setFormula(after);
-    }
-  })();
-
-  if (!dry) SpreadsheetApp.flush();
-  return out;
 }
