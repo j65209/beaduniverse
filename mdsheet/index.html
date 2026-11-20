@@ -48,9 +48,12 @@
          구글시트 · 공급처 링크를 표 · 상세 창 · 찾기 · 요약 카드 · 함수 줄에서 아예 뺀다 (매출 · 광고비는 그대로).
        · 고치기는 erp/ 와 같다 (PC 는 칸을 눌러 바로 · 휴대폰은 상세 창) — 고칠 수 있는 시트(브리지 book)만 · 관리자와 MD팀만.
          구글시트(브리지)에 먼저 쓰고 같은 줄을 저장소에도 (mdx_cell_edit). 끊는 날까지 원가 보고서 · 가격 감시가 구글시트를 읽기 때문.
-       · 함수: 수식 칸은 상세 창 · 고칠 칸에 =E2*2 처럼 보이고, '=' 로 시작하게 적으면 함수로 저장된다 (브리지 버전 3 부터 — 구글시트가 계산한 값이 바로 칸에).
+       · 함수 = 오피스 함수 (2026-11-20 사장님 "구글시트를 이제 안쓸건데? 기능을 오피스앱 내부 엠디팀 시트에 넣어주면 안돼?"):
+         '=' 로 시작하게 적으면 오피스가 계산한다 (FX — SUM · IF · VLOOKUP · SUMIF · ROUND · TEXT · EDATE 등, 같은 탭 칸만).
+         함수는 저장소 mdx_ofx 에 (mdx_ofx_set), 계산된 값은 저장소 줄 + 구글시트에 '값'으로 — 구글을 끊기 전까지 맞춤(md-db-sync)이 지우지 않게.
+         가리킨 칸이 바뀌면 다시 계산한다: 화면은 늘 지금 값(applyOfx), 고칠 수 있는 PC 는 열 때 · 고친 뒤 값이 다르면 시트 · 저장소에도 (ofxSync).
+         구글시트 함수가 든 칸(구글이 계산 · 상세 창 ƒx)은 구글을 끊기 전엔 못 고친다.
          함수를 적는 중엔 머리글 왼쪽 위에 열 글자(A · B …)가 뜨고, 다른 칸을 누르면 그 칸 주소(E5) · Shift 를 누르고 누르면 범위(E2:E9)가 들어간다.
-         쓴 칸의 수식 위치는 저장소에도 바로 (mdx_fx_cell). 여러 칸에 펼쳐지는 함수(QUERY · FILTER …)는 넣지 않는다 (탭 전체가 자동 계산 탭이 됨).
          기밀 명단 밖은 이 표에 보이는 칸만 함수에 쓸 수 있다 — 가린 칸 · 다른 탭 · 줄 전체 · 이름 · INDIRECT · OFFSET · IMPORT… 는 막음 (fxGuard).
        · 새 줄: 제목 줄 '＋ 새 줄' — 마지막 줄 다음 줄에 적고, 그 줄의 수식(공급가 · 마진율 등)은 시트가 자동으로 계산.
        · MD 시트 아래쪽 '수식만 남은 빈 줄'은 표 · 개수에서 빼고, TOP 10 처럼 한 탭에 표가 여럿이면 '공홈 · 일별' 단추로 나눈다. */
@@ -611,6 +614,567 @@
   }
   const mkTab = x => ({gid: x.tk, sgid: String(x.gid), book: x.book, name: String(x.name || ''), meta: classify(x.name, x.book), info: x.info || null});
 
+  /* ── 오피스 함수 계산기 (2026-11-20 사장님 "구글시트를 이제 안쓸건데? 기능을 오피스앱 내부 엠디팀 시트에 넣어주면 안돼?") ──
+     엑셀 · 구글시트와 같은 꼴의 함수를 오피스가 직접 계산한다. 같은 탭의 칸만 가리킨다 (E5 · $E$5 · E2:E9 · E:E · E2:E).
+     값 = 숫자 · 글자 · 참/거짓 · 빈칸(null) · 오류(Err) · 날짜(Day — 1899-12-30 부터 날 수, 구글시트와 같은 수).
+     칸 값은 저장소의 표시값('1,234' · '₩1,234' · '30%' · '2026-11-20')을 숫자 · 날짜로 읽는다.
+     쓰는 곳: FX.check(함수) → 틀린 곳 · 모르는 함수, FX.run(함수, {get, row, col, last}) → 값, FX.show · FX.toWrite · FX.same */
+  const FX = (() => {
+    class Err { constructor(c) { this.c = c; } toString() { return this.c; } }
+    class Day { constructor(n) { this.n = n; } }
+    const E = c => new Err(c);
+    const isErr = v => v instanceof Err;
+    const MAX_ROWS = 20000;
+    const ERR_RE = /^#(REF!|NAME\?|VALUE!|DIV\/0!|N\/A|ERROR!|NUM!|NULL!)/;
+    const colNo = a => { let n = 0; for (const ch of a.toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64; return n; };
+    class Bad extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+
+    // ── 날짜 (구글시트와 같은 날 수)
+    const daySerial = (y, m, d) => Date.UTC(y, m - 1, d) / 864e5 + 25569;
+    const ymdOf = n => { const t = new Date(Math.round((Math.floor(n) - 25569) * 864e5)); return [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()]; };
+    const pad2 = x => String(x).padStart(2, '0');
+    const ymd = n => { const [y, m, d] = ymdOf(n); return `${y}-${pad2(m)}-${pad2(d)}`; };
+    const today = () => { const t = new Date(); return daySerial(t.getFullYear(), t.getMonth() + 1, t.getDate()); };
+
+    // ── 표시값 → 값
+    function numOf(t) {
+      let x = String(t).replace(/[,\s]/g, ''), neg = false, pct = false;
+      if (/^\(.*\)$/.test(x)) { neg = true; x = x.slice(1, -1); }
+      x = x.replace(/^([-+]?)[₩￦$¥￥]/, '$1');
+      if (/%$/.test(x)) { pct = true; x = x.slice(0, -1); } else x = x.replace(/(원|개)$/, '');
+      if (!/^[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(x)) return null;
+      let n = parseFloat(x);
+      if (pct) n /= 100;
+      return neg ? -n : n;
+    }
+    function dayOf(t) {
+      const m = /^(\d{4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})\.?$/.exec(String(t).trim());
+      if (!m) return null;
+      const y = +m[1], mo = +m[2], d = +m[3];
+      return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? daySerial(y, mo, d) : null;
+    }
+    function cell(s) {   // 저장소 표시값 → 값
+      if (s == null) return null;
+      const t = String(s).trim();
+      if (t === '') return null;
+      if (/^[₩￦]?\s*-\s*$/.test(t)) return 0;   // 회계 서식의 0
+      const em = ERR_RE.exec(t);
+      if (em) return E(em[0]);
+      if (/^(TRUE|FALSE)$/i.test(t)) return /^TRUE$/i.test(t);
+      const n = numOf(t);
+      if (n !== null) return n;
+      const d = dayOf(t);
+      if (d !== null) return new Day(d);
+      return String(s);
+    }
+
+    // ── 함수 글 → 토큰
+    function lex(src) {
+      const T = [];
+      let i = 0;
+      while (i < src.length) {
+        const ch = src[i], rest = src.slice(i);
+        if (/\s/.test(ch)) { i++; continue; }
+        if (ch === '"') {
+          let j = i + 1, s = '';
+          for (;;) {
+            if (j >= src.length) throw new Bad('syntax', '따옴표(")가 닫히지 않았어요');
+            if (src[j] === '"') { if (src[j + 1] === '"') { s += '"'; j += 2; continue; } break; }
+            s += src[j++];
+          }
+          T.push({k: 'str', v: s});
+          i = j + 1;
+          continue;
+        }
+        let m = /^(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?/.exec(rest);
+        if (m) { T.push({k: 'num', v: parseFloat(m[0]), raw: m[0]}); i += m[0].length; continue; }
+        m = /^\$?[A-Za-z_\uAC00-\uD7A3][A-Za-z0-9_.$\uAC00-\uD7A3]*/.exec(rest);
+        if (m) {
+          const w = m[0];
+          i += w.length;
+          if (!w.includes('$') && /^\s*\(/.test(src.slice(i))) { T.push({k: 'fn', v: w.toUpperCase()}); continue; }
+          const rm = /^\$?([A-Za-z]{1,3})\$?(\d*)$/.exec(w);
+          if (rm && (rm[2] || /^\s*:/.test(src.slice(i)) || (T.length && T[T.length - 1].k === 'op' && T[T.length - 1].v === ':'))) {
+            T.push({k: 'ref', c: colNo(rm[1]), r: rm[2] ? +rm[2] : null, raw: w});
+            continue;
+          }
+          if (/^(TRUE|FALSE)$/i.test(w)) { T.push({k: 'bool', v: /^TRUE$/i.test(w)}); continue; }
+          if (/^\s*!/.test(src.slice(i))) throw new Bad('sheet', '다른 탭 · 다른 시트는 아직 가리킬 수 없어요 — 같은 탭 칸만');
+          throw new Bad('name', `'${w}' 를 모르겠어요 — 칸 주소는 E5 처럼, 글자는 "따옴표" 안에`);
+        }
+        m = /^(<>|<=|>=|[-+*/^&=<>%(),:;])/.exec(rest);
+        if (m) { T.push({k: 'op', v: m[0] === ';' ? ',' : m[0]}); i += m[0].length; continue; }
+        if (ch === '!' || ch === "'") throw new Bad('sheet', '다른 탭 · 다른 시트는 아직 가리킬 수 없어요 — 같은 탭 칸만');
+        if (ch === '{' || ch === '}') throw new Bad('syntax', '{ } 묶음은 아직 안 돼요');
+        throw new Bad('syntax', `'${ch}' 를 읽을 수 없어요`);
+      }
+      return T;
+    }
+
+    // ── 토큰 → 나무 (엑셀 순서: 비교 < & < +- < */ < ^ < 부호 < %)
+    function parse(src) {
+      const s = String(src == null ? '' : src).trim().replace(/^=/, '');
+      if (!s) throw new Bad('syntax', "'=' 다음에 계산할 내용을 적어 주세요");
+      const T = lex(s);
+      let k = 0;
+      const isOp = v => !!T[k] && T[k].k === 'op' && T[k].v === v;
+      const expect = v => { if (!isOp(v)) throw new Bad('syntax', v === ')' ? '괄호 ) 가 모자라요' : `'${v}' 가 있어야 해요`); k++; };
+      const cmp = () => { let a = cat(); while (T[k] && T[k].k === 'op' && /^(=|<>|<|>|<=|>=)$/.test(T[k].v)) { const op = T[k++].v; a = {t: 'bin', op, a, b: cat()}; } return a; };
+      const cat = () => { let a = add(); while (isOp('&')) { k++; a = {t: 'bin', op: '&', a, b: add()}; } return a; };
+      const add = () => { let a = mul(); while (isOp('+') || isOp('-')) { const op = T[k++].v; a = {t: 'bin', op, a, b: mul()}; } return a; };
+      const mul = () => { let a = pow(); while (isOp('*') || isOp('/')) { const op = T[k++].v; a = {t: 'bin', op, a, b: pow()}; } return a; };
+      const pow = () => { let a = una(); while (isOp('^')) { k++; a = {t: 'bin', op: '^', a, b: una()}; } return a; };
+      const una = () => { if (isOp('-')) { k++; return {t: 'neg', a: una()}; } if (isOp('+')) { k++; return una(); } return pct(); };
+      const pct = () => { let a = prim(); while (isOp('%')) { k++; a = {t: 'pct', a}; } return a; };
+      function prim() {
+        const x = T[k++];
+        if (!x) throw new Bad('syntax', '함수가 중간에 끝났어요');
+        if (x.k === 'num') return {t: 'num', v: x.v};
+        if (x.k === 'str') return {t: 'str', v: x.v};
+        if (x.k === 'bool') return {t: 'bool', v: x.v};
+        if (x.k === 'ref') {
+          if (isOp(':')) {
+            k++;
+            const y = T[k++];
+            if (!y || y.k !== 'ref') throw new Bad('syntax', '범위는 E2:E9 처럼 적어 주세요');
+            return {t: 'range', c1: Math.min(x.c, y.c), c2: Math.max(x.c, y.c), r1: x.r, r2: y.r};
+          }
+          if (x.r == null) throw new Bad('syntax', `'${x.raw}' — 칸 주소는 E5 처럼 열 글자와 줄 번호로`);
+          return {t: 'ref', c: x.c, r: x.r};
+        }
+        if (x.k === 'fn') {
+          expect('(');
+          const args = [];
+          if (!isOp(')')) {
+            for (;;) {
+              args.push(isOp(',') || isOp(')') ? {t: 'blank'} : cmp());
+              if (isOp(',')) { k++; continue; }
+              break;
+            }
+          }
+          expect(')');
+          return {t: 'fn', n: x.v.replace(/^_XLFN\./, ''), args};
+        }
+        if (x.k === 'op' && x.v === '(') { const e = cmp(); expect(')'); return e; }
+        if (x.k === 'op' && x.v === ':') throw new Bad('row', '줄 전체(5:9) 범위는 아직 안 돼요 — E5:H9 처럼 칸으로');
+        throw new Bad('syntax', `'${x.v != null ? x.v : x.raw}' 자리가 틀렸어요`);
+      }
+      const ast = cmp();
+      if (k < T.length) { const x = T[k]; throw new Bad('syntax', `'${x.v != null ? x.v : x.raw}' 앞뒤를 확인해 주세요 (쉼표 · 괄호 · 연산자)`); }
+      return ast;
+    }
+    const fnNames = (n, out) => { out = out || new Set(); if (n && n.t === 'fn') { out.add(n.n); n.args.forEach(a => fnNames(a, out)); } else if (n && (n.t === 'bin')) { fnNames(n.a, out); fnNames(n.b, out); } else if (n && (n.t === 'neg' || n.t === 'pct')) fnNames(n.a, out); return out; };
+
+    // ── 값 바꾸기
+    const isRange = v => !!v && v.rng === true;
+    function num(v) {
+      if (isErr(v)) return v;
+      if (v instanceof Day) return v.n;
+      if (typeof v === 'number') return v;
+      if (typeof v === 'boolean') return v ? 1 : 0;
+      if (v === null || v === undefined) return 0;
+      if (isRange(v)) return v.h === 1 && v.w === 1 ? num(v.rows[0][0]) : E('#VALUE!');
+      const t = String(v).trim();
+      if (t === '') return 0;
+      const n = numOf(t);
+      if (n !== null) return n;
+      const d = dayOf(t);
+      return d !== null ? d : E('#VALUE!');
+    }
+    function str(v) {
+      if (isErr(v)) return v;
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+      if (v instanceof Day) return String(v.n);
+      if (typeof v === 'number') return String(Number(v.toPrecision(15)));
+      if (isRange(v)) return v.h === 1 && v.w === 1 ? str(v.rows[0][0]) : E('#VALUE!');
+      return String(v);
+    }
+    function bool(v) {
+      if (isErr(v)) return v;
+      if (typeof v === 'boolean') return v;
+      if (v === null || v === undefined) return false;
+      if (v instanceof Day) return v.n !== 0;
+      if (typeof v === 'number') return v !== 0;
+      if (isRange(v)) return v.h === 1 && v.w === 1 ? bool(v.rows[0][0]) : E('#VALUE!');
+      const t = String(v).trim().toUpperCase();
+      if (t === 'TRUE') return true;
+      if (t === 'FALSE') return false;
+      return E('#VALUE!');
+    }
+    const scalar = v => isRange(v) ? (v.h === 1 && v.w === 1 ? v.rows[0][0] : E('#VALUE!')) : v;
+    function cmpv(a, b) {   // -1 · 0 · 1 (숫자 < 글자 < 참/거짓, 글자는 대소문자 구분 없음)
+      if (a instanceof Day) a = a.n;
+      if (b instanceof Day) b = b.n;
+      if (a === null || a === undefined) a = typeof b === 'string' ? '' : typeof b === 'boolean' ? false : 0;
+      if (b === null || b === undefined) b = typeof a === 'string' ? '' : typeof a === 'boolean' ? false : 0;
+      const ta = typeof a, tb = typeof b;
+      if (ta === tb) {
+        if (ta === 'string') { const x = a.toLowerCase(), y = b.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; }
+        return a < b ? -1 : a > b ? 1 : 0;
+      }
+      const rank = t => t === 'number' ? 0 : t === 'string' ? 1 : 2;
+      return rank(ta) < rank(tb) ? -1 : 1;
+    }
+    const fix = n => Number(n.toPrecision(15));
+
+    // ── 조건 (COUNTIF · SUMIF …): 10 · ">10" · "<>사과" · "사과*" · "" (빈칸)
+    function crit(c) {
+      c = scalar(c);
+      if (isErr(c)) return () => false;
+      if (typeof c === 'number' || typeof c === 'boolean' || c instanceof Day) {
+        const t = c instanceof Day ? c.n : c;
+        return v => { if (v instanceof Day) v = v.n; return typeof t === 'boolean' ? v === t : typeof v === 'number' ? v === t : (typeof v === 'string' && numOf(v) === t); };
+      }
+      const s = c == null ? '' : String(c), m = /^(<=|>=|<>|<|>|=)?([\s\S]*)$/.exec(s), op = m[1] || '=', rhs = m[2];
+      const blank = v => v === null || v === undefined || v === '';
+      if (rhs === '') return op === '<>' ? v => !blank(v) : op === '=' ? blank : () => false;
+      let rn = numOf(rhs);
+      if (rn === null) rn = dayOf(rhs);
+      if (rn !== null && op !== '=' && op !== '<>') {
+        return v => { const x = v instanceof Day ? v.n : typeof v === 'number' ? v : null; if (x === null) return false; return op === '<' ? x < rn : op === '>' ? x > rn : op === '<=' ? x <= rn : x >= rn; };
+      }
+      if (op !== '=' && op !== '<>') return v => { if (blank(v) || typeof v !== 'string') return false; const r = cmpv(v, rhs); return op === '<' ? r < 0 : op === '>' ? r > 0 : op === '<=' ? r <= 0 : r >= 0; };
+      const wild = /(^|[^~])[*?]/.test(rhs);
+      const re = wild ? new RegExp('^' + rhs.replace(/~([*?~])|([.+^${}()|[\]\\])|(\*)|(\?)/g, (a, esc, sp, st, q) => esc ? '\\' + esc : sp ? '\\' + sp : st ? '[\\s\\S]*' : '.') + '$', 'i') : null;
+      const eq = v => {
+        if (v instanceof Day) v = v.n;
+        if (rn !== null && typeof v === 'number') return v === rn;
+        if (blank(v)) return false;
+        const t = typeof v === 'boolean' ? (v ? 'TRUE' : 'FALSE') : String(v);
+        return re ? re.test(t) : t.toLowerCase() === rhs.toLowerCase();
+      };
+      return op === '<>' ? v => !eq(v) : eq;
+    }
+
+    // ── 함수들 — 받는 값: a = 계산된 인수(범위는 {rng, rows, h, w, r1, c1}), n = 인수 나무, x = 계산기(지연 계산용)
+    const each = (vals, fn) => { for (const v of vals) { if (isRange(v)) { for (const row of v.rows) for (const c of row) { const r = fn(c, true); if (r === false) return; } } else if (fn(v, false) === false) return; } };
+    function nums(vals) {   // SUM · AVERAGE … 의 숫자들 (범위 안 글자 · 빈칸은 건너뛰고, 직접 적은 글자는 숫자로)
+      const out = [];
+      let err = null;
+      each(vals, (v, inR) => {
+        if (isErr(v)) { err = v; return false; }
+        if (inR) { if (typeof v === 'number') out.push(v); else if (v instanceof Day) out.push(v.n); return; }
+        if (v === null) return;
+        const n = num(v);
+        if (isErr(n)) { err = n; return false; }
+        out.push(n);
+      });
+      return err || out;
+    }
+    const agg = fn => a => { const xs = nums(a); return isErr(xs) ? xs : fn(xs); };
+    const n1 = (v, dflt) => v === undefined ? dflt : num(v);
+    function roundBy(mode) {
+      return a => {
+        const n = num(a[0]), d = n1(a[1], 0);
+        if (isErr(n)) return n;
+        if (isErr(d)) return d;
+        const p = Math.pow(10, Math.trunc(d)), x = fix(Math.abs(n) * p);
+        const r = mode === 'up' ? Math.ceil(x) : mode === 'down' ? Math.floor(x) : Math.round(x);
+        return fix(Math.sign(n) * r / p);
+      };
+    }
+    const range2 = v => isRange(v) ? v : {rng: true, rows: [[v]], h: 1, w: 1, r1: 0, c1: 0};
+    function lookupIdx(key, list, exact) {   // list = 값 배열 → 찾은 자리 (못 찾으면 -1)
+      if (exact) { const f = crit(key instanceof Day ? key.n : key); for (let i = 0; i < list.length; i++) if (f(list[i])) return i; return -1; }
+      let best = -1;
+      for (let i = 0; i < list.length; i++) { const v = list[i]; if (v === null || v === undefined) continue; if (cmpv(v, key) <= 0 && typeof (v instanceof Day ? v.n : v) === typeof (key instanceof Day ? key.n : key)) best = i; else if (cmpv(v, key) > 0) break; }
+      return best;
+    }
+    function ifsPairs(a, start) {   // [범위, 조건, 범위, 조건 …] → 맞는 칸 표시 (같은 크기)
+      const pairs = [];
+      for (let i = start; i + 1 < a.length; i += 2) pairs.push([range2(a[i]), crit(a[i + 1])]);
+      if (!pairs.length) return E('#N/A');
+      const {h, w} = pairs[0][0];
+      if (pairs.some(([r]) => r.h !== h || r.w !== w)) return E('#VALUE!');
+      return (i, j) => pairs.every(([r, f]) => f(r.rows[i][j]));
+    }
+    function sumBy(target, ok, mode) {   // mode = sum · count · avg · max · min
+      const t = range2(target);
+      let s = 0, n = 0, mx = -Infinity, mn = Infinity;
+      for (let i = 0; i < t.h; i++) for (let j = 0; j < t.w; j++) {
+        if (!ok(i, j)) continue;
+        const v = t.rows[i] ? t.rows[i][j] : null;
+        if (mode === 'count') { n++; continue; }
+        if (isErr(v)) return v;
+        const x = v instanceof Day ? v.n : typeof v === 'number' ? v : null;
+        if (x === null) continue;
+        s += x; n++; if (x > mx) mx = x; if (x < mn) mn = x;
+      }
+      if (mode === 'count') return n;
+      if (mode === 'avg') return n ? s / n : E('#DIV/0!');
+      if (mode === 'max') return n ? mx : 0;
+      if (mode === 'min') return n ? mn : 0;
+      return fix(s);
+    }
+    function textFmt(v, fmt) {   // TEXT — 자주 쓰는 꼴만 (0 · 0.00 · #,##0 · 0% · yyyy-mm-dd …)
+      fmt = String(fmt);
+      if (/[yd]|m{1,2}(?![^"]*")/i.test(fmt) && !/[0#]/.test(fmt)) {
+        const n = num(v);
+        if (isErr(n)) return n;
+        const [y, m, d] = ymdOf(n);
+        return fmt.replace(/yyyy|yy|mm|m|dd|d/gi, t => ({yyyy: String(y), yy: String(y).slice(-2), mm: pad2(m), m: String(m), dd: pad2(d), d: String(d)})[t.toLowerCase()]);
+      }
+      const n = num(v);
+      if (isErr(n)) return typeof v === 'string' ? v : n;
+      const m = /^([^0#]*)([#,0]*)(?:\.(0+))?(%?)(.*)$/.exec(fmt);
+      if (!m) return str(n);
+      const [, pre, body, dec, pc, post] = m;
+      const x = pc ? n * 100 : n, dn = dec ? dec.length : 0;
+      let s = Math.abs(x).toFixed(dn);
+      if (body.includes(',')) { const [a, b] = s.split('.'); s = a.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (b ? '.' + b : ''); }
+      return (x < 0 ? '-' : '') + pre + s + pc + post;
+    }
+    const dayArg = v => { const n = num(v); return isErr(n) ? n : Math.floor(n); };
+    function addMonths(n, k, end) {
+      const [y, m, d] = ymdOf(n), t = new Date(Date.UTC(y, m - 1 + k, 1));
+      const yy = t.getUTCFullYear(), mm = t.getUTCMonth() + 1, last = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+      return new Day(daySerial(yy, mm, end ? last : Math.min(d, last)));
+    }
+
+    const F = {
+      SUM: agg(xs => fix(xs.reduce((s, x) => s + x, 0))),
+      AVERAGE: agg(xs => xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : E('#DIV/0!')),
+      MIN: agg(xs => xs.length ? Math.min(...xs) : 0),
+      MAX: agg(xs => xs.length ? Math.max(...xs) : 0),
+      PRODUCT: agg(xs => xs.reduce((s, x) => s * x, 1)),
+      COUNT: a => { let n = 0; each(a, (v, inR) => { if (typeof v === 'number' || v instanceof Day || (!inR && v !== null && !isErr(num(v)))) n++; }); return n; },
+      COUNTA: a => { let n = 0; each(a, v => { if (v !== null && v !== undefined && v !== '') n++; }); return n; },
+      COUNTBLANK: a => { let n = 0; each(a, v => { if (v === null || v === undefined || v === '') n++; }); return n; },
+      ROUND: roundBy('half'), ROUNDUP: roundBy('up'), ROUNDDOWN: roundBy('down'),
+      TRUNC: roundBy('down'),
+      INT: a => { const n = num(a[0]); return isErr(n) ? n : Math.floor(n); },
+      ABS: a => { const n = num(a[0]); return isErr(n) ? n : Math.abs(n); },
+      SIGN: a => { const n = num(a[0]); return isErr(n) ? n : Math.sign(n); },
+      SQRT: a => { const n = num(a[0]); return isErr(n) ? n : n < 0 ? E('#NUM!') : Math.sqrt(n); },
+      POWER: a => { const x = num(a[0]), y = num(a[1]); if (isErr(x)) return x; if (isErr(y)) return y; const r = Math.pow(x, y); return isFinite(r) ? r : E('#NUM!'); },
+      MOD: a => { const x = num(a[0]), y = num(a[1]); if (isErr(x)) return x; if (isErr(y)) return y; return y === 0 ? E('#DIV/0!') : fix(x - y * Math.floor(x / y)); },
+      CEILING: a => { const x = num(a[0]), s = n1(a[1], 1); if (isErr(x)) return x; if (isErr(s)) return s; if (s === 0) return 0; if (x > 0 && s < 0) return E('#NUM!'); return fix(Math.ceil(fix(x / s)) * s); },
+      FLOOR: a => { const x = num(a[0]), s = n1(a[1], 1); if (isErr(x)) return x; if (isErr(s)) return s; if (s === 0) return E('#DIV/0!'); if (x > 0 && s < 0) return E('#NUM!'); return fix(Math.floor(fix(x / s)) * s); },
+      MROUND: a => { const x = num(a[0]), s = num(a[1]); if (isErr(x)) return x; if (isErr(s)) return s; if (s === 0) return 0; if (Math.sign(x) * Math.sign(s) < 0) return E('#NUM!'); return fix(Math.round(fix(x / s)) * s); },
+      SUMPRODUCT: a => {
+        const rs = a.map(range2);
+        if (!rs.length) return 0;
+        const {h, w} = rs[0];
+        if (rs.some(r => r.h !== h || r.w !== w)) return E('#VALUE!');
+        let s = 0;
+        for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) {
+          let p = 1;
+          for (const r of rs) { const v = r.rows[i][j]; if (isErr(v)) return v; p *= v instanceof Day ? v.n : typeof v === 'number' ? v : 0; }
+          s += p;
+        }
+        return fix(s);
+      },
+      AND: a => { let any = false, r = true, err = null; each(a, (v, inR) => { if (isErr(v)) { err = v; return false; } if (v === null || (inR && typeof v === 'string')) return; const b = bool(v); if (isErr(b)) { err = b; return false; } any = true; if (!b) r = false; }); return err || (any ? r : E('#VALUE!')); },
+      OR: a => { let any = false, r = false, err = null; each(a, (v, inR) => { if (isErr(v)) { err = v; return false; } if (v === null || (inR && typeof v === 'string')) return; const b = bool(v); if (isErr(b)) { err = b; return false; } any = true; if (b) r = true; }); return err || (any ? r : E('#VALUE!')); },
+      NOT: a => { const b = bool(scalar(a[0])); return isErr(b) ? b : !b; },
+      TRUE: () => true, FALSE: () => false,
+      ISBLANK: a => { const v = scalar(a[0]); return v === null || v === undefined; },
+      ISNUMBER: a => { const v = scalar(a[0]); return typeof v === 'number' || v instanceof Day; },
+      ISTEXT: a => typeof scalar(a[0]) === 'string',
+      ISERROR: a => isErr(scalar(a[0])),
+      ISNA: a => { const v = scalar(a[0]); return isErr(v) && v.c === '#N/A'; },
+      N: a => { const v = scalar(a[0]); return typeof v === 'number' ? v : v instanceof Day ? v.n : typeof v === 'boolean' ? +v : isErr(v) ? v : 0; },
+      VALUE: a => num(scalar(a[0])),
+      LEN: a => { const s = str(scalar(a[0])); return isErr(s) ? s : s.length; },
+      LEFT: a => { const s = str(scalar(a[0])), k = n1(a[1], 1); if (isErr(s)) return s; if (isErr(k)) return k; return k < 0 ? E('#VALUE!') : s.slice(0, k); },
+      RIGHT: a => { const s = str(scalar(a[0])), k = n1(a[1], 1); if (isErr(s)) return s; if (isErr(k)) return k; return k < 0 ? E('#VALUE!') : k === 0 ? '' : s.slice(-k); },
+      MID: a => { const s = str(scalar(a[0])), st = num(a[1]), k = num(a[2]); if (isErr(s)) return s; if (isErr(st)) return st; if (isErr(k)) return k; return st < 1 || k < 0 ? E('#VALUE!') : s.substr(st - 1, k); },
+      TRIM: a => { const s = str(scalar(a[0])); return isErr(s) ? s : s.replace(/\s+/g, ' ').trim(); },
+      UPPER: a => { const s = str(scalar(a[0])); return isErr(s) ? s : s.toUpperCase(); },
+      LOWER: a => { const s = str(scalar(a[0])); return isErr(s) ? s : s.toLowerCase(); },
+      REPT: a => { const s = str(scalar(a[0])), k = num(a[1]); if (isErr(s)) return s; if (isErr(k)) return k; return k < 0 ? E('#VALUE!') : s.repeat(Math.min(Math.floor(k), 1e4)); },
+      EXACT: a => { const x = str(scalar(a[0])), y = str(scalar(a[1])); if (isErr(x)) return x; if (isErr(y)) return y; return x === y; },
+      SUBSTITUTE: a => {
+        const s = str(scalar(a[0])), o = str(scalar(a[1])), w = str(scalar(a[2])), nth = a[3] === undefined ? null : num(a[3]);
+        for (const v of [s, o, w, nth]) if (isErr(v)) return v;
+        if (!o) return s;
+        if (nth === null) return s.split(o).join(w);
+        let i = -1;
+        for (let k = 0; k < nth; k++) { i = s.indexOf(o, i + 1); if (i < 0) return s; }
+        return s.slice(0, i) + w + s.slice(i + o.length);
+      },
+      FIND: a => { const n = str(scalar(a[0])), h = str(scalar(a[1])), st = n1(a[2], 1); for (const v of [n, h, st]) if (isErr(v)) return v; const i = h.indexOf(n, st - 1); return i < 0 ? E('#VALUE!') : i + 1; },
+      SEARCH: a => { const n = str(scalar(a[0])), h = str(scalar(a[1])), st = n1(a[2], 1); for (const v of [n, h, st]) if (isErr(v)) return v; const i = h.toLowerCase().indexOf(n.toLowerCase(), st - 1); return i < 0 ? E('#VALUE!') : i + 1; },
+      CONCATENATE: a => { let s = '', err = null; each(a, v => { const t = str(v); if (isErr(t)) { err = t; return false; } s += t; }); return err || s; },
+      TEXTJOIN: a => {
+        const d = str(scalar(a[0])), skip = bool(scalar(a[1]));
+        if (isErr(d)) return d;
+        if (isErr(skip)) return skip;
+        const parts = [];
+        let err = null;
+        each(a.slice(2), v => { const t = str(v); if (isErr(t)) { err = t; return false; } if (!(skip && t === '')) parts.push(t); });
+        return err || parts.join(d);
+      },
+      TEXT: a => textFmt(scalar(a[0]), str(scalar(a[1]))),
+      HYPERLINK: a => { const u = str(scalar(a[0])), l = a[1] === undefined ? u : str(scalar(a[1])); return l; },
+      TODAY: () => new Day(today()),
+      DATE: a => { const y = num(a[0]), m = num(a[1]), d = num(a[2]); for (const v of [y, m, d]) if (isErr(v)) return v; const t = new Date(Date.UTC(Math.trunc(y), Math.trunc(m) - 1, Math.trunc(d))); return new Day(daySerial(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate())); },
+      YEAR: a => { const n = dayArg(scalar(a[0])); return isErr(n) ? n : ymdOf(n)[0]; },
+      MONTH: a => { const n = dayArg(scalar(a[0])); return isErr(n) ? n : ymdOf(n)[1]; },
+      DAY: a => { const n = dayArg(scalar(a[0])); return isErr(n) ? n : ymdOf(n)[2]; },
+      EDATE: a => { const n = dayArg(scalar(a[0])), k = num(a[1]); if (isErr(n)) return n; if (isErr(k)) return k; return addMonths(n, Math.trunc(k), false); },
+      EOMONTH: a => { const n = dayArg(scalar(a[0])), k = num(a[1]); if (isErr(n)) return n; if (isErr(k)) return k; return addMonths(n, Math.trunc(k), true); },
+      DAYS: a => { const e = dayArg(scalar(a[0])), s = dayArg(scalar(a[1])); if (isErr(e)) return e; if (isErr(s)) return s; return e - s; },
+      WEEKDAY: a => { const n = dayArg(scalar(a[0])), t = n1(a[1], 1); if (isErr(n)) return n; const w = ((n % 7) + 6) % 7; return t === 2 ? (w + 6) % 7 + 1 : t === 3 ? (w + 6) % 7 : w + 1; },   // 1899-12-30 = 토요일
+      DATEDIF: a => {
+        const s = dayArg(scalar(a[0])), e = dayArg(scalar(a[1])), u = str(scalar(a[2])).toUpperCase();
+        if (isErr(s)) return s; if (isErr(e)) return e;
+        if (e < s) return E('#NUM!');
+        if (u === 'D') return e - s;
+        const [y1, m1, d1] = ymdOf(s), [y2, m2, d2] = ymdOf(e);
+        let mo = (y2 - y1) * 12 + (m2 - m1) - (d2 < d1 ? 1 : 0);
+        if (u === 'M') return mo;
+        if (u === 'Y') return Math.floor(mo / 12);
+        return E('#NUM!');
+      },
+      SUMIF: a => { const r = range2(a[0]), f = crit(a[1]); return sumBy(a[2] === undefined ? r : a[2], (i, j) => f(r.rows[i] && r.rows[i][j]), 'sum'); },
+      AVERAGEIF: a => { const r = range2(a[0]), f = crit(a[1]); return sumBy(a[2] === undefined ? r : a[2], (i, j) => f(r.rows[i] && r.rows[i][j]), 'avg'); },
+      COUNTIF: a => { const r = range2(a[0]), f = crit(a[1]); return sumBy(r, (i, j) => f(r.rows[i][j]), 'count'); },
+      SUMIFS: a => { const ok = ifsPairs(a, 1); return isErr(ok) ? ok : sumBy(a[0], ok, 'sum'); },
+      AVERAGEIFS: a => { const ok = ifsPairs(a, 1); return isErr(ok) ? ok : sumBy(a[0], ok, 'avg'); },
+      MAXIFS: a => { const ok = ifsPairs(a, 1); return isErr(ok) ? ok : sumBy(a[0], ok, 'max'); },
+      MINIFS: a => { const ok = ifsPairs(a, 1); return isErr(ok) ? ok : sumBy(a[0], ok, 'min'); },
+      COUNTIFS: a => { const ok = ifsPairs(a, 0); return isErr(ok) ? ok : sumBy(a[0], ok, 'count'); },
+      VLOOKUP: a => {
+        const key = scalar(a[0]), r = range2(a[1]), ci = num(a[2]), sorted = a[3] === undefined ? true : bool(scalar(a[3]));
+        if (isErr(key)) return key; if (isErr(ci)) return ci; if (isErr(sorted)) return sorted;
+        if (ci < 1 || ci > r.w) return E('#REF!');
+        const i = lookupIdx(key, r.rows.map(x => x[0]), !sorted);
+        return i < 0 ? E('#N/A') : r.rows[i][ci - 1];
+      },
+      HLOOKUP: a => {
+        const key = scalar(a[0]), r = range2(a[1]), ri = num(a[2]), sorted = a[3] === undefined ? true : bool(scalar(a[3]));
+        if (isErr(key)) return key; if (isErr(ri)) return ri; if (isErr(sorted)) return sorted;
+        if (ri < 1 || ri > r.h) return E('#REF!');
+        const i = lookupIdx(key, r.rows[0], !sorted);
+        return i < 0 ? E('#N/A') : r.rows[ri - 1][i];
+      },
+      MATCH: a => {
+        const key = scalar(a[0]), r = range2(a[1]), t = a[2] === undefined ? 1 : num(a[2]);
+        if (isErr(key)) return key; if (isErr(t)) return t;
+        const list = r.h === 1 ? r.rows[0] : r.rows.map(x => x[0]);
+        if (t === 0) { const i = lookupIdx(key, list, true); return i < 0 ? E('#N/A') : i + 1; }
+        if (t > 0) { const i = lookupIdx(key, list, false); return i < 0 ? E('#N/A') : i + 1; }
+        let best = -1;
+        for (let i = 0; i < list.length; i++) { if (list[i] === null) continue; if (cmpv(list[i], key) >= 0) best = i; else break; }
+        return best < 0 ? E('#N/A') : best + 1;
+      },
+      INDEX: a => {
+        const r = range2(a[0]);
+        let ri = a[1] === undefined ? 1 : num(a[1]), ci = a[2] === undefined ? null : num(a[2]);
+        if (isErr(ri)) return ri; if (ci !== null && isErr(ci)) return ci;
+        if (ci === null) { if (r.h === 1) { ci = ri; ri = 1; } else ci = 1; }
+        if (ri < 1 || ci < 1 || ri > r.h || ci > r.w) return E('#REF!');
+        return r.rows[ri - 1][ci - 1];
+      },
+      XLOOKUP: a => {
+        const key = scalar(a[0]), look = range2(a[1]), ret = range2(a[2]);
+        if (isErr(key)) return key;
+        const vertical = look.w === 1, list = vertical ? look.rows.map(x => x[0]) : look.rows[0];
+        const i = lookupIdx(key, list, true);
+        if (i < 0) return a[3] === undefined ? E('#N/A') : scalar(a[3]);
+        return vertical ? (ret.rows[i] ? ret.rows[i][0] : E('#REF!')) : (ret.rows[0] ? ret.rows[0][i] : E('#REF!'));
+      },
+      ROWS: a => range2(a[0]).h,
+      COLUMNS: a => range2(a[0]).w,
+    };
+    F.CONCAT = F.CONCATENATE;
+    // 지연 계산 (안 쓰는 쪽은 계산하지 않는다 — IFERROR 의 오류 쪽 등)
+    const LAZY = {
+      IF: (n, x) => { const c = bool(scalar(x(n[0]))); if (isErr(c)) return c; const b = c ? n[1] : n[2]; return b === undefined ? (c ? true : false) : b.t === 'blank' ? 0 : x(b); },
+      IFS: (n, x) => { for (let i = 0; i + 1 < n.length; i += 2) { const c = bool(scalar(x(n[i]))); if (isErr(c)) return c; if (c) return x(n[i + 1]); } return E('#N/A'); },
+      IFERROR: (n, x) => { const v = scalar(x(n[0])); return isErr(v) ? (n[1] === undefined || n[1].t === 'blank' ? '' : x(n[1])) : v; },
+      IFNA: (n, x) => { const v = scalar(x(n[0])); return isErr(v) && v.c === '#N/A' ? (n[1] === undefined || n[1].t === 'blank' ? '' : x(n[1])) : v; },
+      SWITCH: (n, x) => { const v = scalar(x(n[0])); if (isErr(v)) return v; let i = 1; for (; i + 1 < n.length; i += 2) { if (cmpv(v, scalar(x(n[i]))) === 0) return x(n[i + 1]); } return i < n.length ? x(n[i]) : E('#N/A'); },
+      ROW: (n, x, ctx) => n[0] && n[0].t === 'ref' ? n[0].r : n[0] && n[0].t === 'range' ? (n[0].r1 || 1) : ctx.row,
+      COLUMN: (n, x, ctx) => n[0] && n[0].t === 'ref' ? n[0].c : n[0] && n[0].t === 'range' ? n[0].c1 : ctx.col,
+    };
+    const KNOWN = new Set([...Object.keys(F), ...Object.keys(LAZY)]);
+
+    // ── 계산
+    function run(ast, ctx) {
+      function rangeOf(n) {
+        const r1 = n.r1 || 1, r2 = Math.min(n.r2 || ctx.last || r1, r1 + MAX_ROWS - 1), rows = [];
+        for (let r = r1; r <= Math.max(r1, r2); r++) { const row = []; for (let c = n.c1; c <= n.c2; c++) row.push(ctx.get(r, c)); rows.push(row); }
+        return {rng: true, rows, h: rows.length, w: n.c2 - n.c1 + 1, r1, c1: n.c1};
+      }
+      function x(n) {
+        switch (n.t) {
+          case 'num': case 'str': case 'bool': return n.v;
+          case 'blank': return null;
+          case 'ref': return ctx.get(n.r, n.c);
+          case 'range': return rangeOf(n);
+          case 'neg': { const v = num(scalar(x(n.a))); return isErr(v) ? v : -v; }
+          case 'pct': { const v = num(scalar(x(n.a))); return isErr(v) ? v : v / 100; }
+          case 'bin': return bin(n.op, scalar(x(n.a)), scalar(x(n.b)));
+          case 'fn': {
+            if (LAZY[n.n]) return LAZY[n.n](n.args, x, ctx);
+            const f = F[n.n];
+            if (!f) return E('#NAME?');
+            return f(n.args.map(a => a.t === 'blank' ? null : x(a)));
+          }
+        }
+        return E('#VALUE!');
+      }
+      function bin(op, a, b) {
+        if (isErr(a)) return a;
+        if (isErr(b)) return b;
+        if (op === '&') return str(a) + str(b);
+        if (/^(=|<>|<|>|<=|>=)$/.test(op)) {
+          const r = cmpv(a, b);
+          return op === '=' ? r === 0 : op === '<>' ? r !== 0 : op === '<' ? r < 0 : op === '>' ? r > 0 : op === '<=' ? r <= 0 : r >= 0;
+        }
+        const p = num(a), q = num(b);
+        if (isErr(p)) return p;
+        if (isErr(q)) return q;
+        if (op === '+') { const r = fix(p + q); return (a instanceof Day) !== (b instanceof Day) ? new Day(r) : r; }
+        if (op === '-') { const r = fix(p - q); return a instanceof Day && !(b instanceof Day) ? new Day(r) : r; }
+        if (op === '*') return fix(p * q);
+        if (op === '/') return q === 0 ? E('#DIV/0!') : p / q;
+        if (op === '^') { const r = Math.pow(p, q); return isFinite(r) ? r : E('#NUM!'); }
+        return E('#VALUE!');
+      }
+      const v = x(ast);
+      return isRange(v) ? (v.h >= 1 && v.w >= 1 ? v.rows[0][0] : E('#VALUE!')) : (v === undefined ? null : v);
+    }
+
+    // 넣기 전에 — 틀린 곳 · 모르는 함수 (돌려줌: {ast, refs} 또는 throw Bad)
+    function check(f) {
+      const ast = parse(f);
+      const unknown = [...fnNames(ast)].filter(n => !KNOWN.has(n));
+      if (unknown.length) throw new Bad('unknown', `${unknown.join(' · ')} 는 아직 오피스 함수에 없어요`);
+      return ast;
+    }
+    // 보여 줄 글 · 시트에 적을 글 · 저장된 표시값과 같은지
+    function show(v) {
+      if (v === null || v === undefined) return '';
+      if (isErr(v)) return v.c;
+      if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+      if (v instanceof Day) return ymd(v.n);
+      if (typeof v === 'number') { if (!isFinite(v)) return '#NUM!'; const r = Number(v.toPrecision(12)); return Math.abs(r) >= 1000 ? r.toLocaleString('en-US', {maximumFractionDigits: 6}) : String(r); }
+      return String(v);
+    }
+    function toWrite(v) {
+      if (v === null || v === undefined) return '';
+      if (isErr(v)) return "'" + v.c;
+      if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+      if (v instanceof Day) return ymd(v.n);
+      if (typeof v === 'number') return isFinite(v) ? String(Number(v.toPrecision(15))) : "'#NUM!";
+      const s = String(v);
+      return /^[=+'\-]/.test(s) || numOf(s) !== null || dayOf(s) !== null || /^(TRUE|FALSE)$/i.test(s.trim()) ? "'" + s : s;   // 숫자 · 날짜처럼 보이는 글은 글자 그대로
+    }
+    function same(v, shown) {
+      const w = cell(shown);
+      if ((v === null || v === '') && (w === null || w === '')) return true;
+      const a = v instanceof Day ? v.n : v, b = w instanceof Day ? w.n : w;
+      if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+      if (isErr(v) || isErr(w)) return isErr(v) && isErr(w) && v.c === w.c;
+      return show(v).trim() === String(shown == null ? '' : shown).trim();
+    }
+    return {parse, check, run, show, toWrite, same, cell, isErr, err: E, Bad, KNOWN, colNo};
+  })();
+
   /* ── 함수(수식) 보이기 — 저장소엔 구글 R1C1 수식이 있다 (맥미니가 브리지로 읽어 둠). 그 칸 기준 A1 로 (=R[0]C5*2 → =$E2*2) ── */
   const colA = n => { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; };
   const R1C1 = /(?<![A-Za-z0-9_.$])(R(\[-?\d+\]|\d+)?)?(C(\[-?\d+\]|\d+)?)?(?![A-Za-z0-9_(.])/g;
@@ -706,7 +1270,7 @@
         const live = new Set(books.map(b => b.book));
         const out = (j.tabs || []).filter(x => live.has(x.book)).map(x => {
           const prev = tabOf(x.tk), info = Object.assign({}, x);
-          if (prev && prev.info && prev.info.fx && prev.info.fxVer === x.ver) { info.fx = prev.info.fx; info.fx_list = prev.info.fx_list; info.fxVer = x.ver; }
+          if (prev && prev.info && prev.info.fx !== undefined && prev.info.fxVer === x.ver) { info.fx = prev.info.fx; info.fx_list = prev.info.fx_list; info.ofx = prev.info.ofx; info.fxVer = x.ver; }
           return mkTab({tk: x.tk, gid: x.gid, book: x.book, name: x.name, info});
         });
         S.tabs = out;
@@ -720,7 +1284,6 @@
         if (!S.pruned) { S.pruned = true; store.keys().then(ks => (ks || []).forEach(g => { if (!liveTk.has(String(g))) store.del(g); })); }   // 지워진 탭의 저장본
         if (Object.keys(S.counts).some(k => !liveTk.has(k))) { Object.keys(S.counts).forEach(k => { if (!liveTk.has(k)) delete S.counts[k]; }); lsSet(LS_COUNTS, JSON.stringify(S.counts)); }
         loadStrat();
-        if (canEdit()) bridgeVer().catch(() => {});   // 함수 입력이 되는 브리지인지 미리 (고칠 수 있는 사람만)
         if (!S.cur) { hideMsg(); openTab(pickTab(S.want, S.saved)); }                       // 처음 · 실패 뒤 다시 읽힘
         else if (!tabOf(S.cur)) openTab(pickTab(null, {book: S.lastBook, name: S.lastName}));   // 보던 탭이 지워짐
         else { renderNav(); renderHead(); saveTab(); syncCur(); }
@@ -807,7 +1370,7 @@
       const j = await mdx('mdx_rows_get', {p_tk: gid, p_since: 0, p_after: after, p_limit: 4000, p_fx: first});
       if (first) {   // 수식 칸 (맥미니가 브리지로 읽어 둔 것) — 고치기 막기 · 함수 보이기 · IMAGE 사진
         const t = tabOf(gid);
-        if (t && t.info) { t.info.fx = j.fx || null; t.info.fx_list = j.fx_list || null; t.info.fxVer = t.info.ver; }
+        if (t && t.info) { t.info.fx = j.fx || null; t.info.fx_list = j.fx_list || null; t.info.ofx = Array.isArray(j.ofx) ? j.ofx : []; t.info._ofxM = null; t.info.fxVer = t.info.ver; }
       }
       (j.rows || []).forEach(x => out.push(asRow(x)));
       if (!j.more || !(j.rows || []).length) return out;
@@ -1812,6 +2375,7 @@
       ent.model.rows.forEach(mr => { const x = ent.rows.get(mr.r); mr.cells.forEach(c => { if (c.pii && x) x.v[c.p] = c.t; }); });
     }
     applyPending(gid, ent.model);
+    applyOfx(gid, ent);   // 오피스 함수 칸 = 지금 계산한 값
     ent.data = buildAll(ent.model, tabOf(gid));
     return ent;
   }
@@ -2011,7 +2575,7 @@
     // 수식 칸은 값 아래에 함수 (ƒx =$E2*2)
     const info = tabInfo(S.cur);
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}</dd>` : '')
-      + d.cols.map(c => { const fx = secretOk() ? fxText(info, r, c.p) : ''; return `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}${fx ? `<div class="fxv"><b>ƒx</b>${esc(fx)}</div>` : ''}</dd>`; }).join('');
+      + d.cols.map(c => { const fx = secretOk() ? (ofxGet(info, r, c.p) || fxText(info, r, c.p)) : ''; return `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}${fx ? `<div class="fxv"><b>ƒx</b>${esc(fx)}</div>` : ''}</dd>`; }).join('');
     markEditable();
     const det = $('detail'), was = det.hidden;
     det.hidden = false;
@@ -2099,17 +2663,7 @@
   }
   const NO_EDIT = '보기 전용이에요 — 고치기는 MD팀 · 관리자만';
   const RO_BOOK = '이 시트는 아직 구글시트에서만 고쳐요 (발주 · 광고 · 디자인 · 벤더 시트는 그 팀 작업을 옮길 때 함께)';
-  const NEED_V3 = '함수 입력은 구글 연결(브리지) 새 버전을 배포한 뒤에 돼요 — 관리자에게 알려 주세요';
-  // 여러 칸에 펼쳐지는 함수 — 넣으면 탭 전체가 자동 계산 탭이 되어 오피스에서 못 고친다 (브리지 SPILL 과 같음)
-  const SPILL_RE = /\b(QUERY|FILTER|SORT|SORTN|SEQUENCE|ARRAYFORMULA|UNIQUE|IMPORTRANGE|FLATTEN|TRANSPOSE)\s*\(/i;
   const FX_ERR_RE = /^#(REF!|NAME\?|VALUE!|DIV\/0!|N\/A|ERROR!|NUM!|NULL!)/;   // 함수 결과가 오류
-  // 브리지 버전 (ping 의 v) — 3 부터 함수 입력 · 수식 칸 고치기
-  let bvP = null;
-  function bridgeVer() {
-    if (E.bv) return Promise.resolve(E.bv);
-    if (!bvP) bvP = bridge('ping').then(j => (E.bv = +(j && j.v) || 2), () => 2).finally(() => { bvP = null; });
-    return bvP;
-  }
   const E = {cfg: null, cfgP: null, pend: new Map(), x: null, at: null, anchor: null, busy: false, q: Promise.resolve()};
   const whoAmI = () => lsGet('brightbeed_diary_me') || (lsGet('brightbeed_role') === 'master' ? '관리자' : '');
   const piiCol = name => { const n = norm(name); return PII.some(x => x[1].test(n)); };
@@ -2118,12 +2672,9 @@
     sheet_not_allowed: '이 탭은 오피스에서 고칠 수 없게 막혀 있어요 (판매원본처럼 자동으로 쌓이는 탭) — 구글시트에서 고쳐 주세요',
     read_only_book: '이 시트는 아직 구글시트에서만 고쳐요 (발주 · 광고 · 디자인 · 벤더 시트는 그 팀 작업을 옮길 때 함께)',
     not_formula: "함수는 '=' 로 시작해야 해요 (예: =E2*2 · =SUM(E2:E9))",
-    need_v3: '함수 입력은 구글 연결(브리지) 새 버전을 배포한 뒤에 돼요 — 관리자에게 알려 주세요',
     unauthorized: '구글시트 연결 토큰이 맞지 않아요 — 관리자에게 알려 주세요',
     not_connected: '구글시트 연결 정보가 없어요 — 관리자에게 알려 주세요',
-    formula_cell: '이 칸엔 구글시트에서 넣은 함수가 있어요 — 칸을 다시 누르면 함수가 보여요 (값을 적으면 함수가 지워져요)',
-    spill_formula: 'QUERY · FILTER · SORT · UNIQUE 처럼 여러 칸에 펼쳐지는 함수는 오피스에서 넣지 않아요 — 넣으면 이 탭 전체가 자동 계산 탭이 돼서 오피스에서 못 고쳐요',
-    bad_formula: '구글시트가 이 함수를 받지 않았어요 — 괄호 · 따옴표 · 쉼표를 확인해 주세요',
+    formula_cell: '구글시트 함수가 든 칸이에요 — 구글을 끊기 전엔 오피스에서 못 고쳐요',
     fx_col: '보이는 칸만 함수에 쓸 수 있어요 — 가린 칸(원가 · 단가 등)을 쓰는 함수는 대표님 · 희선 님만 넣을 수 있어요',
     fx_other: '다른 탭 · 다른 시트를 가리키는 함수는 대표님 · 희선 님만 넣을 수 있어요',
     fx_row: '줄 전체(5:5)를 가리키는 함수는 대표님 · 희선 님만 넣을 수 있어요 — E5:H5 처럼 칸으로 적어 주세요',
@@ -2135,7 +2686,7 @@
     pii_cell: '가린 개인정보 칸은 오피스에서 고칠 수 없어요 — 구글시트에서 고쳐 주세요',
   };
   const RO_TAB = '자동 계산(QUERY 등)이 들어간 탭이라 오피스에서는 고치지 않아요';
-  const editErr = m => EDIT_ERR[m] || (/^http_|^cfg$|Failed to fetch|NetworkError|Load failed/.test(m) ? '구글시트에 저장하지 못했어요 — 인터넷 연결을 확인하고 다시 해 주세요' : `저장하지 못했어요 (${m})`);
+  const editErr = m => EDIT_ERR[m] || (/^fx:/.test(m) ? m.slice(3) : /^http_|^cfg$|Failed to fetch|NetworkError|Load failed/.test(m) ? '구글시트에 저장하지 못했어요 — 인터넷 연결을 확인하고 다시 해 주세요' : `저장하지 못했어요 (${m})`);
 
   function bridgeCfg() {
     if (E.cfg) return Promise.resolve(E.cfg);
@@ -2205,32 +2756,110 @@
     }
     return why;
   }
-  function preCheck(gid, v) {   // 함수를 넣기 전에 막을 것 — '' = 넣어도 됨
+  function preCheck(gid, v) {   // 함수를 넣기 전에 막을 것 — '' = 넣어도 됨, 아니면 EDIT_ERR 열쇠 · 'fx:' + 알림
     const f = String(v == null ? '' : v).trim();
     if (!/^=/.test(f)) return '';
-    if (SPILL_RE.test(f)) return 'spill_formula';
-    return fxGuard(f, gid);
+    const g = fxGuard(f, gid);
+    if (g) return g;
+    try { FX.check(f); } catch (e) { return 'fx:' + ((e && e.message) || '함수 모양이 틀렸어요'); }
+    return '';
   }
-  // 함수 칸 위치를 그 자리에서 고친다 (저장소 mdx_fx_cell 과 같은 방식 — 그 칸을 구간에서 빼고, 함수가 있으면 한 칸 구간으로). f = R1C1 ('' = 함수 없앰)
-  function fxPatch(info, r, p, f) {
-    if (!info || !Array.isArray(info.fx)) return;
-    const r0 = r - 1, runs = [], list = Array.isArray(info.fx_list) ? info.fx_list.slice() : [];
-    info.fx.forEach(run => {
-      if (run[0] !== p || r0 < run[1] || r0 > run[2]) { runs.push(run); return; }
-      const rest = run.length > 3 ? [run[3]] : [];
-      if (run[1] <= r0 - 1) runs.push([p, run[1], r0 - 1, ...rest]);
-      if (r0 + 1 <= run[2]) runs.push([p, r0 + 1, run[2], ...rest]);
-    });
-    if (f) { let k = list.indexOf(f); if (k < 0) { list.push(f); k = list.length - 1; } runs.push([p, r0, r0, k]); }
-    info.fx = runs;
-    info.fx_list = list;
+  /* ── 오피스 함수 칸 — 저장소 mdx_ofx (info.ofx = [[줄, 열 0부터, 함수]]) ── */
+  function ofxMap(info) {
+    if (!info || !Array.isArray(info.ofx)) return null;
+    if (!info._ofxM) info._ofxM = new Map(info.ofx.map(x => [x[0] * 1024 + x[1], x[2]]));
+    return info._ofxM;
   }
-  function fxSave(gid, r, p, f) {   // 이 화면 → 저장소 (다른 PC 는 다음 확인 때 새 수식 위치를 받는다)
+  function ofxGet(info, r, p) { const m = ofxMap(info); return (m && m.get(r * 1024 + p)) || ''; }
+  // 계산 환경 — 칸 값 = 저장소 줄(고치는 중인 값 포함), 오피스 함수 칸은 그 함수를 다시 계산 (돌고 도는 함수 = #REF!)
+  function ofxCtx(gid, rows) {
+    const t = tabOf(gid), info = t && t.info;
+    if (!rows) { const ent = S.cache.get(gid); rows = ent && ent.rows; }
+    let last = 0;
+    if (rows) for (const r of rows.keys()) if (r > last) last = r;
+    const memo = new Map(), stack = new Set();
+    const get = (r, c) => {
+      const p = c - 1, k = r * 1024 + p;
+      if (memo.has(k)) return memo.get(k);
+      if (stack.has(k)) return FX.err('#REF!');
+      const f = ofxGet(info, r, p);
+      if (f) {
+        stack.add(k);
+        let v;
+        try { v = FX.run(FX.check(f), {get, row: r, col: c, last}); } catch (e) { v = FX.err('#ERROR!'); }
+        stack.delete(k);
+        memo.set(k, v);
+        return v;
+      }
+      const pd = E.pend.get(`${gid}|${r}|${p}`);   // 고치는 중 · 방금 고친 값 (화면과 같게)
+      if (pd) return FX.cell(pd.now);
+      const row = rows && rows.get(r);
+      return FX.cell(row && row.v ? row.v[p] : null);
+    };
+    return {get, last, stack};
+  }
+  function ofxEval(gid, r, p, f) {   // 새 함수 f 를 (r, p) 칸에 넣었을 때의 값
+    const c = ofxCtx(gid);
+    c.stack.add(r * 1024 + p);
+    return FX.run(FX.check(f), {get: c.get, row: r, col: p + 1, last: c.last});
+  }
+  // 함수 저장 · 지우기 (f = '' 이면 지움) — 이 화면 먼저, 저장소는 뒤에 (다른 PC 는 탭 ver 가 바뀌어 새로 받는다)
+  function ofxSave(gid, r, p, f) {
     const t = tabOf(gid);
-    if (t && t.info) fxPatch(t.info, r, p, f || '');
-    mdx('mdx_fx_cell', {p_tk: gid, p_r: r, p_p: p, p_f: f || ''}).then(d => {
+    if (t && t.info) {
+      const arr = (Array.isArray(t.info.ofx) ? t.info.ofx : []).filter(x => !(x[0] === r && x[1] === p));
+      if (f) arr.push([r, p, f]);
+      t.info.ofx = arr;
+      t.info._ofxM = null;
+    }
+    return mdx('mdx_ofx_set', {p_tk: gid, p_r: r, p_p: p, p_f: f || '', p_who: whoAmI() || null}).then(d => {
       if (d && d.ok && d.ver && t && t.info) { t.info.ver = Math.max(+t.info.ver || 0, +d.ver); t.info.fxVer = t.info.ver; }
-    }).catch(() => { /* 맥미니가 6시간 안에 구글시트 수식 위치로 다시 맞춘다 */ });
+      return true;
+    }, () => { toast(f ? '함수를 오피스 저장소에 못 적었어요 — 값은 들어갔어요. 한 번 더 넣어 주세요' : '함수 지우기를 오피스 저장소에 못 적었어요 — 한 번 더 해 주세요', true); return false; });
+  }
+  // 화면 — 오피스 함수 칸은 지금 계산한 값으로 (저장된 값이 옛 값이어도). build() 가 부른다
+  function applyOfx(gid, ent) {
+    const t = tabOf(gid), info = t && t.info;
+    if (!info || !Array.isArray(info.ofx) || !info.ofx.length || !ent || !ent.model) return;
+    const c = ofxCtx(gid, ent.rows), byR = new Map(ent.model.rows.map(x => [x.r, x]));
+    for (const [r, p] of info.ofx) {
+      const mr = byR.get(r), cell = mr && mr.cells[p];
+      if (!cell) continue;
+      const v = c.get(r, p + 1);
+      if (!FX.same(v, cell.t)) setCellText(ent.model, cell, FX.show(v));
+    }
+  }
+  // 고칠 수 있는 PC — 계산한 값이 저장소 값과 다르면 구글시트 · 저장소에도 적는다 (가리킨 칸이 바뀐 뒤). 같은 값은 한 번만 시도
+  const OFX = {timer: new Map(), tried: new Map()};
+  function ofxSyncSoon(gid) { clearTimeout(OFX.timer.get(gid)); OFX.timer.set(gid, setTimeout(() => ofxSync(gid), 600)); }
+  function ofxSync(gid) {
+    const t = tabOf(gid), info = t && t.info, ent = S.cache.get(gid), b = t && bookOf(t.book);
+    if (!info || !Array.isArray(info.ofx) || !info.ofx.length || !ent || !ent.rows || !canEdit() || !(b && b.edit)) return;
+    const c = ofxCtx(gid, ent.rows);
+    for (const [r, p] of info.ofx) {
+      const row = ent.rows.get(r), cur = row && row.v && row.v[p] != null ? row.v[p] : '';
+      const v = c.get(r, p + 1);
+      if (FX.same(v, cur)) continue;
+      const val = FX.toWrite(v), k = `${gid}|${r}|${p}`;
+      if (E.pend.has(k) || OFX.tried.get(k) === val) continue;   // 사람이 고치는 중 · 저장 확인 전인 칸은 다음에
+      OFX.tried.set(k, val);
+      ofxPush(t, gid, r, p, val, cur);
+    }
+  }
+  function ofxPush(t, gid, r, p, val, cur) {
+    E.q = E.q.then(async () => {
+      if (E.pend.has(`${gid}|${r}|${p}`)) { OFX.tried.delete(`${gid}|${r}|${p}`); return; }   // 그사이 사람이 고치기 시작한 칸 — 다음에 다시
+      const j = await bridge('write', {book: t.book, sheet: t.name, edits: [{r, c: p + 1, v: val, old: String(cur)}]});
+      const res = (j.results || [])[0] || {}, arr = j.rows && (j.rows[r] || j.rows[String(r)]);
+      if (!res.ok || !Array.isArray(arr)) return;   // 그사이 시트 값이 바뀜 · 막힌 칸 — 다음에 열 때 다시
+      const d = await mdx('mdx_cell_edit', {p_tk: gid, p_r: r, p_p: p, p_new: String(arr[p] == null ? '' : arr[p]), p_row: arr.map(x => x == null ? '' : String(x)), p_who: `${whoAmI() || '오피스'} · 함수`});
+      const ent = S.cache.get(gid);
+      if (!d || !Array.isArray(d.v) || !ent || !ent.rows) return;
+      const row = ent.rows.get(r) || {r, v: []};
+      ent.rows.set(r, Object.assign({}, row, {v: d.v.map(x => x == null ? '' : String(x)), src: 'office'}));
+      if (d.rows_ver && t.info) { if (ent.rowsVer >= +t.info.rows_ver) ent.rowsVer = +d.rows_ver; t.info.rows_ver = Math.max(+t.info.rows_ver, +d.rows_ver); }
+      rerender(gid);
+    }).catch(() => { /* 다음에 열 때 다시 */ });
   }
   // 고칠 칸 정보 + 화면만 보고 아는 못 고치는 까닭(why)
   function editCtx(gid, r, p) {
@@ -2243,10 +2872,11 @@
       : (cell && cell.pii) || piiCol(col.name) ? EDIT_ERR.pii_cell
       : cell && cell.img ? '사진 칸은 구글시트에서 바꿔 주세요'
       : !cell ? '이 칸은 구글시트에서 고쳐 주세요' : '';
-    const b = bookOf(t.book), fx0 = fxText(tabInfo(gid), (cell && cell.r) || r, p);
+    const b = bookOf(t.book), info = tabInfo(gid), cr = (cell && cell.r) || r;
+    const of = ofxGet(info, cr, p), gf = of ? '' : fxText(info, cr, p), fx0 = of || gf;   // 오피스 함수 먼저, 없으면 구글시트 함수
     const lock = fx0 && fxGuard(fx0, gid) ? EDIT_ERR.fx_locked : '';   // 기밀 명단 밖 — 가린 칸을 쓰는 함수 칸은 함수도 안 보이고 못 고친다
     const fx = lock ? '' : fx0;
-    return {gid, book: t.book, edit: !!(b && b.edit), name: t.name, col, cell, p, row: r, r: (cell && cell.r) || r, sc: mc.i + 1, fx,
+    return {gid, book: t.book, edit: !!(b && b.edit), name: t.name, col, cell, p, row: r, r: cr, sc: mc.i + 1, fx, ofx: !!of && !lock, gfx: !!gf && !lock,
       check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why: why || lock};
   }
   function roWhy(x) {
@@ -2257,7 +2887,7 @@
     const info = tabInfo(x.gid);
     if (info && info.fx_deny) return editErr(info.fx_deny);
     if (info && info.fx_ro) return RO_TAB;
-    if (x.fx && E.bv && E.bv < 3) return `'${x.col.name}' 칸은 수식(${x.fx})이 자동으로 계산해요 — ${NEED_V3}`;
+    if (x.gfx) return `'${x.col.name}' 칸은 구글시트 함수(${x.fx})가 계산해요 — 구글을 끊기 전엔 오피스에서 못 고쳐요`;
     return '';
   }
   function markEditable() {
@@ -2325,27 +2955,23 @@
   }
   async function writeOnce(x, v, old, prev, key) {
     try {
-      const isF = /^=/.test(String(v).trim());
-      if (isF || x.fx) { if ((await bridgeVer()) < 3) throw new Error('need_v3'); }
-      const ed = {r: x.r, c: x.sc, v: isF ? String(v).trim() : v, old: old == null ? null : (x.fx ? x.cell.t : old)};
-      if (isF) ed.f = true; else if (x.fx) ed.replace = true;
+      const isF = /^=/.test(String(v).trim()), f = isF ? String(v).trim() : '';
+      const cv = isF ? ofxEval(x.gid, x.r, x.p, f) : null;   // 오피스가 계산한 값 → 시트 · 저장소엔 값으로
+      const val = isF ? FX.toWrite(cv) : v;
+      const ed = {r: x.r, c: x.sc, v: val, old: old == null ? null : (x.fx ? x.cell.t : old)};
       const j = await bridge('write', {book: x.book, sheet: (tabOf(x.gid) || {}).name || x.name, edits: [ed]});
       const res = (j.results || [])[0] || {};
       if (!res.ok && res.error === 'conflict') {
         if (norm(res.current) === norm(x.fx ? x.cell.t : old)) return writeOnce(x, v, null, prev, key);   // 띄어쓰기 · 줄바꿈만 다름 = 같은 값
-        if (norm(res.current) !== norm(v)) { settle(x, key, false, null, res.current); return {conflict: true, current: res.current}; }
-      } else if (!res.ok) {
-        if (res.error === 'formula_cell' && res.fx) fxSave(x.gid, x.r, x.p, res.fx);   // 구글시트에서 넣은 함수 칸 (저장소가 아직 모름) — 다시 누르면 함수가 보이게
-        throw new Error(res.error || 'error');
-      }
+        if (norm(res.current) !== norm(val)) { settle(x, key, false, null, res.current); return {conflict: true, current: res.current}; }
+      } else if (!res.ok) throw new Error(res.error || 'error');
       const arr = j.rows && (j.rows[x.r] || j.rows[String(x.r)]);
-      // 함수를 쓰거나 지운 칸 — 브리지가 시트가 받아들인 수식(R1C1)과 계산된 값을 돌려준다 → 수식 위치를 화면 · 저장소에 바로
-      const fxw = typeof res.fx === 'string';
-      const shown = Array.isArray(arr) ? String(arr[x.sc - 1] == null ? '' : arr[x.sc - 1]) : res.shown != null ? String(res.shown) : null;
-      if (fxw) { fxSave(x.gid, x.r, x.p, res.fx); if (shown != null) showPending(x, shown, key); }   // 칸엔 함수 글 대신 계산된 값
+      const shown = Array.isArray(arr) ? String(arr[x.sc - 1] == null ? '' : arr[x.sc - 1]) : isF ? FX.show(cv) : null;
+      if (isF || x.ofx) ofxSave(x.gid, x.r, x.p, f);   // 오피스 함수 저장 (함수 칸에 값을 적었으면 함수 지움)
+      if (isF && shown != null) showPending(x, shown, key);   // 칸엔 함수 글 대신 계산된 값
       let dbv = null, dbErr = '';
       try {
-        const d = await mdx('mdx_cell_edit', {p_tk: x.gid, p_r: x.r, p_p: x.p, p_new: fxw && shown != null ? shown : String(v), p_row: Array.isArray(arr) ? arr.map(t => t == null ? '' : String(t)) : null, p_who: whoAmI() || null});
+        const d = await mdx('mdx_cell_edit', {p_tk: x.gid, p_r: x.r, p_p: x.p, p_new: isF ? (shown != null ? shown : String(val)) : String(v), p_row: Array.isArray(arr) ? arr.map(t => t == null ? '' : String(t)) : null, p_who: whoAmI() || null});
         dbv = d && Array.isArray(d.v) ? d.v : null;
         const t = tabOf(x.gid);
         if (d && d.rows_ver && t && t.info) {   // 내가 쓴 것 — 다음 확인 때 다시 받지 않게 번호표를 앞당긴다
@@ -2363,7 +2989,8 @@
       } else settle(x, key, true, dbv, null, !dbv);
       if (dbErr) S.dbErrAt = Date.now();
       logEdit(x, prev, v, true);
-      return {ok: true, shown, dbErr, fx: fxw && !!res.fx};
+      ofxSyncSoon(x.gid);   // 이 칸을 가리키는 다른 오피스 함수 칸 다시 계산
+      return {ok: true, shown, dbErr, fx: isF, fxErr: isF && FX.isErr(cv) ? cv.c : ''};
     } catch (e) {
       settle(x, key, false);
       logEdit(x, prev, v, false, (e && e.message) || String(e));
@@ -2411,7 +3038,7 @@
     return p.then(res => {
       if (res && res.conflict) { askConflict(x, v, res.current, anchorOf); return res; }
       const shown = res && res.shown != null ? res.shown : v;
-      if (res && res.fx && FX_ERR_RE.test(String(shown))) toast(`함수는 넣었지만 결과가 ${shown} 예요 — 칸 주소 · 함수 이름 · 괄호를 확인해 주세요`, true);
+      if (res && res.fx && (res.fxErr || FX_ERR_RE.test(String(shown)))) toast(`함수는 넣었지만 결과가 ${res.fxErr || shown} 예요 — 칸 주소 · 함수 이름 · 괄호를 확인해 주세요`, true);
       else toast(`${res && res.fx ? '함수 넣음' : '저장됨'} · ${x.col.name} ${short(old)} → ${short(shown)}${res && res.dbErr ? ' (구글시트엔 저장 · 오피스 저장소는 1분 안에 맞춰져요)' : ''}`);
       return res;
     }, e => { toast(editErr((e && e.message) || String(e)), true); throw e; });
@@ -2853,17 +3480,13 @@
     $('dList').querySelectorAll('.nr-in[data-p]').forEach(el => { const p = +el.dataset.p, v = el.value; if (v !== cur(p)) edits.push({r: nr.r, c: p + 1, v, old: cur(p)}); });
     $('dList').querySelectorAll('.nr-ck[data-p]').forEach(el => { const p = +el.dataset.p, v = el.checked ? 'TRUE' : 'FALSE'; if (v !== (cur(p) || 'FALSE')) edits.push({r: nr.r, c: p + 1, v, old: null}); });
     if (!edits.length) { toast('적은 칸이 없어요', true); return; }
-    edits.forEach(e => { if (/^=/.test(String(e.v).trim())) { e.f = true; e.v = String(e.v).trim(); } });
-    const pre = edits.map(e => e.f ? preCheck(nr.gid, e.v) : '').find(Boolean);
-    if (pre) { toast(editErr(pre), true); return; }
+    if (edits.some(e => /^=/.test(String(e.v).trim()))) { toast('새 줄에는 함수를 못 넣어요 — 저장한 뒤 그 칸을 눌러 넣어 주세요', true); return; }
     const btn = $('dHint').querySelector('.nr-save');
     btn.disabled = true;
     btn.textContent = '저장하는 중…';
     try {
-      if (edits.some(e => e.f) && (await bridgeVer()) < 3) throw new Error('need_v3');
       const j = await bridge('write', {book: t.book, sheet: t.name, edits});
       const bad = (j.results || []).filter(x => !x.ok);
-      (j.results || []).forEach(x => { if (x.ok && typeof x.fx === 'string') fxSave(nr.gid, x.r, x.c - 1, x.fx); });   // 함수를 적은 칸 — 수식 위치를 바로
       const arr = j.rows && (j.rows[nr.r] || j.rows[String(nr.r)]);
       if (Array.isArray(arr)) {
         let dbv = null;
@@ -2874,6 +3497,7 @@
       }
       edits.forEach(e => logEdit({book: t.book, name: t.name, sc: e.c, r: nr.r}, e.old, e.v, !bad.some(b => b.c === e.c), (bad.find(b => b.c === e.c) || {}).error));
       S.newRow = null;
+      ofxSyncSoon(nr.gid);
       if (bad.length) toast(`새 줄을 적었지만 ${bad.length}칸은 못 적었어요 (${editErr(bad[0].error || 'error')})`, true);
       else toast(`새 줄을 적었어요 · 시트 ${nr.r}행`);
       openDetail(nr.r, true);
@@ -2920,6 +3544,7 @@
           }
         }
       }
+      ofxSyncSoon(gid);   // 오피스 함수 — 가리킨 칸이 바뀌었으면 다시 계산해 적기 (고칠 수 있는 PC)
       if (gid === S.cur) prefetch();
       S.st[gid] = {k: 'ok', at: Date.now()};
       if (gid === S.cur) hideMsg();
