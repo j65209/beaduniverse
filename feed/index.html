@@ -1242,6 +1242,9 @@
     if (kd) { const it = selectedPlan(); if (it) edit(() => { it.kind = kd.dataset.kind; }); return; }
     const rt = t.closest('[data-ratio]');
     if (rt) { S.ratio = rt.dataset.ratio; lsSet(LS.ratio, S.ratio); render(); return; }
+    // 바깥(빈 곳 · 프로필 머리 · 후보 칸 빈 곳)을 누르면 선택 해제 (2026-11-20 사장님 요청).
+    // 오른쪽 설정 칸 · 창 · 버튼 · 입력칸은 선택한 칸을 다루는 곳이라 그대로 둔다
+    if (S.sel && !t.closest('#side, #modal, button, a, input, textarea, select, label, .seg, .addr')) { S.sel = null; render(); }
   });
   function doAct(a) {
     const p = plan(S.brand), it = selectedPlan();
