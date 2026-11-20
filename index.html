@@ -13247,7 +13247,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <button class="dsg-tab" id="dsgTabCoferry" role="tab" onclick="dsgSwitchTab('coferry')">
         <span>📓</span><span>디자인센터</span>
       </button>
-      <button class="dsg-tab secret-only" id="dsgTabQuote" role="tab" onclick="dsgSwitchTab('quote')">
+      <!-- 견적서 — 디자인팀에 들어올 수 있는 사람(박시호 · 전승훈 · 전수빈) 모두에게 연다 (2026-11-20 사장님 "시호한테는 디자인팀에 있는 견적들은 다 오픈해도 돼") -->
+      <button class="dsg-tab" id="dsgTabQuote" role="tab" onclick="dsgSwitchTab('quote')">
         <span>🧾</span><span>견적서</span>
       </button>
       <button class="dsg-tab" id="dsgTabMatch" role="tab" onclick="dsgSwitchTab('match')">
@@ -21634,7 +21635,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function secretLink(u){ return SECRET_LINK_RE.test(String(u||'')); }
   window.secretOk=secretOk; window.secretApply=secretApply; window.secretHead=secretHead; window.secretLink=secretLink;
   /* 디자인팀 화면 (2026-11-20 사장님 "디자인탭은 시호, 대표 2명만 볼 수 있게") — 홈 카드 · 화면 진입 모두 이 명단 (관리자 PIN 이어도 명단 밖이면 숨김).
-     디자인팀 안의 정상가 · 견적 단가 · 구글시트 링크는 위 기밀 규칙(secretOk)을 따로 따른다. */
+     디자인팀 안의 견적서는 이 명단 모두에게 연다 (사장님 "시호한테는 견적들 다 오픈"). 정상가 · 매칭보드 단가 · 시트/노션 링크는 위 기밀 규칙(secretOk)을 따른다. */
   const DESIGN_ALLOWED=new Set(['전승훈','전수빈','박시호']);
   function designHasAccess(){ try{ return DESIGN_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me')||'').trim()); }catch(e){ return false; } }
   window.designHasAccess=designHasAccess;
@@ -24561,7 +24562,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      옛 선호값(coferry·design·posts·board)은 모두 디자인센터로 연다. */
   function dsgSwitchTab(tab){
     tab = tab === 'quote' || tab === 'match' ? tab : 'center';
-    if(tab === 'quote' && !secretOk()) tab = 'center';   // 견적서 = 단가 · 금액 · 원본 서류 → 기밀 명단(지희선 · 전승훈 · 전수빈)만 (2026-11-20)
+    if(tab === 'quote' && !designHasAccess()) tab = 'center';   // 견적서 = 디자인팀 명단(박시호 · 전승훈 · 전수빈) — 사장님 "시호한테는 견적들 다 오픈" (2026-11-20)
     _dsgCurTab = tab;
     const bc = document.getElementById('dsgTabCoferry'), bq = document.getElementById('dsgTabQuote'), bm = document.getElementById('dsgTabMatch');
     if(bc) bc.classList.toggle('active', tab === 'center');
@@ -24857,7 +24858,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     qtRender();
   }
   function qtInit(){
-    if(!secretOk()) return;   // 견적서 = 기밀 — 명단 밖 PC 는 받지도 그리지도 않는다
+    if(!designHasAccess()) return;   // 견적서 = 디자인팀 명단(박시호 · 대표 2명)만 받고 그린다
     qtRender();
     qtLoad();   // 다른 사람이 올린 서류도 탭을 열 때마다 받아 온다
     const drop = document.getElementById('qtDrop');
