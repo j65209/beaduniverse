@@ -38496,9 +38496,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           return null; // 미연동
         };
         const todayV = pick(today, spend), ydayV = pick(yday, ydaySpend);
+        // ROAS 숫자 글자색: 클수록 경고 빨강(#dc2626 = 오늘 ROAS 1 미만 때 쓰던 빨강)으로 — 세기 log10(1+min(v,9)), 9 이상 100%
+        const roasColor = v => {
+          const n = Number(v);
+          if(v === null || v === '-' || !isFinite(n) || n <= 0) return '';
+          const p = Math.round(Math.log10(1 + Math.min(n, 9)) * 1000) / 10;
+          return `color-mix(in oklab, #dc2626 ${p}%, var(--text-0))`;
+        };
         const cell = (label, v, cls) => {
           const k = v === null ? ' is-none is-word' : (v === '-' ? ' is-none' : '');
-          return `<div class="mar-cell${cls}"><span class="mar-l">${label}</span><b class="mar-v${k}">${v === null ? '미연동' : v}</b></div>`;
+          const rc = roasColor(v);
+          return `<div class="mar-cell${cls}"><span class="mar-l">${label}</span><b class="mar-v${k}"${rc ? ` style="color:${rc}"` : ''}>${v === null ? '미연동' : v}</b></div>`;
         };
 
         let roasText;

@@ -641,8 +641,16 @@
     dec: (v,n=2) => (v||0).toFixed(n),
   };
 
+  // ROAS 숫자 글자색: 0 → 기본색, 값이 클수록 경고 빨강(--err)으로 (세기 = log10(1+min(v,9)), 9 이상 100%)
+  const roasColor = v => {
+    const n = Number(v);
+    if (!isFinite(n) || n <= 0) return '';
+    const p = Math.round(Math.log10(1 + Math.min(n, 9)) * 1000) / 10;
+    return `color-mix(in oklab, var(--err) ${p}%, var(--text))`;
+  };
+  const roasStyle = v => { const c = roasColor(v); return c ? ` style="color:${c}"` : ''; };
   const roasClass = v => v>=2 ? 'hi' : v>=1 ? 'mid' : 'lo';
-  const roasTag = v => `<span class="roas-tag ${roasClass(v)}">${fmt.dec(v)}</span>`;
+  const roasTag = v => `<span class="roas-tag ${roasClass(v)}"${roasStyle(v)}>${fmt.dec(v)}</span>`;
 
   function fmtDate(iso){
     if(!iso) return '';
@@ -901,7 +909,7 @@
       const krw = '₩' + (mdSlice.krw||0).toLocaleString('en-US');
       return `<div style="display:flex;flex-direction:column;gap:3px">
         <div><b style="color:var(--text);font-size:13px">매출 ${fmt.money(mdSlice.usd)}</b> <span style="color:var(--muted);font-size:11px">${krw} · ${mdSlice.orders}건</span></div>
-        <div><span class="mini-roas ${roasCls}">ROAS ${fmt.dec(realRoas)}</span></div>
+        <div><span class="mini-roas ${roasCls}">ROAS <span${roasStyle(realRoas)}>${fmt.dec(realRoas)}</span></span></div>
       </div>`;
     };
 
@@ -1220,7 +1228,7 @@
     const fbRoasSubHtml = sixshopAvail
       ? `<div style="margin-top:5px;display:flex;align-items:center;gap:5px">
            <span style="font-size:10px;color:var(--muted)">FB Pixel</span>
-           <span class="mini-roas ${fbRoasBadgeCls}">${fmt.dec(s.roas)}</span>
+           <span class="mini-roas ${fbRoasBadgeCls}"${roasStyle(s.roas)}>${fmt.dec(s.roas)}</span>
          </div>`
       : '';
 
@@ -1271,7 +1279,7 @@
       <div class="kpi-grid hero">
         <div class="kpi hero ${roasCls}">
           ${roasLabelHtml}
-          <div class="value">${fmt.dec(displayRoas)}</div>
+          <div class="value"${roasStyle(displayRoas)}>${fmt.dec(displayRoas)}</div>
           <div class="roas-target">목표 <b>${targetRoas.toFixed(1)}</b> 대비 <b>${roasPct}%</b></div>
           ${fbRoasSubHtml}
         </div>
@@ -1410,7 +1418,7 @@
           const dispOrds = sixAvail ? psum.sixshop_orders  : psum.purchases;
           const revLabel = sixAvail ? '자사몰매출' : 'FB픽셀매출';
           const roasLabel = sixAvail ? '자사몰ROAS' : 'ROAS';
-          infoBar.innerHTML = `📅 <b>${meta.label}</b> (${meta.since} ~ ${meta.until}) · 지출 <b>${fmt.money(psum.spend)}</b> · ${revLabel} <b>${fmt.money(dispRev)}</b> · ${roasLabel} <b>${fmt.dec(dispRoas)}</b> · 주문 ${fmt.int(dispOrds)}건`;
+          infoBar.innerHTML = `📅 <b>${meta.label}</b> (${meta.since} ~ ${meta.until}) · 지출 <b>${fmt.money(psum.spend)}</b> · ${revLabel} <b>${fmt.money(dispRev)}</b> · ${roasLabel} <b${roasStyle(dispRoas)}>${fmt.dec(dispRoas)}</b> · 주문 ${fmt.int(dispOrds)}건`;
         } else { infoBar.innerHTML = ''; }
       }
     }
@@ -1586,7 +1594,7 @@
             <span class="kl">지출</span><span class="kv">${spendStr}</span>
           </div>
           <div class="cch-kpi ${roasCls}">
-            <span class="kl">ROAS</span><span class="kv">${roasStr}</span>
+            <span class="kl">ROAS</span><span class="kv"${c.spend > 0 ? roasStyle(c.roas) : ''}>${roasStr}</span>
           </div>
           <div class="cch-kpi">
             <span class="kl">구매</span><span class="kv">${purchStr}</span>
@@ -1681,7 +1689,7 @@
         <div class="creative-name" title="${escapeHtml(ad.name||'')}">${escapeHtml(ad.name||'(무명)')}</div>
         <div class="creative-kpi-row">
           <div class="creative-kpi-cell ${roasCls}">
-            <span class="ck-label">ROAS</span><span class="ck-val">${roasVal}</span>
+            <span class="ck-label">ROAS</span><span class="ck-val"${(ins.spend||0) > 0 ? roasStyle(ins.roas) : ''}>${roasVal}</span>
           </div>
           <div class="creative-kpi-cell ${ins.purchases>0?'ok':'err'}">
             <span class="ck-label">구매</span><span class="ck-val">${purchVal}</span>
@@ -1736,14 +1744,14 @@
         { label:'지출',   val: ins.spend > 0 ? fmt.money(ins.spend) : '—',      cls:'' },
         { label:'매출',   val: ins.purchase_value > 0 ? fmt.money(ins.purchase_value) : '—', cls:'' },
         { label:'구매',   val: ins.purchases > 0 ? fmt.int(ins.purchases)+'건' : '0건', cls: ins.purchases > 0 ? 'ok' : 'err' },
-        { label:'ROAS',   val: ins.spend > 0 ? fmt.dec(ins.roas) : '—',          cls: ins.spend > 0 ? roasCls : '' },
+        { label:'ROAS',   val: ins.spend > 0 ? fmt.dec(ins.roas) : '—',          cls: ins.spend > 0 ? roasCls : '', roas: ins.spend > 0 ? ins.roas : null },
         { label:'CTR',    val: ins.impressions > 0 ? fmt.pct(ins.ctr) : '—',     cls: ins.impressions > 0 ? ctrCls : '' },
         { label:'빈도',   val: ins.impressions > 0 ? fmt.dec(ins.frequency||0,2) : '—', cls: ins.impressions > 0 ? freqCls2 : '' },
         { label:'CPC',    val: ins.clicks > 0 ? fmt.money(ins.cpc) : '—',        cls: ins.clicks > 0 ? cpcCls : '' },
         { label:'CPM',    val: ins.impressions > 0 ? fmt.money(ins.cpm) : '—',   cls:'' },
       ];
       kpiHtml = `<div class="ad-kpi-row">${pills.map(p =>
-        `<div class="ad-kpi-pill ${p.cls}"><span class="pill-label">${p.label}</span><span class="pill-val">${p.val}</span></div>`
+        `<div class="ad-kpi-pill ${p.cls}"><span class="pill-label">${p.label}</span><span class="pill-val"${p.roas != null ? roasStyle(p.roas) : ''}>${p.val}</span></div>`
       ).join('')}</div>`;
     }
 
