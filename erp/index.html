@@ -91,6 +91,16 @@
   .nav-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .nav-item .nd{flex:none;font-size:11px;color:var(--side-mute);font-variant-numeric:tabular-nums}
   .nav-item.on .nd{color:#86efac}
+  /* 메뉴 맨 아래 '지난 자료' 접기 (구글시트 끊기 전 공홈 주문 원본 · 플토) */
+  .nav-fold{width:100%;display:flex;align-items:center;gap:8px;margin:18px 0 4px;padding:8px 10px;border-radius:8px;border-top:1px solid rgba(255,255,255,.07);font-size:12px;font-weight:700;color:var(--side-mute);text-align:left}
+  .nav-fold:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-fold span{flex:1}
+  .nav-fold em{font-style:normal;font-weight:600;font-size:11px;font-variant-numeric:tabular-nums;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.08)}
+  .nav-fold svg{flex:none;width:14px;height:14px;transition:transform .15s}
+  .nav-fold.open svg{transform:rotate(180deg)}
+  .nav-old .nav-sec{margin-top:8px}
+  .nav-old .nav-item{opacity:.78}
+  .nav-old .nav-item.on{opacity:1}
   .side-foot{flex:none;padding:10px 10px 14px;border-top:1px solid rgba(255,255,255,.07)}
   .side-link{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:8px;font-size:12.5px;color:var(--side-text);text-decoration:none}
   .side-link:hover{background:rgba(255,255,255,.06);color:#fff}
@@ -717,7 +727,7 @@
   const RN_W = 42;
   const OPT_RE = /^(옵션|상품옵션정보|옵션정보)$/;
   const DATE_RE = /^(\d{4}[-.]\s?\d{1,2}[-.]\s?\d{1,2}\.?(\s+\d{1,2}:\d{2}(:\d{2})?)?|\d{1,2}[./]\d{1,2})$/;
-  const LS_SIDE = 'erp_side_v1', LS_EMPTY = 'erp_empty_v1';
+  const LS_SIDE = 'erp_side_v1', LS_EMPTY = 'erp_empty_v1', LS_OLD = 'erp_old_v1';   // LS_OLD = 메뉴 '지난 자료' 펼침
   const CK1 = '<span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 8.4l2.9 2.9 5.9-6.4"/></svg></span>';
   const CK0 = '<span class="ck0"></span>';
   const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
@@ -886,7 +896,7 @@
         S.tabsAt = Date.now();
         S.tabsOk = true;
         rows.forEach(x => { S.synced[x.gid] = x.synced_at; S.pollMax = Math.max(S.pollMax, +x.ver || 0, +x.rows_ver || 0); });
-        lsSet(LS_TABS, JSON.stringify(out.map(t => ({name: t.name, gid: t.gid}))));   // 다음에 열 때 메뉴를 바로 그린다
+        lsSet(LS_TABS, JSON.stringify(out.map(t => Object.assign({name: t.name, gid: t.gid}, t.info && t.info.sheet_link === false ? {c: 1} : {}))));   // 다음에 열 때 메뉴를 바로 그린다
         const live = new Set(out.map(t => t.gid));
         if (!S.pruned) { S.pruned = true; store.keys().then(ks => (ks || []).forEach(g => { if (!live.has(String(g))) store.del(g); })); }   // 지워진 탭의 저장본
         if (!S.cur) { hideMsg(); openTab(pickTab(S.want, S.saved)); }                       // 처음 · 실패 뒤 다시 읽힘
@@ -1999,13 +2009,34 @@
     const list = [...items.values()], bi = it => it.brand ? BRANDS.indexOf(it.brand) : 99;
     list.forEach(it => it.tabs.sort((x, y) => dateVal(y.meta.date) - dateVal(x.meta.date)));
     list.sort((x, y) => SEC_ORDER.indexOf(x.sec) - SEC_ORDER.indexOf(y.sec) || bi(x) - bi(y) || x.order - y.order);
-    S.nav = list;
-    let h = '', sec = '';
-    for (const it of list) {
-      if (it.sec !== sec) { sec = it.sec; h += `<div class="nav-sec">${esc(SECS[sec])}</div>`; }
+    /* 지난 자료 (2026-11-20 사장님 "응, 접어줘") — 구글시트를 끊은 뒤 공홈 주문 원본 · 플토 탭은 끊기 전 시트를 옮겨 둔 채 더는 안 바뀐다
+       (공홈 · 플토 주문은 이제 맥미니가 원장 erp_moves 로 바로 뺌). 메뉴 맨 아래 '지난 자료' 한 줄로 접고, 누르면 펼친다 (이 브라우저에 기억).
+       보고 있는 탭이 그 안이면 펼쳐 둔다. 탭 목록을 받기 전(저장해 둔 목록으로 먼저 그릴 때)은 지난번에 끊긴 탭이었는지(erp_tabs_v1 c)로 */
+    const oldItem = it => (it.sec === 'home' || it.sec === 'plato') && it.tabs.every(t => t.info ? cutTab(t.gid) : !!t.cutHint);
+    const live = list.filter(it => !oldItem(it)), old = list.filter(oldItem);
+    S.nav = live.concat(old);
+    const item = it => {
       // 재고 탭 이름의 날짜('11.20코페리송장출력')는 구글시트를 끊은 날에 멈춰 있다 — 끊은 재고 탭은 날짜를 안 붙인다 (실시간)
       const on = it.tabs.some(t => t.gid === S.cur), d = it.sec === 'stock' && cutTab(it.tabs[0].gid) ? '' : it.tabs[0].meta.date;
-      h += `<button type="button" class="nav-item${on ? ' on' : ''}" data-gid="${it.tabs[0].gid}"><i class="dot"${it.brand ? ` style="background:${it.brand.color}"` : ''}></i><span class="nm">${esc(it.label)}</span>${d ? `<span class="nd">${esc(d)}</span>` : ''}</button>`;
+      return `<button type="button" class="nav-item${on ? ' on' : ''}" data-gid="${it.tabs[0].gid}"><i class="dot"${it.brand ? ` style="background:${it.brand.color}"` : ''}></i><span class="nm">${esc(it.label)}</span>${d ? `<span class="nd">${esc(d)}</span>` : ''}</button>`;
+    };
+    let h = '', sec = '';
+    for (const it of live) {
+      if (it.sec !== sec) { sec = it.sec; h += `<div class="nav-sec">${esc(SECS[sec])}</div>`; }
+      h += item(it);
+    }
+    if (old.length) {
+      const inOld = old.some(it => it.tabs.some(t => t.gid === S.cur)), open = inOld || lsGet(LS_OLD) === '1';
+      const n = old.reduce((s, it) => s + it.tabs.length, 0);
+      h += `<button type="button" class="nav-fold${open ? ' open' : ''}" data-fold="old" aria-expanded="${open}" title="구글시트를 끊기 전(11.20) 공홈 주문 원본 · 플토 탭 — 더는 안 바뀌어요 (보기만)">`
+        + `<span>지난 자료</span><em>${fmt(n)}</em><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>`
+        + `<div class="nav-old"${open ? '' : ' hidden'}>`;
+      sec = '';
+      for (const it of old) {
+        if (it.sec !== sec) { sec = it.sec; h += `<div class="nav-sec">${esc(SECS[sec])}</div>`; }
+        h += item(it);
+      }
+      h += '</div>';
     }
     $('nav').innerHTML = h;
   }
@@ -2032,7 +2063,21 @@
   /* 메뉴에서 탭을 누르면 이 화면 안에서 바꾼다. 화면 자체는 오피스 홈 '재고 ERP' 카드가 브라우저 새 탭으로 연다
      (2026-11-20 사용자 "화면을 다 덮으라는 게 아니라 크롬 새 창 탭으로" · "메인보드에서 클릭하면 바로 크롬 새창으로" — 오피스 index.html openErpPage).
      같은 날 잠깐 있던 '탭 누르면 전체화면(오피스 덮기)' · '탭마다 새 탭'은 뺐다 */
-  $('nav').addEventListener('click', e => { const b = e.target.closest('.nav-item'); if (b) { openTab(b.dataset.gid); setNav(false); } });
+  $('nav').addEventListener('click', e => {
+    const f = e.target.closest('.nav-fold');
+    if (f) {   // '지난 자료' 펼치기 · 접기 (보고 있는 탭이 그 안이면 접지 않음)
+      const box = f.nextElementSibling, open = !!(box && box.hidden);
+      if (!open && box && box.querySelector('.nav-item.on')) return;
+      lsSet(LS_OLD, open ? '1' : '0');
+      if (box) box.hidden = !open;
+      f.classList.toggle('open', open);
+      f.setAttribute('aria-expanded', String(open));
+      if (open && box) box.lastElementChild.scrollIntoView({block: 'nearest'});
+      return;
+    }
+    const b = e.target.closest('.nav-item');
+    if (b) { openTab(b.dataset.gid); setNav(false); }
+  });
   $('btnMenu').addEventListener('click', () => { if (wide.matches) setSide(app.classList.contains('side-off'), true); else setNav(!app.classList.contains('nav-open')); });
   $('scrim').addEventListener('click', () => setNav(false));
 
@@ -4355,7 +4400,7 @@
     // 지난번 탭 목록으로 메뉴를 바로 그리고 고른 탭을 연다 (저장본이 있으면 표도 바로) — 새 탭 목록은 뒤에서
     let known = null;
     try { known = JSON.parse(lsGet(LS_TABS) || 'null'); } catch (e) { known = null; }
-    if (Array.isArray(known) && known.length) S.tabs = known.filter(t => t && t.gid).map(t => ({name: String(t.name || ''), gid: String(t.gid), meta: classify(t.name)}));
+    if (Array.isArray(known) && known.length) S.tabs = known.filter(t => t && t.gid).map(t => ({name: String(t.name || ''), gid: String(t.gid), meta: classify(t.name), cutHint: t.c === 1}));
     else if (saved && saved.gid && !want) S.tabs = [{name: saved.name || '…', gid: String(saved.gid), meta: classify(saved.name || '')}];
     if (S.tabs.length) {
       const first = pickTab(want, saved);
