@@ -332,9 +332,10 @@
   <section class="pane tray" id="tray" aria-label="후보 사진">
     <div class="pane-h"><b>후보 사진</b><span class="sub" id="poolCnt"></span><button class="btn sm pri" type="button" id="addBtn">+ 사진 추가</button></div>
     <div class="pane-b">
-      <div class="drop" id="drop">사진을 여기에 끌어 놓거나<br>복사해서 붙여넣기 (Ctrl+V)</div>
+      <div class="drop" id="drop">사진을 끌어 놓거나 붙여넣기 (Ctrl+V)<br><b>바로 피드 맨 앞에 올라가요</b></div>
       <div class="pool" id="pool"></div>
-      <p class="hint">사진을 가운데 피드로 <b>끌어다 놓거나</b>, 누르면 맨 앞(가장 최근 자리)에 들어가요. 피드의 사진을 여기로 끌어오면 다시 후보로 빠져요.</p>
+      <button class="btn sm" type="button" id="poolAll" style="width:100%;margin-top:8px" hidden>후보 사진 모두 피드에 올리기</button>
+      <p class="hint">넣은 사진은 방금 올린 게시물처럼 <b>피드 맨 앞</b>에 들어가요. 피드 안에서 끌어서 순서를 바꾸고, 빼고 싶은 사진은 여기로 끌어오면 후보로 빠져요.</p>
     </div>
   </section>
 
@@ -395,7 +396,7 @@
   ];
   const BMAP = Object.fromEntries(BRANDS.map(b => [b.k, b]));
   const ALL = 'all';
-  const LS = {brand: 'feed_brand_v1', ratio: 'feed_ratio_v1', marks: 'feed_marks_v1', live: 'feed_live_v1', me: 'feed_me_v1'};
+  const LS = {brand: 'feed_brand_v1', ratio: 'feed_ratio_v1', marks2: 'feed_marks_v2', live: 'feed_live_v1', me: 'feed_me_v1'};
   const POLL_MS = 10000;
   const FULL_PX = 1440, THUMB_PX = 480;
   const MAX_PINS = 3;
@@ -476,7 +477,7 @@
     fnErr: '',
     sel: null,          // 'p:<id>' 예정 · 'l:<media id>' 지금 피드
     ratio: lsGet(LS.ratio) === '11' ? '11' : '45',
-    marks: lsGet(LS.marks) !== '0',
+    marks: lsGet(LS.marks2) === '1',   // 기본은 끔 — 실제 인스타처럼 깔끔하게 (켜면 '예정 n' · 파란 테두리)
     showLive: lsGet(LS.live) !== '0',
     hist: [], fut: [],
     dirty: {}, saving: {}, saveAgain: {}, saveT: {},
@@ -646,7 +647,8 @@
   function newItem(local) {
     return {id: uid(), local, up: true, fx: 50, fy: 50, kind: 'photo', by: ME() || null, at: new Date().toISOString()};
   }
-  // at: null = 후보 맨 앞 · 숫자 = 예정 피드 그 자리 · {fill: id} = 빈 칸 채우기
+  // at: null = 피드 맨 앞(방금 올린 것처럼, 2026-11-20 사장님 "후보 사진 넣으면 바로 피드 업로드된 것처럼") ·
+  //     숫자 = 예정 피드 그 자리 · {fill: id} = 빈 칸 채우기 · 'pool' = 후보 칸에만
   function addFiles(files, at) {
     if (S.brand === ALL) return toast('브랜드를 먼저 골라 주세요', true);
     const list = [...files].filter(f => /^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name || ''));
@@ -660,11 +662,21 @@
         if (k >= 0) { const e = p.items[k]; its[0].note = e.note; its[0].date = e.date; p.items.splice(k, 1, ...its); }
         else p.items.unshift(...its);
       } else if (typeof at === 'number') p.items.splice(clamp(at, 0, p.items.length), 0, ...its);
-      else p.pool.unshift(...its);
+      else if (at === 'pool') p.pool.unshift(...its);
+      else p.items.unshift(...its);
     });
-    if (at != null && made.length === 1) S.sel = 'p:' + made[0].it.id;
     made.forEach(m => uploadOne(b, m.it.id, m.f));
     render();
+    if (at == null) { showFeedTop(); toast(`피드 맨 앞에 ${made.length}장 올렸어요 · 끌어서 순서 바꾸기`); }
+  }
+  // 그리드 맨 위(가장 최근 자리)가 보이게 — 방금 올린 게시물 확인
+  function showFeedTop() {
+    requestAnimationFrame(() => {
+      const g = $('grid'); if (!g) return;
+      if (narrow.matches) { g.scrollIntoView({block: 'start', behavior: 'smooth'}); return; }
+      const sc = $('phoneScroll'), nav = sc.querySelector('.ig-nav'), tabs = sc.querySelector('.ig-tabs');
+      sc.scrollTo({top: Math.max(0, g.offsetTop - (nav ? nav.offsetHeight : 0) - (tabs ? tabs.offsetHeight : 0)), behavior: 'smooth'});
+    });
   }
   async function uploadOne(b, id, f) {
     S.uploads++; paintSave();
@@ -830,9 +842,10 @@
   function renderPool() {
     const p = plan(S.brand);
     $('poolCnt').textContent = p.pool.length ? p.pool.length + '장' : '';
-    $('pool').innerHTML = p.pool.length ? p.pool.map(it => `<div class="pthumb" data-pool="${esc(it.id)}" title="누르면 피드 맨 앞에 넣어요 · 끌어서 원하는 자리에">
+    $('poolAll').hidden = !p.pool.length;
+    $('pool').innerHTML = p.pool.length ? p.pool.map(it => `<div class="pthumb" data-pool="${esc(it.id)}" title="누르면 피드 맨 앞에 올려요 · 끌어서 원하는 자리에">
         <img src="${esc(thumbOf(it))}" alt="" draggable="false"><button class="x" type="button" data-del="${esc(it.id)}" aria-label="후보에서 지우기">×</button>${it.up ? '<span class="spin"></span>' : ''}${it.err ? '<span class="bad-up">저장 안 됨</span>' : ''}</div>`).join('')
-      : '<div class="pool-empty">아직 후보 사진이 없어요</div>';
+      : '<div class="pool-empty">피드에서 뺀 사진이 여기 모여요</div>';
   }
   function paintLiveSt() {
     const el = $('liveSt'), b = S.brand;
@@ -899,8 +912,8 @@
         ${pinsLive.length ? `<dt>고정해 본 것</dt><dd>${pinsLive.length}개</dd>` : ''}</dl>
       ${hidden.length ? `<div class="row"><span class="muted" style="font-size:12.5px;flex:1">숨겨 본 게시물 ${hidden.length}개</span><button class="btn sm" type="button" data-act="unhideAll" style="flex:none">모두 다시 보이기</button></div>` : ''}
       <div class="note"><b>쓰는 법</b><ol>
-        <li>왼쪽 <b>+ 사진 추가</b> (또는 끌어 놓기 · Ctrl+V)</li>
-        <li>사진을 가운데 피드로 끌어다 놓기 — 파란 선 자리에 들어가요</li>
+        <li>왼쪽 <b>+ 사진 추가</b> (또는 끌어 놓기 · Ctrl+V) — 바로 피드 맨 앞에 올라가요</li>
+        <li>원하는 자리에 넣으려면 가운데 피드로 바로 끌어다 놓기 — 파란 선 자리에 들어가요</li>
         <li>피드 안에서 끌어서 순서 바꾸기 · 누르면 오른쪽에서 칸 안 위치 · 메모 · 날짜</li>
         <li><b>예정 숫자 = 올릴 순서</b> — 1번부터 올리면 이 배치가 돼요</li>
       </ol></div>
@@ -1178,7 +1191,7 @@
     e.preventDefault();
     const s = selectedPlan();
     addFiles(files, s && s.empty ? {fill: s.id} : null);
-    toast(s && s.empty ? '빈 칸에 넣었어요' : '후보 사진에 넣었어요');
+    if (s && s.empty) toast('빈 칸에 넣었어요');
   });
 
   function selectedPlan() {
@@ -1204,8 +1217,15 @@
         const k = p.pool.findIndex(x => x.id === id); if (k < 0) return;
         const it = p.pool.splice(k, 1)[0];
         if (s && s.empty) placeInto(p, it, {type: 'fill', id: s.id}); else p.items.unshift(it);
-        S.sel = 'p:' + it.id;
+        if (s && s.empty) S.sel = 'p:' + it.id;
       });
+      if (!(s && s.empty)) showFeedTop();
+      return;
+    }
+    if (t.closest('#poolAll')) {
+      edit(p => { p.items.unshift(...p.pool.splice(0)); });
+      showFeedTop();
+      toast('후보 사진을 모두 피드 맨 앞에 올렸어요');
       return;
     }
     const cell = t.closest('#grid .cell');
@@ -1259,7 +1279,7 @@
   $('drop').onclick = () => $('fileIn').click();
   $('fileIn').onchange = () => { const s = selectedPlan(); addFiles($('fileIn').files, s && s.empty ? {fill: s.id} : null); $('fileIn').value = ''; };
   $('tgLive').onclick = () => { S.showLive = !S.showLive; lsSet(LS.live, S.showLive ? '1' : '0'); render(); };
-  $('tgMarks').onclick = () => { S.marks = !S.marks; lsSet(LS.marks, S.marks ? '1' : '0'); render(); };
+  $('tgMarks').onclick = () => { S.marks = !S.marks; lsSet(LS.marks2, S.marks ? '1' : '0'); render(); };
   $('emptyBtn').onclick = () => {
     const s = selectedPlan();
     const e = {id: uid(), empty: true, fx: 50, fy: 50, kind: 'photo', by: ME() || null, at: new Date().toISOString()};
