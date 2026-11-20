@@ -123,6 +123,11 @@
   .tg.on { color: var(--acc-d); border-color: rgba(79, 127, 207, .45) }
   .tg.on .box { background: var(--acc); border-color: var(--acc) }
   .tg.on .box::after { content: ''; width: 7px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg) }
+  .addr { display: flex; align-items: center; gap: 6px; width: 404px; max-width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 4px 4px 4px 12px }
+  .addr:focus-within { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-t) }
+  .addr label { font-size: 12px; font-weight: 700; color: var(--t2); white-space: nowrap }
+  .addr input { flex: 1; min-width: 0; border: 0; outline: none; height: 30px; font-size: 13px; background: transparent }
+  .addr .btn { flex: none }
   .live-st { font-size: 12px; color: var(--t3); text-align: center; min-height: 18px }
   .live-st.err { color: var(--red) }
   .live-st button { border: 0; background: none; color: var(--acc-d); font-weight: 700; cursor: pointer; padding: 0 2px; font-size: 12px }
@@ -277,6 +282,8 @@
   @media (max-width: 960px) {
     .top { flex-wrap: wrap; position: static; gap: 8px 10px; padding: 8px 12px }
     .brands { order: 3; flex-basis: 100% }
+    .top-r { flex-wrap: wrap; justify-content: flex-end; min-width: 0; max-width: 100%; flex: 1 1 auto }
+    .top-r .save-st { order: 3; flex-basis: 100%; text-align: right }
     .ttl span.long { display: none }
     #app { grid-template-columns: minmax(0, 1fr); padding: 10px; gap: 10px }
     .pane { position: static; max-height: none }
@@ -341,6 +348,7 @@
       <button class="btn ico" type="button" id="redoBtn" title="다시 하기 (Ctrl+Y)" aria-label="다시 하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
       <button class="btn" type="button" id="pngBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>이미지로 저장</button>
     </div>
+    <form class="addr" id="addrForm" autocomplete="off"><label for="addrIn">인스타 주소</label><input id="addrIn" placeholder="instagram.com/아이디 붙여넣기" spellcheck="false" autocapitalize="off"><button class="btn sm pri" type="submit">불러오기</button></form>
     <div class="live-st" id="liveSt"></div>
     <div class="phone" id="phone"><div class="phone-scroll" id="phoneScroll"></div></div>
   </section>
@@ -832,10 +840,10 @@
     const L = S.live[b] || {};
     let h = '', err = false;
     if (S.loadingLive[b]) h = '인스타에서 지금 피드를 받는 중…';
-    else if (!S.connected && !L.fetched_at) h = S.fnErr ? `지금 피드 서버에 닿지 않았어요 · <button type="button" data-act="retry">다시 시도</button>` : `인스타 연결 전이라 지금 피드 대신 회색 칸이 보여요 · <button type="button" data-act="conn">연결하기</button>`;
+    else if (!S.connected && !L.fetched_at) h = S.fnErr ? `지금 피드 서버에 닿지 않았어요 · <button type="button" data-act="retry">다시 시도</button>` : `실시간 피드는 인스타 연결(관리자 · 처음 한 번만) 뒤에 떠요 — 그 전엔 회색 칸 · <button type="button" data-act="conn">연결하기</button>`;
     else if (L.last_error) { h = `${esc(L.last_error)} · <button type="button" data-act="conn">연결 · 아이디 확인</button>`; err = true; }
     else if (L.fetched_at) h = `@${esc(L.ig_username || '')} 지금 피드 · ${esc(ago(L.fetched_at))} 받음 · <button type="button" data-act="refresh">새로 받기</button>`;
-    else if (!L.ig_username) h = `인스타 아이디가 아직 없어요 · <button type="button" data-act="conn">아이디 정하기</button>`;
+    else if (!L.ig_username) h = '위 칸에 이 브랜드 인스타 주소를 넣어 주세요';
     el.innerHTML = h; el.className = 'live-st' + (err ? ' err' : '');
   }
   function renderStageBar() {
@@ -949,10 +957,37 @@
     const sc = $('phoneScroll');
     sc.innerHTML = phoneHtml(S.brand, false);
     renderStageBar();
+    paintAddr();
     paintLiveSt();
     renderSide();
     paintSave();
   }
+  function paintAddr() {
+    const a = $('addrIn'), L = S.live[S.brand] || {};
+    if (document.activeElement !== a) a.value = L.ig_username ? 'instagram.com/' + L.ig_username : '';
+  }
+  // 인스타 주소(또는 @아이디)를 넣으면 그 계정의 지금 피드를 받는다 — 서버 /brand 가 저장하고 바로 받아 옴
+  $('addrForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const b = S.brand; if (!b || b === ALL) return;
+    const raw = $('addrIn').value.trim();
+    const m = /instagram\.com\/([A-Za-z0-9._]{1,30})/i.exec(raw);
+    const u = (m ? m[1] : raw.replace(/^@/, '').replace(/[/?#].*$/, '')).toLowerCase();
+    if (['p', 'reel', 'reels', 'stories', 'explore', 'tv'].includes(u)) return toast('게시물 주소 말고 계정 주소(instagram.com/아이디)를 넣어 주세요', true);
+    if (u && !/^[a-z0-9._]{1,30}$/.test(u)) return toast('인스타 주소나 아이디를 넣어 주세요', true);
+    const btn = $('addrForm').querySelector('button');
+    btn.disabled = true; S.loadingLive[b] = true; paintLiveSt();
+    try {
+      const j = await fn('/brand', {brand: b, ig_username: u});
+      if (j.row) S.live[b] = j.row;
+      S.connected = !!j.connected;
+      if (!u) toast('주소를 비웠어요');
+      else if (!j.connected) toast('주소를 저장했어요 · 인스타 연결이 되면 바로 이 계정 피드가 떠요');
+      else if (j.row && j.row.last_error) toast(j.row.last_error, true);
+      else toast('@' + u + ' 지금 피드를 불러왔어요');
+    } catch (err) { toast(err.message, true); }
+    finally { S.loadingLive[b] = false; btn.disabled = false; $('addrIn').blur(); render(); }
+  });
 
   function setBrand(b) {
     if (b === S.brand) return;
