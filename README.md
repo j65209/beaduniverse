@@ -106,6 +106,11 @@ git add . && git commit -m "수정 내용" && git push
 - API 키, 토큰, 비밀번호 등 민감 정보는 **절대 commit 금지**
 - 외부 연동 시(드롭박스/구글/ERP) 토큰은 GitHub Secrets 또는 별도 백엔드로 분리
 - PIN 노출 우려가 생기면 `index.html` 상단 `PIN` 상수만 바꿔서 commit
+- **기밀 숫자 · 링크 (2026-11-20)** — 원가 · 단가 · 공급가 · 마진 · 판매가 · 위안 금액, 구글시트 · 드롭박스 · 노션 · 1688 같은 공급처 링크는
+  `SECRET_ALLOWED`(지희선 · 전승훈 · 전수빈) PC 에서만 그린다 (`secretOk()` · `body.secret-ok` · `.secret-only` · `[data-secret-card]`).
+  매출 · 광고비는 대상 아님. 표는 머리글(`SECRET_HEAD_RE`)과 ￥ 값 · 공급처 링크로 열을 뺀다 — erp/ · mdsheet/ · seeding/ · voc/ 에도 같은 명단 사본이 있다.
+  디자인팀 화면은 `DESIGN_ALLOWED`(박시호 · 전승훈 · 전수빈). 두 명단 이름은 대표처럼 관리자 PIN PC 에서만 고를 수 있다.
+  화면 가리기일 뿐이라 데이터 자체를 막으려면 서버 쪽에서 걸러야 한다.
 
 ## 9. 업무일지 저장 구조 (v0.5 — 줄 단위 실시간)
 
