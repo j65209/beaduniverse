@@ -180,6 +180,28 @@
   .tbl .c{text-align:left}
   .tbl td.r,.tbl td.c,.tbl th.r,.tbl th.c{padding-left:6px;padding-right:6px}   /* 숫자 · 체크 칸은 좁게 (fitCols 의 여백과 같게) */
   .tbl .b{font-weight:700}
+  /* 칸 서식 (굵게 · 글자 색 · 칸 색) — 제목 줄 오른쪽 도구 (PC · 고칠 수 있는 사람만), 색판은 구글시트와 같은 80색. 고른 범위 = 옅은 파랑 */
+  .fmtbar{display:flex;align-items:center;gap:2px;padding:2px;border:1px solid var(--line);border-radius:9px;background:#fff}
+  .fmtbar[hidden]{display:none}
+  .fb{position:relative;width:30px;height:26px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-2);background:none}
+  .fb:hover{background:#f1f4f8;color:var(--text)}
+  .fb:disabled{opacity:.35;cursor:default;background:none}
+  .fb.on{background:#e8f0fe;color:var(--info)}
+  .fb b{font:900 15px Georgia,'Times New Roman',serif}
+  .fb svg{width:16px;height:16px}
+  .fb.cl i{position:absolute;left:7px;right:7px;bottom:3px;height:3px;border-radius:2px;background:#0f172a}
+  .pal{position:fixed;z-index:80;width:258px;padding:10px;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 18px 44px rgba(15,23,42,.2);font-size:13px}
+  .pal[hidden]{display:none}
+  .pal .pt{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+  .pal .pt b{flex:1;font-size:12.5px}
+  .pal .pt button{height:26px;padding:0 9px;border-radius:7px;border:1px solid var(--line);font-size:12px;color:var(--text-2);background:#fff}
+  .pal .sw{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+  .pal .sw button{aspect-ratio:1;border-radius:4px;border:1px solid rgba(15,23,42,.12)}
+  .pal .sw button:hover{transform:scale(1.18);box-shadow:0 2px 6px rgba(15,23,42,.25)}
+  .pal .sw button.on{outline:2px solid var(--info);outline-offset:1px}
+  .pal .cu{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:12px;color:var(--text-3)}
+  .pal .cu input{width:34px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:#fff}
+  .tbl td.crng{box-shadow:inset 0 0 0 999px rgba(37,99,235,.12)}
   /* 2026-11-20 사용자 "일반적인 숫자는 블랙으로 다 변경" — 0 · 마이너스 · 시트 글자색 모두 검정 (품절 · 임박은 줄 색으로) */
   .tbl td.r{color:#111827}
   .tbl .rn{color:var(--text-4);font-size:11.5px;text-align:left;font-variant-numeric:tabular-nums;padding:0 7px 0 3px}
@@ -509,7 +531,7 @@
       <a class="ib" id="btnSheet" href="#" target="_blank" rel="noopener" title="구글시트에서 이 탭 열기 (새 탭)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
     </header>
     <section class="head">
-      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="tools"><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
+      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="tools"><div class="fmtbar" id="fmtBar" hidden title="고른 칸 서식 — Shift+누르기 · Shift+화살표로 여러 칸"><button type="button" class="fb" data-fmt="b" title="굵게 (Ctrl+B)"><b>B</b></button><button type="button" class="fb cl" data-fmt="fg" title="글자 색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L12 4l6 14M8.5 12.5h7"/></svg><i id="fgBar"></i></button><button type="button" class="fb cl" data-fmt="bg" title="칸 색 (채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15.5s2 2.2 2 3.5a2 2 0 0 1-4 0c0-1.3 2-3.5 2-3.5z"/></svg><i id="bgBar"></i></button><button type="button" class="fb" data-fmt="clear" title="서식 지우기 (굵게 · 글자 색 · 칸 색)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5l-3 14M14 14l6 6M20 14l-6 6"/></svg></button></div><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
       <div class="alert" id="alert" hidden></div>
       <div class="kpis" id="kpis"></div>
       <div class="chips" id="chips" hidden></div>
@@ -541,6 +563,7 @@
 <div class="edbox" id="edbox" hidden></div>
 <datalist id="edList"></datalist>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="pal" id="pal" hidden></div>
 <div class="mscrim" id="mscrim" hidden></div>
 <div class="mapdlg" id="mapdlg" role="dialog" aria-modal="true" aria-labelledby="mTitle" hidden></div>
 <script>
@@ -737,7 +760,7 @@
   const sbRpc = (fn, body) => sbFetch(`rpc/${fn}`, {method: 'POST', body: JSON.stringify(body || {})});
 
   /* ── 탭 목록 = 저장소 erp_tabs (지금 시트에 보이는 탭 · 시트 순서 — 맥미니가 5분마다 시트 메뉴와 맞춤) ── */
-  const TAB_COLS = 'gid,name,pos,alive,kind,n_rows,n_cols,pii_cols,pii_from,masked,fx,fx_ro,fx_deny,synced_at,rows_ver,ver';
+  const TAB_COLS = 'gid,name,pos,alive,kind,n_rows,n_cols,pii_cols,pii_from,masked,fx,fx_ro,fx_deny,synced_at,rows_ver,ver,ofmt';
   function loadTabs() {
     if (S.tabsBusy) return S.tabsBusy;
     S.tabsBusy = (async () => {
@@ -745,6 +768,7 @@
         const rows = await sbFetch(`erp_tabs?select=${TAB_COLS}&alive=is.true&deleted_at=is.null&order=pos.asc`);
         if (!rows || !rows.length) throw new Error('no_tabs');
         const out = rows.map(x => ({name: x.name, gid: String(x.gid), meta: classify(x.name), info: x}));
+        const fOld = JSON.stringify(((tabOf(S.cur) || {}).info || {}).ofmt || {});   // 보던 탭 칸 서식 — 바뀌었으면 다시 그린다
         S.tabs = out;
         S.tabsAt = Date.now();
         S.tabsOk = true;
@@ -754,7 +778,7 @@
         if (!S.pruned) { S.pruned = true; store.keys().then(ks => (ks || []).forEach(g => { if (!live.has(String(g))) store.del(g); })); }   // 지워진 탭의 저장본
         if (!S.cur) { hideMsg(); openTab(pickTab(S.want, S.saved)); }                       // 처음 · 실패 뒤 다시 읽힘
         else if (!tabOf(S.cur)) openTab(pickTab(null, {key: tabKey(S.lastName)}));        // 보던 탭이 지워짐
-        else { renderNav(); renderHead(); saveTab(); syncCur(); }
+        else { renderNav(); renderHead(); saveTab(); syncCur(); if (S.cache.get(S.cur) && JSON.stringify(((tabOf(S.cur) || {}).info || {}).ofmt || {}) !== fOld) renderGrid({keep: true}); }
         const cc = S.cache.get(S.cur);
         if (cc && !cc.stored) prefetch();   // 보던 탭이 먼저 받아졌으면 이제 미리 받기 시작
         return out;
@@ -1185,6 +1209,8 @@
         rows.forEach(g => { const x = g[c.p]; if (!x || !x.t) return; texts++; if (hxOf(x)) dated++; });
         if (dated) { c.type = 'hist'; c.align = ''; }   // 날짜가 하나도 없으면 글 칸 그대로
       } else if (n === '제작소요일') { c.lead = true; c.tip = '발주 → 출고까지 걸린 날'; if (c.type === 'date') c.type = 'text'; }
+      // 2026-11-20 사장님 "erp에서 발주일 및 수량 지우고 발주일로 바꿔줘" — 화면 이름만 (시트 머리글은 그대로: 발주일 60일 정리 · 발주 매칭이 머리글로 칸을 확인한다)
+      if (n === '발주일및수량') c.name = '발주일';
     });
   }
   // '2026-09-30 695개' · '2026.11.03' · '2026. 10. 8' · '10.16' · '11/2' 줄들 → {all: [오래된 → 최근], latest, prev: [최근 → 오래된]} (날짜가 하나도 없으면 null)
@@ -1414,6 +1440,9 @@
     const pk = `${S.cur}|${row.r}|${col.p}`, pd = E.pend.get(pk);
     if (pd && pd.busy) cls += ' pend';                       // 구글시트 · 저장소에 쓰는 중
     if (S.cell && S.cell.gid === S.cur && S.cell.r === row.r && S.cell.p === col.p) cls += ' csel';
+    if (S.rng && S.rng.has(row.r * 1024 + col.p)) cls += ' crng';   // Shift 로 고른 범위
+    const fm = fmtOf((tabOf(S.cur) || {}).info, row.r, col.p);   // 오피스 칸 서식 (굵게 · 글자 색 · 칸 색)
+    if (fm) { if (fm.b) cls += ' b'; const css = (fm.bg ? `background-color:${fm.bg};` : '') + (fm.fg ? `color:${fm.fg};` : ''); if (css) style = (style ? style.replace(/;?$/, ';') : '') + css; }
     if (c) {
       if (c.st.bold || col.strong) cls += ' b';
       if (col.type === 'check' || (c.cb && !c.t)) inner = c.cb === 2 ? CK1 : c.cb === 1 ? CK0 : '';
@@ -1697,6 +1726,7 @@
     td.hidden = multi || !(m && m.date);
     td.textContent = m && m.date ? `${m.date} 기준` : '';
     $('wReset').hidden = !d || narrow.matches || !hasColW();   // 끌어서 바꾼 칸 너비가 있을 때만
+    fmtBar();
     const nEmpty = d ? d.cols.filter(c => c.empty && !c.key && !c.keep).length : 0, et = $('eTog');
     et.hidden = !nEmpty;
     et.textContent = S.showEmpty ? `빈 열 ${nEmpty}개 숨기기` : `빈 열 ${nEmpty}개 보기`;
@@ -1947,6 +1977,13 @@
     if (!tr || e.target.closest('td.rn')) return;   // 행 번호는 아래 따로 (상세 창)
     const td = e.target.closest('tbody td[data-p]');
     // PC: 칸을 누르면 그 자리에서 바로 고친다 (2026-11-20 사용자 "엑셀처럼 수정할 곳 누르면 바로 수정") — 행 번호를 누르면 상세 창
+    if (cellMode() && td && e.shiftKey && S.cell && S.cell.gid === S.cur) {   // Shift+누르기 = 고른 칸부터 네모 범위 (서식)
+      if (CE.x) commitCell(0, 0, true);
+      S.cell2 = {r: +tr.dataset.r, p: +td.dataset.p};
+      if (S.cell2.r === S.cell.r && S.cell2.p === S.cell.p) S.cell2 = null;
+      paintRng();
+      return;
+    }
     if (cellMode() && td && !(window.getSelection && String(window.getSelection()).length)) {
       if (document.activeElement !== grid) grid.focus({preventScroll: true});
       pickCell(+tr.dataset.r, +td.dataset.p, {edit: true, click: true, noScroll: true});
@@ -1961,8 +1998,14 @@
     // 고른 칸이 있으면 엑셀처럼 — 화살표 · Tab = 칸 옮기기, Enter · F2 = 고치기, 영문 · 숫자 = 바로 고치기, Delete = 비우고 고치기, 스페이스 = 체크
     if (S.cell && S.cell.gid === S.cur && cellMode()) {
       const k = e.key, c = S.cell;
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (k === 'b' || k === 'B')) { e.preventDefault(); fmtBold(); return; }   // 굵게
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (/^Arrow/.test(k)) { e.preventDefault(); moveCell(k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : 0, k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : 0, false); return; }
+      if (/^Arrow/.test(k)) {
+        e.preventDefault();
+        const dr = k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : 0, dc = k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : 0;
+        if (e.shiftKey) extendRng(dr, dc); else moveCell(dr, dc, false);   // Shift+화살표 = 범위 (서식)
+        return;
+      }
       if (k === 'Tab') { e.preventDefault(); moveCell(0, e.shiftKey ? -1 : 1, false); return; }
       if (k === 'Enter' || k === 'F2') { e.preventDefault(); pickCell(c.r, c.p, {edit: true}); return; }
       if (k === 'Escape') { setCell(null); hideTip(); return; }
@@ -2882,6 +2925,8 @@
     S.cell = r == null ? null : {gid: S.cur, r, p};
     if (prev) { const t = cellTd(prev.r, prev.p); if (t) t.classList.remove('csel'); }
     if (S.cell) { const t = cellTd(r, p); if (t) t.classList.add('csel'); }
+    if (S.cell2 || S.rng) { S.cell2 = null; paintRng(); }
+    fmtBar();
   }
   // 고른 칸이 보이게 (아래 · 위는 showRow, 옆은 고정 칸을 피해서)
   function revealCell(r, p) {
@@ -3002,6 +3047,139 @@
     if (n) pickCell(n.r, n.p, {edit});
     else if (S.cell) setCell(S.cell.r, S.cell.p);
   }
+  /* ── 칸 서식 — 굵게 · 글자 색 · 칸 색 (2026-11-20 사장님 "erp, md시트 폰트컬러 변경 및 폰트굵기 변경 가능하게 해줘. 칸 변경까지 부탁해") ──
+     오피스에서만 정한다 (구글시트 서식은 그대로 안 씀) — 저장소 erp_tabs.ofmt (erp_fmt_set) = {"줄:열": {b, fg, bg}}.
+     고르기: 칸 누르기 = 한 칸, Shift+누르기 · Shift+화살표 = 네모 범위 (보이는 줄 · 칸 순서). Ctrl+B = 굵게. PC · 고칠 수 있는 사람만 (도구가 보임) */
+  const PALETTE = [
+    '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
+    '#980000', '#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff', '#4a86e8', '#0000ff', '#9900ff', '#ff00ff',
+    '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc', '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc',
+    '#dd7e6b', '#ea9999', '#f9cb9c', '#ffe599', '#b6d7a8', '#a2c4c9', '#a4c2f4', '#9fc5e8', '#b4a7d6', '#d5a6bd',
+    '#cc4125', '#e06666', '#f6b26b', '#ffd966', '#93c47d', '#76a5af', '#6d9eeb', '#6fa8dc', '#8e7cc3', '#c27ba0',
+    '#a61c00', '#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e', '#3c78d8', '#3d85c6', '#674ea7', '#a64d79',
+    '#85200c', '#990000', '#b45f06', '#bf9000', '#38761d', '#134f5c', '#1155cc', '#0b5394', '#351c75', '#741b47',
+    '#5b0f00', '#660000', '#783f04', '#7f6000', '#274e13', '#0c343d', '#1c4587', '#073763', '#20124d', '#4c1130',
+  ];
+  const FMT_MAX = 3000;   // 한 번에 바꾸는 칸 수
+  function fmtOf(info, r, p) { const m = info && info.ofmt; return (m && m[`${r}:${p}`]) || null; }
+  // 고른 칸들 [{r, p}] — 범위가 없으면 고른 한 칸
+  function rngCells() {
+    const c = S.cell, vr = S.vr;
+    if (!c || c.gid !== S.cur) return [];
+    if (!S.cell2 || !vr) return [{r: c.r, p: c.p}];
+    const i0 = vr.list.findIndex(x => x.r === c.r), i1 = vr.list.findIndex(x => x.r === S.cell2.r);
+    const k0 = vr.cols.findIndex(x => x.p === c.p), k1 = vr.cols.findIndex(x => x.p === S.cell2.p);
+    if (i0 < 0 || i1 < 0 || k0 < 0 || k1 < 0) return [{r: c.r, p: c.p}];
+    const out = [];
+    for (let i = Math.min(i0, i1); i <= Math.max(i0, i1); i++) for (let k = Math.min(k0, k1); k <= Math.max(k0, k1); k++) out.push({r: vr.list[i].r, p: vr.cols[k].p});
+    return out;
+  }
+  function paintRng() {   // 범위 표시 (그려 둔 칸만 — 새로 그리는 칸은 cellHtml 이 S.rng 를 본다)
+    const cs = S.cell2 ? rngCells() : [];
+    S.rng = cs.length > 1 ? new Set(cs.map(x => x.r * 1024 + x.p)) : null;
+    grid.querySelectorAll('tbody tr[data-r] td[data-p]').forEach(td => {
+      const on = !!S.rng && S.rng.has(+td.parentNode.dataset.r * 1024 + +td.dataset.p);
+      if (td.classList.contains('crng') !== on) td.classList.toggle('crng', on);
+    });
+    fmtBar();
+  }
+  function extendRng(dr, dc) {
+    const vr = S.vr, c = S.cell;
+    if (!vr || !c) return;
+    const base = S.cell2 || {r: c.r, p: c.p};
+    const i = vr.list.findIndex(x => x.r === base.r), k = vr.cols.findIndex(x => x.p === base.p);
+    if (i < 0 || k < 0) return;
+    const ni = Math.max(0, Math.min(vr.list.length - 1, i + dr)), nk = Math.max(0, Math.min(vr.cols.length - 1, k + dc));
+    S.cell2 = vr.list[ni].r === c.r && vr.cols[nk].p === c.p ? null : {r: vr.list[ni].r, p: vr.cols[nk].p};
+    paintRng();
+    revealCell(vr.list[ni].r, vr.cols[nk].p);
+  }
+  grid.addEventListener('mousedown', e => {   // Shift+누르기는 글자 고르기가 아니라 칸 범위
+    if (e.shiftKey && e.button === 0 && cellMode() && S.cell && e.target.closest && e.target.closest('tbody td[data-p]') && !(CE.x && CE.el && /^=/.test(CE.el.value))) e.preventDefault();
+  });
+  function fmtBar() {
+    const bar = $('fmtBar');
+    if (!bar) return;
+    const t = tabOf(S.cur), on = !!t && true && cellMode();
+    if (bar.hidden !== !on) bar.hidden = !on;
+    if (!on) return;
+    const cs = S.cell && S.cell.gid === S.cur ? rngCells() : [];
+    bar.querySelectorAll('[data-fmt]').forEach(b => { b.disabled = !cs.length; });
+    bar.querySelector('[data-fmt="b"]').classList.toggle('on', !!cs.length && cs.length <= FMT_MAX && cs.every(x => (fmtOf(t.info, x.r, x.p) || {}).b));
+    const fg = $('fgBar'), bg = $('bgBar');
+    if (fg) fg.style.background = lsGet('fmt_last_fg') || '#ff0000';
+    if (bg) bg.style.background = lsGet('fmt_last_bg') || '#fff2cc';
+  }
+  // fn(그 칸 서식 사본) → 새 서식. 화면 먼저 바꾸고 저장소에 — 못 쓰면 되돌림
+  function fmtApply(fn, label) {
+    const t = tabOf(S.cur), info = t && t.info, cs = rngCells();
+    if (!info || !cs.length) { toast('서식을 바꿀 칸을 먼저 눌러 고르세요 (Shift+누르기로 여러 칸)', true); return; }
+    if (cs.length > FMT_MAX) { toast(`한 번에 ${FMT_MAX.toLocaleString()}칸까지 바꿀 수 있어요 — 범위를 줄여 주세요`, true); return; }
+    const prev = info.ofmt || {}, next = Object.assign({}, prev), cells = [];
+    cs.forEach(x => {
+      const k = `${x.r}:${x.p}`, cur = prev[k] || {}, nu = fn(Object.assign({}, cur));
+      Object.keys(nu).forEach(q => { if (!nu[q]) delete nu[q]; });
+      if (JSON.stringify(nu) === JSON.stringify(cur)) return;
+      if (Object.keys(nu).length) next[k] = nu; else delete next[k];
+      cells.push({r: x.r, p: x.p, b: nu.b ? 1 : 0, fg: nu.fg || '', bg: nu.bg || ''});
+    });
+    if (!cells.length) return;
+    info.ofmt = next;
+    renderGrid({keep: true});
+    fmtBar();
+    sbRpc('erp_fmt_set', {p_gid: t.gid, p_cells: cells, p_who: whoAmI() || null}).then(d => {
+      if (d && d.ver) { t.info.ver = Math.max(+t.info.ver || 0, +d.ver); }
+      toast(`${label} · ${cells.length}칸`);
+    }, () => {
+      if (t.info.ofmt === next) { t.info.ofmt = prev; if (t.gid === S.cur) renderGrid({keep: true}); }
+      toast('서식을 저장하지 못했어요 — 다시 해 주세요', true);
+    });
+  }
+  function fmtBold() {
+    const info = (tabOf(S.cur) || {}).info, cs = rngCells();
+    if (!cs.length) return;
+    const all = cs.length <= FMT_MAX && cs.every(x => (fmtOf(info, x.r, x.p) || {}).b);
+    fmtApply(f => Object.assign(f, {b: all ? 0 : 1}), all ? '굵게 풀기' : '굵게');
+  }
+  function fmtColor(kind, color) {
+    fmtApply(f => Object.assign(f, {[kind]: color || ''}), kind === 'bg' ? (color ? '칸 색' : '칸 색 없앰') : (color ? '글자 색' : '글자 색 없앰'));
+    if (color) { lsSet(kind === 'bg' ? 'fmt_last_bg' : 'fmt_last_fg', color); fmtBar(); }
+  }
+  const PAL = $('pal');
+  function openPal(kind, btn) {
+    const cs = rngCells();
+    if (!cs.length) { toast('서식을 바꿀 칸을 먼저 눌러 고르세요 (Shift+누르기로 여러 칸)', true); return; }
+    const f0 = fmtOf((tabOf(S.cur) || {}).info, cs[0].r, cs[0].p) || {}, cur = String(f0[kind] || '').toLowerCase();
+    PAL.innerHTML = `<div class="pt"><b>${kind === 'bg' ? '칸 색 (채우기)' : '글자 색'}</b><button type="button" data-none="1">색 없음</button></div>`
+      + `<div class="sw">${PALETTE.map(c => `<button type="button" style="background:${c}" data-c="${c}" title="${c}"${cur === c ? ' class="on"' : ''}></button>`).join('')}</div>`
+      + `<label class="cu">직접 고르기 <input type="color" id="palPick" value="${/^#[0-9a-f]{6}$/.test(cur) ? cur : kind === 'bg' ? '#fff2cc' : '#ff0000'}"></label>`;
+    PAL.dataset.kind = kind;
+    PAL.hidden = false;
+    const rc = btn.getBoundingClientRect(), w = PAL.offsetWidth, h = PAL.offsetHeight;
+    PAL.style.left = Math.max(8, Math.min(rc.right - w, innerWidth - w - 8)) + 'px';
+    PAL.style.top = (rc.bottom + 6 + h > innerHeight - 8 ? Math.max(8, rc.top - h - 6) : rc.bottom + 6) + 'px';
+  }
+  PAL.addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
+  PAL.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.none) fmtColor(PAL.dataset.kind, '');
+    else if (b.dataset.c) fmtColor(PAL.dataset.kind, b.dataset.c);
+    else return;
+    PAL.hidden = true;
+  });
+  PAL.addEventListener('change', e => { if (e.target.id === 'palPick') { fmtColor(PAL.dataset.kind, e.target.value); PAL.hidden = true; } });
+  document.addEventListener('pointerdown', e => { if (!PAL.hidden && !e.target.closest('#pal') && !e.target.closest('[data-fmt="fg"],[data-fmt="bg"]')) PAL.hidden = true; }, true);
+  $('fmtBar').addEventListener('mousedown', e => e.preventDefault());   // 고른 칸 · 고치는 칸에서 포커스를 뺏지 않게
+  $('fmtBar').addEventListener('click', e => {
+    const b = e.target.closest('[data-fmt]');
+    if (!b || b.disabled) return;
+    const k = b.dataset.fmt;
+    if (k === 'b') fmtBold();
+    else if (k === 'clear') fmtApply(() => ({}), '서식 지우기');
+    else if (!PAL.hidden && PAL.dataset.kind === k) PAL.hidden = true;
+    else openPal(k, b);
+  });
   function ceKey(e) {
     if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중 Enter 는 글자 확정
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCell(); return; }
