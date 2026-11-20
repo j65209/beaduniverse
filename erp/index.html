@@ -47,7 +47,8 @@
        저장소가 오래 안 맞춰지면(맥미니 꺼짐 등) 상태 단추가 빨갛게 바뀌고, 누르면 그 탭만 구글시트 CSV 를 바로 읽어 보여 준다.
      · 같은 날 "엑셀처럼 수정할 곳 누르면 바로 수정 · 품절 임박은 제품명까지 칸 컬러 다 바꾸고 일반 숫자는 블랙 · 칸 간격 조절" →
        PC 는 칸을 한 번 누르면 그 자리에서 고친다 (Enter = 저장하고 아래 칸, Tab = 오른쪽, Esc = 취소, 화살표 = 칸 옮기기, 행 번호 = 상세 창).
-       재고 탭은 남은 재고 10개 이하 줄 전체를 연한 빨강, 0 이하(품절)는 조금 더 진하게. 숫자는 모두 검정. 머리글 오른쪽 끝을 끌어 칸 너비를 바꾸고
+       재고 탭은 남은 재고 10개 이하 줄 전체를 연한 빨강, 0 이하(품절)는 조금 더 진하게. 숫자는 모두 검정
+       (예외: 식스샵프로 판매중인데 10개 이하면 남은 재고 숫자만 빨강 — stk-red). 머리글 오른쪽 끝을 끌어 칸 너비를 바꾸고
        (이 브라우저에 기억, 두 번 누르면 자동 너비), '칸 너비 되돌리기' 로 처음 모양. */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
@@ -223,6 +224,10 @@
   .tbl tbody tr.lv-low td.rn,.tbl tbody tr.lv-out td.rn{box-shadow:inset 3px 0 0 #f87171}
   .tbl tbody tr.lv-out td.rn{box-shadow:inset 3px 0 0 #dc2626}
   .tbl td .blank{color:#dc2626;font-size:11.5px;font-weight:600}   /* 남은 재고 빈칸 = 세어서 적을 줄 */
+  /* 식스샵프로 판매중인데 남은 재고 10개 이하(0 이하 포함) — 남은 재고 숫자만 빨강 (2026-11-20 사용자 "판매중인데 수량이 적은것들은 남은재고 빨간색으로").
+     '일반 숫자는 검정' 규칙의 예외, 칸 서식 글자 색보다 우선 */
+  .tbl td.stk-red,.tbl td.stk-red .lnk{color:#dc2626!important}
+  .dl dd.stk-red{color:#dc2626}
   /* 식스샵프로 상태 배지 (2026-11-20 사용자 "행 우측에 간단하게 판매중, 판매중지, 품절") — 색은 품절 빨강 하나, 나머지 무채색 */
   .pro{display:inline-block;padding:1px 7px;border-radius:5px;border:1px solid;font-size:11.5px;font-weight:700;line-height:1.5;white-space:nowrap;vertical-align:middle}
   .pro.on{background:#fff;border-color:#cbd5e1;color:#334155}
@@ -1094,6 +1099,7 @@
           row.item = isItem(row);
           const n = row.item ? numOf(val(row, cStock)) : null;
           row.lv = n === null ? '' : n <= 0 ? 'out' : n <= LOW_STOCK ? 'low' : '';
+          row.redStk = !!row.lv && !!row.pro && row.pro[0] === 'on';   // 판매중인데 수량 적음 → 남은 재고 빨간 글씨
         });
       }
       // 이름 점검 (2026-11-20 사용자 "카테고리나 제품명, 옵션명 설정 안 되어 있거나 이상한 건 정리") — 오피스에서 바로 고쳐도 되는 것만 표시.
@@ -1463,6 +1469,7 @@
       }
       else if (col.stock && row.item) inner = '<span class="blank">빈칸</span>';   // 남은 재고 빈칸 = 세어서 적을 줄
     }
+    if (col.stock && row.redStk) { cls += ' stk-red'; title = (title ? title + '\n' : '') + `식스샵프로 판매중인데 남은 재고 ${LOW_STOCK}개 이하`; }
     if (col.pro && row.pro) { inner = proBadge(row.pro, row.pin === 1); title = row.past ? `식스샵프로 ${PRO_LABEL[row.pro[0]]} — 옵션 ${row.past.n}개 · 재고 마스터에 줄 없음 · ${row.past.info}` : proText(row.pro) + (row.pin === 1 ? '\n⚠ ' + PIN_WHY[1] : ''); }
     if (row.map && norm(col.name) === '카테고리') { inner = `<button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>`; title = '시트에 없던 주문 이름 (⚠ 매핑 확인 필요) — 눌러서 어느 재고 줄에서 뺄지 정하기'; }
     else if (row.map && col.key && narrow.matches) inner = `<button type="button" class="mapb sm" data-map="${row.r}">⚠ 매핑</button>` + inner;   // 휴대폰은 카테고리 칸이 오른쪽 멀리 — 상품명 앞에도
@@ -2108,7 +2115,7 @@
     $('dSheet').hidden = !secretOk() || !!row.past || cutTab(S.cur);   // 끊긴 탭은 시트가 옛 값이라 안 보임
     // 이름 · 카테고리 확인할 것 (재고 탭) — 맨 위에 빨간 글로
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}${row.map ? `<br><button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>` : ''}</dd>` : '')
-      + d.cols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${c.pro ? (row.pro ? `${proBadge(row.pro, row.pin === 1)}<span class="pro-sub">${esc(proText(row.pro).replace(/^식스샵프로 \S+ — /, ''))}</span>` : '<span class="none">식스샵에 연결된 상품 없음</span>') : detailVal(c, row.byP[c.p])}</dd>`).join('');
+      + d.cols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' || (c.stock && row.redStk) ? ` class="${[c.type === 'num' ? 'r' : '', c.stock && row.redStk ? 'stk-red' : ''].filter(Boolean).join(' ')}"` : ''}>${c.pro ? (row.pro ? `${proBadge(row.pro, row.pin === 1)}<span class="pro-sub">${esc(proText(row.pro).replace(/^식스샵프로 \S+ — /, ''))}</span>` : '<span class="none">식스샵에 연결된 상품 없음</span>') : detailVal(c, row.byP[c.p])}</dd>`).join('');
     markEditable();
     const det = $('detail'), was = det.hidden;
     det.hidden = false;
