@@ -155,13 +155,18 @@ async function writeArticle(cfg: Row, token: string, post: Row): Promise<WriteRe
   // 문서: 제목·본문은 URL 인코딩해서 보냄(멀티파트 예제 기준)
   form.append("subject", encodeURIComponent(post.subject));
   // 본문 HTML 속성값에 큰따옴표가 있으면 403/999 로 거절됨(네이버 답변, 2026-11-20 실제로 겪음) → 작은따옴표로
-  const html = String(post.content_html).replace(/=\s*"([^"]*)"/g, "='$1'");
-  form.append("content", encodeURIComponent(html));
+  let html = String(post.content_html).replace(/=\s*"([^"]*)"/g, "='$1'");
   const opts = post.options || {};
-  for (const k of ["openyn", "searchopen", "replyyn", "scrapyn", "metoo", "autosourcing", "rclick", "ccl"]) {
-    if (k in opts) form.append(k, String(opts[k]));
-  }
   const images: string[] = post.images || [];
+  // 사진 위치: options.image_markers='end' 면 본문 끝에 <img src='#0' /> … 표시를 붙여 글 아래로 (공식 문서엔 없음, 네이버 답변 #110·#111)
+  if (opts.image_markers === "end" && images.length && !/<img\s+src='#\d+'/.test(html)) {
+    html += "<br>" + images.map((_, i) => `<img src='#${i}' />`).join("<br>");
+  }
+  form.append("content", encodeURIComponent(html));
+  // headid = 말머리 번호(공식 문서엔 없음)
+  for (const k of ["openyn", "searchopen", "replyyn", "scrapyn", "metoo", "autosourcing", "rclick", "ccl", "headid"]) {
+    if (k in opts && opts[k] !== null && opts[k] !== "") form.append(k, String(opts[k]));
+  }
   for (let i = 0; i < images.length; i++) form.append("image", await loadImage(images[i], i));
 
   const r = await fetch(`https://openapi.naver.com/v1/cafe/${cfg.club_id}/menu/${cfg.menu_id}/articles`, {
