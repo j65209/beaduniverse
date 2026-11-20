@@ -5098,14 +5098,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-brands button.on small{color:#fecaca}
   /* 상담 목록 = 카카오톡 채팅 목록 (사장님 11-20). 프로필(브랜드 = 오른쪽 아래 작은 점) · 이름 + 브랜드 / 배지 + 마지막 글 ·
      오른쪽 위 = 시각(직원 호출 · 답 기다림이면 기다린 시간), 아래 = 빨간 안 읽음 숫자.
-     묶음 = 직원 호출 → 답 기다림(오래 기다린 순) → 답변 완료 상담(맨 아래가 가장 최근). 줄을 누르면 오피스 안 채팅방 창(#kkoChat) */
+     묶음 = 직원 호출 → 답 기다림(오래 기다린 순, 맨 아래가 가장 최근). 답변 완료 상담은 안 보임(11-20 "그냥 없애자"). 줄을 누르면 오피스 안 채팅방 창(#kkoChat) */
   .kko-list{display:flex;flex-direction:column;margin:2px -8px 0}
   .kko-grp{display:flex;align-items:center;gap:6px;min-height:32px;margin:10px 8px 2px;font-size:12px;font-weight:800;color:var(--kko-gray)}
   .kko-grp:first-child{margin-top:2px}
   .kko-grp em{font-style:normal;font-variant-numeric:tabular-nums}
   .kko-grp.call{color:var(--kko-redt)}
-  .kko-grp button{margin-left:auto;min-height:30px;padding:4px 10px;border-radius:999px;border:0;background:var(--kko-pill);color:#555;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
-  .kko-grp button:hover{background:#e8e8e8}
   .kko-row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;margin:0;padding:8px;border:0;border-radius:12px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
   .kko-row:hover{background:#f6f6f6}
   .kko-row.on{background:#eef1f4}
@@ -5312,7 +5310,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 휴대폰 — 오피스 모바일 기준(글씨 11px 이상 · 손가락 닿는 곳 36px) */
   @media (pointer:coarse), (max-width:600px){
     .kko-btn{width:40px;height:40px}
-    .kko-chip,.kko-brands button,.kko-grp button,.kko-find select,.kko-find input,.kko-find button{min-height:38px}
+    .kko-chip,.kko-brands button,.kko-find select,.kko-find input,.kko-find button{min-height:38px}
     .kko-tabs button{min-height:44px}
   }
   /* ===== 시나리오 북 (11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") — 에이전트 학습 탭 [시나리오 북] → 화면 전체 창.
@@ -13601,7 +13599,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <!-- ============ 카카오톡 상담 — CS팀 맨 위, 탭과 상관없이 늘 보임 (2026-11-19 사장님 "카카오채널 상담 에이전트 … cs팀 최상단에 제작
          (모든 브랜드 전부 통합시켜서 한번에 볼 수 있게 배지만 달게)" · "연결부터하자"). 서버 /cs/kakao = 맥미니 kakao-live 2분 (톡채널, 읽기만) ·
          주문 찾기 /cs/order = 식스샵프로 색인. kko* 함수 · _kko 상태. 에이전트는 꺼 둠(11-19 사장님, 설계 중) — 고객에게 보내지 않는다.
-         11-20 사장님: 카카오톡 모양 · 채팅 / 에이전트 학습 탭 · 직원 호출 · 답 기다림 두 칸만 · 답변 완료 상담 · 이미지 확인 필요 배지 ============ -->
+         11-20 사장님: 카카오톡 모양 · 채팅 / 에이전트 학습 탭 · 직원 호출 · 답 기다림 두 칸만(답변 완료 상담은 뺌) · 이미지 확인 필요 배지 ============ -->
     <section class="kko-card" id="kkoBox" aria-label="카카오톡 상담">
       <div class="kko-head">
         <span class="kko-title">카카오톡 상담<span class="kko-sub" id="kkoSub">톡채널 통합</span></span>
@@ -16976,18 +16974,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
        "에이전트 학습은 따로 탭을 빼줘" → 채팅 / 에이전트 학습 탭(kkoTab) · "직원호출, 답 기다림 2개만 만들어줘. 카나나 답변은 어차피 카나나 나중에 끌꺼라서"
        → 칩 두 개(관리자 호출은 직원 호출에 들어감 · 안 읽음은 줄마다 빨간 숫자로) · "답한 상담 -> 답변 완료 상담" · "위가 오래된것 이런건 없애" ·
        "이미지가 있는것들은 이미지 확인 필요를 채팅창에 배지를" → 서버 줄 photos · videos(직원이 마지막으로 답한 뒤 고객이 보낸 사진 · 영상 수,
-       kakao-live)로 목록 줄 · 채팅방 위에 '이미지 확인 필요'. 채팅방 사진은 작게 바로 보임. */
+       kakao-live)로 목록 줄 · 채팅방 위에 '이미지 확인 필요'. 채팅방 사진은 작게 바로 보임.
+     · 2026-11-20 사장님 "답변 완료 상담은 그냥 없애자. 어차피 답변 안오면 자동으로 그냥 밑에 쌓이니까" → 목록 = 직원 호출 · 답 기다림만
+       (답변 완료 묶음 · '이전 상담 더 보기' 버튼 뺌). 고객이 다시 쓰면 답 기다림 맨 아래로 들어옴. */
   const KKO_LABEL={kop:'코페리',apt:'아페티',koz:'코즈미','6a':'식스에이',yar:'야르',akoi:'아코이하우스',pp:'프로덕트피알',bb:'브라이트비드',ct:'클리어타입'};
   const KKO_TOPIC={delivery:'배송',restock:'재입고 · 품절',size:'사이즈',color:'색상',claim:'교환 · 반품 · 취소',defect:'불량',usage:'사용 · 호환',price:'가격 · 쿠폰'};
   const KKO_KANANA={ON_DUTY:'채팅 시간에만',OFF_DUTY:'채팅 시간 밖에만',ALL_DAY:'24시간'};
   const KKO_MARKET={commerce:'공홈','naver-pay':'네이버페이'};
-  const KKO_LATE_MIN=30, KKO_SHOW=8;
+  const KKO_LATE_MIN=30;
   const KKO_ORDER=['kop','apt','koz','6a','yar','akoi','pp','bb','ct'];   // 브랜드 칩 · 채널 표 순서 (클리어타입은 상담이 있을 때만 칩)
   const KKO_HIDE=new Set(['bb']);   // 화면에서 뺀 브랜드 (사장님 11-19 "브라이트비드는 … 볼필요없어") — 다시 보려면 여기서 지운다
   const KKO_WHO={customer:'고객',staff:'직원',ai:'카나나',bot:'자동응답',system:'안내',auto:'자동 안내'};
   const KKO_KIND={photo:'사진',video:'동영상',file:'파일',card:'카드',emoticon:'이모티콘',deleted:'지운 글',media:'사진 · 파일'};
   const KKO_FAQ_TTL=10*60000, KKO_AGENT_STALE_SEC=600;   // 예상 질문 · 답은 10분마다 다시 (옆 학습 세션이 고쳐 올림) · 에이전트 판정 10분 넘으면 경고 (2분마다 돎)
-  const _kko={data:null,err:'',loading:false,brand:'all',only:'',more:false,timer:null,showCh:false,tab:'chat',faq:null,faqErr:'',faqBrand:'',faqAt:0,faqLoading:false,faqHtml:'',drafts:null,draftsAt:0,draftsErr:'',chat:null,chatLocked:false,learnHtml:''};
+  const _kko={data:null,err:'',loading:false,brand:'all',only:'',timer:null,showCh:false,tab:'chat',faq:null,faqErr:'',faqBrand:'',faqAt:0,faqLoading:false,faqHtml:'',drafts:null,draftsAt:0,draftsErr:'',chat:null,chatLocked:false,learnHtml:''};
   // 카카오톡 기본 프로필(하늘빛 바탕 흰 사람) · 사진 배지 그림
   const KKO_AV='<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="19" r="8.5" fill="#fff"/><path d="M7 48c0-9.9 7.6-16.5 17-16.5S41 38.1 41 48z" fill="#fff"/></svg>';
   const KKO_IMG_ICON='<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.6" cy="6.4" r="1.25" fill="currentColor"/><path d="M2.6 12.2l3.7-3.5 2.5 2.3 2-1.7 2.6 2.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
@@ -17109,7 +17109,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const c=(((_kko.data||{}).channels)||[]).find(x=>x.pid===r.pid);
     return !!(c && c.chatOn && _kkoOpenNow(c.hours)) && Date.now()-(r.waitingSince||r.lastAt)>KKO_LATE_MIN*60000;
   }
-  // 채팅방 창 머리의 상태 — 직원 호출 · 기다린 시간 · 답변 완료 (사장님 11-20 "답한 상담 -> 답변 완료 상담으로 변경")
+  // 채팅방 창 머리의 상태 — 직원 호출 · 기다린 시간 · 답변 완료 (사장님 11-20 "답한 상담 -> 답변 완료 상담으로 변경").
+  // 답변 완료 상담은 목록에서 뺐지만(11-20) 열어 둔 채팅방에 직원이 답하면 머리가 '답변 완료'로 바뀜
   function _kkoRowState(r){
     const w=_kkoAgo(r.waitingSince||r.lastAt), wt=w==='방금' ? '방금 옴' : w+' 기다림';
     if(_kkoIsStaff(r)) return {text:'직원 호출 · '+wt, cls:'call'};
@@ -17141,9 +17142,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!document.hidden) kkoLoad();
     },60000);
   }
-  function kkoBrand(b){ _kko.brand=b; _kko.more=false; kkoRender(); }
-  function kkoOnly(k){ _kko.only=_kko.only===k ? '' : k; _kko.more=false; kkoRender(); }   // 직원 호출 · 답 기다림 칩 — 그것만 보기 (다시 누르면 풀림)
-  function kkoToggleMore(){ _kko.more=!_kko.more; kkoRender(); }
+  function kkoBrand(b){ _kko.brand=b; kkoRender(); }
+  function kkoOnly(k){ _kko.only=_kko.only===k ? '' : k; kkoRender(); }   // 직원 호출 · 답 기다림 칩 — 그것만 보기 (다시 누르면 풀림)
   function kkoToggleCh(){ _kko.showCh=!_kko.showCh; kkoRender(); }
   // 채팅 · 에이전트 학습 탭 (사장님 11-20 "에이전트 학습은 따로 탭을 빼줘") — 왼쪽 · 오른쪽 화살표로도 넘김
   function kkoTab(t, focus){
@@ -17191,7 +17191,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const off=!!(dr && dr.off);
     if(dr && !off && dAge>KKO_AGENT_STALE_SEC) w.push(`에이전트 판정이 ${Math.round(dAge/60)}분째 멈췄어요 — 직원 호출 표시와 보낼 답이 늦어요 (맥미니 카카오 에이전트 확인)`);
     warn.innerHTML=w.map(t=>`<div class="kko-warn">${_kkoEsc(t)}</div>`).join('');
-    // 묶음 (사장님 11-20 "직원호출, 답 기다림 2개만"): 직원 호출(관리자 호출 · 에이전트가 직원 몫으로 본 기다림) → 답 기다림(그 밖에 고객 글이 마지막) → 답변 완료 상담
+    // 묶음 (사장님 11-20 "직원호출, 답 기다림 2개만"): 직원 호출(관리자 호출 · 에이전트가 직원 몫으로 본 기다림) → 답 기다림(그 밖에 고객 글이 마지막).
+    // 답변 완료 상담은 목록에 안 보임 (11-20 사장님 "답변 완료 상담은 그냥 없애자. 어차피 답변 안오면 자동으로 그냥 밑에 쌓이니까") — 고객이 다시 쓰면 답 기다림 맨 아래로 들어옴
     const needs=r=>_kkoIsStaff(r) || _kkoWaiting(r), isWait=r=>!_kkoIsStaff(r) && _kkoWaiting(r);
     if(_kko.only!=='staff' && _kko.only!=='wait') _kko.only='';
     const base=_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand);
@@ -17216,14 +17217,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     brands.innerHTML=`<button type="button" class="${_kko.brand==='all'?'on':''}" onclick="kkoBrand('all')">전체 ${rows.filter(needs).length}</button>`
       + seen.filter(b=>!(typeof PAUSED_BRANDS!=='undefined' && PAUSED_BRANDS.has(b.brand)) || rows.some(r=>r.brand===b.brand) || _kko.brand===b.brand).map(b=>`<button type="button" class="reo-b-${_kkoEsc(b.brand)}${_kko.brand===b.brand?' on':''}" onclick="kkoBrand('${_kkoEsc(b.brand)}')">${_kkoEsc(b.label)} ${ncount(b.brand)}</button>`).join('')
       + `<button type="button" onclick="kkoToggleCh()" aria-expanded="${_kko.showCh}">채널 ${chans.length}개 ${_kko.showCh?'▴':'▾'}</button>`;
-    // 줄 순서 (사장님 11-19 "오래 기다린사람부터 맨위로 · 제일 최근에 연락온사람은 하단으로"): 직원 호출 · 답 기다림은 오래 기다린 것부터,
-    // 답변 완료 상담은 오래된 것부터 — 맨 아래가 가장 최근. 기본 화면 = 직원 호출 · 답 기다림 전부 + 답변 완료의 가장 최근 몇 줄(합쳐 KKO_SHOW 줄, 최소 3) —
-    // 더 이전 것은 '답변 완료 상담' 머리의 버튼으로 펼침. 칩을 눌렀으면 그 묶음만 전부.
+    // 줄 순서 (사장님 11-19 "오래 기다린사람부터 맨위로 · 제일 최근에 연락온사람은 하단으로"): 직원 호출 · 답 기다림 모두 오래 기다린 것부터 —
+    // 맨 아래가 가장 최근. 칩을 눌렀으면 그 묶음만.
     const qS=_kko.only==='wait' ? [] : staffRows, qW=_kko.only==='staff' ? [] : waitRows;
-    const done=_kko.only ? [] : base.filter(r=>!needs(r)).sort((a,b)=>(a.lastAt||0)-(b.lastAt||0));
-    const keepN=Math.min(done.length, Math.max(3, KKO_SHOW-qS.length-qW.length)), hidden=_kko.more ? 0 : done.length-keepN;
     const ae=document.activeElement, focusK=(ae && ae.classList && ae.classList.contains('kko-row')) ? ae.dataset.k : '';
-    const grpFocus=!!(ae && ae.closest && ae.closest('#kkoList .kko-grp'));
     const openK=_kko.chat ? _kko.chat.key : '';
     // 카카오톡 채팅 목록 한 줄: 프로필(브랜드 점) · 이름 + 브랜드 / 배지(직원 호출 · 이미지 확인 필요) + 마지막 글 · 오른쪽 시각 + 빨간 안 읽음 숫자
     const rowHtml=r=>{
@@ -17236,19 +17233,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + `<span class="kko-l2">${staff ? '<span class="kko-bd call">직원 호출</span>' : ''}${mb ? `<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>` : ''}<span class="kko-pv">${_kkoEsc(r.preview||'(사진 · 파일)')}</span></span></span>`
         + `<span class="kko-side"><span class="kko-tm ${tm.cls}">${_kkoEsc(tm.text)}</span>${r.unread>0 ? `<span class="kko-ur" title="안 읽은 메시지 ${r.unread}">${r.unread>299 ? '300+' : r.unread}</span>` : ''}</span></button>`;
     };
-    const head=(cls,label,n,btn)=>`<div class="kko-grp${cls ? ' '+cls : ''}"><span>${label}</span><em>${n}</em>${btn||''}</div>`;
+    const head=(cls,label,n)=>`<div class="kko-grp${cls ? ' '+cls : ''}"><span>${label}</span><em>${n}</em></div>`;
     let html='';
     if(qS.length) html+=head('call','직원 호출',qS.length)+qS.map(rowHtml).join('');
     if(qW.length) html+=head('','답 기다림',qW.length)+qW.map(rowHtml).join('');
-    if(done.length){
-      if(!qS.length && !qW.length) html+='<div class="kko-none">지금 직원 호출 · 답 기다리는 상담이 없어요</div>';
-      const btn=hidden ? `<button type="button" onclick="kkoToggleMore()">이전 상담 ${hidden}개 더 보기 ▴</button>`
-        : (_kko.more && done.length>keepN) ? '<button type="button" onclick="kkoToggleMore()">이전 상담 접기 ▾</button>' : '';
-      html+=head('done','답변 완료 상담',done.length,btn)+done.slice(hidden).map(rowHtml).join('');
-    }
-    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({staff:'직원 호출이 필요한 채팅이 없어요',wait:'답을 기다리는 채팅이 없어요'})[_kko.only] || `최근 ${d.windowDays}일 진행 중인 상담이 없어요`}</div>`;
+    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({staff:'직원 호출이 필요한 채팅이 없어요',wait:'답을 기다리는 채팅이 없어요'})[_kko.only] || '지금 직원 호출 · 답 기다리는 상담이 없어요'}</div>`;
     if(focusK){ const el=[...list.querySelectorAll('.kko-row')].find(x=>x.dataset.k===focusK); if(el) el.focus({preventScroll:true}); }
-    else if(grpFocus){ const bt=list.querySelector('.kko-grp button'); if(bt) bt.focus({preventScroll:true}); }
     // 에이전트 학습 탭 — 바뀐 게 있을 때만 다시 그림
     const ln=document.getElementById('kkoLearn');
     if(ln){ const lh=_kkoLearnHtml(d); if(lh!==_kko.learnHtml){ ln.innerHTML=lh; _kko.learnHtml=lh; } }
