@@ -3107,12 +3107,123 @@ async function rcvPropose(c, R){
   });
   const autoKind = act.some(x => x.kindAuto) ? `\n입고로 이해했어요. 빼는 거라면 "차감" 이라고 다시 말씀해 주세요.` : '';
   R.stage = 'confirm';
-  say('agent', `이렇게 반영할까요?\n\n${lines.join('\n')}\n\n입력자: ${rcvWho()}${autoKind}\n수락하시면 바로 ERP 시트에 넣고, 남은 재고 칸 메모에 몇 시 몇 분에 넣었는지 남깁니다.`, {
+  say('agent', `이렇게 반영할까요?\n\n${lines.join('\n')}\n\n입력자: ${rcvWho()}${autoKind}\n수락하시면 오피스앱 재고 ERP 에 바로 넣고, 구글시트에도 넣어 남은 재고 칸 메모에 몇 시 몇 분에 넣었는지 남깁니다.`, {
     chips:[
       {label:'수락', cmd:'#rconfirm', style:'primary'},
       {label:'취소', cmd:'#cancel', style:'danger'},
     ],
   });
+}
+
+/* ── 오피스앱 재고 ERP 에 바로 (2026-11-20 사용자 "바탕화면(홈)에 입고 입력은 재고 erp 오피스앱에 바로 적용 해줘야해") ──
+   전엔 수락 → 서버(/erp/moves) → 깃허브 작업이 구글시트에 씀(30초 안팎) → 맥미니가 1분마다 시트를 오피스 저장소로 맞춤 →
+   재고 ERP(erp/) 에는 1~2분 뒤에야 보였다. 이제 서버에 접수되자마자 같은 계산을 오피스 저장소 erp_rows 에도 바로 적는다.
+   · 계산 = apeti-erp scripts/erp-stock-moves.mjs 와 같은 규칙: 같은 상품명 · 옵션 줄 1개(임시 ⚠ · 묶음 줄보다 정식 줄),
+     남은 재고 ± 수량(빈칸이면 수량 그대로), 입고이고 발주 잔량(발주수량 − 입고수량)이 남았으면 입고 수량 += 수량 · 입고일에 오늘 'M.DD' 한 줄.
+   · 칸마다 erp_cell_edit(p_old = 읽은 값 — 그사이 바뀌었으면 다시 읽어 한 번 더), 누가 = '이름 · 모아 입고' → 재고 ERP 수정 로그에 남음.
+   · 맥미니 맞춤은 오피스에서 고친 줄을 90초 동안 안 덮는다 → 그사이 시트 작업이 끝나면 같은 값이라 그대로.
+     시트 작업 결과가 다르면(그사이 시트 값이 달랐음) 시트 값으로 고치고, 시트 반영이 실패하면 저장소도 되돌린다.
+   · 줄을 못 찾거나 남은 재고가 수식 · 글이면 저장소엔 안 쓴다 (시트 작업도 같은 까닭으로 실패를 남김) */
+const EDB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/';
+const EDB_TAB = {apt:'아페티송장출력', kop:'코페리송장출력', koz:'코즈미송장출력', '6a':'식스에이송장출력', yar:'야르송장출력', pp:'프피송장출력', akoi:'아코이송장출력'};
+async function edb(path, body){
+  const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 20000);
+  try{
+    const r = await fetch(EDB_URL + path, {method: body ? 'POST' : 'GET', headers: OV_SB_HEADERS, body: body ? JSON.stringify(body) : undefined, cache: 'no-store', signal: ac.signal});
+    const t = await r.text();
+    if(!r.ok){ let m = ''; try{ m = JSON.parse(t).message || ''; }catch(e){ m = t.slice(0, 120); } throw new Error(m || 'db_' + r.status); }
+    return t ? JSON.parse(t) : null;
+  }finally{ clearTimeout(tm); }
+}
+const edbNum = s => { const t = String(s == null ? '' : s).replace(/,/g, '').trim(); return t === '' ? null : /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN; };
+const edbNorm = s => String(s == null ? '' : s).replace(/\s+/g, '');
+const edbLoose = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+const edbFx = (tab, r, p) => Array.isArray(tab.fx) && tab.fx.some(run => run[0] === p && r - 1 >= run[1] && r - 1 <= run[2]);   // 수식 칸 (erp_tabs.fx = [열, 첫 줄, 끝 줄] 0부터)
+const edbDate = () => { const d = new Date(); return `${d.getMonth() + 1}.${pad(d.getDate())}`; };
+async function edbPlan(m){   // m = {brand, product, option, kind, qty} → 바꿀 칸들 (아직 안 씀)
+  const word = EDB_TAB[m.brand];
+  if(!word) return {skip: '브랜드를 모름'};
+  const tabs = await edb('erp_tabs?select=gid,name,fx,sheet_link&kind=eq.stock&alive=is.true&deleted_at=is.null&order=pos.asc') || [];
+  const tab = tabs.find(t => String(t.name).includes(word));
+  if(!tab) return {skip: `${word} 탭이 없음`};
+  const rows = [];
+  for(let after = 0; ;){
+    const page = await edb(`erp_rows?select=r,v&gid=eq.${encodeURIComponent(tab.gid)}&deleted_at=is.null&r=gt.${after}&order=r.asc&limit=1000`) || [];
+    rows.push(...page);
+    if(page.length < 1000) break;
+    after = page[page.length - 1].r;
+  }
+  const hr = rows.find(x => x.r <= 6 && (String((x.v || [])[1] ?? '').trim() === '상품명' || String((x.v || [])[0] ?? '').trim() === '카테고리'));
+  if(!hr) return {skip: '머리글 줄을 못 찾음'};
+  const H = (hr.v || []).map(edbNorm), col = n => H.indexOf(n);
+  const C = {cat: col('카테고리'), name: col('상품명'), opt: col('옵션'), stock: col('남은재고'), po: col('발주수량'), rcvDate: col('입고일'), rcvQty: col('입고수량')};
+  if(C.name < 0 || C.opt < 0 || C.stock < 0) return {skip: '상품명 · 옵션 · 남은 재고 칸이 없음'};
+  const list = rows.filter(x => x.r > hr.r).map(x => {
+    const v = x.v || [], cat = String(v[C.cat] ?? '').trim();
+    return {r: x.r, v, name: String(v[C.name] ?? '').trim(), opt: String(v[C.opt] ?? '').trim(), temp: cat.startsWith('⚠'), bundle: /^묶음/.test(cat)};
+  }).filter(x => x.name);
+  const P = String(m.product || '').trim(), O = String(m.option || '').trim();
+  let hits = list.filter(x => x.name === P && x.opt === O);
+  if(!hits.length) hits = list.filter(x => edbLoose(x.name) === edbLoose(P) && edbLoose(x.opt) === edbLoose(O));
+  if(hits.length > 1){ const real = hits.filter(x => !x.temp && !x.bundle); if(real.length === 1) hits = real; }
+  if(hits.length !== 1) return {skip: hits.length ? `같은 상품 · 옵션 줄이 ${hits.length}개` : '이 상품 · 옵션 줄을 못 찾음'};
+  const h = hits[0], v = h.v, s = x => x == null ? '' : String(x);
+  if(edbFx(tab, h.r, C.stock)) return {skip: '남은 재고 칸이 수식'};
+  const cur = edbNum(v[C.stock]);
+  if(Number.isNaN(cur)) return {skip: '남은 재고 칸이 숫자가 아님'};
+  const after = (cur == null ? 0 : cur) + (m.kind === 'in' ? m.qty : -m.qty);
+  const cells = [{p: C.stock, old: s(v[C.stock]), now: String(after), what: 'stock'}];
+  let rBefore = null, rAfter = null;
+  if(m.kind === 'in' && C.po >= 0 && C.rcvQty >= 0 && !edbFx(tab, h.r, C.rcvQty)){
+    const Ov = edbNum(v[C.po]), Rv = edbNum(v[C.rcvQty]);
+    const rNum = Number.isFinite(Rv) ? Rv : (Rv == null ? 0 : NaN);
+    if(Number.isFinite(Ov) && Ov > 0 && Number.isFinite(rNum) && Ov - rNum > 0){
+      rBefore = rNum; rAfter = rNum + m.qty;
+      cells.push({p: C.rcvQty, old: s(v[C.rcvQty]), now: String(rAfter), what: 'rcv'});
+      if(C.rcvDate >= 0 && !edbFx(tab, h.r, C.rcvDate)){
+        const oldD = String(v[C.rcvDate] ?? '').trim(), line = edbDate(), ls = oldD ? oldD.split(/\n/) : [];
+        if((ls[ls.length - 1] || '').trim() !== line) cells.push({p: C.rcvDate, old: s(v[C.rcvDate]), now: oldD ? `${oldD}\n${line}` : line, what: 'date'});
+      }
+    }
+  }
+  return {gid: tab.gid, r: h.r, cells, before: cur, after, rBefore, rAfter};
+}
+async function edbWrite(gid, r, p, val, old, who){   // 한 칸 — 저장소 값이 old 일 때만
+  const d = await edb('rpc/erp_cell_edit', {p_gid: gid, p_r: r, p_p: p, p_new: val, p_row: null, p_who: who, p_old: old});
+  return !!(d && d.ok);
+}
+async function edbApply(m, who){
+  for(let n = 0; n < 2; n++){
+    let plan;
+    try{ plan = await edbPlan(m); }catch(e){ return {skip: `오피스 저장소를 못 읽음 (${e.message})`}; }
+    if(plan.skip) return plan;
+    plan.done = [];
+    for(const c of plan.cells){
+      let ok = false;
+      try{ ok = await edbWrite(plan.gid, plan.r, c.p, c.now, c.old, who); }catch(e){ ok = false; }
+      if(!ok) break;
+      plan.done.push(c);
+    }
+    if(plan.done.length) return plan;   // 남은 재고는 들어감 (뒤 칸이 막혔으면 시트 작업 뒤 맥미니 맞춤이 채움)
+  }
+  return {skip: '오피스 저장소 값이 그사이 바뀌어 못 넣음'};
+}
+async function edbSettle(plan, res, who){   // 시트 작업 결과에 맞춘다 — 다르면 시트 값으로, 실패면 되돌림
+  if(!plan || plan.skip || !(plan.done || []).length || !res) return false;
+  let changed = false;
+  const put = async (c, val, old) => { try{ if(await edbWrite(plan.gid, plan.r, c.p, val, old, who)) changed = true; }catch(e){} };
+  if(res.status === 'applied'){
+    const st = plan.done.find(c => c.what === 'stock'), rq = plan.done.find(c => c.what === 'rcv');
+    if(st && res.after != null && String(res.after) !== st.now) await put(st, String(res.after), st.now);
+    if(rq && res.rAfter != null && String(res.rAfter) !== rq.now) await put(rq, String(res.rAfter), rq.now);
+  }else if(res.status === 'failed' || res.status === 'stuck'){
+    for(const c of plan.done.slice().reverse()) await put(c, c.old, c.now);
+    plan.reverted = changed;
+  }
+  return changed;
+}
+function edbPing(){   // 열려 있는 재고 ERP 화면이 8초 기다리지 않고 바로 다시 읽게 (같은 출처 창끼리)
+  try{ const bc = new BroadcastChannel('bead-erp'); bc.postMessage({t: 'rows'}); bc.close(); }catch(e){}
 }
 
 async function rcvWait(ids, timeoutMs){
@@ -3135,7 +3246,7 @@ async function rcvCommit(c, R){
   sayTargetId = c.id;
   try{
     R.stage = null;
-    say('agent', `접수합니다. ERP 시트에 넣는 중이에요 — 보통 30초 안팎 걸립니다…`);
+    say('agent', `접수합니다…`);
     let res;
     try{
       res = await api('/erp/moves', {method:'POST', body:{
@@ -3150,8 +3261,23 @@ async function rcvCommit(c, R){
     }
     const sent = res.moves || [];
     const ids = sent.map(m => m.id);
+    // 접수되자마자 오피스앱 재고 ERP(저장소)에 바로 — 구글시트는 아래 서버 작업이 뒤따라 넣는다
+    const edbWho = `${rcvWho() || '이름 모름'} · 모아 입고`;
+    const plans = [];
+    for(let i = 0; i < sent.length && i < act.length; i++){
+      const it = act[i];
+      plans[i] = await edbApply({brand: it.prod.b, product: it.prod.name, option: it.opt.o || '', kind: it.kind, qty: it.qty}, edbWho).catch(e => ({skip: e.message}));
+    }
+    const nowIn = plans.map((p, i) => p && !p.skip ? `· ${rcvLabel(act[i].prod, act[i].opt)} — 남은 재고 ${p.before == null ? '빈칸' : num(p.before)} → ${num(p.after)}${p.rAfter != null && p.done.some(c => c.what === 'rcv') ? ` · 입고 수량 ${num(p.rBefore)} → ${num(p.rAfter)}` : ''}` : null).filter(Boolean);
+    const notIn = plans.map((p, i) => p && p.skip ? `· ${rcvLabel(act[i].prod, act[i].opt)} — ${p.skip}` : null).filter(Boolean);
+    if(nowIn.length){ edbPing(); say('agent', `⚡ ${rcvHM(Date.now())} 오피스앱 재고 ERP 에 바로 반영했어요\n${nowIn.join('\n')}\n\n구글시트에도 넣는 중이에요 — 보통 30초 안팎 걸립니다…`); }
+    if(notIn.length) say('agent', `재고 ERP 에 바로 못 넣은 건 — 구글시트에 들어가면 1분 안에 따라 들어가요\n${notIn.join('\n')}`);
+    if(!nowIn.length && !notIn.length) say('agent', `ERP 시트에 넣는 중이에요 — 보통 30초 안팎 걸립니다…`);
     const done = await rcvWait(ids, 150000);
     const byId = new Map(done.map(m => [m.id, m]));
+    let fixed = false;
+    for(let i = 0; i < sent.length; i++){ if(plans[i] && await edbSettle(plans[i], byId.get(sent[i].id), edbWho)) fixed = true; }
+    if(fixed) edbPing();
     const ok = [], bad = [], waiting = [];
     sent.forEach((m, i) => {
       const r = byId.get(m.id) || {status:'pending'};
@@ -3161,7 +3287,7 @@ async function rcvCommit(c, R){
         say('agent', `✅ ${rcvHM(r.appliedAt || Date.now())} 반영 — ${label}\n   남은 재고 ${num(r.before)} → ${num(r.after)}${r.rAfter != null ? ` · 입고 수량 ${num(r.rBefore)} → ${num(r.rAfter)}` : ''}`);
       } else if(r.status === 'failed' || r.status === 'stuck'){
         bad.push(r);
-        say('agent', `❌ 반영 못 함 — ${label}\n   ${r.reason || '이유를 알 수 없음'}`, {kind:'err'});
+        say('agent', `❌ 반영 못 함 — ${label}\n   ${r.reason || '이유를 알 수 없음'}${plans[i] && plans[i].reverted ? '\n   재고 ERP 에 먼저 넣었던 값도 되돌렸어요.' : plans[i] && !plans[i].skip ? '\n   재고 ERP 에 먼저 넣었던 값은 1~2분 안에 시트 값으로 돌아갑니다.' : ''}`, {kind:'err'});
       } else {
         waiting.push(m);
       }

@@ -3872,10 +3872,11 @@
     if (h.src === 'sheet') return {t: '시트', c: '#94a3b8', name: '구글시트 · 자동 차감'};
     if (h.src === 'admin') return {t: '정리', c: '#94a3b8', name: '관리자 정리'};
     const nm = String(h.who || '').trim() || '이름 모름';
+    const base = nm.split(' · ')[0].trim() || nm;   // '김○○ · 모아 입고' (홈 입고 입력) 도 같은 사람 색 · 글자
     let hs = 0;
-    for (const ch of nm) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
-    const t = /^claude/i.test(nm) ? 'AI' : /^[가-힣]{3,4}$/.test(nm) ? nm.slice(-2) : nm.replace(/\s.*$/, '').slice(0, 2);
-    return {t, c: nm === '이름 모름' ? '#94a3b8' : LOG_AV[hs % LOG_AV.length], name: h.src === 'auto' ? `${nm} · 자동` : nm};
+    for (const ch of base) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
+    const t = /^claude/i.test(base) ? 'AI' : /^[가-힣]{3,4}$/.test(base) ? base.slice(-2) : base.replace(/\s.*$/, '').slice(0, 2);
+    return {t, c: base === '이름 모름' ? '#94a3b8' : LOG_AV[hs % LOG_AV.length], name: h.src === 'auto' ? `${nm} · 자동` : nm};
   }
   // 탭 머리글 (열 이름) — 위쪽 8줄에서 표와 같은 규칙으로: 맨 위 ⚠ 안내 줄은 건너뛰고, 짧은 글 칸이 2개 넘는 첫 줄
   function headFromRows(rows) {
@@ -4159,6 +4160,11 @@
     else if (Date.now() - LG.nAt >= 60e3) logCount();
   }, 5000);
   setTimeout(() => { if (shown()) logCount(); }, 4000);
+  // 홈 [+ 입고 입력](모아, agents.html)이 저장소에 바로 넣으면 알려 준다 → 8초 기다리지 않고 바로 다시 읽음 (같은 출처 창끼리, 2026-11-20)
+  try {
+    const bc = new BroadcastChannel('bead-erp');
+    bc.onmessage = () => { if (!shown() || !S.tabsOk) return; S.pollAt = 0; Promise.resolve(poll()).catch(() => {}); if (LG.open) logLive(); };
+  } catch (e) { /* 옛 브라우저 — 8초 확인으로 */ }
 
   document.addEventListener('keydown', e => {
     if (M.open) { if (e.key === 'Escape') { e.preventDefault(); closeMap(); } return; }   // 매핑 창이 떠 있으면 그 창만
