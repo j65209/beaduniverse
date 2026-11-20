@@ -1222,7 +1222,7 @@
         outRows.forEach(row => {
           if (!counted(row)) return;
           const iss = [], cat = val(row, cCatS), nm = val(row, cName).trim();
-          if (/^⚠/.test(cat)) { row.map = 1; iss.push('임시 등록 줄 (⚠ 매핑 확인 필요) — 시트에 없던 주문 이름이에요. [매핑하기]로 어느 재고 줄에서 뺄지 정해 주세요'); }
+          if (/^⚠/.test(cat)) { row.map = 1; iss.push('임시 등록 줄 (⚠ 매핑 확인 필요) — 재고 줄에 없던 주문 이름이에요. [매핑하기]로 어느 재고 줄에서 뺄지 정해 주세요'); }
           else if (nm && !cat.trim()) iss.push('카테고리 빈칸');
           else if (cat && (cat !== cat.trim() || /\s{2,}/.test(cat))) iss.push(`카테고리 앞뒤 · 두 칸 띄어쓰기 ('${cat}')`);
           if (!nm && cols.some(c => c !== cCatS && c.type !== 'check' && val(row, c) !== '' && val(row, c) !== '0')) iss.push('상품명 빈칸');
@@ -1645,7 +1645,7 @@
     if (col.stock && row.redStk) { cls += ' stk-red'; title = (title ? title + '\n' : '') + `식스샵프로 판매중인데 남은 재고 ${LOW_STOCK}개 이하`; }
     if (col.price) { inner = esc(priceText(row.pro)); if (row.pro && typeof row.pro[5] === 'number') title = '식스샵프로 판매가 — 이 줄로 이어지는 낱개 옵션' + (row.pro[6] !== undefined && row.pro[6] !== row.pro[5] ? ' (옵션마다 다름)' : ''); }
     if (col.pro && row.pro) { inner = proBadge(row.pro, row.pin === 1); title = row.past ? `식스샵프로 ${PRO_LABEL[row.pro[0]]} — 옵션 ${row.past.n}개 · ERP 에 줄 없음 · ${row.past.info}` : proText(row.pro) + (row.pin === 1 ? '\n⚠ ' + PIN_WHY[1] : ''); }
-    if (row.map && norm(col.name) === '카테고리') { inner = `<button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>`; title = '시트에 없던 주문 이름 (⚠ 매핑 확인 필요) — 눌러서 어느 재고 줄에서 뺄지 정하기'; }
+    if (row.map && norm(col.name) === '카테고리') { inner = `<button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>`; title = '재고 줄에 없던 주문 이름 (⚠ 매핑 확인 필요) — 눌러서 어느 재고 줄에서 뺄지 정하기'; }
     else if (row.map && col.key && narrow.matches) inner = `<button type="button" class="mapb sm" data-map="${row.r}">⚠ 매핑</button>` + inner;   // 휴대폰은 카테고리 칸이 오른쪽 멀리 — 상품명 앞에도
     if (col.key && row.iss) title = (title ? title + '\n' : '') + '⚠ ' + row.iss.join('\n⚠ ');
     cls = cls.trim();
@@ -1907,9 +1907,10 @@
       : esc(m.sec === 'home' ? `${m.label} 공홈 주문 원본` : m.sec === 'plato' ? '플랫폼 주문 (플토)' : m.label);
     const multi = !!it && it.tabs.length > 1;
     $('dates').innerHTML = multi ? it.tabs.map(x => `<button type="button" class="${x.gid === S.cur ? 'on' : ''}" data-gid="${x.gid}">${esc(x.meta.date || x.name)}</button>`).join('') : '';
-    const td = $('tDate');
-    td.hidden = multi || !(m && m.date);
-    td.textContent = m && m.date ? `${m.date} 기준` : '';
+    const td = $('tDate'), live = !!(m && m.sec === 'stock' && cutTab(S.cur));   // 끊은 재고 탭 = 이름의 날짜가 멈춤 → '실시간'
+    td.hidden = multi || !(m && (m.date || live));
+    td.textContent = live ? '실시간' : m && m.date ? `${m.date} 기준` : '';
+    td.title = live ? '남은 재고는 지금 값 (송장 · 플토 · 입고 · 불량이 5분 안에 반영) · 판매 칸(식스샵 ~ W컨셉 · 합계)은 오늘 하루 판매 — 날마다 0 에서 다시 셈' : '';
     $('wReset').hidden = !d || narrow.matches || !hasColW();   // 끌어서 바꾼 칸 너비가 있을 때만
     fmtBar();
     const nEmpty = d ? d.cols.filter(c => c.empty && !c.key && !c.keep).length : 0, et = $('eTog');
@@ -1946,7 +1947,8 @@
     const href = S.cur ? `${BASE}/edit#gid=${S.cur}` : `${BASE}/edit`, sec = secretOk();
     $('btnSheet').href = sec ? href : '#';
     $('sideSheet').href = sec ? href : '#';
-    $('btnSheet').hidden = !sec; $('sideSheet').hidden = !sec;   // 구글시트 원본 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
+    const noSheet = !sec || (S.cur && cutTab(S.cur));   // 끊은 탭은 시트가 멈춘 옛 값이라 링크를 안 둔다 (곧 비공개)
+    $('btnSheet').hidden = noSheet; $('sideSheet').hidden = noSheet;   // 구글시트 원본 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
     document.title = `${m ? (m.sec === 'stock' ? m.label + ' 재고' : t.name) + ' · ' : ''}ERP전산팀`;
   }
   $('kpis').addEventListener('click', e => {
@@ -1998,7 +2000,8 @@
     let h = '', sec = '';
     for (const it of list) {
       if (it.sec !== sec) { sec = it.sec; h += `<div class="nav-sec">${esc(SECS[sec])}</div>`; }
-      const on = it.tabs.some(t => t.gid === S.cur), d = it.tabs[0].meta.date;
+      // 재고 탭 이름의 날짜('11.20코페리송장출력')는 구글시트를 끊은 날에 멈춰 있다 — 끊은 재고 탭은 날짜를 안 붙인다 (실시간)
+      const on = it.tabs.some(t => t.gid === S.cur), d = it.sec === 'stock' && cutTab(it.tabs[0].gid) ? '' : it.tabs[0].meta.date;
       h += `<button type="button" class="nav-item${on ? ' on' : ''}" data-gid="${it.tabs[0].gid}"><i class="dot"${it.brand ? ` style="background:${it.brand.color}"` : ''}></i><span class="nm">${esc(it.label)}</span>${d ? `<span class="nd">${esc(d)}</span>` : ''}</button>`;
     }
     $('nav').innerHTML = h;
@@ -2442,32 +2445,41 @@
     const cell = row.byP[p] || null;
     const why = d.side ? '집계 표는 시트가 자동으로 만든 표라 고칠 수 없어요'
       : (cell && cell.pii) || piiCol(col.name) ? EDIT_ERR.pii_cell
-      : cell && cell.img ? '사진 칸은 구글시트에서 바꿔 주세요'
-      : !cell ? '이 칸은 구글시트에서 고쳐 주세요' : '';
+      : cell && cell.img ? (cutTab(gid) ? '사진 칸은 여기서 바꾸지 않아요' : '사진 칸은 구글시트에서 바꿔 주세요')
+      : !cell ? (cutTab(gid) ? '이 칸은 고칠 수 없어요' : '이 칸은 구글시트에서 고쳐 주세요') : '';
     return {gid, name: t.name, col, cell, p, row: r, r: (cell && cell.r) || r, sc: mc.i + 1,
       check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why};
   }
+  /* 구글시트를 끊은 탭 (2026-11-20 19시부터 전부): 예전 '구글시트에서 고쳐 주세요' 안내는 갈 곳이 없다 —
+     · 날짜별 주문 원본 · 플토 · 메인 제외(QUERY) 탭 = 끊기 전 시트를 옮겨 둔 자료라 그대로 둔다 (브리지가 막던 탭 · 자동 계산 탭)
+     · 재고 탭 합계 · 잔량 = 저장소가 줄마다 다시 계산 (erp_calc_stock) — 시트 수식 위치(fx)는 끊을 때 멈춰 새로 생긴 줄(⚠ · 신상)엔 없으니 열 이름으로 막는다 */
+  const CUT_RO = '구글시트를 끊기 전 자료를 옮겨 둔 탭이라 여기서는 고치지 않아요 (보기만)';
+  const CUT_CALC = {'합계': '합계 = 그날 판매 칸을 더한 값이라 자동으로 계산돼요', '잔량': '잔량 = 발주 수량 − 입고 수량이라 자동으로 계산돼요'};
+  const tabRoWhy = (gid, info) => !info ? '' : cutTab(gid) ? (info.fx_deny || info.fx_ro ? CUT_RO : '') : info.fx_deny ? editErr(info.fx_deny) : info.fx_ro ? RO_TAB : '';
   function roWhy(x) {
     if (!x) return '고칠 수 없는 칸이에요';
     if (x.why) return x.why;
-    const info = tabInfo(x.gid);
-    if (info && info.fx_deny) return editErr(info.fx_deny);
-    if (info && info.fx_ro) return RO_TAB;
+    const info = tabInfo(x.gid), tw = tabRoWhy(x.gid, info);
+    if (tw) return tw;
+    if (cutTab(x.gid)) {
+      const calc = info && info.kind === 'stock' && x.col && CUT_CALC[norm(x.col.name)];
+      return calc || (isFxCell(info, x.r, x.p) ? `'${x.col.name}' 칸은 자동으로 계산돼요 — 고칠 수 없어요` : '');
+    }
     return isFxCell(info, x.r, x.p) ? `'${x.col.name}' 칸은 시트 수식이 자동으로 계산해요 — 고칠 수 없어요` : '';
   }
   function markEditable() {
     const t = tabOf(S.cur), d = curData(), hint = $('dHint');
     if (!S.sel || !t || !d) return;
-    const info = tabInfo(S.cur);
-    const tabWhy = d.side ? '집계 표는 고칠 수 없어요' : info && info.fx_deny ? editErr(info.fx_deny) : info && info.fx_ro ? RO_TAB : '';
-    hint.textContent = tabWhy || (cutTab(S.cur) ? '값을 누르면 고칠 수 있어요 · 저장하면 오피스 저장소에 바로 적혀요 (구글시트와는 끊김 · 합계 · 잔량은 자동 계산)'
+    const info = tabInfo(S.cur), cut = cutTab(S.cur);
+    const tabWhy = d.side ? '집계 표는 고칠 수 없어요' : tabRoWhy(S.cur, info);
+    hint.textContent = tabWhy || (cut ? '값을 누르면 고칠 수 있어요 · 저장하면 ERP 에 바로 적히고 다른 화면에도 몇 초 안에 보여요 (합계 · 잔량은 자동 계산)'
       : '값을 누르면 고칠 수 있어요 · 저장하면 구글시트와 오피스 저장소에 바로 적혀요 (합계 같은 수식 칸은 자동 계산)');
     hint.classList.toggle('no', !!tabWhy);
     $('dList').querySelectorAll('dd[data-p]').forEach(dd => {
       const why = roWhy(editCtx(S.cur, S.sel.r, +dd.dataset.p));
       dd.classList.toggle('ed-ok', !why);
       dd.classList.toggle('ed-ro', !!why);
-      dd.title = why || '눌러서 고치기 — 저장하면 구글시트에 바로 적혀요';
+      dd.title = why || (cut ? '눌러서 고치기 — 저장하면 ERP 에 바로 적혀요' : '눌러서 고치기 — 저장하면 구글시트에 바로 적혀요');
     });
   }
 
@@ -2858,10 +2870,10 @@
     const focusQ = document.activeElement && document.activeElement.classList.contains('mfind');
     const picked = new Set(M.picks.map(p => p.r));
     const rowBtn = c => `<button type="button" class="mrow${picked.has(c.r) ? ' on' : ''}" data-pick="${c.r}"><span class="bx">${picked.has(c.r) ? '✓' : ''}</span>`
-      + `<span class="tx"><b>${esc(c.name)}${c.why ? `<span class="why">${esc(c.why)}</span>` : ''}</b><small>${esc(c.opt || '옵션 없음')} · 시트 ${c.r}행</small></span>`
+      + `<span class="tx"><b>${esc(c.name)}${c.why ? `<span class="why">${esc(c.why)}</span>` : ''}</b><small>${esc(c.opt || '옵션 없음')} · ${c.r}행</small></span>`
       + `<span class="lq">남은 ${c.L === '' ? '빈칸' : esc(c.L)}</span></button>`;
     const facts = [`오늘 판매 ${fmt(src.sold)}개${src.ch.length ? ` (${src.ch.map(x => `${x.c.name} ${fmt(x.n)}`).join(' · ')})` : ''}`, `남은 재고 ${src.L === '' ? '빈칸' : src.L}`];
-    let body = `<div class="msrc"><div class="cap">시트에 없던 주문 이름 · ${esc(t ? t.name : '')} ${src.r}행</div><div class="nm">${esc(src.name)}</div><div class="op">${esc(src.opt || '옵션 없음')}</div>`
+    let body = `<div class="msrc"><div class="cap">재고 줄에 없던 주문 이름 · ${esc(t ? (t.meta && t.meta.sec === 'stock' ? t.meta.label + ' 재고' : t.name) : '')} ${src.r}행</div><div class="nm">${esc(src.name)}</div><div class="op">${esc(src.opt || '옵션 없음')}</div>`
       + `<div class="facts">${facts.map(f => `<span class="fact">${esc(f)}</span>`).join('')}</div></div>`
       + `<div class="mnone">ERP 에 없는 새 상품이면 여기서 등록하지 않아요 — 식스샵프로에 등록하거나 판매중으로 바꾸면 30분 안에 새롬이 이 ⚠ 줄을 그 상품 줄로 바꿔요.</div>`;
     if (M.mode === 'send') {
@@ -2869,7 +2881,7 @@
       body += `<div class="msec">추천</div><div class="mlist">${cands.length ? cands.map(rowBtn).join('') : '<div class="mnone">비슷한 줄을 못 찾았어요 — 아래에서 찾아 주세요</div>'}</div>`
         + `<div class="msec">다른 줄 찾기</div><input class="mfind" type="search" placeholder="상품명 · 옵션 (띄어 쓴 낱말 모두)" value="${esc(M.q)}" autocomplete="off" spellcheck="false">`
         + (M.q.trim() ? `<div class="mlist">${found.length ? found.map(c => rowBtn(Object.assign({why: ''}, c))).join('') : '<div class="mnone">맞는 재고 줄이 없어요</div>'}</div>` : '')
-        + `<div class="msec">고른 줄 · 주문 1개당 개수</div><div class="mlist">${M.picks.length ? M.picks.map(p => `<div class="mpick"><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.opt || '옵션 없음')} · 시트 ${p.r}행</small></span>`
+        + `<div class="msec">고른 줄 · 주문 1개당 개수</div><div class="mlist">${M.picks.length ? M.picks.map(p => `<div class="mpick"><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.opt || '옵션 없음')} · ${p.r}행</small></span>`
           + `<span class="step"><button type="button" data-per="${p.r}" data-d="-1" aria-label="하나 줄이기">−</button><span>×${p.per}</span><button type="button" data-per="${p.r}" data-d="1" aria-label="하나 늘리기">+</button></span>`
           + `<button type="button" class="mdel" data-del="${p.r}" aria-label="빼기">✕</button></div>`).join('') : '<div class="mnone">아직 고른 줄이 없어요 — 위에서 누르면 들어가요</div>'}</div>`
         + `<div class="mfield"><label for="mDed">남은 재고에서 뺄 주문 수</label><input id="mDed" type="number" min="0" step="1" value="${M.deduct}">`
@@ -2882,7 +2894,7 @@
     }
     body += `<div class="mprev">${mapPreview()}</div>` + (M.msg ? `<div class="mmsg ${M.msgKind}">${esc(M.msg)}</div>` : '');
     const ready = M.mode === 'new' ? !!M.cat.trim() : M.picks.length > 0;
-    dlg.innerHTML = `<div class="mh"><div><h2 id="mTitle">매핑하기</h2><p>시트에 없던 주문 이름을 어느 재고 줄에서 뺄지 정해요 · 구글시트와 오피스 저장소에 바로 적혀요</p></div>`
+    dlg.innerHTML = `<div class="mh"><div><h2 id="mTitle">매핑하기</h2><p>재고 줄에 없던 주문 이름을 어느 재고 줄에서 뺄지 정해요 · ${cutTab(M.gid) ? 'ERP 에 바로 적혀요' : '구글시트와 오피스 저장소에 바로 적혀요'}</p></div>`
       + `<button type="button" class="mx" aria-label="닫기">✕</button></div><div class="mb">${body}</div>`
       + `<div class="mf"><button type="button" class="mcancel">취소</button><button type="button" class="mgo"${ready && !M.busy ? '' : ' disabled'}>${M.busy ? '쓰는 중…' : M.mode === 'new' ? '새 상품으로 등록' : `매핑하기${M.picks.length ? ` (${M.picks.length}줄)` : ''}`}</button></div>`;
     dlg.querySelector('.mb').scrollTop = scroll;
@@ -2926,7 +2938,7 @@
   function setMapMsg(t, kind) { M.msg = t; M.msgKind = kind || ''; renderMap(); }
 
   // 칸 여러 개 쓰기 — 띄어쓰기 · 줄바꿈만 다른 '충돌'은 같은 값이라 전 값 없이 한 번 더 (writeOnce 와 같은 규칙)
-  async function mapWrite(sheet, edits) {
+  async function mapWriteSheet(sheet, edits) {
     if (!edits.length) return {res: [], rows: {}};
     const j = await bridge('write', {book: BOOK, sheet, edits});
     const res = (j.results || []).slice(), rows = Object.assign({}, j.rows || {});
@@ -2939,6 +2951,29 @@
     }
     return {res, rows};
   }
+  /* 구글시트를 끊은 탭 (2026-11-20 19시부터 34탭 전부) — 매핑도 시트가 아니라 오피스 저장소에서 읽고 쓴다.
+     전엔 끊은 뒤에도 시트 CSV 를 읽고 브리지로 시트에 쓴 다음, 저장소엔 erp_cell_edit(p_p 0 · p_row) 로 줄을 덮으려 했는데
+     끊은 탭은 p_row 를 안 받아서 고른 재고 줄의 카테고리만 빈칸이 되고 숫자는 저장소에 안 들어갈 길이었다 (시트를 비공개로 돌리면 아예 실패).
+     storeRows = 저장소 줄 그대로 · mapWriteDb = 칸마다 erp_cell_edit(p_old — 그사이 바뀌었으면 conflict, 브리지 old 와 같은 규칙). 돌려주는 모양은 mapWrite 와 같다 */
+  async function storeRows(gid) {
+    return (await fetchAllRows(gid)).map(x => ({r: x.r, v: (Array.isArray(x.v) ? x.v : []).map(t => t == null ? '' : String(t))}));
+  }
+  async function mapWriteDb(gid, edits, who) {
+    const res = [], rows = {};
+    for (const e of edits) {
+      const call = old => sbRpc('erp_cell_edit', {p_gid: gid, p_r: e.r, p_p: e.c - 1, p_new: String(e.v), p_row: null, p_who: who, p_old: old == null ? null : String(old)});
+      try {
+        let d = await call(e.old);
+        if (d && d.conflict && e.old != null && norm(d.current) === norm(e.old)) d = await call(null);   // 띄어쓰기 · 줄바꿈만 다름 = 같은 값
+        if (d && d.conflict) { res.push({ok: false, error: 'conflict', current: d.current}); if (Array.isArray(d.v)) rows[e.r] = d.v; continue; }
+        if (!d || !d.ok || !Array.isArray(d.v)) throw new Error('db_error');
+        bumpRows(gid, d);
+        rows[e.r] = d.v;
+        res.push({ok: true});
+      } catch (err) { S.dbErrAt = Date.now(); res.push({ok: false, error: (err && err.message) || 'error'}); }
+    }
+    return {res, rows};
+  }
   async function applyMap() {
     if (M.busy || !M.open) return;
     const src = M.src, t = tabOf(M.gid), mc = src.mc, brand = mapBrand(M.gid);
@@ -2948,18 +2983,22 @@
     if (M.mode === 'new' && M.count !== '' && numOf(M.count) === null) { setMapMsg('남은 재고는 숫자로 적어 주세요', 'err'); return; }
     if (M.mode === 'send' && M.save && !brand) { setMapMsg('어느 브랜드 탭인지 몰라 규칙을 저장할 수 없어요', 'err'); return; }
     M.busy = true;
-    setMapMsg('구글시트를 새로 읽는 중…', 'busy');
+    const cut = cutTab(M.gid);   // 구글시트를 끊은 탭 — 읽기 · 쓰기 모두 오피스 저장소 (storeRows · mapWriteDb)
+    setMapMsg(cut ? 'ERP 를 새로 읽는 중…' : '구글시트를 새로 읽는 중…', 'busy');
     const who = whoAmI() || null, done = [], fail = [], touched = {};
-    const info = tabInfo(M.gid), fxAt = (r, p) => isFxCell(info, r, p);
+    // 끊은 탭엔 시트 수식이 없다 (합계 · 잔량은 저장소가 다시 계산) — ⚠ 줄은 0 · FALSE 까지 다 비워 빈 줄로
+    const info = tabInfo(M.gid), fxAt = (r, p) => !cut && isFxCell(info, r, p), blankish = val => val === '' || (!cut && (val === '0' || val === 'FALSE'));
+    const readRows = () => cut ? storeRows(M.gid) : directRows(M.gid);
+    const mapWrite = (sheet, edits) => cut ? mapWriteDb(M.gid, edits, who) : mapWriteSheet(sheet, edits);
     const vOf = (v, c) => c ? String(v[c.p] == null ? '' : v[c.p]) : '';
-    const sheetLog = (cell, oldv, newv, ok, err) => fetch(`${SB_URL}/rest/v1/md_sheet_edit_log`, {method: 'POST', headers: sbH({Prefer: 'return=minimal'}),
+    const sheetLog = (cell, oldv, newv, ok, err) => cut ? null : fetch(`${SB_URL}/rest/v1/md_sheet_edit_log`, {method: 'POST', headers: sbH({Prefer: 'return=minimal'}),   // 끊은 탭은 erp_history 가 남김
       body: JSON.stringify({who: `${who || '이름 모름'} · ERP 매핑`, book: BOOK, sheet: t.name, cell, old_value: oldv == null ? null : String(oldv), new_value: String(newv), ok: !!ok, error: err || null})}).catch(() => {});
     try {
-      // 0. 지금 시트 — ⚠ 줄 · 고른 줄을 상품명 · 옵션으로 다시 찾는다
-      let fresh = await directRows(M.gid);
+      // 0. 지금 자료 (끊은 탭 = 저장소, 아니면 시트) — ⚠ 줄 · 고른 줄을 상품명 · 옵션으로 다시 찾는다
+      let fresh = await readRows();
       const findTemp = rows => rows.filter(x => /^\s*⚠/.test(vOf(x.v, mc.cat)) && vOf(x.v, mc.name).trim() === src.name && vOf(x.v, mc.opt).trim() === src.opt);
       const tmp = findTemp(fresh);
-      if (tmp.length !== 1) throw new Error(tmp.length ? '같은 ⚠ 줄이 시트에 여러 개예요 — 구글시트에서 확인해 주세요' : '이 ⚠ 줄이 시트에서 이미 정리됐거나 바뀌었어요 — 화면을 새로 불러와 주세요');
+      if (tmp.length !== 1) throw new Error(tmp.length ? `같은 ⚠ 줄이 여러 개예요 — ${cut ? '표에서' : '구글시트에서'} 확인해 주세요` : '이 ⚠ 줄이 그사이 이미 정리됐거나 바뀌었어요 — 화면을 새로 불러와 주세요');
       const tv = tmp[0];
       if (M.mode === 'new') {
         setMapMsg('새 상품으로 적는 중…', 'busy');
@@ -2973,7 +3012,7 @@
         const tg = M.picks.map(p => {
           const hits = fresh.filter(x => x.r !== tv.r && !NOT_STOCK.test(vOf(x.v, mc.cat)) && vOf(x.v, mc.name).trim() === p.name && vOf(x.v, mc.opt).trim() === p.opt);
           const hit = hits.length === 1 ? hits[0] : hits.find(x => x.r === p.r);
-          if (!hit) throw new Error(`'${mapLabel(p.name, p.opt)}' 줄을 시트에서 ${hits.length ? '하나로 못 골랐어요 (같은 줄이 여러 개)' : '못 찾았어요'}`);
+          if (!hit) throw new Error(`'${mapLabel(p.name, p.opt)}' 줄을 ${cut ? '' : '시트에서 '}${hits.length ? '하나로 못 골랐어요 (같은 줄이 여러 개)' : '못 찾았어요'}`);
           return Object.assign({}, p, {r: hit.r, v: hit.v});
         });
         // 1. 규칙 — 다음 처리부터 두 ERP 가 읽는다 (같은 이름 · 옵션 규칙은 새 것으로 바뀜)
@@ -2990,13 +3029,13 @@
         Object.assign(touched, w1.rows);
         w1.res.forEach((x, i) => { if (x && x.ok) sheetLog(`${colName(idE[i].c - 1)}${idE[i].r}`, idE[i].old, '', true); });
         if (w1.res.some(x => !x || !x.ok)) {
-          throw new Error('⚠ 줄 위치 · 이름이 그사이 바뀌었어요 — 화면을 새로 불러와 다시 해 주세요' + (w1.res.some(x => x && x.ok) ? ' (그 줄 일부 칸은 이미 비움 — 구글시트에서 확인해 주세요)' : ''));
+          throw new Error('⚠ 줄 위치 · 이름이 그사이 바뀌었어요 — 화면을 새로 불러와 다시 해 주세요' + (w1.res.some(x => x && x.ok) ? ` (그 줄 일부 칸은 이미 비움 — ${cut ? '수정 로그에서' : '구글시트에서'} 확인해 주세요)` : ''));
         }
         const chP = new Set(src.ch.map(x => x.c.p).concat(mc.ch.map(c => c.p)));
         const skipP = new Set(idCols.map(c => c.p));
         let rest = [];
         tv.v.forEach((val, p) => {
-          if (val === '' || val === '0' || val === 'FALSE' || skipP.has(p) || fxAt(tv.r, p)) return;
+          if (blankish(val) || skipP.has(p) || fxAt(tv.r, p)) return;
           rest.push({r: tv.r, c: p + 1, v: '', old: val});
         });
         const taken = new Map();   // 판매 칸 p → ⚠ 줄에서 비운 수
@@ -3010,7 +3049,7 @@
             else if (x && x.error === 'conflict' && round < 2) next.push(Object.assign({}, e, {old: x.current == null ? '' : String(x.current)}));
             else if (!(x && x.error === 'formula_cell')) fail.push(`${colName(p)}${e.r}`);
           });
-          rest = next.filter(e => e.old !== '' && e.old !== '0' && e.old !== 'FALSE');
+          rest = next.filter(e => !blankish(e.old));
         }
         // 3. 고른 줄에 더하기 — 요청 둘로: (가) 상품명 칸을 같은 값으로 써서 '그 줄이 맞는지' 확인 → (나) 확인된 줄에만 숫자.
         //    (맨 위 ⚠️ 배너가 생기고 지워지면 줄 번호가 하나씩 밀리는데, 0 · 1 같은 작은 숫자는 다른 줄에서도 전 값이 같아 보일 수 있다)
@@ -3059,8 +3098,8 @@
               else { fail.push(`${colName(e.c - 1)}${e.r}`); w.cells = w.cells.filter(c => c !== cell); }
             });
           }
-          if (lost.length) {   // 줄이 밀렸음 — 시트를 다시 읽어 상품명 · 옵션으로 다시 찾는다
-            fresh = await directRows(M.gid);
+          if (lost.length) {   // 줄이 밀렸음 — 다시 읽어 상품명 · 옵션으로 다시 찾는다
+            fresh = await readRows();
             lost.forEach(w => {
               const hits = fresh.filter(x => !NOT_STOCK.test(vOf(x.v, mc.cat)) && vOf(x.v, mc.name).trim() === w.x.name && vOf(x.v, mc.opt).trim() === w.x.opt);
               if (hits.length === 1) { w.r = hits[0].r; w.v = hits[0].v; }
@@ -3071,14 +3110,15 @@
         want.forEach(w => w.cells.forEach(c => fail.push(`${mapLabel(w.x.name, w.x.opt)} ${c.stock ? '남은 재고' : '판매'} (계속 바뀜)`)));
         M.skipped = want.filter(w => w.skipped.length).map(w => mapLabel(w.x.name, w.x.opt));
       }
-      // 4. 오피스 저장소 — 시트가 돌려준 줄 그대로 (비운 ⚠ 줄은 빈 줄로)
-      setMapMsg('오피스 저장소에 적는 중…', 'busy');
+      // 4. 오피스 저장소 — 시트가 돌려준 줄 그대로 (비운 ⚠ 줄은 빈 줄로). 끊은 탭은 이미 저장소에 칸마다 썼으니 돌려받은 줄로 화면만
+      if (!cut) setMapMsg('오피스 저장소에 적는 중…', 'busy');
       const ent = S.cache.get(M.gid);
       for (const [rk, arr] of Object.entries(touched)) {
         const r = +rk, a = (Array.isArray(arr) ? arr : []).map(x => x == null ? '' : String(x));
         const blank = a.every((x, i) => x === '' || x === '0' || x === 'FALSE' || fxAt(r, i));   // 비운 ⚠ 줄 (합계 같은 수식 칸만 남음)
         let v = blank ? [] : a;
-        try {
+        if (cut) v = a.some(x => x !== '') ? a : [];
+        else try {
           const d = await sbRpc('erp_cell_edit', {p_gid: M.gid, p_r: r, p_p: 0, p_new: '', p_row: v, p_who: who});
           if (d && Array.isArray(d.v)) v = d.v;
           if (d && d.rows_ver && t.info) { if (ent && ent.rowsVer >= +t.info.rows_ver) ent.rowsVer = +d.rows_ver; t.info.rows_ver = Math.max(+t.info.rows_ver, +d.rows_ver); }
@@ -3095,7 +3135,7 @@
       rerender(S.cur);
       if (S.sel && S.sel.r === src.r) closeDetail();
       const head = M.mode === 'new' ? `새 상품으로 등록됨 · ${src.name}` : `매핑됨 · ${mapLabel(src.name, src.opt)} → ${M.picks.map(p => mapLabel(p.name, p.opt) + (p.per > 1 ? ` ×${p.per}` : '')).join(' + ')}`;
-      toast(head + (skipped.length ? ` · 남은 재고 빈칸이라 안 뺀 줄: ${skipped.join(', ')}` : '') + (fail.length ? ` · 못 쓴 칸 ${fail.join(', ')} — 구글시트에서 확인해 주세요` : '') + (M.mode === 'send' && M.save ? ' · 다음 주문부터 자동' : ''), !!fail.length);
+      toast(head + (skipped.length ? ` · 남은 재고 빈칸이라 안 뺀 줄: ${skipped.join(', ')}` : '') + (fail.length ? ` · 못 쓴 칸 ${fail.join(', ')} — ${cut ? '그 줄을 확인해 주세요' : '구글시트에서 확인해 주세요'}` : '') + (M.mode === 'send' && M.save ? ' · 다음 주문부터 자동' : ''), !!fail.length);
     } catch (e) {
       M.busy = false;
       const m = (e && e.message) || String(e);
@@ -3813,7 +3853,7 @@
     const [t, d] = ERR[e] || [direct ? '구글시트를 읽지 못했어요' : '오피스 저장소를 읽지 못했어요', `(${e}) 잠시 뒤 다시 시도해 주세요.`];
     const m = $('msg');
     m.innerHTML = `<b>${esc(t)}</b>${esc(d)}<br><button type="button" data-act="retry">다시 불러오기</button>`
-      + (S.cur && !direct ? ` <button type="button" data-act="direct" class="msg-2">구글시트에서 바로 보기</button>` : '');
+      + (S.cur && !direct && !cutTab(S.cur) ? ` <button type="button" data-act="direct" class="msg-2">구글시트에서 바로 보기</button>` : '');   // 끊은 탭은 시트가 옛 값 (곧 비공개)
     m.hidden = false;
   }
   function hideMsg() { $('msg').hidden = true; }
@@ -4278,6 +4318,14 @@
   }
   setInterval(tick, 2000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(tick, 300); });
+  /* 저장 중 · 고치던 칸이 있는데 탭을 닫거나 새로고침하면 브라우저가 한 번 묻는다 (2026-11-20 구글시트를 끊은 뒤 ERP 가 원본이라 —
+     칸에 쳐 놓고 Enter 전에 닫으면 그 값은 어디에도 안 남는다). 저장은 보통 1초 안에 끝나서 평소엔 안 뜬다 */
+  window.addEventListener('beforeunload', e => {
+    const typing = !!(CE.x && CE.el && String(CE.el.value).replace(/\r\n?/g, '\n') !== CE.orig);
+    const boxOpen = !!(E.x && !$('edbox').hidden && (() => { const f = $('edbox').querySelector('input,textarea'); return f && E.x.cell && f.value !== E.x.cell.t; })());
+    const saving = M.busy || [...E.pend.values()].some(pd => pd.busy);
+    if (typing || boxOpen || saving) { e.preventDefault(); e.returnValue = ''; }
+  });
   let rzT = 0;
   window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(tick, 180); });
   narrow.addEventListener && narrow.addEventListener('change', () => { if (!narrow.matches) setNav(false); $('dscrim').hidden = !narrow.matches || $('detail').hidden; renderGrid({keep: true}); });
