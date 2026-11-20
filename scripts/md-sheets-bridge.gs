@@ -34,6 +34,12 @@ const LATEST_ONLY = /^\d+\.\d+(코페리|아페티|코즈미)송장출력$/;
 
 const MAX_ROWS = 3000;
 
+/* 버전 3 (2026-11-20, 오피스 MD팀 시트 "함수 기능 넣어줘"): 쓰기에서 함수(수식)를 받는다 — 오피스는 ping 의 v 가 3 이상일 때만 함수를 보낸다.
+ *  · edits[].f = true  → v('='로 시작)를 그 칸의 수식으로 (setFormula). 빈 칸 · 값 칸 · 수식 칸 모두
+ *  · edits[].replace = true → 수식 칸에 값을 넣어 수식을 지움 (없으면 예전처럼 formula_cell 로 거절)
+ *  · 둘 다 없으면 버전 2 와 똑같다 (ERP전산팀 · 예전 MD팀 목록이 쓰던 그대로) */
+const BRIDGE_VERSION = 3;
+
 function doGet(e) { return route_((e && e.parameter) || {}); }
 function doPost(e) {
   let p = {};
@@ -46,7 +52,7 @@ function route_(p) {
     if (p.action === 'pair') return json_(pair_());
     if (!checkToken_(p.token)) return json_({ ok: false, error: 'unauthorized' });
     switch (p.action) {
-      case 'ping':  return json_({ ok: true });
+      case 'ping':  return json_({ ok: true, v: BRIDGE_VERSION });
       case 'meta':  return json_(meta_(p.fresh === '1' || p.fresh === true));
       case 'read':  return json_(read_(p.book, p.sheet, p.have || null, p.parts || ''));
       case 'write': return json_(write_(p.book, p.sheet, p.edits || []));
@@ -349,12 +355,20 @@ function write_(key, name, edits) {
       const r = Number(e.r), c = Number(e.c);
       if (!(r >= 1 && c >= 1)) { results.push({ r: r, c: c, ok: false, error: 'bad_cell' }); return; }
       const cell = sh.getRange(r, c);
-      if (cell.getFormula()) { results.push({ r: r, c: c, ok: false, error: 'formula_cell' }); return; }
+      const hasFx = !!cell.getFormula();
+      if (hasFx && !e.f && !e.replace) { results.push({ r: r, c: c, ok: false, error: 'formula_cell' }); return; }
       const cur = cell.getDisplayValue();
       if (e.old != null && String(e.old) !== cur) {
         results.push({ r: r, c: c, ok: false, error: 'conflict', current: cur }); return;
       }
-      cell.setValue(coerce_(cell, e.v));
+      if (e.f) {   // 함수 — '=' 로 시작하는 글을 수식으로
+        const fx = String(e.v == null ? '' : e.v).trim();
+        if (fx.charAt(0) !== '=' || fx.length < 2) { results.push({ r: r, c: c, ok: false, error: 'not_formula' }); return; }
+        cell.setFormula(fx);
+      } else {
+        if (hasFx) cell.clearContent();   // replace — 수식을 지우고 값으로
+        cell.setValue(coerce_(cell, e.v));
+      }
       touchedRows[r] = true;
       results.push({ r: r, c: c, ok: true });
     });
