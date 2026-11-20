@@ -12272,6 +12272,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 기밀 숫자 · 링크 — 지희선 · 전승훈 · 전수빈만 (2026-11-20 사장님). secretApply() 가 secretOk() 일 때만 body.secret-ok 를 붙인다.
      없으면(다른 직원 · 이름 고르기 전) .secret-only 는 아예 안 보인다. 숫자 · 링크는 되도록 JS 에서 그리지 않고, 이 줄은 안전망. */
   body:not(.secret-ok) .secret-only{display:none !important}
+  body:not(.design-ok) .design-secret{display:none !important}   /* 디자인팀 안의 기밀 — 박시호 · 대표 2명 (designSecretOk) */
 
   /* ===== ERP전산팀(erp/) · 시딩 마스터(seeding/) — MD팀 시트 창처럼 가장자리에서 살짝 띄운 둥근 창 (2026-11-20 사용자 "MD팀처럼 erp도 좌/우 여백 조금만,
      erp 디자인과 동일한 서식들도"). 상단 바 아래를 꽉 채우던 iframe 둘레에 오피스 바탕색 여백 + 둥근 테두리. VOC 전산 · MD팀 시트는 이미 이 모양 ===== */
@@ -13266,7 +13267,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <span class="lsb-stamp" id="lsbStamp"></span>
           <span class="lsb-sp"></span>
           <button type="button" class="lsb-btn" onclick="lsbRefresh()" title="시트에서 지금 다시 불러오기">↻ 새로고침</button>
-          <a class="lsb-btn secret-only" href="https://docs.google.com/spreadsheets/d/1Q3eMHCnPsbt3ijGv3Gswym9Q_ao_fJsPSZg8n7R-tng/edit" target="_blank" rel="noopener" title="구글시트에서 열기">시트 ↗</a>
+          <a class="lsb-btn design-secret" href="https://docs.google.com/spreadsheets/d/1Q3eMHCnPsbt3ijGv3Gswym9Q_ao_fJsPSZg8n7R-tng/edit" target="_blank" rel="noopener" title="구글시트에서 열기">시트 ↗</a>
           <button type="button" class="lsb-btn" id="lsbFoldBtn" aria-expanded="true" aria-controls="lsbCols" onclick="lsbFold()">접기</button>
         </div>
         <div class="lsb-tabs" id="lsbTabs" role="tablist" aria-label="시즌"></div>
@@ -21625,6 +21626,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.body.classList.toggle('secret-ok',ok);
     document.querySelectorAll('[data-secret-card]').forEach(el=>{ el.hidden=!ok; });   // 홈 · 폴더의 기밀 화면 카드 (기본 hidden)
     const dh=document.getElementById('designHero'); if(dh) dh.hidden=!designHasAccess();   // 디자인팀 (박시호 · 대표 2명)
+    document.body.classList.toggle('design-ok',designSecretOk());   // 디자인팀 안의 기밀 (.design-secret)
     if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
   }
   // 표 머리글로 기밀 칸 찾기 — 원가 · 단가 · 매입 · 공급가 · 마진 · 판매가 · 정가 · 할인가 · 가격 · 위안 · 공급처 (매출 · 광고비 칸은 걸리지 않음)
@@ -21635,10 +21637,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function secretLink(u){ return SECRET_LINK_RE.test(String(u||'')); }
   window.secretOk=secretOk; window.secretApply=secretApply; window.secretHead=secretHead; window.secretLink=secretLink;
   /* 디자인팀 화면 (2026-11-20 사장님 "디자인탭은 시호, 대표 2명만 볼 수 있게") — 홈 카드 · 화면 진입 모두 이 명단 (관리자 PIN 이어도 명단 밖이면 숨김).
-     디자인팀 안의 견적서는 이 명단 모두에게 연다 (사장님 "시호한테는 견적들 다 오픈"). 정상가 · 매칭보드 단가 · 시트/노션 링크는 위 기밀 규칙(secretOk)을 따른다. */
+     디자인팀 안의 기밀(견적서 · 라인시트 정상가 · 매칭보드 원단 단가 · 시트/노션 링크)은 이 명단 모두에게 연다 — designSecretOk()
+     (사장님 "시호한테는 견적들 다 오픈" → "디자인팀은 시호한테 전부 열어줘. 시호는 디자인팀 담당자야"). */
   const DESIGN_ALLOWED=new Set(['전승훈','전수빈','박시호']);
   function designHasAccess(){ try{ return DESIGN_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me')||'').trim()); }catch(e){ return false; } }
-  window.designHasAccess=designHasAccess;
+  function designSecretOk(){ return designHasAccess() || secretOk(); }   // 디자인팀 화면 안의 기밀 판정
+  window.designHasAccess=designHasAccess; window.designSecretOk=designSecretOk;
   function applyRole(){
     const role=getRole();
     document.body.classList.toggle('role-master',role==='master');
@@ -25345,8 +25349,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     bag.fabric = blocks(secs.fabric);
     bag.lining = blocks(secs.lining);
     bag.hardware = blocks(secs.hardware).flat().sort((a, b) => a.s0 - b.s0);
-    // 원단 · 부자재 단가 = 기밀 — 명단 밖 PC 에선 금액 · 단가가 적힌 줄을 아예 뺀다 (2026-11-20)
-    if(!secretOk()){
+    // 원단 · 부자재 단가 = 기밀 — 디자인팀 명단(박시호 · 대표 2명) 밖 PC 에선 금액 · 단가가 적힌 줄을 아예 뺀다 (2026-11-20)
+    if(!designSecretOk()){
       const PRICE = /단가|가격|원가|공급가|금액|[₩￦¥￥]|위안|\d[\d,.]*\s*(원|위안|元)(?![가-힣])/;
       const strip = b => { b.lines = (b.lines || []).filter(t => !PRICE.test(String(t || ''))); };
       [...bag.fabric.flat(), ...bag.lining.flat(), ...bag.hardware].forEach(strip);
@@ -25556,7 +25560,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const E = escapeHTML, chips = document.getElementById('mbChips'), at = document.getElementById('mbAt'), open = document.getElementById('mbSheet');
     if(chips) chips.innerHTML = (_mb.tabs || []).map(t => `<button type="button" class="mb-chip${t.gid === _mb.cur ? ' is-on' : ''}" onclick="mbPick('${E(t.gid)}')">${E(t.name)}</button>`).join('');
     if(at) at.textContent = _mb.busy ? '불러오는 중…' : _mb.at ? new Date(_mb.at).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'}) + ' 기준' : '';
-    if(open && _mb.id){ open.href = secretOk() ? _mbSheetUrl('edit') : '#'; open.hidden = !secretOk(); }   // 구글시트 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
+    if(open && _mb.id){ open.href = designSecretOk() ? _mbSheetUrl('edit') : '#'; open.hidden = !designSecretOk(); }   // 구글시트 링크 = 디자인팀 명단(박시호 · 대표 2명)
     const doc = _mb.docs[_mb.cur];
     if(!doc){
       board._mbSig = null;
@@ -25987,7 +25991,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         const when = s.k === 'due' ? `${_lsbMd(s.d)} 입고 · D-${s.n}` : s.k === 'arr' ? `${_lsbMd(s.d)} 입고` : s.k === 'req' ? `${_lsbMd(s.d)} 요청` : '—';
         return `<div class="lsb-crow"><i style="background:${_lsbSwatch(x.color)}"></i><span>${E(x.color)}</span>${rd ? `<small>${E(rd)}</small>` : ''}<em class="${s.k}">${when}</em></div>`;
       }).join('');
-      const sec = secretOk();   // 정상가 · 구글시트 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
+      const sec = designSecretOk();   // 정상가 · 구글시트 링크 = 디자인팀 명단(박시호 · 대표 2명)
       const price = sec && it.meta['정상가'] && /[1-9]/.test(it.meta['정상가']) ? it.meta['정상가'] : '';
       const fac = it.factory.split(/\n+/).map(s => s.trim()).filter(Boolean).join(' · ');
       const dl = (k, v) => v ? `<div class="lsb-dl"><b>${k}</b>${E(v)}</div>` : '';
@@ -26184,8 +26188,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const reload = document.getElementById(cfg.reloadBtnId);
     if(!body) return;
     if(empty) empty.hidden = !!clean;
-    if(urlShow) urlShow.textContent = secretOk() ? clean : '';   // 노션 주소 = 기밀 링크 (지희선 · 전승훈 · 전수빈만, 2026-11-20)
-    if(openBtn) openBtn.hidden = !clean || !secretOk();
+    if(urlShow) urlShow.textContent = designSecretOk() ? clean : '';   // 노션 주소 = 디자인팀 명단(박시호 · 대표 2명)만 (2026-11-20)
+    if(openBtn) openBtn.hidden = !clean || !designSecretOk();
     if(reload) reload.hidden = !clean;
     if(!clean){
       body.innerHTML = '';
@@ -26339,7 +26343,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const cls = _ntColor(n.h);
       if(cls) t = `<span class="${cls}">${t}</span>`;
       const href = _ntHref(n.a);
-      if(href && (secretOk() || !secretLink(href))) t = `<a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">${t}</a>`;
+      if(href && (designSecretOk() || !secretLink(href))) t = `<a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">${t}</a>`;
       out += t;
     }
     return out;
@@ -26444,7 +26448,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const href = _ntHref(b.href);
     const head = `<div class="nt-table-name">🗂 ${_ntEsc(b.name||'데이터베이스')}`
       + `<span class="nt-badge">${entries.length}건</span>`
-      + (href && secretOk()?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
+      + (href && designSecretOk()?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
       + '</div>';
     const cut = _ntExpandDays > 0 ? _ntCutDate(_ntExpandDays) : '';
     const items = entries.map((e,i)=>{
@@ -26463,7 +26467,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + `<span class="nt-entry-title">${_ntEsc(e.title||'')}</span>`
         + `<span class="nt-entry-meta">${e.edited?_ntEsc(e.edited)+' 수정':''}</span>`
         + '</summary><div class="nt-entry-body">' + inner
-        + (eh && secretOk()?`<a class="nt-link nt-entry-open" href="${_ntEsc(eh)}" target="_blank" rel="noopener noreferrer">↗ 노션에서 열기</a>`:'')
+        + (eh && designSecretOk()?`<a class="nt-link nt-entry-open" href="${_ntEsc(eh)}" target="_blank" rel="noopener noreferrer">↗ 노션에서 열기</a>`:'')
         + '</div></details>';
     }).join('');
     return `<div class="nt-entries">${head}${items || '<div class="nt-empty-rows">항목이 없습니다</div>'}</div>`;
@@ -26475,7 +26479,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const href = _ntHref(b.href);
     const head = `<div class="nt-table-name">📊 ${_ntEsc(b.name||'데이터베이스')}`
       + `<span class="nt-badge">${rows.length}건</span>`
-      + (href && secretOk()?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
+      + (href && designSecretOk()?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
       + '</div>';
     if(!cols.length) return `<div class="nt-table-wrap">${head}<div class="nt-empty-rows">항목이 없습니다</div></div>`;
     const th = cols.map(c=>`<th>${_ntEsc(c.name)}</th>`).join('');
@@ -26539,8 +26543,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function dcApplyCalendarUrl(url){ _dcApplyLink(DC_LINKS.calendar, url); }
   function dcNotionEdit(){ return _dcEditLink(DC_LINKS.notion); }
   function dcCalEdit(){ return _dcEditLink(DC_LINKS.calendar); }
-  function dcNotionOpenNew(){ if(_dcState.notionUrl && secretOk()) window.open(_dcState.notionUrl, '_blank', 'noopener,noreferrer'); }
-  function dcCalOpenNew(){ if(_dcState.calUrl && secretOk()) window.open(_dcState.calUrl, '_blank', 'noopener,noreferrer'); }
+  function dcNotionOpenNew(){ if(_dcState.notionUrl && designSecretOk()) window.open(_dcState.notionUrl, '_blank', 'noopener,noreferrer'); }
+  function dcCalOpenNew(){ if(_dcState.calUrl && designSecretOk()) window.open(_dcState.calUrl, '_blank', 'noopener,noreferrer'); }
   async function _dcLoadSettings(){
     try{
       const r = await fetch(`${_dcSbBase()}/design_center_settings?select=key,value&key=in.(notion_url,notion_calendar_url)`, {headers:_sbHeaders(), cache:'no-cache'});
