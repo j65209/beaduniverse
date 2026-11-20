@@ -22567,11 +22567,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(all) all.disabled = true;
     SIX_STOCK_BRANDS.forEach(b => _sixStockSetStatus(b.key, 'loading', '불러오는 중…'));
     try{
-      const base = await loadProxyBase();
-      if(!base) throw new Error('서버 연결 안 됨');
-      const r = await fetch(`${base}/erp/catalog${forceFresh ? '?fresh=1' : ''}`, {headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'}, cache:'no-store'});
-      const j = await r.json().catch(() => ({}));
-      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      // 2026-11-20 재고 ERP 구글시트 끊기 — 끊은 브랜드(erp_tabs.sheet_link=false)는 오피스 저장소 재고 탭에서(_erpStockFromStore),
+      // 아직 시트가 원본인 브랜드만 서버 /erp/catalog(구글시트). 둘 중 하나만 읽혀도 보여 준다
+      let j = null, jErr = null, st = null;
+      try{
+        const base = await loadProxyBase();
+        if(!base) throw new Error('서버 연결 안 됨');
+        const r = await fetch(`${base}/erp/catalog${forceFresh ? '?fresh=1' : ''}`, {headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'}, cache:'no-store'});
+        j = await r.json().catch(() => ({}));
+        if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      }catch(e){ j = null; jErr = e; }
+      try{ st = await _erpStockFromStore(); }catch(e){ st = null; }
+      if(!j && !(st && st.cut.size)) throw jErr || new Error('재고를 못 읽음');
+      if(st && st.cut.size){
+        j = Object.assign({ok:true, sheet:ERP_SHEET_ID}, j || {});
+        j.items = [...(j.items || []).filter(x => !st.cut.has(x.b)), ...st.items];
+        j.brands = Object.assign({}, j.brands || {}, st.brands);
+        j.fetchedAt = new Date().toISOString();
+      }
       _erpStock = {data:j, at:Date.now(), byBrand:_erpStockGroup(j)};
       _erpStockErr = '';
     }catch(e){
@@ -22581,6 +22594,46 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(all) all.disabled = false;
       sixStockRenderAll();
     }
+  }
+  /* 구글시트를 끊은 브랜드의 재고 (2026-11-20 사용자 "오피스앱 erp랑 구글시트 연결 끊어줘") — 오피스 저장소 재고 탭(erp_rows)에서
+     서버 /erp/catalog 와 같은 모양으로: items {b,n,c,o,s,po,rc,t} (⚠ · 묶음 줄은 t), brands {key: {tab, gid, blank}}. 에이전트 모아(agents.html edbCatalog)와 같은 규칙 */
+  const ERP_STORE_TAB = {apt:'아페티송장출력', kop:'코페리송장출력', koz:'코즈미송장출력', '6a':'식스에이송장출력', yar:'야르송장출력', pp:'프피송장출력', akoi:'아코이송장출력'};
+  async function _erpStockFromStore(){
+    const K = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+    const get = async p => { const r = await fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/' + p, {headers:{apikey:K, Authorization:'Bearer ' + K}, cache:'no-store'}); if(!r.ok) throw new Error('db_' + r.status); return r.json(); };
+    const tabs = await get('erp_tabs?select=gid,name,sheet_link&kind=eq.stock&alive=is.true&deleted_at=is.null&order=pos.asc') || [];
+    const out = {cut:new Set(), items:[], brands:{}};
+    const numOf = x => { const t = String(x == null ? '' : x).replace(/,/g, '').trim(); return t === '' ? null : /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : null; };
+    const norm = x => String(x == null ? '' : x).replace(/\s+/g, '');
+    for(const [b, word] of Object.entries(ERP_STORE_TAB)){
+      const tab = tabs.find(t => String(t.name).includes(word));
+      if(!tab || tab.sheet_link !== false) continue;
+      const rows = [];
+      for(let after = 0; ;){
+        const page = await get(`erp_rows?select=r,v&gid=eq.${encodeURIComponent(tab.gid)}&deleted_at=is.null&r=gt.${after}&order=r.asc&limit=1000`) || [];
+        rows.push(...page);
+        if(page.length < 1000) break;
+        after = page[page.length - 1].r;
+      }
+      const hr = rows.find(x => x.r <= 6 && (String((x.v || [])[1] ?? '').trim() === '상품명' || String((x.v || [])[0] ?? '').trim() === '카테고리'));
+      if(!hr) continue;
+      const H = (hr.v || []).map(norm), col = n => H.indexOf(n);
+      const C = {cat:col('카테고리'), name:col('상품명'), opt:col('옵션'), stock:col('남은재고'), po:col('발주수량'), rc:col('입고수량')};
+      if(C.name < 0 || C.stock < 0) continue;
+      out.cut.add(b);
+      let blank = 0;
+      rows.filter(x => x.r > hr.r).forEach(x => {
+        const v = x.v || [], n = String(v[C.name] ?? '').trim();
+        if(!n) return;
+        const cat = C.cat >= 0 ? String(v[C.cat] ?? '').trim() : '';
+        const t = cat.startsWith('⚠') || /^묶음/.test(cat) || /중복/.test(cat) ? 1 : 0;
+        const s = numOf(v[C.stock]);
+        if(!t && s == null) blank++;
+        out.items.push({b, n, c:cat, o:C.opt >= 0 ? String(v[C.opt] ?? '').trim() : '', s, po:C.po >= 0 ? numOf(v[C.po]) : null, rc:C.rc >= 0 ? numOf(v[C.rc]) : null, t});
+      });
+      out.brands[b] = {tab:String(tab.name).replace(/송장출력$/, ' 재고') + ' · 오피스 재고 ERP', gid:null, blank};
+    }
+    return out;
   }
   // 송장출력 한 행 = 상품 · 옵션 하나. 이름이 같은 행들을 한 상품으로 묶는다 (임시등록 · 묶음 행은 서버가 t 로 표시 → 뺀다)
   function _erpStockGroup(j){
