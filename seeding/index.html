@@ -1,0 +1,1813 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>시딩 마스터 · 비드유니버스 오피스</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<script>
+  /* 오피스 잠금 연동 (erp/ · models/ 와 같은 방식) — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음.
+     오피스 안 화면(iframe, index.html 의 TOOL_PAGES 'seeding')으로 열렸으면 '← 오피스 홈' 은 그 화면을 닫는다 (bbToolClose).
+     회사 주소(beaduniverse.kr/office/)에선 오피스가 이 HTML 을 받아 빈 iframe 에 직접 쓰므로 홈 주소는 부모(오피스)에서 얻는다. */
+  (function () {
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    try { if (window.parent === window && localStorage.getItem('brightbeed_unlocked') !== '1') { location.replace(home + '?from=seeding'); return; } } catch (e) { /* noop */ }
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) {
+        a.href = home;
+        if (inOffice) a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
+        });
+      });
+    });
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  /* 시딩 마스터 — 구글시트 'x시딩 및 시호님시딩'(브랜드별 X 시딩 탭 · 시호님 인스타 시딩 탭 · 주의사항)을 업무 프로그램 화면으로 본다
+     · 2026-11-20 사용자 "erp 전산과 동일한 디자인으로 깔끔하게 — 업무용 툴에 시딩 마스터로, 브랜드별로, 행에 있는 양식 그대로"
+       → 화면 뼈대 · 색 · 표(칸 너비 자동 · 정렬 · 상세 창 · 휴대폰 화면)는 erp/index.html 과 같은 CSS 를 그대로 쓴다 (아래 '시딩 마스터만' 부분만 더함).
+     · 자료는 시트 '웹 보기'(htmlview/sheet)를 브라우저가 구글에서 바로 받는다 (링크 보기 공개 시트, CORS 허용, 서버 · 키 없음) — ERP전산팀과 같음.
+       단, 시트 주소는 이 파일(공개 레포)에 적지 않고 오피스 슈퍼베이스 app_kv 'seeding_sheet' 에서 읽는다 (시호님 탭에 받는 분 연락처 · 주소).
+     · 칸은 시트 머리글 줄 그대로 (x 아이디 · 원하는 제품 · x url · 유상 / 무상 · 비고 · 업로드 · 책임자 / 시호님 탭은 INSTAGRAM ID … 업로드 · 메모).
+       '무상'만 미리 적힌 양식 줄은 빼고, 시트에서 아이디 칸이 노란색인 줄은 '보냄'(아페티 탭 [참고] "노란색 박스 → 보냄 완료 표시").
+     · 시호님 탭의 받는분 성함 · 연락처 · 주소는 가려서 보이고, 상세 창의 '배송 정보 보기 · 복사'로만 그대로 본다.
+     · 고치기는 아직 구글시트에서 (오피스에서 고치려면 MD팀 브리지에 이 시트를 넣고 Apps Script 새 버전 배포가 필요). */
+  :root{
+    --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+    --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
+    --text:#0f172a; --text-2:#334155; --text-3:#64748b; --text-4:#94a3b8;
+    --accent:#16a34a; --accent-ink:#15803d; --accent-soft:#ecfdf3;
+    --side:#0f172a; --side-text:#cbd5e1; --side-mute:#64748b;
+    --danger:#dc2626; --warn:#d97706; --info:#2563eb;
+    --row-h:34px; --side-w:224px; --detail-w:400px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none}
+  /* 휴대폰: 두 번 눌러 확대 · 누를 때 회색 번쩍임 막기 (두 손가락 확대는 그대로), 끌어내려 새로고침 · 오피스 화면으로 스크롤이 넘어가는 것 막기 (overscroll) */
+  html{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+  a{color:inherit}
+  .app{height:100vh;height:100dvh;display:flex;overflow:hidden;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+
+  /* ── 왼쪽 메뉴 ── */
+  .side{flex:none;width:var(--side-w);display:flex;flex-direction:column;background:var(--side);color:var(--side-text)}
+  .side-top{flex:none;display:flex;align-items:center;gap:11px;height:58px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .logo{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,#22c55e,#15803d);box-shadow:0 2px 10px rgba(34,197,94,.35)}
+  .logo svg{width:16px;height:16px;color:#fff}
+  .side-top b{display:block;font-size:15px;font-weight:800;color:#fff;letter-spacing:-.02em}
+  .side-top small{display:block;margin-top:1px;font-size:11px;color:var(--side-mute)}
+  .side-fold{flex:none;margin-left:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--side-mute)}
+  .side-fold:hover{background:rgba(255,255,255,.08);color:#fff}
+  .side-fold svg{width:17px;height:17px}
+  /* 왼쪽 메뉴 접기 (PC) — 접으면 표가 그만큼 넓어지고, 위 막대의 ☰ 로 다시 편다 */
+  .app.side-off .menu{display:grid}
+  @media (min-width:1001px){ .app.side-off .side{display:none} }
+  .nav{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:6px 10px 16px;scrollbar-width:thin;scrollbar-color:#334155 transparent}
+  .nav-sec{margin:16px 0 6px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--side-mute)}
+  .nav-item{position:relative;width:100%;display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;font-size:13.5px;text-align:left;color:var(--side-text)}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.on{background:rgba(34,197,94,.16);color:#fff;font-weight:700}
+  .nav-item.on::before{content:'';position:absolute;left:-10px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:#22c55e}
+  .nav-item .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#475569}
+  .nav-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-item .nd{flex:none;font-size:11px;color:var(--side-mute);font-variant-numeric:tabular-nums}
+  .nav-item.on .nd{color:#86efac}
+  .side-foot{flex:none;padding:10px 10px 14px;border-top:1px solid rgba(255,255,255,.07)}
+  .side-link{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:8px;font-size:12.5px;color:var(--side-text);text-decoration:none}
+  .side-link:hover{background:rgba(255,255,255,.06);color:#fff}
+  .side-link svg{width:15px;height:15px;opacity:.8}
+  .scrim,.dscrim{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:45}
+  .dscrim{z-index:39}   /* 상세 창(40) 아래 — 전엔 45 라 휴대폰에서 상세 창 위를 덮어, 창을 누르면 그냥 닫혔다 (2026-11-20) */
+
+  /* ── 본문 ── */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .bar{flex:none;display:flex;align-items:center;gap:8px;height:58px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .menu{display:none}
+  .find{flex:0 1 420px;min-width:0;display:flex;align-items:center;gap:7px;height:38px;padding:0 8px 0 13px;border-radius:10px;background:#f1f4f8;border:1px solid transparent;cursor:text}
+  .find:focus-within{background:#fff;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .find svg{flex:none;width:16px;height:16px;color:var(--text-4)}
+  .find input{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font:inherit;font-size:13.5px;color:var(--text)}
+  .find input::-webkit-search-cancel-button{display:none}
+  .qn{flex:none;font-size:12px;font-weight:700;color:var(--info);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .qx{flex:none;width:24px;height:24px;border-radius:50%;color:var(--text-4);font-size:12px}
+  .qx:hover{background:#e2e8f0;color:var(--text)}
+  .sp{flex:1;min-width:0}
+  .st{flex:none;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:9px;font-size:12.5px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .st:hover{background:#f1f4f8;color:var(--text)}
+  .st .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+  .st.is-load .dot{background:transparent;box-shadow:none;width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:var(--accent);animation:spin .8s linear infinite}
+  .st.is-stored{color:#b45309;background:#fffbeb}
+  .st.is-err{color:#b91c1c}
+  .st.is-err .dot{background:var(--danger);box-shadow:0 0 0 3px rgba(220,38,38,.15)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ib{flex:none;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--text-3);text-decoration:none}
+  .ib:hover{background:#f1f4f8;color:var(--text)}
+  .ib.on{background:#e8f0fe;color:var(--info)}
+  .ib svg{width:18px;height:18px}
+
+  .head{flex:none;padding:14px 18px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+  .trow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:30px}
+  .trow h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.025em}
+  .date{font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;font-variant-numeric:tabular-nums}
+  .dates{display:flex;gap:6px;flex-wrap:wrap}
+  .dates button{height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+  .dates button:hover{border-color:#cbd5e1}
+  .dates button.on{background:var(--text);border-color:var(--text);color:#fff;font-weight:700}
+  .tools{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .etog{height:30px;padding:0 12px;border-radius:999px;border:1px dashed #cbd5e1;background:#fff;font-size:12px;color:var(--text-3);white-space:nowrap}
+  .etog:hover{border-color:#94a3b8;color:var(--text)}
+  .parts{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:#f1f4f8}
+  .parts button{height:28px;padding:0 12px;border-radius:7px;font-size:12.5px;color:var(--text-3);white-space:nowrap}
+  .parts button:hover{color:var(--text)}
+  .parts button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
+  .alert{margin-top:12px;display:flex;gap:10px;padding:10px 13px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12.5px;line-height:1.6}
+  .alert svg{flex:none;width:17px;height:17px;margin-top:1px;color:#d97706}
+  .alert ul{margin:0;padding:0;list-style:none}
+  .alert li+li{margin-top:2px}
+  .al-more{display:none}   /* 휴대폰에서만 — 안내는 첫 줄만, 누르면 전부 */
+  .kpis{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+  .kpi{min-width:124px;height:62px;display:flex;flex-direction:column;justify-content:center;padding:0 15px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:left;cursor:default}
+  .kpi b{font-size:21px;font-weight:800;letter-spacing:-.025em;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--text)}
+  .kpi b small{font-size:12px;font-weight:700;margin-left:2px;color:var(--text-3)}
+  .kpi span{margin-top:3px;font-size:11.5px;color:var(--text-3);white-space:nowrap}
+  .kpi.click{cursor:pointer}
+  .kpi.click:hover{border-color:#cbd5e1;background:#fafbfc}
+  .kpi.red b{color:var(--danger)}
+  .kpi.amber b{color:var(--warn)}
+  .kpi.blue b{color:var(--info)}
+  .kpi.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,163,74,.14);background:#fff}
+  .chips{margin-top:12px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;color:var(--text-2);white-space:nowrap}
+  .chip:hover{border-color:#cbd5e1}
+  .chip em{font-style:normal;font-size:11.5px;color:var(--text-4);font-variant-numeric:tabular-nums}
+  .chip.on{background:var(--text);border-color:var(--text);color:#fff;font-weight:700}
+  .chip.on em{color:#cbd5e1}
+
+  /* ── 표 ── */
+  .gwrap{flex:1;min-height:0;position:relative;background:var(--card)}
+  .grid{position:absolute;inset:0;overflow:auto;outline:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .tbl{border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:13px;color:var(--text)}
+  .tbl th{position:sticky;top:0;z-index:3;height:44px;padding:5px 8px;background:var(--head);color:var(--text-3);font-size:12px;font-weight:700;line-height:1.3;text-align:left;vertical-align:middle;white-space:normal;text-wrap:balance;overflow:hidden;border-bottom:1px solid var(--line);border-right:1px solid var(--line-2);cursor:pointer;user-select:none}
+  .tbl th.ka{word-break:keep-all}   /* 띄어 쓴 머리글은 낱말 사이에서만 줄바꿈 ('남은 / 재고') */
+  .tbl th:hover{color:var(--text)}
+  .tbl th.sk{z-index:4}
+  .tbl th .ar{margin-left:4px;font-size:9px;color:var(--accent)}
+  .tbl th.fill,.tbl td.fill{padding:0;border-right:0;cursor:default}
+  .tbl td{height:var(--row-h);padding:0 8px;background:#fff;border-bottom:1px solid var(--line-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .app.dense .tbl td{height:28px}
+  .tbl .cl{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;line-height:1.25;word-break:keep-all;overflow-wrap:break-word}
+  .app.dense .tbl .cl{-webkit-line-clamp:1}
+  .tbl .r{text-align:left;font-variant-numeric:tabular-nums}   /* 2026-11-19 사용자 "전체 모두 좌측정렬" — 숫자 · 체크 · 사진 칸도 왼쪽 */
+  .tbl .c{text-align:left}
+  .tbl td.r,.tbl td.c,.tbl th.r,.tbl th.c{padding-left:6px;padding-right:6px}   /* 숫자 · 체크 칸은 좁게 (fitCols 의 여백과 같게) */
+  .tbl .b{font-weight:700}
+  .tbl .z{color:#c3cad4}
+  .tbl .neg{color:var(--danger);font-weight:700}
+  .tbl .rn{color:var(--text-4);font-size:11.5px;text-align:left;font-variant-numeric:tabular-nums;padding:0 7px 0 3px}
+  .tbl .sk{position:sticky;z-index:1}
+  .tbl .skl{border-right:1px solid #d5dce5}
+  .tbl tbody tr{cursor:pointer}
+  @media (hover:hover){ .tbl tbody tr:not(.vsp):hover td{box-shadow:inset 0 0 0 999px rgba(15,23,42,.035)} }   /* 휴대폰은 누른 뒤 회색이 남지 않게 */
+  /* 줄이 많은 탭은 보이는 줄 근처만 그리고, 위 · 아래는 빈 줄 하나(높이만)로 채운다 (renderGrid · paintRows) */
+  .tbl tbody tr.vsp{cursor:default}
+  .tbl tbody tr.vsp td{padding:0;border:0;background:transparent}
+  .tbl tbody tr.on td{box-shadow:inset 0 0 0 999px rgba(37,99,235,.075)}
+  .tbl tbody tr.on td:first-child{box-shadow:inset 3px 0 0 var(--info),inset 0 0 0 999px rgba(37,99,235,.075)}
+  .tbl tr.empty td{height:120px;text-align:center;color:var(--text-4);cursor:default;box-shadow:none!important}
+  .tbl tfoot td{position:sticky;bottom:0;z-index:2;height:36px;background:#f1f5f9;border-top:1px solid #cbd5e1;border-bottom:0;font-weight:700;font-variant-numeric:tabular-nums}
+  .tbl tfoot td.sk{z-index:3}
+  .tbl tfoot .ft{font-size:12px;color:var(--text-3);font-weight:700}
+  .tag{display:inline-block;max-width:100%;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;line-height:1.4;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tag+.tag{margin-left:4px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700;line-height:1.4;vertical-align:middle}
+  .pill.red{background:#fef2f2;color:#b91c1c}
+  .pill.gray{background:#f1f5f9;color:#475569}
+  .pill.blue{background:#eff6ff;color:#1d4ed8}
+  .pill-sub{margin-left:6px;font-size:12px;color:var(--text-3);vertical-align:middle}
+  .pill-sub:first-child{margin-left:0}
+  .ck{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#dcfce7;color:#15803d;vertical-align:middle}
+  .ck svg{width:12px;height:12px}
+  .ck0{display:inline-block;width:14px;height:14px;border-radius:4px;border:1.5px solid #d5dce5;vertical-align:middle}
+  .thumb{display:block;margin:2px 0;width:30px;height:30px;border-radius:6px;object-fit:cover;background:#f1f5f9;cursor:zoom-in}
+  .app.dense .thumb{width:24px;height:24px;margin:1px 0}
+  .lnk{color:var(--info);text-decoration:none}
+  .lnk:hover{text-decoration:underline}
+  mark{background:#fef08a;color:inherit;border-radius:2px;padding:0 1px}
+  .skel{padding:6px 0}
+  .skel div{display:flex;gap:22px;align-items:center;height:34px;padding:0 16px;border-bottom:1px solid var(--line-2)}
+  .skel i{display:block;height:9px;border-radius:5px;background:#edf1f5}
+  .msg{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 32px));padding:22px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 12px 34px rgba(15,23,42,.14);font-size:13.5px;line-height:1.6;color:var(--text-2);z-index:20;text-align:center}
+  .msg b{display:block;font-size:15.5px;color:var(--text);margin-bottom:6px}
+  .msg button{margin-top:14px;height:36px;padding:0 18px;border-radius:9px;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
+
+  /* ── 상세 창 (줄을 누르면) ── */
+  .detail{position:fixed;top:0;right:0;bottom:0;z-index:40;width:var(--detail-w);max-width:100%;display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--line);box-shadow:-14px 0 34px rgba(15,23,42,.1)}
+  @media (min-width:1280px){ .app.has-detail .main{margin-right:var(--detail-w)} .detail{box-shadow:none} }
+  .dh{flex:none;padding:14px 18px 14px;border-bottom:1px solid var(--line)}
+  .dgrab{display:none;width:40px;height:5px;margin:0 auto 8px;border-radius:3px;background:#cbd5e1}   /* 휴대폰 — 잡고 끌어내리면 닫힘 */
+  .dh-top{display:flex;align-items:center;gap:8px}
+  .dh-cap{flex:1;font-size:12px;font-weight:700;color:var(--text-3)}
+  .dh-top button{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--text-3)}
+  .dh-top button:hover{background:#f1f4f8;color:var(--text)}
+  .dh-top svg{width:17px;height:17px}
+  .d-title{margin-top:6px;font-size:18px;font-weight:800;line-height:1.35;letter-spacing:-.02em;word-break:break-word}
+  .d-sub{margin-top:4px;font-size:12.5px;color:var(--text-3);line-height:1.5}
+  .d-sheet{display:inline-flex;align-items:center;gap:5px;margin-top:10px;height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--text-2);text-decoration:none}
+  .d-sheet:hover{border-color:#cbd5e1;color:var(--text)}
+  .dbody{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:4px 18px 22px}
+  .dl{display:grid;grid-template-columns:118px 1fr;margin:0}
+  .dl dt{padding:10px 0;font-size:12.5px;color:var(--text-3);border-bottom:1px solid var(--line-2)}
+  .dl dd{margin:0;padding:10px 0 10px 12px;font-size:13.5px;line-height:1.5;border-bottom:1px solid var(--line-2);word-break:break-word;white-space:pre-wrap}
+  .dl dd.r{font-variant-numeric:tabular-nums;font-weight:700}
+  .dl .none{color:var(--text-4)}
+  .dl .ckt{margin-left:4px;color:#15803d;font-weight:700}
+  .dimg{display:block;max-width:100%;max-height:220px;border-radius:10px;background:#f1f5f9;cursor:zoom-in}
+  .lb{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(15,23,42,.82);cursor:zoom-out;padding:24px}
+  .lb img{max-width:100%;max-height:100%;border-radius:12px;background:#fff}
+
+  .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:80;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 16px;border-radius:10px;background:#0f172a;color:#fff;font-size:13px;font-weight:600;line-height:1.45;box-shadow:0 12px 30px rgba(15,23,42,.25)}
+  .toast.err{background:#b91c1c}
+  /* 아이폰 · 아이패드는 16px 보다 작은 입력 칸을 누르면 화면을 확대해 버린다 (찾기 · 고치기 칸) */
+  @media (max-width:720px),(pointer:coarse){ .find input,.edbox input,.edbox textarea{font-size:16px} }
+
+  /* ── 좁은 화면 ── 2026-11-20 사용자 "모바일에서 조금 불안정하거나 최적화가 안 된 것 같아 — 완벽하게" */
+  @media (max-width:1000px){
+    /* 닫혀 있을 땐 그림자 · 보이기도 끈다 (전엔 화면 왼쪽 끝에 서랍 그림자가 늘 비쳤다) */
+    .side{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);visibility:hidden;transition:transform .2s ease,visibility 0s linear .2s}
+    .app.nav-open .side{transform:none;visibility:visible;transition:transform .2s ease;box-shadow:12px 0 34px rgba(15,23,42,.3)}
+    .menu{display:grid}
+  }
+  /* 휴대폰 (세로) · 가로로 눕힌 휴대폰 — 위쪽은 작게, 표는 넓게 */
+  @media (max-width:720px),(max-height:520px){
+    .bar{height:52px;padding:0 8px;gap:4px}
+    .find{flex:1 1 auto;height:38px}
+    .st{padding:0 8px}
+    .st #stText,#btnFull,#btnDense{display:none}
+    .st.is-err #stText,.st.is-stored #stText{display:inline;font-size:11.5px}
+    .head{padding:10px 12px}
+    /* 제목 줄은 한 줄 (길면 … ), 날짜 단추는 그 아래 한 줄로 옆으로 넘김 */
+    .trow{display:grid;grid-template-columns:minmax(0,max-content) auto 1fr auto;align-items:center;gap:8px;min-height:28px}
+    .trow h1{grid-column:1;grid-row:1;min-width:0;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .trow h1 .t2{display:none}
+    .date{grid-column:2;grid-row:1;padding:2px 8px;font-size:11.5px}
+    .tools{grid-column:4;grid-row:1;margin-left:0;gap:6px}
+    .etog{height:28px;padding:0 10px;font-size:11.5px}
+    .parts button{height:26px;padding:0 10px;font-size:12px}
+    .dates{grid-column:1/-1;grid-row:2;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px}
+    .dates::-webkit-scrollbar{display:none}
+    .dates:empty{display:none}
+    .dates button{flex:none;height:30px}
+    .alert{margin-top:10px;padding:8px 11px;font-size:12px;line-height:1.5;cursor:pointer}
+    .alert ul{flex:1;min-width:0}
+    .alert.fold li+li{display:none}
+    .alert.fold li{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+    .al-more{display:block;flex:none;align-self:center;font-size:11.5px;font-weight:700;color:#b45309;white-space:nowrap}
+    .kpis{flex-wrap:nowrap;gap:8px;overflow-x:auto;scrollbar-width:none;margin:7px -12px -3px;padding:3px 12px}
+    .kpis::-webkit-scrollbar{display:none}
+    .kpi{flex:none;min-width:96px;height:52px;padding:0 12px;border-radius:11px}
+    .kpi b{font-size:17px}
+    .kpi span{font-size:11px}
+    .chips{margin:10px -12px 0;padding:0 12px}
+    .chip{height:32px}
+    /* 표를 아래로 넘기면 위쪽(안내 · 요약 카드 · 칩 · 날짜)을 접어 표를 넓게 — 맨 위로 오거나 제목 줄을 누르면 다시 편다 (headScroll) */
+    .app.hmin .head{padding-top:8px;padding-bottom:8px;cursor:pointer}
+    .app.hmin .alert,.app.hmin .kpis,.app.hmin .chips,.app.hmin .dates{display:none}
+  }
+  @media (max-width:720px){
+    :root{--row-h:42px}
+    /* 상세 창 = 아래에서 올라오는 판 — 위 손잡이를 끌어내리면 닫힘 */
+    .detail{top:auto;left:0;width:100%;height:80vh;height:80dvh;border-left:0;border-radius:18px 18px 0 0;box-shadow:0 -14px 34px rgba(15,23,42,.2);padding-bottom:env(safe-area-inset-bottom);animation:sheetUp .22s cubic-bezier(.2,.8,.2,1)}
+    .dh{padding:8px 16px 12px;touch-action:none}
+    .dgrab{display:block}
+    .dh-top button{width:38px;height:38px}
+    .d-title{font-size:17px}
+    .dbody{padding:2px 16px 20px}
+    .dl{grid-template-columns:104px 1fr}
+    .dl dt{padding:12px 0}
+    .dl dd{padding:12px 0 12px 12px}
+  }
+  @keyframes sheetUp{from{transform:translateY(100%)}}
+  @media (prefers-reduced-motion:reduce){ .detail{animation:none} }
+  @media (pointer:coarse){   /* 손가락으로 누르기 좋게 */
+    .nav-item{height:44px;font-size:14.5px}
+    .side-link{height:42px;font-size:13.5px}
+    .ib{width:40px;height:40px}
+  }
+
+  /* ── 시딩 마스터만 (위는 erp/index.html 과 같은 CSS) ── */
+  .d-hint{margin-top:9px;font-size:11.5px;line-height:1.45;color:var(--text-4)}
+  .trow h1 .en{margin-left:7px;font-size:13px;font-weight:700;color:var(--text-4);letter-spacing:.03em}
+  .nav-item .nm small{margin-left:4px;font-size:10.5px;font-weight:600;letter-spacing:.03em;color:var(--side-mute)}
+  .nav-item.on .nm small{color:#86efac}
+  .pill.sent{background:#fef3c7;color:#92400e}
+  .tbl td .pill.sent{margin-left:6px;padding:1px 7px;font-size:11px}
+  .bd{display:inline-flex;align-items:center;gap:7px;font-weight:600}
+  .bd i{flex:none;width:8px;height:8px;border-radius:50%}
+  .kpi.gold b{color:#b45309}
+  .kpi.green b{color:var(--accent-ink)}
+  .kpi.on.gold{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.16)}
+  .etog.solid{border-style:solid;font-weight:700;color:var(--text-2)}
+  .dacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .dacts .d-sheet{margin-top:0;background:#fff}
+  .dacts button.d-sheet:disabled{opacity:.45;cursor:default}
+  .dl dd .ln+.ln{margin-top:5px;padding-top:5px;border-top:1px dashed var(--line-2)}
+  .dl dd.pii{color:var(--text-2)}
+  .dl dd.pii.masked{color:var(--text-3)}
+  /* 안내 (주의사항 탭) — 규칙은 노란 안내, 긴 글(첫 연락 DM · 콘텐츠 가이드)은 카드로, '복사' 하면 X DM 창에 바로 붙여 넣기 */
+  .grid.is-guide{background:var(--bg)}
+  .guide{padding:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
+  .gcard{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
+  .gcard.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,163,74,.14)}
+  .gc-h{display:flex;align-items:center;gap:8px;min-height:48px;padding:8px 10px 8px 14px;border-bottom:1px solid var(--line-2);background:var(--head)}
+  .gc-h .dot{flex:none;width:9px;height:9px;border-radius:50%;background:#94a3b8}
+  .gc-h b{font-size:13.5px;font-weight:800;color:var(--text)}
+  .gc-h span{font-size:12px;color:var(--text-3)}
+  .gc-h button{margin-left:auto;height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:700;color:var(--text-2)}
+  .gc-h button:hover{border-color:#cbd5e1;color:var(--text)}
+  .gc-b{padding:12px 14px 15px;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text-2)}
+  .gempty{grid-column:1/-1;padding:60px 0;text-align:center;font-size:13px;color:var(--text-4)}
+  @media (max-width:720px){ .guide{padding:12px;grid-template-columns:1fr;gap:10px} .gc-h button{height:36px} }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" aria-label="메뉴">
+    <div class="side-top">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></span>
+      <div><b>시딩 마스터</b><small>X · 인스타 협찬 시딩</small></div>
+      <button type="button" class="side-fold" id="btnFold" title="메뉴 접기 (표를 넓게)" aria-label="메뉴 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <a class="side-link" id="sideSheet" href="#" target="_blank" rel="noopener" title="구글시트 원본을 새 탭으로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>구글시트 원본 열기</a>
+      <a class="side-link" href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>오피스 홈</a>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="main">
+    <header class="bar">
+      <button type="button" class="ib menu" id="btnMenu" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓴 낱말이 모두 들어간 줄만 · Enter 로 한 줄씩">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="아이디 · 제품 · 책임자 · 무엇이든 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        <span class="qn" id="qn"></span>
+        <button type="button" class="qx" id="qx" hidden aria-label="찾기 지우기">✕</button>
+      </label>
+      <div class="sp"></div>
+      <button type="button" class="st is-load" id="st"><i class="dot"></i><span id="stText">불러오는 중…</span></button>
+      <button type="button" class="ib" id="btnDense" title="줄 간격 촘촘하게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 9.7h16M4 14.3h16M4 19h16"/></svg></button>
+      <button type="button" class="ib" id="btnFull" title="전체 화면 (모니터 꽉 채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <a class="ib" id="btnSheet" href="#" target="_blank" rel="noopener" title="구글시트에서 이 탭 열기 (새 탭)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
+    </header>
+    <section class="head">
+      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="tools"><button type="button" class="etog solid" id="gTog" hidden title="주의사항 탭의 첫 연락 DM · 콘텐츠 가이드 (복사해서 X DM 에 붙여 넣기)">✉ DM 양식</button></div></div>
+      <div class="alert" id="alert" hidden></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="chips" id="chips" hidden></div>
+    </section>
+    <div class="gwrap">
+      <div class="grid" id="grid" tabindex="0" aria-label="시딩 리스트"></div>
+      <div class="msg" id="msg" hidden></div>
+    </div>
+  </div>
+  <aside class="detail" id="detail" hidden aria-label="상세 정보">
+    <div class="dh">
+      <div class="dgrab" aria-hidden="true"></div>
+      <div class="dh-top">
+        <span class="dh-cap" id="dCap">상세</span>
+        <button type="button" id="dPrev" title="이전 줄 (↑)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+        <button type="button" id="dNext" title="다음 줄 (↓)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button type="button" id="dClose" title="닫기 (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="d-title" id="dTitle"></div>
+      <div class="d-sub" id="dSub"></div>
+      <div class="dacts" id="dActs"></div>
+      <div class="d-hint" id="dHint"></div>
+    </div>
+    <div class="dbody"><dl class="dl" id="dList"></dl></div>
+  </aside>
+  <div class="dscrim" id="dscrim" hidden></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+(function () {
+  'use strict';
+
+  /* ── 설정 ── */
+  /* 시트 주소(ID)는 이 파일(공개 레포)에 적지 않는다 — '링크가 있는 사람 보기' 시트라 주소가 곧 열쇠이고, 시호님 탭엔 받는 분 연락처 · 주소가 있다.
+     오피스 슈퍼베이스 app_kv 'seeding_sheet' {id} 에서 읽어 이 브라우저에 기억(seed_sheet_v1) — 다음부터는 바로, 뒤에서 한 번 확인해 바뀌었으면 새로 */
+  const SB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';   // 오피스 index.html 과 같은 공개(anon) 키
+  const KV_SHEET = 'seeding_sheet', LS_SHEET = 'seed_sheet_v1', ID_OK = /^[\w-]{25,80}$/;
+  let BASE = '';                // https://docs.google.com/spreadsheets/d/<ID> — ensureSheet 가 채움
+  const ALL = 'all';            // 메뉴 'X 시딩 · 전체' (브랜드 탭을 한 표로)
+  const REFRESH_MS = 60e3;      // 보고 있는 탭을 다시 읽는 간격 (화면이 보일 때만)
+  const STALE_MS = 20e3;        // 다른 탭을 보다 돌아왔을 때 이보다 오래됐으면 뒤에서 다시 읽음
+  const TABS_MS = 5 * 60e3;     // 탭 목록 (새 브랜드 탭)
+  const RETRY_MS = 30e3, TIMEOUT_MS = 25e3, PREFETCH_GAP = 600;
+  // 탭마다 빈 줄이 1,000줄이라 웹 보기가 600KB 쯤 된다 → 지난번 내용 끝 줄 + 여유만 읽고 (range=1:N), 끝까지 차 있으면 전체 · 탭마다 한 번은 전체
+  const RANGE_MIN = 300;
+  const LS_TABS = 'seed_tabs_v1', LS_TAB = 'seed_tab_v1', LS_ROWS = 'seed_rows_v1', LS_DENSE = 'seed_dense_v1', LS_SIDE = 'seed_side_v1';
+  const IDB_NAME = 'seed_cache', CACHE_VER = 1;
+  // 브랜드 점 색 = 오피스 '실시간 재고' · ERP전산팀 브랜드 색. 순서 = 시트 주의사항 "YAR → COFERRY → APETI → 6A 순으로 매주"
+  const BRANDS = [
+    {k: '야르', en: 'YAR', color: '#a78bfa', names: ['yar', '야르', 'yarseoul'], re: /\bYAR\b|야르/i},
+    {k: '코페리', en: 'COFERRY', color: '#818cf8', names: ['coferry', '코페리'], re: /COFERRY|코페리/i},
+    {k: '아페티', en: 'APETI', color: '#fb7185', names: ['apeti', '아페티'], re: /APETI|아페티/i},
+    {k: '식스에이', en: '6A', color: '#22d3ee', names: ['6a', '식스에이'], re: /\b6A\b|식스에이/i},
+    {k: '코즈미', en: 'COSMI', color: '#14b8a6', names: ['cosmi', 'kozmi', '코즈미'], re: /COSMI|KOZMI|코즈미/i},
+    {k: '프피', en: 'PRODUCT PR', color: '#f59e0b', names: ['프피', '프로덕트피알', 'productpr'], re: /프피|프로덕트피알|PRODUCT\s*PR/i},
+    {k: '아코이', en: 'AKOI', color: '#f472b6', names: ['akoi', '아코이', '아코이하우스', 'akoihaus'], re: /AKOI|아코이/i},
+  ];
+  const SECS = {x: 'X 시딩 · 브랜드별', person: '담당자별 시딩', guide: '안내'};
+  const SEC_ORDER = ['x', 'person', 'guide'];
+  const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+  const F_CELL = `400 13px ${FONT}`, F_BOLD = `700 13px ${FONT}`, F_HEAD = `700 12px ${FONT}`, F_TAG = `500 12px ${FONT}`, F_PILL = `700 11px ${FONT}`;
+  const RN_W = 42;
+  const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
+
+  const $ = id => document.getElementById(id);
+  const app = $('app'), grid = $('grid'), qIn = $('q');
+  const narrow = matchMedia('(max-width:720px)');
+  const compactMQ = matchMedia('(max-width:720px),(max-height:520px)');   // 휴대폰 (세로 · 가로) — 위쪽 접기 · 안내 한 줄
+  const wide = matchMedia('(min-width:1001px)');
+  const S = {
+    tabs: [], tabsAt: 0, tabsBusy: null, tabsOk: false, cur: '', nav: [], lastName: '',
+    cache: new Map(),     // gid → {model, at, data, stored}
+    busy: {}, st: {},     // gid → 읽는 중 Promise · {k:'load'|'ok'|'err', err, at}
+    pos: {}, view: {},    // gid → {t, l} 스크롤 · {sort, cat, kpi} 고른 정렬 · 걸러보기
+    rowsKnown: {}, fullAt: {},
+    terms: [], hlRe: null, list: [], sel: null,
+    dense: false, shown: true, size: '', want: null, saved: null,
+    reveal: new Set(),    // 상세 창에서 '배송 정보 보기'를 누른 줄 (창을 닫으면 다시 가림)
+    gFocus: null,         // 'DM 양식'으로 들어왔을 때 강조할 브랜드
+    allData: null, allSig: '', touchAt: 0, alertOpen: false,
+  };
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* 저장 못 해도 화면은 그대로 */ } };
+  try { S.rowsKnown = JSON.parse(lsGet(LS_ROWS) || '{}') || {}; } catch (e) { S.rowsKnown = {}; }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const pad2 = n => String(n).padStart(2, '0');
+  const hhmm = t => { const d = new Date(t); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+  const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 50 ? '방금' : s < 3600 ? `${Math.round(s / 60)}분 전` : `${Math.floor(s / 3600)}시간 전`; };
+  const colName = i => { let s = ''; for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s; return s; };
+  const norm = s => String(s || '').replace(/\s+/g, '');
+  const low = s => norm(s).toLowerCase();
+  const fmt = n => Number.isInteger(n) ? n.toLocaleString('ko-KR') : n.toLocaleString('ko-KR', {maximumFractionDigits: 2});
+  const tabOf = gid => S.tabs.find(t => t.gid === gid);
+  const navOf = gid => S.nav.find(it => it.gid === gid) || null;
+  const vstate = () => S.view[S.cur] || (S.view[S.cur] = {sort: null, cat: null, kpi: null});
+  const isX = gid => { const t = tabOf(gid); return !!t && t.meta.sec === 'x'; };
+  const guideTab = () => S.tabs.find(t => t.meta.sec === 'guide') || null;
+  function curData() {
+    if (S.cur === ALL) return allData();
+    const c = S.cache.get(S.cur);
+    return c && c.data ? c.data : null;
+  }
+  function hash(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36) + '.' + s.length; }
+  function numOf(s) {
+    const t = String(s || '').replace(/[,\s]/g, '').replace(/^[₩￦$￥¥]/, '').replace(/(원|개)$/, '');
+    return /^-?\d+(\.\d+)?$/.test(t) ? parseFloat(t) : null;
+  }
+
+  /* ── 탭 이름 → 메뉴 자리 (브랜드 이름 = X 시딩 · 주의사항 = 안내 · 그 밖 = 담당자별 시딩) ── */
+  function brandOf(s, strict) {
+    if (strict) { const n = low(s); return BRANDS.find(b => b.names.includes(n)) || null; }
+    let best = null, at = Infinity;
+    BRANDS.forEach(b => { const m = String(s || '').match(b.re); if (m && m.index < at) { at = m.index; best = b; } });   // 글에서 먼저 나온 브랜드
+    return best;
+  }
+  function classify(name) {
+    const n = String(name || '').trim();
+    if (/주의|안내|가이드|양식|공지/.test(n)) return {sec: 'guide', brand: null, label: n, key: 'g:' + n};
+    const b = brandOf(n, true);
+    if (b) return {sec: 'x', brand: b, label: b.k, en: b.en, key: 'x:' + b.k};
+    return {sec: 'person', brand: null, label: n, key: 'p:' + n};
+  }
+
+  /* ── 시트 주소 — 오피스 슈퍼베이스 app_kv 'seeding_sheet' (위 설명). 시트를 바꾸려면 그 값의 id 만 바꾸면 된다 ── */
+  const setSheet = id => { BASE = `https://docs.google.com/spreadsheets/d/${id}`; };
+  async function sheetFromKv() {
+    const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 15e3);
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/app_kv?key=eq.${KV_SHEET}&select=value`, {headers: {apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`}, cache: 'no-store', signal: ac.signal});
+      if (!r.ok) throw new Error('kv');
+      const j = await r.json(), id = j && j[0] && j[0].value ? String(j[0].value.id || '') : '';
+      if (!ID_OK.test(id)) throw new Error('nosheet');
+      return id;
+    } catch (e) { throw new Error(e && e.message === 'nosheet' ? 'nosheet' : 'kv'); }
+    finally { clearTimeout(timer); }
+  }
+  async function ensureSheet() {
+    const known = lsGet(LS_SHEET) || '';
+    if (ID_OK.test(known)) {
+      setSheet(known);
+      sheetFromKv().then(id => {   // 시트를 바꿨으면 기억해 둔 탭 목록을 버리고 처음부터
+        if (id === known) return;
+        lsSet(LS_SHEET, id);
+        [LS_TABS, LS_TAB, LS_ROWS].forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* noop */ } });
+        location.reload();
+      }).catch(() => { /* 기억해 둔 주소로 계속 */ });
+      return known;
+    }
+    const id = await sheetFromKv();
+    lsSet(LS_SHEET, id);
+    setSheet(id);
+    return id;
+  }
+
+  /* ── 구글에서 받기 — 시간 제한 · 429 는 잠깐 쉬고 다시 · 연결 끊김은 한 번 더 (erp/ 와 같음) ── */
+  async function getText(url) {
+    for (let i = 0; ; i++) {
+      const ac = new AbortController(), timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+      try {
+        const r = await fetch(url, {cache: 'no-store', credentials: 'omit', signal: ac.signal});
+        if (r.status === 429 && i < 4) { await sleep(900 * 2 ** i); continue; }
+        if (!r.ok) throw Object.assign(new Error(r.status === 401 || r.status === 403 ? 'login' : 'http_' + r.status), {fatal: true});
+        if (/accounts\.google\.com|ServiceLogin/.test(r.url)) throw Object.assign(new Error('login'), {fatal: true});
+        return await r.text();
+      } catch (e) {
+        if (e.fatal) throw e;
+        if (i < 1) { await sleep(1200); continue; }
+        throw new Error(e && e.name === 'AbortError' ? 'timeout' : 'network');
+      } finally { clearTimeout(timer); }
+    }
+  }
+
+  /* ── 탭 목록 = 시트 웹 보기의 시트 메뉴 (보이는 탭만 · 시트 순서) ── */
+  function unesc(s) { try { return JSON.parse('"' + s.replace(/\\x([0-9a-fA-F]{2})/g, '\\u00$1') + '"'); } catch (e) { return s; } }
+  function loadTabs() {
+    if (!BASE) return Promise.reject(new Error('kv'));
+    if (S.tabsBusy) return S.tabsBusy;
+    S.tabsBusy = (async () => {
+      try {
+        const h = await getText(`${BASE}/htmlview`), out = [];
+        const re = /items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"/g;
+        let m;
+        while ((m = re.exec(h))) { const name = unesc(m[1]); out.push({name, gid: m[2], meta: classify(name)}); }
+        if (!out.length) throw new Error(/waffle|sheets-viewport/.test(h) ? 'no_tabs' : 'login');
+        S.tabs = out;
+        S.tabsAt = Date.now();
+        S.tabsOk = true;
+        S.allData = null;
+        lsSet(LS_TABS, JSON.stringify(out.map(t => ({name: t.name, gid: t.gid}))));
+        const live = new Set(out.map(t => t.gid));
+        if (!S.pruned) { S.pruned = true; store.keys().then(ks => (ks || []).forEach(g => { if (!live.has(String(g))) store.del(g); })); }   // 지워진 탭의 저장본
+        if (!S.cur) { hideMsg(); openTab(pickTab(S.want, S.saved)); }
+        else if (S.cur !== ALL && !tabOf(S.cur)) openTab(pickTab(null, null));   // 보던 탭이 지워짐
+        else { renderNav(); renderHead(); if (S.cur === ALL) { loadAllX(); renderGrid({keep: true}); } }
+        prefetch();
+        return out;
+      } catch (e) {
+        S.tabsAt = Date.now() - TABS_MS + RETRY_MS;   // 실패하면 30초 뒤 다시
+        throw e;
+      } finally { S.tabsBusy = null; }
+    })();
+    return S.tabsBusy;
+  }
+  function pickTab(want, saved) {
+    const tabs = S.tabs, hasX = tabs.some(t => t.meta.sec === 'x');
+    if (!tabs.length) return '';
+    if (want) {
+      if (want === ALL && hasX) return ALL;
+      const w = low(want), t = tabs.find(x => x.name === want || x.gid === want) || tabs.find(x => low(x.name) === w || (x.meta.brand && x.meta.brand.names.includes(w))) || tabs.find(x => low(x.name).includes(w));
+      if (t) return t.gid;
+    }
+    if (saved) {
+      if (saved.gid === ALL && hasX) return ALL;
+      const t = tabs.find(x => x.gid === saved.gid) || tabs.find(x => x.name === saved.name);
+      if (t) return t.gid;
+    }
+    return hasX ? ALL : tabs[0].gid;
+  }
+
+  /* ── 한 탭 읽기 (웹 보기 → 칸 자료) — erp/ 와 같은 방식 ──
+     칸마다 글자 · 칩(드롭다운) · 링크와 시트 서식(글자색 · 굵게 · 칸 색)만 뽑는다 (시트 HTML 을 그대로 넣지 않음).
+     칸 색이 노란색이면 yel (아이디 칸 노란색 = 보냄 완료). */
+  const NOSTYLE = {};
+  const cleanText = s => s.replace(/ /g, ' ').replace(/[​-‍﻿]/g, '').replace(/[ \t]+\n/g, '\n').trim();   // 빈 칩은 폭 0 글자만 있다
+  const hasVal = c => !!c && (c.t !== '' || c.chips.length > 0 || c.cb === 2);
+  function rgbOf(v) {
+    let m = String(v || '').trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (m) { let h = m[1]; if (h.length === 3) h = h.replace(/./g, x => x + x); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+    m = String(v || '').match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+  const hex = c => '#' + c.map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join('');
+  const lum = c => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  const hexOr = v => { const c = rgbOf(v); return c ? hex(c) : ''; };
+  function tint(v) { const c = rgbOf(v); return !c || lum(c) > 0.965 ? '' : hex(c.map(x => x * 0.26 + 255 * 0.74)); }
+  function ink(v) {
+    const c = rgbOf(v);
+    if (!c) return '';
+    const l = lum(c), sat = Math.max(...c) - Math.min(...c);
+    if (l > 0.72 || (l < 0.22 && sat < 40)) return '';
+    if (c[0] > 200 && c[1] < 90 && c[2] < 90) return '#dc2626';
+    if (c[2] > 200 && c[0] < 90 && c[1] < 140) return '#2563eb';
+    return hex(c.map(x => x * 0.85));
+  }
+  // 노란색 (#fff2cc 연노랑 · #fbbc04 진노랑 둘 다) — 색상각 32~68°, 채도가 있고 밝은 색
+  function isYellow(v) {
+    const c = rgbOf(v);
+    if (!c) return false;
+    const [r, g, b] = c, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (d < 30 || mx < 200) return false;
+    let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+    return h >= 32 && h <= 68;
+  }
+  function styleObj(decl) {
+    const o = {};
+    String(decl || '').split(';').forEach(part => {
+      const i = part.indexOf(':');
+      if (i < 1) return;
+      const k = part.slice(0, i).trim().toLowerCase(), v = part.slice(i + 1).trim().toLowerCase();
+      if (k === 'background-color') { o.bg = tint(v); if (isYellow(v)) o.yel = true; }
+      else if (k === 'color') o.fg = ink(v);
+      else if (k === 'font-weight') o.bold = v === 'bold' || parseInt(v, 10) >= 600;
+      else if (k === 'text-decoration' || k === 'text-decoration-line') o.strike = v.includes('line-through');
+    });
+    return o;
+  }
+  function styleText(html) {
+    let s = '';
+    for (const m of html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) s += m[1] + '\n';
+    return s;
+  }
+  function unwrapLink(href) {
+    try {
+      let u = new URL(href, 'https://docs.google.com/');
+      if (/(^|\.)google\.com$/.test(u.hostname) && u.pathname === '/url' && u.searchParams.get('q')) u = new URL(u.searchParams.get('q'));
+      return /^https?:$/.test(u.protocol) ? u.href : '';
+    } catch (e) { return ''; }
+  }
+  function walk(node, o) {
+    for (const n of node.childNodes) {
+      if (n.nodeType === 3) { o.t += n.nodeValue; continue; }
+      if (n.nodeType !== 1) continue;
+      const tag = n.nodeName.toLowerCase();
+      if (tag === 'br') { o.t += '\n'; continue; }
+      if (tag === 'script' || tag === 'style' || tag === 'img') continue;
+      if (tag === 'svg') {
+        const u = n.querySelector('use'), ref = u ? (u.getAttribute('href') || u.getAttribute('xlink:href') || '') : '';
+        if (/checkbox/.test(ref)) o.cb = /#checked/.test(ref) ? 2 : 1;
+        continue;
+      }
+      if (tag === 'a' && !o.href) o.href = unwrapLink(n.getAttribute('href') || '');
+      if (tag === 'span' && n.style && n.style.backgroundColor) {   // 드롭다운 칩
+        const sub = {t: '', chips: [], cb: 0, href: ''};
+        walk(n, sub);
+        const t = cleanText(sub.t);
+        if (t) o.chips.push({t, bg: hexOr(n.style.backgroundColor), fg: hexOr(n.style.color)});
+        o.t += sub.t;
+        continue;
+      }
+      walk(n, o);
+    }
+  }
+  function parseSheet(html, sig) {
+    const a = html.indexOf('<table'), b = html.lastIndexOf('</table>');
+    if (a < 0 || b < 0) throw new Error(/accounts\.google\.com|ServiceLogin/.test(html) ? 'login' : 'no_grid');
+    const styles = {}, re = /\.ritz\s+\.waffle\s+\.(s\d+)\s*\{([^}]*)\}/g, cssText = styleText(html);
+    let m;
+    while ((m = re.exec(cssText))) styles[m[1]] = styleObj(m[2]);
+    const tables = new DOMParser().parseFromString(html.slice(a, b + 8), 'text/html').querySelectorAll('table');
+    if (!tables[0]) throw new Error('no_grid');
+    const cols = [];
+    tables[0].querySelectorAll('thead th').forEach(th => {
+      if (th.classList.contains('freezebar-cell')) return;
+      const mm = (th.id || '').match(/C(\d+)$/);
+      if (mm) cols.push({i: +mm[1], l: th.textContent.trim() || colName(+mm[1])});
+    });
+    const rows = [], taken = {}, trs = [];
+    tables.forEach(t => Array.from(t.tBodies).forEach(tb => trs.push(...tb.rows)));
+    for (const tr of trs) {
+      const th = tr.cells[0] && tr.cells[0].tagName === 'TH' ? tr.cells[0] : null;
+      const mm = th && (th.id || '').match(/R(\d+)$/);
+      if (!mm) continue;
+      const ri = rows.length, cells = [];
+      let p = 0;
+      for (const td of tr.cells) {
+        if (td.tagName !== 'TD' || td.classList.contains('freezebar-cell')) continue;
+        while (taken[ri] && taken[ri].has(p)) p++;
+        const cs = Math.max(1, +td.getAttribute('colspan') || 1), rs = Math.max(1, +td.getAttribute('rowspan') || 1);
+        const o = {t: '', chips: [], cb: 0, href: ''};
+        walk(td, o);
+        const cls = Array.from(td.classList).find(c => /^s\d+$/.test(c));
+        cells.push({p, cs, rs, r: +mm[1] + 1, st: (cls && styles[cls]) || NOSTYLE, t: cleanText(o.t), chips: o.chips, cb: o.cb, href: o.href});
+        for (let y = ri + 1; y < ri + rs; y++) for (let x = p; x < p + cs; x++) (taken[y] = taken[y] || new Set()).add(x);
+        p += cs;
+      }
+      rows.push({r: +mm[1] + 1, cells});
+    }
+    let last = -1;
+    rows.forEach((row, i) => { if (row.cells.some(hasVal)) last = i; });
+    rows.length = last + 1;   // 끝의 빈 줄은 자른다
+    const masked = maskPII(rows);
+    return {cols, rows, sig, masked};
+  }
+
+  /* ── 개인정보 가리기 — 시호님 탭의 받는분 성함 · 연락처 · 주소 (머리글 이름으로 칸을 찾는다)
+     표 · 찾기에는 가린 글자만 쓰고, 원래 값(full)은 상세 창 '배송 정보 보기 · 복사'에만. 이 브라우저 저장본(IndexedDB)엔 원래 값을 넣지 않는다 ── */
+  const PII = [
+    ['name', /^(받는(분|사람|이)|수령인|수취인|주문자|구매자|고객|보내는(분|사람|이))(이름|명|성명|성함)?$/],
+    ['phone', /(연락처|전화|휴대폰|핸드폰|휴대전화)/],
+    ['addr', /(주소|우편번호)/],
+    ['mail', /(이메일|메일주소|e-?mail)/i],
+  ];
+  const MASK = {
+    name: s => /^[-–—.·\s]+$/.test(s) ? s : Array.from(s).map((ch, i) => i === 0 || /\s/.test(ch) ? ch : '○').join(''),
+    phone: s => { const n = (s.match(/\d/g) || []).length; let i = 0; return s.replace(/\d/g, d => (++i <= 3 || i > n - 4) ? d : '*'); },
+    addr: s => { const w = s.split(/\s+/); return w.length > 1 ? w.slice(0, Math.min(2, w.length - 1)).join(' ') + ' ○○○' : '○○○'; },
+    mail: s => s.replace(/^([^@]{0,2})[^@]*@/, '$1***@'),
+  };
+  function maskPII(rows) {
+    const cols = {};
+    rows.slice(0, 6).forEach((row, i) => row.cells.forEach(c => {
+      const t = norm(c.t);
+      if (!t || t.length > 12 || cols[c.p]) return;
+      const hit = PII.find(x => x[1].test(t));
+      if (hit) cols[c.p] = {kind: hit[0], from: i + 1};
+    }));
+    if (!Object.keys(cols).length) return 0;
+    let n = 0;
+    rows.forEach((row, i) => row.cells.forEach(c => {
+      const pc = cols[c.p];
+      if (!pc || i < pc.from) return;
+      c.pii = pc.kind;
+      if (!c.t) return;
+      c.full = c.t;
+      const v = MASK[pc.kind](c.t);
+      if (v !== c.t) { c.t = v; n++; }
+    }));
+    return n;
+  }
+  const stripFull = model => JSON.parse(JSON.stringify(model, (k, v) => k === 'full' ? undefined : v));
+
+  /* ── 칸 자료 → 시딩 표 ──
+     머리글 줄(처음으로 이름이 2개 이상인 줄) = 열 이름 그대로 · 그 위 긴 글 = 안내.
+     머리글 오른쪽에 빈 열을 사이에 두고 떨어진 글(아페티 탭 [참고] 노란색 박스 → 보냄 완료 표시)도 안내로.
+     아이디 칸이 세로로 병합된 줄(시호님 탭 — 한 사람에 제품 여러 개)은 한 사람으로 묶는다.
+     칸 값이 그 열 이름과 같으면(책임자 칸에 '책임자', 브랜드 칸에 '브랜드') 아직 안 채운 자리로 본다. */
+  const phName = (c, name) => { const v = c.t || (c.chips[0] && c.chips[0].t) || ''; return !!v && low(v) === low(name); };
+  function mergeCells(arr, col) {
+    if (!arr.length) return null;
+    const vals = arr.filter(c => hasVal(c) && !phName(c, col.name)), c0 = vals[0] || arr[0];
+    const lines = vals.filter(c => c.t).map(c => ({t: c.t, href: c.href}));
+    const chips = [];
+    vals.forEach(c => c.chips.forEach(x => chips.push(x)));
+    const m = {t: lines.map(x => x.t).join('\n'), lines, chips, st: c0.st || NOSTYLE, cb: vals.length ? c0.cb : 0, href: vals.length ? c0.href : '', pii: arr.find(c => c.pii) ? arr.find(c => c.pii).pii : ''};
+    if (m.pii) {
+      m.fullOk = vals.every(c => !c.t || c.full !== undefined);
+      m.full = vals.map(c => c.full !== undefined ? c.full : c.t).filter(Boolean).join('\n');
+    }
+    return m;
+  }
+  const valOf = (r, col) => { const x = col && r.byP[col.p]; return x ? (x.t || (x.chips[0] && x.chips[0].t) || '') : ''; };
+  const catVal = (r, p) => { const x = r.byP[p]; return (x && (x.t || (x.chips[0] && x.chips[0].t))) || '미지정'; };
+  function pickCols(cols) {
+    const by = re => cols.find(c => re.test(low(c.name)));
+    return {
+      cProd: by(/원하는제품|^product$|^제품/), cBoost: by(/boosting/), cNote: by(/^비고$/), cUp: by(/^업로드/), cOwner: by(/^(책임자|담당자?)$/),
+      cPay: by(/유상/), cBrand: by(/^브랜드$/), cAddr: by(/주소/), cUrl: by(/url/),
+    };
+  }
+  function buildData(model, tab) {
+    const meta = tab ? (tab.meta || classify(tab.name)) : classify('');
+    if (meta.sec === 'guide') return buildGuide(model);
+    const rows = model.rows, n = rows.length, nCols = model.cols.length || Math.max(0, ...rows.map(r => r.cells.length));
+    const g2 = rows.map(() => []);
+    rows.forEach((row, ri) => row.cells.forEach(c => {
+      g2[ri][c.p] = c;
+      for (let y = 1; y < c.rs && ri + y < n; y++) if (!g2[ri + y][c.p]) g2[ri + y][c.p] = c;   // 세로 병합 = 아래 줄에도 같은 칸
+    }));
+    let hi = -1;
+    const banner = [];
+    for (let k = 0; k < Math.min(8, n); k++) {
+      const ne = rows[k].cells.filter(c => c.t), lab = ne.filter(c => c.t.length <= 30 && numOf(c.t) === null);
+      if (lab.length >= 2 && lab.length >= ne.length * 0.6) { hi = k; break; }
+      ne.forEach(c => banner.push(c.t));
+    }
+    if (hi < 0) banner.length = 0;
+    const head = [];
+    if (hi >= 0) rows[hi].cells.forEach(c => { if (c.t) head[c.p] = c.t.replace(/\s*\n\s*/g, ' ').trim(); });
+    const used = new Array(nCols).fill(0);
+    for (let k = hi + 1; k < n; k++) for (let p = 0; p < nCols; p++) { const c = g2[k][p]; if (c && c.p === p && hasVal(c)) used[p]++; }
+    const hps = head.map((h, p) => h ? p : -1).filter(p => p >= 0);
+    const lastH = hps.length ? hps[hps.length - 1] : nCols - 1;
+    let end = lastH;
+    while (end + 1 < nCols && used[end + 1]) end++;   // 머리글 없이 바로 붙은 칸 (시호님 탭 K열 메모)
+    const notes = [];
+    for (let p = end + 1; p < nCols; p++) if (used[p]) for (let k = hi + 1; k < n; k++) { const c = g2[k][p]; if (c && c.p === p && c.t && !notes.includes(c.t)) notes.push(c.t); }
+    const cols = [], seen = {};
+    for (let p = 0; p <= end && p < nCols; p++) {
+      let name = head[p] || '';
+      if (!name && !used[p]) continue;   // 머리글도 내용도 없는 열
+      if (!name) name = p > lastH ? '메모' : `${model.cols[p] ? model.cols[p].l : colName(p)}열`;
+      if (seen[name]) name = `${name} (${++seen[name]})`; else seen[name] = 1;
+      const cells = [];
+      for (let k = hi + 1; k < n; k++) { const c = g2[k][p]; if (c && hasVal(c) && !phName(c, name)) cells.push(c); }
+      const link = /url|링크|link/i.test(name) || (cells.length > 0 && cells.filter(c => c.href).length >= cells.length * 0.5);
+      const chip = cells.length > 0 && cells.filter(c => c.chips.length).length >= cells.length * 0.5;
+      const pii = PII.find(x => x[1].test(norm(name)));
+      cols.push({p, name, type: chip ? 'chip' : link ? 'link' : 'text', align: '', pii: pii ? pii[0] : '', dflt: /유상/.test(name)});
+    }
+    const key = cols.find(c => /아이디|^id$|instagram|계정/i.test(low(c.name))) || cols[0];
+    if (key) { key.key = true; key.type = 'text'; }
+    // 줄 → 사람 (아이디 칸이 세로로 병합된 아래 줄은 같은 사람)
+    const recs = [];
+    let cur = null;
+    for (let k = hi + 1; k < n; k++) {
+      const kc = key ? g2[k][key.p] : null;
+      if (cur && kc && kc === cur.kc && kc.rs > 1) cur.r2 = rows[k].r;
+      else { cur = {r: rows[k].r, r2: rows[k].r, kc, parts: {}}; recs.push(cur); }
+      for (const col of cols) {
+        const c = g2[k][col.p];
+        if (!c) continue;
+        const arr = cur.parts[col.p] || (cur.parts[col.p] = []);
+        if (!arr.includes(c)) arr.push(c);
+      }
+    }
+    const gid = tab ? tab.gid : '', out = [];
+    for (const rc of recs) {
+      const byP = {};
+      cols.forEach(col => { const mc = mergeCells(rc.parts[col.p] || [], col); if (mc) byP[col.p] = mc; });
+      if (!cols.some(col => !col.dflt && byP[col.p] && hasVal(byP[col.p]))) continue;   // '무상'만 미리 적힌 양식 줄 · 빈 줄
+      let txt = `${meta.label} ${meta.en || ''}`;
+      cols.forEach(col => { const c = byP[col.p]; if (c) txt += ' ' + c.t + (c.chips.length ? ' ' + c.chips.map(x => x.t).join(' ') : ''); });
+      const kk = txt.toLowerCase(), kc = key ? byP[key.p] : null;
+      out.push({id: `${gid}:${rc.r}`, gid, r: rc.r, r2: rc.r2, byP, brand: meta.brand, yel: !!(rc.kc && rc.kc.st && rc.kc.st.yel && kc && kc.t), k: kk, k2: kk.replace(/\s+/g, '')});
+    }
+    const C = pickCols(cols);
+    const kind = meta.sec === 'x' || cols.some(c => /^x(아이디|url)$/.test(low(c.name))) ? 'x' : C.cAddr ? 'ship' : 'list';
+    const cc = kind === 'ship' ? (C.cBrand || C.cOwner) : (C.cOwner || C.cBrand);
+    const d = {kind, cols, rows: out, C, meta, insta: !!key && /instagram|인스타/i.test(key.name),
+      banner: banner.concat(notes).map(s => s.replace(/\s*\n\s*/g, ' ').replace(/->/g, '→').trim()).filter(Boolean),
+      kpis: statKpis(kind, out, C), cat: catOf(out, cc)};
+    fitCols(d);
+    return d;
+  }
+  function catOf(rows, col) {
+    if (!col) return null;
+    const mm = new Map();
+    rows.forEach(r => { const x = catVal(r, col.p); mm.set(x, (mm.get(x) || 0) + 1); });
+    if (!mm.size || (mm.size === 1 && mm.has('미지정'))) return null;
+    return {p: col.p, name: col.name, values: [...mm.entries()].sort((a, b) => b[1] - a[1] || (a[0] === '미지정') - (b[0] === '미지정'))};
+  }
+  // 위 요약 카드 — 누르면 그 줄만. 시트에 적힌 것만 센다 (노란색 = 보냄 · 비고 '회신' · 업로드 칸 · 주소 칸)
+  function statKpis(kind, rows, C) {
+    const cnt = f => rows.filter(f).length, v = valOf, k = [];
+    k.push({id: '', label: '시딩 인원', unit: '명', val: rows.length});
+    if (kind === 'x') {
+      k.push({id: 'sent', label: '보냄 완료', unit: '명', tone: 'gold', val: cnt(r => r.yel), pred: r => r.yel, tip: '시트에서 아이디 칸이 노란색인 줄 = 보냄 완료'});
+      if (C.cProd) { const pick = r => !!v(r, C.cProd); k.push({id: 'pick', label: '제품 고름', unit: '명', tone: 'blue', val: cnt(pick), pred: pick, tip: `'${C.cProd.name}' 칸이 채워진 줄`}); }
+      if (C.cNote) {
+        const reply = r => /회신/.test(v(r, C.cNote)), hold = r => /보류|거절|불가|막아/.test(v(r, C.cNote));
+        k.push({id: 'reply', label: '회신 O', unit: '명', tone: 'green', val: cnt(reply), pred: reply, tip: "비고에 '회신'이 적힌 줄"});
+        if (cnt(hold)) k.push({id: 'hold', label: '보류', unit: '명', tone: 'red', val: cnt(hold), pred: hold, tip: "비고에 '보류 · 거절 · 불가'가 적힌 줄"});
+      }
+    } else if (kind === 'ship') {
+      const lines = (r, c) => c && r.byP[c.p] ? r.byP[c.p].lines.length : 0;
+      if (C.cProd) k.push({id: 'n_prod', label: '제품', unit: '개', val: rows.reduce((s, r) => s + lines(r, C.cProd) + lines(r, C.cBoost), 0), tip: `${C.cProd.name}${C.cBoost ? ' + ' + C.cBoost.name : ''} 칸에 적힌 제품 수`});
+      const has = r => !!v(r, C.cAddr);
+      k.push({id: 'addr', label: '배송 정보 있음', unit: '명', tone: 'green', val: cnt(has), pred: has, tip: '주소 칸이 채워진 줄'});
+      if (cnt(r => !has(r))) k.push({id: 'noaddr', label: '주소 없음', unit: '명', tone: 'amber', val: cnt(r => !has(r)), pred: r => !has(r), tip: '주소를 아직 못 받은 줄'});
+    }
+    if (C.cUp) { const up = r => !!v(r, C.cUp); k.push({id: 'up', label: '업로드', unit: '명', tone: 'green', val: cnt(up), pred: up, tip: `'${C.cUp.name}' 칸이 채워진 줄`}); }
+    if (C.cPay) { const paid = r => /^유상/.test(v(r, C.cPay)); if (cnt(paid)) k.push({id: 'paid', label: '유상', unit: '명', val: cnt(paid), pred: paid}); }
+    return k;
+  }
+
+  /* ── 'X 시딩 · 전체' — 브랜드 탭을 한 표로 (맨 앞 브랜드 칸, 나머지는 같은 이름 칸끼리) ── */
+  function allData() {
+    const its = S.nav.filter(it => it.sec === 'x' && !it.all);
+    const ready = its.map(it => ({it, c: S.cache.get(it.gid)})).filter(x => x.c && x.c.data && !x.c.data.guide);
+    const sig = its.map(it => { const c = S.cache.get(it.gid); return c ? it.gid + '@' + c.at : it.gid; }).join('|');
+    if (S.allData && S.allSig === sig) return S.allData;
+    if (!ready.length) return null;
+    const cols = [{p: 0, name: '브랜드', type: 'brand', align: ''}], idx = new Map();
+    ready.forEach(({c}) => c.data.cols.forEach(col => {
+      const nn = low(col.name);
+      if (!idx.has(nn)) { idx.set(nn, cols.length); cols.push({p: cols.length, name: col.name, type: col.type, align: col.align, key: col.key, pii: col.pii, dflt: col.dflt}); }
+    }));
+    const rows = [];
+    ready.forEach(({it, c}) => {
+      const b = it.brand, map = c.data.cols.map(col => [col.p, idx.get(low(col.name))]);
+      c.data.rows.forEach(r => {
+        const byP = {0: {t: b.k, lines: [{t: b.k}], chips: [], st: NOSTYLE}};
+        map.forEach(([sp, dp]) => { if (r.byP[sp]) byP[dp] = r.byP[sp]; });
+        rows.push(Object.assign({}, r, {byP, brand: b}));
+      });
+    });
+    const C = pickCols(cols), cat = {p: 0, name: '브랜드', values: ready.map(({it}) => [it.brand.k, rows.filter(r => r.brand === it.brand).length])};
+    const d = {kind: 'x', all: true, cols, rows, C, meta: {sec: 'x', label: '전체'}, banner: [], kpis: statKpis('x', rows, C), cat,
+      loading: its.length - ready.length};
+    fitCols(d);
+    S.allData = d;
+    S.allSig = sig;
+    return d;
+  }
+
+  /* ── 주의사항 탭 → 안내 화면 (짧은 줄 = 규칙, 긴 글 = DM 양식 카드) ── */
+  function buildGuide(model) {
+    const rules = [], cards = [];
+    model.rows.forEach(row => row.cells.forEach(c => {
+      const t = c.t;
+      if (!t) return;
+      if (t.length <= 90 && !/\n/.test(t)) { rules.push(t.replace(/->/g, '→')); return; }
+      const b = brandOf(t, false);
+      const kind = /^\s*안녕하세요/.test(t) ? '첫 연락 DM' : /콘텐츠\s*가이드/.test(t) ? '콘텐츠 가이드' : '양식';
+      cards.push({brand: b, kind, text: t, r: row.r, p: c.p});
+    }));
+    const bi = b => b ? BRANDS.indexOf(b) : 99, ki = k => k === '첫 연락 DM' ? 0 : k === '콘텐츠 가이드' ? 1 : 2;
+    cards.sort((x, y) => bi(x.brand) - bi(y.brand) || ki(x.kind) - ki(y.kind) || x.r - y.r || x.p - y.p);
+    return {guide: true, rules, cards, banner: rules, cols: [], rows: [],
+      kpis: [{id: 'g_dm', label: '첫 연락 DM', unit: '개', val: cards.filter(c => c.kind === '첫 연락 DM').length}, {id: 'g_cg', label: '콘텐츠 가이드', unit: '개', val: cards.filter(c => c.kind === '콘텐츠 가이드').length}]};
+  }
+  const linkify = s => esc(s).replace(/https?:\/\/[^\s<]+|(?:[a-z0-9-]+\.)+(?:kr|com|site|net|io|me|shop)(?:\/[^\s<]*)?/gi, m => {
+    const u = /^https?:/i.test(m) ? m : 'https://' + m;
+    return `<a class="lnk" href="${u}" target="_blank" rel="noopener noreferrer">${m}</a>`;
+  });
+
+  /* ── 칸 너비 — 들어간 글자에 맞춰 자동 (erp/ fitCols · fitWidths 와 같은 규칙: 90% 값 기준, 화면이 모자라면 글자 칸부터 두 줄로 접어 줄임) ── */
+  const PAD = 17;
+  const mctx = document.createElement('canvas').getContext('2d'), MW = new Map();
+  function tw(text, font) {
+    const k = font + '\u0001' + text;
+    let w = MW.get(k);
+    if (w === undefined) { mctx.font = font; w = mctx.measureText(text).width; if (MW.size > 60000) MW.clear(); MW.set(k, w); }
+    return w;
+  }
+  const shortUrl = s => String(s).replace(/^https?:\/\/(www\.)?/i, '').replace(/[?#].*$/, '').replace(/\/$/, '');
+  function display(col, c) {
+    if (!c || !c.t) return '';
+    const ls = c.lines && c.lines.length ? c.lines : [{t: c.t}];
+    if (col.type === 'link') return ls.map(l => shortUrl(l.t)).join(' · ');   // https://x.com/abc?s=11 → x.com/abc
+    return ls.map(l => l.t.replace(/\s*\n\s*/g, ' ')).join(' · ');
+  }
+  function headMin(name) {
+    const w = s => tw(s, F_HEAD), words = name.split(/\s+/).filter(Boolean);
+    if (!words.length) return 0;
+    let best = w(name);
+    if (words.length > 1) for (let i = 1; i < words.length; i++) best = Math.min(best, Math.max(w(words.slice(0, i).join(' ')), w(words.slice(i).join(' '))));
+    else if (name.length >= 4) { const h = Math.ceil(name.length / 2); best = Math.min(best, Math.max(w(name.slice(0, h)), w(name.slice(h)))); }
+    return Math.ceil(best);
+  }
+  function cellW(col, c, row) {
+    if (col.type === 'brand') return c.t ? tw(c.t, F_BOLD) + 15 : 0;
+    if (c.chips.length) return c.chips.reduce((s, x) => s + tw(x.t, F_TAG) + 19, 0) + (c.chips.length - 1) * 4;
+    if (!c.t) return 0;
+    let w = tw(display(col, c), col.key || c.st.bold ? F_BOLD : F_CELL);
+    if (col.key && row.yel) w += 6 + tw('보냄', F_PILL) + 14;
+    return w;
+  }
+  function fitCols(d) {
+    d.cols.forEach(col => {
+      const pad = PAD, hm = headMin(col.name) + pad + 4, ws = [], w2 = [], lw = [];
+      col.hm = hm;
+      col.wrap = col.type === 'text' && !col.key;   // 글자 칸은 두 줄까지 접어서 보인다 (줄 높이는 그대로)
+      for (const row of d.rows) {
+        const c = row.byP[col.p];
+        if (!c) continue;
+        const cw = cellW(col, c, row);
+        if (!cw) continue;
+        ws.push(cw + pad + 2);
+        if (col.wrap && !c.chips.length && c.t) {
+          w2.push(Math.ceil(cw * 0.56) + pad + 4);
+          lw.push(Math.max(...display(col, c).split(/\s+/).map(x => tw(x, c.st.bold ? F_BOLD : F_CELL))) + pad + 2);   // 가장 긴 낱말 — 이보다 좁으면 낱말 중간에서 잘린다
+        }
+      }
+      const nFilled = ws.length;
+      ws.sort((a, b) => a - b);
+      w2.sort((a, b) => a - b);
+      lw.sort((a, b) => a - b);
+      const pct = (a, q) => a.length ? a[Math.floor((a.length - 1) * q)] : 0;
+      const top = ws.length ? ws[ws.length - 1] : 0, base = w2.length ? w2 : ws;
+      col.sparse = col.type === 'text' && !col.key && nFilled < d.rows.length * 0.35;   // 대부분 빈 칸 (원하는 제품 · 비고 등) — 먼저 줄인다
+      const flex = col.flex = col.type === 'text';
+      const max = Math.min(col.key ? 320 : 360, Math.max(hm, top));
+      const pref = flex && !col.key ? Math.min(max, Math.max(hm, pct(ws, 0.9))) : max;
+      let min = max;
+      const word = col.word = Math.min(pct(lw, 0.9), 160);
+      if (flex) {
+        if (col.key) min = Math.max(hm, 110, Math.min(top, 240));   // 아이디는 잘리지 않게 (가장 긴 아이디 + '보냄' 딱지까지)
+        else if (col.wrap) min = Math.max(hm, word, col.sparse ? Math.min(pct(base, 0.5), 90) : Math.min(pct(base, 0.75), 120));
+        else min = Math.max(hm, col.sparse ? 56 : Math.min(pct(ws, 0.75), 130));
+      }
+      col.max = Math.ceil(max);
+      col.pref = Math.ceil(pref);
+      col.min = Math.ceil(Math.min(pref, min));
+    });
+  }
+  function fitWidths(cols, avail) {
+    const ws = cols.map(c => c.pref), idx = f => cols.map((c, i) => i).filter(i => f(cols[i]));
+    const groups = [idx(c => !c.key && c.sparse), idx(c => !c.key && !c.sparse), idx(c => c.key)];
+    let diff = avail - ws.reduce((s, w) => s + w, 0);
+    const pass = (gs, lo) => {
+      for (const g of gs) {
+        if (!diff) break;
+        const shrink = diff < 0, room = g.reduce((s, i) => s + (shrink ? ws[i] - lo(cols[i]) : cols[i].max - ws[i]), 0);
+        if (room <= 0) continue;
+        const k = Math.min(1, Math.abs(diff) / room);
+        let used = 0;
+        g.forEach(i => { const step = Math.max(0, Math.floor((shrink ? ws[i] - lo(cols[i]) : cols[i].max - ws[i]) * k)); ws[i] += shrink ? -step : step; used += step; });
+        diff += shrink ? used : -used;
+      }
+    };
+    pass(diff < 0 ? groups : groups.slice().reverse(), c => c.min);
+    return ws;
+  }
+  if (document.fonts && document.fonts.addEventListener) {   // 글꼴(Pretendard)이 늦게 받아지면 그 글꼴로 다시 잰다
+    let ft = 0;
+    document.fonts.addEventListener('loadingdone', () => {
+      clearTimeout(ft);
+      ft = setTimeout(() => { MW.clear(); S.cache.forEach(c => { if (c.data && !c.data.guide) fitCols(c.data); }); S.allData = null; if (curData()) renderGrid({keep: true}); }, 250);
+    });
+  }
+
+  /* ── 칸 그리기 ── */
+  function hl(s) {   // 찾는 낱말 강조
+    if (!S.hlRe) return esc(s);
+    let out = '', last = 0, m;
+    S.hlRe.lastIndex = 0;
+    while ((m = S.hlRe.exec(s))) {
+      if (!m[0]) { S.hlRe.lastIndex++; continue; }
+      out += esc(s.slice(last, m.index)) + '<mark>' + esc(m[0]) + '</mark>';
+      last = m.index + m[0].length;
+    }
+    return out + esc(s.slice(last));
+  }
+  const tagHtml = x => `<span class="tag" style="background:${x.bg || '#eef1f5'};color:${x.fg || '#1f2937'}">${hl(x.t)}</span>`;
+  const brandHtml = (b, t) => `<span class="bd"><i style="background:${b ? b.color : '#94a3b8'}"></i>${hl(t)}</span>`;
+  const hrefOf = (col, c) => c.href || (col.type === 'link' && /^https?:\/\//i.test(c.t) ? c.t.split('\n')[0] : '');
+  function cellHtml(row, col, pos) {
+    const c = row.byP[col.p];
+    let cls = (col.align || '') + (pos ? pos.cls : ''), style = pos ? pos.style : '', inner = '', title = '';
+    if (c) {
+      if (col.type === 'brand') inner = brandHtml(row.brand, c.t);
+      else {
+        const yel = col.key && row.yel;
+        if (c.st.bg && !yel) style += `background-color:${c.st.bg};`;   // 시트 칸 색은 옅게 (노란 아이디 칸은 '보냄' 딱지로 대신)
+        if (c.st.fg) style += `color:${c.st.fg};`;
+        if (c.st.bold || col.key) cls += ' b';
+        if (c.st.strike) style += 'text-decoration:line-through;';
+        if (c.chips.length) inner = c.chips.map(tagHtml).join('');
+        else if (c.t) {
+          const d = display(col, c), href = col.type === 'link' ? hrefOf(col, c) : '';
+          inner = href ? `<a class="lnk" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : hl(d);
+          if (col.wrap) inner = `<div class="cl">${inner}</div>`;
+          if (d !== c.t || d.length > 14) title = c.t;
+        }
+        if (yel) inner += '<span class="pill sent" title="시트에서 노란색 = 보냄 완료">보냄</span>';
+      }
+    }
+    cls = cls.trim();
+    return `<td data-p="${col.p}"${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
+  }
+  function skeleton() {
+    let h = '<div class="skel">';
+    for (let i = 0; i < 12; i++) h += `<div><i style="width:${90 + (i * 29) % 60}px"></i><i style="width:${110 + (i * 53) % 120}px"></i><i style="width:${120 + (i * 41) % 60}px"></i><i style="width:36px"></i><i style="width:52px"></i><i style="width:46px"></i></div>`;
+    return h + '</div>';
+  }
+  function sortKey(r, col) {
+    if (col.type === 'brand') return BRANDS.indexOf(r.brand);
+    const c = r.byP[col.p];
+    return c ? (c.t || (c.chips[0] && c.chips[0].t) || '') : '';
+  }
+  function filtered(d, v) {
+    let rows = d.rows;
+    if (v.kpi) { const k = d.kpis.find(x => x.id === v.kpi); if (k && k.pred) rows = rows.filter(k.pred); }
+    if (v.cat != null && d.cat) rows = rows.filter(r => catVal(r, d.cat.p) === v.cat);
+    if (S.terms.length) rows = rows.filter(r => S.terms.every(t => r.k.includes(t) || r.k2.includes(t)));
+    if (v.sort) {
+      const col = d.cols.find(c => c.p === v.sort.p), dir = v.sort.dir;
+      if (col) rows = rows.slice().sort((a, b) => {
+        const x = sortKey(a, col), y = sortKey(b, col), ex = x === '', ey = y === '';
+        if (ex || ey) return ex === ey ? 0 : ex ? 1 : -1;   // 빈칸은 늘 맨 아래
+        const c = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', {numeric: true});
+        return c * dir;
+      });
+    }
+    return rows;
+  }
+  function guideHtml(cards, d) {
+    if (!cards.length) return `<div class="guide"><div class="gempty">${d.cards.length ? '찾는 낱말이 든 양식이 없어요' : '이 탭에 양식 글이 없어요'}</div></div>`;
+    return `<div class="guide">${cards.map(c => `<section class="gcard${S.gFocus && c.brand && c.brand.k === S.gFocus ? ' on' : ''}"><div class="gc-h"><i class="dot"${c.brand ? ` style="background:${c.brand.color}"` : ''}></i><b>${esc(c.brand ? c.brand.k : '공통')}</b><span>${esc(c.kind)}</span><button type="button" data-copy="${d.cards.indexOf(c)}" title="복사해서 X DM 창에 붙여 넣기">복사</button></div><div class="gc-b">${linkify(c.text)}</div></section>`).join('')}</div>`;
+  }
+  function renderGrid(opt) {
+    opt = opt || {};
+    const keep = opt.keep ? {t: grid.scrollTop, l: grid.scrollLeft} : (opt.pos || {t: 0, l: 0});
+    const d = curData();
+    S.size = sizeKey();
+    clearTimeout(S.softT);
+    grid.classList.toggle('is-guide', !!(d && d.guide));
+    if (!d) { grid.innerHTML = skeleton(); S.list = []; paintCount(); return; }
+    if (d.guide) {
+      const cards = d.cards.filter(c => !S.terms.length || S.terms.every(t => c.text.toLowerCase().includes(t)));
+      S.list = cards;
+      grid.innerHTML = guideHtml(cards, d);
+      grid.scrollTop = keep.t;
+      paintCount();
+      if (S.gFocus && !opt.keep) { const on = grid.querySelector('.gcard.on'); if (on) on.scrollIntoView({block: 'nearest'}); }
+      return;
+    }
+    const v = vstate(), list = filtered(d, v);
+    S.list = list;
+    // 휴대폰: 아이디 칸을 맨 앞에 고정하고 줄 번호 열은 뺌 · 전체 보기는 줄 번호(탭마다 다름) 없이
+    const nar = narrow.matches, showRn = !nar && !d.all, vw = grid.clientWidth || 1000;
+    const cols = d.cols.slice();
+    if (nar) { const kI = cols.findIndex(c => c.key); if (kI > 0) cols.unshift(cols.splice(kI, 1)[0]); }
+    let stickN = 0;
+    const kI = cols.findIndex(c => c.key);
+    if (kI >= 0 && kI <= 1) stickN = kI + 1;
+    const widths = nar ? cols.map(c => c.key ? Math.min(c.pref, Math.max(120, Math.round(vw * 0.46))) : c.flex ? Math.max(c.min, Math.min(c.pref, Math.round(vw * 0.62))) : c.pref)
+      : fitWidths(cols, vw - (showRn ? RN_W : 0) - 2);
+    let left = showRn ? RN_W : 0;
+    while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * 0.62) stickN--;
+    const posOf = cols.map((c, k) => {
+      if (k >= stickN) return null;
+      const p = {cls: ` sk${k === stickN - 1 ? ' skl' : ''}`, style: `left:${left}px;`};
+      left += widths[k];
+      return p;
+    });
+    const total = (showRn ? RN_W : 0) + widths.reduce((s, w) => s + w, 0), sort = v.sort;
+    let h = `<table class="tbl" style="width:max(100%,${total}px)"><colgroup>${showRn ? `<col style="width:${RN_W}px">` : ''}${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead><tr>`;
+    if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="시트 줄 번호 · 누르면 원래 순서로">행</th>`;
+    cols.forEach((c, k) => {
+      const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
+      const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '')).trim();
+      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)} — 누르면 정렬">${esc(c.name)}${ar}</th>`;
+    });
+    h += '<th class="fill"></th></tr></thead><tbody>';
+    const span = cols.length + (showRn ? 2 : 1);
+    if (!list.length) h += `<tr class="empty"><td colspan="${span}">${d.rows.length ? '조건에 맞는 줄이 없어요' : d.all && d.loading ? '브랜드 탭을 불러오는 중…' : '아직 시딩 리스트가 비어 있어요'}</td></tr>`;
+    else for (const row of list) {
+      h += `<tr data-id="${esc(row.id)}"${S.sel && S.sel.cur === S.cur && S.sel.id === row.id ? ' class="on"' : ''}>`;
+      if (showRn) h += `<td class="rn sk${stickN ? '' : ' skl'}" style="left:0">${row.r}</td>`;
+      for (let k = 0; k < cols.length; k++) h += cellHtml(row, cols[k], posOf[k]);
+      h += '<td class="fill"></td></tr>';
+    }
+    grid.innerHTML = h + '</tbody></table>';
+    grid.scrollTop = keep.t;
+    grid.scrollLeft = keep.l;
+    paintCount();
+    // 그리고 나서 세로 스크롤바가 생기거나 없어져 폭이 바뀌었으면 그 폭으로 한 번 더 맞춘다
+    if (!nar && !opt.again && grid.clientWidth && Math.abs(grid.clientWidth - vw) > 1) renderGrid({keep: true, again: true});
+  }
+  const sizeKey = () => `${grid.clientWidth}x${narrow.matches ? 1 : 0}`;
+  // 1분 자동 갱신으로 자료가 바뀌었을 때 — 손가락으로 넘기는 중이면 멈춘 뒤에 그린다
+  function softRender() {
+    clearTimeout(S.softT);
+    const idle = Date.now() - S.touchAt;
+    if (idle < 1500) { S.softT = setTimeout(softRender, 1600 - idle); return; }
+    if (!curData()) return;
+    renderGrid({keep: true});
+    if (S.sel && S.sel.cur === S.cur && !$('detail').hidden) openDetail(S.sel.id, false);
+  }
+  const touched = () => { S.touchAt = Date.now(); };
+  ['touchstart', 'touchmove', 'wheel'].forEach(ev => document.addEventListener(ev, touched, {passive: true, capture: true}));
+
+  /* ── 휴대폰: 표를 아래로 넘기면 위쪽(안내 · 요약 카드 · 칩)을 접는다 (erp/ 와 같음) ── */
+  let hdLast = 0, hdAcc = 0, hdLock = 0;
+  function setHmin(on) {
+    on = !!on && compactMQ.matches;
+    if (app.classList.contains('hmin') === on) return;
+    app.classList.toggle('hmin', on);
+    hdLock = Date.now() + 350;
+    hdAcc = 0;
+  }
+  function headScroll() {
+    const top = grid.scrollTop, dy = top - hdLast;
+    hdLast = top;
+    if (!compactMQ.matches || Date.now() < hdLock) return;
+    if (app.classList.contains('hmin')) { if (top < 24) setHmin(false); return; }
+    hdAcc = dy > 0 ? hdAcc + dy : 0;
+    const head = document.querySelector('.head');
+    if (hdAcc > 24 && top > 56 && grid.scrollHeight - grid.clientHeight > head.offsetHeight + 160) setHmin(true);
+  }
+
+  /* ── 위쪽 (제목 · 안내 · 요약 카드 · 칩) ── */
+  function renderHead() {
+    const it = navOf(S.cur), d = curData(), v = vstate();
+    let title = '불러오는 중…', badge = '';
+    if (S.cur === ALL) { title = 'X 시딩 전체'; badge = d && d.loading ? `브랜드 ${fmt(d.loading)}개 받는 중…` : '브랜드별 한눈에'; }
+    else if (it) {
+      title = esc(it.label) + (it.en && low(it.en) !== low(it.label) ? `<span class="en">${esc(it.en)}</span>` : '');
+      badge = it.sec === 'x' ? 'X 시딩' : it.sec === 'guide' ? '안내 · DM 양식' : d && d.insta ? '인스타그램 시딩' : '시딩';
+    }
+    $('title').innerHTML = title;
+    const td = $('tDate');
+    td.hidden = !badge;
+    td.textContent = badge;
+    const gt = guideTab(), gb = $('gTog');
+    gb.hidden = !gt || !(it && it.sec === 'x');
+    // 노란 안내 — 그 탭 위쪽 글 · 옆 메모 + (X 시딩) 주의사항 탭의 규칙
+    let lines = d ? d.banner.slice() : [];
+    if (d && !d.guide && d.kind === 'x' && gt) { const g = S.cache.get(gt.gid); if (g && g.data && g.data.guide) lines = g.data.rules.concat(lines); }
+    const al = $('alert');
+    if (lines.length) {
+      const more = lines.length > 1 || lines[0].length > 44;
+      al.innerHTML = `${ICON_WARN}<ul>${lines.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`
+        + (more ? `<button type="button" class="al-more">${S.alertOpen ? '접기' : lines.length > 1 ? `+${lines.length - 1}` : '더 보기'}</button>` : '');
+      al.classList.toggle('fold', more && !S.alertOpen);
+      al.hidden = false;
+    } else al.hidden = true;
+    $('kpis').innerHTML = d ? d.kpis.map(k => {
+      const click = k.id === '' || !!k.pred, on = click && ((k.id === '' && !v.kpi) || (k.id && v.kpi === k.id));
+      return `<button type="button" class="kpi${click ? ' click' : ''}${k.tone ? ' ' + k.tone : ''}${on ? ' on' : ''}"${click ? ` data-kpi="${k.id}"` : ' tabindex="-1"'}${k.tip ? ` title="${esc(k.tip)}"` : ''}><b>${fmt(k.val)}${k.unit ? `<small>${k.unit}</small>` : ''}</b><span>${esc(k.label)}</span></button>`;
+    }).join('') : '';
+    const ch = $('chips');
+    if (d && d.cat) {
+      ch.innerHTML = `<button type="button" class="chip${v.cat == null ? ' on' : ''}" data-all="1">${esc(d.cat.name)} 전체 <em>${fmt(d.rows.length)}</em></button>`
+        + d.cat.values.map(([val, n]) => {
+          const b = d.all ? BRANDS.find(x => x.k === val) : null;
+          return `<button type="button" class="chip${v.cat === val ? ' on' : ''}" data-cat="${esc(val)}">${b ? `<i style="width:8px;height:8px;border-radius:50%;background:${b.color}"></i>` : ''}${esc(val)} <em>${fmt(n)}</em></button>`;
+        }).join('');
+      ch.hidden = false;
+    } else { ch.innerHTML = ''; ch.hidden = true; }
+    const href = !BASE ? '#' : S.cur && S.cur !== ALL ? `${BASE}/edit#gid=${S.cur}` : `${BASE}/edit`;
+    $('btnSheet').href = href;
+    $('sideSheet').href = href;
+    document.title = `${S.cur === ALL ? 'X 시딩 전체 · ' : it ? it.label + ' · ' : ''}시딩 마스터`;
+  }
+  $('kpis').addEventListener('click', e => {
+    const b = e.target.closest('.kpi[data-kpi]');
+    if (!b) return;
+    const v = vstate(), id = b.dataset.kpi;
+    v.kpi = !id || v.kpi === id ? null : id;
+    renderHead();
+    renderGrid({pos: {t: 0, l: grid.scrollLeft}});
+  });
+  $('chips').addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    const v = vstate();
+    v.cat = b.dataset.all ? null : (v.cat === b.dataset.cat ? null : b.dataset.cat);
+    renderHead();
+    renderGrid({pos: {t: 0, l: grid.scrollLeft}});
+  });
+  $('alert').addEventListener('click', () => { if (compactMQ.matches) { S.alertOpen = !S.alertOpen; renderHead(); } });
+  document.querySelector('.head').addEventListener('click', e => { if (app.classList.contains('hmin') && !e.target.closest('button,a')) setHmin(false); });
+  $('gTog').addEventListener('click', () => {
+    const gt = guideTab(), it = navOf(S.cur);
+    if (!gt) return;
+    S.gFocus = it && it.brand ? it.brand.k : null;
+    openTab(gt.gid);
+  });
+
+  /* ── 왼쪽 메뉴 — X 시딩(전체 + 브랜드, 시트 순서) · 담당자별 시딩 · 안내. 옆 숫자 = 시딩 인원 ── */
+  function navCount(it) {
+    if (it.all) {
+      let n = 0, any = false;
+      S.nav.forEach(x => { if (x.sec === 'x' && !x.all) { const c = S.cache.get(x.gid); if (c && c.data) { n += c.data.rows.length; any = true; } } });
+      return any ? n : null;
+    }
+    if (it.sec === 'guide') return null;
+    const c = S.cache.get(it.gid);
+    return c && c.data ? c.data.rows.length : null;
+  }
+  function renderNav() {
+    const items = S.tabs.map((t, i) => {
+      const m = t.meta || (t.meta = classify(t.name));
+      return {gid: t.gid, sec: m.sec, label: m.label, en: m.en, brand: m.brand, order: i, name: t.name};
+    });
+    items.sort((x, y) => SEC_ORDER.indexOf(x.sec) - SEC_ORDER.indexOf(y.sec) || x.order - y.order);
+    const hasX = items.some(it => it.sec === 'x');
+    S.nav = (hasX ? [{gid: ALL, sec: 'x', label: '전체', all: true, name: 'X 시딩 브랜드 탭 전부'}] : []).concat(items);
+    let h = '', sec = '';
+    for (const it of S.nav) {
+      if (it.sec !== sec) { sec = it.sec; h += `<div class="nav-sec">${esc(SECS[sec])}</div>`; }
+      const n = navCount(it), dot = it.brand ? it.brand.color : it.all ? '#22c55e' : '';
+      h += `<button type="button" class="nav-item${it.gid === S.cur ? ' on' : ''}" data-gid="${it.gid}" title="${esc(it.name)}"><i class="dot"${dot ? ` style="background:${dot}"` : ''}></i>`
+        + `<span class="nm">${esc(it.label)}${it.en && low(it.en) !== low(it.label) ? `<small>${esc(it.en)}</small>` : ''}</span>${n != null ? `<span class="nd">${fmt(n)}명</span>` : ''}</button>`;
+    }
+    $('nav').innerHTML = h;
+  }
+  function setNav(open) {
+    app.classList.toggle('nav-open', open);
+    $('scrim').hidden = !open;
+    if (open) { const on = $('nav').querySelector('.nav-item.on'); if (on) on.scrollIntoView({block: 'nearest'}); }
+  }
+  function setSide(open, save) {
+    app.classList.toggle('side-off', !open);
+    if (save) lsSet(LS_SIDE, open ? '1' : '0');
+    renderGrid({keep: true});
+  }
+  $('btnFold').addEventListener('click', () => { if (wide.matches) setSide(false, true); else setNav(false); });
+  $('nav').addEventListener('click', e => { const b = e.target.closest('.nav-item'); if (b) { if (b.dataset.gid !== S.cur) S.gFocus = null; openTab(b.dataset.gid); setNav(false); } });
+  $('btnMenu').addEventListener('click', () => { if (wide.matches) setSide(app.classList.contains('side-off'), true); else setNav(!app.classList.contains('nav-open')); });
+  $('scrim').addEventListener('click', () => setNav(false));
+  function saveTab() {
+    if (S.cur === ALL) { lsSet(LS_TAB, JSON.stringify({gid: ALL, name: ''})); return; }
+    const t = tabOf(S.cur);
+    if (t) lsSet(LS_TAB, JSON.stringify({gid: t.gid, name: t.name}));
+  }
+
+  /* ── 저장본 (IndexedDB) — 탭마다 마지막으로 받은 칸 자료(개인정보 원래 값은 뺀 것)와 받은 시각. 열 때 먼저 띄우고 새 자료로 바꿔 끼운다 ── */
+  const store = (() => {
+    let dbp = null;
+    const open = () => dbp || (dbp = new Promise(res => {
+      try {
+        const rq = indexedDB.open(IDB_NAME, 1);
+        rq.onupgradeneeded = () => { try { rq.result.createObjectStore('tabs'); } catch (e) { /* 이미 있음 */ } };
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = rq.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    }));
+    const run = (mode, fn) => open().then(db => db && new Promise(res => {
+      try {
+        const tx = db.transaction('tabs', mode), rq = fn(tx.objectStore('tabs'));
+        tx.oncomplete = () => res(rq ? rq.result : true);
+        tx.onerror = tx.onabort = () => res(null);
+      } catch (e) { res(null); }
+    }));
+    return {
+      get: gid => run('readonly', s => s.get(gid)).then(v => v && v.v === CACHE_VER && v.model ? v : null),
+      put: (gid, model, at) => run('readwrite', s => s.put({v: CACHE_VER, model: stripFull(model), at}, gid)),
+      keys: () => run('readonly', s => s.getAllKeys()),
+      del: gid => run('readwrite', s => s.delete(gid)),
+    };
+  })();
+  S.savedAt = {};
+  function saveModel(gid, model, at, changed) {
+    if (!changed && Date.now() - (S.savedAt[gid] || 0) < 120e3) return;
+    S.savedAt[gid] = Date.now();
+    store.put(gid, model, at);
+  }
+  function useStored(gid) {   // 메모리에 없으면 저장본을 꺼내 바로 띄운다 (그 사이 새 자료가 왔으면 무시)
+    return store.get(gid).then(hit => {
+      if (!hit || S.cache.get(gid) || !tabOf(gid)) return false;
+      S.cache.set(gid, {model: hit.model, at: hit.at, data: buildData(hit.model, tabOf(gid)), stored: true});
+      S.savedAt[gid] = Date.now();
+      onTabData(gid, false);
+      return true;
+    }).catch(() => false);
+  }
+  // 탭 자료가 새로 들어왔을 때 — 보고 있는 화면이 그 탭이거나(전체 · 안내 규칙 포함) 메뉴 숫자
+  function onTabData(gid, hadOld) {
+    if (isX(gid)) S.allData = null;
+    renderNav();
+    const t = tabOf(gid), rel = S.cur === gid || (S.cur === ALL && isX(gid)) || (t && t.meta.sec === 'guide' && S.cur !== gid);
+    if (!rel) return;
+    hideMsg();
+    renderHead();
+    if (S.cur === gid && !hadOld) {
+      renderGrid({pos: S.pos[gid]});
+      if (S.sel && S.sel.cur === gid && !$('detail').hidden) openDetail(S.sel.id, false);
+    } else if (S.cur === gid || S.cur === ALL) softRender();
+    paintStatus();
+  }
+
+  /* ── 미리 받기 — 첫 탭이 뜬 뒤 나머지 탭을 하나씩 (메뉴 숫자 · 전체 보기 · 안내 규칙) ── */
+  let prefetchOn = false;
+  function prefetch() {
+    if (prefetchOn || !S.tabsOk || !S.cur) return;
+    prefetchOn = true;
+    (async () => {
+      await sleep(900);
+      // 주의사항(안내) 탭을 먼저 — 브랜드 탭 위 노란 안내에 규칙이 바로 붙게
+      const gids = S.nav.filter(it => !it.all).sort((a, b) => (b.sec === 'guide') - (a.sec === 'guide')).map(it => it.gid).filter(g => g !== S.cur);
+      for (const g of gids) {
+        while (!shown()) await sleep(5000);
+        if (!S.cache.get(g)) await useStored(g);
+        const c = S.cache.get(g);
+        if (c && !c.stored && Date.now() - c.at < REFRESH_MS) continue;
+        await loadSheet(g);
+        await sleep(PREFETCH_GAP);
+      }
+    })().catch(() => {});
+  }
+  // 'X 시딩 · 전체' — 브랜드 탭을 두 개씩 받는다 (저장본이 있으면 먼저)
+  function loadAllX(force) {
+    const gids = S.nav.filter(it => it.sec === 'x' && !it.all).map(it => it.gid);
+    gids.forEach(g => { if (!S.cache.get(g)) useStored(g); });
+    const want = gids.filter(g => { const c = S.cache.get(g); return force || !c || c.stored || Date.now() - c.at > STALE_MS; });
+    const run = async () => { while (want.length) { const g = want.shift(); await loadSheet(g, force ? {full: true} : null); } };
+    return Promise.all([run(), run()]);
+  }
+  function openTab(gid) {
+    if (!gid) return;
+    if (S.cur && S.cur !== gid) { S.pos[S.cur] = {t: grid.scrollTop, l: grid.scrollLeft}; closeDetail(); setHmin(false); }
+    S.cur = gid;
+    hideMsg();
+    const t = tabOf(gid);
+    if (t) S.lastName = t.name;
+    saveTab();
+    renderNav();
+    renderHead();
+    renderGrid({pos: S.pos[gid]});
+    if (gid === ALL) loadAllX();
+    else {
+      const c = S.cache.get(gid);
+      if (!c) useStored(gid);
+      if (!c || c.stored || Date.now() - c.at > STALE_MS) loadSheet(gid);
+    }
+    paintStatus();
+  }
+
+  /* ── 표 조작 — 머리글 = 정렬, 줄 = 상세 창, 안내 카드 = 복사 ── */
+  grid.addEventListener('click', e => {
+    const cp = e.target.closest('[data-copy]');
+    if (cp) {
+      const d = curData(), card = d && d.guide ? d.cards[+cp.dataset.copy] : null;
+      if (card) copyText(card.text).then(ok => toast(ok ? `${card.brand ? card.brand.k + ' ' : ''}${card.kind} 복사했어요 — X DM 창에 붙여 넣으세요` : '복사하지 못했어요 — 글을 끌어 골라 복사해 주세요', !ok));
+      return;
+    }
+    const th = e.target.closest('th');
+    if (th) {
+      if (th.classList.contains('fill')) return;
+      const v = vstate();
+      if (th.dataset.sort === 'rn') v.sort = null;
+      else {
+        const p = +th.dataset.p;
+        v.sort = !v.sort || v.sort.p !== p ? {p, dir: 1} : v.sort.dir > 0 ? {p, dir: -1} : null;   // 오름 → 내림 → 원래 순서
+      }
+      renderGrid({keep: true});
+      return;
+    }
+    if (e.target.closest('a')) return;
+    const tr = e.target.closest('tbody tr[data-id]');
+    if (tr) openDetail(tr.dataset.id, false);
+    if (document.activeElement !== grid && !matchMedia('(pointer:coarse)').matches) grid.focus({preventScroll: true});
+  });
+  grid.addEventListener('keydown', e => {
+    if (e.target !== grid) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveSel(e.key === 'ArrowDown' ? 1 : -1); }
+    else if (e.key === 'Escape') closeDetail();
+  });
+  grid.addEventListener('scroll', () => { headScroll(); touched(); }, {passive: true});
+  function moveSel(dir) {
+    const d = curData();
+    if (!d || d.guide || !S.list.length) return;
+    let i = S.sel && S.sel.cur === S.cur ? S.list.findIndex(r => r.id === S.sel.id) : -1;
+    i = i < 0 ? (dir > 0 ? 0 : S.list.length - 1) : Math.max(0, Math.min(S.list.length - 1, i + dir));
+    openDetail(S.list[i].id, true);
+  }
+  function ensureRowVisible(tr) {
+    const g = grid.getBoundingClientRect(), r = tr.getBoundingClientRect();
+    const th = grid.querySelector('thead');
+    const top = g.top + (th ? th.getBoundingClientRect().height : 0), bottom = g.top + grid.clientHeight;
+    if (r.top < top) grid.scrollTop -= top - r.top;
+    else if (r.bottom > bottom) grid.scrollTop += r.bottom - bottom;
+  }
+
+  /* ── 상세 창 — 그 사람의 모든 칸 (휴대폰은 아래에서 올라옴) · 프로필 열기 · 아이디 복사 · 배송 정보 보기/복사 ── */
+  function profileOf(d, row) {
+    const cu = d.C.cUrl, ck = d.cols.find(c => c.key);
+    const u = cu && row.byP[cu.p];
+    if (u && u.t) { const h = hrefOf(cu, u); if (h) return {url: h, label: /x\.com|twitter\.com/i.test(h) ? 'X 프로필' : '프로필'}; }
+    const kc = ck && row.byP[ck.p];
+    if (!kc || !kc.t) return null;
+    if (kc.href) return {url: kc.href, label: /instagram/i.test(kc.href) ? '인스타 프로필' : /x\.com|twitter/i.test(kc.href) ? 'X 프로필' : '프로필'};
+    const id = kc.t.split('\n')[0].trim().replace(/^@/, '');
+    if (/instagram|인스타/i.test(ck.name) && /^[\w.]+$/.test(id)) return {url: `https://www.instagram.com/${id}/`, label: '인스타 프로필'};
+    if (/^x/i.test(low(ck.name)) && /^\w+$/.test(id)) return {url: `https://x.com/${id}`, label: 'X 프로필'};
+    return null;
+  }
+  function detailVal(col, c, row) {
+    if (!c || !hasVal(c)) return '<span class="none">—</span>';
+    if (col.type === 'brand') return brandHtml(row.brand, c.t);
+    if (c.chips.length) return c.chips.map(tagHtml).join(' ');
+    if (c.pii) {
+      const rev = S.reveal.has(row.id) && c.fullOk, ls = rev ? c.full.split('\n') : c.lines.map(l => l.t);
+      return ls.map(x => `<div class="ln">${esc(x)}</div>`).join('');
+    }
+    const st = c.st.fg ? ` style="color:${c.st.fg}"` : '';
+    return c.lines.map(l => {
+      const h = l.href || (col.type === 'link' && /^https?:\/\//i.test(l.t) ? l.t : '');
+      return `<div class="ln">${h ? `<a class="lnk" href="${esc(h)}" target="_blank" rel="noopener noreferrer">${esc(l.t)}</a>` : `<span${st}>${esc(l.t)}</span>`}</div>`;
+    }).join('') + (col.key && row.yel ? '<div class="ln"><span class="pill sent">보냄 완료</span></div>' : '');
+  }
+  function openDetail(id, scroll) {
+    const d = curData();
+    if (!d || d.guide) return;
+    const row = d.rows.find(x => x.id === id);
+    if (!row) { closeDetail(); return; }
+    if (!S.sel || S.sel.id !== id) S.reveal.clear();
+    S.sel = {cur: S.cur, id};
+    grid.querySelectorAll('tbody tr.on').forEach(tr => tr.classList.remove('on'));
+    const tr = Array.from(grid.querySelectorAll('tbody tr[data-id]')).find(x => x.dataset.id === id);
+    if (tr) { tr.classList.add('on'); if (scroll) ensureRowVisible(tr); }
+    const key = d.cols.find(c => c.key), kc = key ? row.byP[key.p] : null, kv = kc ? kc.t.split('\n')[0] : '';
+    const it = navOf(row.gid), tab = tabOf(row.gid), C = d.C;
+    $('dCap').textContent = d.all ? `X 시딩 전체 · ${it ? it.label : ''}` : (tab ? tab.name : '상세');
+    $('dTitle').innerHTML = esc(kv || `${row.r}행`) + (row.yel ? ' <span class="pill sent">보냄 완료</span>' : '');
+    const subs = [];
+    if (row.brand && (d.all || d.kind === 'x')) subs.push(row.brand.k);
+    else if (C.cBrand && valOf(row, C.cBrand)) subs.push(valOf(row, C.cBrand));
+    if (C.cOwner && valOf(row, C.cOwner)) subs.push(`책임자 ${valOf(row, C.cOwner)}`);
+    subs.push(`시트 ${row.r}${row.r2 > row.r ? `~${row.r2}` : ''}행`);
+    $('dSub').textContent = subs.join(' · ');
+    const acts = [], pf = profileOf(d, row);
+    if (pf) acts.push(`<a class="d-sheet" href="${esc(pf.url)}" target="_blank" rel="noopener noreferrer">${esc(pf.label)} ↗</a>`);
+    if (kv) acts.push('<button type="button" class="d-sheet" data-act="cid">아이디 복사</button>');
+    const pcs = d.cols.filter(c => c.pii && row.byP[c.p] && row.byP[c.p].t);
+    if (pcs.length) {
+      const ok = pcs.every(c => row.byP[c.p].fullOk), rev = S.reveal.has(row.id);
+      const dis = ok ? '' : ' disabled title="새 자료를 받는 중이에요 — 잠시 뒤 다시 눌러 주세요"';
+      acts.push(`<button type="button" class="d-sheet" data-act="pii"${dis}>${rev ? '배송 정보 가리기' : '배송 정보 보기'}</button>`);
+      acts.push(`<button type="button" class="d-sheet" data-act="ship"${dis}>배송 정보 복사</button>`);
+    }
+    if (d.all && it) acts.push(`<button type="button" class="d-sheet" data-act="tab">${esc(it.label)} 탭에서 보기</button>`);
+    acts.push(`<a class="d-sheet" href="${BASE}/edit#gid=${row.gid}&range=A${row.r}" target="_blank" rel="noopener">구글시트에서 이 줄 ↗</a>`);
+    $('dActs').innerHTML = acts.join('');
+    $('dHint').textContent = '고치기 · 새로 넣기는 구글시트에서 — 저장하면 1분 안에 여기에도 바뀌어요' + (pcs.length ? ' · 성함 · 연락처 · 주소는 가려서 보여요' : '');
+    $('dList').innerHTML = d.cols.map(c => {
+      const x = row.byP[c.p], pii = c.pii && x && x.t;
+      return `<dt>${esc(c.name)}</dt><dd${pii ? ` class="pii${S.reveal.has(row.id) ? '' : ' masked'}"` : ''}>${detailVal(c, x, row)}</dd>`;
+    }).join('');
+    const det = $('detail'), was = det.hidden;
+    det.hidden = false;
+    app.classList.add('has-detail');
+    $('dscrim').hidden = !narrow.matches;
+    if (was) det.querySelector('.dbody').scrollTop = 0;
+  }
+  function closeDetail() {
+    $('detail').hidden = true;
+    $('dscrim').hidden = true;
+    app.classList.remove('has-detail');
+    S.sel = null;
+    S.reveal.clear();
+    grid.querySelectorAll('tbody tr.on').forEach(tr => tr.classList.remove('on'));
+  }
+  $('dClose').addEventListener('click', closeDetail);
+  $('dscrim').addEventListener('click', closeDetail);
+  $('dPrev').addEventListener('click', () => moveSel(-1));
+  $('dNext').addEventListener('click', () => moveSel(1));
+  $('dActs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b || b.disabled || !S.sel) return;
+    const d = curData(), row = d && !d.guide ? d.rows.find(x => x.id === S.sel.id) : null;
+    if (!row) return;
+    const act = b.dataset.act, key = d.cols.find(c => c.key);
+    if (act === 'cid') { const t = key && row.byP[key.p] ? row.byP[key.p].t.split('\n')[0] : ''; copyText(t).then(ok => toast(ok ? `${t} 복사했어요` : '복사하지 못했어요', !ok)); }
+    else if (act === 'pii') { if (S.reveal.has(row.id)) S.reveal.delete(row.id); else S.reveal.add(row.id); openDetail(row.id, false); }
+    else if (act === 'ship') {
+      const t = d.cols.filter(c => c.pii && row.byP[c.p] && row.byP[c.p].t).map(c => `${c.name.trim()}: ${row.byP[c.p].full}`).join('\n');
+      copyText(t).then(ok => toast(ok ? '배송 정보(성함 · 연락처 · 주소)를 복사했어요' : '복사하지 못했어요', !ok));
+    } else if (act === 'tab') { const id = row.id; openTab(row.gid); openDetail(id, true); }
+  });
+  // 휴대폰: 상세 창 윗부분(손잡이 · 제목)을 잡고 끌어내리면 닫힌다
+  (function () {
+    const det = $('detail'), dh = det.querySelector('.dh');
+    let sw = null;
+    const reset = () => { det.style.transition = ''; det.style.transform = ''; };
+    dh.addEventListener('touchstart', e => { if (!narrow.matches || e.touches.length !== 1) return; sw = {y: e.touches[0].clientY, t: Date.now(), dy: 0}; }, {passive: true});
+    dh.addEventListener('touchmove', e => {
+      if (!sw) return;
+      sw.dy = Math.max(0, e.touches[0].clientY - sw.y);
+      if (sw.dy > 6) { e.preventDefault(); det.style.transition = 'none'; det.style.transform = `translateY(${sw.dy}px)`; }
+    }, {passive: false});
+    const end = () => {
+      if (!sw) return;
+      const dy = sw.dy, fast = dy > 40 && dy / Math.max(1, Date.now() - sw.t) > 0.6;
+      sw = null;
+      if (dy <= 6) { reset(); return; }
+      det.style.transition = 'transform .18s ease';
+      if (dy > 110 || fast) { det.style.transform = 'translateY(100%)'; setTimeout(() => { closeDetail(); reset(); }, 180); }
+      else { det.style.transform = ''; setTimeout(reset, 200); }
+    };
+    dh.addEventListener('touchend', end);
+    dh.addEventListener('touchcancel', end);
+  })();
+
+  /* ── 복사 · 알림 ── */
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch (e) { /* 아래 방법으로 */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = t;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
+  }
+  let toastT = 0;
+  function toast(t, err) {
+    const el = $('toast');
+    el.textContent = t;
+    el.classList.toggle('err', !!err);
+    el.hidden = false;
+    clearTimeout(toastT);
+    toastT = setTimeout(() => { el.hidden = true; }, err ? 5500 : 3200);
+  }
+
+  /* ── 읽기 · 상태 ── */
+  function sigOf(html) {
+    const a = html.indexOf('<table'), b = html.lastIndexOf('</table>');
+    return hash(styleText(html).length + ':' + (a >= 0 ? html.slice(a, b) : html));   // 매번 바뀌는 nonce 는 빼고 표 · 서식만
+  }
+  function loadSheet(gid, opt) {
+    if (!gid || gid === ALL || !tabOf(gid)) return Promise.resolve();
+    if (S.busy[gid]) return S.busy[gid];
+    const known = +S.rowsKnown[gid] || 0;
+    const lim = opt && opt.full ? 0 : Math.max(RANGE_MIN, Math.ceil(known * 1.4) + 100);
+    let next = '';
+    S.st[gid] = {k: 'load', at: Date.now()};
+    paintStatus();
+    const p = getText(`${BASE}/htmlview/sheet?headers=true&gid=${gid}${lim ? `&range=1:${lim}` : ''}`).then(html => {
+      const old = S.cache.get(gid), sig = sigOf(html) + (lim ? '' : '.f'), now = Date.now();
+      let model = old && old.model.sig === sig && !old.stored ? old.model : null;
+      if (model) { old.at = now; saveModel(gid, model, now, false); if (isX(gid)) S.allData = null; }
+      else {
+        model = parseSheet(html, sig);
+        S.cache.set(gid, {model, at: now, data: buildData(model, tabOf(gid))});
+        saveModel(gid, model, now, true);
+        onTabData(gid, !!old);
+      }
+      const lastR = model.rows.length ? model.rows[model.rows.length - 1].r : 0;
+      if (S.rowsKnown[gid] !== lastR) { S.rowsKnown[gid] = lastR; lsSet(LS_ROWS, JSON.stringify(S.rowsKnown)); }
+      if (!lim) S.fullAt[gid] = Date.now();
+      else if (lastR > lim - 30) next = 'now';           // 범위 끝까지 내용 → 전체 다시
+      else if (!S.fullAt[gid]) next = 'later';           // 이 탭은 아직 전체를 한 번도 안 읽음 (멀리 떨어진 줄 확인)
+      S.st[gid] = {k: 'ok', at: Date.now()};
+      if (S.cur === gid) hideMsg();
+    }).catch(e => {
+      S.st[gid] = {k: 'err', err: (e && e.message) || String(e), at: Date.now()};
+      if (S.cur === gid && !S.cache.get(gid)) showErr(S.st[gid].err);
+    }).finally(() => {
+      delete S.busy[gid];
+      paintStatus();
+      if (next === 'now') loadSheet(gid, {full: true});
+      else if (next === 'later') setTimeout(() => { if ((S.cur === gid || (S.cur === ALL && isX(gid))) && shown() && !S.fullAt[gid]) loadSheet(gid, {full: true}); }, 4000);
+    });
+    S.busy[gid] = p;
+    return p;
+  }
+  const ERR = {
+    login: ['구글시트를 열 수 없어요', "시트 공유가 '링크가 있는 모든 사용자 · 뷰어'여야 이 화면이 읽을 수 있어요. 시트 공유 설정을 확인해 주세요."],
+    timeout: ['구글시트 응답이 늦어요', '잠시 뒤 다시 시도해 주세요. 계속 그러면 구글시트를 직접 열어 확인해 주세요.'],
+    network: ['구글시트에 연결하지 못했어요', '인터넷 연결을 확인하고 다시 시도해 주세요.'],
+    kv: ['시트 주소를 받지 못했어요', '오피스 설정(슈퍼베이스)에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.'],
+    nosheet: ['연결된 시딩 시트가 없어요', "오피스 설정(슈퍼베이스 app_kv 'seeding_sheet')에 구글시트 주소가 없어요. 관리자에게 알려 주세요."],
+  };
+  function errShort(e) {
+    if (e === 'login') return '시트 공유가 꺼져 있어요';
+    if (e === 'kv' || e === 'nosheet') return '시트 주소 없음 · 다시';
+    if (e === 'timeout') return '응답이 늦어요 · 다시';
+    if (e === 'network') return '연결 실패 · 다시';
+    if (e === 'http_429') return '잠깐 막힘 · 곧 다시';
+    return `읽기 실패 (${e}) · 다시`;
+  }
+  function showErr(e) {
+    const [t, d] = ERR[e] || ['구글시트를 읽지 못했어요', `(${e}) 잠시 뒤 다시 시도해 주세요.`];
+    const m = $('msg');
+    m.innerHTML = `<b>${esc(t)}</b>${esc(d)}<br><button type="button" data-act="retry">다시 불러오기</button>`;
+    m.hidden = false;
+  }
+  function hideMsg() { $('msg').hidden = true; }
+  $('msg').addEventListener('click', e => { if (e.target.closest('[data-act="retry"]')) reloadNow(); });
+  // 상태 단추 — 보고 있는 탭 (전체 보기는 브랜드 탭 전부를 묶어서)
+  function curState() {
+    if (S.cur !== ALL) return {s: S.st[S.cur] || {k: 'load'}, c: S.cache.get(S.cur)};
+    const gids = S.nav.filter(it => it.sec === 'x' && !it.all).map(it => it.gid);
+    const cs = gids.map(g => S.cache.get(g)).filter(Boolean), sts = gids.map(g => S.st[g]).filter(Boolean);
+    const k = sts.some(s => s.k === 'load') || cs.length < gids.length && !sts.some(s => s.k === 'err') ? 'load' : sts.some(s => s.k === 'err') ? 'err' : 'ok';
+    const err = (sts.find(s => s.k === 'err') || {}).err;
+    const c = cs.length ? {at: Math.min(...cs.map(x => x.at)), stored: cs.some(x => x.stored)} : null;
+    return {s: {k, err}, c};
+  }
+  function paintStatus() {
+    const st = $('st'), {s, c} = curState(), k = s.k;
+    st.className = `st is-${k}`;
+    if (c && c.stored) st.classList.add('is-stored');
+    $('stText').textContent = k === 'load' ? (c ? (c.stored ? (narrow.matches ? '저장본' : `${hhmm(c.at)} 저장본 · 새로 받는 중…`) : '갱신 중…') : '불러오는 중…')
+      : k === 'err' ? errShort(s.err) : c ? (c.stored ? `${hhmm(c.at)} 저장본` : `${hhmm(c.at)} 갱신 · ${ago(c.at)}`) : '';
+    st.title = (c ? (c.stored ? `이 브라우저에 저장해 둔 ${hhmm(c.at)} 자료를 먼저 보여 주는 중 — 새 자료가 오면 바로 바뀌어요` : `구글시트에서 ${hhmm(c.at)} 에 읽음 · 보고 있으면 1분마다 다시 읽어요`) : '구글시트에서 읽는 중') + '\n누르면 지금 다시 읽기';
+  }
+  function paintCount() { const d = curData(); $('qn').textContent = S.terms.length && d ? `${fmt(S.list.length)}${d.guide ? '개' : '명'}` : ''; }
+  function reloadNow() {
+    if (!BASE) { location.reload(); return; }   // 시트 주소부터 못 받았음 → 처음부터
+    if (S.cur === ALL) loadAllX(true);
+    else if (S.cur) loadSheet(S.cur, {full: true});
+    const gt = guideTab();
+    if (gt && gt.gid !== S.cur) loadSheet(gt.gid);
+    if (!S.tabsBusy) loadTabs().catch(() => {});
+  }
+  $('st').addEventListener('click', reloadNow);
+
+  /* ── 줄 간격 · 전체 화면 ── */
+  function setDense(on, save) {
+    S.dense = !!on;
+    app.classList.toggle('dense', S.dense);
+    $('btnDense').classList.toggle('on', S.dense);
+    $('btnDense').title = S.dense ? '줄 간격 넓게' : '줄 간격 촘촘하게';
+    if (save) { lsSet(LS_DENSE, S.dense ? '1' : '0'); renderGrid({keep: true}); }
+  }
+  $('btnDense').addEventListener('click', () => setDense(!S.dense, true));
+  const fsOk = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+  if (!fsOk) $('btnFull').hidden = true;
+  $('btnFull').addEventListener('click', () => {
+    const d = document;
+    if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+    else { const el = d.documentElement; (el.requestFullscreen || el.webkitRequestFullscreen).call(el); }
+  });
+
+  /* ── 찾기 ── */
+  function setQuery(v) {
+    S.terms = String(v || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    S.hlRe = S.terms.length ? new RegExp(S.terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi') : null;
+    $('qx').hidden = !v;
+    renderGrid({pos: {t: 0, l: grid.scrollLeft}});
+  }
+  let qT = 0;
+  qIn.addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => setQuery(qIn.value), 140); });
+  qIn.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(qT); if (S.terms.join(' ') !== qIn.value.trim().toLowerCase().split(/\s+/).filter(Boolean).join(' ')) setQuery(qIn.value); moveSel(e.shiftKey ? -1 : 1); }
+    else if (e.key === 'Escape') { qIn.value = ''; setQuery(''); grid.focus({preventScroll: true}); }
+  });
+  $('qx').addEventListener('click', () => { qIn.value = ''; setQuery(''); qIn.focus(); });
+  qIn.addEventListener('focus', () => { if (compactMQ.matches) setHmin(true); });
+  qIn.addEventListener('blur', () => { if (!qIn.value.trim() && grid.scrollTop < 56) setHmin(false); });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); qIn.focus(); qIn.select(); }
+    else if (e.key === 'Escape' && !$('detail').hidden && e.target !== qIn) closeDetail();
+    else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && S.nav.length) {   // Alt+↑↓ = 위 · 아래 메뉴
+      e.preventDefault();
+      const i = S.nav.findIndex(it => it.gid === S.cur);
+      openTab(S.nav[(i + (e.key === 'ArrowDown' ? 1 : -1) + S.nav.length) % S.nav.length].gid);
+    }
+  });
+
+  /* ── 보일 때만 자동 갱신 (오피스 안 화면은 홈으로 나가도 살아 있어서 숨었는지 직접 본다) ── */
+  function shown() {
+    if (document.visibilityState === 'hidden') return false;
+    try { const fe = window.frameElement; if (fe && !fe.getClientRects().length) return false; } catch (e) { /* 다른 출처 */ }
+    return true;
+  }
+  function tick() {
+    if (!BASE) return;   // 시트 주소를 아직 못 받음 (안내 창의 '다시 불러오기')
+    const vis = shown(), wasHidden = !S.shown;
+    S.shown = vis;
+    if (!vis) return;
+    paintStatus();
+    if (sizeKey() !== S.size && grid.clientWidth) renderGrid({keep: true});
+    if (Date.now() - S.tabsAt > TABS_MS && !S.tabsBusy) loadTabs().catch(() => {});
+    if (!S.cur) return;
+    const lim = wasHidden ? STALE_MS : REFRESH_MS;
+    const gids = S.cur === ALL ? S.nav.filter(it => it.sec === 'x' && !it.all).map(it => it.gid) : [S.cur];
+    const gt = guideTab();
+    if (gt && gt.gid !== S.cur && (S.cur === ALL || isX(S.cur))) gids.push(gt.gid);   // 노란 안내(주의사항 규칙)도 새로
+    if (gids.some(g => S.busy[g])) return;
+    for (const g of gids) {
+      const c = S.cache.get(g), s = S.st[g], age = c ? Date.now() - c.at : Infinity;
+      if (c ? age > lim : (s && s.k === 'err' && Date.now() - s.at > RETRY_MS)) { loadSheet(g); break; }   // 한 번에 하나씩
+    }
+  }
+  setInterval(tick, 5000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(tick, 300); });
+  let rzT = 0;
+  window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(tick, 180); });
+  narrow.addEventListener && narrow.addEventListener('change', () => { if (!narrow.matches) setNav(false); $('dscrim').hidden = !narrow.matches || $('detail').hidden; renderGrid({keep: true}); });
+  compactMQ.addEventListener && compactMQ.addEventListener('change', () => { if (!compactMQ.matches) setHmin(false); });
+
+  /* ── 시작 — 지난번 탭 목록으로 메뉴를 바로 그리고 고른 탭을 연다 (저장본이 있으면 표도 바로) — 새 탭 목록은 뒤에서 ── */
+  (async function boot() {
+    setDense(lsGet(LS_DENSE) === '1', false);
+    if (lsGet(LS_SIDE) === '0') app.classList.add('side-off');
+    if (document.fonts && document.fonts.load) { try { document.fonts.load(F_CELL, '시딩ABC123'); document.fonts.load(F_BOLD, '시딩ABC123'); } catch (e) { /* noop */ } }
+    let saved = null, want = null, known = null;
+    try { saved = JSON.parse(lsGet(LS_TAB) || 'null'); } catch (e) { saved = null; }
+    try { want = new URLSearchParams(location.search).get('tab'); } catch (e) { want = null; }
+    S.want = want;
+    S.saved = saved;
+    renderGrid();
+    try { await ensureSheet(); }   // 시트 주소 (기억해 둔 게 있으면 바로)
+    catch (e) {
+      const k = e && e.message === 'nosheet' ? 'nosheet' : 'kv';
+      S.st[''] = {k: 'err', err: k, at: Date.now()};
+      paintStatus();
+      showErr(k);
+      return;
+    }
+    try { known = JSON.parse(lsGet(LS_TABS) || 'null'); } catch (e) { known = null; }
+    if (Array.isArray(known) && known.length) {
+      S.tabs = known.filter(t => t && t.gid).map(t => ({name: String(t.name || ''), gid: String(t.gid), meta: classify(t.name)}));
+      renderNav();
+      openTab(pickTab(want, saved));
+    }
+    try { await loadTabs(); }
+    catch (e) {
+      if (!S.cur) { S.st[''] = {k: 'err', err: e.message, at: Date.now()}; paintStatus(); showErr(e.message); }
+    }
+  })();
+})();
+</script>
+</body>
+</html>
