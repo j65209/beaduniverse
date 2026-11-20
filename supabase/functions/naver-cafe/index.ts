@@ -7,7 +7,8 @@
 //   POST /naver-cafe/run     (x-cafe-cron)     → 시간이 됐으면 글 1개 올림. body {"force":true} 면 시간·켜짐 무시(시험용)
 //   POST /naver-cafe/upload  (x-cafe-cron)     → 사진 올리기 {path, base64, contentType} → naver-cafe 버킷
 //   POST /naver-cafe/schedule (x-cafe-cron)    → 다음 게시 시각 다시 뽑기 {"today":true|false}
-// - 비밀값: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET (슈퍼베이스 Edge Function Secrets)
+// - 네이버 앱(이름 '모델 구인') Client ID/Secret: Edge Function 비밀값 NAVER_CLIENT_ID/NAVER_CLIENT_SECRET,
+//   없으면 naver_cafe_config.client_id/client_secret (2026-11-20 은 표에 넣어 씀)
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -22,10 +23,14 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: fal
 // deno-lint-ignore no-explicit-any
 type Row = Record<string, any>;
 
-function secret(name: string): string {
-  const v = Deno.env.get(name);
-  if (!v) throw new Error(`${name} 비밀값이 아직 없어요 (슈퍼베이스 Edge Function Secrets 에 넣어 주세요)`);
-  return v;
+// 네이버 앱 Client ID/Secret: Edge Function 비밀값 → 없으면 naver_cafe_config.client_id/client_secret
+async function creds(): Promise<{ id: string; secret: string }> {
+  const id = Deno.env.get("NAVER_CLIENT_ID");
+  const sec = Deno.env.get("NAVER_CLIENT_SECRET");
+  if (id && sec) return { id, secret: sec };
+  const cfg = await getConfig();
+  if (cfg.client_id && cfg.client_secret) return { id: cfg.client_id, secret: cfg.client_secret };
+  throw new Error("네이버 앱 Client ID·Secret 이 아직 없어요");
 }
 
 function page(title: string, body: string, status = 200): Response {
@@ -95,10 +100,11 @@ function kstLabel(d: Date): string {
 }
 
 async function naverToken(params: Record<string, string>): Promise<Row> {
+  const c = await creds();
   const u = new URL("https://nid.naver.com/oauth2.0/token");
   u.search = new URLSearchParams({
-    client_id: secret("NAVER_CLIENT_ID"),
-    client_secret: secret("NAVER_CLIENT_SECRET"),
+    client_id: c.id,
+    client_secret: c.secret,
     ...params,
   }).toString();
   const r = await fetch(u, { method: "POST" });
@@ -256,7 +262,7 @@ async function handleConnect(url: URL): Promise<Response> {
   const auth = new URL("https://nid.naver.com/oauth2.0/authorize");
   auth.search = new URLSearchParams({
     response_type: "code",
-    client_id: secret("NAVER_CLIENT_ID"),
+    client_id: (await creds()).id,
     redirect_uri: CALLBACK_URL,
     state: k,
   }).toString();

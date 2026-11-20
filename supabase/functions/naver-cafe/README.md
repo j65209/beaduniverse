@@ -11,7 +11,7 @@
 - 표 `naver_cafe_log`: 결과 기록
 - 세 표 모두 RLS 켜짐·정책 없음·anon/authenticated 권한 회수 (서비스 키로만)
 - 예약 `naver-cafe-1m`(pg_cron 1분): enabled 이고 next_run_at 이 지났을 때만 `/run` 호출
-- 비밀값: `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` (Edge Function Secrets)
+- 네이버 앱 '모델 구인' Client ID/Secret: Edge Function 비밀값 `NAVER_CLIENT_ID`·`NAVER_CLIENT_SECRET`, 없으면 `naver_cafe_config.client_id`·`client_secret` (2026-11-20 은 표에 넣음)
 - 네이버 앱 Callback URL: `https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/naver-cafe`
 
 ## 자주 쓰는 SQL
