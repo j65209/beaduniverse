@@ -48,7 +48,10 @@
          구글시트 · 공급처 링크를 표 · 상세 창 · 찾기 · 요약 카드 · 함수 줄에서 아예 뺀다 (매출 · 광고비는 그대로).
        · 고치기는 erp/ 와 같다 (PC 는 칸을 눌러 바로 · 휴대폰은 상세 창) — 고칠 수 있는 시트(브리지 book)만 · 관리자와 MD팀만.
          구글시트(브리지)에 먼저 쓰고 같은 줄을 저장소에도 (mdx_cell_edit). 끊는 날까지 원가 보고서 · 가격 감시가 구글시트를 읽기 때문.
-       · 함수: 수식 칸은 상세 창 · 고칠 칸에 =E2*300 처럼 보이고, '=' 로 시작하게 적으면 함수로 저장된다 (브리지 버전 3 부터).
+       · 함수: 수식 칸은 상세 창 · 고칠 칸에 =E2*2 처럼 보이고, '=' 로 시작하게 적으면 함수로 저장된다 (브리지 버전 3 부터 — 구글시트가 계산한 값이 바로 칸에).
+         함수를 적는 중엔 머리글 왼쪽 위에 열 글자(A · B …)가 뜨고, 다른 칸을 누르면 그 칸 주소(E5) · Shift 를 누르고 누르면 범위(E2:E9)가 들어간다.
+         쓴 칸의 수식 위치는 저장소에도 바로 (mdx_fx_cell). 여러 칸에 펼쳐지는 함수(QUERY · FILTER …)는 넣지 않는다 (탭 전체가 자동 계산 탭이 됨).
+         기밀 명단 밖은 이 표에 보이는 칸만 함수에 쓸 수 있다 — 가린 칸 · 다른 탭 · 줄 전체 · 이름 · INDIRECT · OFFSET · IMPORT… 는 막음 (fxGuard).
        · 새 줄: 제목 줄 '＋ 새 줄' — 마지막 줄 다음 줄에 적고, 그 줄의 수식(공급가 · 마진율 등)은 시트가 자동으로 계산.
        · MD 시트 아래쪽 '수식만 남은 빈 줄'은 표 · 개수에서 빼고, TOP 10 처럼 한 탭에 표가 여럿이면 '공홈 · 일별' 단추로 나눈다. */
   :root{
@@ -212,6 +215,10 @@
   textarea.cedit{padding:6px 7px;white-space:pre-wrap;overflow:auto}
   .cedit-tip{position:fixed;z-index:66;padding:3px 8px;border-radius:6px;background:#0f172a;color:#fff;font-size:11.5px;font-weight:600;line-height:1.4;white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(15,23,42,.2)}
   .cedit-tip.err{background:#b91c1c}
+  /* 함수 적는 중 — 머리글 왼쪽 위에 열 글자(A · B …), 다른 칸을 누르면 그 칸 주소가 들어간다 */
+  .tbl th .cl{display:none;position:absolute;left:4px;top:3px;font:700 9.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--info);pointer-events:none}
+  body.fxon .tbl th .cl{display:block}
+  body.fxon .tbl tbody td[data-p]{cursor:cell}
   /* 칸 너비 조절 — 머리글 오른쪽 끝을 끌기 (두 번 누르면 자동 너비) */
   .tbl th .rz{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;z-index:2}
   .tbl th .rz::after{content:'';position:absolute;top:9px;bottom:9px;right:3px;width:2px;border-radius:1px;background:transparent}
@@ -604,7 +611,7 @@
   }
   const mkTab = x => ({gid: x.tk, sgid: String(x.gid), book: x.book, name: String(x.name || ''), meta: classify(x.name, x.book), info: x.info || null});
 
-  /* ── 함수(수식) 보이기 — 저장소엔 구글 R1C1 수식이 있다 (맥미니가 브리지로 읽어 둠). 그 칸 기준 A1 로 (=R[0]C5*300 → =$E2*300) ── */
+  /* ── 함수(수식) 보이기 — 저장소엔 구글 R1C1 수식이 있다 (맥미니가 브리지로 읽어 둠). 그 칸 기준 A1 로 (=R[0]C5*2 → =$E2*2) ── */
   const colA = n => { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; };
   const R1C1 = /(?<![A-Za-z0-9_.$])(R(\[-?\d+\]|\d+)?)?(C(\[-?\d+\]|\d+)?)?(?![A-Za-z0-9_(.])/g;
   function rcPart(tok, base) { const m = tok.slice(1); if (!m) return {n: base, abs: false}; if (m[0] === '[') return {n: base + Number(m.slice(1, -1)), abs: false}; return {n: Number(m), abs: true}; }
@@ -1449,7 +1456,7 @@
       const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
       const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '') + (fix[k] ? ' wfix' : '')).trim();
       const rz = nar ? '' : `<span class="rz" data-p="${c.p}" title="끌어서 칸 너비 조절 · 두 번 누르면 자동 너비"></span>`;
-      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬">${esc(c.name)}${ar}${rz}</th>`;
+      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${colName(c.p)}열 · ${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬">${nar ? '' : `<i class="cl">${colName(c.p)}</i>`}${esc(c.name)}${ar}${rz}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
     // 줄이 많으면(VR_MIN 넘게) 처음엔 높이만 잡아 두고, 스크롤 위치를 맞춘 뒤 보이는 줄 근처만 그린다 (paintRows)
@@ -1871,6 +1878,7 @@
   /* ── 표 조작 — 머리글 = 정렬, 칸 = 바로 고치기(PC) · 줄 = 상세 창(휴대폰 · 행 번호), 사진 = 크게 ── */
   grid.addEventListener('click', e => {
     if (e.target.closest('.rz') || Date.now() - RZ.justDragged < 400) return;   // 칸 너비를 끈 뒤 생기는 click 은 정렬로 보지 않는다
+    if (Date.now() - (CE.refAt || 0) < 500) return;   // 함수에 칸 주소를 넣은 누르기 — 고치던 칸 그대로
     const th = e.target.closest('th');
     if (th) {
       if (th.classList.contains('fill')) return;
@@ -2000,7 +2008,7 @@
     const ent = S.cache.get(S.cur), raw = ent && ent.rows ? ent.rows.get(r) : null;
     const ed = raw && raw.src === 'office' && raw.edited_by ? ` · 마지막으로 오피스에서 고친 사람 ${raw.edited_by}${raw.edited_at ? ` (${new Date(raw.edited_at).toLocaleString('ko-KR', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})})` : ''}` : '';
     $('dSub').textContent = [...subs, `시트 ${r}행`].join(' · ') + ed + (row.lv === 'low' ? ` · 품절 임박 (${LOW_STOCK}개 이하)` : row.lv === 'out' ? ' · 품절 (0 이하)' : '');
-    // 수식 칸은 값 아래에 함수 (ƒx =$E2*300)
+    // 수식 칸은 값 아래에 함수 (ƒx =$E2*2)
     const info = tabInfo(S.cur);
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}</dd>` : '')
       + d.cols.map(c => { const fx = secretOk() ? fxText(info, r, c.p) : ''; return `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}${fx ? `<div class="fxv"><b>ƒx</b>${esc(fx)}</div>` : ''}</dd>`; }).join('');
@@ -2092,6 +2100,9 @@
   const NO_EDIT = '보기 전용이에요 — 고치기는 MD팀 · 관리자만';
   const RO_BOOK = '이 시트는 아직 구글시트에서만 고쳐요 (발주 · 광고 · 디자인 · 벤더 시트는 그 팀 작업을 옮길 때 함께)';
   const NEED_V3 = '함수 입력은 구글 연결(브리지) 새 버전을 배포한 뒤에 돼요 — 관리자에게 알려 주세요';
+  // 여러 칸에 펼쳐지는 함수 — 넣으면 탭 전체가 자동 계산 탭이 되어 오피스에서 못 고친다 (브리지 SPILL 과 같음)
+  const SPILL_RE = /\b(QUERY|FILTER|SORT|SORTN|SEQUENCE|ARRAYFORMULA|UNIQUE|IMPORTRANGE|FLATTEN|TRANSPOSE)\s*\(/i;
+  const FX_ERR_RE = /^#(REF!|NAME\?|VALUE!|DIV\/0!|N\/A|ERROR!|NUM!|NULL!)/;   // 함수 결과가 오류
   // 브리지 버전 (ping 의 v) — 3 부터 함수 입력 · 수식 칸 고치기
   let bvP = null;
   function bridgeVer() {
@@ -2106,11 +2117,19 @@
   const EDIT_ERR = {
     sheet_not_allowed: '이 탭은 오피스에서 고칠 수 없게 막혀 있어요 (판매원본처럼 자동으로 쌓이는 탭) — 구글시트에서 고쳐 주세요',
     read_only_book: '이 시트는 아직 구글시트에서만 고쳐요 (발주 · 광고 · 디자인 · 벤더 시트는 그 팀 작업을 옮길 때 함께)',
-    not_formula: "함수는 '=' 로 시작해야 해요 (예: =E2*300)",
+    not_formula: "함수는 '=' 로 시작해야 해요 (예: =E2*2 · =SUM(E2:E9))",
     need_v3: '함수 입력은 구글 연결(브리지) 새 버전을 배포한 뒤에 돼요 — 관리자에게 알려 주세요',
     unauthorized: '구글시트 연결 토큰이 맞지 않아요 — 관리자에게 알려 주세요',
     not_connected: '구글시트 연결 정보가 없어요 — 관리자에게 알려 주세요',
-    formula_cell: '수식 칸이에요 — 구글 연결(브리지) 새 버전 배포 뒤에 오피스에서 함수를 고칠 수 있어요',
+    formula_cell: '이 칸엔 구글시트에서 넣은 함수가 있어요 — 칸을 다시 누르면 함수가 보여요 (값을 적으면 함수가 지워져요)',
+    spill_formula: 'QUERY · FILTER · SORT · UNIQUE 처럼 여러 칸에 펼쳐지는 함수는 오피스에서 넣지 않아요 — 넣으면 이 탭 전체가 자동 계산 탭이 돼서 오피스에서 못 고쳐요',
+    bad_formula: '구글시트가 이 함수를 받지 않았어요 — 괄호 · 따옴표 · 쉼표를 확인해 주세요',
+    fx_col: '보이는 칸만 함수에 쓸 수 있어요 — 가린 칸(원가 · 단가 등)을 쓰는 함수는 대표님 · 희선 님만 넣을 수 있어요',
+    fx_other: '다른 탭 · 다른 시트를 가리키는 함수는 대표님 · 희선 님만 넣을 수 있어요',
+    fx_row: '줄 전체(5:5)를 가리키는 함수는 대표님 · 희선 님만 넣을 수 있어요 — E5:H5 처럼 칸으로 적어 주세요',
+    fx_fn: 'INDIRECT · OFFSET · IMPORT… 함수는 대표님 · 희선 님만 넣을 수 있어요',
+    fx_name: '함수 안에 이름은 쓸 수 없어요 — 칸 주소(E5 · E2:E9)로 적어 주세요',
+    fx_locked: '가린 칸(원가 · 단가 등)을 쓰는 함수 칸이라 대표님 · 희선 님만 고칠 수 있어요',
     timeout: '구글시트 응답이 늦어요 — 잠시 뒤 다시 저장해 주세요',
     bad_cell: '칸 위치를 찾지 못했어요 — 새로 불러온 뒤 다시 해 주세요',
     pii_cell: '가린 개인정보 칸은 오피스에서 고칠 수 없어요 — 구글시트에서 고쳐 주세요',
@@ -2154,6 +2173,65 @@
   // 수식 칸 · 막힌 탭 = 맥미니가 저장소 erp_tabs 에 적은 것 (fx = [[열, 시작줄, 끝줄]] 0부터 · fx_ro · fx_deny). 아직 모르면 고치게 두고 브리지가 수식 칸은 거절한다
   const tabInfo = gid => { const t = tabOf(gid); return t && t.info ? t.info : null; };
   const isFxCell = (info, r, p) => !!(info && Array.isArray(info.fx) && info.fx.some(run => run[0] === p && r - 1 >= run[1] && r - 1 <= run[2]));
+  /* ── 함수 넣기 ──
+     · 기밀 명단 밖 PC 는 이 표에 보이는 칸만 함수에 쓸 수 있다 — 가린 칸(원가 · 단가 …) · 다른 탭 · 줄 전체 · 이름 붙인 범위 ·
+       글자로 주소를 만드는 INDIRECT · OFFSET · IMPORT… 를 쓰면 숫자를 함수로 끌어와 볼 수 있어서 (2026-11-20 기밀). '' = 써도 됨, 아니면 EDIT_ERR 열쇠
+     · 여러 칸에 펼쳐지는 함수(SPILL)는 누구나 막는다 */
+  const FX_NO_FN = /^(INDIRECT|OFFSET|IMPORTRANGE|IMPORTDATA|IMPORTHTML|IMPORTXML|IMPORTFEED)$/i;
+  const colNum = a => { let n = 0; for (const ch of a.toUpperCase()) n = n * 26 + ch.charCodeAt(0) - 64; return n; };
+  function fxGuard(f, gid) {
+    if (secretOk()) return '';
+    const d = curData(), ent = S.cache.get(gid);
+    if (gid !== S.cur || !d || !ent || !ent.model) return 'fx_other';
+    const ok = new Set(d.cols.map(c => c.p + 1));   // 이 표에 보이는 열 (시트 열 번호 — 가린 열은 d.cols 에 없다)
+    const s = String(f).replace(/^\s*=/, '').replace(/"(?:[^"]|"")*"/g, '""');   // 글자("…") 안은 보지 않는다
+    if (/[!'[\]]/.test(s)) return 'fx_other';
+    let why = '';
+    const rest = s.replace(/(?<![A-Za-z0-9_.$])(\$?[A-Za-z]{1,3}\$?\d*|\$?\d+)\s*:\s*(\$?[A-Za-z]{1,3}\$?\d*|\$?\d+)(?![A-Za-z0-9_.(])/g, (all, a, b) => {
+      const ca = (a.match(/[A-Za-z]+/) || [''])[0], cb = (b.match(/[A-Za-z]+/) || [''])[0];
+      if (!ca || !cb) { why = why || 'fx_row'; return ' '; }
+      const lo = Math.min(colNum(ca), colNum(cb)), hi = Math.max(colNum(ca), colNum(cb));
+      for (let n = lo; n <= hi; n++) if (!ok.has(n)) { why = why || 'fx_col'; break; }
+      return ' ';
+    });
+    const TOK = /(?<![A-Za-z0-9_.$])\$?[A-Za-z_\uAC00-\uD7A3][A-Za-z0-9_.$\uAC00-\uD7A3]*/g;
+    for (let m; !why && (m = TOK.exec(rest));) {
+      const tok = m[0];
+      if (/^\s*\(/.test(rest.slice(m.index + tok.length))) { if (FX_NO_FN.test(tok)) why = 'fx_fn'; continue; }   // 함수 이름
+      const ref = tok.match(/^\$?([A-Za-z]{1,3})\$?(\d+)$/);
+      if (ref) { if (!ok.has(colNum(ref[1]))) why = 'fx_col'; continue; }   // 칸 주소
+      if (/^(TRUE|FALSE)$/i.test(tok)) continue;
+      why = 'fx_name';   // 이름 붙인 범위 · LET 이름 등
+    }
+    return why;
+  }
+  function preCheck(gid, v) {   // 함수를 넣기 전에 막을 것 — '' = 넣어도 됨
+    const f = String(v == null ? '' : v).trim();
+    if (!/^=/.test(f)) return '';
+    if (SPILL_RE.test(f)) return 'spill_formula';
+    return fxGuard(f, gid);
+  }
+  // 함수 칸 위치를 그 자리에서 고친다 (저장소 mdx_fx_cell 과 같은 방식 — 그 칸을 구간에서 빼고, 함수가 있으면 한 칸 구간으로). f = R1C1 ('' = 함수 없앰)
+  function fxPatch(info, r, p, f) {
+    if (!info || !Array.isArray(info.fx)) return;
+    const r0 = r - 1, runs = [], list = Array.isArray(info.fx_list) ? info.fx_list.slice() : [];
+    info.fx.forEach(run => {
+      if (run[0] !== p || r0 < run[1] || r0 > run[2]) { runs.push(run); return; }
+      const rest = run.length > 3 ? [run[3]] : [];
+      if (run[1] <= r0 - 1) runs.push([p, run[1], r0 - 1, ...rest]);
+      if (r0 + 1 <= run[2]) runs.push([p, r0 + 1, run[2], ...rest]);
+    });
+    if (f) { let k = list.indexOf(f); if (k < 0) { list.push(f); k = list.length - 1; } runs.push([p, r0, r0, k]); }
+    info.fx = runs;
+    info.fx_list = list;
+  }
+  function fxSave(gid, r, p, f) {   // 이 화면 → 저장소 (다른 PC 는 다음 확인 때 새 수식 위치를 받는다)
+    const t = tabOf(gid);
+    if (t && t.info) fxPatch(t.info, r, p, f || '');
+    mdx('mdx_fx_cell', {p_tk: gid, p_r: r, p_p: p, p_f: f || ''}).then(d => {
+      if (d && d.ok && d.ver && t && t.info) { t.info.ver = Math.max(+t.info.ver || 0, +d.ver); t.info.fxVer = t.info.ver; }
+    }).catch(() => { /* 맥미니가 6시간 안에 구글시트 수식 위치로 다시 맞춘다 */ });
+  }
   // 고칠 칸 정보 + 화면만 보고 아는 못 고치는 까닭(why)
   function editCtx(gid, r, p) {
     const d = curData(), ent = S.cache.get(gid), t = tabOf(gid);
@@ -2165,9 +2243,11 @@
       : (cell && cell.pii) || piiCol(col.name) ? EDIT_ERR.pii_cell
       : cell && cell.img ? '사진 칸은 구글시트에서 바꿔 주세요'
       : !cell ? '이 칸은 구글시트에서 고쳐 주세요' : '';
-    const b = bookOf(t.book), fx = fxText(tabInfo(gid), (cell && cell.r) || r, p);
+    const b = bookOf(t.book), fx0 = fxText(tabInfo(gid), (cell && cell.r) || r, p);
+    const lock = fx0 && fxGuard(fx0, gid) ? EDIT_ERR.fx_locked : '';   // 기밀 명단 밖 — 가린 칸을 쓰는 함수 칸은 함수도 안 보이고 못 고친다
+    const fx = lock ? '' : fx0;
     return {gid, book: t.book, edit: !!(b && b.edit), name: t.name, col, cell, p, row: r, r: (cell && cell.r) || r, sc: mc.i + 1, fx,
-      check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why};
+      check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why: why || lock};
   }
   function roWhy(x) {
     if (!canEdit()) return NO_EDIT;
@@ -2200,6 +2280,8 @@
      돌려줌: {ok} · {conflict, current} (그사이 시트 값이 바뀜) · 실패면 throw. 실패 · 충돌이면 화면은 원래(또는 시트) 값으로 돌아간다. */
   const pkey = x => `${x.gid}|${x.r}|${x.p}`;
   function writeCell(x, v, old, prev) {
+    const pre = preCheck(x.gid, v);   // 함수 — 넣기 전에 막을 것 (펼쳐지는 함수 · 기밀 명단 밖의 가린 칸)
+    if (pre) return Promise.reject(new Error(pre));
     const key = pkey(x);
     const job = E.q.then(() => { showPending(x, v, key); return writeOnce(x, v, old, prev, key); });
     E.q = job.catch(() => {});
@@ -2252,11 +2334,18 @@
       if (!res.ok && res.error === 'conflict') {
         if (norm(res.current) === norm(x.fx ? x.cell.t : old)) return writeOnce(x, v, null, prev, key);   // 띄어쓰기 · 줄바꿈만 다름 = 같은 값
         if (norm(res.current) !== norm(v)) { settle(x, key, false, null, res.current); return {conflict: true, current: res.current}; }
-      } else if (!res.ok) throw new Error(res.error || 'error');
+      } else if (!res.ok) {
+        if (res.error === 'formula_cell' && res.fx) fxSave(x.gid, x.r, x.p, res.fx);   // 구글시트에서 넣은 함수 칸 (저장소가 아직 모름) — 다시 누르면 함수가 보이게
+        throw new Error(res.error || 'error');
+      }
       const arr = j.rows && (j.rows[x.r] || j.rows[String(x.r)]);
+      // 함수를 쓰거나 지운 칸 — 브리지가 시트가 받아들인 수식(R1C1)과 계산된 값을 돌려준다 → 수식 위치를 화면 · 저장소에 바로
+      const fxw = typeof res.fx === 'string';
+      const shown = Array.isArray(arr) ? String(arr[x.sc - 1] == null ? '' : arr[x.sc - 1]) : res.shown != null ? String(res.shown) : null;
+      if (fxw) { fxSave(x.gid, x.r, x.p, res.fx); if (shown != null) showPending(x, shown, key); }   // 칸엔 함수 글 대신 계산된 값
       let dbv = null, dbErr = '';
       try {
-        const d = await mdx('mdx_cell_edit', {p_tk: x.gid, p_r: x.r, p_p: x.p, p_new: String(v), p_row: Array.isArray(arr) ? arr.map(t => t == null ? '' : String(t)) : null, p_who: whoAmI() || null});
+        const d = await mdx('mdx_cell_edit', {p_tk: x.gid, p_r: x.r, p_p: x.p, p_new: fxw && shown != null ? shown : String(v), p_row: Array.isArray(arr) ? arr.map(t => t == null ? '' : String(t)) : null, p_who: whoAmI() || null});
         dbv = d && Array.isArray(d.v) ? d.v : null;
         const t = tabOf(x.gid);
         if (d && d.rows_ver && t && t.info) {   // 내가 쓴 것 — 다음 확인 때 다시 받지 않게 번호표를 앞당긴다
@@ -2274,7 +2363,7 @@
       } else settle(x, key, true, dbv, null, !dbv);
       if (dbErr) S.dbErrAt = Date.now();
       logEdit(x, prev, v, true);
-      return {ok: true, shown: arr ? arr[x.sc - 1] : null, dbErr};
+      return {ok: true, shown, dbErr, fx: fxw && !!res.fx};
     } catch (e) {
       settle(x, key, false);
       logEdit(x, prev, v, false, (e && e.message) || String(e));
@@ -2321,7 +2410,9 @@
   function afterWrite(x, v, old, p, anchorOf) {
     return p.then(res => {
       if (res && res.conflict) { askConflict(x, v, res.current, anchorOf); return res; }
-      toast(`저장됨 · ${x.col.name} ${short(old)} → ${short(res && res.shown != null ? res.shown : v)}${res && res.dbErr ? ' (구글시트엔 저장 · 오피스 저장소는 1분 안에 맞춰져요)' : ''}`);
+      const shown = res && res.shown != null ? res.shown : v;
+      if (res && res.fx && FX_ERR_RE.test(String(shown))) toast(`함수는 넣었지만 결과가 ${shown} 예요 — 칸 주소 · 함수 이름 · 괄호를 확인해 주세요`, true);
+      else toast(`${res && res.fx ? '함수 넣음' : '저장됨'} · ${x.col.name} ${short(old)} → ${short(shown)}${res && res.dbErr ? ' (구글시트엔 저장 · 오피스 저장소는 1분 안에 맞춰져요)' : ''}`);
       return res;
     }, e => { toast(editErr((e && e.message) || String(e)), true); throw e; });
   }
@@ -2510,7 +2601,7 @@
       if (!multi) el.type = 'text'; else el.rows = 1;
       document.body.appendChild(el);
       el.addEventListener('keydown', ceKey);
-      el.addEventListener('input', ceSize);
+      el.addEventListener('input', () => { ceSize(); fxMode(/^=/.test(el.value)); });
       el.addEventListener('blur', () => {
         if (!CE.x || CE.closing || !document.hasFocus()) return;   // 다른 창으로 갔다 오면 그대로 이어서
         setTimeout(() => { if (CE.x && document.activeElement !== CE.el) commitCell(0, 0, true); }, 0);
@@ -2529,6 +2620,8 @@
     CE.multi = multi;
     CE.at = {r: x.row, p: x.p};
     el.value = text != null ? text : (x.fx || x.cell.t);
+    CE.lastRef = null;
+    fxMode(/^=/.test(el.value));
     el.removeAttribute('list');
     if (!multi) { const opts = colValues(x); if (opts.length) { $('edList').innerHTML = opts.map(v => `<option value="${esc(v)}">`).join(''); el.setAttribute('list', 'edList'); } }
     el.style.display = 'block';
@@ -2537,6 +2630,7 @@
     if (text != null) { const n = el.value.length; el.setSelectionRange(n, n); } else el.select();
     const warn = nameWarn(x);
     if (x.fx && text == null) cellTip(x.row, x.p, `함수 칸 — 지금 값 ${short(x.cell.t)} · '=' 로 시작하면 함수, 아니면 값으로 바뀌어요`, false, 3600);
+    else if (text === '=') cellTip(x.row, x.p, '함수 — 다른 칸을 누르면 그 칸 주소가 들어가요 · Shift+누르기 = 범위 · Enter 저장', false, 4200);
     else if (warn) cellTip(x.row, x.p, warn, true, 4500);
     else if (multi) cellTip(x.row, x.p, 'Enter 저장 · Alt+Enter 줄바꿈 · Esc 취소', false, 2400);
   }
@@ -2565,6 +2659,8 @@
     CE.closing = true;
     CE.x = null;
     CE.at = null;
+    CE.lastRef = null;
+    fxMode(false);
     if (CE.el) { CE.el.style.display = 'none'; CE.el.blur(); }
     CE.closing = false;
     hideTip();
@@ -2597,6 +2693,36 @@
     if (n) pickCell(n.r, n.p, {edit});
     else if (S.cell) setCell(S.cell.r, S.cell.p);
   }
+  /* 함수를 적는 중(= 로 시작) — 다른 칸을 누르면 그 칸 주소(E5)를 넣는다 (엑셀 · 구글시트처럼). Shift 를 누르고 누르면 방금 넣은 칸부터 범위(E2:E9).
+     연산자 · 괄호 · 쉼표 뒤(또는 방금 넣은 주소 바로 뒤 — 다른 칸을 누르면 바꿔 넣음)에서만. 그 밖엔 예전처럼 저장하고 그 칸으로 */
+  function fxMode(on) { document.body.classList.toggle('fxon', !!on); }
+  function fxPointing() {
+    const el = CE.el;
+    if (!CE.x || !el || !/^=/.test(el.value) || el.selectionStart !== el.selectionEnd) return null;
+    const a = el.selectionStart, v = el.value, lr = CE.lastRef;
+    if (lr && lr.end === a && v.slice(lr.start, lr.end) === lr.text) return {replace: lr};
+    return /[=(,+\-*/^&<>:;{]$/.test(v.slice(0, a).replace(/\s+$/, '')) ? {} : null;
+  }
+  grid.addEventListener('mousedown', e => {
+    if (e.button !== 0 || !CE.x) return;
+    const td = e.target.closest && e.target.closest('tbody td[data-p]'), tr = td && td.closest('tr[data-r]');
+    if (!td || !tr || td.classList.contains('rn')) return;
+    const pt = fxPointing();
+    if (!pt) return;
+    const r = +tr.dataset.r, p = +td.dataset.p;
+    if (r === CE.x.row && p === CE.x.p) return;
+    e.preventDefault();   // 입력 칸에 그대로 (blur → 저장 안 함)
+    e.stopPropagation();
+    const el = CE.el, v = el.value, a = el.selectionStart;
+    let ref = colName(p) + r, s0 = a;
+    if (pt.replace) { s0 = pt.replace.start; if (e.shiftKey) ref = pt.replace.text.split(':')[0] + ':' + ref; }
+    el.value = v.slice(0, s0) + ref + v.slice(a);
+    const end = s0 + ref.length;
+    el.setSelectionRange(end, end);
+    CE.lastRef = {start: s0, end, text: ref};
+    CE.refAt = Date.now();
+    ceSize();
+  }, true);
   function ceKey(e) {
     if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중 Enter 는 글자 확정
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCell(); return; }
@@ -2697,7 +2823,7 @@
     S.sel = null;
     const fields = d.cols.map(c => {
       const fx = fxText(info, r, c.p);
-      if (fx) return `<dt>${esc(c.name)}</dt><dd><span class="nr-auto">자동 계산 · ${esc(fx)}</span></dd>`;
+      if (fx) return `<dt>${esc(c.name)}</dt><dd><span class="nr-auto">자동 계산${fxGuard(fx, S.cur) ? '' : ` · ${esc(fx)}`}</span></dd>`;   // 기밀 명단 밖엔 가린 칸을 쓰는 함수는 안 보임
       if (c.type === 'check') return `<dt>${esc(c.name)}</dt><dd><label><input type="checkbox" class="nr-ck" data-p="${c.p}"${cur(c.p) === 'TRUE' ? ' checked' : ''}> 체크</label></dd>`;
       return `<dt>${esc(c.name)}</dt><dd><input class="nr-in" data-p="${c.p}" value="${esc(cur(c.p))}" spellcheck="false" autocomplete="off"${c.key ? ' data-key="1"' : ''}></dd>`;
     }).join('');
@@ -2728,6 +2854,8 @@
     $('dList').querySelectorAll('.nr-ck[data-p]').forEach(el => { const p = +el.dataset.p, v = el.checked ? 'TRUE' : 'FALSE'; if (v !== (cur(p) || 'FALSE')) edits.push({r: nr.r, c: p + 1, v, old: null}); });
     if (!edits.length) { toast('적은 칸이 없어요', true); return; }
     edits.forEach(e => { if (/^=/.test(String(e.v).trim())) { e.f = true; e.v = String(e.v).trim(); } });
+    const pre = edits.map(e => e.f ? preCheck(nr.gid, e.v) : '').find(Boolean);
+    if (pre) { toast(editErr(pre), true); return; }
     const btn = $('dHint').querySelector('.nr-save');
     btn.disabled = true;
     btn.textContent = '저장하는 중…';
@@ -2735,6 +2863,7 @@
       if (edits.some(e => e.f) && (await bridgeVer()) < 3) throw new Error('need_v3');
       const j = await bridge('write', {book: t.book, sheet: t.name, edits});
       const bad = (j.results || []).filter(x => !x.ok);
+      (j.results || []).forEach(x => { if (x.ok && typeof x.fx === 'string') fxSave(nr.gid, x.r, x.c - 1, x.fx); });   // 함수를 적은 칸 — 수식 위치를 바로
       const arr = j.rows && (j.rows[nr.r] || j.rows[String(nr.r)]);
       if (Array.isArray(arr)) {
         let dbv = null;
