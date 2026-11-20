@@ -1103,6 +1103,7 @@
       COLUMNS: a => range2(a[0]).w,
     };
     F.CONCAT = F.CONCATENATE;
+    F.ARRAYFORMULA = a => scalar(a[0]);   // 구글 시트의 =ArrayFormula(IFERROR(…)) — 한 칸 계산이면 그대로
     // 지연 계산 (안 쓰는 쪽은 계산하지 않는다 — IFERROR 의 오류 쪽 등)
     const LAZY = {
       IF: (n, x) => { const c = bool(scalar(x(n[0]))); if (isErr(c)) return c; const b = c ? n[1] : n[2]; return b === undefined ? (c ? true : false) : b.t === 'blank' ? 0 : x(b); },
@@ -1293,7 +1294,7 @@
         const live = new Set(books.map(b => b.book));
         const out = (j.tabs || []).filter(x => live.has(x.book)).map(x => {
           const prev = tabOf(x.tk), info = Object.assign({}, x);
-          if (prev && prev.info && prev.info.fx !== undefined && prev.info.fxVer === x.ver) { info.fx = prev.info.fx; info.fx_list = prev.info.fx_list; info.ofx = prev.info.ofx; info.ofmt = prev.info.ofmt; info.fxVer = x.ver; }
+          if (prev && prev.info && prev.info.fx !== undefined && prev.info.fxVer === x.ver) { info.fx = prev.info.fx; info.fx_list = prev.info.fx_list; info.ofx = prev.info.ofx; info.ofmt = prev.info.ofmt; info.fmt = prev.info.fmt; info.fmt_list = prev.info.fmt_list; info.fxVer = x.ver; }
           return mkTab({tk: x.tk, gid: x.gid, book: x.book, name: x.name, info});
         });
         S.tabs = out;
@@ -1393,7 +1394,7 @@
       const j = await mdx('mdx_rows_get', {p_tk: gid, p_since: 0, p_after: after, p_limit: 4000, p_fx: first});
       if (first) {   // 수식 칸 (맥미니가 브리지로 읽어 둔 것) — 고치기 막기 · 함수 보이기 · IMAGE 사진
         const t = tabOf(gid);
-        if (t && t.info) { t.info.fx = j.fx || null; t.info.fx_list = j.fx_list || null; t.info.ofx = Array.isArray(j.ofx) ? j.ofx : []; t.info._ofxM = null; t.info.ofmt = j.ofmt && typeof j.ofmt === 'object' ? j.ofmt : {}; t.info.cut_at = j.cut_at || null; t.info.fxVer = t.info.ver; }
+        if (t && t.info) { t.info.fx = j.fx || null; t.info.fx_list = j.fx_list || null; t.info.ofx = Array.isArray(j.ofx) ? j.ofx : []; t.info._ofxM = null; t.info.ofmt = j.ofmt && typeof j.ofmt === 'object' ? j.ofmt : {}; t.info.cut_at = j.cut_at || null; t.info.fmt = Array.isArray(j.fmt) ? j.fmt : null; t.info.fmt_list = Array.isArray(j.fmt_list) ? j.fmt_list : null; t.info.fxVer = t.info.ver; }
       }
       (j.rows || []).forEach(x => out.push(asRow(x)));
       if (!j.more || !(j.rows || []).length) return out;
@@ -2403,6 +2404,7 @@
     }
     applyPending(gid, ent.model);
     applyOfx(gid, ent);   // 오피스 함수 칸 = 지금 계산한 값
+    applyGfx(gid, ent);   // 끊은 시트 — 방금 고친 줄의 구글 함수 칸도 바로
     ent.data = buildAll(ent.model, tabOf(gid));
     return ent;
   }
@@ -2828,8 +2830,8 @@
   }
   const ofxConst = f => /^=(""|"(?:[^"]|"")*"|-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?|TRUE|FALSE|DATE\(\d+,\d+,\d+\))$/.test(String(f || ''));
   // 계산 환경 — 칸 값 = 저장소 줄(고치는 중인 값 포함), 오피스 함수 칸은 그 함수를 다시 계산 (돌고 도는 함수 = #REF!)
-  function ofxCtx(gid, rows) {
-    const t = tabOf(gid), info = t && t.info;
+  function ofxCtx(gid, rows, opt) {
+    const t = tabOf(gid), info = t && t.info, gfx = opt && opt.gfx, parsed = new Map();
     if (!rows) { const ent = S.cache.get(gid); rows = ent && ent.rows; }
     let last = 0;
     if (rows) for (const r of rows.keys()) if (r > last) last = r;
@@ -2847,12 +2849,82 @@
         memo.set(k, v);
         return v;
       }
+      const gf = gfx && gfx.has(r) ? fxText(info, r, p) : '';   // 끊은 시트에서 방금 고친 줄 — 구글 함수도 화면 계산기로 (모르는 함수 · 다른 탭이면 저장된 값)
+      if (gf) {
+        let ast = parsed.get(gf);
+        if (ast === undefined) { try { ast = FX.check(gf); } catch (e) { ast = null; } parsed.set(gf, ast); }
+        if (ast) {
+          stack.add(k);
+          let v;
+          try { v = FX.run(ast, {get, row: r, col: c, last}); } catch (e) { v = undefined; }
+          stack.delete(k);
+          if (v !== undefined && !FX.isErr(v)) { memo.set(k, v); return v; }
+        }
+      }
       const pd = E.pend.get(`${gid}|${r}|${p}`);   // 고치는 중 · 방금 고친 값 (화면과 같게)
       if (pd) return FX.cell(pd.now);
       const row = rows && rows.get(r);
       return FX.cell(row && row.v ? row.v[p] : null);
     };
     return {get, last, stack};
+  }
+  /* 끊은 시트 — 방금 고친 줄(3분)의 구글 함수 칸을 화면 계산기로 바로 다시 계산해 보여 준다 (저장은 맥미니 계산 패스가 1분 안에).
+     같은 탭 · FX 가 아는 함수만 (다른 탭 VLOOKUP · QUERY · FILTER · 환율은 저장된 값 → 1분 안에 새 값) */
+  const DIRTY = new Map(), DIRTY_MS = 180e3;
+  function markDirty(gid, r) { if (!DIRTY.has(gid)) DIRTY.set(gid, new Map()); DIRTY.get(gid).set(r, Date.now()); }
+  function applyGfx(gid, ent) {
+    const dm = DIRTY.get(gid), t = tabOf(gid), info = t && t.info;
+    if (!dm || !dm.size || !info || !isCut(gid) || !Array.isArray(info.fx) || !ent || !ent.model) return;
+    const now = Date.now();
+    for (const [r, at] of [...dm]) if (now - at >= DIRTY_MS) dm.delete(r);
+    if (!dm.size) return;
+    const rows = new Set(dm.keys()), c = ofxCtx(gid, ent.rows, {gfx: rows}), byR = new Map(ent.model.rows.map(x => [x.r, x]));
+    for (const r of rows) {
+      const mr = byR.get(r);
+      if (!mr) continue;
+      for (const run of info.fx) {
+        if (r - 1 < run[1] || r - 1 > run[2]) continue;
+        const p = run[0], cell = mr.cells[p];
+        if (!cell || ofxGet(info, r, p)) continue;   // 오피스 함수 칸은 applyOfx 가
+        const v = c.get(r, p + 1);
+        if (v !== undefined && v !== null && !FX.isErr(v) && !FX.same(v, cell.t)) setCellText(ent.model, cell, showAs(v, fmtAt(info, r, p)));
+      }
+    }
+  }
+  // 구글 숫자 모양 (끊기 전에 읽어 둔 mdx_tabs.fmt · fmt_list — 맥미니 계산 패스 md-formula.mjs formatValue 와 같은 규칙) → 계산 값을 시트와 같은 글자로
+  function fmtAt(info, r, p) {
+    if (!info || !Array.isArray(info.fmt) || !Array.isArray(info.fmt_list)) return undefined;
+    const run = info.fmt.find(x => x[0] === p && r - 1 >= x[1] && r - 1 <= x[2]);
+    return run ? info.fmt_list[run[3]] : undefined;
+  }
+  function showAs(v, f) {
+    const n = typeof v === 'number' ? v : v && typeof v === 'object' && typeof v.n === 'number' && !FX.isErr(v) ? v.n : null;
+    if (f == null || n === null) return FX.show(v);
+    if (f.date) {
+      const t = new Date(Math.round((Math.floor(n) - 25569) * 864e5)), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, d = t.getUTCDate();
+      return String(f.date).replace('YYYY', String(y)).replace('MM', String(m).padStart(2, '0')).replace('DD', String(d).padStart(2, '0')).replace('M', String(m)).replace('D', String(d));
+    }
+    if (n === 0 && f.zero != null) return f.zero;
+    let x = f.pct ? n * 100 : n;
+    const neg = x < 0;
+    x = Math.abs(x);
+    let body;
+    if (f.dec == null) body = String(Number(x.toPrecision(10)));
+    else { const k = Math.pow(10, f.dec), r = Math.round(Number((x * k).toPrecision(15))) / k; body = f.dec > 0 ? r.toFixed(f.dec) : String(Math.round(r)); }
+    if (f.comma) { const [i, dd] = body.split('.'); body = i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dd != null ? '.' + dd : ''); }
+    const zero = Number(body.replace(/,/g, '')) === 0, sign = neg && !zero ? '-' : '';
+    const core = (f.pre || '') + body + (f.pct ? '%' : '') + (f.suf || '');
+    return sign ? (f.paren ? `(${core})` : sign + core) : core;
+  }
+  // 끊은 시트의 QUERY · FILTER · SORT 가 채우는 칸 (mdx_tabs.spill {"줄,열": [높이, 너비]}, 1부터) — 맨 위 왼쪽(함수 칸) 말고는 자동 계산 결과
+  function spillWhy(info, r, c) {
+    const sp = info && info.spill;
+    if (!sp || typeof sp !== 'object') return '';
+    for (const [k, hw] of Object.entries(sp)) {
+      const [r0, c0] = k.split(',').map(Number), h = +(hw && hw[0]) || 0, w = +(hw && hw[1]) || 0;
+      if (r >= r0 && r < r0 + h && c >= c0 && c < c0 + w && !(r === r0 && c === c0)) return 'QUERY · FILTER 같은 함수가 채우는 자동 계산 칸이에요 — 맨 위 왼쪽 칸의 함수를 고쳐 주세요';
+    }
+    return '';
   }
   function ofxEval(gid, r, p, f) {   // 새 함수 f 를 (r, p) 칸에 넣었을 때의 값
     const c = ofxCtx(gid);
@@ -2885,7 +2957,7 @@
       const mr = byR.get(r), cell = mr && mr.cells[p];
       if (!cell) continue;
       const v = c.get(r, p + 1);
-      if (!FX.same(v, cell.t)) setCellText(ent.model, cell, FX.show(v));
+      if (!FX.same(v, cell.t)) setCellText(ent.model, cell, showAs(v, fmtAt(info, r, p)));
     }
   }
   // 고칠 수 있는 PC — 계산한 값이 저장소 값과 다르면 구글시트 · 저장소에도 적는다 (가리킨 칸이 바뀐 뒤). 같은 값은 한 번만 시도
@@ -2938,7 +3010,7 @@
     const lock = fx0 && fxGuard(fx0, gid) ? EDIT_ERR.fx_locked : '';   // 기밀 명단 밖 — 가린 칸을 쓰는 함수 칸은 함수도 안 보이고 못 고친다
     const fx = lock ? '' : fx0;
     return {gid, book: t.book, edit: !!(b && b.edit), name: t.name, col, cell, p, row: r, r: cr, sc: mc.i + 1, fx, ofx: !!of && !lock, gfx: !of && !!gf0 && !lock, gfxUnder: !!gf0,
-      check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why: why || lock};
+      check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why: why || lock || (isCut(gid) ? spillWhy(info, cr, p + 1) : '')};
   }
   function roWhy(x) {
     if (!canEdit()) return NO_EDIT;
@@ -2946,8 +3018,10 @@
     if (!x.edit) return RO_BOOK;
     if (x.why) return x.why;
     const info = tabInfo(x.gid);
-    if (info && info.fx_deny) return editErr(info.fx_deny);
-    if (info && info.fx_ro) return RO_TAB;
+    const cutNow = isCut(x.gid);   // 끊은 시트 — 구글 브리지 때문에 막았던 탭(판매원본 등) · 퍼지는 함수가 있는 탭도 고친다 (TOP 10 은 판매원본에서 계산하는 탭이라 그대로)
+    if (cutNow && /TOP\s*10/i.test(x.name)) return '판매원본에서 자동으로 계산하는 탭이라 고치지 않아요';
+    if (info && info.fx_deny && !cutNow) return editErr(info.fx_deny);
+    if (info && info.fx_ro && !cutNow) return RO_TAB;
     if (x.gfx && !isCut(x.gid)) return `'${x.col.name}' 칸은 구글시트 함수(${x.fx})가 계산해요 — 구글을 끊기 전엔 오피스에서 못 고쳐요`;
     return '';
   }
@@ -2956,7 +3030,7 @@
     if (!S.sel || !t || !d) return;
     const info = tabInfo(S.cur);
     const b = bookOf(t.book);
-    const tabWhy = !canEdit() ? NO_EDIT : !(b && b.edit) ? RO_BOOK : d.side ? '옆 표는 고칠 수 없어요' : info && info.fx_deny ? editErr(info.fx_deny) : info && info.fx_ro ? RO_TAB : '';
+    const tabWhy = !canEdit() ? NO_EDIT : !(b && b.edit) ? RO_BOOK : d.side ? '옆 표는 고칠 수 없어요' : isCut(S.cur) ? (/TOP\s*10/i.test(t.name) ? '판매원본에서 자동으로 계산하는 탭이라 고치지 않아요' : '') : info && info.fx_deny ? editErr(info.fx_deny) : info && info.fx_ro ? RO_TAB : '';
     hint.textContent = tabWhy || "값을 누르면 고칠 수 있어요 · 저장하면 오피스 저장소와 구글시트에 바로 · '=' 로 시작하면 함수 (수식 칸은 자동 계산)";
     hint.classList.toggle('no', !!tabWhy);
     $('dList').querySelectorAll('dd[data-p]').forEach(dd => {
@@ -3067,6 +3141,7 @@
         const f = isF ? s.trim() : constFx(s);
         const cv = ofxEval(x.gid, x.r, x.p, f);
         await ofxPut(x.gid, x.r, x.p, f);
+        markDirty(x.gid, x.r);
         E.pend.delete(key);
         rerender(x.gid);   // applyOfx 가 계산한 값을 그린다
         logEdit(x, prev, v, true);
@@ -3080,6 +3155,7 @@
       }
       if (!d || !d.ok || !Array.isArray(d.v)) throw new Error('db_error');
       bumpRows(x.gid, d);
+      markDirty(x.gid, x.r);
       if (x.ofx) await ofxPut(x.gid, x.r, x.p, '');   // 오피스 함수 칸에 값 → 함수 지움
       settle(x, key, true, d.v);
       logEdit(x, prev, v, true);
@@ -3772,6 +3848,7 @@
     settleBatch(gid, done);
     // 오피스 함수 칸에 값을 쓴 칸 → 함수 지움 (한 칸 고치기와 같음)
     for (const d of done) if (d.ok && d.c.x.ofx && !fcells.includes(d.c)) { try { await ofxPut(gid, d.c.x.r, d.c.x.p, ''); } catch (e) { /* 다음에 고칠 때 다시 */ } }
+    if (isCut(gid)) done.forEach(d => { if (d.ok) markDirty(gid, d.c.x.r); });
     if (done.some(d => d.ok)) { rerender(gid); ofxSyncSoon(gid); }
     const okc = done.filter(d => d.ok).map(d => d.c), bad = done.filter(d => !d.ok);
     res.ok = okc.length;
@@ -3921,7 +3998,7 @@
      적은 칸만 구글시트(브리지)에 한 번에 → 시트가 돌려준 줄 전체를 저장소에도 (mdx_cell_edit) */
   function canAddRow() {
     const t = tabOf(S.cur), b = t ? bookOf(t.book) : null, d = curData(), info = tabInfo(S.cur);
-    return !!(t && b && b.edit && canEdit() && d && !d.side && (vstate().part || 0) === 0 && d.cols.length && !t.meta.raw && !(info && (info.fx_ro || info.fx_deny)));
+    return !!(t && b && b.edit && canEdit() && d && !d.side && (vstate().part || 0) === 0 && d.cols.length && !t.meta.raw && !(info && !isCut(S.cur) && (info.fx_ro || info.fx_deny)));
   }
   function openNewRow() {
     if (!canAddRow()) return;
@@ -3974,9 +4051,10 @@
         : j.rows && (j.rows[nr.r] || j.rows[String(nr.r)]);
       if (Array.isArray(arr)) {
         let dbv = null;
-        try { const d = await mdx('mdx_cell_edit', {p_tk: nr.gid, p_r: nr.r, p_p: edits[0].c - 1, p_new: String(edits[0].v), p_row: arr.map(x => x == null ? '' : String(x)), p_who: whoAmI() || null}); dbv = d && d.v; } catch (e) { if (cutNow) throw e; /* 맥미니가 곧 맞춤 */ }
+        try { let d = null; if (cutNow) { for (const e of edits) d = await mdx('mdx_cell_edit', {p_tk: nr.gid, p_r: nr.r, p_p: e.c - 1, p_new: String(e.v), p_row: null, p_who: whoAmI() || null}); }   /* 끊은 시트 — 저장소는 칸마다만 받는다 */ else d = await mdx('mdx_cell_edit', {p_tk: nr.gid, p_r: nr.r, p_p: edits[0].c - 1, p_new: String(edits[0].v), p_row: arr.map(x => x == null ? '' : String(x)), p_who: whoAmI() || null}); dbv = d && d.v; } catch (e) { if (cutNow) throw e; /* 맥미니가 곧 맞춤 */ }
         const v = (dbv || arr).map(x => x == null ? '' : String(x));
         ent.rows.set(nr.r, {r: nr.r, v, src: 'office', edited_by: whoAmI() || null, edited_at: new Date().toISOString()});
+        if (cutNow) markDirty(nr.gid, nr.r);
         rerender(nr.gid);
       }
       edits.forEach(e => logEdit({book: t.book, name: t.name, sc: e.c, r: nr.r}, e.old, e.v, !bad.some(b => b.c === e.c), (bad.find(b => b.c === e.c) || {}).error));
