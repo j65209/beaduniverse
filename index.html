@@ -23168,8 +23168,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     setTimeout(()=>{ if(el&&!el.hidden&&toolKeyOf(history.state&&history.state.view)===key) home(); },450);
   }
   window.bbToolClose=bbToolClose;
-  /* ERP전산팀 탭은 오피스 화면을 덮지 않고 브라우저 새 탭으로 연다 (2026-11-20 사용자 "화면을 다 덮으라는 게 아니라 크롬 새 창 탭으로") —
-     erp/ 의 soloUrl: 이 주소 옆 erp/?tab=…&solo=1 (회사 주소는 beaduniverse.kr/office/erp/ 입구 — bead-universe 레포 office/erp/index.html) */
   function openToolPage(key){
     const t=TOOL_PAGES[key]; if(!t) return;
     if(t.access&&!t.access()){ toast('관리자 전용 화면입니다','err'); return; }   // 기록(#sns)을 남기기 전에 막는다
@@ -23318,7 +23316,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function openSnsPage(){ openToolPage('sns'); }   // 오피스 안 화면 (TOOL_PAGES) — 관리 화면은 주소 sns/?manage=1
   window.openSnsPage=openSnsPage;
   /* ERP전산팀 — erp/ (구글시트 '식스샵 ERP MASTER' 웹 보기를 브라우저가 바로 받아 업무 표로 그림 (자동 칸 너비 · 정렬 · 요약), 보기 전용 · 전 직원) */
-  function openErpPage(){ openToolPage('erp'); }
+  /* 홈 '재고 ERP' 카드 = 브라우저 새 탭 (2026-11-20 사용자 "화면을 다 덮으라는 게 아니라 크롬 새 창 탭으로" · "메인보드에서 클릭하면 바로 크롬 새창으로").
+     주소 = 이 주소 옆 erp/ (회사 주소는 beaduniverse.kr/office/erp/ 입구 — bead-universe 레포 office/erp/index.html). 창 이름 'bead-erp' 로
+     이미 연 ERP 탭이 있으면 새로 띄우지 않고 그 탭으로 (보던 자리 그대로). 팝업이 막히면 예전처럼 오피스 안 화면(#erp)으로 */
+  function openErpPage(){
+    const url=new URL('erp/',location.origin+location.pathname.replace(/[^/]*$/,'')).href;
+    let w=null;
+    try{ w=window.open('','bead-erp'); }catch(e){ w=null; }
+    if(!w){ openToolPage('erp'); return; }
+    let erpOpen=false;
+    try{ erpOpen=w.location.href!=='about:blank'&&/\/erp\/(index\.html)?$/.test(w.location.pathname); }catch(e){ erpOpen=false; }
+    if(!erpOpen){ try{ w.location.href=url; }catch(e){ openToolPage('erp'); return; } }   // 새 창 · 그 창이 다른 곳(오피스 홈 등)으로 갔으면 ERP 로
+    try{ w.focus(); }catch(e){}
+  }
   window.openErpPage=openErpPage;
   /* 시딩 마스터 — seeding/ (자체 저장 엑셀식 시딩 표 · 수식 · 보냄 · 회신 요약 · 주의사항 DM 양식 · 이모지, 전 직원이 고침) */
   function openSeedingPage(){ openToolPage('seeding'); }

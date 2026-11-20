@@ -123,20 +123,6 @@
   .ib:hover{background:#f1f4f8;color:var(--text)}
   .ib.on{background:#e8f0fe;color:var(--info)}
   .ib svg{width:18px;height:18px}
-  /* 새 탭 크게 보기 .app.full (2026-11-20 사용자 "탭을 누르면 바로 전체화면 · 최대한 크게" → 같은 날 "화면을 다 덮으라는 게 아니라 크롬 새 창 탭으로") —
-     메뉴에서 탭을 누르면 그 탭이 브라우저 새 탭(?tab=…&solo=1, SOLO)으로 열리고, 그 새 탭은 메뉴 · 요약 카드 · 칩 · 안내를 접고 표만 크게.
-     맨 위 왼쪽 '‹ 탭 목록' = 그 창에서 메뉴를 다시 보기. 요약 카드는 ▾ 단추 · 제목 줄 누르기로 잠깐 펼침 (setFull). 오피스 화면은 덮지 않는다 */
-  .back{display:none;flex:none;align-items:center;gap:3px;height:38px;padding:0 14px 0 8px;border-radius:10px;background:#0f172a;color:#fff;font-size:14px;font-weight:700;white-space:nowrap}
-  .back svg{width:19px;height:19px}
-  .back:hover{background:#1e293b}
-  #btnSum{display:none}
-  .app.full .back{display:inline-flex}
-  .app.full #btnSum{display:grid}
-  .app.full.hopen #btnSum{background:#e8f0fe;color:var(--info)}
-  .app.full.hopen #btnSum svg{transform:rotate(180deg)}
-  .app.full .side,.app.full .menu{display:none!important}
-  .app.full:not(.hopen) .alert,.app.full:not(.hopen) .kpis,.app.full:not(.hopen) .chips{display:none}
-  .app.full:not(.hopen) .head{padding-top:8px;padding-bottom:8px;cursor:pointer}
 
   .head{flex:none;padding:14px 18px 12px;background:var(--card);border-bottom:1px solid var(--line)}
   .trow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:30px}
@@ -615,7 +601,6 @@
   <div class="scrim" id="scrim" hidden></div>
   <div class="main">
     <header class="bar">
-      <button type="button" class="back" id="btnBack" title="탭 목록(메뉴) 보기" aria-label="탭 목록 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>탭 목록</span></button>
       <button type="button" class="ib menu" id="btnMenu" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓴 낱말이 모두 들어간 줄만 · Enter 로 한 줄씩">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -625,7 +610,6 @@
       </label>
       <div class="sp"></div>
       <button type="button" class="st is-load" id="st"><i class="dot"></i><span id="stText">불러오는 중…</span></button>
-      <button type="button" class="ib" id="btnSum" title="요약 카드 · 칩 · 안내 보기" aria-label="요약 카드 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
       <button type="button" class="ib" id="btnDense" title="줄 간격 촘촘하게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 9.7h16M4 14.3h16M4 19h16"/></svg></button>
       <button type="button" class="ib" id="btnFull" title="전체 화면 (모니터 꽉 채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <a class="ib" id="btnSheet" href="#" target="_blank" rel="noopener" title="구글시트에서 이 탭 열기 (새 탭)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
@@ -765,8 +749,6 @@
 
   const $ = id => document.getElementById(id);
   const app = $('app'), grid = $('grid'), qIn = $('q');
-  // 메뉴에서 연 새 탭 (?solo=1, 오피스 iframe 밖) — 표만 크게 (setFull), 주소는 보는 탭을 따라감 (soloUrl · openTab)
-  const SOLO = (() => { try { return window.parent === window && new URLSearchParams(location.search).get('solo') === '1'; } catch (e) { return false; } })();
   const narrow = matchMedia('(max-width:720px)');
   const compactMQ = matchMedia('(max-width:720px),(max-height:520px)');   // 휴대폰 (세로 · 가로) — 위쪽 접기 · 안내 한 줄
   const hoverMQ = matchMedia('(hover:hover)');                            // 마우스가 있는 화면 — '이전 N회' 마우스 팝업
@@ -1980,25 +1962,10 @@
     renderHead();
     renderGrid({keep: true});
   });
-  /* 메뉴에서 탭을 누르면 그 탭을 브라우저 새 탭으로 (2026-11-20 사용자 "화면을 다 덮으라는 게 아니라 크롬 새 창 탭으로") — CSS '.app.full' 주석.
-     창 이름을 탭마다 정해(erp-<gid>) 같은 탭을 또 누르면 열려 있는 그 창을 다시 쓴다. 여기 화면도 그 탭으로 바꿔 둔다 (메뉴 표시 · 팝업이 막혀도 볼 수 있게).
-     새 탭(SOLO) 안에서 메뉴를 누르면 그 창 안에서 바꾼다 (창이 또 늘지 않게) */
-  function soloUrl(gid) {
-    let dir = '';
-    // 오피스 안(iframe): 오피스 주소 옆 erp/ — 회사 주소(beaduniverse.kr/office/)에선 이 문서 주소가 오피스 주소라 location 으로는 못 정한다 (index.html toolUrl 과 같은 규칙)
-    try { if (window.parent !== window) { const p = window.parent.location; dir = p.origin + p.pathname.replace(/[^/]*$/, '') + 'erp/'; } } catch (e) { dir = ''; }
-    if (!dir) dir = location.origin + location.pathname;
-    return dir + '?tab=' + encodeURIComponent(gid) + '&solo=1';
-  }
-  $('nav').addEventListener('click', e => {
-    const b = e.target.closest('.nav-item');
-    if (!b) return;
-    const gid = b.dataset.gid;
-    if (!SOLO) { try { window.open(soloUrl(gid), 'erp-' + gid); } catch (err) { /* 막힘 — 여기서라도 보이게 */ } }
-    openTab(gid);
-    setNav(false);
-    if (SOLO) setFull(true);
-  });
+  /* 메뉴에서 탭을 누르면 이 화면 안에서 바꾼다. 화면 자체는 오피스 홈 '재고 ERP' 카드가 브라우저 새 탭으로 연다
+     (2026-11-20 사용자 "화면을 다 덮으라는 게 아니라 크롬 새 창 탭으로" · "메인보드에서 클릭하면 바로 크롬 새창으로" — 오피스 index.html openErpPage).
+     같은 날 잠깐 있던 '탭 누르면 전체화면(오피스 덮기)' · '탭마다 새 탭'은 뺐다 */
+  $('nav').addEventListener('click', e => { const b = e.target.closest('.nav-item'); if (b) { openTab(b.dataset.gid); setNav(false); } });
   $('btnMenu').addEventListener('click', () => { if (wide.matches) setSide(app.classList.contains('side-off'), true); else setNav(!app.classList.contains('nav-open')); });
   $('scrim').addEventListener('click', () => setNav(false));
 
@@ -2102,7 +2069,6 @@
     const t = tabOf(gid);
     if (t) S.lastName = t.name;
     saveTab();
-    if (SOLO) { try { history.replaceState(history.state, '', soloUrl(gid)); } catch (e) { /* noop */ } }   // 새로고침해도 이 탭
     renderNav();
     const c = S.cache.get(gid);
     renderHead();
@@ -3855,26 +3821,6 @@
     if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
     else { const el = d.documentElement; (el.requestFullscreen || el.webkitRequestFullscreen).call(el); }
   });
-  /* 새 탭 크게 보기 (SOLO 창에서만 — CSS '.app.full' 주석). 켤 때: 메뉴 · 요약 카드 접기. 끌 때('‹ 탭 목록'): 메뉴를 다시 연다
-     (PC 는 접어 둔 메뉴도 펼침, 좁은 화면은 서랍). 오피스 화면을 덮거나 브라우저 전체화면을 켜지는 않는다 — 모니터 꽉 채우기는 오른쪽 위 단추 */
-  const FULL = {on: false};
-  function setFull(on) {
-    on = !!on;
-    if (FULL.on === on) return;
-    FULL.on = on;
-    app.classList.toggle('full', on);
-    app.classList.remove('hopen');
-    if (!on) {
-      if (!wide.matches) setNav(true);
-      else if (app.classList.contains('side-off')) { setSide(true, false); return; }   // setSide 가 다시 그린다
-    }
-    renderGrid({keep: true});
-  }
-  $('btnBack').addEventListener('click', () => setFull(false));
-  $('btnSum').addEventListener('click', () => { app.classList.toggle('hopen'); renderGrid({keep: true}); });
-  document.querySelector('.head').addEventListener('click', e => {
-    if (FULL.on && !app.classList.contains('hopen') && !e.target.closest('button,a,input,select,label')) { app.classList.add('hopen'); renderGrid({keep: true}); }
-  });
 
   /* ── 찾기 ── */
   function setQuery(v) {
@@ -4278,7 +4224,6 @@
   (async function boot() {
     setDense(lsGet(LS_DENSE) === '1', false);
     if (lsGet(LS_SIDE) === '0') app.classList.add('side-off');
-    if (SOLO) setFull(true);
     S.showEmpty = lsGet(LS_EMPTY) === '1';
     if (document.fonts && document.fonts.load) { try { document.fonts.load(F_CELL, '재고ABC123'); document.fonts.load(F_BOLD, '재고ABC123'); } catch (e) { /* noop */ } }
     let saved = null;
