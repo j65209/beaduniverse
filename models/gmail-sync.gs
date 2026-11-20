@@ -15,6 +15,11 @@
  *   이미 보낸 메일은 다시 안 보낸다 (스크립트 속성 d_<메일ID>).
  *
  * 키는 공개 레포에 올리지 않는다 — KEY 칸은 비워서 커밋, 붙여넣은 뒤에만 채운다.
+ *
+ * 2026-11-20 네이버 '대용량 첨부': 네이버 메일은 큰 파일을 첨부 대신 다운로드 링크로 보낸다(getAttachments 에 안 잡힘).
+ *   링크가 평문 본문에 없고 HTML 에만 있는 메일이 있어서 링크가 있으면 html 도 같이 보낸다 — 파일 받기는 Supabase 함수가 한다.
+ *   이미 가져온 메일도 메일마다 한 번(스크립트 속성 b_<메일ID>) 다시 봐서 링크가 있으면 'big' 으로 보낸다.
+ *   바꿔 넣을 때: 맨 위 KEY 줄은 지금 것 그대로 두고 나머지만 바꿔 붙이기 → 저장. 트리거는 그대로라 setup 다시 안 돌려도 됨.
  */
 const KEY = '';                                  // ← 오피스 담당자에게 받은 접속 키
 const TO_ADDR = 'brightbeed@bead-uni.com';
@@ -49,13 +54,21 @@ function run_(range) {
     th.getMessages().forEach(function (m) {
       if (Date.now() - started > 4.5 * 60 * 1000) return;
       const id = m.getId();
-      if (props.getProperty('d_' + id)) return;
+      const done = props.getProperty('d_' + id);
+      if (done && props.getProperty('b_' + id)) return;
       if (m.isInTrash()) return;
       const to = (m.getTo() + ',' + m.getCc()).toLowerCase();
       if (to.indexOf(TO_ADDR) < 0) return;                 // 같은 스레드의 내 답장 등은 빼기
       if (m.isInChats && m.isInChats()) return;
+      if (done) {
+        // 전에 가져온 메일 — 대용량 첨부 링크가 HTML 에만 있던 것 (메일마다 한 번, 실패하면 다음 회차에 다시)
+        const html = bigHtml_(m);
+        const r = html ? post_({ action: 'big', key: KEY, gmailId: id, html: html }) : { ok: true };
+        if (r && (r.ok || r.error === 'no applicant')) props.setProperty('b_' + id, '1');
+        return;
+      }
       if (th.isInSpam()) wasSpam = true;
-      if (sendOne_(m, th)) { props.setProperty('d_' + id, '1'); sent++; }
+      if (sendOne_(m, th)) { props.setProperty('d_' + id, '1'); props.setProperty('b_' + id, '1'); sent++; }
     });
     if (wasSpam) th.moveToInbox();
   });
@@ -72,6 +85,7 @@ function sendOne_(m, th) {
     msg: {
       id: m.getId(), threadId: th.getId(), date: m.getDate().toISOString(),
       fromName: fromName, fromEmail: fromEmail, subject: m.getSubject(), body: m.getPlainBody(),
+      html: bigHtml_(m),                                  // 네이버 대용량 첨부 링크가 있을 때만 (없으면 '')
     },
   });
   if (!r || !r.id) return false;
@@ -90,6 +104,14 @@ function sendOne_(m, th) {
     if (!res || !res.ok) ok = false;
   });
   return ok;
+}
+
+/** 네이버 대용량 첨부 링크가 있으면 HTML 본문(본문에 박힌 큰 그림 데이터는 뺌), 없으면 '' */
+function bigHtml_(m) {
+  let h = '';
+  try { h = m.getBody() || ''; } catch (e) { return ''; }
+  if (h.indexOf('bigfile.mail.naver.com') < 0) return '';
+  return h.replace(/data:[^"')\s]{200,}/g, '').slice(0, 400000);
 }
 
 function post_(obj) {

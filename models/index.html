@@ -74,10 +74,17 @@
   @media (max-width:520px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
   .ap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s}
   .ap:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(10,11,13,.08)}
-  .ap .ph{aspect-ratio:3/4;background:#f1ede2 center/cover no-repeat;position:relative}
-  .ap .ph .none{position:absolute;inset:0;display:grid;place-items:center;color:var(--text-3);font-size:13px}
-  .ap .ph .n{position:absolute;right:8px;bottom:8px;background:rgba(10,11,13,.66);color:#fff;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 8px}
-  .ap .ph .st{position:absolute;left:8px;top:8px}
+  .ap .ph{aspect-ratio:3/4;background:#f1ede2;position:relative;overflow:hidden}
+  .ap .ph img.cv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  img.broken{visibility:hidden}
+  .ap .ph .none{position:absolute;inset:0;display:grid;place-content:center;gap:4px;text-align:center;color:var(--text-3);font-size:13px;line-height:1.45;padding:0 12px}
+  .ap .ph .none small{font-size:11.5px}
+  .ap .ph .n{position:absolute;right:8px;bottom:8px;z-index:1;background:rgba(10,11,13,.66);color:#fff;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 8px}
+  .ap .ph .st{position:absolute;left:8px;top:8px;z-index:1}
+  /* 새 지원은 크게 (2026-11-20 사장님 "새지원 배지 크게") — 다른 상태는 그대로 작게 */
+  .ap .ph .st.s-새지원{left:10px;top:10px;font-size:17px;font-weight:900;letter-spacing:-.02em;padding:8px 15px;box-shadow:0 3px 12px rgba(10,11,13,.30)}
+  .dr-top .badge.s-새지원{font-size:14px;padding:5px 12px}
+  @media (max-width:520px){ .ap .ph .st.s-새지원{left:8px;top:8px;font-size:15px;padding:6px 12px} }
   .ap .meta{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
   .ap .nm{font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px;min-width:0}
   .ap .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -103,7 +110,9 @@
   .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:16px}
   .gal img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;background:#f1ede2;cursor:zoom-in;display:block}
   .files{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
-  .files a{font-size:12.5px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;text-decoration:none}
+  .files a{font-size:12.5px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .files a .fz{color:var(--text-3);margin-left:6px;font-size:11.5px}
+  .bignote{font-size:12.5px;color:var(--text-2);background:#fff;border:1px dashed var(--line-2);border-radius:10px;padding:9px 12px;margin:0 0 14px;line-height:1.6}
   .sec{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px}
   .sec h3{margin:0 0 10px;font-size:13.5px;font-weight:800;color:var(--text-2)}
   .stbtns{display:flex;gap:6px;flex-wrap:wrap}
@@ -191,6 +200,18 @@ function ago(iso) {
 function fullDate(iso) { const d = new Date(iso); return d.toLocaleString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }); }
 const imgs = (r) => (r.photos || []).filter((p) => p.image);
 const others = (r) => (r.photos || []).filter((p) => !p.image);
+/* 사진은 썸네일로 (2026-11-20 사장님 "왜 이미지가 안 불러와지지?").
+   원본을 그대로 띄우면 장당 최대 9MB 라 늦게 뜨고, 아이폰 사진(HEIC)은 크롬이 아예 못 그린다.
+   Supabase 이미지 변환(render)으로 폭만 줄여 받음 — HEIC 도 JPG/WebP 로 바뀌어 옴. 변환이 실패하면 원본으로. */
+const OBJ_PATH = '/storage/v1/object/public/', RENDER_PATH = '/storage/v1/render/image/public/';
+const thumb = (u, w) => (u && u.indexOf(OBJ_PATH) > 0) ? u.replace(OBJ_PATH, RENDER_PATH) + '?width=' + w + '&quality=75' : u;
+function imgFb(el) {
+  if (!el.dataset.fb && el.dataset.orig) { el.dataset.fb = '1'; el.src = el.dataset.orig; return; }
+  el.onerror = null; el.classList.add('broken');
+}
+const fsz = (n) => !n ? '' : n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+// 네이버 '대용량 첨부'(파일 대신 다운로드 링크)로 온 메일 — 엣지 함수가 링크에서 받아 넣는다
+const hasBig = (r) => /대용량\s*첨부/.test(r.body || '');
 const igUrl = (v) => { const m = String(v || '').match(/[A-Za-z0-9._]{2,30}/g); if (!m) return ''; const h = /instagram\.com\/([A-Za-z0-9._]+)/.exec(v); return 'https://instagram.com/' + (h ? h[1] : m[m.length - 1]); };
 
 async function load(manual) {
@@ -231,8 +252,9 @@ function render() {
     const im = imgs(r), cover = im[0]?.url;
     const spec = [r.age, r.height, r.weight].filter(Boolean).join(' · ');
     return `<div class="ap" onclick="openDr(${r.id})">
-      <div class="ph" ${cover ? `style="background-image:url('${esc(cover)}')"` : ''}>
-        ${cover ? '' : '<div class="none">사진 없음</div>'}
+      <div class="ph">
+        ${cover ? `<img class="cv" src="${esc(thumb(cover, 600))}" data-orig="${esc(cover)}" alt="" loading="lazy" decoding="async" onerror="imgFb(this)">`
+          : `<div class="none">사진 없음${hasBig(r) ? '<small>네이버 대용량 첨부로 옴</small>' : others(r).length ? `<small>📎 파일 ${others(r).length}개</small>` : ''}</div>`}
         <span class="st badge ${scls(r.status)}">${esc(r.status)}</span>
         ${im.length > 1 ? `<span class="n">📷 ${im.length}</span>` : ''}
       </div>
@@ -261,8 +283,9 @@ function openDr(id, keepScroll) {
     <div class="dr-top"><h2>${esc(r.name || r.from_name || '이름 없음')}</h2>
       <span class="badge ${scls(r.status)}">${esc(r.status)}</span>
       <button class="x" onclick="closeDr()" aria-label="닫기">×</button></div>
-    ${im.length ? `<div class="gal">${im.map((p, i) => `<img src="${esc(p.url)}" alt="" loading="lazy" onclick="openLb(${r.id},${i})">`).join('')}</div>` : '<p class="muted">첨부 사진 없음 — 메일 본문에 링크가 있는지 아래에서 확인해 주세요.</p>'}
-    ${ot.length ? `<div class="files">${ot.map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener">📎 ${esc(p.name)}</a>`).join('')}</div>` : ''}
+    ${im.length ? `<div class="gal">${im.map((p, i) => `<img src="${esc(thumb(p.url, 500))}" data-orig="${esc(p.url)}" alt="" loading="lazy" decoding="async" onerror="imgFb(this)" onclick="openLb(${r.id},${i})">`).join('')}</div>` : '<p class="muted">첨부 사진 없음 — 메일 본문에 링크가 있는지 아래에서 확인해 주세요.</p>'}
+    ${ot.length ? `<div class="files">${ot.map((p) => `<a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(p.name)}">${p.link ? '🔗' : '📎'} ${esc(p.name)}<span class="fz">${esc([fsz(p.size), p.link ? '네이버 링크' + (p.until ? ' · ' + String(p.until).slice(5) + '까지' : '') : ''].filter(Boolean).join(' · '))}</span></a>`).join('')}</div>` : ''}
+    ${hasBig(r) && !(r.photos || []).some((p) => p.from === 'naver' || p.from === 'naver-zip') ? '<p class="bignote">네이버 <b>대용량 첨부</b>(파일 대신 다운로드 링크)로 온 메일이에요. 아직 못 가져왔어요 — 몇 분 뒤에도 비어 있으면 원본 메일(brightbeed@bead-uni.com)에서 받아 주세요.</p>' : ''}
     <div class="sec"><h3>진행 상태</h3>
       <div class="stbtns">${STATUSES.map((s) => `<button class="${scls(s)} ${r.status === s ? 'on' : ''}" onclick="save(${r.id},{status:'${s}'})">${s}</button>`).join('')}</div>
       <div class="rate">${[1, 2, 3, 4, 5].map((n) => `<button class="${(r.rating || 0) >= n ? 'on' : ''}" onclick="save(${r.id},{rating:${(r.rating === n) ? 'null' : n}})">★</button>`).join('')}<span class="muted">별점 (같은 별 다시 누르면 지움)</span></div>
@@ -329,7 +352,7 @@ async function hide(id) {
 function openLb(id, i) { lbList = imgs(rows.find((x) => x.id === id)); lbIdx = i; drawLb(); document.getElementById('lb').hidden = false; }
 function drawLb() {
   const p = lbList[lbIdx];
-  document.getElementById('lb').innerHTML = `<img src="${esc(p.url)}" alt="">
+  document.getElementById('lb').innerHTML = `<img src="${esc(thumb(p.url, 2000))}" data-orig="${esc(p.url)}" alt="" onerror="imgFb(this)">
     ${lbList.length > 1 ? '<button class="nav prev" onclick="stepLb(-1)">‹</button><button class="nav next" onclick="stepLb(1)">›</button>' : ''}
     <div class="cap">${lbIdx + 1} / ${lbList.length} · <a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:#ddd">원본 열기</a></div>`;
 }

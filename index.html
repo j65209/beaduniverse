@@ -5794,6 +5794,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-mailer {--m-color:#f97316;--m-border:rgba(249,115,22,.45)}
   .sub-module.m-mailer .sub-module-icon{color:#f97316}
   .sub-module.m-mailer .sub-module-tag{color:#ea580c;border-color:rgba(249,115,22,.5);border-style:solid}
+  /* 모델 지원자 — 새 지원이 있으면 숫자를 크게 (2026-11-20 사장님 "새지원 배지 크게"). 색은 홈 공통 경고 빨강 하나 */
+  .sub-module.m-models .sub-module-tag.is-hot{top:9px;right:9px;font-size:13.5px;font-weight:800;font-family:inherit;letter-spacing:-.01em;color:#fff;background:var(--danger);border:0;border-radius:999px;padding:5px 11px;box-shadow:0 2px 8px rgba(185,28,28,.28)}
   .sub-module.m-yearend {--m-color:#4f7fcf;--m-border:rgba(79,127,207,.5)}
   .sub-module.m-yearend .sub-module-tag{color:#3f6dbd;border-color:rgba(79,127,207,.55);border-style:solid}
   .sub-module.m-erpmaster {--m-color:#16a34a;--m-border:rgba(22,163,74,.45)}
@@ -23307,7 +23309,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const run=()=>{ try{
       fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/model_applicants?select=id&deleted_at=is.null&status=eq.'+encodeURIComponent('새 지원'),
         {headers:{apikey:MK,Authorization:'Bearer '+MK,Prefer:'count=exact',Range:'0-0'}})
-      .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t) t.textContent=n?('새 지원 '+n):'NEW'; }).catch(()=>{});
+      .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t){ t.textContent=n?('새 지원 '+n):'NEW'; t.classList.toggle('is-hot',n>0); } }).catch(()=>{});
     }catch(_){} };
     setTimeout(run,1500); setInterval(()=>{ if(!document.hidden) run(); },120000);
   })();
