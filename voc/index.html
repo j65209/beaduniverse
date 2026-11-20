@@ -386,6 +386,13 @@
      없거나 시트를 바꾸면 화면에서 링크를 한 번 붙여 넣으면 app_kv 에 저장돼 모두에게 적용된다. */
   let SHEET_ID = '', BASE = '';
   const KV_SHEET = 'voc_sheet', LS_SHEET = 'voc_sheet_v1';
+  /* 기밀 (2026-11-20 사장님 "단가, 가격, 링크정보 같은 기밀은 희선이랑 대표 2명만") — 구글시트 원본 링크는 아래 3명 PC 에서만 보인다.
+     판정 = 업무일지 '나는 ○○○' 이름 (오피스 index.html SECRET_ALLOWED 와 같은 명단 — 오피스 안에선 오피스 판정을 그대로 쓴다). */
+  const SECRET_ALLOWED = new Set(['전승훈', '전수빈', '지희선']);
+  const secretOk = () => {
+    try { if (window.parent !== window && typeof window.parent.secretOk === 'function') return !!window.parent.secretOk(); } catch (e) { /* 다른 출처 */ }
+    try { return SECRET_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me') || '').trim()); } catch (e) { return false; }
+  };
   const LS_CACHE = 'voc_cache_v1', LS_VIEW = 'voc_view_v1', LS_SIDE = 'voc_side_v1', LS_DENSE = 'voc_dense_v1';
   const REFRESH_MS = 3 * 60e3;   // 시트를 다시 읽는 간격 (화면이 보일 때만)
   const OFFICE_MS = 10 * 60e3;   // 오피스 VOC 기록(cs_issues)
@@ -1079,8 +1086,10 @@
       const i = S.list.findIndex(x => sameObj(x, S.selObj));
       if (i >= 0) openDetail(i, true); else if (S.selObj.kind !== 'case' && S.selObj.kind !== 'defect' && S.selObj.kind !== 'code') closeDetail();
     }
-    $('btnSheet').href = sheetUrl(curGid());
-    $('sideSheet').href = BASE ? BASE + '/edit' : '#';
+    const sec = secretOk();
+    $('btnSheet').href = sec ? sheetUrl(curGid()) : '#';
+    $('sideSheet').href = sec && BASE ? BASE + '/edit' : '#';
+    $('btnSheet').hidden = !sec; $('sideSheet').hidden = !sec;   // 구글시트 원본 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
     renderMsg();
   }
   function renderMsg() {
@@ -1482,7 +1491,7 @@
       lh += `<div class="rep-line${sub ? ' sub' : ''}"><b>${esc(k)}</b><span>${esc(rest)}</span></div>`;
     });
     lh += '</div>';
-    h += `<section class="card"><div class="card-h"><b>시트에 적힌 내용</b><span>${esc(m.name)} 탭 · 줄 순서 그대로</span><a class="more" href="${sheetUrl(m.gid)}" target="_blank" rel="noopener">시트에서 보기 ↗</a></div>${rows.length ? lh : '<div class="card-e">적힌 글이 없어요</div>'}</section>`;
+    h += `<section class="card"><div class="card-h"><b>시트에 적힌 내용</b><span>${esc(m.name)} 탭 · 줄 순서 그대로</span>${secretOk() ? `<a class="more" href="${sheetUrl(m.gid)}" target="_blank" rel="noopener">시트에서 보기 ↗</a>` : ''}</div>${rows.length ? lh : '<div class="card-e">적힌 글이 없어요</div>'}</section>`;
     if (m.imgs.length) h += `<section class="card"><div class="card-h"><b>시트에 붙인 그래프 · 표</b><span>${m.imgs.length}장 · 누르면 크게</span></div><div class="gal big">${m.imgs.map((im, i) => `<figure data-src="${esc(im.src)}" data-sid="${esc(im.id || '')}">${imgTag(im, 1600, {alt: `${m.name} ${i + 1}`})}<figcaption>${esc(m.name)} · ${i + 1}</figcaption></figure>`).join('')}</div></section>`;
     // 같은 브랜드의 데일리 일지에서 지금 기간 많이 나온 상품 (이어 보기)
     if (m.brand) {
@@ -1557,7 +1566,7 @@
     const groups = {};
     ph.forEach(p => { (groups[p.label] = groups[p.label] || []).push(p); });
     grid.innerHTML = '<div class="board" style="grid-template-columns:minmax(0,1fr)">' + Object.entries(groups).map(([label, arr]) =>
-      `<section class="card"><div class="card-h"><b>${esc(label)}</b><span>${arr.length}장</span><a class="more" href="${sheetUrl(arr[0].gid, arr[0].row)}" target="_blank" rel="noopener">시트에서 보기 ↗</a></div><div class="gal${arr[0].big ? ' big' : ''}">${arr.map((p, i) => `<figure data-src="${esc(p.src)}" data-sid="${esc(p.id || '')}">${imgTag(p, p.big ? 1600 : 400, {alt: `${label} ${i + 1}`})}<figcaption>${esc(label)} · ${i + 1}</figcaption></figure>`).join('')}</div></section>`).join('') + '</div>';
+      `<section class="card"><div class="card-h"><b>${esc(label)}</b><span>${arr.length}장</span>${secretOk() ? `<a class="more" href="${sheetUrl(arr[0].gid, arr[0].row)}" target="_blank" rel="noopener">시트에서 보기 ↗</a>` : ''}</div><div class="gal${arr[0].big ? ' big' : ''}">${arr.map((p, i) => `<figure data-src="${esc(p.src)}" data-sid="${esc(p.id || '')}">${imgTag(p, p.big ? 1600 : 400, {alt: `${label} ${i + 1}`})}<figcaption>${esc(label)} · ${i + 1}</figcaption></figure>`).join('')}</div></section>`).join('') + '</div>';
     hydrate(grid);
   }
 
@@ -1634,8 +1643,8 @@
     }
     $('dTitle').textContent = title;
     $('dSub').textContent = sub;
-    $('dSheet').hidden = !gid;
-    $('dSheet').href = sheetUrl(gid, r);
+    $('dSheet').hidden = !gid || !secretOk();   // 구글시트 원본 링크 = 기밀
+    $('dSheet').href = secretOk() ? sheetUrl(gid, r) : '#';
     $('dList').innerHTML = dl;
     hydrate($('dList'));
     grid.querySelectorAll('tbody tr.on').forEach(x => x.classList.remove('on'));

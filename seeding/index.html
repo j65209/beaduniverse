@@ -409,6 +409,13 @@
   const SB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co';
   const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';   // 오피스 index.html 과 같은 공개(anon) 키
   const KV_SHEET = 'seeding_sheet', LS_SHEET = 'seed_sheet_v1', ID_OK = /^[\w-]{25,80}$/;
+  /* 기밀 (2026-11-20 사장님 "단가, 가격, 링크정보 같은 기밀은 희선이랑 대표 2명만") — 구글시트 원본 링크는 아래 3명 PC 에서만 보인다.
+     판정 = 업무일지 '나는 ○○○' 이름 (오피스 index.html SECRET_ALLOWED 와 같은 명단 — 오피스 안에선 오피스 판정을 그대로 쓴다). */
+  const SECRET_ALLOWED = new Set(['전승훈', '전수빈', '지희선']);
+  const secretOk = () => {
+    try { if (window.parent !== window && typeof window.parent.secretOk === 'function') return !!window.parent.secretOk(); } catch (e) { /* 다른 출처 */ }
+    try { return SECRET_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me') || '').trim()); } catch (e) { return false; }
+  };
   let BASE = '';                // https://docs.google.com/spreadsheets/d/<ID> — ensureSheet 가 채움
   const ALL = 'all';            // 메뉴 'X 시딩 · 전체' (브랜드 탭을 한 표로)
   const REFRESH_MS = 60e3;      // 보고 있는 탭을 다시 읽는 간격 (화면이 보일 때만)
@@ -1237,9 +1244,10 @@
         }).join('');
       ch.hidden = false;
     } else { ch.innerHTML = ''; ch.hidden = true; }
-    const href = !BASE ? '#' : S.cur && S.cur !== ALL ? `${BASE}/edit#gid=${S.cur}` : `${BASE}/edit`;
+    const sec = secretOk(), href = !BASE || !sec ? '#' : S.cur && S.cur !== ALL ? `${BASE}/edit#gid=${S.cur}` : `${BASE}/edit`;
     $('btnSheet').href = href;
     $('sideSheet').href = href;
+    $('btnSheet').hidden = !sec; $('sideSheet').hidden = !sec;   // 구글시트 원본 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
     document.title = `${S.cur === ALL ? 'X 시딩 전체 · ' : it ? it.label + ' · ' : ''}시딩 마스터`;
   }
   $('kpis').addEventListener('click', e => {
@@ -1521,7 +1529,7 @@
       acts.push(`<button type="button" class="d-sheet" data-act="ship"${dis}>배송 정보 복사</button>`);
     }
     if (d.all && it) acts.push(`<button type="button" class="d-sheet" data-act="tab">${esc(it.label)} 탭에서 보기</button>`);
-    acts.push(`<a class="d-sheet" href="${BASE}/edit#gid=${row.gid}&range=A${row.r}" target="_blank" rel="noopener">구글시트에서 이 줄 ↗</a>`);
+    if (secretOk()) acts.push(`<a class="d-sheet" href="${BASE}/edit#gid=${row.gid}&range=A${row.r}" target="_blank" rel="noopener">구글시트에서 이 줄 ↗</a>`);
     $('dActs').innerHTML = acts.join('');
     $('dHint').textContent = '고치기 · 새로 넣기는 구글시트에서 — 저장하면 1분 안에 여기에도 바뀌어요' + (pcs.length ? ' · 성함 · 연락처 · 주소는 가려서 보여요' : '');
     $('dList').innerHTML = d.cols.map(c => {

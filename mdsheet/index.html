@@ -418,10 +418,12 @@
   const KEY_RE = /^(상품명|상품이름|온라인상품명|품목명|제품명)$/;   // 상품 이름 열 = 왼쪽에 고정 · 상세 창 제목
   const YUAN_RE = /^(￥|¥|cny|위안|1688단가￥|위안화)$/i;           // 원가(위안) 열 — 상품 목록 탭의 '￥ 빈칸' 요약 카드
   /* 기밀 (2026-11-20 사장님 "단가, 가격, 링크정보 같은 기밀은 희선이랑 대표 2명만, 나머지는 아예 숫자 안 보이게") —
-     원가 · 단가 · 공급가 · 판매가 · 가격 · 위안 · 마진 · 링크 열, 칸 속 링크 주소, 구글시트 원본 링크는 아래 3명 PC 에서만 그린다.
+     원가 · 단가 · 공급가 · 판매가 · 가격 · 위안 · 마진 · 공급처 열, 칸 속 공급처 · 구글시트 링크, 구글시트 원본 링크는 아래 3명 PC 에서만 그린다.
      판정 = 업무일지 '나는 ○○○' 이름 (오피스 index.html SECRET_ALLOWED 와 같은 명단 — 오피스 안에선 오피스 판정을 그대로 쓴다). */
   const SECRET_ALLOWED = new Set(['전승훈', '전수빈', '지희선']);
-  const SECRET_HEAD_RE = /원가|단가|매입|공급가|마진|이익|판매가|소비자가|정가|할인가|가격|최저가|위안|[¥￥]|CNY|RMB|cost|price|margin|링크|url|구매처|공급처|발주\s*금액|구매\s*금액/i;
+  const SECRET_HEAD_RE = /원가|단가|매입|공급가|마진|이익|판매가|소비자가|(?<!수)정가|할인가|가격|최저가|위안|[¥￥]|CNY|RMB|cost|price|margin|구매처|공급처|발주\s*금액|구매\s*금액/i;
+  // 기밀 링크 = 구글시트 · 드라이브 · 드롭박스 + 1688 · 타오바오 같은 공급처 (인스타 · 우리 쇼핑몰 같은 일반 링크는 그대로)
+  const SECRET_LINK_RE = /docs\.google\.com|drive\.google\.com|script\.google\.com|dropbox\.com|1688\.com|taobao\.com|tmall\.com|\btb\.cn|alibaba|aliexpress|weidian\.com|yupoo\.com|szwego\.com|vvic\.com|pinduoduo|yangkeduo/i;
   const secretOk = () => {
     try { if (window.parent !== window && typeof window.parent.secretOk === 'function') return !!window.parent.secretOk(); } catch (e) { /* 다른 출처 */ }
     try { return SECRET_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me') || '').trim()); } catch (e) { return false; }
@@ -699,9 +701,10 @@
         const o = {t: '', chips: [], cb: 0, img: '', href: ''};
         walk(td, o);
         const cls = Array.from(td.classList).find(c => /^s\d+$/.test(c));
-        let ct = cleanText(o.t), ch = o.href;
-        if (!sec) { ch = ''; if (/^\s*https?:\/\//i.test(ct)) ct = ''; }   // 기밀 명단 밖 — 링크 주소는 아예 안 둔다
-        cells.push({p, cs, rs, r: +mm[1] + 1, st: (cls && styles[cls]) || NOSTYLE, t: ct, chips: o.chips, cb: o.cb, img: o.img, href: ch});
+        let ct = cleanText(o.t), ch = o.href, sl = 0;
+        const ctUrl = /^\s*https?:\/\//i.test(ct);
+        if (!sec && (SECRET_LINK_RE.test(ch) || (ctUrl && SECRET_LINK_RE.test(ct)))) { sl = 1; ch = ''; if (ctUrl) ct = ''; }   // 기밀 명단 밖 — 공급처 · 구글시트 링크는 아예 안 둔다
+        cells.push({p, cs, rs, r: +mm[1] + 1, st: (cls && styles[cls]) || NOSTYLE, t: ct, chips: o.chips, cb: o.cb, img: o.img, href: ch, sl});
         for (let y = ri + 1; y < ri + rs; y++) for (let x = p; x < p + cs; x++) (taken[y] = taken[y] || new Set()).add(x);
         p += cs;
       }
@@ -865,10 +868,10 @@
         align: type === 'num' ? 'r' : (type === 'check' || type === 'img') ? 'c' : '',
         status: nn === '리오더알림', key: KEY_RE.test(nn), strong: /^(남은재고|합계)$/.test(nn),
         sum: !side && type === 'num' && SUM_RE.test(name),   // 옆 표(피벗)는 자체 '총계' 줄이 있어 합계를 또 내지 않는다
-        yen: texts.some(t => /^\s*[¥￥]/.test(t))});
+        yen: texts.some(t => /^\s*[¥￥]/.test(t)), slink: vals.filter(c => c.sl).length >= Math.max(1, vals.filter(c => c.sl || hasVal(c)).length * 0.5)});   // sl = parseSheet 가 지운 공급처 · 구글시트 링크 칸 — 절반 넘으면 링크 열
     }
-    // 기밀 명단 밖 — 원가 · 단가 · 판매가 · 위안 · 링크 열은 표 · 상세 창 · 찾기 · 요약 카드에서 아예 뺀다
-    if (!secretOk()) for (let i = cols.length - 1; i >= 0; i--) { const c = cols[i]; if (SECRET_HEAD_RE.test(c.name) || YUAN_RE.test(norm(c.name)) || c.yen || c.link) cols.splice(i, 1); }
+    // 기밀 명단 밖 — 원가 · 단가 · 판매가 · 위안 · 공급처 열은 표 · 상세 창 · 찾기 · 요약 카드에서 아예 뺀다
+    if (!secretOk()) for (let i = cols.length - 1; i >= 0; i--) { const c = cols[i]; if (SECRET_HEAD_RE.test(c.name) || YUAN_RE.test(norm(c.name)) || c.yen || c.slink) cols.splice(i, 1); }
     // 상품 목록 탭(상품명 + 위안 열)은 상품마다 값이라 금액을 더하지 않는다 (세일 금액 · 마진액 등) — 수량 · 재고 · 잔량만
     if (cols.some(c => c.key) && cols.some(c => YUAN_RE.test(norm(c.name)))) cols.forEach(c => { if (c.sum && !/수량|재고|잔량/.test(c.name)) c.sum = false; });
     if (!side) mdLayout(cols, dataIdx.map(k => grid2[k]));
@@ -1179,7 +1182,7 @@
       else if (c.t) {
         const d = display(col, c);
         if (col.type === 'num') { const n = numOf(c.t); if (n === 0) cls += ' z'; else if (n !== null && n < 0 && !c.st.fg) cls += ' neg'; }
-        inner = c.href && secretOk() ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : hl(d);
+        inner = c.href && (secretOk() || !SECRET_LINK_RE.test(c.href)) ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : hl(d);
         if (col.wrap) inner = `<div class="cl">${inner}</div>`;   // 두 줄까지
         if (d !== c.t || (col.type !== 'num' && d.length > 12)) title = c.t;
       }
@@ -1618,7 +1621,7 @@
     if (hx) return histRows(hx);   // 발주 · 입고 전부 (최근 → 오래된)
     const st = c.st.fg ? ` style="color:${c.st.fg}"` : '';
     if (col.lead) return `<span${st}>${esc(leadText(c.t))}</span>`;
-    if (c.href && secretOk()) return `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${esc(c.t)}</a>`;
+    if (c.href && (secretOk() || !SECRET_LINK_RE.test(c.href))) return `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${esc(c.t)}</a>`;
     if (col.type === 'num') { const n = numOf(c.t); return `<span class="${n !== null && n < 0 && !c.st.fg ? 'neg' : ''}"${st}>${esc(display(col, c))}</span>`; }
     return `<span${st}>${esc(c.t)}</span>`;
   }
