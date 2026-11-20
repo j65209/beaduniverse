@@ -12505,37 +12505,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 홈 정리 (2026-11-20 사장님 "메인화면 깔끔하게 · 강조할 숫자는 강조 · 자주 쓰는 것 우선 · 숨김은 깔끔하게") =====
-     업무용 툴 · 관리자 전용 → 한 줄 카드 · 블록 사이 간격 16px 통일. (팀 카드는 같은 날 저녁 원래 크기로 되돌림)
-     줄마다 개수(--hc)와 자주 쓰는 순서는 JS homeTidy 가 정한다. 모두 #viewHome 안에서만. */
+     블록 사이 간격 16px 통일. 팀 카드 · 업무용 툴 · 관리자 전용 카드는 한때 줄였다가 같은 날 저녁 사장님 지시로 원래 크기로 되돌림 (다시 줄이지 말 것)
+     자주 쓰는 순서만 JS homeTidy 가 정한다. 모두 #viewHome 안에서만. */
   #viewHome{--hs:16px}
   #viewHome .sub-modules-metaads.sub-modules-section{margin:4px 0 var(--hs)}
   #viewHome .home-ops-pair{margin:0 0 var(--hs)}
   /* 대표 캘린더 = 홈 맨 위 (2026-11-20 저녁 사장님 "대표 캘린더는 항상 최상위로") — 대표 두 분 PC 에만 보이고, 그 아래 메타 광고 */
   #viewHome .home-ceocal-card{margin:4px 0 var(--hs)}
   #viewHome .home-ceocal-card:not([hidden]) + .sub-modules-metaads.sub-modules-section{margin-top:0}
-  #viewHome .sub-modules-tools.sub-modules-section,#viewHome .sub-modules-admin.sub-modules-section{margin:0 0 var(--hs);padding:12px 16px 16px}
+  #viewHome .sub-modules-tools.sub-modules-section,#viewHome .sub-modules-admin.sub-modules-section{margin:0 0 var(--hs)}
   #viewHome .sub-modules-section .sub-modules-eyebrow{margin-bottom:12px;padding-bottom:10px}
   #viewHome .hero-row.hero-row-agents{margin:0 0 6px}
   /* 팀 바로가기 — 원래 큰 카드(이름표 + 네온 버튼) 크기로 되돌림 (2026-11-20 저녁 사장님 "탭 크기 다시 살리자").
      58px 버튼 타일은 뺐다. 이 PC 에서 많이 누른 팀이 앞으로 오는 순서(homeTidy)만 남김 */
   #viewHome .home-teams{margin:0 0 var(--hs)}
-  /* 업무용 툴 · 관리자 전용 — 아이콘 | 이름 · 설명 한 줄 */
-  #viewHome .sub-modules-tools > .sub-modules,#viewHome .sub-modules-admin > .sub-modules{display:flex;flex-wrap:wrap;gap:10px;max-width:none}
-  #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{
-    flex:0 0 calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));max-width:calc((100% - (var(--hc,5) - 1) * 10px) / var(--hc,5));min-width:0;
-    display:grid;grid-template-columns:32px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:10px;row-gap:1px;align-items:center;
-    padding:10px 12px;min-height:58px;border-radius:9px}
-  #viewHome .sub-modules-tools .sub-module[hidden],#viewHome .sub-modules-admin .sub-module[hidden]{display:none}
-  #viewHome .sub-modules-tools .sub-module-icon,#viewHome .sub-modules-admin .sub-module-icon{grid-column:1;grid-row:1 / span 2;width:32px;height:32px;margin:0;font-size:18px;border-radius:8px;background:var(--bg-2)}
-  #viewHome .sub-modules-tools .sub-module-title,#viewHome .sub-modules-admin .sub-module-title{grid-column:2;grid-row:1;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #viewHome .sub-modules-tools .sub-module-sub,#viewHome .sub-modules-admin .sub-module-sub{grid-column:2 / span 2;grid-row:2;font-family:var(--sans);font-size:11.5px;line-height:1.4;
-    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
-  #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{align-items:start}
-  #viewHome .sub-modules-tools .sub-module-icon,#viewHome .sub-modules-admin .sub-module-icon{align-self:center}
-  #viewHome .sub-modules-tools .sub-module-tag,#viewHome .sub-modules-admin .sub-module-tag{display:none}
-  #viewHome .sub-modules-tools .sub-module-tag.is-keep,#viewHome .sub-modules-tools #modelsTag.is-count{display:inline-block;grid-column:3;grid-row:1;position:static;justify-self:end;font-size:10px;line-height:1.3}
-  #viewHome .sub-modules-tools .sub-module-tag.is-new{color:#e11d48;border:1px solid rgba(225,29,72,.4);font-weight:700}
-  #viewHome .sub-modules-tools #modelsTag.is-count{color:#fff;background:#e11d48;border:0;border-radius:999px;padding:2px 8px;font:800 11px/1.3 var(--sans);box-shadow:0 2px 6px rgba(225,29,72,.3)}
   /* 폴더 머리줄 — 휴대폰에서 '11 도구' 가 다음 줄로 밀리지 않게, 긴 설명은 숨김 */
   @media (min-width:601px){ #viewHome .fm-long + .folder-meta-upd:not(:empty)::before{content:' · '} }
   @media (max-width:600px){
@@ -12543,16 +12526,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     #viewHome .sub-modules-eyebrow .folder-label{white-space:nowrap}
     #viewHome .sub-modules-eyebrow .folder-meta{margin-left:auto;flex-basis:auto;padding-left:0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #viewHome .sub-modules-eyebrow .fm-long{display:none}
-    #viewHome .sub-modules-tools > .sub-modules,#viewHome .sub-modules-admin > .sub-modules{gap:8px}
-    #viewHome .sub-modules-tools .sub-module,#viewHome .sub-modules-admin .sub-module{
-      flex-basis:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));max-width:calc((100% - (var(--hc,2) - 1) * 8px) / var(--hc,2));
-      grid-template-columns:28px minmax(0,1fr) auto;column-gap:8px;padding:9px 10px;min-height:54px}
-    #viewHome .sub-modules-tools .sub-module-icon,#viewHome .sub-modules-admin .sub-module-icon{width:28px;height:28px;font-size:16px}
-    #viewHome .sub-modules-tools .sub-module-title,#viewHome .sub-modules-admin .sub-module-title{font-size:13px;white-space:normal;word-break:keep-all;line-height:1.3;
-      display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-    #viewHome .sub-modules-tools #modelsTag .mt-l{display:none}
-    #viewHome .sub-modules-tools .sub-module-sub,#viewHome .sub-modules-admin .sub-module-sub{font-size:11px}
-    #viewHome .sub-modules-tools .sub-module-tag.is-keep:not(.is-new){display:none}
   }
   /* 메타 광고 — 어제 대비 ▲▼ · 오늘 ROAS 1 미만이면 숫자 빨강 */
   .m-metaads .mar-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px}
@@ -12991,21 +12964,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-icon">📦</div>
           <div class="sub-module-title">재고 ERP 마스터</div>
           <div class="sub-module-sub">7 브랜드 남은 재고 · 입고 · 판매 반영 (구글시트 · 새 탭)</div>
-          <div class="sub-module-tag is-keep" title="구글시트 · 새 탭">↗</div>
+          <div class="sub-module-tag">구글시트 ↗</div>
         </a>
         <!-- 시딩 마스터 = 자체 저장 엑셀식 프로그램 (seeding/, 2026-11-20 — 구글시트 'x시딩 및 시호님시딩' 에서 옮김, 전 직원, 따로 앱으로도 설치) -->
         <div class="sub-module m-seeding" onclick="openSeedingPage()">
           <div class="sub-module-icon">🎁</div>
           <div class="sub-module-title">시딩 마스터</div>
           <div class="sub-module-sub">브랜드별 X · 인스타 시딩 — 엑셀처럼 바로 고치기 · 수식 · 보냄 · DM 양식 · 이모지</div>
-          <div class="sub-module-tag is-keep is-new">NEW</div>
+          <div class="sub-module-tag">NEW</div>
         </div>
         <!-- 인스타 피드 시뮬레이터 = feed/ (2026-11-20 — 브랜드별 피드 배치 미리보기, 전 직원. 지금 피드는 함수 ig-feed, 계획은 feed_plans) -->
         <div class="sub-module m-feed" onclick="openFeedPage()">
           <div class="sub-module-icon">📱</div>
           <div class="sub-module-title">인스타 피드 시뮬레이터</div>
           <div class="sub-module-sub">브랜드별 피드 배치 미리보기 — 지금 인스타 피드 위에 새 사진을 끌어다 놓아 보기 · 전 브랜드</div>
-          <div class="sub-module-tag is-keep is-new">NEW</div>
+          <div class="sub-module-tag">NEW</div>
         </div>
         <div class="sub-module m-notice" onclick="triggerNotice()">
           <div class="sub-module-icon">🔐</div>
@@ -23281,7 +23254,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const run=()=>{ try{
       fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/model_applicants?select=id&deleted_at=is.null&status=eq.'+encodeURIComponent('새 지원'),
         {headers:{apikey:MK,Authorization:'Bearer '+MK,Prefer:'count=exact',Range:'0-0'}})
-      .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t){ if(n) t.innerHTML='<span class="mt-l">새 지원 </span>'+n; else t.textContent='NEW'; t.classList.toggle('is-count',!!n); } }).catch(()=>{});
+      .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t) t.textContent=n?('새 지원 '+n):'NEW'; }).catch(()=>{});
     }catch(_){} };
     setTimeout(run,1500); setInterval(()=>{ if(!document.hidden) run(); },120000);
   })();
@@ -44872,8 +44845,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      1) 팀 바로가기 · 업무용 툴 · 관리자 전용 — 이 PC 에서 많이 누른 순서로 앞에 둔다.
         기록 = localStorage 'bb_home_usage_v1' {키:{s:점수,t:마지막}} · 점수는 30일마다 반으로 줄어 요즘 쓰는 것이 앞으로.
         정렬은 화면을 열 때 한 번만 (누르는 중에 카드가 움직이지 않게) · 기록이 거의 없으면 원래 순서 그대로.
-     2) 보이는 카드 수에 맞춰 줄마다 같은 개수 (도구 11개 → 6+5) — 한 개만 덩그러니 남는 줄이 없게. 팀 카드는 저녁에 원래 크기로 되돌려 빼 둠.
-        권한으로 숨는 카드(디자인 · 전략 · 업무일지 · 기밀 카드)가 바뀌면 다시 맞춘다 (MutationObserver). CSS 는 '홈 정리' 덩어리 */
+     2) (줄마다 같은 개수 맞추기 — 팀 · 도구 카드를 같은 날 저녁 원래 크기 · 원래 칸 나눔으로 되돌리면서 지금은 쓰지 않음, noBalance)
+        balance() 는 noBalance 없는 묶음이 생기면 다시 쓴다. CSS 는 '홈 정리' 덩어리 */
   (function homeTidy(){
     const KEY='bb_home_usage_v1', HALF=30*864e5;
     const load=()=>{ try{ return JSON.parse(localStorage.getItem(KEY)||'{}')||{}; }catch(e){ return {}; } };
@@ -44885,8 +44858,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     };
     const GROUPS=[
       {host:'#homeTeams', item:':scope > .hero', noBalance:true},   // 팀 카드는 원래 큰 카드 · 원래 칸 나눔 (11-20 저녁 되돌림) — 순서만
-      {host:'#viewHome .sub-modules-tools > .sub-modules', item:':scope > .sub-module', minW:215, minWm:150},
-      {host:'#viewHome .sub-modules-admin > .sub-modules', item:':scope > .sub-module', minW:215, minWm:150},
+      {host:'#viewHome .sub-modules-tools > .sub-modules', item:':scope > .sub-module', noBalance:true},
+      {host:'#viewHome .sub-modules-admin > .sub-modules', item:':scope > .sub-module', noBalance:true},
     ];
     const ITEM_SEL='#homeTeams > .hero, .sub-modules-tools > .sub-modules > .sub-module, .sub-modules-admin > .sub-modules > .sub-module';
     function bump(k){
