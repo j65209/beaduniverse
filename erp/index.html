@@ -2740,7 +2740,8 @@
                     ② ⚠ 줄 비우기 — 상품명 · 옵션 칸 먼저 (이름이 없어지면 자동 차감이 이 줄로 더는 안 옴)
                     ③ 고른 줄: 판매 칸 += ⚠ 줄에서 비운 판매 × 개수, 남은 재고 -= 뺄 수량 × 개수 (남은 재고 빈칸 = 아직 안 센 줄은 안 뺌 — 브랜드 ERP 규칙)
        뺄 수량 기본값: ⚠ 줄 남은 재고가 마이너스면 그만큼(샤인비드는 0 에서 이미 빼 둠), 아니면 오늘 판매 합계(브랜드는 빈칸이라 어디서도 안 빠짐).
-     · 새 상품으로 등록: ⚠ 를 지우고 카테고리 + (센) 남은 재고만 적어 보통 줄로.
+     · 새 상품으로 등록: 2026-11-20 저녁 걷어냄 — 사장님 "식스샵프로랑 연동해서 쓰는거니까 erp에서 추가 못하게하자". 새 상품은 식스샵프로에 등록(또는 판매중으로)하면
+       맥미니 새롬(new-products, NEW_PRODUCTS_REVIVE)이 30분 안에 이 ⚠ 줄의 카테고리를 채워 보통 줄로 바꾼다. 아래 M.mode 'new' 코드는 이제 닿지 않음.
      · 시트에 쓰기 직전 구글시트 CSV 를 새로 읽어 줄을 상품명 · 옵션으로 다시 찾고(맨 위 ⚠️ 배너가 생기고 지워지면 줄 번호가 하나씩 밀린다),
        칸마다 전 값이 같을 때만 쓴다(브리지 old). 고른 줄은 같은 요청 맨 앞에 상품명 칸을 같은 값으로 써서 '그 줄이 맞는지' 확인하고, 숫자가 그사이 바뀌었으면 지금 값에서 다시 더한다.
      · ⚠ 줄은 지우지 않고 비운다 — 브리지(Apps Script)는 칸 쓰기만 하고, 줄 번호가 안 밀려 다른 자동 작업과도 안 부딪힌다. 시트에 빈 빨간 줄이 남음(지워도 됨). 합계 같은 수식 칸은 그대로. */
@@ -2851,6 +2852,7 @@
   }
   function renderMap() {
     if (!M.open) return;
+    if (M.mode !== 'send') M.mode = 'send';   // '새 상품으로 등록' 걷어냄 (ERP 에서 상품 추가 안 함)
     const src = M.src, t = tabOf(M.gid), dlg = $('mapdlg');
     const scroll = dlg.querySelector('.mb') ? dlg.querySelector('.mb').scrollTop : 0;
     const focusQ = document.activeElement && document.activeElement.classList.contains('mfind');
@@ -2861,7 +2863,7 @@
     const facts = [`오늘 판매 ${fmt(src.sold)}개${src.ch.length ? ` (${src.ch.map(x => `${x.c.name} ${fmt(x.n)}`).join(' · ')})` : ''}`, `남은 재고 ${src.L === '' ? '빈칸' : src.L}`];
     let body = `<div class="msrc"><div class="cap">시트에 없던 주문 이름 · ${esc(t ? t.name : '')} ${src.r}행</div><div class="nm">${esc(src.name)}</div><div class="op">${esc(src.opt || '옵션 없음')}</div>`
       + `<div class="facts">${facts.map(f => `<span class="fact">${esc(f)}</span>`).join('')}</div></div>`
-      + `<div class="mseg"><button type="button" data-mode="send" class="${M.mode === 'send' ? 'on' : ''}">있는 재고 줄로 보내기</button><button type="button" data-mode="new" class="${M.mode === 'new' ? 'on' : ''}">새 상품으로 등록</button></div>`;
+      + `<div class="mnone">ERP 에 없는 새 상품이면 여기서 등록하지 않아요 — 식스샵프로에 등록하거나 판매중으로 바꾸면 30분 안에 새롬이 이 ⚠ 줄을 그 상품 줄로 바꿔요.</div>`;
     if (M.mode === 'send') {
       const cands = M.cands.filter(c => c.s >= 40).slice(0, 8), found = M.q.trim() ? mapRowsFor(M.q) : [];
       body += `<div class="msec">추천</div><div class="mlist">${cands.length ? cands.map(rowBtn).join('') : '<div class="mnone">비슷한 줄을 못 찾았어요 — 아래에서 찾아 주세요</div>'}</div>`
