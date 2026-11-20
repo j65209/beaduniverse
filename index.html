@@ -21627,10 +21627,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
   }
   // 표 머리글로 기밀 칸 찾기 — 원가 · 단가 · 매입 · 공급가 · 마진 · 판매가 · 정가 · 할인가 · 가격 · 위안 · 공급처 (매출 · 광고비 칸은 걸리지 않음)
-  const SECRET_HEAD_RE=/원가|단가|매입|공급가|마진|이익|판매가|소비자가|(?<!수)정가|할인가|가격|최저가|위안|[¥￥]|CNY|RMB|cost|price|margin|구매처|공급처|발주\s*금액|구매\s*금액/i;
+  const SECRET_HEAD_RE=/원가|단가|매입|공급가|마진|이익|판매가|소비자가|(?<!수)정가|할인가|가격|최저가|위안|[¥￥]|CNY|RMB|cost|price|margin|구매처|공급처|발주\s*금액|구매\s*금액|수수료|검품비|출고비|보관비|작업비|택배비|고정비|정산\s*금액|정산가/i;
   function secretHead(v){ const s=String(v==null?'':v).trim(); return !!s && s.length<=40 && SECRET_HEAD_RE.test(s); }
-  // 기밀 링크 = 구글시트 · 드라이브 · 앱스 스크립트 · 드롭박스(문서 열쇠) + 1688 · 타오바오 같은 공급처. 인스타 · 우리 쇼핑몰 같은 일반 링크는 대상 아님
-  const SECRET_LINK_RE=/docs\.google\.com|drive\.google\.com|script\.google\.com|dropbox\.com|1688\.com|taobao\.com|tmall\.com|\btb\.cn|alibaba|aliexpress|weidian\.com|yupoo\.com|szwego\.com|vvic\.com|pinduoduo|yangkeduo/i;
+  // 기밀 링크 = 구글시트 · 드라이브 · 앱스 스크립트 · 드롭박스 · 노션(문서 열쇠) + 1688 · 타오바오 같은 공급처. 인스타 · 우리 쇼핑몰 같은 일반 링크는 대상 아님
+  const SECRET_LINK_RE=/docs\.google\.com|drive\.google\.com|script\.google\.com|dropbox\.com|notion\.so|notion\.site|1688\.com|taobao\.com|tmall\.com|\btb\.cn|alibaba|aliexpress|weidian\.com|yupoo\.com|szwego\.com|vvic\.com|pinduoduo|yangkeduo/i;
   function secretLink(u){ return SECRET_LINK_RE.test(String(u||'')); }
   window.secretOk=secretOk; window.secretApply=secretApply; window.secretHead=secretHead; window.secretLink=secretLink;
   /* 디자인팀 화면 (2026-11-20 사장님 "디자인탭은 시호, 대표 2명만 볼 수 있게") — 홈 카드 · 화면 진입 모두 이 명단 (관리자 PIN 이어도 명단 밖이면 숨김).
@@ -23176,21 +23176,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     },{passive:true});
   })();
 
-  // 물류팀 외부 자료 URL — 비어있으면 placeholder 토스트
-  const LG_URLS={
-    stock:'https://docs.google.com/spreadsheets/d/1SmYlesBx6KGwPJJW6SO67hxg8wGj_aMqC1KB23uBZF8/edit?usp=sharing'
-  };
-  function openLgResource(key,e){
-    const url=LG_URLS[key];
-    if(!url){
-      e.preventDefault();
-      toast(`URL이 아직 설정되지 않았습니다`,'err');
-      return false;
-    }
-    e.preventDefault();
-    window.open(url,'_blank','noopener');
-    return false;
-  }
   window.triggerHR=triggerHR;
   window.triggerLogistics=triggerLogistics;
   window.triggerNotice=triggerNotice;
@@ -23199,7 +23184,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.triggerMarketing=triggerMarketing;
   window.triggerNamegen=triggerNamegen;
   window.goHome=goHome;
-  window.openLgResource=openLgResource;
 
   /* ===== 연차 (인사팀) ===== */
   // 직원 정보 (정적) — 연차 수치는 별도 leaveData에 저장
@@ -26199,8 +26183,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const reload = document.getElementById(cfg.reloadBtnId);
     if(!body) return;
     if(empty) empty.hidden = !!clean;
-    if(urlShow) urlShow.textContent = clean;
-    if(openBtn) openBtn.hidden = !clean;
+    if(urlShow) urlShow.textContent = secretOk() ? clean : '';   // 노션 주소 = 기밀 링크 (지희선 · 전승훈 · 전수빈만, 2026-11-20)
+    if(openBtn) openBtn.hidden = !clean || !secretOk();
     if(reload) reload.hidden = !clean;
     if(!clean){
       body.innerHTML = '';
@@ -26354,7 +26338,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const cls = _ntColor(n.h);
       if(cls) t = `<span class="${cls}">${t}</span>`;
       const href = _ntHref(n.a);
-      if(href) t = `<a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">${t}</a>`;
+      if(href && (secretOk() || !secretLink(href))) t = `<a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">${t}</a>`;
       out += t;
     }
     return out;
@@ -26459,7 +26443,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const href = _ntHref(b.href);
     const head = `<div class="nt-table-name">🗂 ${_ntEsc(b.name||'데이터베이스')}`
       + `<span class="nt-badge">${entries.length}건</span>`
-      + (href?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
+      + (href && secretOk()?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
       + '</div>';
     const cut = _ntExpandDays > 0 ? _ntCutDate(_ntExpandDays) : '';
     const items = entries.map((e,i)=>{
@@ -26478,7 +26462,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + `<span class="nt-entry-title">${_ntEsc(e.title||'')}</span>`
         + `<span class="nt-entry-meta">${e.edited?_ntEsc(e.edited)+' 수정':''}</span>`
         + '</summary><div class="nt-entry-body">' + inner
-        + (eh?`<a class="nt-link nt-entry-open" href="${_ntEsc(eh)}" target="_blank" rel="noopener noreferrer">↗ 노션에서 열기</a>`:'')
+        + (eh && secretOk()?`<a class="nt-link nt-entry-open" href="${_ntEsc(eh)}" target="_blank" rel="noopener noreferrer">↗ 노션에서 열기</a>`:'')
         + '</div></details>';
     }).join('');
     return `<div class="nt-entries">${head}${items || '<div class="nt-empty-rows">항목이 없습니다</div>'}</div>`;
@@ -26490,7 +26474,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const href = _ntHref(b.href);
     const head = `<div class="nt-table-name">📊 ${_ntEsc(b.name||'데이터베이스')}`
       + `<span class="nt-badge">${rows.length}건</span>`
-      + (href?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
+      + (href && secretOk()?` <a class="nt-link" href="${_ntEsc(href)}" target="_blank" rel="noopener noreferrer">노션에서 열기</a>`:'')
       + '</div>';
     if(!cols.length) return `<div class="nt-table-wrap">${head}<div class="nt-empty-rows">항목이 없습니다</div></div>`;
     const th = cols.map(c=>`<th>${_ntEsc(c.name)}</th>`).join('');
@@ -26554,8 +26538,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function dcApplyCalendarUrl(url){ _dcApplyLink(DC_LINKS.calendar, url); }
   function dcNotionEdit(){ return _dcEditLink(DC_LINKS.notion); }
   function dcCalEdit(){ return _dcEditLink(DC_LINKS.calendar); }
-  function dcNotionOpenNew(){ if(_dcState.notionUrl) window.open(_dcState.notionUrl, '_blank', 'noopener,noreferrer'); }
-  function dcCalOpenNew(){ if(_dcState.calUrl) window.open(_dcState.calUrl, '_blank', 'noopener,noreferrer'); }
+  function dcNotionOpenNew(){ if(_dcState.notionUrl && secretOk()) window.open(_dcState.notionUrl, '_blank', 'noopener,noreferrer'); }
+  function dcCalOpenNew(){ if(_dcState.calUrl && secretOk()) window.open(_dcState.calUrl, '_blank', 'noopener,noreferrer'); }
   async function _dcLoadSettings(){
     try{
       const r = await fetch(`${_dcSbBase()}/design_center_settings?select=key,value&key=in.(notion_url,notion_calendar_url)`, {headers:_sbHeaders(), cache:'no-cache'});
@@ -52801,8 +52785,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _mdsDropSecret(d){
     const scanTo=Math.min(d.lastRow, Math.max(d.hdrRows,1)+4), bad=new Set();
     const isUrl=v=>/^\s*https?:\/\//i.test(String(v??''));
+    const PCT_HEAD=/^\s*\d+(\.\d+)?\s*%\s*$/;   // 머리글이 '60%' 뿐인 열 = 판매가 비율 칸 (머리글 줄에서만 본다 — 자료 줄의 % 값은 아님)
     for(let c=0;c<(d.cols||0);c++){
-      for(let r=0;r<scanTo;r++){ if(secretHead((d.values[r]||[])[c])){ bad.add(c); break; } }
+      for(let r=0;r<scanTo;r++){ const v=(d.values[r]||[])[c]; if(secretHead(v) || (r<Math.max(d.hdrRows,1) && PCT_HEAD.test(String(v??'')))){ bad.add(c); break; } }
       if(bad.has(c)) continue;
       let urls=0, sl=0;
       for(let r=0;r<Math.min(d.lastRow,80);r++){

@@ -529,9 +529,9 @@
      원가 · 단가 · 공급가 · 판매가 · 가격 · 위안 · 마진 · 공급처 열, 칸 속 공급처 · 구글시트 링크는 아래 3명 PC 에서만 그린다 (매출 · 광고비는 그대로).
      판정 = 업무일지 '나는 ○○○' 이름 (오피스 index.html SECRET_ALLOWED 와 같은 명단 — 오피스 안에선 오피스 판정을 그대로 쓴다). */
   const SECRET_ALLOWED = new Set(['전승훈', '전수빈', '지희선']);
-  const SECRET_HEAD_RE = /원가|단가|매입|공급가|마진|이익|판매가|소비자가|(?<!수)정가|할인가|가격|최저가|위안|[¥￥]|CNY|RMB|cost|price|margin|구매처|공급처|발주\s*금액|구매\s*금액/i;
+  const SECRET_HEAD_RE = /원가|단가|매입|공급가|마진|이익|판매가|소비자가|(?<!수)정가|할인가|가격|최저가|위안|[¥￥]|CNY|RMB|cost|price|margin|구매처|공급처|발주\s*금액|구매\s*금액|수수료|검품비|출고비|보관비|작업비|택배비|고정비|정산\s*금액|정산가/i;
   // 기밀 링크 = 구글시트 · 드라이브 · 드롭박스 + 1688 · 타오바오 같은 공급처 (인스타 · 우리 쇼핑몰 같은 일반 링크는 그대로)
-  const SECRET_LINK_RE = /docs\.google\.com|drive\.google\.com|script\.google\.com|dropbox\.com|1688\.com|taobao\.com|tmall\.com|\btb\.cn|alibaba|aliexpress|weidian\.com|yupoo\.com|szwego\.com|vvic\.com|pinduoduo|yangkeduo/i;
+  const SECRET_LINK_RE = /docs\.google\.com|drive\.google\.com|script\.google\.com|dropbox\.com|notion\.so|notion\.site|1688\.com|taobao\.com|tmall\.com|\btb\.cn|alibaba|aliexpress|weidian\.com|yupoo\.com|szwego\.com|vvic\.com|pinduoduo|yangkeduo/i;
   const secretOk = () => {
     try { if (window.parent !== window && typeof window.parent.secretOk === 'function') return !!window.parent.secretOk(); } catch (e) { /* 다른 출처 */ }
     try { return SECRET_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me') || '').trim()); } catch (e) { return false; }
@@ -1026,8 +1026,8 @@
         noname: !head[p], yen: texts.some(t => /^\s*[¥￥]/.test(t)), slink: vals.filter(c => c.sl).length >= Math.max(1, vals.filter(c => c.sl || hasVal(c)).length * 0.5)});   // sl = 지운 공급처 · 구글시트 링크 칸 — 절반 넘으면 링크 열
     }
     // 기밀 명단 밖 — 원가 · 단가 · 판매가 · 위안 · 공급처 열은 표 · 상세 창 · 찾기 · 요약 카드에서 아예 뺀다.
-    // 머리글 없는 숫자 열도 뺀다 (발주리스트 F열 = 위안 단가처럼 이름 없이 적은 값)
-    if (!secretOk()) for (let i = cols.length - 1; i >= 0; i--) { const c = cols[i]; if (SECRET_HEAD_RE.test(c.name) || YUAN_RE.test(norm(c.name)) || c.yen || c.slink || (c.noname && c.type === 'num')) cols.splice(i, 1); }
+    // 머리글 없는 숫자 열도 뺀다 (발주리스트 F열 = 위안 단가처럼 이름 없이 적은 값) · '60%' 같은 머리글 = 판매가 비율 칸
+    if (!secretOk()) for (let i = cols.length - 1; i >= 0; i--) { const c = cols[i]; if (SECRET_HEAD_RE.test(c.name) || /^\s*\d+(\.\d+)?\s*%\s*$/.test(c.name) || YUAN_RE.test(norm(c.name)) || c.yen || c.slink || (c.noname && c.type === 'num')) cols.splice(i, 1); }
     // 상품 목록 탭(상품명 + 위안 열)은 상품마다 값이라 금액을 더하지 않는다 (세일 금액 · 마진액 등) — 수량 · 재고 · 잔량만
     if (cols.some(c => c.key) && cols.some(c => YUAN_RE.test(norm(c.name)))) cols.forEach(c => { if (c.sum && !/수량|재고|잔량/.test(c.name)) c.sum = false; });
     if (!side) mdLayout(cols, dataIdx.map(k => grid2[k]));
