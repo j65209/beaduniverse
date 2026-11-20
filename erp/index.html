@@ -864,7 +864,10 @@
       } finally { clearTimeout(timer); }
     }
   }
-  const sbRpc = (fn, body) => sbFetch(`rpc/${fn}`, {method: 'POST', body: JSON.stringify(body || {})});
+  // 저장소에 쓰는 함수는 이름(whoAmI)이 있어야 부른다 — 수정 로그에 이름 없는 줄이 생기지 않게 (NO_WHO 주석)
+  const WRITE_RPC = /^erp_(cell_edit|cells_set|fmt_set|map_set|map_off|row_add)$/;
+  const sbRpc = (fn, body) => WRITE_RPC.test(fn) && !whoAmI() ? Promise.reject(new Error(NO_WHO))
+    : sbFetch(`rpc/${fn}`, {method: 'POST', body: JSON.stringify(body || {})});
 
   /* ── 탭 목록 = 저장소 erp_tabs (지금 시트에 보이는 탭 · 시트 순서 — 맥미니가 5분마다 시트 메뉴와 맞춤) ── */
   const TAB_COLS = 'gid,name,pos,alive,kind,n_rows,n_cols,pii_cols,pii_from,masked,fx,fx_ro,fx_deny,synced_at,rows_ver,ver,ofmt,sheet_link';
@@ -2382,7 +2385,10 @@
      · 고친 기록 = 저장소 erp_history (누가 · 언제 · 전 값, 트리거) + md_sheet_edit_log (MD팀과 같은 기록 — 누가 뒤에 '· ERP'). */
   const BOOK = 'invoice', PEND_MS = 120e3, WRITE_TIMEOUT = 45e3;
   const E = {cfg: null, cfgP: null, pend: new Map(), x: null, at: null, anchor: null, busy: false, q: Promise.resolve()};
-  const whoAmI = () => lsGet('brightbeed_diary_me') || (lsGet('brightbeed_role') === 'master' ? '관리자' : '');
+  /* 누가 고쳤는지 = 업무일지 '나는 ○○○' 이름 (2026-11-20 사용자 "오늘부터 이제 잘 기록해줘") — 이름을 안 고른 PC 는 고칠 수 없다(roWhy · sbRpc).
+     예전엔 대표 PIN PC 가 이름 없이 '관리자'로 남았는데 누구인지 몰라서 뺐다. 저장소 쪽(erp_rows_hist)도 이름 없이 바뀐 줄은 '이름 없이 직접 변경'으로 남긴다 */
+  const whoAmI = () => String(lsGet('brightbeed_diary_me') || '').trim();
+  const NO_WHO = "이 PC는 이름이 안 정해져 있어 고칠 수 없어요 — 누가 고쳤는지 남기려고요. 오피스 홈에서 '나는 ○○○' 이름을 먼저 골라 주세요";
   const piiCol = name => { const n = norm(name); return PII.some(x => x[1].test(n)); };
   const short = s => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s ? (s.length > 18 ? s.slice(0, 17) + '…' : s) : '(빈칸)'; };
   const EDIT_ERR = {
@@ -2458,6 +2464,7 @@
   const tabRoWhy = (gid, info) => !info ? '' : cutTab(gid) ? (info.fx_deny || info.fx_ro ? CUT_RO : '') : info.fx_deny ? editErr(info.fx_deny) : info.fx_ro ? RO_TAB : '';
   function roWhy(x) {
     if (!x) return '고칠 수 없는 칸이에요';
+    if (!whoAmI()) return NO_WHO;
     if (x.why) return x.why;
     const info = tabInfo(x.gid), tw = tabRoWhy(x.gid, info);
     if (tw) return tw;
