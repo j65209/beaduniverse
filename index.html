@@ -12576,7 +12576,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </button>
       </section>
 
-      <section class="hero hero-design">
+      <!-- 디자인팀 — 박시호 · 전승훈 · 전수빈 PC 에만 노출 (designHasAccess, 2026-11-20 사장님 "디자인탭은 시호, 대표 2명만") -->
+      <section class="hero hero-design" id="designHero" hidden>
         <div class="hero-eyebrow">DESIGN</div>
         <button class="btn-neon btn-design" id="designBtn" onclick="triggerDesign()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
@@ -13203,7 +13204,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <button class="dsg-tab" id="dsgTabCoferry" role="tab" onclick="dsgSwitchTab('coferry')">
         <span>📓</span><span>디자인센터</span>
       </button>
-      <button class="dsg-tab" id="dsgTabQuote" role="tab" onclick="dsgSwitchTab('quote')">
+      <button class="dsg-tab secret-only" id="dsgTabQuote" role="tab" onclick="dsgSwitchTab('quote')">
         <span>🧾</span><span>견적서</span>
       </button>
       <button class="dsg-tab" id="dsgTabMatch" role="tab" onclick="dsgSwitchTab('match')">
@@ -13484,7 +13485,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <tr>
               <th class="col-ord">신청서번호</th>
               <th class="col-img">이미지</th>
-              <th class="col-price">단가</th>
+              <th class="col-price secret-only">단가</th>
               <th class="col-qty">수량</th>
               <th class="col-memo">상품메모</th>
               <th class="col-link">상품</th>
@@ -13506,8 +13507,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <option value="recent" selected>최근 발주순</option>
               <option value="qty">총 발주수량 많은 순</option>
               <option value="order">발주 횟수 많은 순</option>
-              <option value="price_hi">단가 높은 순</option>
-              <option value="price_lo">단가 낮은 순</option>
+              <option value="price_hi" class="secret-only" data-secret-opt>단가 높은 순</option>
+              <option value="price_lo" class="secret-only" data-secret-opt>단가 낮은 순</option>
               <option value="name">이름순</option>
             </select>
             <span id="arUpdated"></span>
@@ -21576,6 +21577,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ok=secretOk();
     document.body.classList.toggle('secret-ok',ok);
     document.querySelectorAll('[data-secret-card]').forEach(el=>{ el.hidden=!ok; });   // 홈 · 폴더의 기밀 화면 카드 (기본 hidden)
+    const dh=document.getElementById('designHero'); if(dh) dh.hidden=!designHasAccess();   // 디자인팀 (박시호 · 대표 2명)
     if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
   }
   // 표 머리글로 기밀 칸 찾기 — 원가 · 단가 · 매입 · 공급가 · 마진 · 판매가 · 정가 · 할인가 · 가격 · 위안 · 공급처 (매출 · 광고비 칸은 걸리지 않음)
@@ -21585,6 +21587,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const SECRET_LINK_RE=/docs\.google\.com|drive\.google\.com|script\.google\.com|dropbox\.com|1688\.com|taobao\.com|tmall\.com|\btb\.cn|alibaba|aliexpress|weidian\.com|yupoo\.com|szwego\.com|vvic\.com|pinduoduo|yangkeduo/i;
   function secretLink(u){ return SECRET_LINK_RE.test(String(u||'')); }
   window.secretOk=secretOk; window.secretApply=secretApply; window.secretHead=secretHead; window.secretLink=secretLink;
+  /* 디자인팀 화면 (2026-11-20 사장님 "디자인탭은 시호, 대표 2명만 볼 수 있게") — 홈 카드 · 화면 진입 모두 이 명단 (관리자 PIN 이어도 명단 밖이면 숨김).
+     디자인팀 안의 정상가 · 견적 단가 · 구글시트 링크는 위 기밀 규칙(secretOk)을 따로 따른다. */
+  const DESIGN_ALLOWED=new Set(['전승훈','전수빈','박시호']);
+  function designHasAccess(){ try{ return DESIGN_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me')||'').trim()); }catch(e){ return false; } }
+  window.designHasAccess=designHasAccess;
   function applyRole(){
     const role=getRole();
     document.body.classList.toggle('role-master',role==='master');
@@ -21980,11 +21987,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
 
-  // 화면 전체가 원가 · 판매가 · 마진인 곳 — 기밀 명단(지희선 · 전승훈 · 전수빈) 밖이면 홈 카드도 숨기고 주소로 들어와도 홈으로 (2026-11-20)
-  const SECRET_VIEWS=new Set(['viewPromoCalc']);
+  // 명단 화면 (2026-11-20) — 명단 밖이면 홈 카드도 숨기고 주소(#promo · #design)로 들어와도 홈으로
+  //   기획전 계산기 = 원가 · 판매가 · 마진 → 기밀 명단(지희선 · 전승훈 · 전수빈) / 디자인팀 = 박시호 · 전승훈 · 전수빈
+  const VIEW_GATES={
+    viewPromoCalc:{ok:()=>secretOk(), msg:'대표 · 지희선 전용 화면입니다'},
+    viewDesign:{ok:()=>designHasAccess(), msg:'디자인팀 전용 화면입니다'},
+  };
   function applyView(id){
-    if(SECRET_VIEWS.has(id) && !secretOk()){
-      toast('대표 · 지희선 전용 화면입니다','err');
+    const gate=VIEW_GATES[id];
+    if(gate && !gate.ok()){
+      toast(gate.msg,'err');
       history.replaceState({view:'viewHome'},'',location.pathname+location.search);
       id='viewHome';
     }
@@ -22165,6 +22177,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof reoHomeRefresh === 'function') reoHomeRefresh();
       // 전략팀 카드 (기밀 명단 전승훈/전수빈/지희선 PC 에만 노출, 2026-11-20)
       if(typeof stratRefreshAccess === 'function') stratRefreshAccess();
+      // 기밀 카드 · 디자인팀 카드 (박시호 · 대표 2명) 다시 판정
+      if(typeof secretApply === 'function') secretApply();
       // 2026 송년회 (전승훈/전수빈 PC 에만 노출)
       if(typeof yeRefreshAccess === 'function') yeRefreshAccess();
     }
@@ -22248,7 +22262,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof syncSalesArchiveFromRemote==='function') syncSalesArchiveFromRemote().catch(()=>{});
     if(typeof akoiSalesEnsureLoaded==='function') akoiSalesEnsureLoaded();
   }
-  function triggerDesign(){ _dsgActiveBoard = 'design'; showView('viewDesign'); if(typeof dsgInit==='function') dsgInit(); }
+  function triggerDesign(){
+    if(!designHasAccess()){ toast('디자인팀 전용 화면입니다','err'); return; }   // 박시호 · 전승훈 · 전수빈만 (2026-11-20)
+    _dsgActiveBoard = 'design'; showView('viewDesign'); if(typeof dsgInit==='function') dsgInit();
+  }
   function triggerStock(){ showView('viewStock'); }
   // 홈 실시간 재고 카드 — 브랜드를 주면 그 브랜드만 펼쳐서 바로 보여준다 (ERP MASTER)
   function triggerSixStock(brand){ if(typeof _erpStockFocus!=='undefined') _erpStockFocus = brand || null; showView('viewSixStock'); }
@@ -24516,6 +24533,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      옛 선호값(coferry·design·posts·board)은 모두 디자인센터로 연다. */
   function dsgSwitchTab(tab){
     tab = tab === 'quote' || tab === 'match' ? tab : 'center';
+    if(tab === 'quote' && !secretOk()) tab = 'center';   // 견적서 = 단가 · 금액 · 원본 서류 → 기밀 명단(지희선 · 전승훈 · 전수빈)만 (2026-11-20)
     _dsgCurTab = tab;
     const bc = document.getElementById('dsgTabCoferry'), bq = document.getElementById('dsgTabQuote'), bm = document.getElementById('dsgTabMatch');
     if(bc) bc.classList.toggle('active', tab === 'center');
@@ -24811,6 +24829,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     qtRender();
   }
   function qtInit(){
+    if(!secretOk()) return;   // 견적서 = 기밀 — 명단 밖 PC 는 받지도 그리지도 않는다
     qtRender();
     qtLoad();   // 다른 사람이 올린 서류도 탭을 열 때마다 받아 온다
     const drop = document.getElementById('qtDrop');
@@ -25297,6 +25316,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     bag.fabric = blocks(secs.fabric);
     bag.lining = blocks(secs.lining);
     bag.hardware = blocks(secs.hardware).flat().sort((a, b) => a.s0 - b.s0);
+    // 원단 · 부자재 단가 = 기밀 — 명단 밖 PC 에선 금액 · 단가가 적힌 줄을 아예 뺀다 (2026-11-20)
+    if(!secretOk()){
+      const PRICE = /단가|가격|원가|공급가|금액|[₩￦¥￥]|위안|\d[\d,.]*\s*(원|위안|元)(?![가-힣])/;
+      const strip = b => { b.lines = (b.lines || []).filter(t => !PRICE.test(String(t || ''))); };
+      [...bag.fabric.flat(), ...bag.lining.flat(), ...bag.hardware].forEach(strip);
+      bag.factory.forEach(f => { f.text = String(f.text || '').split(' · ').filter(t => !PRICE.test(t)).join(' · '); });
+      bag.specs = bag.specs.filter(x => !PRICE.test(`${x.label} ${x.value}`));
+    }
     return {bag, srcs};
   }
   async function _mbLoadDoc(gid, force){
@@ -32669,7 +32696,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
              <img class="kd-thumb-zoom" referrerpolicy="no-referrer" src="${escapeHTML(r.image_url)}" alt="">
            </span>`
         : '<span class="kd-no-img">—</span>';
-      const urlCell=r.product_url
+      // ￥단가 · 공급처(1688) 상품 링크 = 기밀 — 지희선 · 전승훈 · 전수빈만 (2026-11-20). 다른 직원은 칸이 아예 없다 (.secret-only + 빈 값)
+      const secOk=secretOk();
+      const urlCell=r.product_url && (secOk || !secretLink(r.product_url))
         ? `<a class="kd-link" href="${escapeHTML(r.product_url)}" target="_blank" rel="noopener" title="${escapeHTML(r.product_url)}">열기</a>`
         : '';
       const memoText=escapeHTML(r.memo||'');
@@ -32678,7 +32707,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<tr class="${groupCls} kd-row" data-ord="${escapeHTML(r.ord_no)}" data-purl="${oidAttr}" data-status="${escapeHTML(stBucket)}" data-sn="${escapeHTML(_pomSn(r.sales_no))}">
         <td class="col-ord">${ordCell}</td>
         <td class="col-img">${imgCell}</td>
-        <td class="col-price">¥${escapeHTML(r.price_cny||'0')}</td>
+        <td class="col-price secret-only">${secOk?`¥${escapeHTML(r.price_cny||'0')}`:''}</td>
         <td class="col-qty">${escapeHTML(r.qty||'0')}<span class="qty-unit">개</span></td>
         <td class="col-memo"><div class="kd-memo-text" title="${memoText}">${memoText}</div><span class="kd-erp-slot"></span></td>
         <td class="col-link"><span class="kd-link-cell">${urlCell}<span class="kd-hist-slot"></span></span></td>
@@ -32884,7 +32913,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<div class="kd-hist-row">
         <span class="kd-hist-dt">${dt||'—'}</span>
         <span class="kd-hist-qty">${(+h.qty||0).toLocaleString('ko-KR')}<em>개</em></span>
-        <span class="kd-hist-price">¥${h.price_cny||'0'}</span>
+        ${secretOk()?`<span class="kd-hist-price">¥${h.price_cny||'0'}</span>`:''}
         <span class="kd-hist-name" title="${nm}">${nm}${grp?` <em>${grp}</em>`:''}</span>
         ${memo?`<span class="kd-hist-memo">${memo}</span>`:''}
       </div>`;
@@ -33423,8 +33452,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
       if(s==='qty') return (b.total_qty||0)-(a.total_qty||0);
       if(s==='order') return (b.order_count||0)-(a.order_count||0);
-      if(s==='price_hi') return (b.price_avg||0)-(a.price_avg||0);
-      if(s==='price_lo') return (a.price_avg||Infinity)-(b.price_avg||Infinity);
+      if(s==='price_hi' && secretOk()) return (b.price_avg||0)-(a.price_avg||0);   // 단가 정렬 = 기밀 명단만 (순서로도 단가가 드러난다)
+      if(s==='price_lo' && secretOk()) return (a.price_avg||Infinity)-(b.price_avg||Infinity);
       if(s==='name') return (a.kor||a.cn||'').localeCompare(b.kor||b.cn||'');
       return 0;
     });
@@ -33557,11 +33586,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     </button>`;
     const img=`<div class="ar-img-slot${displayImg?'':' ar-img-slot-empty'}">${imgBody}${imgEditBtn}</div>`;
-    const link=p.link
+    // 단가 · 공급처 상품 링크 = 기밀 — 지희선 · 전승훈 · 전수빈만 (2026-11-20)
+    const secOk=secretOk();
+    const link=p.link && (secOk || !secretLink(p.link))
       ? `<a class="ar-link" href="${arEscape(p.link)}" target="_blank" rel="noopener">상품열기</a>`
       : '<span class="ar-no-link">—</span>';
     // 최근 발주 시 실제 단가 (없으면 평균)
-    const priceLabel = p.price_latest != null
+    const priceLabel = !secOk ? '' : p.price_latest != null
       ? `¥${p.price_latest}`
       : (p.price_avg != null ? `¥${p.price_avg}` : '—');
     const recentLabel = p.latest_date ? p.latest_date.slice(2).replace(/-/g,'.') : '—';
@@ -33593,7 +33624,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </div>
           ${sub?`<div class="ar-prod-sub">${arEscape(sub)}</div>`:''}
           <div class="ar-prod-stats">
-            <span class="ar-stat"><span class="lbl">단가</span><b>${priceLabel}</b></span>
+            ${secOk?`<span class="ar-stat"><span class="lbl">단가</span><b>${priceLabel}</b></span>`:''}
             <span class="ar-stat"><span class="lbl">누적</span><b>${arFmtInt(p.total_qty)}<span class="unit">개</span></b></span>
             <span class="ar-stat"><span class="lbl">발주</span><b>${p.order_count}<span class="unit">회</span></b></span>
             <span class="ar-stat"><span class="lbl">최근</span><b>${recentLabel}</b></span>
@@ -45862,7 +45893,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
         <div class="vsr-sales">${_vmEsc(krwFmt(r.sales))}</div>
         <div class="vsr-sub">
-          <span><span class="vsr-sub-label">마진</span><span class="vsr-sub-val">${_vmEsc(krwFmt(r.margin))}</span></span>
+          ${secretOk()?`<span><span class="vsr-sub-label">마진</span><span class="vsr-sub-val">${_vmEsc(krwFmt(r.margin))}</span></span>`:''}
           <span><span class="vsr-sub-label">수량</span><span class="vsr-sub-val">${r.qty.toLocaleString('ko-KR')}</span></span>
         </div>
       </div>`;
@@ -45931,6 +45962,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(live || monthGap(m) <= 1) det.open=true;
 
       // 진행 월은 총매출/총마진이 시트에 없을 수 있어 클라이언트에서 합산 보조 + 시트 합계행 대조
+      const sec = secretOk();   // 판매가 · 마진단가 · 마진 = 기밀 (지희선 · 전승훈 · 전수빈만, 2026-11-20) — 매출 · 수량은 그대로
       const calcMargin = m.items.reduce((s,it)=>s+_krwParse(it.margin),0);
       const calcSales  = m.items.reduce((s,it)=>s+_krwParse(it.sales),0);
       const sales  = _vmPickTotal(m.totalSales,  calcSales,  m.items.length);
@@ -45958,17 +45990,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <span class="vm-pill-label">${live?'매출(잠정)':'매출'}</span>
             <span class="vm-pill-value">${_vmEsc(sales.txt)}</span>${warnMark(sales.warn)}
           </span>
-          <span ${pillAttr('vm-pill-margin', margin.warn)}>
+          ${sec?`<span ${pillAttr('vm-pill-margin', margin.warn)}>
             <span class="vm-pill-label">${live?'마진(잠정)':'마진'}</span>
             <span class="vm-pill-value">${_vmEsc(margin.txt)}</span>${warnMark(margin.warn)}
-          </span>
+          </span>`:''}
         </span>`;
       det.appendChild(sum);
 
       const body=document.createElement('div');
       body.className='vm-month-body';
       // ⚠ 내용은 휴대폰에서도 보이게 펼친 본문 위에 글로도 적는다 (title 툴팁은 PC 마우스에서만 보임)
-      const notes=[sales.warn&&`매출: ${sales.warn}`, margin.warn&&`마진: ${margin.warn}`, cntWarn].filter(Boolean);
+      const notes=[sales.warn&&`매출: ${sales.warn}`, sec&&margin.warn&&`마진: ${margin.warn}`, cntWarn].filter(Boolean);
       const notesHTML=notes.length?`<div class="vm-month-notes">${notes.map(t=>`<div>⚠ ${_vmEsc(t)}</div>`).join('')}</div>`:'';
       if(m.items.length===0){
         body.innerHTML=notesHTML+(hiddenRows?'':'<div class="vm-empty">진행 내역 없음</div>');
@@ -45987,9 +46019,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <td class="vm-product">${prodCell}</td>
               <td class="vm-seller">${sellerCell}</td>
               <td class="num">${numCell(it.qty)}</td>
-              <td class="num">${numCell(it.price)}</td>
+              ${sec?`<td class="num">${numCell(it.price)}</td>
               <td class="num">${numCell(it.marginUnit)}</td>
-              <td class="num">${numCell(it.margin)}</td>
+              <td class="num">${numCell(it.margin)}</td>`:''}
               <td class="num">${numCell(it.sales)}</td>
               <td>${(it.channel||'').trim()?_vmEsc(it.channel):dash}</td>
               <td>${(it.settle||'').trim()?_vmEsc(it.settle):dash}</td>
@@ -45999,8 +46031,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <table class="vm-table">
             <thead><tr>
               <th>제품</th><th>셀러</th>
-              <th class="num">수량</th><th class="num">판매가</th>
-              <th class="num">마진단가</th><th class="num">마진</th>
+              <th class="num">수량</th>${sec?`<th class="num">판매가</th>
+              <th class="num">마진단가</th><th class="num">마진</th>`:''}
               <th class="num">매출</th><th>결제창</th><th>정산</th>
             </tr></thead>
             <tbody>${rowsHTML}</tbody>
