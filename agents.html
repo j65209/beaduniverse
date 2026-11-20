@@ -3186,6 +3186,9 @@ async function edbPlan(m){   // m = {brand, product, option, kind, qty} → 바�
   const tabs = await edb('erp_tabs?select=gid,name,fx,sheet_link&kind=eq.stock&alive=is.true&deleted_at=is.null&order=pos.asc') || [];
   const tab = tabs.find(t => String(t.name).includes(word));
   if(!tab) return {skip: `${word} 탭이 없음`};
+  // 구글시트를 끊은 탭(11-20 18:29 오피스 재고 전환 뒤)은 서버(프록시 erp_moves.py, OFFICE_STOCK)가 원장 erp_moves(ref moa:접수ID)로
+  // 오피스 ERP 에 바로 넣는다 → 화면은 손대지 않는다 (여기서도 칸을 고치면 입고가 두 번 들어감). 결과는 서버 응답(rcvWait)으로 보여 줌
+  if(tab.sheet_link === false) return {skip: '서버가 넣음', server: true};
   const rows = [];
   for(let after = 0; ;){
     const page = await edb(`erp_rows?select=r,v&gid=eq.${encodeURIComponent(tab.gid)}&deleted_at=is.null&r=gt.${after}&order=r.asc&limit=1000`) || [];
@@ -3310,29 +3313,13 @@ async function rcvCommit(c, R){
       plans[i] = await edbApply({brand: it.prod.b, product: it.prod.name, option: it.opt.o || '', kind: it.kind, qty: it.qty}, edbWho).catch(e => ({skip: e.message}));
     }
     const nowIn = plans.map((p, i) => p && !p.skip ? `· ${rcvLabel(act[i].prod, act[i].opt)} — 남은 재고 ${p.before == null ? '빈칸' : num(p.before)} → ${num(p.after)}${p.rAfter != null && p.done.some(c => c.what === 'rcv') ? ` · 입고 수량 ${num(p.rBefore)} → ${num(p.rAfter)}` : ''}` : null).filter(Boolean);
-    const notIn = plans.map((p, i) => p && p.skip ? `· ${rcvLabel(act[i].prod, act[i].opt)} — ${p.skip}` : null).filter(Boolean);
-    // 2026-11-20 구글시트 끊기 — 모든 건이 끊은 탭(오피스 저장소가 원본)이면 저장소에 넣은 것이 곧 반영. 서버 작업(구글시트 · 입고 기록)은
-    // 기록용으로 그대로 보내지만 기다리지도, 그 결과로 저장소를 고치지도 않는다 (시트 숫자는 끊은 뒤 멈춰 있음)
-    const cutMode = plans.length > 0 && plans.every(p => p && p.cut);
+    const notIn = plans.map((p, i) => p && p.skip && !p.server ? `· ${rcvLabel(act[i].prod, act[i].opt)} — ${p.skip}` : null).filter(Boolean);
+    const serverOwns = plans.length > 0 && plans.every(p => p && p.server);   // 끊은 탭 — 서버가 오피스 ERP 에 넣음
     const ok = [], bad = [], waiting = [];
-    if(cutMode){
-      if(nowIn.length) edbPing();
-      plans.forEach((p, i) => {
-        if(i >= sent.length) return;
-        const label = rcvLabel(act[i].prod, act[i].opt);
-        if(p && !p.skip){
-          const m = {id: sent[i].id, appliedAt: Date.now(), before: p.before, after: p.after, rBefore: p.rBefore, rAfter: p.rAfter};
-          ok.push({m, it: act[i]});
-          say('agent', `✅ ${rcvHM(m.appliedAt)} 재고 ERP 반영 — ${label}\n   남은 재고 ${p.before == null ? '빈칸' : num(p.before)} → ${num(p.after)}${p.rAfter != null && p.done.some(c => c.what === 'rcv') ? ` · 입고 수량 ${num(p.rBefore)} → ${num(p.rAfter)}` : ''}`);
-        }else{
-          bad.push({reason: p && p.skip});
-          say('agent', `❌ 재고 ERP 에 못 넣음 — ${label}\n   ${(p && p.skip) || '이유를 알 수 없음'}\n   재고 ERP 에서 그 줄을 직접 고쳐 주세요 (구글시트는 연결을 끊어 따라 들어오지 않아요)`, {kind:'err'});
-        }
-      });
-    }else{
+    if(serverOwns) say('agent', `ERP 에 넣는 중이에요 — 보통 몇 초면 끝나요…`);
     if(nowIn.length){ edbPing(); say('agent', `⚡ ${rcvHM(Date.now())} 오피스앱 재고 ERP 에 바로 반영했어요\n${nowIn.join('\n')}\n\n구글시트에도 넣는 중이에요 — 보통 30초 안팎 걸립니다…`); }
     if(notIn.length) say('agent', `재고 ERP 에 바로 못 넣은 건 — 구글시트에 들어가면 1분 안에 따라 들어가요\n${notIn.join('\n')}`);
-    if(!nowIn.length && !notIn.length) say('agent', `구글시트에 넣는 중이에요 — 보통 30초 안팎, 재고 ERP 는 그 뒤 1분 안에 따라와요…`);
+    if(!serverOwns && !nowIn.length && !notIn.length) say('agent', `구글시트에 넣는 중이에요 — 보통 30초 안팎, 재고 ERP 는 그 뒤 1분 안에 따라와요…`);
     const done = await rcvWait(ids, 150000);
     const byId = new Map(done.map(m => [m.id, m]));
     let fixed = false;
@@ -3351,7 +3338,6 @@ async function rcvCommit(c, R){
         waiting.push(m);
       }
     });
-    }
     R.lastApplied = ok.map(x => ({id: x.m.id, prod: x.it.prod, opt: x.it.opt, kind: x.it.kind, qty: x.it.qty, at: x.m.appliedAt}));
     tellParent('erp-moves-updated');
     R.items = null; R.cur = 0;
@@ -3363,7 +3349,7 @@ async function rcvCommit(c, R){
       say('agent', '잘못 넣으셨으면 바로 되돌릴 수 있어요. 홈 맨 위 "입고 현황" 에도 올라갔습니다.', {chips:[
         {label:'방금 거 되돌리기', cmd:'#rundo'}, {label:'오늘 입고 내역', cmd:'#rtoday'},
       ]});
-      await doubleCheck(cutMode ? '재고 ERP 다시 읽어 확인' : '구글시트 다시 읽어 확인', async () => {
+      await doubleCheck(serverOwns ? '재고 ERP 다시 읽어 확인' : '구글시트 다시 읽어 확인', async () => {
         const {products} = await getErp(true);
         const diff = [];
         ok.forEach(({m, it}) => {
@@ -3371,7 +3357,7 @@ async function rcvCommit(c, R){
           const o = p && p.options.find(x => x.o === it.opt.o);
           if(!o || o.s !== m.after) diff.push(`${rcvLabel(it.prod, it.opt)} 지금 ${o ? rcvStock(o.s) : '없음'} (반영 직후 ${num(m.after)})`);
         });
-        return diff.length ? `⚠️ 그사이 값이 달라진 곳이 있어요 — 다른 작업이 바꿨을 수 있습니다.\n${diff.join('\n')}` : `${cutMode ? '재고 ERP' : '구글시트'} 남은 재고 ${ok.length}건 모두 반영값과 같습니다. ✓`;
+        return diff.length ? `⚠️ 그사이 값이 달라진 곳이 있어요 — 다른 작업이 바꿨을 수 있습니다.\n${diff.join('\n')}` : `${serverOwns ? '재고 ERP' : '구글시트'} 남은 재고 ${ok.length}건 모두 반영값과 같습니다. ✓`;
       });
     } else {
       say('agent', DONE_MSG, {kind:'done'});
