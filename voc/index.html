@@ -32,7 +32,12 @@
        사유 글로 오피스 VOC 코드(📖 VOC 코드표 — index.html CSI_CODES)를 '추정'해 붙이고, 오피스 VOC 기록(Supabase cs_issues)과
        같은 건은 그 코드를 '확정'으로. 불량건 탭 · 반품 분석 탭(코페리 · 아페티) · 시트에 붙은 사진도 같은 화면 메뉴로.
      · 디자인은 ERP전산팀(erp/)과 같다 — 어두운 왼쪽 메뉴 · 요약 카드 · 칸 너비 자동 표 · 줄을 누르면 상세 창. 색만 CS팀 파랑.
-     · 이름 · 연락처 칸은 읽을 때 가린다(배○○ · 010-****-0729) — 이 브라우저 저장본에도 가린 채로. */
+     · 이름 · 연락처 칸은 읽을 때 가린다(배○○ · 010-****-0729) — 이 브라우저 저장본에도 가린 채로.
+     · 2026-11-20 사장님 "cs업무에 반품교환분석, 사유채널 상품분석 반품교환목록 이런거 싹다 하단 voc랑 합쳐주고. 중복된거 지워주고 완벽하게 만들어줘.
+       가독성 좋게" → 오피스 CS 업무의 '↩️ 반품·교환 분석' 탭을 걷어 여기 메뉴 맨 위 '반품 · 교환 (자동 수집)'으로 옮김
+       (한눈에 보기 · 사유 · 채널 · 상품 분석 · 처리 현황 · 목록). 시트로 만든 예전 대시보드 카드(브랜드별 · 사유 분류 · 많이 나온 상품 ·
+       최근 회사 사유 · 쇼핑몰별)는 자동 수집과 겹쳐 지우고, 시트에만 있는 '일지 입력 현황'만 한눈에 보기 아래에 남김.
+       색은 아낌 — 회사 사유 = 빨강, 고객 사유 = 회색, 사유 없음 = 연회색. */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -287,6 +292,68 @@
   .lb img{max-width:100%;max-height:100%;border-radius:12px;background:#fff}
   .toast{position:fixed;left:50%;bottom:22px;z-index:80;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 16px;border-radius:10px;background:#0f172a;color:#fff;font-size:13px;font-weight:600;line-height:1.45;box-shadow:0 12px 30px rgba(15,23,42,.25)}
 
+  /* ── 반품 · 교환 자동 수집 (2026-11-20 오피스 CS 업무 '↩️ 반품·교환 분석'을 합침) — 회사 사유 빨강 · 고객 사유 회색 · 없음 연회색 ── */
+  .kpi i{margin-top:3px;font-style:normal;font-size:11px;line-height:1.2;color:var(--text-4);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .kpi i.up{color:#b91c1c}
+  .kpis.tall .kpi{height:76px}
+  .upd{font-size:12px;color:var(--text-4);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .mut{color:var(--text-3);font-size:12px;font-weight:500}
+  .fd{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px;background:#d1d5db}
+  .fd.co{background:#ef4444}
+  .fd.cu{background:#94a3b8}
+  .hot{color:#b91c1c}
+  .new{display:inline-block;margin-left:6px;padding:0 6px;border-radius:4px;background:#0f172a;color:#fff;font-size:10.5px;font-weight:700;line-height:1.6;vertical-align:1px}
+  .mix{display:flex;width:100%;min-width:96px;height:8px;border-radius:4px;overflow:hidden;background:#f1f5f9}
+  .mix i{display:block;height:100%}
+  .mix .co{background:#ef4444}
+  .mix .cu{background:#94a3b8}
+  .mix .na{background:#e2e8f0}
+  .rb{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;vertical-align:middle}
+  .rb b{display:block;width:64px;height:6px;border-radius:3px;background:#f1f5f9;overflow:hidden}
+  .rb b i{display:block;height:100%;border-radius:3px;background:#64748b}
+  .rb.hi b i{background:#dc2626}
+  .rb.hi span{color:#b91c1c}
+  .rb span{min-width:40px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  .bar-f.co{background:#ef4444}
+  .bar-f.cu{background:#94a3b8}
+  .bar-f.na{background:#cbd5e1}
+  .mt td.n,.mt th.n{text-align:right}
+  .mt td.c,.mt th.c{text-align:center}
+  .mt.heat td.c{font-weight:600}
+  .mt.heat td .sub{display:block;font-size:11px;font-weight:500}
+  .mt tr.tot td{background:#f8fafc;font-weight:700;border-top:1px solid var(--line)}
+  .card-h .parts{margin-left:auto}
+  .card-h .parts button{height:26px;padding:0 10px;font-size:12px}
+  .note{padding:8px 16px 12px;font-size:12px;color:var(--text-3);line-height:1.6}
+  .note b{color:var(--text-2);font-weight:700}
+  .voice{display:grid;gap:14px;padding:12px 16px 16px}
+  .voice h4{margin:0 0 2px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:0}
+  .quote{display:block;width:100%;text-align:left;margin-top:6px;padding:8px 11px;border-radius:9px;background:#f8fafc;font-size:13px;line-height:1.5;color:var(--text-2);cursor:pointer;word-break:break-word;white-space:normal}
+  .quote:hover{background:#f1f5f9}
+  .quote small{display:block;margin-top:3px;font-size:11.5px;color:var(--text-4)}
+  .trend{display:block;width:100%;height:auto}
+  .trend text{font-size:10.5px;fill:#94a3b8;font-family:var(--ui)}
+  .trend .pt{font-size:11px;font-weight:700;fill:#64748b}
+  .trend .gl{stroke:#eef2f6;stroke-width:1}
+  .trend .ax{stroke:#cbd5e1;stroke-width:1}
+  .trend .co{fill:#ef4444}
+  .trend .cu{fill:#94a3b8}
+  .trend .na{fill:#e2e8f0}
+  .trend .rl{fill:none;stroke:#0f172a;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+  .trend .rd{fill:#0f172a}
+  .trend .hit{fill:transparent}
+  .trend g.col:hover .hit{fill:rgba(15,23,42,.045)}
+  .stage{display:inline-block;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;line-height:1.4;white-space:nowrap;background:#f1f5f9;color:#64748b}
+  .stage.open{background:#f1f5f9;color:var(--text)}
+  .stage.late{background:#fef2f2;color:#b91c1c}
+  .reqb{height:28px;padding:0 10px;border-radius:8px;border:1px solid #fecaca;background:#fff;color:#b91c1c;font-size:12px;font-weight:700;white-space:nowrap}
+  .reqb:hover{background:#fef2f2}
+  .chsel{height:30px;padding:0 8px;border-radius:9px;border:1px solid var(--line);background:#fff;font:inherit;font-size:12.5px;color:var(--text-2);cursor:pointer}
+  .chsel:focus{outline:0;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .chsel.on{border-color:var(--text);color:var(--text);font-weight:700}
+  .parts{max-width:100%;overflow-x:auto;scrollbar-width:none}
+  .parts::-webkit-scrollbar{display:none}
+
   /* ── 좁은 화면 ── */
   @media (max-width:1000px){
     .side{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);transition:transform .18s ease}
@@ -298,7 +365,7 @@
     .bar{height:54px;padding:0 8px;gap:4px}
     .find{flex:1 1 auto;height:38px}
     .st{padding:0 8px}
-    .st #stText,#btnFull,#btnDense{display:none}
+    .st #stText,#btnFull,#btnDense,#cCopy{display:none}
     .st.is-err #stText,.st.is-stored #stText{display:inline;font-size:11.5px}
     .head{padding:12px 12px 10px}
     .trow h1{font-size:17px}
@@ -320,7 +387,7 @@
   <aside class="side" aria-label="메뉴">
     <div class="side-top">
       <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span>
-      <div><b>VOC 전산</b><small>CS팀 · VOC 시트</small></div>
+      <div><b>VOC 전산</b><small>CS팀 · 반품 · 교환 · VOC</small></div>
       <button type="button" class="side-fold" id="btnFold" title="메뉴 접기 (표를 넓게)" aria-label="메뉴 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
     </div>
     <nav class="nav" id="nav"></nav>
@@ -336,7 +403,7 @@
       <button type="button" class="ib menu" id="btnMenu" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓴 낱말이 모두 들어간 줄만">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="q" type="search" placeholder="상품 · 사유 · 쇼핑몰 · VOC 코드 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        <input id="q" type="search" placeholder="상품 · 사유 · 고객 글 · 주문번호 · VOC 코드 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
         <span class="qn" id="qn"></span>
         <button type="button" class="qx" id="qx" hidden aria-label="찾기 지우기">✕</button>
       </label>
@@ -408,7 +475,8 @@
     {id: 'koz', name: '코즈미', color: '#14b8a6', re: /코즈미/},
     {id: 'akoi', name: '아코이하우스', color: '#f472b6', re: /아코이/},
   ];
-  const PERIODS = [{k: 'today', l: '오늘'}, {k: 'yday', l: '어제'}, {k: '7', l: '7일'}, {k: '30', l: '30일'}, {k: 'all', l: '전체'}];
+  // 기간 — 시트 일지 · 반품 · 교환 자동 수집이 같이 쓴다 (예전 '전체'는 90일로: 시트는 11/3부터라 90일이면 다 들어감)
+  const PERIODS = [{k: 'today', l: '오늘'}, {k: 'yday', l: '어제'}, {k: '7', l: '7일'}, {k: '30', l: '30일'}, {k: '90', l: '90일'}, {k: 'month', l: '이번 달'}, {k: 'prev', l: '지난 달'}];
   const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
   const F_CELL = `400 13px ${FONT}`, F_HEAD = `700 12px ${FONT}`, F_TAG = `600 12px ${FONT}`;
   const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
@@ -432,14 +500,56 @@
   const faultOf = cat => !cat ? '' : COMPANY.has(cat) ? 'co' : cat === 'C' ? 'cu' : 'na';
   const FAULT_L = {co: '회사 사유', cu: '고객 사유', na: '기타', '': '사유 없음'};
 
+  /* ── 반품 · 교환 자동 수집 (2026-11-20 사장님 "cs업무에 반품교환분석, 사유채널 상품분석 반품교환목록 이런거 싹다 하단 voc랑 합쳐주고")
+     예전 오피스 CS 업무 '↩️ 반품·교환 분석' 탭을 그대로 옮긴 것. 데이터는 오피스가 받아 둔 것(bbVocShare().claims —
+     비공개 brightbeed-reports claims/claims.json · sales.json, 맥미니 sixshop-collector claims-live 30분마다)을 읽기만 한다. 규칙은 그 레포 docs/CLAIMS.md.
+     · 건 = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · 날짜 = 접수일 (공홈의 지난 완료 건은 처리일) · 철회 · 거부는 숫자에서 뺀다.
+     · 반품률 = 반품 · 교환 수량 ÷ 같은 기간 판매 수량 — 판매 기록이 있는 브랜드 · 채널만, 기록이 시작된 날부터 (공홈 코페리 10/20 등).
+     오피스 밖(/voc/ 바로)에서 열면 이 부분은 비어 있다 (데이터 통로가 오피스에 있음). ── */
+  const CB = SH && Array.isArray(SH.brands) && SH.brands.length ? SH.brands.map(b => ({id: b.id, name: b.name, color: b.color || '#cbd5e1'}))
+    : BRANDS.map(b => ({id: b.id, name: b.name, color: b.color}));   // 브랜드 칩 순서 = 오피스 BRAND_SECTIONS (쉬는 브랜드 빼고)
+  const CH = [['home', '공홈'], ['smartstore', '스마트스토어'], ['ably', '에이블리'], ['zigzag', '지그재그'], ['29cm', '29CM'], ['wconcept', 'W컨셉'], ['ohou', '오늘의집'], ['eql', 'EQL'], ['coupang', '쿠팡']];
+  const CH_L = Object.fromEntries(CH);
+  const chL = k => CH_L[k] || k || '—';
+  // 사유 → 회사 사유(co) / 고객 사유(cu) / 모름(na) — 수집기 claims-report.ts REASON_FAULT 와 같음
+  const RS = {
+    change: {l: '단순 변심', s: '변심', f: 'cu'}, option: {l: '사이즈 · 색상', s: '사이즈·색상', f: 'cu'}, misorder: {l: '주문 실수', s: '주문 실수', f: 'cu'},
+    defect: {l: '불량 · 파손', s: '불량', f: 'co'}, wrong: {l: '오배송 · 누락', s: '오배송', f: 'co'}, info: {l: '상품 정보와 다름', s: '정보 다름', f: 'co'},
+    delivery: {l: '배송 지연 · 분실', s: '배송', f: 'co'}, soldout: {l: '품절', s: '품절', f: 'co'}, seller: {l: '판매자 귀책', s: '판매자', f: 'co'},
+    etc: {l: '기타', s: '기타', f: 'na'}, none: {l: '사유 없음', s: '없음', f: 'na'},
+  };
+  const RS_KEYS = Object.keys(RS);
+  const rsOf = k => RS[k] || RS.etc;
+  const fOf = k => rsOf(k).f;
+  const F_L = {co: '회사 사유', cu: '고객 사유', na: '사유 없음 · 기타'};
+  const F_C = {co: '#ef4444', cu: '#94a3b8', na: '#cbd5e1'};
+  // 사유 → VOC 코드 (고객 글 · 몰 사유 글로 더 좁힘, cCode) — 상세 창 '처리 기준' · 🛠 개선 요청
+  const RS_VOC = {change: 'C11', option: 'C12', misorder: 'C21', defect: 'Q91', wrong: 'D11', info: 'I12', delivery: 'D21', soldout: 'O12'};
+  const STAGE = {requested: '접수', collecting: '회수 중', collected: '회수 완료', held: '보류', done: '완료', rejected: '거부', withdrawn: '철회'};
+  const OPEN_STAGES = ['requested', 'collecting', 'collected', 'held'], OPEN = new Set(OPEN_STAGES);
+  const AGES = [[0, 2, '2일 안'], [3, 6, '3~6일'], [7, 13, '7~13일'], [14, 30, '14~30일']];
+  const OPEN_DAYS = 30;    // 접수하고 이만큼 넘게 그대로면 몰 상태가 안 바뀐 것일 수 있어 '확인 필요'로 따로 (11-13 스마트스토어 '반품요청' 90일 넘은 줄 98개)
+  const LATE_DAYS = 7;     // 처리 중 이만큼 넘으면 빨강
+  const MIN_SOLD = 10;     // 상품 반품률은 판매 10개 이상만 (적게 팔린 상품의 100% 같은 숫자에 끌려가지 않게)
+  const REPEAT_CO = 3;     // 같은 상품 회사 사유가 이만큼이면 ⚠ 반복 — 🛠 개선 요청으로
+  // 공홈을 식스샵 프로에서 모으기 시작한 날 — 그 전 기간과 비교하면 공홈이 빠져 늘어 보인다 (수집기 HOME_ORDER_SINCE)
+  const HOME_SINCE = {kop: '2026-10-20', apt: '2026-10-22', yar: '2026-11-02', '6a': '2026-11-03'};
+  const SRC_L = {sixshop: '식스샵 프로 (공홈 · 네이버페이)', playauto: '플레이오토', zigzag: '지그재그 파트너센터'};
+  const CLAIMS_MS = 5 * 60e3;
+  const C = {data: null, sales: null, lines: [], at: 0, err: '', salesErr: '', busy: null, pidx: null, firstBatch: 0, off: !(SH && typeof SH.claims === 'function')};
+
   const $ = id => document.getElementById(id);
   const app = $('app'), grid = $('grid'), qIn = $('q');
+  const SKEL = '<div class="skel">' + Array.from({length: 10}, () => '<div><i style="width:60px"></i><i style="width:90px"></i><i style="width:220px"></i><i style="width:140px"></i></div>').join('') + '</div>';
   const S = {
     models: [], at: 0, stored: false, busy: null, err: '',
     office: null, officeAt: 0, officeBusy: null,
-    D: null, list: [], sel: -1, selObj: null, lastView: '',
+    D: null, list: [], drawn: null, sel: -1, selObj: null, lastView: '',
   };
-  const V = {view: 'dash', period: '30', type: '', cat: '', date: '', q: '', sort: null, zero: false, part: 'codes'};
+  // cb · cc · ct = 반품 · 교환 브랜드 · 채널 · 구분(return · exchange), cmp = 비교 표 브랜드별/채널별,
+  // cf = 목록 거르기(open · co · cu · memo · photo), cr = 목록 사유, pf = 상품 거르기(rep · co · rate)
+  const V = {view: 'dash', period: '30', type: '', cat: '', date: '', q: '', sort: null, zero: false, part: 'codes',
+    cb: '', cc: '', ct: '', cmp: 'brand', cf: '', cr: '', pf: ''};
 
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* 저장 못 해도 화면은 그대로 */ } };
@@ -449,7 +559,7 @@
   const norm = s => String(s || '').replace(/\s+/g, '');
   const fmt = n => Number(n || 0).toLocaleString('ko-KR');
   const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
-  const brandById = id => BRANDS.find(b => b.id === id) || null;
+  const brandById = id => CB.find(b => b.id === id) || BRANDS.find(b => b.id === id) || null;
   const brandOf = s => BRANDS.find(b => b.re.test(String(s || ''))) || null;
   const bOrder = id => { const i = BRANDS.findIndex(b => b.id === id); return i < 0 ? 99 : i; };
   function numOf(s) {
@@ -472,6 +582,7 @@
   const toYmd = dt => ymd(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
   const today = () => toYmd(new Date());
   const addDays = (s, n) => { const d = dObj(s); d.setDate(d.getDate() + n); return toYmd(d); };
+  const diffD = (a, b) => Math.round((dObj(a) - dObj(b)) / 864e5);   // a − b (일)
   const md = s => { if (!s) return ''; const [, m, d] = s.split('-'); return `${+m}/${+d}`; };
   const dlabel = s => s ? `${md(s)}(${W[dObj(s).getDay()]})` : '';
   function mdToYmd(t) {   // '11/3' → 올해 (지금보다 두 달 넘게 앞선 달은 작년)
@@ -481,15 +592,21 @@
     const y = mo > now.getMonth() + 3 ? now.getFullYear() - 1 : now.getFullYear();
     return ymd(y, mo, +m[2]);
   }
+  // from ~ to (그날 포함) + 같은 길이의 앞 기간 pfrom ~ pto (반품 · 교환 숫자의 ▲▼ 비교)
   function period() {
     const t = today();
+    let from = t, to = t, l;
     switch (V.period) {
-      case 'today': return {from: t, to: t, l: `오늘 ${dlabel(t)}`};
-      case 'yday': { const y = addDays(t, -1); return {from: y, to: y, l: `어제 ${dlabel(y)}`}; }
-      case '7': return {from: addDays(t, -6), to: t, l: `${md(addDays(t, -6))} ~ ${md(t)} · 최근 7일`};
-      case 'all': return {from: '', to: '9999', l: '전체 기간'};
-      default: return {from: addDays(t, -29), to: t, l: `${md(addDays(t, -29))} ~ ${md(t)} · 최근 30일`};
+      case 'today': l = `오늘 ${dlabel(t)}`; break;
+      case 'yday': from = to = addDays(t, -1); l = `어제 ${dlabel(from)}`; break;
+      case '7': from = addDays(t, -6); l = `${md(from)} ~ ${md(t)} · 최근 7일`; break;
+      case '90': from = addDays(t, -89); l = `${md(from)} ~ ${md(t)} · 최근 90일`; break;
+      case 'month': from = t.slice(0, 8) + '01'; l = `${md(from)} ~ ${md(t)} · 이번 달`; break;
+      case 'prev': to = addDays(t.slice(0, 8) + '01', -1); from = to.slice(0, 8) + '01'; l = `${md(from)} ~ ${md(to)} · 지난 달`; break;
+      default: from = addDays(t, -29); l = `${md(from)} ~ ${md(t)} · 최근 30일`;
     }
+    const len = diffD(to, from) + 1;
+    return {from, to, len, l, pfrom: addDays(from, -len), pto: addDays(from, -1), pl: V.period === 'today' ? '어제' : V.period === 'yday' ? '그 전날' : `그 전 ${len}일`};
   }
   let P = period();
   const inP = d => !!d && d >= P.from && d <= P.to;
@@ -1035,15 +1152,227 @@
     })();
   }
 
+  /* ── 반품 · 교환 받기 — 오피스(부모 창)가 비공개 레포에서 받아 둔 것을 빌려 온다 (5분 지난 것만 다시) ── */
+  function loadClaims(force) {
+    if (C.off) return Promise.resolve();
+    if (C.busy) return C.busy;
+    if (!force && C.at && Date.now() - C.at < CLAIMS_MS) return Promise.resolve();
+    C.busy = (async () => {
+      let changed = false;
+      try {
+        const r = await SH.claims(!!force);
+        if (r && r.data && Array.isArray(r.data.lines)) {
+          if (r.data !== C.data || (r.sales || null) !== C.sales) {
+            C.data = r.data; C.sales = r.sales || null; C.pidx = null; changed = true;
+            C.lines = r.data.lines.map(l => Object.assign({kind: 'claim'}, l));
+            C.firstBatch = C.lines.reduce((m, l) => { const t = Date.parse(l.first_seen || ''); return t && t < m ? t : m; }, Infinity);
+            if (!isFinite(C.firstBatch)) C.firstBatch = 0;
+          }
+          if (C.err) changed = true;
+          C.err = ''; C.salesErr = r.salesErr || '';
+        } else { changed = changed || C.err !== ((r && r.err) || '아직 수집 파일이 없어요'); C.err = (r && r.err) || '아직 수집 파일이 없어요'; }
+      } catch (e) { C.err = (e && e.message) || String(e); changed = true; }
+      finally { C.at = Date.now(); C.busy = null; }
+      if (changed) render(true);
+    })();
+    return C.busy;
+  }
+
+  /* ── 반품 · 교환 계산 (예전 오피스 _clm* 그대로) ── */
+  const isCView = v => v === 'dash' || /^c:/.test(v);
+  const cLive = l => l.stage !== 'withdrawn' && l.stage !== 'rejected';
+  const cAge = l => Math.max(0, diffD(today(), String(l.requested_at || l.date).slice(0, 10)));
+  const cShown = b => CB.some(x => x.id === b);
+  const kname = s => String(s == null ? '' : s).replace(/\s+/g, '').toLowerCase();
+  const cut = (s, n) => { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+  const said = l => String(l.memo || '').replace(/[^\p{L}\p{N}]/gu, '').length >= 6;   // '*재배치*' 같은 처리 표시는 빼고 문장만
+  const pctR = (r, d) => r == null || !isFinite(r) ? '—' : (r * 100).toFixed(d == null ? 1 : d).replace(/\.0$/, '') + '%';
+  const typeKo = l => l.type === 'exchange' ? '교환' : '반품';
+  function countBy(rows, fn) { const m = new Map(); for (const r of rows) { const k = fn(r); m.set(k, (m.get(k) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); }
+  // 사유 순서 — 뜻 있는 사유는 많은 순, '기타' · '사유 없음'은 늘 맨 아래
+  const rsOrder = pairs => { const w = k => k === 'none' ? 2 : k === 'etc' ? 1 : 0; return pairs.slice().sort((a, b) => w(a[0]) - w(b[0]) || b[1] - a[1]); };
+  const major = m => { let best = '', n = -1; for (const [k, v] of m) if (v > n) { best = k; n = v; } return best; };
+  const median = a => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  function won(n) {
+    n = Math.round(Number(n) || 0);
+    if (Math.abs(n) >= 1e8) return (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억원';
+    if (Math.abs(n) >= 1e4) return Math.round(n / 1e4).toLocaleString('ko-KR') + '만원';
+    return n.toLocaleString('ko-KR') + '원';
+  }
+  function kstHm(iso) { const t = Date.parse(iso || ''); if (!t) return ''; const s = new Date(t + 9 * 3600e3).toISOString(); return `${+s.slice(5, 7)}/${+s.slice(8, 10)} ${s.slice(11, 16)}`; }
+  // 기간 · 구분 · 채널 · 브랜드로 거른 줄 (철회 · 거부 빼고). o.b · o.ch · o.t 를 주면 그 값으로 (비교 표의 줄마다)
+  function cRows(from, to, o) {
+    o = o || {};
+    const b = o.b !== undefined ? o.b : V.cb, ch = o.ch !== undefined ? o.ch : V.cc, ty = o.t !== undefined ? o.t : V.ct;
+    return C.lines.filter(l => l.date >= from && l.date <= to && cLive(l) && (!ty || l.type === ty) && (!ch || l.channel === ch) && (!b || l.brand === b));
+  }
+  // 지금 처리 중 (날짜와 상관없이 — 브랜드 · 채널 · 구분만). 접수 30일 안 = 처리 중, 넘으면 확인 필요
+  const cOpenAll = () => C.lines.filter(l => OPEN.has(l.stage) && (!V.ct || l.type === V.ct) && (!V.cc || l.channel === V.cc) && (!V.cb || l.brand === V.cb));
+  const cOpen = () => cOpenAll().filter(l => cAge(l) <= OPEN_DAYS);
+  const cStale = () => cOpenAll().filter(l => cAge(l) > OPEN_DAYS);
+  /* 판매 (반품률 분모) — brand · ch '' = 전체. 줄(브랜드|채널)마다 판매 기록이 있는 날부터만 더한다:
+     기간 중간에 기록이 시작된 줄은 그날부터의 반품 · 판매로만 넣고(from[k]) partial 에, 기간이 다 지나도록 기록이 없는 줄은 missing 에 */
+  function cSold(from, to, brand, ch) {
+    const out = {qty: 0, keys: new Set(), from: {}, missing: [], partial: []}, Sd = C.sales;
+    if (!Sd || !Sd.daily) return out;
+    for (const k of Object.keys(Sd.daily)) {
+      const [b, c] = k.split('|');
+      if ((brand && b !== brand) || (ch && c !== ch) || !cShown(b)) continue;
+      const cv = Sd.coverage && Sd.coverage[k];
+      if (!cv || cv > to) { out.missing.push(k); continue; }
+      const f = cv > from ? cv : from;
+      if (cv > from) out.partial.push(k);
+      out.keys.add(k); out.from[k] = f;
+      const d = Sd.daily[k];
+      for (const day in d) if (day >= f && day <= to) out.qty += d[day][1];
+    }
+    return out;
+  }
+  // 정해진 줄들만의 판매 (반품률을 앞 기간과 같은 줄끼리 비교할 때)
+  function cSoldFor(from, to, keys) {
+    const out = {qty: 0, keys: new Set(keys), from: {}, missing: [], partial: []}, Sd = C.sales;
+    if (!Sd || !Sd.daily) return out;
+    for (const k of keys) {
+      const cv = (Sd.coverage && Sd.coverage[k]) || from, f = cv > from ? cv : from;
+      out.from[k] = f;
+      const d = Sd.daily[k] || {};
+      for (const day in d) if (day >= f && day <= to) out.qty += d[day][1];
+    }
+    return out;
+  }
+  // 반품률의 분자 — 판매 기록이 있는 줄 · 그 기록이 있는 날부터의 반품 · 교환 수량
+  function cRateQty(rows, sold) { let q = 0; for (const l of rows) { const k = l.brand + '|' + l.channel; if (sold.keys.has(k) && l.date >= (sold.from[k] || '')) q += Number(l.qty) || 1; } return q; }
+  const cRate = (rows, sold) => sold && sold.qty ? cRateQty(rows, sold) / sold.qty : null;
+  function cMissing(sold) {
+    const nm = k => { const [b, c] = k.split('|'); return `${chL(c)} ${bName(b)}`; };
+    const out = [];
+    if (sold.partial.length) out.push(`${sold.partial.slice(0, 4).map(k => `${nm(k)} ${md(sold.from[k])}부터`).join(' · ')}${sold.partial.length > 4 ? ` 외 ${sold.partial.length - 4}곳` : ''}만 반품률에 넣었어요 (그 전은 판매 기록이 없어요)`);
+    if (sold.missing.length) out.push(`판매 기록이 없어 반품률에서 뺀 곳: ${[...new Set(sold.missing.map(nm))].slice(0, 6).join(' · ')}`);
+    return out.join(' · ');
+  }
+  // 상품 판매 — (브랜드, 상품 이름 키) → 모든 채널의 [줄 키, 원래 이름]. 상품별 판매는 최근 92일만 있다
+  function cProdIdx() {
+    if (C.pidx) return C.pidx;
+    const Sd = C.sales, idx = new Map();
+    if (Sd && Sd.products) for (const [k, names] of Object.entries(Sd.products)) {
+      const b = k.split('|')[0];
+      for (const n of Object.keys(names)) { const id = b + '|' + kname(n); if (!idx.has(id)) idx.set(id, []); idx.get(id).push([k, n]); }
+    }
+    return (C.pidx = idx);
+  }
+  const cProdStart = () => C.sales ? addDays(String(C.sales.updated_at || '').slice(0, 10) || today(), -((C.sales.product_days || 92) - 1)) : '9999';
+  function cProdSold(entries, from, to, ch) {
+    const Sd = C.sales;
+    if (!Sd || !Sd.products || !entries || from < cProdStart()) return null;
+    let qty = 0; const keys = new Set(), fr = {};
+    for (const [k, n] of entries) {
+      const cv = Sd.coverage && Sd.coverage[k];
+      if ((ch && k.split('|')[1] !== ch) || !cv || cv > to) continue;
+      const f = cv > from ? cv : from;
+      keys.add(k); fr[k] = f;
+      const d = Sd.products[k][n]; for (const day in d) if (day >= f && day <= to) qty += d[day];
+    }
+    return keys.size ? {qty, keys, from: fr} : null;
+  }
+  // 앞 기간과 비교해도 되는지 — 안 되면 이유 글자
+  function cNoCompare() {
+    const d = C.data; if (!d) return '';
+    const start = addDays(String(d.updated_at || '').slice(0, 10) || today(), -((d.keep_days || 180) - 1));
+    if (P.pfrom < start) return `${md(start)} 전 기록이 없어 비교 안 함`;
+    if (V.cc && V.cc !== 'home') return '';
+    const late = (V.cb ? [V.cb] : Object.keys(HOME_SINCE)).filter(b => HOME_SINCE[b] && HOME_SINCE[b] > P.pfrom && cShown(b));
+    if (!late.length) return '';
+    return `공홈 ${late.slice(0, 2).map(bName).join(' · ')}${late.length > 2 ? ' 등' : ''}은 ${md(late.map(b => HOME_SINCE[b]).sort()[0])}부터 모아 비교 안 함`;
+  }
+  function cStat(rows, sold) {
+    const co = rows.filter(l => fOf(l.reason) === 'co').length, cu = rows.filter(l => fOf(l.reason) === 'cu').length;
+    const top = rsOrder(countBy(rows, l => l.reason)).find(([k]) => k !== 'none' && k !== 'etc');
+    return {n: rows.length, ret: rows.filter(l => l.type === 'return').length, exc: rows.filter(l => l.type === 'exchange').length,
+      sold: sold.qty, rate: cRate(rows, sold), co, cu, na: rows.length - co - cu, coPct: co + cu ? co / (co + cu) : null,
+      top: top ? top[0] : '', topN: top ? top[1] : 0, amt: rows.filter(l => l.type === 'return').reduce((a, l) => a + (Number(l.amount) || 0), 0),
+      open: rows.filter(l => OPEN.has(l.stage) && cAge(l) <= OPEN_DAYS).length, soldInfo: sold};
+  }
+  // 상품마다 — 같은 브랜드 · 같은 이름(띄어쓰기 · 대소문자 무시). 채널마다 이름이 다르면 따로 센다
+  function cProducts() {
+    const rows = cRows(P.from, P.to), idx = cProdIdx(), by = new Map();
+    for (const l of rows) {
+      const k = l.brand + '|' + kname(l.product);
+      let x = by.get(k);
+      if (!x) { x = {kind: 'prod', key: k, brand: l.brand, names: new Map(), n: 0, ret: 0, exc: 0, co: 0, reasons: new Map(), ch: new Map(), opts: new Map(), memo: null, lines: []}; by.set(k, x); }
+      x.n++; if (l.type === 'exchange') x.exc++; else x.ret++;
+      if (fOf(l.reason) === 'co') x.co++;
+      x.names.set(l.product, (x.names.get(l.product) || 0) + 1);
+      x.reasons.set(l.reason, (x.reasons.get(l.reason) || 0) + 1);
+      x.ch.set(l.channel, (x.ch.get(l.channel) || 0) + 1);
+      if (l.option) x.opts.set(l.option, (x.opts.get(l.option) || 0) + 1);
+      x.lines.push(l);
+      if (said(l) && (!x.memo || String(l.requested_at || l.date) > String(x.memo.requested_at || x.memo.date))) x.memo = l;
+    }
+    for (const x of by.values()) {
+      x.name = major(x.names);
+      const s = cProdSold(idx.get(x.key), P.from, P.to, V.cc);
+      x.sold = s ? s.qty : null;
+      x.rate = s && s.qty ? cRateQty(x.lines, s) / s.qty : null;
+      x.rs = rsOrder([...x.reasons.entries()]);
+      x.coTop = x.rs.find(([k]) => fOf(k) === 'co');
+    }
+    return [...by.values()];
+  }
+  const topOpt = x => [...x.opts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([o, n]) => `${o} ${n}`).join(' · ');
+  const chTxt = x => [...x.ch.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => chL(c) + (x.ch.size > 1 ? ` ${n}` : '')).join(' · ');
+  // 반품 · 교환 한 줄의 VOC 코드 (추정) — 사유 분류와 같은 쪽(회사 · 고객)이면 고객 글 · 몰 사유 글로 좁히고, 아니면 사유 분류 기본 코드
+  function cCode(l) {
+    const f = fOf(l.reason), base = RS_VOC[l.reason] || '';
+    const t = [l.memo, l.reason_src].filter(Boolean).join(' ');
+    const g = t ? guessCode(t, typeKo(l), l.brand) : '';
+    const ok = g && g !== 'E12' && (f === 'co' ? COMPANY.has(g[0]) : f === 'cu' ? (g[0] === 'C' || g[0] === 'S') : true);
+    return ok ? g : base;
+  }
+  // 상품의 대표 VOC 코드 — 회사 사유 줄에서 가장 많이 나온 코드
+  function prodCode(x) {
+    const co = x.lines.filter(l => fOf(l.reason) === 'co');
+    const by = countBy(co.length ? co : x.lines, cCode).filter(([c]) => c);
+    return by.length ? by[0][0] : '';
+  }
+  // 추이 칸 — 31일까지는 하루씩(최소 14칸), 넘으면 월요일 시작 주
+  function cBuckets() {
+    if (P.len <= 31) {
+      const days = Math.max(14, P.len), from = addDays(P.to, -(days - 1)), out = [];
+      for (let i = 0; i < days; i++) { const d = addDays(from, i); out.push({from: d, to: d, label: md(d), tip: dlabel(d)}); }
+      return {unit: '일', list: out};
+    }
+    const start = addDays(P.from, -((dObj(P.from).getDay() + 6) % 7)), out = [];
+    for (let d = start; d <= P.to; d = addDays(d, 7)) { const e = addDays(d, 6) < P.to ? addDays(d, 6) : P.to, f = d < P.from ? P.from : d; out.push({from: f, to: e, label: md(f), tip: `${md(f)} ~ ${md(e)}`}); }
+    return {unit: '주', list: out};
+  }
+  function niceStep(max) {
+    const raw = Math.max(1, max) / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+    for (const m of [1, 2, 2.5, 5, 10]) { const s = m * p; if (s >= raw && Number.isInteger(s)) return s; }
+    return Math.ceil(raw);
+  }
+  function colPath(x, y, w, h, r) {   // 위쪽만 둥근 막대
+    r = Math.max(0, Math.min(r, w / 2, h));
+    const f = v => v.toFixed(1);
+    if (!r) return `M${f(x)},${f(y + h)}V${f(y)}H${f(x + w)}V${f(y + h)}Z`;
+    return `M${f(x)},${f(y + h)}V${f(y + r)}Q${f(x)},${f(y)} ${f(x + r)},${f(y)}H${f(x + w - r)}Q${f(x + w)},${f(y)} ${f(x + w)},${f(y + r)}V${f(y + h)}Z`;
+  }
+  const claimText = l => [l.date, md(l.date), bName(l.brand), chL(l.channel), l.route, typeKo(l), STAGE[l.stage], rsOf(l.reason).l, l.reason_src, l.memo, l.product, l.option, l.order_no].join(' ').toLowerCase();
+  const isNew = l => { const seen = Date.parse(l.first_seen || '') || 0; return seen > C.firstBatch + 10 * 60e3 && Date.now() - seen < 24 * 3600e3 && l.date >= addDays(today(), -3); };
+
   /* ── 보기 상태 ── */
-  function savePrefs() { lsSet(LS_VIEW, JSON.stringify({view: V.view, period: V.period, zero: V.zero, part: V.part})); }
+  function savePrefs() { lsSet(LS_VIEW, JSON.stringify({view: V.view, period: V.period, zero: V.zero, part: V.part, cb: V.cb, cc: V.cc, ct: V.ct, cmp: V.cmp})); }
   function loadPrefs() {
     try {
       const p = JSON.parse(lsGet(LS_VIEW) || '{}');
       if (typeof p.view === 'string') V.view = p.view;
       if (PERIODS.some(x => x.k === p.period)) V.period = p.period;
+      else if (p.period === 'all') V.period = '90';
       V.zero = !!p.zero;
       if (['codes', 'sop', 'sev'].includes(p.part)) V.part = p.part;
+      if (typeof p.cb === 'string' && (!p.cb || CB.some(b => b.id === p.cb))) V.cb = p.cb;
+      if (typeof p.cc === 'string' && (!p.cc || CH_L[p.cc])) V.cc = p.cc;
+      if (p.ct === '' || p.ct === 'return' || p.ct === 'exchange') V.ct = p.ct;
+      if (p.cmp === 'brand' || p.cmp === 'channel') V.cmp = p.cmp;
     } catch (e) { /* noop */ }
   }
   function go(view, o) {
@@ -1051,6 +1380,8 @@
     if (view !== V.view) { V.sort = null; grid.scrollTop = 0; grid.scrollLeft = 0; }
     V.view = view;
     V.type = o.type || ''; V.cat = o.cat || ''; V.date = o.date || '';
+    V.cf = o.cf || ''; V.cr = o.cr || ''; V.pf = o.pf || '';
+    if (o.ct != null) V.ct = o.ct;
     if (o.q != null) { V.q = o.q; qIn.value = o.q; }
     if (o.period) V.period = o.period;
     closeDetail();
@@ -1063,16 +1394,29 @@
   /* ── 그리기 ── */
   function render(keepScroll) {
     P = period();
-    if (!S.D) { renderNav(); return; }
+    if (!['dash', 'c:reason', 'c:prod', 'c:ops', 'c:list', 'log', 'codes', 'photos'].includes(V.view) && !/^(log|defect|tab):/.test(V.view)) V.view = 'dash';
+    // 반품 · 교환(자동 수집) 화면은 구글시트를 기다리지 않는다. 시트 화면은 시트가 올 때까지 빈 표 모양
+    if (!S.D && !isCView(V.view)) {
+      renderNav();
+      $('title').textContent = 'CS 데일리 일지'; $('tDate').hidden = true; $('alert').hidden = true; $('chips').hidden = true;
+      $('kpis').innerHTML = ''; $('tools').innerHTML = ''; $('fpills').innerHTML = '';
+      grid.classList.remove('bd-mode'); grid.innerHTML = SKEL; S.list = []; S.drawn = null; S.lastView = V.view;
+      renderMsg();
+      return;
+    }
     const t = grid.scrollTop, l = grid.scrollLeft, same = S.lastView === V.view;
     // 없어진 보기(탭이 지워짐)면 대시보드로
-    if (/^(defect|tab):/.test(V.view) && !S.D.tabs.some(x => x.gid === V.view.split(':')[1])) V.view = 'dash';
+    if (S.D && /^(defect|tab):/.test(V.view) && !S.D.tabs.some(x => x.gid === V.view.split(':')[1])) V.view = 'dash';
     renderNav();
-    $('alert').hidden = true; $('chips').hidden = true; $('kpis').innerHTML = ''; $('tools').innerHTML = ''; $('fpills').innerHTML = ''; $('tDate').hidden = true;
+    $('alert').hidden = true; $('chips').hidden = true; $('kpis').innerHTML = ''; $('kpis').className = 'kpis'; $('tools').innerHTML = ''; $('fpills').innerHTML = ''; $('tDate').hidden = true;
     grid.classList.remove('bd-mode');
     $('qn').textContent = '';
-    S.list = [];
+    S.list = []; S.drawn = null;
     if (V.view === 'dash') renderDash();
+    else if (V.view === 'c:reason') renderCReason();
+    else if (V.view === 'c:prod') renderCProd();
+    else if (V.view === 'c:ops') renderCOps();
+    else if (V.view === 'c:list') renderCList();
     else if (V.view === 'log' || /^log:/.test(V.view)) renderLog();
     else if (/^defect:/.test(V.view)) renderDefect();
     else if (/^tab:/.test(V.view)) renderReport();
@@ -1084,7 +1428,7 @@
     // 상세 창 — 같은 줄이 아직 있으면 다시 그림
     if (!$('detail').hidden && S.selObj) {
       const i = S.list.findIndex(x => sameObj(x, S.selObj));
-      if (i >= 0) openDetail(i, true); else if (S.selObj.kind !== 'case' && S.selObj.kind !== 'defect' && S.selObj.kind !== 'code') closeDetail();
+      if (i >= 0) openDetail(i, true); else if (!['case', 'defect', 'code', 'claim'].includes(S.selObj.kind)) closeDetail();
     }
     const sec = secretOk();
     $('btnSheet').href = sec ? sheetUrl(curGid()) : '#';
@@ -1093,7 +1437,9 @@
     renderMsg();
   }
   function renderMsg() {
-    const ask = S.noSheet || S.askSheet, err = !ask && S.err && !S.models.length;
+    // 시트 링크 · 시트 오류 안내는 시트 화면에서만 (반품 · 교환 화면은 시트 없이도 보여서 가리지 않음 — 한눈에 보기의 일지 칸에 따로 적음)
+    const sheetView = !isCView(V.view);
+    const ask = S.askSheet || (S.noSheet && sheetView), err = !ask && sheetView && S.err && !S.models.length;
     const box = $('msg');
     box.hidden = !ask && !err;
     if (ask) {
@@ -1106,7 +1452,8 @@
     if (err) box.innerHTML = `<b>구글시트를 읽지 못했어요</b>${S.err === 'login' ? "시트 공유가 '링크가 있는 모든 사용자 · 뷰어'인지 확인해 주세요." : '인터넷 연결을 확인하고 다시 읽어 주세요.'}<br><button type="button" id="msgRetry">다시 읽기</button>`;
   }
   const sameObj = (a, b) => a && b && a.kind === b.kind && (a.kind === 'case' ? a.gid === b.gid && a.r === b.r && a.type === b.type && a.reason === b.reason && a.date === b.date && a.src === b.src
-    : a.kind === 'defect' ? a.gid === b.gid && a.r === b.r : a.kind === 'code' ? a.code === b.code : a.kind === 'slot' ? a.gid === b.gid && a.r === b.r : false);
+    : a.kind === 'defect' ? a.gid === b.gid && a.r === b.r : a.kind === 'code' ? a.code === b.code : a.kind === 'slot' ? a.gid === b.gid && a.r === b.r
+    : a.kind === 'claim' ? a.id === b.id : a.kind === 'prod' ? a.key === b.key : false);
   function curGid() {
     const D = S.D;
     if (!D) return '';
@@ -1125,23 +1472,40 @@
       h.push(`<button type="button" class="nav-item${on ? ' on' : ''}" data-v="${esc(key)}">${o.color ? `<i class="dot" style="background:${o.color}"></i>` : `<span class="ic">${o.ic || '·'}</span>`}<span class="nm">${esc(label)}</span>${o.n != null && o.n !== '' ? `<span class="nd${o.warn ? ' warn' : ''}">${esc(o.n)}</span>` : ''}</button>`);
     };
     const sec = t => h.push(`<div class="nav-sec">${esc(t)}</div>`);
-    sec('개요');
-    item('dash', '대시보드', {ic: '📊'});
+    // 1) 반품 · 교환 — 모든 플랫폼 · 공홈 자동 수집 (예전 오피스 '↩️ 반품·교환 분석')
+    sec('반품 · 교환 (자동 수집)');
+    let nAll = '', nOps = '', warnOps = false, nRep = '';
+    if (C.data) {
+      nAll = fmt(cRows(P.from, P.to).length);
+      const op = cOpen();
+      nOps = op.length ? fmt(op.length) : ''; warnOps = op.some(x => cAge(x) >= LATE_DAYS);
+      const rep = cProducts().filter(x => x.co >= REPEAT_CO).length;
+      nRep = rep ? '⚠ ' + rep : '';
+    }
+    item('dash', '한눈에 보기', {ic: '📊'});
+    item('c:reason', '사유 · 채널', {ic: '🧭'});
+    item('c:prod', '상품 분석', {ic: '📦', n: nRep, warn: !!nRep});
+    item('c:ops', '처리 현황', {ic: '⏳', n: nOps, warn: warnOps});
+    item('c:list', '반품 · 교환 목록', {ic: '📋', n: nAll});
+    // 2) CS 직원이 매일 적는 구글시트
     if (D) {
       const cnt = b => D.cases.filter(c => inP(c.date) && (!b || c.brand === b) && (c.type === '반품' || c.type === '교환')).reduce((a, c) => a + c.n, 0);
       const t = today();
-      sec('데일리 일지 · 반품 · 교환');
-      item('log', '전체 브랜드', {ic: '📋', n: cnt('')});
+      sec('CS 데일리 일지 (구글시트)');
+      item('log', '전체 브랜드', {ic: '📝', n: cnt('')});
       D.daily.forEach(x => {
         const todaySlots = D.slots.filter(s => s.brand === x.brand.id && s.date === t && !s.old);
         const miss = todaySlots.length && todaySlots.some(s => !s.filled);
         item('log:' + x.brand.id, x.brand.name, {color: x.brand.color, n: miss ? '미입력' : cnt(x.brand.id), warn: miss});
       });
-      if (D.defects.length) { sec('불량 · 재발송'); D.defects.forEach(df => item('defect:' + df.gid, df.name.replace(/_/g, ' '), {ic: '🧷', n: df.rows.length})); }
-      if (D.reports.length) { sec('반품 분석 (시트)'); D.reports.forEach(m => item('tab:' + m.gid, m.brand ? `${m.brand.name} 반품 분석` : m.name, m.brand ? {color: m.brand.color} : {ic: '📈'})); }
+      if (D.defects.length) { sec('불량 · 재발송 (구글시트)'); D.defects.forEach(df => item('defect:' + df.gid, df.name.replace(/_/g, ' '), {ic: '🧷', n: df.rows.length})); }
+      if (D.reports.length) { sec('반품 분석 (구글시트)'); D.reports.forEach(m => item('tab:' + m.gid, m.brand ? `${m.brand.name} 반품 분석` : m.name, m.brand ? {color: m.brand.color} : {ic: '📈'})); }
       sec('VOC 기준 · 자료');
       item('codes', 'VOC 코드표', {ic: '📖', n: CODES.length || ''});
       if (D.photos.length) item('photos', '시트 사진', {ic: '📷', n: D.photos.length});
+    } else {
+      sec('CS 데일리 일지 (구글시트)');
+      item('log', S.noSheet ? '시트 링크 필요' : S.err && !S.models.length ? '시트를 못 읽음' : '불러오는 중…', {ic: '📝'});
     }
     $('nav').innerHTML = h.join('');
   }
@@ -1156,10 +1520,14 @@
     $('tools').innerHTML = tools.join('');
     const fp = [];
     if (V.date && o.filters) fp.push(`<span class="fpill">${esc(dlabel(V.date))}<button type="button" data-clear="date" aria-label="날짜 풀기">✕</button></span>`);
+    if (V.cr && o.cfilters) fp.push(`<span class="fpill">사유 · ${esc(rsOf(V.cr).l)}<button type="button" data-clear="cr" aria-label="사유 풀기">✕</button></span>`);
+    if (o.upd) fp.push(`<span class="upd">${esc(o.upd)}</span>`);
     $('fpills').innerHTML = fp.join(' ');
   }
+  // 숫자 칸 — v 값 · u 단위 · l 이름 · d 아래 작은 줄(▲▼ 비교 · 풀이, dc 'up' = 빨강) · go 누르면 · on 고른 것
   function kpis(list) {
-    $('kpis').innerHTML = list.map(k => `<div class="kpi${k.cls ? ' ' + k.cls : ''}${k.go ? ' click' : ''}${k.on ? ' on' : ''}"${k.go ? ` data-go='${esc(JSON.stringify(k.go))}' role="button" tabindex="0"` : ''} title="${esc(k.tip || '')}"><b>${k.v}${k.u ? `<small>${k.u}</small>` : ''}</b><span>${esc(k.l)}</span></div>`).join('');
+    $('kpis').className = 'kpis' + (list.some(k => k.d) ? ' tall' : '');
+    $('kpis').innerHTML = list.map(k => `<div class="kpi${k.cls ? ' ' + k.cls : ''}${k.go ? ' click' : ''}${k.on ? ' on' : ''}"${k.go ? ` data-go='${esc(JSON.stringify(k.go))}' role="button" tabindex="0"` : ''} title="${esc(k.tip || '')}"><b>${k.v}${k.u ? `<small>${k.u}</small>` : ''}</b><span>${esc(k.l)}</span>${k.d ? `<i${k.dc ? ` class="${k.dc}"` : ''}>${esc(k.d)}</i>` : ''}</div>`).join('');
   }
   function alertBox(html, info) {
     const a = $('alert');
@@ -1225,6 +1593,7 @@
   function drawTable(cols, rows, o) {
     o = o || {};
     S.list = rows;
+    S.drawn = null;
     const cells = rows.map(r => cols.map(c => c.get(r)));
     if (V.sort) {
       const j = cols.findIndex(c => c.k === V.sort.k);
@@ -1257,54 +1626,214 @@
     h += '</tbody>';
     if (o.foot && S.list.length) h += `<tfoot><tr>${cols.map((c, j) => `<td${c.num ? ' class="r"' : ''}>${j === 0 ? '<span class="ft">합계</span>' : (o.foot(c, S.list) || '')}</td>`).join('')}</tr></tfoot>`;
     grid.innerHTML = h + '</table>';
+    S.drawn = S.list;   // 상세 창이 표 줄을 짚을 때 — 같은 목록일 때만 (다른 목록이면 엉뚱한 줄에 불이 들어옴)
   }
 
-  /* ── 📊 대시보드 ── */
+  /* ── 반품 · 교환 화면 공통 ── */
+  const card = (title, sub, body, o) => `<section class="card${o && o.wide ? ' wide' : ''}"><div class="card-h"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}${o && o.more ? o.more : ''}</div>${body}</section>`;
+  const moreBtn = (label, go) => `<button type="button" class="more" data-go='${esc(JSON.stringify(go))}'>${esc(label)}</button>`;
+  const FLEGEND = `<div class="legend">${['co', 'cu', 'na'].map(f => `<span><i style="background:${F_C[f]}"></i>${F_L[f]}</span>`).join('')}</div>`;
+  // 머리 — 기간 · 구분(전체 · 반품 · 교환) · 채널 + 브랜드 칩 (네 화면 다 같은 거르기)
+  function cHead(title, o) {
+    o = o || {};
+    const tools = `<div class="parts" role="group" aria-label="반품 · 교환">${[['', '반품 · 교환'], ['return', '반품'], ['exchange', '교환']].map(([k, l]) => `<button type="button" data-ct="${k}" class="${V.ct === k ? 'on' : ''}">${l}</button>`).join('')}</div>`
+      + `<select class="chsel${V.cc ? ' on' : ''}" id="cChSel" aria-label="채널"><option value="">전체 채널</option>${CH.map(([k, l]) => `<option value="${k}"${V.cc === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`
+      + (o.copy ? '<button type="button" class="etog" id="cCopy" title="지금 보는 기간 · 브랜드 · 채널 요약을 글로 복사 (카톡 · 메모에 붙여 넣기)">📋 요약 복사</button>' : '');
+    head(title, {date: P.l, period: true, tools, cfilters: o.cfilters, upd: C.data ? `${kstHm(C.data.updated_at)} 기준 · 30분마다 자동 수집` : ''});
+    const cnt = new Map();
+    let all = 0;
+    for (const l of cRows(P.from, P.to, {b: ''})) { all++; cnt.set(l.brand, (cnt.get(l.brand) || 0) + 1); }
+    $('chips').hidden = false;
+    $('chips').innerHTML = [`<button type="button" class="chip${!V.cb ? ' on' : ''}" data-cb="">전체 브랜드 <em>${fmt(all)}</em></button>`]
+      .concat(CB.map(b => `<button type="button" class="chip${V.cb === b.id ? ' on' : ''}" data-cb="${esc(b.id)}"><i style="background:${b.color}"></i>${esc(b.name)} <em>${fmt(cnt.get(b.id) || 0)}</em></button>`)).join('');
+    const a = cAlert();
+    if (a) alertBox(a);
+  }
+  // 못 받은 출처 · 표에 없는 플레이오토 계정 · 멈춘 수집
+  function cAlert() {
+    const d = C.data;
+    if (!d) return '';
+    const name = k => ({playauto1: '플레이오토 1번 아이디', playauto2: '플레이오토 2번 아이디'}[k]
+      || (k.startsWith('home:') ? `공홈 ${bName(k.slice(5))}` : k.startsWith('zigzag:') ? `지그재그 ${bName(k.slice(7))}` : k.startsWith('ably:') ? `에이블리 ${bName(k.slice(5))} 사유` : k));
+    const L = Object.entries(d.sources || {}).filter(([, s]) => s && s.ok === false)
+      .map(([k, s]) => `<b>${esc(name(k))}</b> — ${s.at ? `${esc(kstHm(s.at))} 이후 새로 못 받았어요` : '아직 못 받았어요'}${s.note ? ` (${esc(s.note)})` : ''}`);
+    for (const u of (d.unmapped || [])) L.push(`플레이오토 ${esc(u.login)}번 아이디에 표에 없는 계정이 있어요: <b>${esc(u.nick || u.shop_cd)}</b> (${esc(u.n)}건) — 수집기 계정 표에 넣어야 반품 · 교환이 잡혀요`);
+    if (Date.now() - Date.parse(d.updated_at || '') > 3 * 3600e3) L.unshift(`<b>자동 수집이 멈춘 것 같아요</b> — 마지막 ${esc(kstHm(d.updated_at))} (평소 30분마다)`);
+    if (C.salesErr) L.push(`판매 수량을 못 불러와 반품률이 비어요 (${esc(C.salesErr)})`);
+    return L.length ? L.join('<br>') + '<br><span style="opacity:.8">못 받은 곳은 지난번까지 받은 줄을 그대로 보여 줘요</span>' : '';
+  }
+  function cNoData() {
+    const msg = C.off ? '반품 · 교환 자동 수집은 오피스 안(CS팀 화면 맨 아래 VOC 전산)에서 열면 보여요'
+      : C.err ? `반품 · 교환을 못 불러왔어요 (${C.err}) — 위 상태 단추를 눌러 다시 읽어 주세요` : '반품 · 교환을 불러오는 중…';
+    return card('반품 · 교환', '', `<div class="card-e">${esc(msg)}</div>`, {wide: true});
+  }
+  function cNoDataGrid() { grid.classList.add('bd-mode'); grid.innerHTML = '<div class="board">' + cNoData() + '</div>'; }
+  const fDot = k => `<i class="fd ${fOf(k)}"></i>`;
+  const stagePill = (l, warn) => `<span class="stage${OPEN.has(l.stage) ? (warn && cAge(l) >= LATE_DAYS ? ' late' : ' open') : ''}">${esc(STAGE[l.stage] || l.stage)}</span>`;
+  const ageTxt = l => { const a = cAge(l); return a ? `${a}일째` : '오늘 접수'; };
+  function rateCell(rate, max, sold) {
+    if (rate == null) return '<span class="z" title="판매 기록이 없거나 기간보다 늦게 시작">—</span>';
+    if (sold < MIN_SOLD) return `<span class="mut" title="판매 ${fmt(sold)}개뿐이라 참고만">${pctR(rate)}</span>`;
+    const w = max > 0 ? Math.min(100, rate / max * 100) : 0;
+    return `<span class="rb${rate >= 0.05 ? ' hi' : ''}" title="반품률 ${pctR(rate, 2)} · 판매 ${fmt(sold)}개"><b><i style="width:${w.toFixed(1)}%"></i></b><span>${pctR(rate)}</span></span>`;
+  }
+  function mixBar(s) {
+    const t = s.co + s.cu + s.na;
+    if (!t) return '<span class="z">—</span>';
+    const w = v => (v / t * 100).toFixed(1);
+    return `<div class="mix" title="회사 사유 ${s.co} · 고객 사유 ${s.cu} · 사유 없음 · 기타 ${s.na}"><i class="co" style="width:${w(s.co)}%"></i><i class="cu" style="width:${w(s.cu)}%"></i><i class="na" style="width:${w(s.na)}%"></i></div>`;
+  }
+  // 비교 기준 — 브랜드를 고르면 그 브랜드 안 채널별, 채널만 고르면 그 채널 안 브랜드별, 둘 다 안 고르면 버튼으로
+  const cByBrand = () => !V.cb && (V.cc ? true : V.cmp !== 'channel');
+  const cmpTog = () => !V.cb && !V.cc ? `<div class="parts" role="group" aria-label="비교 기준">${[['brand', '브랜드별'], ['channel', '채널별']].map(([k, l]) => `<button type="button" data-cmp="${k}" class="${(V.cmp === 'channel' ? 'channel' : 'brand') === k ? 'on' : ''}">${l}</button>`).join('')}</div>` : '';
+  function cGroups(fn) {
+    const out = [];
+    if (cByBrand()) for (const b of CB) { const g = fn({b: b.id}, b.id, V.cc); if (g) out.push(Object.assign({label: b.name, dot: b.color, attr: `data-cb="${esc(b.id)}"`}, g)); }
+    else for (const [ch, label] of CH) { if (V.cc && ch !== V.cc) continue; const g = fn({ch}, V.cb, ch); if (g) out.push(Object.assign({label, attr: `data-cc="${ch}"`}, g)); }
+    return out;
+  }
+
+  /* ── 📊 한눈에 보기 — 숫자 6칸 · 브랜드(채널)별 비교 · 추이 · CS 일지 입력 현황 ──
+     (시트로 만든 예전 대시보드의 브랜드별 · 사유 분류 · 많이 나온 상품 · 최근 회사 사유 · 쇼핑몰별은 자동 수집과 겹쳐 뺐다 — 사유는 '사유 · 채널', 상품은 '상품 분석') */
   function renderDash() {
-    const D = S.D, t = today();
-    const cs = D.cases.filter(c => inP(c.date));
-    const ret = sumN(cs, c => c.type === '반품'), exc = sumN(cs, c => c.type === '교환'), etc = sumN(cs, c => c.type !== '반품' && c.type !== '교환');
-    const all = ret + exc + etc, co = sumN(cs, c => c.fault === 'co'), q = sumN(cs, c => c.cat === 'Q'), nocat = sumN(cs, c => !c.cat);
-    // 오늘 입력 현황 — 오늘 날짜 블록이 있는 브랜드 중 칸을 다 채운 곳
+    cHead('반품 · 교환 한눈에 보기', {copy: true});
+    grid.classList.add('bd-mode');
+    let h = '<div class="board">';
+    if (!C.data) h += cNoData();
+    else {
+      const cur = cRows(P.from, P.to), prev = cRows(P.pfrom, P.pto);
+      cKpis(cur, prev);
+      h += cCompareCard() + cTrendCard();
+    }
+    const j = journalCard();
+    h += j.html;
+    if (j.alert) { const a = $('alert'); alertBox((a.hidden ? '' : a.querySelector('div').innerHTML + '<br>') + j.alert); }
+    if (C.data) h += card('숫자 기준', '', `<div class="note">
+      <b>어디서 오나요</b> — 공홈(자사몰 · 네이버페이)은 식스샵 프로, 지그재그는 파트너센터, 그 밖(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡)은 플레이오토에서 30분마다 자동으로 받아요.<br>
+      <b>반품률</b> = 반품 · 교환 수량 ÷ 같은 기간 판매 수량 (결제일 기준) — 판매 기록이 있는 브랜드 · 채널만, 기록이 시작된 날부터 (공홈 코페리 10/20 · 아페티 10/22 · 야르 11/2 · 식스에이 11/3). 상품별 판매는 최근 92일만 있어요.<br>
+      <b>건</b> = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · <b>날짜</b> = 접수일 (공홈의 지난 완료 건은 처리일) · <b>금액</b> = 반품한 상품의 결제 금액 (배송비 빼고) · 철회 · 거부는 빼요.<br>
+      <b>사유 없음</b> — 공홈은 11/13 전에 끝난 반품, W컨셉은 몰이 사유를 주지 않아요. 고객 이름 · 연락처 · 주소 · 환불 계좌는 받지 않고, 고객 글 속 전화번호 · 이메일 · 계좌번호는 가려요.<br>
+      <b>CS 일지</b>(왼쪽 메뉴 아래 · 구글시트)는 CS 직원이 손으로 적는 기록이라 자동 수집과 숫자가 다를 수 있어요 — 사유 글 · 처리 · 사진은 일지에.</div>`, {wide: true});
+    grid.innerHTML = h + '</div>';
+    S.list = [];
+  }
+  function cKpis(cur, prev) {
+    const ret = cur.filter(l => l.type === 'return'), exc = cur.filter(l => l.type === 'exchange');
+    const sold = cSold(P.from, P.to, V.cb, V.cc), psold = cSold(P.pfrom, P.pto, V.cb, V.cc), rate = cRate(cur, sold), rq = cRateQty(cur, sold);
+    // 비교는 두 기간 모두 기록이 있는 같은 줄끼리 (공홈처럼 중간에 생긴 줄 때문에 늘어 보이지 않게)
+    const same = [...sold.keys].filter(k => psold.keys.has(k));
+    const rNow = same.length ? cRate(cur, cSoldFor(P.from, P.to, same)) : null, rPrev = same.length ? cRate(prev, cSoldFor(P.pfrom, P.pto, same)) : null;
+    const co = cur.filter(l => fOf(l.reason) === 'co'), cu = cur.filter(l => fOf(l.reason) === 'cu'), known = co.length + cu.length, coPct = known ? co.length / known : null;
+    const coTop = countBy(co, l => l.reason).slice(0, 3).map(([k, n]) => `${rsOf(k).s} ${n}`).join(' · ');
+    const amt = ret.reduce((a, l) => a + (Number(l.amount) || 0), 0), amtS = won(amt), amtU = (amtS.match(/(억원|만원|원)$/) || ['원'])[0];
+    const open = cOpen(), old = open.filter(l => cAge(l) >= LATE_DAYS).length, held = open.filter(l => l.stage === 'held').length;
+    const days = cur.filter(l => l.stage === 'done' && l.requested_at && l.done_at).map(l => Math.max(0, diffD(String(l.done_at).slice(0, 10), String(l.requested_at).slice(0, 10))));
+    const avg = days.length ? days.reduce((a, b) => a + b, 0) / days.length : null, med = median(days);
+    const no = cNoCompare();
+    const dN = no ? {d: '앞 기간과 비교 안 함'} : (cur.length || prev.length) ? (d => ({d: `${d > 0 ? '▲ ' + fmt(d) : d < 0 ? '▼ ' + fmt(-d) : '변화 없음'} · ${P.pl} ${fmt(prev.length)}건`, dc: d > 0 ? 'up' : ''}))(cur.length - prev.length) : {};
+    const dd = rNow != null && rPrev != null ? (rNow - rPrev) * 100 : null;
+    const dR = dd == null ? {d: rNow != null ? '앞 기간 판매 기록이 없어 비교 안 함' : ''} : {d: `${Math.abs(dd) < 0.05 ? '변화 없음' : (dd > 0 ? '▲ ' : '▼ ') + Math.abs(dd).toFixed(1) + '%p'} · ${P.pl} ${pctR(rPrev)}`, dc: dd >= 0.05 ? 'up' : ''};
+    kpis([
+      Object.assign({v: fmt(cur.length), u: '건', l: `반품 ${fmt(ret.length)} · 교환 ${fmt(exc.length)}`, go: {view: 'c:list'},
+        tip: `건 = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · 주문으로는 ${fmt(new Set(cur.map(l => l.channel + '|' + l.order_no)).size)}개${no ? ' · ' + no : ''} — 누르면 목록`}, dN),
+      Object.assign({v: rate == null ? '—' : (rate * 100).toFixed(1), u: rate == null ? '' : '%', l: sold.qty ? `반품률 · 판매 ${fmt(sold.qty)}개 중 ${fmt(rq)}` : '반품률 · 판매 기록 없음', cls: rate != null && rate >= 0.05 ? 'red' : '',
+        tip: `반품 · 교환 수량 ÷ 같은 기간 판매 수량 (결제일 기준, 반품된 것도 판매에 들어 있음) · 판매 기록이 있는 브랜드 · 채널만${sold.missing.length || sold.partial.length ? ' · ' + cMissing(sold) : ''}`}, dR),
+      {v: coPct == null ? '—' : Math.round(coPct * 100), u: coPct == null ? '' : '%', l: `회사 사유 ${fmt(co.length)}건`, d: coTop || '사유가 있는 것 중 회사 탓', cls: coPct != null && coPct >= 0.3 ? 'red' : '', go: {view: 'c:reason'},
+        tip: `회사 사유 ${co.length}건 · 고객 사유 ${cu.length}건 (사유 없음 · 기타 ${cur.length - known}건은 빼고) · 회사 사유 = 불량 · 오배송 · 정보 다름 · 배송 · 품절 · 판매자 귀책 — 누르면 사유 · 채널`},
+      {v: amtS.replace(/(억원|만원|원)$/, ''), u: amtU, l: '반품 금액', d: ret.length ? `건당 평균 ${won(amt / ret.length)}` : '반품 없음', tip: '반품한 상품의 결제 금액 합계 (배송비 빼고, 교환은 빼고)'},
+      {v: fmt(open.length), u: '건', l: '처리 중', d: `${LATE_DAYS}일 넘음 ${fmt(old)}${held ? ` · 보류 ${held}` : ''}`, dc: old ? 'up' : '', cls: old ? 'red' : '', go: {view: 'c:ops'},
+        tip: '접수 30일 안에 아직 접수 · 회수 중 · 회수 완료 · 보류인 것 (기간과 상관없이) — 누르면 처리 현황'},
+      {v: avg == null ? '—' : avg.toFixed(1), u: avg == null ? '' : '일', l: '처리 기간 (평균)', d: med == null ? '완료된 것 없음' : `중앙값 ${med.toFixed(med % 1 ? 1 : 0)}일 · 완료 ${fmt(days.length)}건`, tip: '접수일 → 완료일 (이 기간에 접수돼 끝난 것)'},
+    ]);
+  }
+  function cCompareCard() {
+    const P0 = P, what = cByBrand() ? '브랜드' : '채널';
+    const rows = cGroups((o, b, ch) => { const r = cRows(P0.from, P0.to, o), sold = cSold(P0.from, P0.to, b, ch); return r.length || sold.qty ? {s: cStat(r, sold)} : null; });
+    rows.sort((a, b) => b.s.n - a.s.n || (b.s.sold || 0) - (a.s.sold || 0));
+    const scope = V.cb ? ` · ${esc(bName(V.cb))}` : V.cc ? ` · ${esc(chL(V.cc))}` : '';
+    const title = `${what}별 비교${scope}`;
+    if (!rows.length) return card(title, '', '<div class="card-e">이 기간에는 반품 · 교환도 판매 기록도 없어요</div>', {wide: true, more: cmpTog()});
+    const all = cStat(cRows(P.from, P.to), cSold(P.from, P.to, V.cb, V.cc)), maxRate = Math.max(0, ...rows.map(r => r.s.sold >= MIN_SOLD ? r.s.rate || 0 : 0));
+    const tr = (r, tot) => {
+      const s = r.s, cls = [r.attr ? 'click' : '', tot ? 'tot' : ''].filter(Boolean).join(' ');
+      return `<tr${cls ? ` class="${cls}"` : ''}${r.attr ? ' ' + r.attr + ` title="누르면 ${esc(r.label)}만"` : ''}>`
+        + `<td class="b">${r.dot ? `<i class="bdot" style="background:${r.dot}"></i>` : ''}${esc(r.label)}</td>`
+        + `<td class="n">${s.sold ? fmt(s.sold) : '<span class="z">—</span>'}</td>`
+        + `<td class="n">${s.ret ? `<b>${fmt(s.ret)}</b>` : '<span class="z">0</span>'}</td><td class="n">${s.exc ? `<b>${fmt(s.exc)}</b>` : '<span class="z">0</span>'}</td>`
+        + `<td class="n">${rateCell(s.rate, maxRate, s.sold)}</td>`
+        + `<td class="n">${s.coPct == null ? '<span class="z">—</span>' : `<b${s.coPct >= 0.3 ? ' class="hot"' : ''}>${pctR(s.coPct, 0)}</b>`}</td>`
+        + `<td style="min-width:110px">${mixBar(s)}</td>`
+        + `<td>${s.top ? `${fDot(s.top)}${esc(rsOf(s.top).l)} <span class="sub">${s.topN}</span>` : '<span class="z">—</span>'}</td>`
+        + `<td class="n">${s.amt ? esc(won(s.amt)) : '<span class="z">—</span>'}</td>`
+        + `<td class="n">${s.open ? `<b>${s.open}</b>` : '<span class="z">0</span>'}</td></tr>`;
+    };
+    const body = `<div class="card-b"><table class="mt"><thead><tr><th>${what}</th><th class="n">판매</th><th class="n">반품</th><th class="n">교환</th><th class="n">반품률</th><th class="n">회사 사유</th><th>사유 구성</th><th>가장 많은 사유</th><th class="n">반품 금액</th><th class="n">처리 중</th></tr></thead><tbody>`
+      + rows.map(r => tr(r)).join('') + (rows.length > 1 ? tr({label: '합계', s: all}, true) : '') + '</tbody></table></div>'
+      + FLEGEND.replace('<div class="legend">', '<div class="legend" style="padding-top:10px">')
+      + (all.soldInfo.missing.length || all.soldInfo.partial.length ? `<div class="note" style="padding-top:0">${esc(cMissing(all.soldInfo))}</div>` : '');
+    return card(title, `반품률 = 반품 · 교환 수량 ÷ 판매 수량 · 줄을 누르면 그 ${what}만`, body, {wide: true, more: cmpTog()});
+  }
+  function cTrendCard() {
+    const B = cBuckets(), n = B.list.length, G = {co: [], cu: [], na: []}, rate = [];
+    for (const b of B.list) {
+      const rows = cRows(b.from, b.to);
+      ['co', 'cu', 'na'].forEach(k => G[k].push(rows.filter(l => fOf(l.reason) === k).length));
+      const sold = cSold(b.from, b.to, V.cb, V.cc);
+      rate.push(sold.qty >= 5 ? cRate(rows, sold) : null);   // 판매가 적은 칸은 흔들려서 비움
+    }
+    const tot = B.list.map((b, i) => G.co[i] + G.cu[i] + G.na[i]), sum = tot.reduce((a, b) => a + b, 0);
+    const rs = rate.filter(r => r != null), avgR = rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null;
+    const W = Math.max(320, Math.min(1400, Math.round((grid.clientWidth || 900) - 70))), L = 40, R = 10, T = 22, H1 = W < 560 ? 140 : 160, GAP = 36, H2 = W < 560 ? 76 : 88, B0 = 22;
+    const H = T + H1 + GAP + H2 + B0, iw = W - L - R;
+    const maxT = Math.max(0, ...tot), step = niceStep(maxT), top = Math.max(step * 2, Math.ceil(maxT / step) * step);
+    const y = v => T + H1 - (v / top) * H1;
+    let g = `<text class="pt" x="${L}" y="${T - 9}">건수</text>`;
+    for (let v = 0; v <= top + 1e-9; v += step) { const yy = y(v).toFixed(1); g += `<line class="gl" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text x="${L - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end">${v}</text>`; }
+    const sw = iw / n, bw = Math.min(28, Math.max(3, sw * 0.62)), every = Math.max(1, Math.ceil(n / (W < 560 ? 6 : 12)));
+    const t2 = T + H1 + GAP, maxR = Math.max(0.01, ...rs), rstep = maxR <= 0.02 ? 0.005 : maxR <= 0.05 ? 0.01 : maxR <= 0.1 ? 0.02 : maxR <= 0.3 ? 0.05 : 0.1, rtop = Math.ceil(maxR / rstep) * rstep;
+    const y2 = v => t2 + H2 - (v / rtop) * H2;
+    for (let v = 0; v <= rtop + 1e-9; v += rstep) { const yy = y2(v).toFixed(1); g += `<line class="gl" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text x="${L - 6}" y="${(+yy + 3.5).toFixed(1)}" text-anchor="end">${pctR(v, v < 0.01 ? 1 : 0)}</text>`; }
+    g += `<text class="pt" x="${L}" y="${t2 - 9}">반품률${rs.length ? '' : ' — 판매 기록이 없어 비어요'}</text>`;
+    let path = '', dots = '';
+    B.list.forEach((b, i) => {
+      const cx = L + sw * i + sw / 2, x = cx - bw / 2, keys = ['co', 'cu', 'na'];
+      const lastOn = keys.reduce((a, k, j) => G[k][i] > 0 ? j : a, -1);
+      let seg = '', cum = 0, drawn = false;
+      keys.forEach((k, j) => {
+        const v = G[k][i];
+        if (!v) return;
+        const bottom = y(cum) - (drawn ? 2 : 0);
+        cum += v;
+        const hh = Math.max(1, bottom - y(cum));
+        seg += `<path class="${k}" d="${colPath(x, bottom - hh, bw, hh, j === lastOn ? 4 : 0)}"/>`;
+        drawn = true;
+      });
+      const r = rate[i];
+      if (r != null) { const yy = y2(r).toFixed(1); path += (path && rate[i - 1] != null ? 'L' : 'M') + cx.toFixed(1) + ',' + yy; dots += `<circle class="rd" cx="${cx.toFixed(1)}" cy="${yy}" r="${n > 40 ? 1.6 : 2.6}"/>`; }
+      const tip = `${b.tip} · ${tot[i]}건 — 회사 사유 ${G.co[i]} · 고객 사유 ${G.cu[i]} · 없음 · 기타 ${G.na[i]}${r != null ? ` · 반품률 ${pctR(r, 2)}` : ''}`;
+      g += `<g class="col"><title>${esc(tip)}</title><rect class="hit" x="${(L + sw * i).toFixed(1)}" y="${T}" width="${sw.toFixed(1)}" height="${H1 + GAP + H2}"/>${seg}</g>`;
+      if ((n - 1 - i) % every === 0) g += `<text x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="middle">${b.label}</text>`;
+    });
+    g += `<line class="ax" x1="${L}" x2="${W - R}" y1="${T + H1}" y2="${T + H1}"/><line class="ax" x1="${L}" x2="${W - R}" y1="${t2 + H2}" y2="${t2 + H2}"/>`;
+    if (path) g += `<path class="rl" d="${path}"/>${dots}`;
+    const sub = `${md(B.list[0].from)} ~ ${md(B.list[n - 1].to)} · ${fmt(sum)}건 · ${B.unit} 평균 ${(sum / n).toFixed(1)}건${avgR != null ? ` · 반품률 ${B.unit} 평균 ${pctR(avgR)}` : ''} · 막대에 마우스를 올리면 숫자`;
+    const legend = FLEGEND.replace('</div>', '<span><i style="background:#0f172a;width:12px;height:2px;border-radius:0;vertical-align:3px"></i>반품률</span></div>');
+    return card(`추이 · ${B.unit} 단위`, sub, `<div style="padding:8px 12px 0"><svg class="trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${n}${B.unit} 반품 · 교환 건수와 반품률`)}">${g}</svg></div>${legend}`, {wide: true});
+  }
+  // CS 일지 입력 현황 — 구글시트 데일리 탭에 날짜 · 브랜드마다 숫자를 적었는지 (시트에만 있는 것이라 한눈에 보기에 남김)
+  function journalCard() {
+    const D = S.D, title = 'CS 일지 입력 현황 <span class="mut">구글시트</span>';
+    if (!D) return {html: card(title, '', `<div class="card-e">${S.noSheet ? "구글시트 링크가 없어요 — 왼쪽 아래 '시트 링크 바꾸기'로 넣어 주세요" : S.err && !S.models.length ? '구글시트를 읽지 못했어요 — 위 상태 단추를 눌러 다시 읽어 주세요' : '구글시트 불러오는 중…'}</div>`, {wide: true})};
+    const t = today();
     const tb = D.daily.map(x => {
       const sl = D.slots.filter(s => s.brand === x.brand.id && s.date === t && !s.old);
       return {b: x.brand, has: sl.length > 0, done: sl.filter(s => s.filled).length, tot: sl.length};
     });
     const withBlock = tb.filter(x => x.has), doneB = withBlock.filter(x => x.done === x.tot).length;
-    head('대시보드', {date: P.l, period: true});
-    kpis([
-      {v: fmt(ret), u: '건', l: '반품', cls: 'red', go: {view: 'log', type: '반품'}},
-      {v: fmt(exc), u: '건', l: '교환', cls: 'blue', go: {view: 'log', type: '교환'}},
-      {v: fmt(co), u: '건', l: `회사 사유 · ${pct(co, all)}`, cls: co ? 'amber' : '', go: {view: 'log', cat: 'co'}, tip: '불량 · 사양 · 상품 정보 · 배송 (VOC Q·S·I·D)'},
-      {v: fmt(q), u: '건', l: '제품 불량', cls: q ? 'red' : '', go: {view: 'log', cat: 'Q'}},
-      {v: fmt(nocat), u: '건', l: '사유 안 적음', go: {view: 'log', cat: '-'}, tip: '숫자만 있고 사유 칸이 빈 건'},
-      {v: withBlock.length ? `${doneB}/${withBlock.length}` : '—', l: `오늘 입력 완료 (${md(t)})`, cls: withBlock.length && doneB < withBlock.length ? 'amber' : ''},
-    ]);
-    const miss = tb.filter(x => x.has && x.done < x.tot);
-    const noBlock = tb.filter(x => !x.has);
-    if (miss.length) alertBox(`오늘(${dlabel(t)}) 아직 숫자를 안 적은 쇼핑몰이 있어요 — ` + miss.map(x => `<b>${esc(x.b.name)}</b> ${x.tot - x.done}곳`).join(' · ') + (noBlock.length ? ` · 오늘 칸이 아직 없는 브랜드: ${noBlock.map(x => esc(x.b.name)).join(' · ')}` : ''));
-    grid.classList.add('bd-mode');
-    const card = (title, sub, body, o) => `<section class="card${o && o.wide ? ' wide' : ''}"><div class="card-h"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}${o && o.more ? o.more : ''}</div>${body}</section>`;
-    let h = '<div class="board">';
-
-    // 1) 브랜드별
-    let bt = '<div class="card-b"><table class="mt"><thead><tr><th>브랜드</th><th>반품</th><th>교환</th><th>기타</th><th>회사 사유</th><th>불량</th><th>많은 사유</th><th>오늘 입력</th></tr></thead><tbody>';
-    D.daily.forEach(x => {
-      const a = cs.filter(c => c.brand === x.brand.id);
-      const r = sumN(a, c => c.type === '반품'), e = sumN(a, c => c.type === '교환'), o2 = sumN(a, c => c.type !== '반품' && c.type !== '교환');
-      const cc = sumN(a, c => c.fault === 'co'), qq = sumN(a, c => c.cat === 'Q');
-      const byCat = {};
-      a.forEach(c => { if (c.cat) byCat[c.cat] = (byCat[c.cat] || 0) + c.n; });
-      const top = Object.entries(byCat).sort((m, n) => n[1] - m[1])[0];
-      const st = tb.find(z => z.b.id === x.brand.id);
-      const stH = !st.has ? '<span class="sub">오늘 칸 없음</span>' : st.done === st.tot ? '<span class="ok">✓ 완료</span>' : `<span class="na">미입력 ${st.tot - st.done}곳</span>`;
-      bt += `<tr class="click" data-go='${esc(JSON.stringify({view: 'log:' + x.brand.id}))}'><td class="b">${bDot(x.brand.id)}${esc(x.brand.name)}</td><td>${r ? `<span class="rv">${r}</span>` : '<span class="z">0</span>'}</td><td>${e ? `<span class="ev">${e}</span>` : '<span class="z">0</span>'}</td><td>${o2 || '<span class="z">0</span>'}</td><td>${cc ? `<b>${cc}</b> <span class="sub">${pct(cc, r + e + o2)}</span>` : '<span class="z">0</span>'}</td><td>${qq ? `<span class="rv">${qq}</span>` : '<span class="z">0</span>'}</td><td>${top ? catTag(top[0]) + ` <span class="sub">${top[1]}</span>` : '<span class="z">—</span>'}</td><td>${stH}</td></tr>`;
-    });
-    bt += '</tbody></table></div>';
-    h += card('브랜드별', '누르면 그 브랜드 일지', bt, {wide: true});
-
-    // 2) 날짜 × 브랜드
-    const dates = D.dates.filter(d => inP(d)).slice(0, 21);
+    const miss = tb.filter(x => x.has && x.done < x.tot), noBlock = tb.filter(x => !x.has);
+    const alert = miss.length ? `오늘(${dlabel(t)}) CS 일지에 아직 숫자를 안 적은 쇼핑몰이 있어요 — ` + miss.map(x => `<b>${esc(x.b.name)}</b> ${x.tot - x.done}곳`).join(' · ') + (noBlock.length ? ` · 오늘 칸이 아직 없는 브랜드: ${noBlock.map(x => esc(x.b.name)).join(' · ')}` : '') : '';
+    const cs = D.cases.filter(c => inP(c.date));
+    const dates = D.dates.filter(d => inP(d)).slice(0, 14);
     let mx = '<div class="card-b"><table class="mt mx"><thead><tr><th class="sticky">날짜</th>' + D.daily.map(x => `<th>${bDot(x.brand.id)}${esc(x.brand.name)}</th>`).join('') + '<th>합계</th></tr></thead><tbody>';
     dates.forEach(d => {
       let tr = 0, te = 0;
@@ -1319,49 +1848,234 @@
         if (!filled.length) return `<td class="click" data-go='${go}'><span class="na">미입력</span></td>`;
         const part = filled.length < sl.length ? ` <span class="na" title="${sl.length - filled.length}곳 미입력">…</span>` : '';
         if (!r && !e) return `<td class="click" data-go='${go}'><span class="z">0</span>${part}</td>`;
-        return `<td class="click" data-go='${go}'>${r ? `<span class="rv">반 ${r}</span>` : ''}${r && e ? ' · ' : ''}${e ? `<span class="ev">교 ${e}</span>` : ''}${part}</td>`;
-      }).join('') + `<td class="b">${tr + te ? `${tr ? `<span class="rv">${tr}</span>` : '0'} · ${te ? `<span class="ev">${te}</span>` : '0'}` : '<span class="z">0</span>'}</td></tr>`;
+        return `<td class="click" data-go='${go}'>${r ? `반 ${r}` : ''}${r && e ? ' · ' : ''}${e ? `교 ${e}` : ''}${part}</td>`;
+      }).join('') + `<td class="b">${tr + te ? `${tr} · ${te}` : '<span class="z">0</span>'}</td></tr>`;
     });
     if (!dates.length) mx += `<tr><td colspan="${D.daily.length + 2}" class="sub">이 기간에 적힌 날이 없어요</td></tr>`;
     mx += '</tbody></table></div>';
-    h += card('날짜별 · 브랜드', '반 = 반품 · 교 = 교환 · 칸을 누르면 그날 일지', mx, {wide: true});
+    const st = withBlock.length ? `오늘 입력 ${doneB}/${withBlock.length}` : '오늘 칸 아직 없음';
+    return {alert, html: card(title, `${st} · 칸 = 그날 적은 반품 · 교환 (반 = 반품 · 교 = 교환) · 누르면 그날 일지`, mx, {wide: true, more: moreBtn('일지 전체 →', {view: 'log'})})};
+  }
 
-    // 3) 사유 분류 (VOC 대분류)
-    const byCat = {};
-    cs.forEach(c => { const k = c.cat || '-'; byCat[k] = (byCat[k] || 0) + c.n; });
-    const catRows = CAT_ORDER.filter(k => byCat[k]).map(k => [k, byCat[k]]).concat(byCat['-'] ? [['-', byCat['-']]] : []);
-    const maxC = Math.max(1, ...catRows.map(x => x[1]));
-    const bars = catRows.length ? '<div class="bars">' + catRows.map(([k, n]) => {
-      const c = k === '-' ? {l: '사유 안 적음', c: '#cbd5e1'} : CAT[k];
-      return `<button type="button" class="bar-row" data-go='${esc(JSON.stringify({view: 'log', cat: k}))}'><span class="bar-l"><i style="background:${c.c}"></i>${esc(c.l)}${k !== '-' ? ` <span class="sub" style="color:var(--text-4)">${k}</span>` : ''}</span><span class="bar-t"><span class="bar-f" style="display:block;width:${Math.round(n / maxC * 100)}%;background:${c.c}"></span></span><span class="bar-v">${n}건<small>${pct(n, all)}</small></span></button>`;
-    }).join('') + '</div><div class="legend"><span>사유 글로 VOC 코드를 추정해 묶었어요 · 오피스 VOC 기록과 같은 건은 확정 코드</span></div>' : '<div class="card-e">이 기간 기록이 없어요</div>';
-    h += card('사유 분류', 'VOC 대분류 · 누르면 그 사유만', bars);
+  /* ── 🧭 사유 · 채널 — 사유별 · 고객 목소리 · 사유 × 브랜드(채널) ── */
+  function renderCReason() {
+    cHead('사유 · 채널', {copy: true});
+    if (!C.data) { cNoDataGrid(); return; }
+    const cur = cRows(P.from, P.to);
+    const co = cur.filter(l => fOf(l.reason) === 'co'), cu = cur.filter(l => fOf(l.reason) === 'cu'), known = co.length + cu.length, na = cur.length - known;
+    kpis([
+      {v: known ? Math.round(co.length / known * 100) : '—', u: known ? '%' : '', l: `회사 사유 ${fmt(co.length)}건`, d: '불량 · 오배송 · 정보 다름 · 배송 · 품절', cls: known && co.length / known >= 0.3 ? 'red' : '', go: {view: 'c:list', cf: 'co'}, tip: '사유가 있는 것 중 회사 탓 — 누르면 목록'},
+      {v: fmt(cu.length), u: '건', l: '고객 사유', d: '변심 · 사이즈 · 색상 · 주문 실수', go: {view: 'c:list', cf: 'cu'}},
+      {v: fmt(na), u: '건', l: '사유 없음 · 기타', d: '몰이 사유를 안 준 것'},
+      {v: fmt(cur.filter(said).length), u: '건', l: '고객이 쓴 글', d: '아래 고객 목소리', go: {view: 'c:list', cf: 'memo'}},
+    ]);
+    grid.classList.add('bd-mode');
+    grid.innerHTML = '<div class="board">' + cReasonCard(cur) + cVoiceCard(cur) + cHeatCard() + '</div>';
+  }
+  function cReasonCard(cur) {
+    if (!cur.length) return card('사유별', '', '<div class="card-e">이 기간에는 반품 · 교환이 없어요</div>');
+    const by = rsOrder(countBy(cur, l => l.reason)), max = Math.max(...by.map(x => x[1]));
+    const body = '<div class="bars">' + by.map(([k, n]) => {
+      const R = rsOf(k), rows = cur.filter(l => l.reason === k);
+      const src = countBy(rows.filter(l => l.reason_src), l => l.reason_src).slice(0, 3).map(([s, c]) => `${s} ${c}`).join(' · ');
+      const ch = countBy(rows, l => chL(l.channel)).slice(0, 3).map(([s, c]) => `${s} ${c}`).join(' · ');
+      const tip = `${R.l} ${n}건 · ${F_L[R.f]} · 채널: ${ch}${src ? ` · 몰 사유: ${src}` : ''}${k === 'none' ? ' · 공홈 11/13 전 완료 건 · W컨셉은 몰이 사유를 안 줘요' : ''} — 누르면 목록`;
+      return `<button type="button" class="bar-row" data-go='${esc(JSON.stringify({view: 'c:list', cr: k}))}' title="${esc(tip)}"><span class="bar-l"><i style="background:${F_C[R.f]}"></i>${esc(R.l)}</span><span class="bar-t"><span class="bar-f ${R.f}" style="display:block;width:${Math.round(n / max * 100)}%"></span></span><span class="bar-v">${fmt(n)}건<small>${pct(n, cur.length)}</small></span></button>`;
+    }).join('') + '</div>';
+    return card('사유별', `${fmt(cur.length)}건 · 몰마다 다른 사유를 같은 분류로 묶음 · 누르면 그 사유 목록`, body + FLEGEND);
+  }
+  function cVoiceCard(cur) {
+    const ws = cur.filter(said);
+    const by = rsOrder(countBy(ws, l => l.reason)).filter(([k]) => k !== 'none').slice(0, 4);
+    if (!by.length) return card('고객 목소리', '', '<div class="card-e">이 기간에는 고객이 쓴 글이 없어요</div>');
+    const body = '<div class="voice">' + by.map(([k, n]) => {
+      const R = rsOf(k), items = ws.filter(l => l.reason === k).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date))).slice(0, 3);
+      return `<div><h4>${fDot(k)}${esc(R.l)}<span class="mut" style="margin-left:6px">글 ${n}건</span></h4>${items.map(l => `<button type="button" class="quote" data-claim="${esc(l.id)}">“${esc(cut(l.memo, 110))}”<small>${esc(md(l.date))} · ${esc(chL(l.channel))}${V.cb ? '' : ' · ' + esc(bName(l.brand))} · ${esc(cut(l.product, 34))}${l.photos ? ` · 📷 ${Number(l.photos) || 0}` : ''}</small></button>`).join('')}</div>`;
+    }).join('') + '</div>';
+    return card('고객 목소리', '사유마다 고객이 직접 쓴 글 · 최근 것부터 · 누르면 상세', body);
+  }
+  function cHeatCard() {
+    const what = cByBrand() ? '브랜드' : '채널', P0 = P;
+    const groups = cGroups(o => { const r = cRows(P0.from, P0.to, o); return r.length ? {rows: r} : null; });
+    if (!groups.length) return card(`사유 × ${what}`, '', '<div class="card-e">이 기간에는 반품 · 교환이 없어요</div>', {wide: true, more: cmpTog()});
+    const all = groups.flatMap(g => g.rows), cols = RS_KEYS.filter(k => all.some(l => l.reason === k));
+    const colTot = Object.fromEntries(cols.map(k => [k, all.filter(l => l.reason === k).length]));
+    const shade = (f, share) => { const a = (0.06 + share * 0.55).toFixed(2); return f === 'co' ? `rgba(239,68,68,${a})` : f === 'cu' ? `rgba(100,116,139,${a})` : `rgba(203,213,225,${a})`; };
+    const body = `<div class="card-b"><table class="mt heat"><thead><tr><th>${what}</th>${cols.map(k => `<th class="c" title="${esc(rsOf(k).l)}">${fDot(k)}${esc(rsOf(k).s)}</th>`).join('')}<th class="n">합계</th></tr></thead><tbody>`
+      + groups.map(g => {
+        const n = g.rows.length;
+        return `<tr class="click" ${g.attr} title="누르면 ${esc(g.label)}만"><td class="b">${g.dot ? `<i class="bdot" style="background:${g.dot}"></i>` : ''}${esc(g.label)}</td>` + cols.map(k => {
+          const c = g.rows.filter(l => l.reason === k).length;
+          if (!c) return '<td class="c"><span class="z">·</span></td>';
+          const share = c / n;
+          return `<td class="c" style="background:${shade(fOf(k), share)}" title="${esc(`${g.label} · ${rsOf(k).l} — ${c}건 (${g.label}의 ${pctR(share, 0)})`)}">${c}</td>`;
+        }).join('') + `<td class="n"><b>${n}</b></td></tr>`;
+      }).join('')
+      + `<tr class="tot"><td>합계</td>${cols.map(k => `<td class="c">${colTot[k]}<span class="sub">${pctR(colTot[k] / all.length, 0)}</span></td>`).join('')}<td class="n"><b>${all.length}</b></td></tr></tbody></table></div>`;
+    return card(`사유 × ${what}`, `칸 = 건수 · 진할수록 그 ${what}에서 차지하는 몫이 큼 · 빨강 = 회사 사유 · 회색 = 고객 사유 · 줄을 누르면 그 ${what}만`, body, {wide: true, more: cmpTog()});
+  }
 
-    // 4) 많이 나온 상품
-    const prods = productRank(cs).slice(0, 10);
-    let pt = prods.length ? '<div class="card-b"><table class="mt"><thead><tr><th>상품</th><th>건수</th><th>반품 · 교환</th><th>사유</th></tr></thead><tbody>' + prods.map(p => {
-      const cats = Object.entries(p.cats).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => catTag(k === '-' ? '' : k)).join(' ');
-      return `<tr class="click" data-go='${esc(JSON.stringify({view: 'log:' + p.brand, q: p.name}))}'><td class="wrap">${bDot(p.brand)}<b>${esc(p.name)}</b>${p.co >= 2 ? ' <span class="na" title="회사 사유 2건 이상">⚠ 회사 사유 ' + p.co + '</span>' : ''}</td><td class="b">${p.n}</td><td>${p.r ? `<span class="rv">${p.r}</span>` : '<span class="z">0</span>'} · ${p.e ? `<span class="ev">${p.e}</span>` : '<span class="z">0</span>'}</td><td>${cats}</td></tr>`;
-    }).join('') + '</tbody></table></div>' : '<div class="card-e">상품이 적힌 기록이 없어요</div>';
-    h += card('많이 나온 상품', '상품 칸 기준 · 색은 묶음', pt);
+  /* ── 📦 상품 분석 — 반품률 · 회사 사유 · ⚠ 반복 (🛠 개선 요청) ── */
+  function renderCProd() {
+    cHead('상품 분석', {copy: true});
+    if (!C.data) { cNoDataGrid(); return; }
+    const all = cProducts(), t = terms();
+    const rep = all.filter(x => x.co >= REPEAT_CO), coL = all.filter(x => x.co > 0), rated = all.filter(x => x.sold != null && x.sold >= MIN_SOLD), hi = rated.filter(x => x.rate >= 0.05);
+    const tog = k => V.pf === k ? '' : k;
+    kpis([
+      {v: fmt(all.length), u: '개', l: '반품 · 교환 상품', d: '채널마다 이름이 다르면 따로 셈', go: {pf: ''}, on: !V.pf},
+      {v: fmt(rep.length), u: '개', l: `⚠ 회사 사유 ${REPEAT_CO}건 이상`, d: '🛠 개선 요청으로', cls: rep.length ? 'red' : '', go: {pf: tog('rep')}, on: V.pf === 'rep'},
+      {v: fmt(coL.length), u: '개', l: '회사 사유 있음', go: {pf: tog('co')}, on: V.pf === 'co'},
+      {v: fmt(hi.length), u: '개', l: '반품률 5% 이상', d: `판매 ${MIN_SOLD}개 이상인 ${fmt(rated.length)}개 중`, cls: hi.length ? 'red' : '', go: {pf: tog('rate')}, on: V.pf === 'rate'},
+    ]);
+    if (P.from < cProdStart()) alertBox(`${md(cProdStart())}보다 앞선 날이 들어간 기간은 상품별 판매를 몰라 반품률이 비어요 (상품별 판매는 최근 92일만 있어요)`, true);
+    let list = V.pf === 'rep' ? rep : V.pf === 'co' ? coL : V.pf === 'rate' ? rated : all;
+    list = list.slice().sort(V.pf === 'rate' ? (a, b) => (b.rate || 0) - (a.rate || 0) || b.n - a.n : V.pf ? (a, b) => b.co - a.co || b.n - a.n : (a, b) => b.n - a.n || b.co - a.co);
+    if (t.length) list = list.filter(x => { const s = [x.name, ...x.names.keys(), bName(x.brand), topOpt(x), x.memo ? x.memo.memo : ''].join(' ').toLowerCase(); return t.every(w => s.includes(w)); });
+    if (V.q) $('qn').textContent = `${list.length}개`;
+    const maxRate = Math.max(0, ...list.map(x => x.sold >= MIN_SOLD ? x.rate || 0 : 0));
+    const cols = [];
+    if (!V.cb) cols.push({k: 'brand', l: '브랜드', get: x => ({t: bName(x.brand), s: bOrder(x.brand), h: bDot(x.brand) + esc(bName(x.brand)), pad: 15})});
+    cols.push(
+      {k: 'name', l: '상품', wrap: true, flex: 1, min: 180, max: 340, get: x => ({t: x.name, h: `<b>${hl(x.name)}</b>`})},
+      {k: 'ch', l: '채널', max: 190, get: x => ({t: chTxt(x)})},
+      {k: 'sold', l: '판매', num: true, min: 54, get: x => ({t: x.sold == null ? '—' : fmt(x.sold), s: x.sold == null ? -1 : x.sold, h: x.sold == null ? '<span class="z">—</span>' : fmt(x.sold)})},
+      {k: 'n', l: '반품 · 교환', num: true, min: 84, get: x => ({t: `${x.n}${x.exc ? ` 교환 ${x.exc}` : ''}`, s: x.n, h: `<b>${x.n}</b>${x.exc ? ` <span class="mut">교환 ${x.exc}</span>` : ''}`})},
+      {k: 'rate', l: '반품률', min: 128, get: x => ({t: x.rate == null ? '—' : pctR(x.rate), s: x.rate == null || x.sold < MIN_SOLD ? -1 : x.rate, h: x.rate == null ? '<span class="z">—</span>' : rateCell(x.rate, maxRate, x.sold), pad: 72})},
+      {k: 'co', l: '회사 사유', num: true, min: 66, get: x => ({t: String(x.co), s: x.co, h: x.co ? `<b${x.co >= REPEAT_CO ? ' class="hot"' : ''}>${x.co}</b>` : '<span class="z">0</span>'})},
+      {k: 'rs', l: '많은 사유', min: 150, max: 240, get: x => ({t: x.rs.slice(0, 2).map(([r, n]) => `${rsOf(r).s} ${n}`).join(' · '), s: x.rs.length ? RS_KEYS.indexOf(x.rs[0][0]) : 99, h: x.rs.slice(0, 2).map(([r, n]) => `${fDot(r)}${esc(rsOf(r).s)} ${n}`).join(' <span class="z">·</span> '), pad: 28})},
+      {k: 'memo', l: '최근 고객 글', wrap: true, flex: 1, min: 160, max: 380, get: x => ({t: x.memo ? x.memo.memo : '', h: x.memo ? '“' + hl(cut(x.memo.memo, 100)) + '”' : '<span class="none">—</span>'})},
+      {k: 'req', l: '개선 요청', min: 104, get: x => ({t: x.co >= REPEAT_CO ? '🛠 개선 요청' : '', s: x.co >= REPEAT_CO ? 0 : 1, h: x.co >= REPEAT_CO ? `<button type="button" class="reqb" data-req="${esc(x.key)}" title="이 상품으로 🛠 개선 요청을 만들어요 (근거 · VOC 코드 · 받는 팀 자동)">🛠 개선 요청</button>` : '', pad: 22})},
+    );
+    drawTable(cols, list, {empty: V.q ? '찾는 말이 든 상품이 없어요' : V.pf === 'rate' ? `판매 ${MIN_SOLD}개 이상인 상품이 없어요` : V.pf ? '해당하는 상품이 없어요' : '이 기간에는 반품 · 교환이 없어요', rowCls: x => x.co >= REPEAT_CO ? 'co' : ''});
+  }
+  // 🛠 개선 요청 — 오피스 CS 업무 '개선 요청' 표에 근거 · VOC 코드 · 받는 팀 · 우선순위를 채워 만든다 (오피스 bbVocShare().makeReq)
+  function makeReq(key) {
+    const x = cProducts().find(p => p.key === key);
+    if (!x) { toast('그 상품을 찾지 못했어요 — 기간 · 거르기를 확인해 주세요'); return; }
+    if (!SH || typeof SH.makeReq !== 'function') { toast('개선 요청은 오피스 안(CS팀 화면)에서 만들 수 있어요'); return; }
+    const code = prodCode(x), c = CODE[code];
+    const coTxt = x.rs.filter(([k]) => fOf(k) === 'co').map(([k, n]) => `${rsOf(k).l} ${n}`).join(' · ') || '없음';
+    const chs = [...x.ch.entries()].sort((a, b) => b[1] - a[1]).map(([ch, n]) => `${chL(ch)} ${n}`).join(' · ');
+    const memo = x.memo ? ` · 고객 글 "${cut(x.memo.memo, 80)}"` : '';
+    SH.makeReq({brand: x.brand, product: x.name, code: code || '', team: c ? c.team : '', priority: x.co >= 5 ? '높음' : '보통',
+      evidence: `${md(P.from)}~${md(P.to)} 반품 · 교환 ${x.n}건 중 회사 사유 ${x.co}건 (${coTxt})${x.rate != null ? ` · 반품률 ${pctR(x.rate)} (판매 ${x.sold}개)` : ''} · ${chs}${memo} — VOC 전산 상품 분석에서`});
+  }
 
-    // 5) 최근 회사 사유
-    const recent = cs.filter(c => c.fault === 'co').slice(0, 10);
-    let rt = recent.length ? '<div class="card-b"><table class="mt"><thead><tr><th>날짜</th><th>상품</th><th>사유</th><th>VOC</th></tr></thead><tbody>' + recent.map((c, i) =>
-      `<tr class="click" data-case="${c.id}"><td>${esc(md(c.date))}</td><td class="wrap">${bDot(c.brand)}${esc(c.items.join(' · ') || '—')}</td><td class="wrap">${esc(c.reason || '—')}</td><td>${codeHtml(c.code, !!c.sure)}</td></tr>`).join('') + '</tbody></table></div>' : '<div class="card-e">이 기간 회사 사유 건이 없어요</div>';
-    h += card('최근 회사 사유', '불량 · 사양 · 정보 · 배송 · 누르면 상세', rt, {more: `<button type="button" class="more" data-go='${esc(JSON.stringify({view: 'log', cat: 'co'}))}'>전체 보기 →</button>`});
+  /* ── ⏳ 처리 현황 — 지금 처리 중인 것 (단계 × 경과일 · 오래 걸리는 것 · 확인 필요) ── */
+  function renderCOps() {
+    cHead('처리 현황');
+    if (!C.data) { cNoDataGrid(); return; }
+    const open = cOpen(), stale = cStale(), old = open.filter(l => cAge(l) >= LATE_DAYS), held = open.filter(l => l.stage === 'held');
+    const days = cRows(P.from, P.to).filter(l => l.stage === 'done' && l.requested_at && l.done_at).map(l => Math.max(0, diffD(String(l.done_at).slice(0, 10), String(l.requested_at).slice(0, 10))));
+    const avg = days.length ? days.reduce((a, b) => a + b, 0) / days.length : null, med = median(days);
+    kpis([
+      {v: fmt(open.length), u: '건', l: '처리 중', d: '접수 30일 안 · 기간과 상관없이', go: {view: 'c:list', cf: 'open'}, tip: '접수 · 회수 중 · 회수 완료 · 보류 — 누르면 목록'},
+      {v: fmt(old.length), u: '건', l: `${LATE_DAYS}일 넘음`, cls: old.length ? 'red' : ''},
+      {v: fmt(held.length), u: '건', l: '보류', d: '네이버페이 반품 배송비 대기 등'},
+      {v: fmt(stale.length), u: '건', l: '확인 필요', d: '30일 넘게 그대로 · 판매자 화면 확인'},
+      {v: avg == null ? '—' : avg.toFixed(1), u: avg == null ? '' : '일', l: '처리 기간 (평균)', d: med == null ? '완료된 것 없음' : `중앙값 ${med.toFixed(med % 1 ? 1 : 0)}일 · 고른 기간에 접수돼 끝난 ${fmt(days.length)}건`},
+    ]);
+    grid.classList.add('bd-mode');
+    let h = '<div class="board">';
+    if (!open.length) h += card('단계 × 경과일', '', '<div class="card-e">✓ 지금 처리 중인 반품 · 교환이 없어요</div>');
+    else h += card('단계 × 경과일', `처리 중 ${fmt(open.length)}건 · 경과일 = 접수일부터 오늘까지`, `<div class="card-b"><table class="mt"><thead><tr><th>단계</th>${AGES.map(a => `<th class="n">${a[2]}</th>`).join('')}<th class="n">합계</th></tr></thead><tbody>`
+      + OPEN_STAGES.map(st => {
+        const tot = open.filter(l => l.stage === st).length;
+        if (!tot) return '';
+        return `<tr><td class="b">${esc(STAGE[st])}</td>` + AGES.map(a => { const c = open.filter(l => l.stage === st && cAge(l) >= a[0] && cAge(l) <= a[1]).length; return `<td class="n">${c ? (a[0] >= LATE_DAYS ? `<b class="hot">${c}</b>` : c) : '<span class="z">·</span>'}</td>`; }).join('') + `<td class="n"><b>${tot}</b></td></tr>`;
+      }).join('') + '</tbody></table></div>');
+    const row = l => `<tr class="click" data-claim="${esc(l.id)}"><td class="n"><b${cAge(l) >= LATE_DAYS ? ' class="hot"' : ''}>${cAge(l)}일</b></td><td>${stagePill(l)}</td><td>${esc(chL(l.channel))}${l.route ? ` <span class="sub">${esc(l.route)}</span>` : ''}${V.cb ? '' : `<div class="sub">${esc(bName(l.brand))}</div>`}</td><td class="wrap">${esc(cut(l.product, 46))}</td><td>${fDot(l.reason)}${esc(rsOf(l.reason).s)}</td></tr>`;
+    const head5 = '<thead><tr><th class="n">경과</th><th>단계</th><th>채널</th><th>상품</th><th>사유</th></tr></thead>';
+    const oldest = open.slice().sort((a, b) => cAge(b) - cAge(a)).slice(0, 12);
+    if (open.length) h += card('오래 걸리는 것', `처리 중 ${fmt(open.length)}건 중 오래된 순 · 누르면 상세`, `<div class="card-b"><table class="mt">${head5}<tbody>${oldest.map(row).join('')}</tbody></table></div>`, {more: moreBtn('처리 중 전부 →', {view: 'c:list', cf: 'open'})});
+    if (stale.length) {
+      const by = countBy(stale, l => chL(l.channel)).map(([c, n]) => `${c} ${n}`).join(' · ');
+      const st = [...new Set(stale.map(l => STAGE[l.stage]))].join(' · ');
+      h += card(`확인 필요 ${fmt(stale.length)}건`, `30일 넘게 '${esc(st)}'로 그대로 — 몰 상태가 안 바뀐 것일 수 있어요 · 판매자 화면에서 실제로 남았는지 확인해 주세요`,
+        `<div class="card-b"><table class="mt">${head5}<tbody>${stale.slice().sort((a, b) => cAge(b) - cAge(a)).slice(0, 20).map(row).join('')}</tbody></table></div><div class="note">${esc(by)}${stale.length > 20 ? ` · 오래된 20건만 보여요` : ''}</div>`, {wide: true});
+    }
+    grid.innerHTML = h + '</div>';
+  }
 
-    // 6) 쇼핑몰별
-    const byCh = {};
-    cs.forEach(c => { const k = c.ch || '(쇼핑몰 미기재)'; const o = byCh[k] || (byCh[k] = {r: 0, e: 0, co: 0, n: 0}); o.n += c.n; if (c.type === '반품') o.r += c.n; if (c.type === '교환') o.e += c.n; if (c.fault === 'co') o.co += c.n; });
-    const chRows = Object.entries(byCh).sort((a, b) => b[1].n - a[1].n);
-    let ct = chRows.length ? '<div class="card-b"><table class="mt"><thead><tr><th>쇼핑몰</th><th>반품</th><th>교환</th><th>회사 사유</th></tr></thead><tbody>' + chRows.map(([k, o]) =>
-      `<tr class="click" data-go='${esc(JSON.stringify({view: 'log', q: k.startsWith('(') ? '' : k}))}'><td class="b">${esc(k)}</td><td>${o.r ? `<span class="rv">${o.r}</span>` : '<span class="z">0</span>'}</td><td>${o.e ? `<span class="ev">${o.e}</span>` : '<span class="z">0</span>'}</td><td>${o.co ? `${o.co} <span class="sub">${pct(o.co, o.n)}</span>` : '<span class="z">0</span>'}</td></tr>`).join('') + '</tbody></table></div>' : '<div class="card-e">이 기간 기록이 없어요</div>';
-    h += card('쇼핑몰별', '', ct);
+  /* ── 📋 반품 · 교환 목록 — 자동 수집 줄 전부 (찾기 · 정렬 · 누르면 상세) ── */
+  function renderCList() {
+    cHead('반품 · 교환 목록', {copy: true, cfilters: true});
+    if (!C.data) { cNoDataGrid(); return; }
+    const t = terms();
+    let base = cRows(P.from, P.to, {t: ''});
+    if (t.length) base = base.filter(l => { const s = claimText(l); return t.every(x => s.includes(x)); });
+    if (V.cr) base = base.filter(l => l.reason === V.cr);
+    const isO = l => OPEN.has(l.stage), isCo = l => fOf(l.reason) === 'co', isCu = l => fOf(l.reason) === 'cu';
+    const FL = {open: isO, co: isCo, cu: isCu, memo: said, photo: l => !!l.photos};
+    const typed = base.filter(l => !V.ct || l.type === V.ct), n = f => typed.filter(f).length;
+    const tog = k => V.cf === k ? '' : k;
+    kpis([
+      {v: fmt(base.filter(l => l.type === 'return').length), u: '건', l: '반품', go: {ct: V.ct === 'return' ? '' : 'return'}, on: V.ct === 'return'},
+      {v: fmt(base.filter(l => l.type === 'exchange').length), u: '건', l: '교환', go: {ct: V.ct === 'exchange' ? '' : 'exchange'}, on: V.ct === 'exchange'},
+      {v: fmt(n(isO)), u: '건', l: '처리 중', go: {cf: tog('open')}, on: V.cf === 'open', cls: typed.some(l => isO(l) && cAge(l) >= LATE_DAYS) ? 'red' : ''},
+      {v: fmt(n(isCo)), u: '건', l: '회사 사유', go: {cf: tog('co')}, on: V.cf === 'co'},
+      {v: fmt(n(isCu)), u: '건', l: '고객 사유', go: {cf: tog('cu')}, on: V.cf === 'cu'},
+      {v: fmt(n(said)), u: '건', l: '고객이 쓴 글', go: {cf: tog('memo')}, on: V.cf === 'memo'},
+      {v: fmt(n(FL.photo)), u: '건', l: '사진 있음', go: {cf: tog('photo')}, on: V.cf === 'photo'},
+    ]);
+    const rows = typed.filter(l => !FL[V.cf] || FL[V.cf](l));
+    if (V.q) $('qn').textContent = `${rows.length}건`;
+    const gone = C.lines.filter(l => l.date >= P.from && l.date <= P.to && !cLive(l) && (!V.cb || l.brand === V.cb) && (!V.cc || l.channel === V.cc)).length;
+    if (gone && $('alert').hidden) alertBox(`이 기간 철회 · 거부된 ${gone}건은 목록 · 숫자에서 뺐어요`, true);
+    const hm = l => l.requested_at ? String(l.requested_at).slice(11, 16) : '처리일';
+    const anyNew = rows.some(isNew);
+    const cols = [
+      {k: 'date', l: '접수일', min: 92, get: l => ({t: `${md(l.date)} ${hm(l)}`, s: String(l.requested_at || l.date), h: `${esc(md(l.date))} <span class="mut"${l.requested_at ? '' : ' title="접수일을 몰라 처리일"'}>${esc(hm(l))}</span>${isNew(l) ? '<span class="new" title="하루 안에 새로 들어온 것">새로</span>' : ''}`, pad: anyNew ? 40 : 0})},
+    ];
+    if (!V.cb) cols.push({k: 'brand', l: '브랜드', get: l => ({t: bName(l.brand), s: bOrder(l.brand), h: bDot(l.brand) + esc(bName(l.brand)), pad: 15})});
+    cols.push(
+      {k: 'ch', l: '채널', get: l => ({t: chL(l.channel) + (l.route ? ' ' + l.route : ''), h: esc(chL(l.channel)) + (l.route ? ` <span class="mut">${esc(l.route)}</span>` : '')})},
+      {k: 'type', l: '구분', get: l => ({t: typeKo(l), h: typePill(typeKo(l)), f: F_TAG, pad: 16})},
+      {k: 'stage', l: '상태', get: l => { const o = isO(l); return {t: (STAGE[l.stage] || l.stage) + (o ? ' ' + ageTxt(l) : ''), s: o ? -cAge(l) : 1, h: stagePill(l, true) + (o ? ` <span class="mut">${ageTxt(l)}</span>` : ''), f: F_TAG, pad: o ? 56 : 16}; }},
+      {k: 'product', l: '상품', wrap: true, flex: 1, min: 170, max: 340, get: l => ({t: l.product || '', h: l.product ? hl(l.product) : '<span class="none">—</span>'})},
+      {k: 'option', l: '옵션 · 수량', max: 210, get: l => { const q = Number(l.qty) || 1; return {t: (l.option || '') + (q > 1 ? ` · ${q}개` : ''), h: (l.option ? hl(l.option) : '') + (q > 1 ? `${l.option ? ' · ' : ''}<b>${q}개</b>` : '') || '<span class="none">—</span>'}; }},
+      {k: 'reason', l: '사유', max: 200, get: l => ({t: rsOf(l.reason).l, s: RS_KEYS.indexOf(l.reason), h: fDot(l.reason) + esc(rsOf(l.reason).l), pad: 14})},
+      {k: 'memo', l: '고객이 쓴 글 · 몰 사유', wrap: true, flex: 1, min: 170, max: 420, get: l => ({t: l.memo || l.reason_src || '', h: (l.memo ? hl(l.memo) : l.reason_src ? `<span class="mut">${hl(l.reason_src)}</span>` : '<span class="none">—</span>') + (l.photos ? ` <span class="mut">📷 ${Number(l.photos) || 0}</span>` : '')})},
+      {k: 'amount', l: '금액', num: true, min: 104, get: l => ({t: fmt(l.amount) + '원', s: Number(l.amount) || 0})},
+    );
+    drawTable(cols, rows, {
+      empty: V.q ? '찾는 말이 든 반품 · 교환이 없어요' : base.length ? '고른 구분 · 거르기에 해당하는 줄이 없어요' : '이 기간에는 반품 · 교환이 없어요',
+      rowCls: l => fOf(l.reason) === 'co' ? 'co' : '',
+      foot: (c, list) => c.k === 'product' ? `<span class="ft">${fmt(list.length)}건</span>` : c.k === 'amount' ? fmt(list.filter(l => l.type === 'return').reduce((a, l) => a + (Number(l.amount) || 0), 0)) + '원' : c.k === 'memo' ? '<span class="ft">금액 합계 = 반품만</span>' : '',
+    });
+  }
 
-    h += '</div>';
-    grid.innerHTML = h;
-    S.list = recent;
+  // 📋 요약 복사 — 지금 보는 기간 · 브랜드 · 채널 · 구분 그대로
+  function copyReport() {
+    if (!C.data) { toast('아직 반품 · 교환을 못 불러왔어요'); return; }
+    const cur = cRows(P.from, P.to), ret = cur.filter(l => l.type === 'return'), exc = cur.filter(l => l.type === 'exchange'), open = cOpen();
+    const co = cur.filter(l => fOf(l.reason) === 'co'), cu = cur.filter(l => fOf(l.reason) === 'cu'), known = co.length + cu.length;
+    const sold = cSold(P.from, P.to, V.cb, V.cc), rate = cRate(cur, sold);
+    const scope = [V.cb ? bName(V.cb) : '전체 브랜드', V.cc ? chL(V.cc) : '전체 채널', V.ct === 'return' ? '반품만' : V.ct === 'exchange' ? '교환만' : ''].filter(Boolean).join(' · ');
+    const L = [`[반품 · 교환 요약] ${P.l} · ${scope}`];
+    L.push(`반품 ${ret.length}건 (${won(ret.reduce((a, l) => a + (Number(l.amount) || 0), 0))}) · 교환 ${exc.length}건${rate != null ? ` · 반품률 ${pctR(rate)} (판매 ${fmt(sold.qty)}개)` : ''} · 처리 중 ${open.length}건`);
+    if (known) L.push(`회사 사유 ${Math.round(co.length / known * 100)}% — ${countBy(co, l => l.reason).map(([k, n]) => `${rsOf(k).l} ${n}`).join(' · ') || '없음'}`);
+    if (cur.length) {
+      L.push('', '▶ 사유: ' + rsOrder(countBy(cur, l => l.reason)).map(([k, n]) => `${rsOf(k).l} ${n}`).join(' · '));
+      if (!V.cb) L.push('▶ 브랜드: ' + CB.map(b => { const r = cur.filter(l => l.brand === b.id); if (!r.length) return ''; const rr = cRate(r, cSold(P.from, P.to, b.id, V.cc)); return `${b.name} ${r.length}${rr != null ? ` (${pctR(rr)})` : ''}`; }).filter(Boolean).join(' · '));
+      if (!V.cc) L.push('▶ 채널: ' + countBy(cur, l => l.channel).map(([k, n]) => `${chL(k)} ${n}`).join(' · '));
+      const prods = cProducts();
+      L.push('▶ 많은 상품');
+      prods.slice().sort((a, b) => b.n - a.n).slice(0, 5).forEach((x, i) => L.push(`${i + 1}. ${V.cb ? '' : bName(x.brand) + ' '}${x.name} — ${x.n}건${x.rate != null && x.sold >= MIN_SOLD ? ` · 반품률 ${pctR(x.rate)}` : ''} (${x.rs.slice(0, 3).map(([r, n]) => `${rsOf(r).l} ${n}`).join(' · ')})`));
+      const hot = prods.filter(x => x.co >= REPEAT_CO).sort((a, b) => b.co - a.co).slice(0, 3);
+      if (hot.length) { L.push('▶ 회사 사유가 반복되는 상품'); hot.forEach(x => L.push(`· ${V.cb ? '' : bName(x.brand) + ' '}${x.name} — 회사 사유 ${x.co}건${x.memo ? `: "${cut(x.memo.memo, 60)}"` : ''}`)); }
+    }
+    L.push('', `(${kstHm(C.data.updated_at)} 기준 · 오피스 CS팀 VOC 전산 반품 · 교환)`);
+    const text = L.join('\n'), done = () => toast('요약을 복사했어요 — 카톡 · 메모에 붙여 넣으면 돼요');
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) { toast('복사하지 못했어요'); }
+      ta.remove();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
   }
   function productRank(cs) {
     const g = {};
@@ -1632,6 +2346,53 @@
       const keys = [pkey(it.prod)];
       const others = S.D.cases.filter(c => c.brand === it.brand && c.items.some(p => keys.some(k => pmatch(pkey(p), k))));
       if (others.length) dl += dlRow(`데일리 일지 ${others.length}건`, `<div class="hist">${others.slice(0, 12).map(c => `<button type="button" data-case="${c.id}"><span class="hd">${esc(md(c.date))}</span>${typePill(c.type)}<span class="hr">${esc(c.reason || '사유 안 적음')}</span></button>`).join('')}</div>`, {html: true});
+    } else if (it.kind === 'claim') {
+      // 반품 · 교환 자동 수집 한 줄
+      const o = OPEN.has(it.stage), q = Number(it.qty) || 1;
+      title = it.product || '(상품 이름 없음)';
+      sub = `${dlabel(it.date)} · ${bName(it.brand)} · ${chL(it.channel)}${it.route ? ' ' + it.route : ''} · ${typeKo(it)}${q > 1 ? ` ${q}개` : ''}`;
+      dl += dlRow('구분', `${typePill(typeKo(it))} ${stagePill(it, true)}${o ? ` <span class="muted">${cAge(it) ? `접수하고 ${cAge(it)}일째` : '오늘 접수'}</span>` : ''}`, {html: true});
+      dl += dlRow('사유', `${fDot(it.reason)}${esc(rsOf(it.reason).l)} <span class="muted">${F_L[fOf(it.reason)]}</span>`, {html: true});
+      if (it.reason_src && it.reason_src !== rsOf(it.reason).l) dl += dlRow('몰 사유', it.reason_src);
+      dl += dlRow('고객이 쓴 글', it.memo);
+      if (it.photos) dl += dlRow('사진', `고객이 붙인 사진 ${Number(it.photos) || 0}장 — ${chL(it.channel)} 판매자 화면에서 볼 수 있어요`);
+      dl += codeBlock(cCode(it), null);
+      dl += dlRow('옵션', it.option);
+      dl += dlRow('수량', q + '개', {r: 1});
+      dl += dlRow('금액', fmt(it.amount) + '원', {r: 1});
+      dl += dlRow('주문번호', it.order_no);
+      dl += dlRow('주문', it.ordered_at);
+      dl += dlRow('접수', it.requested_at || '접수일을 몰라요 — 날짜는 처리일');
+      dl += dlRow('완료', it.done_at);
+      if (/[가-힣]/.test(it.status || '')) dl += dlRow('몰 상태', it.status);
+      const k = kname(it.product);
+      const others = C.lines.filter(l => l.id !== it.id && l.brand === it.brand && kname(l.product) === k && cLive(l)).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date)));
+      if (others.length) dl += dlRow(`같은 상품 ${others.length}건`, `<div class="hist">${others.slice(0, 12).map(l => `<button type="button" data-claim="${esc(l.id)}"><span class="hd">${esc(md(l.date))}</span>${typePill(typeKo(l))}<span class="hr">${esc(rsOf(l.reason).s)}${l.memo ? ' · ' + esc(cut(l.memo, 40)) : ''} · ${esc(chL(l.channel))}</span></button>`).join('')}</div>`, {html: true});
+      // CS 직원이 구글시트 일지에 같은 건을 적었으면 (같은 브랜드 · 이틀 안 · 상품 이름이 겹침)
+      if (S.D) {
+        const pk = pkey(it.product);
+        const js = S.D.cases.filter(c => c.brand === it.brand && c.date && Math.abs(diffD(c.date, it.date)) <= 2 && c.items.some(p => pmatch(pkey(p), pk)));
+        if (js.length) dl += dlRow('CS 일지', `<div class="hist">${js.slice(0, 6).map(c => `<button type="button" data-case="${c.id}"><span class="hd">${esc(md(c.date))}</span>${typePill(c.type)}<span class="hr">${esc(c.reason || '사유 안 적음')}</span></button>`).join('')}</div>`, {html: true});
+      }
+      dl += dlRow('원본', `자동 수집 · ${SRC_L[it.src] || it.src || ''}`);
+    } else if (it.kind === 'prod') {
+      // 상품 분석 한 줄
+      title = it.name;
+      sub = `${bName(it.brand)} · ${P.l} · 반품 · 교환 ${it.n}건`;
+      dl += dlRow('판매', it.sold == null ? '모름 (상품별 판매는 최근 92일 · 판매 기록이 있는 채널만)' : fmt(it.sold) + '개');
+      dl += dlRow('반품률', it.rate == null ? '—' : pctR(it.rate) + (it.sold < MIN_SOLD ? ` (판매 ${MIN_SOLD}개보다 적어 참고만)` : ''));
+      dl += dlRow('반품 · 교환', `반품 ${it.ret} · 교환 ${it.exc} · 회사 사유 ${it.co}`);
+      dl += dlRow('사유', it.rs.map(([k, n]) => `<div>${fDot(k)}${esc(rsOf(k).l)} <b>${n}</b></div>`).join(''), {html: true});
+      dl += dlRow('채널', [...it.ch.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${chL(c)} ${n}`).join(' · '));
+      if (it.opts.size) dl += dlRow('많은 옵션', [...it.opts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([o2, n]) => `${o2} ${n}`).join('\n'));
+      if (it.names.size > 1) dl += dlRow('다른 이름', [...it.names.keys()].filter(n => n !== it.name).slice(0, 4).join('\n'));
+      const pc = prodCode(it);
+      if (pc) dl += codeBlock(pc, null);
+      const qs = it.lines.filter(said).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date))).slice(0, 4);
+      if (qs.length) dl += dlRow('고객 글', qs.map(l => `<button type="button" class="quote" data-claim="${esc(l.id)}">“${esc(cut(l.memo, 120))}”<small>${esc(md(l.date))} · ${esc(chL(l.channel))} · ${esc(rsOf(l.reason).s)}</small></button>`).join(''), {html: true});
+      if (it.co) dl += dlRow('개선 요청', `<button type="button" class="reqb" data-req="${esc(it.key)}">🛠 개선 요청 만들기</button><div class="muted" style="margin-top:6px">CS 업무 '🛠 개선 요청' 표에 근거 · VOC 코드 · 받는 팀을 채워 만들어요</div>`, {html: true});
+      const ls = it.lines.slice().sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date)));
+      dl += dlRow(`반품 · 교환 ${ls.length}건`, `<div class="hist">${ls.slice(0, 20).map(l => `<button type="button" data-claim="${esc(l.id)}"><span class="hd">${esc(md(l.date))}</span>${typePill(typeKo(l))}<span class="hr">${esc(rsOf(l.reason).s)}${l.option ? ' · ' + esc(cut(l.option, 24)) : ''} · ${esc(chL(l.channel))}</span></button>`).join('')}</div>`, {html: true});
     } else if (it.kind === 'code') {
       title = `${it.code} ${it.name}`;
       sub = `${CAT[it.cat] ? CAT[it.cat].l : it.cat} · ${it.mid} · ${TEAMS[it.team] || it.team} · 심각도 ${it.sev}`;
@@ -1648,13 +2409,20 @@
     $('dList').innerHTML = dl;
     hydrate($('dList'));
     grid.querySelectorAll('tbody tr.on').forEach(x => x.classList.remove('on'));
-    const tr = grid.querySelector(`tbody tr[data-i="${i}"]`);
+    const tr = S.list === S.drawn ? grid.querySelector(`tbody tr[data-i="${i}"]`) : null;
     if (tr) { tr.classList.add('on'); if (!keep) tr.scrollIntoView({block: 'nearest'}); }
   }
   function openCase(id) {
     const c = S.D && S.D.cases.find(x => x.id === +id);
     if (!c) return;
     let i = S.list.findIndex(x => x === c);
+    if (i < 0) { S.list = [c]; i = 0; }
+    openDetail(i);
+  }
+  function openClaim(id) {
+    const c = C.lines.find(l => l.id === id);
+    if (!c) return;
+    let i = S.list.findIndex(x => x.kind === 'claim' && x.id === id);
     if (i < 0) { S.list = [c]; i = 0; }
     openDetail(i);
   }
@@ -1672,11 +2440,29 @@
       let o = {};
       try { o = JSON.parse(g.dataset.go); } catch (err) { return; }
       if (o.view) go(o.view, o);
-      else { if ('type' in o) V.type = o.type; if ('cat' in o) V.cat = o.cat; closeDetail(); render(); }
+      else {
+        ['type', 'cat', 'pf', 'cf', 'cr'].forEach(k => { if (k in o) V[k] = o[k]; });
+        if ('ct' in o) { V.ct = o.ct; savePrefs(); }
+        closeDetail(); render(true);
+      }
       return;
     }
     const cs = e.target.closest('[data-case]');
     if (cs) { openCase(cs.dataset.case); return; }
+    // 반품 · 교환 — 상품 🛠 개선 요청 · 줄 상세 · 브랜드 · 채널 · 구분 · 비교 기준 · 요약 복사
+    const rq = e.target.closest('[data-req]');
+    if (rq) { makeReq(rq.dataset.req); return; }
+    const cl0 = e.target.closest('[data-claim]');
+    if (cl0) { openClaim(cl0.dataset.claim); return; }
+    const cb = e.target.closest('[data-cb]');
+    if (cb) { V.cb = cb.dataset.cb; savePrefs(); closeDetail(); render(true); return; }
+    const cc = e.target.closest('[data-cc]');
+    if (cc) { V.cc = cc.dataset.cc; savePrefs(); closeDetail(); render(true); return; }
+    const ctb = e.target.closest('[data-ct]');
+    if (ctb) { V.ct = ctb.dataset.ct; savePrefs(); closeDetail(); render(true); return; }
+    const cmp = e.target.closest('[data-cmp]');
+    if (cmp) { V.cmp = cmp.dataset.cmp; savePrefs(); render(true); return; }
+    if (e.target.closest('#cCopy')) { copyReport(); return; }
     const p = e.target.closest('[data-period]');
     if (p) { V.period = p.dataset.period; V.date = ''; savePrefs(); render(); return; }
     const pt = e.target.closest('[data-part]');
@@ -1684,7 +2470,7 @@
     const ct = e.target.closest('#chips [data-cat]');
     if (ct) { V.cat = ct.dataset.cat; render(true); return; }
     const cl = e.target.closest('[data-clear]');
-    if (cl) { if (cl.dataset.clear === 'date') V.date = ''; render(); return; }
+    if (cl) { if (cl.dataset.clear === 'date') V.date = ''; if (cl.dataset.clear === 'cr') V.cr = ''; render(); return; }
     if (e.target.closest('#zeroTog')) { V.zero = !V.zero; savePrefs(); render(true); return; }
     if (e.target.closest('#msgRetry')) { loadAll(); return; }
     if (e.target.closest('#sheetSave')) {
@@ -1697,7 +2483,11 @@
     const im = e.target.closest('[data-src]');
     if (im && (e.target.tagName === 'IMG' || im.tagName === 'FIGURE')) { openLightbox(im.dataset.src, im.dataset.sid); return; }
   });
+  document.addEventListener('change', e => {
+    if (e.target && e.target.id === 'cChSel') { V.cc = e.target.value; savePrefs(); closeDetail(); render(true); }
+  });
   grid.addEventListener('click', e => {
+    if (e.target.closest('[data-req]')) return;   // 🛠 개선 요청 단추 — 줄 상세는 열지 않음 (document 쪽에서 처리)
     const th = e.target.closest('th[data-sort]');
     if (th) {
       const k = th.dataset.sort;
@@ -1713,7 +2503,7 @@
   $('dPrev').onclick = () => { if (S.sel > 0) openDetail(S.sel - 1); };
   $('dNext').onclick = () => { if (S.sel < S.list.length - 1) openDetail(S.sel + 1); };
   $('lb').onclick = () => { $('lb').hidden = true; $('lbImg').removeAttribute('src'); };
-  $('st').onclick = () => { loadAll(); loadOffice(true); };
+  $('st').onclick = () => { loadAll(); loadOffice(true); loadClaims(true); };
   let qT = null;
   qIn.addEventListener('input', () => {
     $('qx').hidden = !qIn.value;
@@ -1721,7 +2511,10 @@
     qT = setTimeout(() => {
       V.q = qIn.value;
       if (!V.q) $('qn').textContent = '';
-      if (V.q && !(V.view === 'log' || /^log:|^defect:/.test(V.view) || V.view === 'codes')) { V.view = 'log'; V.type = ''; V.cat = ''; V.date = ''; savePrefs(); }
+      // 찾기 — 시트 화면(일지 · 불량 · 코드표)은 그 자리에서, 반품 · 교환 화면은 목록(상품 분석은 그 자리)으로
+      if (V.q && !(V.view === 'log' || /^log:|^defect:/.test(V.view) || V.view === 'codes' || V.view === 'c:list' || V.view === 'c:prod')) {
+        V.view = C.data || !S.D ? 'c:list' : 'log'; V.type = ''; V.cat = ''; V.date = ''; V.cf = ''; V.cr = ''; V.sort = null; savePrefs();
+      }
       render();
     }, 160);
   });
@@ -1764,8 +2557,12 @@
     try { const fe = window.frameElement; if (fe && !fe.offsetParent && !document.fullscreenElement) return false; } catch (e) { /* noop */ }
     return true;
   }
-  setInterval(() => { if (shown() && !S.busy && Date.now() - S.at > REFRESH_MS) { loadAll(); loadOffice(false); } }, 20e3);
-  document.addEventListener('visibilitychange', () => { if (shown() && Date.now() - S.at > REFRESH_MS) loadAll(); });
+  setInterval(() => {
+    if (!shown()) return;
+    if (!S.busy && Date.now() - S.at > REFRESH_MS) { loadAll(); loadOffice(false); }
+    loadClaims(false);   // 5분 지난 것만 오피스에 다시 물음 (오피스도 5분 안이면 받아 둔 것을 그대로 줌)
+  }, 20e3);
+  document.addEventListener('visibilitychange', () => { if (!shown()) return; if (Date.now() - S.at > REFRESH_MS) loadAll(); loadClaims(false); });
 
   /* ── 시작 ── */
   if (EMBED) $('sideHome').hidden = true;
@@ -1773,10 +2570,11 @@
   if (lsGet(LS_SIDE) === '1') app.classList.add('side-off');
   if (lsGet(LS_DENSE) === '1') { app.classList.add('dense'); $('btnDense').classList.add('on'); }
   loadPrefs();
-  if (loadCache()) { rebuild(); render(); setSt('stored'); }
-  else { renderNav(); grid.innerHTML = '<div class="skel">' + Array.from({length: 10}, () => '<div><i style="width:60px"></i><i style="width:90px"></i><i style="width:220px"></i><i style="width:140px"></i></div>').join('') + '</div>'; }
+  if (loadCache()) { rebuild(); setSt('stored'); }
+  render();   // 시트가 아직이면 시트 화면은 빈 표 모양(SKEL), 반품 · 교환 화면은 '불러오는 중'
   loadAll();
   loadOffice(false);
+  loadClaims(false);
 })();
 </script>
 </body>
