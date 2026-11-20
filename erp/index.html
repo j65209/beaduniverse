@@ -50,10 +50,12 @@
   }
   *{box-sizing:border-box}
   [hidden]{display:none!important}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none}
+  /* 휴대폰: 두 번 눌러 확대 · 누를 때 회색 번쩍임 막기 (두 손가락 확대는 그대로), 끌어내려 새로고침 · 오피스 화면으로 스크롤이 넘어가는 것 막기 (overscroll) */
+  html{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
   a{color:inherit}
-  .app{height:100vh;height:100dvh;display:flex;overflow:hidden}
+  .app{height:100vh;height:100dvh;display:flex;overflow:hidden;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 
   /* ── 왼쪽 메뉴 ── */
   .side{flex:none;width:var(--side-w);display:flex;flex-direction:column;background:var(--side);color:var(--side-text)}
@@ -68,7 +70,7 @@
   /* 왼쪽 메뉴 접기 (PC) — 접으면 표가 그만큼 넓어지고, 위 막대의 ☰ 로 다시 편다 */
   .app.side-off .menu{display:grid}
   @media (min-width:1001px){ .app.side-off .side{display:none} }
-  .nav{flex:1;min-height:0;overflow:auto;padding:6px 10px 16px;scrollbar-width:thin;scrollbar-color:#334155 transparent}
+  .nav{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:6px 10px 16px;scrollbar-width:thin;scrollbar-color:#334155 transparent}
   .nav-sec{margin:16px 0 6px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--side-mute)}
   .nav-item{position:relative;width:100%;display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;font-size:13.5px;text-align:left;color:var(--side-text)}
   .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
@@ -83,6 +85,7 @@
   .side-link:hover{background:rgba(255,255,255,.06);color:#fff}
   .side-link svg{width:15px;height:15px;opacity:.8}
   .scrim,.dscrim{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:45}
+  .dscrim{z-index:39}   /* 상세 창(40) 아래 — 전엔 45 라 휴대폰에서 상세 창 위를 덮어, 창을 누르면 그냥 닫혔다 (2026-11-20) */
 
   /* ── 본문 ── */
   .main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -129,6 +132,7 @@
   .alert svg{flex:none;width:17px;height:17px;margin-top:1px;color:#d97706}
   .alert ul{margin:0;padding:0;list-style:none}
   .alert li+li{margin-top:2px}
+  .al-more{display:none}   /* 휴대폰에서만 — 안내는 첫 줄만, 누르면 전부 */
   .kpis{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
   .kpi{min-width:124px;height:62px;display:flex;flex-direction:column;justify-content:center;padding:0 15px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:left;cursor:default}
   .kpi b{font-size:21px;font-weight:800;letter-spacing:-.025em;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--text)}
@@ -172,7 +176,10 @@
   .tbl .sk{position:sticky;z-index:1}
   .tbl .skl{border-right:1px solid #d5dce5}
   .tbl tbody tr{cursor:pointer}
-  .tbl tbody tr:hover td{box-shadow:inset 0 0 0 999px rgba(15,23,42,.035)}
+  @media (hover:hover){ .tbl tbody tr:not(.vsp):hover td{box-shadow:inset 0 0 0 999px rgba(15,23,42,.035)} }   /* 휴대폰은 누른 뒤 회색이 남지 않게 */
+  /* 줄이 많은 탭은 보이는 줄 근처만 그리고, 위 · 아래는 빈 줄 하나(높이만)로 채운다 (renderGrid · paintRows) */
+  .tbl tbody tr.vsp{cursor:default}
+  .tbl tbody tr.vsp td{padding:0;border:0;background:transparent}
   .tbl tbody tr.on td{box-shadow:inset 0 0 0 999px rgba(37,99,235,.075)}
   .tbl tbody tr.on td:first-child{box-shadow:inset 3px 0 0 var(--info),inset 0 0 0 999px rgba(37,99,235,.075)}
   .tbl tr.empty td{height:120px;text-align:center;color:var(--text-4);cursor:default;box-shadow:none!important}
@@ -220,6 +227,7 @@
   .detail{position:fixed;top:0;right:0;bottom:0;z-index:40;width:var(--detail-w);max-width:100%;display:flex;flex-direction:column;background:#fff;border-left:1px solid var(--line);box-shadow:-14px 0 34px rgba(15,23,42,.1)}
   @media (min-width:1280px){ .app.has-detail .main{margin-right:var(--detail-w)} .detail{box-shadow:none} }
   .dh{flex:none;padding:14px 18px 14px;border-bottom:1px solid var(--line)}
+  .dgrab{display:none;width:40px;height:5px;margin:0 auto 8px;border-radius:3px;background:#cbd5e1}   /* 휴대폰 — 잡고 끌어내리면 닫힘 */
   .dh-top{display:flex;align-items:center;gap:8px}
   .dh-cap{flex:1;font-size:12px;font-weight:700;color:var(--text-3)}
   .dh-top button{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--text-3)}
@@ -229,7 +237,7 @@
   .d-sub{margin-top:4px;font-size:12.5px;color:var(--text-3);line-height:1.5}
   .d-sheet{display:inline-flex;align-items:center;gap:5px;margin-top:10px;height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--text-2);text-decoration:none}
   .d-sheet:hover{border-color:#cbd5e1;color:var(--text)}
-  .dbody{flex:1;min-height:0;overflow:auto;padding:4px 18px 22px}
+  .dbody{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:4px 18px 22px}
   .dl{display:grid;grid-template-columns:118px 1fr;margin:0}
   .dl dt{padding:10px 0;font-size:12.5px;color:var(--text-3);border-bottom:1px solid var(--line-2)}
   .dl dd{margin:0;padding:10px 0 10px 12px;font-size:13.5px;line-height:1.5;border-bottom:1px solid var(--line-2);word-break:break-word;white-space:pre-wrap}
@@ -244,8 +252,11 @@
   .d-hint{margin-top:9px;font-size:11.5px;line-height:1.45;color:var(--text-4)}
   .d-hint.no{color:var(--warn)}
   .dl dd.ed-ok{cursor:text;position:relative;padding-right:52px}
-  .dl dd.ed-ok:hover{background:#f6f9ff;box-shadow:inset 0 0 0 1px #c7d7fe;border-radius:6px}
-  .dl dd.ed-ok:hover::after{content:'✎ 고치기';position:absolute;right:6px;top:10px;font-size:11px;font-weight:700;color:var(--info);white-space:nowrap}
+  @media (hover:hover){
+    .dl dd.ed-ok:hover{background:#f6f9ff;box-shadow:inset 0 0 0 1px #c7d7fe;border-radius:6px}
+    .dl dd.ed-ok:hover::after{content:'✎ 고치기';position:absolute;right:6px;top:10px;font-size:11px;font-weight:700;color:var(--info);white-space:nowrap}
+  }
+  @media (hover:none){ .dl dd.ed-ok{padding-right:0} }
   .dl dd.ed-ro{cursor:default}
   .dl dd.ed-on{background:#eef4ff;box-shadow:inset 0 0 0 2px var(--info);border-radius:6px}
   .tbl td.ed-on{box-shadow:inset 0 0 0 2px var(--info)!important}
@@ -263,32 +274,73 @@
   .edbox .ed-save:disabled{opacity:.45;cursor:default}
   .edbox .ed-force{background:var(--danger);color:#fff}
   .edbox .ed-cancel{background:#f1f4f8;color:var(--text-2)}
-  .toast{position:fixed;left:50%;bottom:22px;z-index:80;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 16px;border-radius:10px;background:#0f172a;color:#fff;font-size:13px;font-weight:600;line-height:1.45;box-shadow:0 12px 30px rgba(15,23,42,.25)}
+  .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:80;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 16px;border-radius:10px;background:#0f172a;color:#fff;font-size:13px;font-weight:600;line-height:1.45;box-shadow:0 12px 30px rgba(15,23,42,.25)}
   .toast.err{background:#b91c1c}
-  @media (max-width:720px){ .edbox input,.edbox textarea{font-size:16px} .dl dd.ed-ok:hover::after{display:none} }   /* 아이폰 입력 칸 자동 확대 막기 */
+  /* 아이폰 · 아이패드는 16px 보다 작은 입력 칸을 누르면 화면을 확대해 버린다 (찾기 · 고치기 칸) */
+  @media (max-width:720px),(pointer:coarse){ .find input,.edbox input,.edbox textarea{font-size:16px} }
 
-  /* ── 좁은 화면 ── */
+  /* ── 좁은 화면 ── 2026-11-20 사용자 "모바일에서 조금 불안정하거나 최적화가 안 된 것 같아 — 완벽하게" */
   @media (max-width:1000px){
-    .side{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);transition:transform .18s ease;box-shadow:12px 0 34px rgba(15,23,42,.3)}
-    .app.nav-open .side{transform:none}
+    /* 닫혀 있을 땐 그림자 · 보이기도 끈다 (전엔 화면 왼쪽 끝에 서랍 그림자가 늘 비쳤다) */
+    .side{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);visibility:hidden;transition:transform .2s ease,visibility 0s linear .2s}
+    .app.nav-open .side{transform:none;visibility:visible;transition:transform .2s ease;box-shadow:12px 0 34px rgba(15,23,42,.3)}
     .menu{display:grid}
   }
-  @media (max-width:720px){
-    :root{--row-h:42px}
-    .bar{height:54px;padding:0 8px;gap:4px}
+  /* 휴대폰 (세로) · 가로로 눕힌 휴대폰 — 위쪽은 작게, 표는 넓게 */
+  @media (max-width:720px),(max-height:520px){
+    .bar{height:52px;padding:0 8px;gap:4px}
     .find{flex:1 1 auto;height:38px}
     .st{padding:0 8px}
     .st #stText,#btnFull,#btnDense{display:none}
     .st.is-err #stText,.st.is-stored #stText{display:inline;font-size:11.5px}
-    .head{padding:12px 12px 10px}
-    .trow h1{font-size:17px}
-    .kpis{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-12px;margin-right:-12px;padding:0 12px}
+    .head{padding:10px 12px}
+    /* 제목 줄은 한 줄 (길면 … ), 날짜 단추는 그 아래 한 줄로 옆으로 넘김 */
+    .trow{display:grid;grid-template-columns:minmax(0,max-content) auto 1fr auto;align-items:center;gap:8px;min-height:28px}
+    .trow h1{grid-column:1;grid-row:1;min-width:0;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .trow h1 .t2{display:none}
+    .date{grid-column:2;grid-row:1;padding:2px 8px;font-size:11.5px}
+    .tools{grid-column:4;grid-row:1;margin-left:0;gap:6px}
+    .etog{height:28px;padding:0 10px;font-size:11.5px}
+    .parts button{height:26px;padding:0 10px;font-size:12px}
+    .dates{grid-column:1/-1;grid-row:2;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px}
+    .dates::-webkit-scrollbar{display:none}
+    .dates:empty{display:none}
+    .dates button{flex:none;height:30px}
+    .alert{margin-top:10px;padding:8px 11px;font-size:12px;line-height:1.5;cursor:pointer}
+    .alert ul{flex:1;min-width:0}
+    .alert.fold li+li{display:none}
+    .alert.fold li{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+    .al-more{display:block;flex:none;align-self:center;font-size:11.5px;font-weight:700;color:#b45309;white-space:nowrap}
+    .kpis{flex-wrap:nowrap;gap:8px;overflow-x:auto;scrollbar-width:none;margin:7px -12px -3px;padding:3px 12px}
     .kpis::-webkit-scrollbar{display:none}
-    .kpi{flex:none;min-width:104px;height:56px;padding:0 12px}
-    .kpi b{font-size:18px}
-    .chips{margin-left:-12px;margin-right:-12px;padding:0 12px}
-    .detail{top:auto;left:0;width:100%;height:82vh;height:82dvh;border-left:0;border-radius:18px 18px 0 0;box-shadow:0 -14px 34px rgba(15,23,42,.2);padding-bottom:env(safe-area-inset-bottom)}
-    .dl{grid-template-columns:108px 1fr}
+    .kpi{flex:none;min-width:96px;height:52px;padding:0 12px;border-radius:11px}
+    .kpi b{font-size:17px}
+    .kpi span{font-size:11px}
+    .chips{margin:10px -12px 0;padding:0 12px}
+    .chip{height:32px}
+    /* 표를 아래로 넘기면 위쪽(안내 · 요약 카드 · 칩 · 날짜)을 접어 표를 넓게 — 맨 위로 오거나 제목 줄을 누르면 다시 편다 (headScroll) */
+    .app.hmin .head{padding-top:8px;padding-bottom:8px;cursor:pointer}
+    .app.hmin .alert,.app.hmin .kpis,.app.hmin .chips,.app.hmin .dates{display:none}
+  }
+  @media (max-width:720px){
+    :root{--row-h:42px}
+    /* 상세 창 = 아래에서 올라오는 판 — 위 손잡이를 끌어내리면 닫힘 */
+    .detail{top:auto;left:0;width:100%;height:80vh;height:80dvh;border-left:0;border-radius:18px 18px 0 0;box-shadow:0 -14px 34px rgba(15,23,42,.2);padding-bottom:env(safe-area-inset-bottom);animation:sheetUp .22s cubic-bezier(.2,.8,.2,1)}
+    .dh{padding:8px 16px 12px;touch-action:none}
+    .dgrab{display:block}
+    .dh-top button{width:38px;height:38px}
+    .d-title{font-size:17px}
+    .dbody{padding:2px 16px 20px}
+    .dl{grid-template-columns:104px 1fr}
+    .dl dt{padding:12px 0}
+    .dl dd{padding:12px 0 12px 12px}
+  }
+  @keyframes sheetUp{from{transform:translateY(100%)}}
+  @media (prefers-reduced-motion:reduce){ .detail{animation:none} }
+  @media (pointer:coarse){   /* 손가락으로 누르기 좋게 */
+    .nav-item{height:44px;font-size:14.5px}
+    .side-link{height:42px;font-size:13.5px}
+    .ib{width:40px;height:40px}
   }
 </style>
 </head>
@@ -335,6 +387,7 @@
   </div>
   <aside class="detail" id="detail" hidden aria-label="상세 정보">
     <div class="dh">
+      <div class="dgrab" aria-hidden="true"></div>
       <div class="dh-top">
         <span class="dh-cap" id="dCap">상세</span>
         <button type="button" id="dPrev" title="이전 줄 (↑)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
@@ -412,6 +465,8 @@
   const $ = id => document.getElementById(id);
   const app = $('app'), grid = $('grid'), qIn = $('q');
   const narrow = matchMedia('(max-width:720px)');
+  const compactMQ = matchMedia('(max-width:720px),(max-height:520px)');   // 휴대폰 (세로 · 가로) — 위쪽 접기 · 안내 한 줄
+  const hoverMQ = matchMedia('(hover:hover)');                            // 마우스가 있는 화면 — '이전 N회' 마우스 팝업
   const S = {
     tabs: [], tabsAt: 0, tabsBusy: null, cur: '', nav: [], lastName: '',
     cache: new Map(),     // gid → {model, at, data}
@@ -422,6 +477,9 @@
     terms: [], hlRe: null, list: [], sel: null,
     dense: false, shown: true, size: '', want: null, saved: null,
     showEmpty: false,     // 내용이 하나도 없는 열도 보기 ('빈 열 보기' 단추)
+    vr: null, rowH: {},   // 지금 그린 표 (보이는 줄 근처만 그리기 — paintRows) · 잰 줄 높이 (촘촘 · 휴대폰마다)
+    touchAt: 0,           // 마지막으로 손대거나 넘긴 때 — 그 직후엔 1분 자동 갱신으로 표를 다시 그리지 않고 기다린다 (softRender)
+    alertOpen: false,     // 휴대폰 — 노란 안내 전부 보기
   };
   try { S.rowsKnown = JSON.parse(localStorage.getItem(LS_ROWS) || '{}') || {}; } catch (e) { S.rowsKnown = {}; }
 
@@ -1121,7 +1179,8 @@
     const keep = opt.keep ? {t: grid.scrollTop, l: grid.scrollLeft} : (opt.pos || {t: 0, l: 0});
     const d = curData();
     S.size = sizeKey();
-    if (!d) { grid.innerHTML = skeleton(); S.list = []; paintCount(); return; }
+    clearTimeout(S.softT);   // 기다리던 자동 갱신 그리기는 이번 그리기로 끝
+    if (!d) { grid.innerHTML = skeleton(); S.list = []; S.vr = null; paintCount(); return; }
     const v = vstate(), list = filtered(d, v);
     S.list = list;
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
@@ -1137,7 +1196,9 @@
       if (kI >= 0 && kI <= 2) { stickN = kI + 1; if (cols[kI + 1] && OPT_RE.test(norm(cols[kI + 1].name))) stickN++; }
     }
     // PC 는 화면 폭에 맞춰 칸 너비를 정하고 (fitWidths), 휴대폰은 칸마다 알맞은 너비로 옆으로 넘긴다
-    const widths = nar ? cols.map((c, k) => keyFirst && k === 0 ? Math.min(c.pref, Math.max(120, Math.round(vw * 0.42))) : c.pref)
+    // (휴대폰 글자 칸은 화면의 62% 를 넘지 않게 — 긴 글은 두 줄로 접히고 전체는 상세 창에)
+    const widths = nar ? cols.map((c, k) => keyFirst && k === 0 ? Math.min(c.pref, Math.max(120, Math.round(vw * 0.42)))
+      : c.flex ? Math.max(c.min, Math.min(c.pref, Math.round(vw * 0.62))) : c.pref)
       : fitWidths(cols, vw - (showRn ? RN_W : 0) - 2);
     let left = showRn ? RN_W : 0;
     while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (keyFirst ? 0.62 : 0.5)) stickN--;
@@ -1156,14 +1217,11 @@
       h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬">${esc(c.name)}${ar}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
-    if (list.length) {
-      for (const row of list) {
-        let s = `<tr data-r="${row.r}"${S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? ' class="on"' : ''}>`;
-        if (showRn) s += `<td class="rn sk${stickN ? '' : ' skl'}" style="left:0">${row.r}</td>`;
-        for (let k = 0; k < cols.length; k++) s += cellHtml(row, cols[k], posOf[k]);
-        h += s + '<td class="fill"></td></tr>';
-      }
-    } else h += `<tr class="empty"><td colspan="${cols.length + (showRn ? 2 : 1)}">${d.rows.length ? '조건에 맞는 줄이 없어요' : '이 탭은 비어 있어요'}</td></tr>`;
+    // 줄이 많으면(VR_MIN 넘게) 처음엔 높이만 잡아 두고, 스크롤 위치를 맞춘 뒤 보이는 줄 근처만 그린다 (paintRows)
+    const vr = S.vr = {list, cols, posOf, showRn, stickN, span: cols.length + (showRn ? 2 : 1), on: list.length > VR_MIN, a: 0, b: 0, rowH: rowHGuess(), tb: null};
+    if (!list.length) h += `<tr class="empty"><td colspan="${vr.span}">${d.rows.length ? '조건에 맞는 줄이 없어요' : '이 탭은 비어 있어요'}</td></tr>`;
+    else if (vr.on) h += vrBody(vr, 0, 0);
+    else for (const row of list) h += rowHtml(row, vr);
     h += '</tbody>';
     // 맨 아래 합계 (보이는 줄만 — 걸러 보면 그 줄들의 합)
     const sums = cols.map(c => c.sum ? list.reduce((s, r) => { const x = r.byP[c.p], n = x ? numOf(x.t) : null; return s + (n || 0); }, 0) : null);
@@ -1178,19 +1236,115 @@
       h += '<td class="fill"></td></tr></tfoot>';
     }
     grid.innerHTML = h + '</table>';
+    vr.tb = grid.querySelector('tbody');
     grid.scrollTop = keep.t;
     grid.scrollLeft = keep.l;
+    if (vr.on) paintRows(true);
     paintCount();
     reanchor();
     // 그리고 나서 세로 스크롤바가 생기거나 없어져 폭이 바뀌었으면 그 폭으로 한 번 더 맞춘다
     if (!nar && !opt.again && grid.clientWidth && Math.abs(grid.clientWidth - vw) > 1) renderGrid({keep: true, again: true});
   }
-  const sizeKey = () => `${grid.clientWidth}x${grid.clientHeight}x${narrow.matches ? 1 : 0}`;
+  // 높이는 빼고 폭만 — 휴대폰에서 위쪽을 접고 펴거나 주소창 · 자판이 나와 높이만 바뀌면 표 전체를 다시 그리지 않고 줄만 더 채운다 (paintRows)
+  const sizeKey = () => `${grid.clientWidth}x${narrow.matches ? 1 : 0}`;
+
+  /* ── 보이는 줄 근처만 그리기 (2026-11-20 휴대폰 최적화) ──
+     줄이 많은 탭(재고 87~230줄 · 메인 제외 상품들 665줄)은 표를 통째로 그리면 칸이 5천~1만 개라
+     PC 에서도 한 번에 0.1초, 휴대폰은 그 몇 배가 걸려 누를 때마다 멈칫했다. 줄 높이는 늘 같으니(--row-h)
+     화면에 보이는 줄 + 위아래 한 화면씩만 그리고, 나머지는 높이만 있는 빈 줄로 채워 스크롤 길이는 그대로 둔다. */
+  const VR_MIN = 60;
+  const rowKey = () => `${S.dense ? 1 : 0}${narrow.matches ? 1 : 0}`;
+  const rowHGuess = () => S.rowH[rowKey()] || (S.dense ? 28 : narrow.matches ? 42 : 34);
+  function rowHtml(row, vr) {
+    let s = `<tr data-r="${row.r}"${S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? ' class="on"' : ''}>`;
+    if (vr.showRn) s += `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0">${row.r}</td>`;
+    for (let k = 0; k < vr.cols.length; k++) s += cellHtml(row, vr.cols[k], vr.posOf[k]);
+    return s + '<td class="fill"></td></tr>';
+  }
+  const vrGap = (vr, n) => n > 0 ? `<tr class="vsp" aria-hidden="true"><td colspan="${vr.span}" style="height:${(n * vr.rowH).toFixed(2)}px"></td></tr>` : '';
+  function vrBody(vr, a, b) {
+    let s = vrGap(vr, a);
+    for (let i = a; i < b; i++) s += rowHtml(vr.list[i], vr);
+    return s + vrGap(vr, vr.list.length - b);
+  }
+  // 그릴 범위 [a, b) = 보이는 줄 ± 한 화면, [lo, hi) = 이 안이 다 그려져 있으면 다시 안 그림 (± 반 화면)
+  function vrWindow(vr, top) {
+    const n = vr.list.length, vis = Math.ceil((grid.clientHeight || 800) / vr.rowH) + 1, over = Math.max(12, vis), half = over >> 1;
+    const first = Math.min(n, Math.max(0, Math.floor(top / vr.rowH)));   // 고정 머리글 바로 아래 줄
+    return {a: Math.max(0, first - over), b: Math.min(n, first + vis + over), lo: Math.max(0, first - half), hi: Math.min(n, first + vis + half)};
+  }
+  function paintRows(force) {
+    const vr = S.vr;
+    if (!vr || !vr.on || !vr.tb || !vr.tb.isConnected) return;
+    const w = vrWindow(vr, grid.scrollTop);
+    if (!force && w.lo >= vr.a && w.hi <= vr.b) return;
+    vr.a = w.a;
+    vr.b = w.b;
+    vr.tb.innerHTML = vrBody(vr, w.a, w.b);
+    // 실제 줄 높이를 재서 다르면 그 높이로 (글꼴 · 확대 배율에 따라 조금 다를 수 있다 — 처음 한 번)
+    const tr = vr.tb.querySelector('tr[data-r]'), rh = tr ? tr.getBoundingClientRect().height : 0;
+    if (rh > 8 && Math.abs(rh - vr.rowH) > 0.5) {
+      vr.rowH = S.rowH[rowKey()] = rh;
+      const w2 = vrWindow(vr, grid.scrollTop);
+      vr.a = w2.a;
+      vr.b = w2.b;
+      vr.tb.innerHTML = vrBody(vr, w2.a, w2.b);
+    }
+    reanchor();
+  }
+  // r 행이 보이게 스크롤 (↑↓ · 찾기 Enter · 상세 창 이전/다음) — 그려지지 않은 줄도 위치를 계산해서
+  function showRow(r) {
+    const vr = S.vr;
+    if (!vr || !vr.on) { const tr = grid.querySelector(`tbody tr[data-r="${r}"]`); if (tr) ensureRowVisible(tr); return; }
+    const i = vr.list.findIndex(x => x.r === r);
+    if (i < 0) return;
+    const th = grid.querySelector('thead'), tf = grid.querySelector('tfoot');
+    const thH = th ? th.offsetHeight : 0, tfH = tf ? tf.offsetHeight : 0, y = i * vr.rowH;   // y = 머리글 아래에서 잰 줄 위치
+    if (y < grid.scrollTop) grid.scrollTop = y;
+    else if (thH + y + vr.rowH > grid.scrollTop + grid.clientHeight - tfH) grid.scrollTop = thH + y + vr.rowH - grid.clientHeight + tfH;
+    paintRows();
+  }
+  // 1분 자동 갱신 · 저장 뒤 다시 읽기로 자료가 바뀌었을 때 — 손가락으로 넘기는 중이면 멈춘 뒤에 그린다
+  // (넘기는 도중 표를 갈아 끼우면 휴대폰에선 관성 스크롤이 뚝 끊기고 위치가 튄다)
+  function softRender() {
+    clearTimeout(S.softT);
+    const idle = Date.now() - S.touchAt;
+    if (idle < 1500) { S.softT = setTimeout(softRender, 1600 - idle); return; }
+    if (!curData()) return;
+    renderGrid({keep: true});
+    if (S.sel && S.sel.gid === S.cur && !$('detail').hidden) openDetail(S.sel.r, false);   // 상세 창도 새 값으로
+  }
+  const touched = () => { S.touchAt = Date.now(); };
+  ['touchstart', 'touchmove', 'wheel'].forEach(ev => document.addEventListener(ev, touched, {passive: true, capture: true}));
+
+  /* ── 휴대폰: 표를 아래로 넘기면 위쪽(안내 · 요약 카드 · 칩 · 날짜)을 접는다 ──
+     접으면 표가 그만큼 길어진다. 맨 위 근처로 돌아오거나 제목 줄을 누르면 편다.
+     목록이 짧아 접으면 스크롤할 게 없어지는 탭은 접지 않는다 (접었다 폈다 반복하지 않게) */
+  let hdLast = 0, hdAcc = 0, hdLock = 0;
+  function setHmin(on) {
+    on = !!on && compactMQ.matches;
+    if (app.classList.contains('hmin') === on) return;
+    app.classList.toggle('hmin', on);
+    hdLock = Date.now() + 350;   // 높이가 바뀌며 생기는 스크롤 이벤트는 잠깐 무시
+    hdAcc = 0;
+  }
+  function headScroll() {
+    const top = grid.scrollTop, dy = top - hdLast;
+    hdLast = top;
+    if (!compactMQ.matches || Date.now() < hdLock) return;
+    const on = app.classList.contains('hmin');
+    if (on) { if (top < 24) setHmin(false); return; }
+    hdAcc = dy > 0 ? hdAcc + dy : 0;
+    const head = document.querySelector('.head');
+    if (hdAcc > 24 && top > 56 && grid.scrollHeight - grid.clientHeight > head.offsetHeight + 160) setHmin(true);
+  }
 
   /* ── 위쪽 (제목 · 날짜 · 안내 · 요약 카드 · 칩) ── */
   function renderHead() {
     const t = tabOf(S.cur), m = t ? (t.meta || (t.meta = classify(t.name))) : null, it = curItem(), d = curData(), v = vstate();
-    $('title').textContent = !m ? '불러오는 중…' : m.sec === 'stock' ? `${m.label} 재고 · 송장출력` : m.sec === 'home' ? `${m.label} 공홈 주문 원본` : m.sec === 'plato' ? '플랫폼 주문 (플토)' : m.label;
+    // 휴대폰에선 ' · 송장출력' 을 빼고 '코페리 재고' 까지만 (제목 줄이 한 줄로 들어가게)
+    $('title').innerHTML = !m ? '불러오는 중…' : m.sec === 'stock' ? `${esc(m.label)} 재고<span class="t2"> · 송장출력</span>`
+      : esc(m.sec === 'home' ? `${m.label} 공홈 주문 원본` : m.sec === 'plato' ? '플랫폼 주문 (플토)' : m.label);
     const multi = !!it && it.tabs.length > 1;
     $('dates').innerHTML = multi ? it.tabs.map(x => `<button type="button" class="${x.gid === S.cur ? 'on' : ''}" data-gid="${x.gid}">${esc(x.meta.date || x.name)}</button>`).join('') : '';
     const td = $('tDate');
@@ -1210,7 +1364,11 @@
     const al = $('alert');
     if (d && d.banner.length) {
       const lines = d.banner.join('\n').split(/\s*▶\s*|\n|\s+\|\s+/).map(s => s.replace(/^⚠️?\s*/, '').trim()).filter(Boolean);
-      al.innerHTML = `${ICON_WARN}<ul>${lines.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`;
+      // 휴대폰은 첫 줄만 (두 줄까지) — 노란 안내가 화면 절반을 차지하던 것 (아페티 · 식스에이), 누르면 전부
+      const more = lines.length > 1 || lines[0].length > 44;
+      al.innerHTML = `${ICON_WARN}<ul>${lines.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`
+        + (more ? `<button type="button" class="al-more">${S.alertOpen ? '접기' : lines.length > 1 ? `+${lines.length - 1}` : '더 보기'}</button>` : '');
+      al.classList.toggle('fold', more && !S.alertOpen);
       al.hidden = false;
     } else al.hidden = true;
     $('kpis').innerHTML = d ? d.kpis.map(k => {
@@ -1245,6 +1403,9 @@
     renderGrid({pos: {t: 0, l: grid.scrollLeft}});
   });
   $('dates').addEventListener('click', e => { const b = e.target.closest('button[data-gid]'); if (b) openTab(b.dataset.gid); });
+  $('alert').addEventListener('click', () => { if (compactMQ.matches) { S.alertOpen = !S.alertOpen; renderHead(); } });
+  // 휴대폰: 접힌 위쪽은 제목 줄을 누르면 편다
+  document.querySelector('.head').addEventListener('click', e => { if (app.classList.contains('hmin') && !e.target.closest('button,a')) setHmin(false); });
   $('parts').addEventListener('click', e => {
     const b = e.target.closest('button[data-part]');
     if (!b) return;
@@ -1278,7 +1439,11 @@
     $('nav').innerHTML = h;
   }
   const curItem = () => S.nav.find(it => it.tabs.some(t => t.gid === S.cur)) || null;
-  function setNav(open) { app.classList.toggle('nav-open', open); $('scrim').hidden = !open; }
+  function setNav(open) {
+    app.classList.toggle('nav-open', open);
+    $('scrim').hidden = !open;
+    if (open) { const on = $('nav').querySelector('.nav-item.on'); if (on) on.scrollIntoView({block: 'nearest'}); }   // 보고 있는 탭이 보이게
+  }
   // PC 는 메뉴를 접어 표를 넓게 (접힌 상태는 기억), 좁은 화면은 서랍
   const wide = matchMedia('(min-width:1001px)');
   function setSide(open, save) {
@@ -1369,6 +1534,7 @@
   function openTab(gid) {
     if (!gid) return;
     if (S.cur && S.cur !== gid) { S.pos[S.cur] = {t: grid.scrollTop, l: grid.scrollLeft}; closeDetail(); }
+    if (S.cur !== gid) setHmin(false);
     S.cur = gid;
     hideMsg();
     const t = tabOf(gid);
@@ -1416,7 +1582,7 @@
   document.body.appendChild(hpop);
   grid.addEventListener('mouseover', e => {
     const chip = e.target.closest && e.target.closest('.hchip');
-    if (!chip) return;
+    if (!chip || !hoverMQ.matches) return;   // 휴대폰은 누르면 가짜 마우스가 와서 팝업이 상세 창 위에 남았다 — 상세 창에 전부 나온다
     const d = curData(), row = d && d.rows.find(x => x.r === +chip.dataset.r), col = d && d.cols.find(x => x.p === +chip.dataset.p);
     const c = row && col && row.byP[col.p];
     const hx = c && hxOf(c);
@@ -1431,7 +1597,8 @@
     hpop.style.top = Math.max(8, Math.min(innerHeight - h - 8, r.top + r.height / 2 - h / 2)) + 'px';
   });
   grid.addEventListener('mouseout', e => { const chip = e.target.closest && e.target.closest('.hchip'); if (chip && !chip.contains(e.relatedTarget)) hpop.hidden = true; });
-  grid.addEventListener('scroll', () => { hpop.hidden = true; }, {passive: true});
+  grid.addEventListener('scroll', () => { hpop.hidden = true; paintRows(); headScroll(); touched(); }, {passive: true});
+  if (window.ResizeObserver) new ResizeObserver(() => paintRows()).observe(grid);   // 위쪽을 접고 펴거나 화면 높이가 바뀌면 줄을 더 채운다
   function moveSel(dir) {
     if (!S.list.length) return;
     let i = S.sel && S.sel.gid === S.cur ? S.list.findIndex(r => r.r === S.sel.r) : -1;
@@ -1468,8 +1635,9 @@
     if (!row) { closeDetail(); return; }
     S.sel = {gid: S.cur, r};
     grid.querySelectorAll('tbody tr.on').forEach(tr => tr.classList.remove('on'));
+    if (scroll) showRow(r);
     const tr = grid.querySelector(`tbody tr[data-r="${r}"]`);
-    if (tr) { tr.classList.add('on'); if (scroll) ensureRowVisible(tr); }
+    if (tr) tr.classList.add('on');
     const key = d.keyIdx >= 0 ? d.cols[d.keyIdx] : d.cols.find(c => c.type === 'text');
     const kv = key ? catVal(row, key.p) : '';
     const subs = [];
@@ -1498,6 +1666,34 @@
   }
   $('dClose').addEventListener('click', closeDetail);
   $('dscrim').addEventListener('click', closeDetail);
+  // 휴대폰: 상세 창 윗부분(손잡이 · 제목)을 잡고 끌어내리면 닫힌다
+  (function () {
+    const det = $('detail'), dh = det.querySelector('.dh');
+    let sw = null;
+    const reset = () => { det.style.transition = ''; det.style.transform = ''; };
+    dh.addEventListener('touchstart', e => {
+      if (!narrow.matches || e.touches.length !== 1 || E.busy) return;
+      sw = {y: e.touches[0].clientY, t: Date.now(), dy: 0};
+    }, {passive: true});
+    dh.addEventListener('touchmove', e => {
+      if (!sw) return;
+      sw.dy = Math.max(0, e.touches[0].clientY - sw.y);
+      if (sw.dy > 6) { e.preventDefault(); det.style.transition = 'none'; det.style.transform = `translateY(${sw.dy}px)`; }
+    }, {passive: false});
+    const end = () => {
+      if (!sw) return;
+      const dy = sw.dy, fast = dy > 40 && dy / Math.max(1, Date.now() - sw.t) > 0.6;
+      sw = null;
+      if (dy <= 6) { reset(); return; }   // 그냥 누름 (단추 · 링크)
+      det.style.transition = 'transform .18s ease';
+      if (dy > 110 || fast) {
+        det.style.transform = 'translateY(100%)';
+        setTimeout(() => { closeEditor(); closeDetail(); reset(); }, 180);
+      } else { det.style.transform = ''; setTimeout(reset, 200); }
+    };
+    dh.addEventListener('touchend', end);
+    dh.addEventListener('touchcancel', end);
+  })();
   $('dPrev').addEventListener('click', () => moveSel(-1));
   $('dNext').addEventListener('click', () => moveSel(1));
   $('dList').addEventListener('click', e => {
@@ -1693,7 +1889,7 @@
     inp.value = old;
     const opts = multi ? [] : colValues(x);
     if (opts.length) { $('edList').innerHTML = opts.map(v => `<option value="${esc(v)}">`).join(''); inp.setAttribute('list', 'edList'); }
-    setEdMsg(`${x.col.name} · 시트 ${colName(x.sc - 1)}${x.r} — ${multi ? 'Ctrl+Enter' : 'Enter'} 저장 · Esc 취소`);
+    setEdMsg(`${x.col.name} · 시트 ${colName(x.sc - 1)}${x.r}` + (hoverMQ.matches ? ` — ${multi ? 'Ctrl+Enter' : 'Enter'} 저장 · Esc 취소` : ''));   // 휴대폰엔 Esc 가 없다
     box.hidden = false;
     placeEditor(anchor);
     inp.focus();
@@ -1882,8 +2078,11 @@
         saveModel(gid, model, now, true);
         if (gid === S.cur) {
           renderHead();
-          renderGrid(old ? {keep: true} : {pos: S.pos[gid]});
-          if (S.sel && S.sel.gid === gid && !$('detail').hidden) openDetail(S.sel.r, false);   // 상세 창도 새 값으로
+          if (old) softRender();   // 보던 표가 새 자료로 — 손으로 넘기는 중이면 멈춘 뒤에 (상세 창도 거기서 새 값으로)
+          else {
+            renderGrid({pos: S.pos[gid]});
+            if (S.sel && S.sel.gid === gid && !$('detail').hidden) openDetail(S.sel.r, false);
+          }
         }
       }
       if (gid === S.cur) prefetch();
@@ -1951,7 +2150,7 @@
     app.classList.toggle('dense', S.dense);
     $('btnDense').classList.toggle('on', S.dense);
     $('btnDense').title = S.dense ? '줄 간격 넓게' : '줄 간격 촘촘하게';
-    if (save) lsSet(LS_DENSE, S.dense ? '1' : '0');
+    if (save) { lsSet(LS_DENSE, S.dense ? '1' : '0'); renderGrid({keep: true}); }   // 줄 높이가 바뀌니 다시 그린다 (보이는 줄만 그리기)
   }
   $('btnDense').addEventListener('click', () => setDense(!S.dense, true));
   const fsOk = document.fullscreenEnabled || document.webkitFullscreenEnabled;
@@ -1976,6 +2175,9 @@
     else if (e.key === 'Escape') { qIn.value = ''; setQuery(''); grid.focus({preventScroll: true}); }
   });
   $('qx').addEventListener('click', () => { qIn.value = ''; setQuery(''); qIn.focus(); });
+  // 휴대폰: 찾기 칸을 누르면 자판이 올라오니 위쪽을 접어 결과를 넓게, 찾을 말 없이 나가면 다시 편다
+  qIn.addEventListener('focus', () => { if (compactMQ.matches) setHmin(true); });
+  qIn.addEventListener('blur', () => { if (!qIn.value.trim() && grid.scrollTop < 56) setHmin(false); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('edbox').hidden) { closeEditor(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); qIn.focus(); qIn.select(); }
@@ -2000,6 +2202,7 @@
     if (!vis) return;
     paintStatus();
     if (sizeKey() !== S.size && grid.clientWidth) renderGrid({keep: true});
+    else paintRows();
     if (Date.now() - S.tabsAt > TABS_MS && !S.tabsBusy) loadTabs().catch(() => {});
     if (!S.cur || S.busy[S.cur]) return;
     const c = S.cache.get(S.cur), s = S.st[S.cur];
@@ -2011,6 +2214,7 @@
   let rzT = 0;
   window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(tick, 180); });
   narrow.addEventListener && narrow.addEventListener('change', () => { if (!narrow.matches) setNav(false); $('dscrim').hidden = !narrow.matches || $('detail').hidden; renderGrid({keep: true}); });
+  compactMQ.addEventListener && compactMQ.addEventListener('change', () => { if (!compactMQ.matches) setHmin(false); });
 
   /* ── 시작 — 지난번 탭은 탭 목록을 기다리지 않고 바로 읽는다 ── */
   (async function boot() {
