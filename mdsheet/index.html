@@ -1393,7 +1393,7 @@
       const j = await mdx('mdx_rows_get', {p_tk: gid, p_since: 0, p_after: after, p_limit: 4000, p_fx: first});
       if (first) {   // 수식 칸 (맥미니가 브리지로 읽어 둔 것) — 고치기 막기 · 함수 보이기 · IMAGE 사진
         const t = tabOf(gid);
-        if (t && t.info) { t.info.fx = j.fx || null; t.info.fx_list = j.fx_list || null; t.info.ofx = Array.isArray(j.ofx) ? j.ofx : []; t.info._ofxM = null; t.info.ofmt = j.ofmt && typeof j.ofmt === 'object' ? j.ofmt : {}; t.info.fxVer = t.info.ver; }
+        if (t && t.info) { t.info.fx = j.fx || null; t.info.fx_list = j.fx_list || null; t.info.ofx = Array.isArray(j.ofx) ? j.ofx : []; t.info._ofxM = null; t.info.ofmt = j.ofmt && typeof j.ofmt === 'object' ? j.ofmt : {}; t.info.cut_at = j.cut_at || null; t.info.fxVer = t.info.ver; }
       }
       (j.rows || []).forEach(x => out.push(asRow(x)));
       if (!j.more || !(j.rows || []).length) return out;
@@ -1922,7 +1922,7 @@
     const pk = `${S.cur}|${row.r}|${col.p}`, pd = E.pend.get(pk);
     if (pd && pd.busy) cls += ' pend';                       // 구글시트 · 저장소에 쓰는 중
     if (S.cell && S.cell.gid === S.cur && S.cell.r === row.r && S.cell.p === col.p) cls += ' csel';
-    if (S.rng && S.rng.has(row.r * 1024 + col.p)) cls += ' crng';   // Shift 로 고른 범위
+    if (S.rng && S.cell && S.cell.gid === S.cur && S.rng.has(row.r * 1024 + col.p)) cls += ' crng';   // Shift 로 고른 범위
     const fm = fmtOf((tabOf(S.cur) || {}).info, row.r, col.p);   // 오피스 칸 서식 (굵게 · 글자 색 · 칸 색)
     if (fm) { if (fm.b) cls += ' b'; const css = (fm.bg ? `background-color:${fm.bg};` : '') + (fm.fg ? `color:${fm.fg};` : ''); if (css) style = (style ? style.replace(/;?$/, ';') : '') + css; }
     if (c) {
@@ -2178,7 +2178,7 @@
     $('dates').innerHTML = '';
     const td = $('tDate');   // 제목 옆 = 어느 시트의 탭인지
     td.hidden = !b;
-    td.textContent = b ? b.title : '';
+    td.textContent = b ? b.title + (isCut(S.cur) ? ' · 오피스가 원본' : '') : '';
     const tc = $('tCap');    // 그 옆 = 표 위의 제목 · 조건 줄 ('월별 판매 성과 분석' · '주문일 · 2026. 9. 1')
     tc.textContent = d && d.note ? d.note : '';
     tc.title = tc.textContent;
@@ -2511,6 +2511,8 @@
     if (S.cell && S.cell.gid === S.cur && cellMode()) {
       const k = e.key, c = S.cell;
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (k === 'b' || k === 'B')) { e.preventDefault(); fmtBold(); return; }   // 굵게
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }   // 되돌리기
+      if ((k === 'Delete' || k === 'Backspace') && S.cell2 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); clearSel(); return; }   // 범위 지우기
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (/^Arrow/.test(k)) {
         e.preventDefault();
@@ -2811,6 +2813,20 @@
     return info._ofxM;
   }
   function ofxGet(info, r, p) { const m = ofxMap(info); return (m && m.get(r * 1024 + p)) || ''; }
+  /* 구글시트를 끊은 시트 (mdx_books.cut_at — '구글 끊기' 맥미니 명령 node md/md-db-sync.mjs cut <시트> --yes). 끊으면 저장소가 원본:
+     고치기는 저장소에만 (브리지 안 부름), 함수 값은 맥미니 계산 패스가 1분 안에 (화면은 FX 로 바로 보여 주기만), 구글 함수 칸도 고칠 수 있다 —
+     '=' 면 오피스 함수, 값이면 그 값을 내는 오피스 함수(=1200 · ="글")로 (값만 쓰면 계산 패스가 구글 함수 값으로 다시 덮으므로). docs/MD-STORE.md 5 · 6장 */
+  function isCut(gid) { const t = tabOf(gid), b = t && bookOf(t.book); return !!((b && b.cut_at) || (t && t.info && t.info.cut_at)); }
+  function constFx(s) {
+    const t = String(s == null ? '' : s).trim();
+    if (t === '') return '=""';
+    const v = FX.cell(t);
+    if (typeof v === 'number') return '=' + String(Number(v.toPrecision(15)));
+    if (typeof v === 'boolean') return v ? '=TRUE' : '=FALSE';
+    if (v && typeof v === 'object' && typeof v.n === 'number' && !FX.isErr(v)) { const m = FX.show(v).match(/^(\d{4})-(\d{2})-(\d{2})$/); if (m) return `=DATE(${+m[1]},${+m[2]},${+m[3]})`; }
+    return '="' + String(s).replace(/"/g, '""') + '"';
+  }
+  const ofxConst = f => /^=(""|"(?:[^"]|"")*"|-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?|TRUE|FALSE|DATE\(\d+,\d+,\d+\))$/.test(String(f || ''));
   // 계산 환경 — 칸 값 = 저장소 줄(고치는 중인 값 포함), 오피스 함수 칸은 그 함수를 다시 계산 (돌고 도는 함수 = #REF!)
   function ofxCtx(gid, rows) {
     const t = tabOf(gid), info = t && t.info;
@@ -2844,7 +2860,7 @@
     return FX.run(FX.check(f), {get: c.get, row: r, col: p + 1, last: c.last});
   }
   // 함수 저장 · 지우기 (f = '' 이면 지움) — 이 화면 먼저, 저장소는 뒤에 (다른 PC 는 탭 ver 가 바뀌어 새로 받는다)
-  function ofxSave(gid, r, p, f) {
+  function ofxPut(gid, r, p, f) {   // 화면 먼저, 저장소는 뒤에 — 못 쓰면 throw
     const t = tabOf(gid);
     if (t && t.info) {
       const arr = (Array.isArray(t.info.ofx) ? t.info.ofx : []).filter(x => !(x[0] === r && x[1] === p));
@@ -2854,8 +2870,11 @@
     }
     return mdx('mdx_ofx_set', {p_tk: gid, p_r: r, p_p: p, p_f: f || '', p_who: whoAmI() || null}).then(d => {
       if (d && d.ok && d.ver && t && t.info) { t.info.ver = Math.max(+t.info.ver || 0, +d.ver); t.info.fxVer = t.info.ver; }
-      return true;
-    }, () => { toast(f ? '함수를 오피스 저장소에 못 적었어요 — 값은 들어갔어요. 한 번 더 넣어 주세요' : '함수 지우기를 오피스 저장소에 못 적었어요 — 한 번 더 해 주세요', true); return false; });
+      return d;
+    });
+  }
+  function ofxSave(gid, r, p, f) {
+    return ofxPut(gid, r, p, f).then(() => true, () => { toast(f ? '함수를 오피스 저장소에 못 적었어요 — 값은 들어갔어요. 한 번 더 넣어 주세요' : '함수 지우기를 오피스 저장소에 못 적었어요 — 한 번 더 해 주세요', true); return false; });
   }
   // 화면 — 오피스 함수 칸은 지금 계산한 값으로 (저장된 값이 옛 값이어도). build() 가 부른다
   function applyOfx(gid, ent) {
@@ -2873,6 +2892,7 @@
   const OFX = {timer: new Map(), tried: new Map()};
   function ofxSyncSoon(gid) { clearTimeout(OFX.timer.get(gid)); OFX.timer.set(gid, setTimeout(() => ofxSync(gid), 600)); }
   function ofxSync(gid) {
+    if (isCut(gid)) return;   // 끊은 시트 — 함수 값은 맥미니 계산 패스 하나가 쓴다 (둘이 번갈아 쓰지 않게)
     const t = tabOf(gid), info = t && t.info, ent = S.cache.get(gid), b = t && bookOf(t.book);
     if (!info || !Array.isArray(info.ofx) || !info.ofx.length || !ent || !ent.rows || !canEdit() || !(b && b.edit)) return;
     const c = ofxCtx(gid, ent.rows);
@@ -2913,10 +2933,11 @@
       : cell && cell.img ? '사진 칸은 구글시트에서 바꿔 주세요'
       : !cell ? '이 칸은 구글시트에서 고쳐 주세요' : '';
     const b = bookOf(t.book), info = tabInfo(gid), cr = (cell && cell.r) || r;
-    const of = ofxGet(info, cr, p), gf = of ? '' : fxText(info, cr, p), fx0 = of || gf;   // 오피스 함수 먼저, 없으면 구글시트 함수
+    const of = ofxGet(info, cr, p), gf0 = fxText(info, cr, p), oc = !!of && ofxConst(of);   // oc = 끊은 시트에서 값을 적은 칸 (값을 내는 오피스 함수 — 값 칸처럼)
+    const fx0 = oc ? '' : (of || gf0);   // 오피스 함수 먼저, 없으면 구글시트 함수
     const lock = fx0 && fxGuard(fx0, gid) ? EDIT_ERR.fx_locked : '';   // 기밀 명단 밖 — 가린 칸을 쓰는 함수 칸은 함수도 안 보이고 못 고친다
     const fx = lock ? '' : fx0;
-    return {gid, book: t.book, edit: !!(b && b.edit), name: t.name, col, cell, p, row: r, r: cr, sc: mc.i + 1, fx, ofx: !!of && !lock, gfx: !!gf && !lock,
+    return {gid, book: t.book, edit: !!(b && b.edit), name: t.name, col, cell, p, row: r, r: cr, sc: mc.i + 1, fx, ofx: !!of && !lock, gfx: !of && !!gf0 && !lock, gfxUnder: !!gf0,
       check: col.type === 'check' || !!(cell && cell.cb && !cell.t), why: why || lock};
   }
   function roWhy(x) {
@@ -2927,7 +2948,7 @@
     const info = tabInfo(x.gid);
     if (info && info.fx_deny) return editErr(info.fx_deny);
     if (info && info.fx_ro) return RO_TAB;
-    if (x.gfx) return `'${x.col.name}' 칸은 구글시트 함수(${x.fx})가 계산해요 — 구글을 끊기 전엔 오피스에서 못 고쳐요`;
+    if (x.gfx && !isCut(x.gid)) return `'${x.col.name}' 칸은 구글시트 함수(${x.fx})가 계산해요 — 구글을 끊기 전엔 오피스에서 못 고쳐요`;
     return '';
   }
   function markEditable() {
@@ -2994,6 +3015,7 @@
     rerender(x.gid);
   }
   async function writeOnce(x, v, old, prev, key) {
+    if (isCut(x.gid)) return writeStore(x, v, old, prev, key);
     try {
       const isF = /^=/.test(String(v).trim()), f = isF ? String(v).trim() : '';
       const cv = isF ? ofxEval(x.gid, x.r, x.p, f) : null;   // 오피스가 계산한 값 → 시트 · 저장소엔 값으로
@@ -3031,6 +3053,37 @@
       logEdit(x, prev, v, true);
       ofxSyncSoon(x.gid);   // 이 칸을 가리키는 다른 오피스 함수 칸 다시 계산
       return {ok: true, shown, dbErr, fx: isF, fxErr: isF && FX.isErr(cv) ? cv.c : ''};
+    } catch (e) {
+      settle(x, key, false);
+      logEdit(x, prev, v, false, (e && e.message) || String(e));
+      throw e;
+    }
+  }
+  // 끊은 시트 — 저장소에만. 함수 · 구글 함수 칸은 오피스 함수로(값은 맥미니 계산 패스가 1분 안에, 화면은 FX 가 바로), 값 칸은 mdx_cell_edit(p_old — 그사이 바뀐 칸은 덮어쓰기를 묻는다)
+  async function writeStore(x, v, old, prev, key) {
+    try {
+      const s = String(v), isF = /^=/.test(s.trim());
+      if (isF || x.gfxUnder) {
+        const f = isF ? s.trim() : constFx(s);
+        const cv = ofxEval(x.gid, x.r, x.p, f);
+        await ofxPut(x.gid, x.r, x.p, f);
+        E.pend.delete(key);
+        rerender(x.gid);   // applyOfx 가 계산한 값을 그린다
+        logEdit(x, prev, v, true);
+        return {ok: true, shown: FX.show(cv), fx: isF, fxErr: isF && FX.isErr(cv) ? cv.c : ''};
+      }
+      const d = await mdx('mdx_cell_edit', {p_tk: x.gid, p_r: x.r, p_p: x.p, p_new: s, p_row: null, p_who: whoAmI() || null, p_old: old == null ? null : String(x.fx ? x.cell.t : old)});
+      if (d && d.conflict) {
+        if (norm(d.current) === norm(x.fx ? x.cell.t : old) || norm(d.current) === norm(s)) return writeStore(x, v, null, prev, key);   // 띄어쓰기만 다름 · 이미 그 값
+        settle(x, key, false, null, d.current);
+        return {conflict: true, current: d.current};
+      }
+      if (!d || !d.ok || !Array.isArray(d.v)) throw new Error('db_error');
+      bumpRows(x.gid, d);
+      if (x.ofx) await ofxPut(x.gid, x.r, x.p, '');   // 오피스 함수 칸에 값 → 함수 지움
+      settle(x, key, true, d.v);
+      logEdit(x, prev, v, true);
+      return {ok: true, shown: d.v[x.p] != null ? d.v[x.p] : s};
     } catch (e) {
       settle(x, key, false);
       logEdit(x, prev, v, false, (e && e.message) || String(e));
@@ -3077,6 +3130,7 @@
   function afterWrite(x, v, old, p, anchorOf) {
     return p.then(res => {
       if (res && res.conflict) { askConflict(x, v, res.current, anchorOf); return res; }
+      if (res && res.ok && !x.noUndo) pushUndo(x.gid, {label: '고치기', cells: [{r: x.r, p: x.p, before: String(old == null ? '' : old), after: String(v), single: true}]});
       const shown = res && res.shown != null ? res.shown : v;
       if (res && res.fx && (res.fxErr || FX_ERR_RE.test(String(shown)))) toast(`함수는 넣었지만 결과가 ${res.fxErr || shown} 예요 — 칸 주소 · 함수 이름 · 괄호를 확인해 주세요`, true);
       else toast(`${res && res.fx ? '함수 넣음' : '저장됨'} · ${x.col.name} ${short(old)} → ${short(shown)}${res && res.dbErr ? ' (구글시트엔 저장 · 오피스 저장소는 1분 안에 맞춰져요)' : ''}`);
@@ -3456,20 +3510,21 @@
     if (bg) bg.style.background = lsGet('fmt_last_bg') || '#fff2cc';
   }
   // fn(그 칸 서식 사본) → 새 서식. 화면 먼저 바꾸고 저장소에 — 못 쓰면 되돌림
-  function fmtApply(fn, label) {
+  function fmtApply(fn, label, only, noUndo) {
     if (!canEdit()) { toast(NO_EDIT, true); return; }
-    const t = tabOf(S.cur), info = t && t.info, cs = rngCells();
+    const t = tabOf(S.cur), info = t && t.info, cs = only || rngCells();
     if (!info || !cs.length) { toast('서식을 바꿀 칸을 먼저 눌러 고르세요 (Shift+누르기로 여러 칸)', true); return; }
     if (cs.length > FMT_MAX) { toast(`한 번에 ${FMT_MAX.toLocaleString()}칸까지 바꿀 수 있어요 — 범위를 줄여 주세요`, true); return; }
     const prev = info.ofmt || {}, next = Object.assign({}, prev), cells = [];
     cs.forEach(x => {
-      const k = `${x.r}:${x.p}`, cur = prev[k] || {}, nu = fn(Object.assign({}, cur));
+      const k = `${x.r}:${x.p}`, cur = prev[k] || {}, nu = fn(Object.assign({}, cur), x);
       Object.keys(nu).forEach(q => { if (!nu[q]) delete nu[q]; });
       if (JSON.stringify(nu) === JSON.stringify(cur)) return;
       if (Object.keys(nu).length) next[k] = nu; else delete next[k];
       cells.push({r: x.r, p: x.p, b: nu.b ? 1 : 0, fg: nu.fg || '', bg: nu.bg || ''});
     });
     if (!cells.length) return;
+    if (!noUndo) pushUndo(t.gid, {label, fmt: cells.map(c => ({r: c.r, p: c.p, f: prev[`${c.r}:${c.p}`] || null}))});
     info.ofmt = next;
     renderGrid({keep: true});
     fmtBar();
@@ -3525,6 +3580,257 @@
     else if (k === 'clear') fmtApply(() => ({}), '서식 지우기');
     else if (!PAL.hidden && PAL.dataset.kind === k) PAL.hidden = true;
     else openPal(k, b);
+  });
+  /* ── 여러 칸 — 복사(Ctrl+C) · 붙여넣기(Ctrl+V) · 잘라내기(Ctrl+X) · 범위 지우기(Delete) · 되돌리기(Ctrl+Z) ──
+     (2026-11-20 사장님 "구글시트 안써도 쓸 수 있는지 체크해줘. 완벽해야해" — 엑셀 · 구글시트에서 늘 하던 일을 오피스에서)
+     · 고른 칸 · 범위(Shift+누르기 · Shift+화살표)에서. 붙여넣기 = 엑셀 · 구글시트에서 복사한 표(탭 · 줄바꿈)를 고른 칸부터 · 한 칸만 복사했으면 고른 범위 전체에
+     · 못 고치는 칸(구글 함수 · 개인정보 · 사진 · 막힌 탭 · 체크 칸에 글자)은 건너뛰고 몇 칸인지 알린다
+     · 쓰기 = 한 칸 고치기와 같은 길을 묶어서 — 시트(브리지 60칸씩, 그사이 바뀐 칸은 안 덮음) → 저장소(줄마다), 구글을 끊은 탭은 저장소만(칸마다, p_old 로 같은 검사)
+     · 되돌리기 = 이 화면에서 고친 값 · 서식 (탭마다 50번까지, 그사이 다른 사람이 바꾼 칸은 그대로 둠) */
+  const UNDO = new Map(), UNDO_MAX = 50, PASTE_MAX = 2000, BATCH = 60;
+  function pushUndo(gid, entry) {
+    const st = UNDO.get(gid) || [];
+    st.push(entry);
+    while (st.length > UNDO_MAX) st.shift();
+    UNDO.set(gid, st);
+  }
+  const rawOf = (gid, r, p) => { const ent = S.cache.get(gid), row = ent && ent.rows && ent.rows.get(r); return row && row.v && row.v[p] != null ? String(row.v[p]) : ''; };
+  function bumpRows(gid, d) {   // 내가 쓴 것 — 다음 확인 때 다시 받지 않게 번호표를 앞당긴다
+    const t = tabOf(gid);
+    if (!d || !d.rows_ver || !t || !t.info) return;
+    const ent = S.cache.get(gid);
+    if (ent && ent.rowsVer >= +t.info.rows_ver) ent.rowsVer = +d.rows_ver;
+    t.info.rows_ver = Math.max(+t.info.rows_ver, +d.rows_ver);
+  }
+  function selTsv() {   // 고른 범위 → 엑셀 · 구글시트에 붙는 글 (탭 · 줄바꿈, 칸 속 줄바꿈 · 따옴표는 "…")
+    const cs = rngCells(), d = curData();
+    if (!cs.length || !d) return '';
+    const byR = new Map(d.rows.map(x => [x.r, x])), rows = new Map();
+    cs.forEach(x => { if (!rows.has(x.r)) rows.set(x.r, []); rows.get(x.r).push(x); });
+    const q = v => /[\t\n"]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    const txt = (r, p) => {
+      const row = byR.get(r), c = row && row.byP[p];
+      if (!c) return rawOf(S.cur, r, p);
+      if (c.cb && !c.t) return c.cb === 2 ? 'TRUE' : 'FALSE';
+      return String(c.t == null ? '' : c.t);
+    };
+    return [...rows.values()].map(list => list.map(x => q(txt(x.r, x.p))).join('\t')).join('\n');
+  }
+  function parseTsv(text) {
+    let s = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
+    if (s.endsWith('\n')) s = s.slice(0, -1);
+    const out = [[]];
+    let cur = '', q = false;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (q) { if (ch === '"') { if (s[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; continue; }
+      if (ch === '"' && cur === '') { q = true; continue; }
+      if (ch === '\t') { out[out.length - 1].push(cur); cur = ''; continue; }
+      if (ch === '\n') { out[out.length - 1].push(cur); cur = ''; out.push([]); continue; }
+      cur += ch;
+    }
+    out[out.length - 1].push(cur);
+    return out;
+  }
+  function pasteTargets(g) {   // 붙일 칸 [{r, p, v}] (보이는 줄 · 칸 순서) · 표 밖으로 넘친 칸 수
+    const vr = S.vr, c = S.cell;
+    if (!vr || !c || c.gid !== S.cur) return {cells: [], over: 0};
+    const ia = vr.list.findIndex(x => x.r === c.r), ka = vr.cols.findIndex(x => x.p === c.p);
+    if (ia < 0 || ka < 0) return {cells: [], over: 0};
+    const ib = S.cell2 ? vr.list.findIndex(x => x.r === S.cell2.r) : -1, kb = S.cell2 ? vr.cols.findIndex(x => x.p === S.cell2.p) : -1;
+    const i0 = ib < 0 ? ia : Math.min(ia, ib), k0 = kb < 0 ? ka : Math.min(ka, kb);
+    const cells = [];
+    let over = 0;
+    if (g.length === 1 && g[0].length === 1 && S.cell2) { rngCells().forEach(x => cells.push({r: x.r, p: x.p, v: g[0][0]})); return {cells, over}; }   // 한 칸 → 고른 범위 전체
+    g.forEach((row, di) => row.forEach((v, dk) => {
+      const i = i0 + di, k = k0 + dk;
+      if (i >= vr.list.length || k >= vr.cols.length) { over++; return; }
+      cells.push({r: vr.list[i].r, p: vr.cols[k].p, v});
+    }));
+    return {cells, over};
+  }
+  function pasteText(text) {
+    if (!canEdit()) { toast(NO_EDIT, true); return; }
+    const g = parseTsv(text);
+    if (!g.length || (g.length === 1 && g[0].length === 1 && g[0][0] === '')) return;
+    const {cells, over} = pasteTargets(g);
+    if (!cells.length) { toast('붙여 넣을 칸을 먼저 눌러 고르세요', true); return; }
+    if (cells.length > PASTE_MAX) { toast(`한 번에 ${PASTE_MAX.toLocaleString()}칸까지 붙여 넣을 수 있어요 — 나눠서 붙여 주세요`, true); return; }
+    const items = [];
+    let skip = 0;
+    cells.forEach(tg => {
+      const x = editCtx(S.cur, tg.r, tg.p);
+      if (!x || roWhy(x)) { skip++; return; }
+      let v = String(tg.v);
+      if (x.check) {
+        const k = v.trim();
+        if (/^(true|1|y|yes|o|v|✓|☑|체크)$/i.test(k)) v = 'TRUE'; else if (/^(false|0|n|no|x|)$/i.test(k)) v = 'FALSE'; else { skip++; return; }
+      }
+      if (v === rawOf(S.cur, x.r, x.p) && !x.ofx) return;   // 이미 같은 값
+      items.push({x, v});
+    });
+    if (!items.length) { toast(skip ? `붙여 넣을 수 있는 칸이 없어요 (못 고치는 칸 ${skip}개)` : '바뀐 칸이 없어요', !!skip); return; }
+    writeMany(S.cur, items, '붙여넣기').then(r => toast(`붙여넣기 · ${r.ok}칸${r.fail ? ` · 못 씀 ${r.fail}칸 (${r.why})` : ''}${skip ? ` · 못 고치는 칸 ${skip}개 건너뜀` : ''}${over ? ` · 표 밖 ${over}칸은 빠짐` : ''}`, !!r.fail));
+  }
+  function clearSel(label) {
+    if (!canEdit()) { toast(NO_EDIT, true); return Promise.resolve(); }
+    const cs = rngCells(), items = [];
+    let skip = 0;
+    cs.forEach(c => {
+      const x = editCtx(S.cur, c.r, c.p);
+      if (!x || roWhy(x)) { skip++; return; }
+      if (x.check) { if (x.cell && x.cell.cb === 2) items.push({x, v: 'FALSE'}); return; }
+      if (rawOf(S.cur, x.r, x.p) === '' && !x.ofx) return;
+      items.push({x, v: ''});
+    });
+    label = label || '지우기';
+    if (!items.length) { toast(skip ? `지울 수 있는 칸이 없어요 (못 고치는 칸 ${skip}개)` : '지울 칸이 없어요', !!skip); return Promise.resolve(); }
+    return writeMany(S.cur, items, label).then(r => toast(`${label} · ${r.ok}칸${r.fail ? ` · 못 씀 ${r.fail}칸 (${r.why})` : ''}${skip ? ` · 못 고치는 칸 ${skip}개 건너뜀` : ''}`, !!r.fail));
+  }
+  // 화면 먼저 새 값 (한 번에 그림) · 끝나면 한 번에 맞춤 — 한 칸 고치기의 showPending · settle 과 같은 규칙
+  function pendBatch(gid, cells) {
+    const ent = S.cache.get(gid);
+    if (!ent || !ent.rows) return;
+    cells.forEach(c => {
+      const row = ent.rows.get(c.x.r), was = row && row.v[c.x.p] != null ? row.v[c.x.p] : '';
+      E.pend.set(c.key, {gid, r: c.x.r, p: c.x.p, busy: true, at: Date.now(), was, now: c.v});
+      const nv = row ? row.v.slice() : [];
+      while (nv.length <= c.x.p) nv.push('');
+      nv[c.x.p] = c.v;
+      ent.rows.set(c.x.r, Object.assign({r: c.x.r, src: 'office'}, row || {}, {v: nv}));
+    });
+    rerender(gid);
+  }
+  function settleBatch(gid, done) {
+    const ent = S.cache.get(gid), info = tabInfo(gid), pii = new Set((info && info.pii_cols) || []);
+    done.forEach(({c, ok, v, current, keep}) => {
+      const pd = E.pend.get(c.key), row = ent && ent.rows && ent.rows.get(c.x.r);
+      if (row) {
+        if (ok && Array.isArray(v)) {
+          const nv = v.map((y, i) => keep && pii.has(i) ? (row.v[i] || '') : String(y == null ? '' : y));   // 시트가 돌려준 줄이면 가린 개인정보 칸은 지금 값 그대로
+          ent.rows.set(c.x.r, Object.assign({}, row, {v: nv, src: 'office', edited_by: whoAmI() || row.edited_by, edited_at: new Date().toISOString()}));
+        } else if (!ok && pd) {
+          const nv = row.v.slice();
+          while (nv.length <= c.x.p) nv.push('');
+          nv[c.x.p] = current != null ? current : pd.was;
+          ent.rows.set(c.x.r, Object.assign({}, row, {v: nv}));
+        }
+      }
+      if (pd) { if (ok && keep) { pd.busy = false; pd.at = Date.now(); } else E.pend.delete(c.key); }
+    });
+    rerender(gid);
+  }
+  async function writeMany(gid, items, label, opt) {
+    opt = opt || {};
+    const t = tabOf(gid), res = {ok: 0, fail: 0, why: ''};
+    if (!t || !items.length) return res;
+    const cells = items.map(it => ({x: it.x, v: String(it.v), old: it.old != null ? String(it.old) : rawOf(gid, it.x.r, it.x.p), key: pkey(it.x)}));
+    // 끊은 시트의 구글 함수 칸 — 값을 내는 오피스 함수로 (값만 쓰면 맥미니 계산 패스가 다시 함수 값으로 덮는다)
+    const fcells = isCut(gid) ? cells.filter(c => c.x.gfxUnder) : [];
+    const normal = cells.filter(c => !fcells.includes(c)), done = [];
+    pendBatch(gid, cells);
+    const job = E.q.then(async () => {
+        for (const c of fcells) {
+          try { await ofxPut(gid, c.x.r, c.x.p, constFx(c.v)); done.push({c, ok: true, v: null}); }
+          catch (e) { done.push({c, ok: false, err: (e && e.message) || 'error'}); }
+        }
+        if (isCut(gid)) {   // 구글시트를 끊은 탭 — 저장소에만 (그사이 바뀐 칸은 안 덮음)
+          for (const c of normal) {
+            try {
+              const r = c.x.r, p = c.x.p, v = c.v, old = c.old;
+              const d = await mdx('mdx_cell_edit', {p_tk: gid, p_r: r, p_p: p, p_new: v, p_row: null, p_who: whoAmI() || null, p_old: old});
+              if (d && d.conflict) { if (norm(d.current) === norm(c.v)) done.push({c, ok: true, v: d.v}); else done.push({c, ok: false, current: d.current}); continue; }
+              if (!d || !d.ok || !Array.isArray(d.v)) throw new Error('db_error');
+              bumpRows(gid, d);
+              done.push({c, ok: true, v: d.v});
+            } catch (e) { done.push({c, ok: false, err: (e && e.message) || 'error'}); }
+          }
+          return;
+        }
+        for (let i = 0; i < normal.length; i += BATCH) {   // 시트(브리지) 먼저 — 그사이 바뀐 칸은 시트가 거절
+          const chunk = normal.slice(i, i + BATCH);
+          let j;
+          try { j = await bridge('write', {book: t.book, sheet: t.name, edits: chunk.map(c => ({r: c.x.r, c: c.x.sc, v: c.v, old: c.old}))}); }
+          catch (e) { chunk.forEach(c => done.push({c, ok: false, err: (e && e.message) || 'error'})); continue; }
+          const rs = j.results || [], okRows = new Map();
+          chunk.forEach((c, k) => {
+            const x = rs[k] || {};
+            if (x.ok || (x.error === 'conflict' && norm(x.current) === norm(c.v))) { if (!okRows.has(c.x.r)) okRows.set(c.x.r, []); okRows.get(c.x.r).push(c); }
+            else done.push({c, ok: false, current: x.error === 'conflict' ? x.current : null, err: x.error || 'error'});
+          });
+          for (const [r, list] of okRows) {   // 저장소 — 시트가 돌려준 줄 전체 (합계 · 수식 칸도 새 값)
+            const arr = j.rows && (j.rows[r] || j.rows[String(r)]), row = Array.isArray(arr) ? arr.map(y => y == null ? '' : String(y)) : null;
+            const p = list[0].x.p, v = list[0].v;
+            let dv = null;
+            try { const d = await mdx('mdx_cell_edit', {p_tk: gid, p_r: r, p_p: p, p_new: v, p_row: row, p_who: whoAmI() || null}); if (d && Array.isArray(d.v)) { dv = d.v; bumpRows(gid, d); } } catch (e) { S.dbErrAt = Date.now(); }
+            list.forEach(c => done.push({c, ok: true, v: dv || row, keep: !dv}));   // 저장소에 못 썼으면 시트 줄로 — 맥미니가 1분 안에 맞춤
+          }
+        }
+      });
+    E.q = job.catch(() => {});
+    try { await job; } catch (e) { cells.forEach(c => { if (!done.some(d => d.c === c)) done.push({c, ok: false, err: (e && e.message) || 'error'}); }); }
+    settleBatch(gid, done);
+    // 오피스 함수 칸에 값을 쓴 칸 → 함수 지움 (한 칸 고치기와 같음)
+    for (const d of done) if (d.ok && d.c.x.ofx && !fcells.includes(d.c)) { try { await ofxPut(gid, d.c.x.r, d.c.x.p, ''); } catch (e) { /* 다음에 고칠 때 다시 */ } }
+    if (done.some(d => d.ok)) { rerender(gid); ofxSyncSoon(gid); }
+    const okc = done.filter(d => d.ok).map(d => d.c), bad = done.filter(d => !d.ok);
+    res.ok = okc.length;
+    res.fail = bad.length;
+    res.why = bad.length ? (bad[0].current != null ? '그사이 다른 사람이 바꿈' : editErr(bad[0].err || 'error')) : '';
+    if (okc.length && !opt.noUndo) pushUndo(gid, {label, cells: okc.map(c => ({r: c.x.r, p: c.x.p, before: c.old, after: c.v}))});
+    okc.slice(0, 100).forEach(c => logEdit(c.x, c.old, c.v, true));
+    return res;
+  }
+  function undo() {
+    const st = UNDO.get(S.cur);
+    if (!st || !st.length) { toast('되돌릴 게 없어요 (이 화면에서 이 탭에 한 일만 되돌려요)', true); return; }
+    const e = st.pop();
+    if (e.fmt) {   // 서식
+      const m = new Map(e.fmt.map(c => [`${c.r}:${c.p}`, c.f]));
+      fmtApply((f, x) => Object.assign({}, m.get(`${x.r}:${x.p}`) || {}), `되돌리기 (${e.label})`, e.fmt.map(c => ({r: c.r, p: c.p})), true);
+      return;
+    }
+    if (e.cells.length === 1 && e.cells[0].single) {   // 한 칸 고치기 — 같은 길로 (함수 · 오피스 함수도)
+      const c = e.cells[0], x = editCtx(S.cur, c.r, c.p);
+      if (!x || roWhy(x)) { toast('그 칸은 지금 되돌릴 수 없어요 (걸러 보기로 안 보이거나 못 고치는 칸)', true); st.push(e); return; }
+      x.noUndo = true;
+      afterWrite(x, c.before, c.after, writeCell(x, c.before, c.after, c.after), () => cellTd(x.row, x.p)).catch(() => {});
+      return;
+    }
+    const items = [];
+    let skip = 0;
+    e.cells.forEach(c => {
+      const x = editCtx(S.cur, c.r, c.p);
+      if (!x || roWhy(x)) { skip++; return; }
+      if (norm(rawOf(S.cur, c.r, c.p)) !== norm(c.after)) { skip++; return; }   // 그사이 바뀐 칸은 그대로
+      items.push({x, v: c.before, old: c.after});
+    });
+    if (!items.length) { toast(`되돌릴 수 없어요 — 그사이 바뀌었거나 지금 안 보이는 칸 ${skip}개`, true); return; }
+    writeMany(S.cur, items, '되돌리기', {noUndo: true}).then(r => toast(`되돌리기 (${e.label}) · ${r.ok}칸${r.fail ? ` · 못 씀 ${r.fail}칸` : ''}${skip ? ` · 그대로 둔 칸 ${skip}개` : ''}`, !!r.fail));
+  }
+  const gridKeys = () => document.activeElement === grid && !CE.x && S.cell && S.cell.gid === S.cur && cellMode();
+  document.addEventListener('copy', e => {
+    if (!gridKeys() || !e.clipboardData) return;
+    const tsv = selTsv();
+    if (!tsv) return;
+    e.clipboardData.setData('text/plain', tsv);
+    e.preventDefault();
+    toast(`복사 · ${rngCells().length}칸`);
+  });
+  document.addEventListener('cut', e => {
+    if (!gridKeys() || !e.clipboardData) return;
+    const tsv = selTsv();
+    if (!tsv) return;
+    e.clipboardData.setData('text/plain', tsv);
+    e.preventDefault();
+    clearSel('잘라내기');
+  });
+  document.addEventListener('paste', e => {
+    if (!gridKeys()) return;
+    const text = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (text == null) return;
+    e.preventDefault();
+    pasteText(text);
   });
   function ceKey(e) {
     if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중 Enter 는 글자 확정
@@ -3661,12 +3967,14 @@
     btn.disabled = true;
     btn.textContent = '저장하는 중…';
     try {
-      const j = await bridge('write', {book: t.book, sheet: t.name, edits});
+      const cutNow = isCut(nr.gid);   // 끊은 시트 — 저장소에만 (줄은 여기서 만든다, 함수 칸 값은 맥미니 계산 패스가)
+      const j = cutNow ? {results: edits.map(e => ({r: e.r, c: e.c, ok: true}))} : await bridge('write', {book: t.book, sheet: t.name, edits});
       const bad = (j.results || []).filter(x => !x.ok);
-      const arr = j.rows && (j.rows[nr.r] || j.rows[String(nr.r)]);
+      const arr = cutNow ? (() => { const base = raw ? raw.v.slice() : []; edits.forEach(e => { while (base.length < e.c) base.push(''); base[e.c - 1] = String(e.v); }); return base; })()
+        : j.rows && (j.rows[nr.r] || j.rows[String(nr.r)]);
       if (Array.isArray(arr)) {
         let dbv = null;
-        try { const d = await mdx('mdx_cell_edit', {p_tk: nr.gid, p_r: nr.r, p_p: edits[0].c - 1, p_new: String(edits[0].v), p_row: arr.map(x => x == null ? '' : String(x)), p_who: whoAmI() || null}); dbv = d && d.v; } catch (e) { /* 맥미니가 곧 맞춤 */ }
+        try { const d = await mdx('mdx_cell_edit', {p_tk: nr.gid, p_r: nr.r, p_p: edits[0].c - 1, p_new: String(edits[0].v), p_row: arr.map(x => x == null ? '' : String(x)), p_who: whoAmI() || null}); dbv = d && d.v; } catch (e) { if (cutNow) throw e; /* 맥미니가 곧 맞춤 */ }
         const v = (dbv || arr).map(x => x == null ? '' : String(x));
         ent.rows.set(nr.r, {r: nr.r, v, src: 'office', edited_by: whoAmI() || null, edited_at: new Date().toISOString()});
         rerender(nr.gid);
@@ -3772,12 +4080,13 @@
   function paintStatus() {
     const st = $('st'), s = S.st[S.cur] || {k: 'load'}, c = S.cache.get(S.cur), age = syncAge(S.cur), lim = syncLimits(S.cur);
     let k = s.k, txt = '', tip = '';
-    const late = c && age > lim.bad ? 'bad' : c && age > lim.warn ? 'warn' : '';
+    const cutNow = isCut(S.cur), late = cutNow ? '' : c && age > lim.bad ? 'bad' : c && age > lim.warn ? 'warn' : '';   // 끊은 시트는 구글과 맞추지 않는다
     if (k === 'load') txt = c ? (c.stored ? (narrow.matches ? '저장본' : `${hhmm(c.at)} 저장본 · 새로 받는 중…`) : s.direct ? '구글시트 읽는 중…' : '갱신 중…') : '불러오는 중…';
     else if (k === 'err') txt = errShort(s.err);
     else if (c && c.direct) txt = narrow.matches ? '구글시트 바로' : `구글시트에서 바로 읽음 · ${hhmm(c.at)}`;
     else if (c && c.stored) txt = `${hhmm(c.at)} 저장본`;
     else if (late) txt = narrow.matches ? `맞춤 ${agoMs(age)}` : `시트와 맞춘 지 ${agoMs(age)} · 맥미니 확인 중`;
+    else if (c && cutNow) txt = narrow.matches ? '오피스 원본' : '오피스가 원본 · 구글시트 끊음';
     else if (c) txt = narrow.matches ? '최신' : `시트와 맞춤 ${isFinite(age) ? agoMs(age) : '—'} · 오피스 저장소`;
     if (k === 'ok' && late === 'bad') k = 'err';
     st.className = `st is-${k}`;

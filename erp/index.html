@@ -1449,7 +1449,7 @@
     const pk = `${S.cur}|${row.r}|${col.p}`, pd = E.pend.get(pk);
     if (pd && pd.busy) cls += ' pend';                       // 구글시트 · 저장소에 쓰는 중
     if (S.cell && S.cell.gid === S.cur && S.cell.r === row.r && S.cell.p === col.p) cls += ' csel';
-    if (S.rng && S.rng.has(row.r * 1024 + col.p)) cls += ' crng';   // Shift 로 고른 범위
+    if (S.rng && S.cell && S.cell.gid === S.cur && S.rng.has(row.r * 1024 + col.p)) cls += ' crng';   // Shift 로 고른 범위
     const fm = fmtOf((tabOf(S.cur) || {}).info, row.r, col.p);   // 오피스 칸 서식 (굵게 · 글자 색 · 칸 색)
     if (fm) { if (fm.b) cls += ' b'; const css = (fm.bg ? `background-color:${fm.bg};` : '') + (fm.fg ? `color:${fm.fg};` : ''); if (css) style = (style ? style.replace(/;?$/, ';') : '') + css; }
     if (c) {
@@ -2009,6 +2009,8 @@
     if (S.cell && S.cell.gid === S.cur && cellMode()) {
       const k = e.key, c = S.cell;
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (k === 'b' || k === 'B')) { e.preventDefault(); fmtBold(); return; }   // 굵게
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }   // 되돌리기
+      if ((k === 'Delete' || k === 'Backspace') && S.cell2 && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); clearSel(); return; }   // 범위 지우기
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (/^Arrow/.test(k)) {
         e.preventDefault();
@@ -2438,6 +2440,7 @@
   function afterWrite(x, v, old, p, anchorOf) {
     return p.then(res => {
       if (res && res.conflict) { askConflict(x, v, res.current, anchorOf); return res; }
+      if (res && res.ok && !x.noUndo) pushUndo(x.gid, {label: '고치기', cells: [{r: x.r, p: x.p, before: String(old == null ? '' : old), after: String(v), single: true}]});
       toast(`저장됨 · ${x.col.name} ${short(old)} → ${short(res && res.shown != null ? res.shown : v)}${res && res.dbErr ? ' (구글시트엔 저장 · 오피스 저장소는 1분 안에 맞춰져요)' : ''}`);
       return res;
     }, e => { toast(editErr((e && e.message) || String(e)), true); throw e; });
@@ -3150,19 +3153,20 @@
     if (bg) bg.style.background = lsGet('fmt_last_bg') || '#fff2cc';
   }
   // fn(그 칸 서식 사본) → 새 서식. 화면 먼저 바꾸고 저장소에 — 못 쓰면 되돌림
-  function fmtApply(fn, label) {
-    const t = tabOf(S.cur), info = t && t.info, cs = rngCells();
+  function fmtApply(fn, label, only, noUndo) {
+    const t = tabOf(S.cur), info = t && t.info, cs = only || rngCells();
     if (!info || !cs.length) { toast('서식을 바꿀 칸을 먼저 눌러 고르세요 (Shift+누르기로 여러 칸)', true); return; }
     if (cs.length > FMT_MAX) { toast(`한 번에 ${FMT_MAX.toLocaleString()}칸까지 바꿀 수 있어요 — 범위를 줄여 주세요`, true); return; }
     const prev = info.ofmt || {}, next = Object.assign({}, prev), cells = [];
     cs.forEach(x => {
-      const k = `${x.r}:${x.p}`, cur = prev[k] || {}, nu = fn(Object.assign({}, cur));
+      const k = `${x.r}:${x.p}`, cur = prev[k] || {}, nu = fn(Object.assign({}, cur), x);
       Object.keys(nu).forEach(q => { if (!nu[q]) delete nu[q]; });
       if (JSON.stringify(nu) === JSON.stringify(cur)) return;
       if (Object.keys(nu).length) next[k] = nu; else delete next[k];
       cells.push({r: x.r, p: x.p, b: nu.b ? 1 : 0, fg: nu.fg || '', bg: nu.bg || ''});
     });
     if (!cells.length) return;
+    if (!noUndo) pushUndo(t.gid, {label, fmt: cells.map(c => ({r: c.r, p: c.p, f: prev[`${c.r}:${c.p}`] || null}))});
     info.ofmt = next;
     renderGrid({keep: true});
     fmtBar();
@@ -3218,6 +3222,249 @@
     else if (k === 'clear') fmtApply(() => ({}), '서식 지우기');
     else if (!PAL.hidden && PAL.dataset.kind === k) PAL.hidden = true;
     else openPal(k, b);
+  });
+  /* ── 여러 칸 — 복사(Ctrl+C) · 붙여넣기(Ctrl+V) · 잘라내기(Ctrl+X) · 범위 지우기(Delete) · 되돌리기(Ctrl+Z) ──
+     (2026-11-20 사장님 "구글시트 안써도 쓸 수 있는지 체크해줘. 완벽해야해" — 엑셀 · 구글시트에서 늘 하던 일을 오피스에서)
+     · 고른 칸 · 범위(Shift+누르기 · Shift+화살표)에서. 붙여넣기 = 엑셀 · 구글시트에서 복사한 표(탭 · 줄바꿈)를 고른 칸부터 · 한 칸만 복사했으면 고른 범위 전체에
+     · 못 고치는 칸(구글 함수 · 개인정보 · 사진 · 막힌 탭 · 체크 칸에 글자)은 건너뛰고 몇 칸인지 알린다
+     · 쓰기 = 한 칸 고치기와 같은 길을 묶어서 — 시트(브리지 60칸씩, 그사이 바뀐 칸은 안 덮음) → 저장소(줄마다), 구글을 끊은 탭은 저장소만(칸마다, p_old 로 같은 검사)
+     · 되돌리기 = 이 화면에서 고친 값 · 서식 (탭마다 50번까지, 그사이 다른 사람이 바꾼 칸은 그대로 둠) */
+  const UNDO = new Map(), UNDO_MAX = 50, PASTE_MAX = 2000, BATCH = 60;
+  function pushUndo(gid, entry) {
+    const st = UNDO.get(gid) || [];
+    st.push(entry);
+    while (st.length > UNDO_MAX) st.shift();
+    UNDO.set(gid, st);
+  }
+  const rawOf = (gid, r, p) => { const ent = S.cache.get(gid), row = ent && ent.rows && ent.rows.get(r); return row && row.v && row.v[p] != null ? String(row.v[p]) : ''; };
+  function bumpRows(gid, d) {   // 내가 쓴 것 — 다음 확인 때 다시 받지 않게 번호표를 앞당긴다
+    const t = tabOf(gid);
+    if (!d || !d.rows_ver || !t || !t.info) return;
+    const ent = S.cache.get(gid);
+    if (ent && ent.rowsVer >= +t.info.rows_ver) ent.rowsVer = +d.rows_ver;
+    t.info.rows_ver = Math.max(+t.info.rows_ver, +d.rows_ver);
+  }
+  function selTsv() {   // 고른 범위 → 엑셀 · 구글시트에 붙는 글 (탭 · 줄바꿈, 칸 속 줄바꿈 · 따옴표는 "…")
+    const cs = rngCells(), d = curData();
+    if (!cs.length || !d) return '';
+    const byR = new Map(d.rows.map(x => [x.r, x])), rows = new Map();
+    cs.forEach(x => { if (!rows.has(x.r)) rows.set(x.r, []); rows.get(x.r).push(x); });
+    const q = v => /[\t\n"]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    const txt = (r, p) => {
+      const row = byR.get(r), c = row && row.byP[p];
+      if (!c) return rawOf(S.cur, r, p);
+      if (c.cb && !c.t) return c.cb === 2 ? 'TRUE' : 'FALSE';
+      return String(c.t == null ? '' : c.t);
+    };
+    return [...rows.values()].map(list => list.map(x => q(txt(x.r, x.p))).join('\t')).join('\n');
+  }
+  function parseTsv(text) {
+    let s = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
+    if (s.endsWith('\n')) s = s.slice(0, -1);
+    const out = [[]];
+    let cur = '', q = false;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (q) { if (ch === '"') { if (s[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; continue; }
+      if (ch === '"' && cur === '') { q = true; continue; }
+      if (ch === '\t') { out[out.length - 1].push(cur); cur = ''; continue; }
+      if (ch === '\n') { out[out.length - 1].push(cur); cur = ''; out.push([]); continue; }
+      cur += ch;
+    }
+    out[out.length - 1].push(cur);
+    return out;
+  }
+  function pasteTargets(g) {   // 붙일 칸 [{r, p, v}] (보이는 줄 · 칸 순서) · 표 밖으로 넘친 칸 수
+    const vr = S.vr, c = S.cell;
+    if (!vr || !c || c.gid !== S.cur) return {cells: [], over: 0};
+    const ia = vr.list.findIndex(x => x.r === c.r), ka = vr.cols.findIndex(x => x.p === c.p);
+    if (ia < 0 || ka < 0) return {cells: [], over: 0};
+    const ib = S.cell2 ? vr.list.findIndex(x => x.r === S.cell2.r) : -1, kb = S.cell2 ? vr.cols.findIndex(x => x.p === S.cell2.p) : -1;
+    const i0 = ib < 0 ? ia : Math.min(ia, ib), k0 = kb < 0 ? ka : Math.min(ka, kb);
+    const cells = [];
+    let over = 0;
+    if (g.length === 1 && g[0].length === 1 && S.cell2) { rngCells().forEach(x => cells.push({r: x.r, p: x.p, v: g[0][0]})); return {cells, over}; }   // 한 칸 → 고른 범위 전체
+    g.forEach((row, di) => row.forEach((v, dk) => {
+      const i = i0 + di, k = k0 + dk;
+      if (i >= vr.list.length || k >= vr.cols.length) { over++; return; }
+      cells.push({r: vr.list[i].r, p: vr.cols[k].p, v});
+    }));
+    return {cells, over};
+  }
+  function pasteText(text) {
+    if (!true) { toast('보기 전용이에요', true); return; }
+    const g = parseTsv(text);
+    if (!g.length || (g.length === 1 && g[0].length === 1 && g[0][0] === '')) return;
+    const {cells, over} = pasteTargets(g);
+    if (!cells.length) { toast('붙여 넣을 칸을 먼저 눌러 고르세요', true); return; }
+    if (cells.length > PASTE_MAX) { toast(`한 번에 ${PASTE_MAX.toLocaleString()}칸까지 붙여 넣을 수 있어요 — 나눠서 붙여 주세요`, true); return; }
+    const items = [];
+    let skip = 0;
+    cells.forEach(tg => {
+      const x = editCtx(S.cur, tg.r, tg.p);
+      if (!x || roWhy(x)) { skip++; return; }
+      let v = String(tg.v);
+      if (x.check) {
+        const k = v.trim();
+        if (/^(true|1|y|yes|o|v|✓|☑|체크)$/i.test(k)) v = 'TRUE'; else if (/^(false|0|n|no|x|)$/i.test(k)) v = 'FALSE'; else { skip++; return; }
+      }
+      if (v === rawOf(S.cur, x.r, x.p) && !x.ofx) return;   // 이미 같은 값
+      items.push({x, v});
+    });
+    if (!items.length) { toast(skip ? `붙여 넣을 수 있는 칸이 없어요 (못 고치는 칸 ${skip}개)` : '바뀐 칸이 없어요', !!skip); return; }
+    writeMany(S.cur, items, '붙여넣기').then(r => toast(`붙여넣기 · ${r.ok}칸${r.fail ? ` · 못 씀 ${r.fail}칸 (${r.why})` : ''}${skip ? ` · 못 고치는 칸 ${skip}개 건너뜀` : ''}${over ? ` · 표 밖 ${over}칸은 빠짐` : ''}`, !!r.fail));
+  }
+  function clearSel(label) {
+    if (!true) { toast('보기 전용이에요', true); return Promise.resolve(); }
+    const cs = rngCells(), items = [];
+    let skip = 0;
+    cs.forEach(c => {
+      const x = editCtx(S.cur, c.r, c.p);
+      if (!x || roWhy(x)) { skip++; return; }
+      if (x.check) { if (x.cell && x.cell.cb === 2) items.push({x, v: 'FALSE'}); return; }
+      if (rawOf(S.cur, x.r, x.p) === '' && !x.ofx) return;
+      items.push({x, v: ''});
+    });
+    label = label || '지우기';
+    if (!items.length) { toast(skip ? `지울 수 있는 칸이 없어요 (못 고치는 칸 ${skip}개)` : '지울 칸이 없어요', !!skip); return Promise.resolve(); }
+    return writeMany(S.cur, items, label).then(r => toast(`${label} · ${r.ok}칸${r.fail ? ` · 못 씀 ${r.fail}칸 (${r.why})` : ''}${skip ? ` · 못 고치는 칸 ${skip}개 건너뜀` : ''}`, !!r.fail));
+  }
+  // 화면 먼저 새 값 (한 번에 그림) · 끝나면 한 번에 맞춤 — 한 칸 고치기의 showPending · settle 과 같은 규칙
+  function pendBatch(gid, cells) {
+    const ent = S.cache.get(gid);
+    if (!ent || !ent.rows) return;
+    cells.forEach(c => {
+      const row = ent.rows.get(c.x.r), was = row && row.v[c.x.p] != null ? row.v[c.x.p] : '';
+      E.pend.set(c.key, {gid, r: c.x.r, p: c.x.p, busy: true, at: Date.now(), was, now: c.v});
+      const nv = row ? row.v.slice() : [];
+      while (nv.length <= c.x.p) nv.push('');
+      nv[c.x.p] = c.v;
+      ent.rows.set(c.x.r, Object.assign({r: c.x.r, src: 'office'}, row || {}, {v: nv}));
+    });
+    rerender(gid);
+  }
+  function settleBatch(gid, done) {
+    const ent = S.cache.get(gid), info = tabInfo(gid), pii = new Set((info && info.pii_cols) || []);
+    done.forEach(({c, ok, v, current, keep}) => {
+      const pd = E.pend.get(c.key), row = ent && ent.rows && ent.rows.get(c.x.r);
+      if (row) {
+        if (ok && Array.isArray(v)) {
+          const nv = v.map((y, i) => keep && pii.has(i) ? (row.v[i] || '') : String(y == null ? '' : y));   // 시트가 돌려준 줄이면 가린 개인정보 칸은 지금 값 그대로
+          ent.rows.set(c.x.r, Object.assign({}, row, {v: nv, src: 'office', edited_by: whoAmI() || row.edited_by, edited_at: new Date().toISOString()}));
+        } else if (!ok && pd) {
+          const nv = row.v.slice();
+          while (nv.length <= c.x.p) nv.push('');
+          nv[c.x.p] = current != null ? current : pd.was;
+          ent.rows.set(c.x.r, Object.assign({}, row, {v: nv}));
+        }
+      }
+      if (pd) { if (ok && keep) { pd.busy = false; pd.at = Date.now(); } else E.pend.delete(c.key); }
+    });
+    rerender(gid);
+  }
+  async function writeMany(gid, items, label, opt) {
+    opt = opt || {};
+    const t = tabOf(gid), res = {ok: 0, fail: 0, why: ''};
+    if (!t || !items.length) return res;
+    const cells = items.map(it => ({x: it.x, v: String(it.v), old: it.old != null ? String(it.old) : rawOf(gid, it.x.r, it.x.p), key: pkey(it.x)}));
+    const fcells = [];
+    const normal = cells.filter(c => !fcells.includes(c)), done = [];
+    pendBatch(gid, cells);
+    const job = E.q.then(async () => {
+        if (cutTab(gid)) {   // 구글시트를 끊은 탭 — 저장소에만 (그사이 바뀐 칸은 안 덮음)
+          for (const c of normal) {
+            try {
+              const r = c.x.r, p = c.x.p, v = c.v, old = c.old;
+              const d = await sbRpc('erp_cell_edit', {p_gid: gid, p_r: r, p_p: p, p_new: v, p_row: null, p_who: whoAmI() || null, p_old: old});
+              if (d && d.conflict) { if (norm(d.current) === norm(c.v)) done.push({c, ok: true, v: d.v}); else done.push({c, ok: false, current: d.current}); continue; }
+              if (!d || !d.ok || !Array.isArray(d.v)) throw new Error('db_error');
+              bumpRows(gid, d);
+              done.push({c, ok: true, v: d.v});
+            } catch (e) { done.push({c, ok: false, err: (e && e.message) || 'error'}); }
+          }
+          return;
+        }
+        for (let i = 0; i < normal.length; i += BATCH) {   // 시트(브리지) 먼저 — 그사이 바뀐 칸은 시트가 거절
+          const chunk = normal.slice(i, i + BATCH);
+          let j;
+          try { j = await bridge('write', {book: BOOK, sheet: t.name, edits: chunk.map(c => ({r: c.x.r, c: c.x.sc, v: c.v, old: c.old}))}); }
+          catch (e) { chunk.forEach(c => done.push({c, ok: false, err: (e && e.message) || 'error'})); continue; }
+          const rs = j.results || [], okRows = new Map();
+          chunk.forEach((c, k) => {
+            const x = rs[k] || {};
+            if (x.ok || (x.error === 'conflict' && norm(x.current) === norm(c.v))) { if (!okRows.has(c.x.r)) okRows.set(c.x.r, []); okRows.get(c.x.r).push(c); }
+            else done.push({c, ok: false, current: x.error === 'conflict' ? x.current : null, err: x.error || 'error'});
+          });
+          for (const [r, list] of okRows) {   // 저장소 — 시트가 돌려준 줄 전체 (합계 · 수식 칸도 새 값)
+            const arr = j.rows && (j.rows[r] || j.rows[String(r)]), row = Array.isArray(arr) ? arr.map(y => y == null ? '' : String(y)) : null;
+            const p = list[0].x.p, v = list[0].v;
+            let dv = null;
+            try { const d = await sbRpc('erp_cell_edit', {p_gid: gid, p_r: r, p_p: p, p_new: v, p_row: row, p_who: whoAmI() || null}); if (d && Array.isArray(d.v)) { dv = d.v; bumpRows(gid, d); } } catch (e) { S.dbErrAt = Date.now(); }
+            list.forEach(c => done.push({c, ok: true, v: dv || row, keep: !dv}));   // 저장소에 못 썼으면 시트 줄로 — 맥미니가 1분 안에 맞춤
+          }
+        }
+      });
+    E.q = job.catch(() => {});
+    try { await job; } catch (e) { cells.forEach(c => { if (!done.some(d => d.c === c)) done.push({c, ok: false, err: (e && e.message) || 'error'}); }); }
+    settleBatch(gid, done);
+    const okc = done.filter(d => d.ok).map(d => d.c), bad = done.filter(d => !d.ok);
+    res.ok = okc.length;
+    res.fail = bad.length;
+    res.why = bad.length ? (bad[0].current != null ? '그사이 다른 사람이 바꿈' : editErr(bad[0].err || 'error')) : '';
+    if (okc.length && !opt.noUndo) pushUndo(gid, {label, cells: okc.map(c => ({r: c.x.r, p: c.x.p, before: c.old, after: c.v}))});
+    okc.slice(0, 100).forEach(c => logEdit(c.x, c.old, c.v, true));
+    return res;
+  }
+  function undo() {
+    const st = UNDO.get(S.cur);
+    if (!st || !st.length) { toast('되돌릴 게 없어요 (이 화면에서 이 탭에 한 일만 되돌려요)', true); return; }
+    const e = st.pop();
+    if (e.fmt) {   // 서식
+      const m = new Map(e.fmt.map(c => [`${c.r}:${c.p}`, c.f]));
+      fmtApply((f, x) => Object.assign({}, m.get(`${x.r}:${x.p}`) || {}), `되돌리기 (${e.label})`, e.fmt.map(c => ({r: c.r, p: c.p})), true);
+      return;
+    }
+    if (e.cells.length === 1 && e.cells[0].single) {   // 한 칸 고치기 — 같은 길로 (함수 · 오피스 함수도)
+      const c = e.cells[0], x = editCtx(S.cur, c.r, c.p);
+      if (!x || roWhy(x)) { toast('그 칸은 지금 되돌릴 수 없어요 (걸러 보기로 안 보이거나 못 고치는 칸)', true); st.push(e); return; }
+      x.noUndo = true;
+      afterWrite(x, c.before, c.after, writeCell(x, c.before, c.after, c.after), () => cellTd(x.row, x.p)).catch(() => {});
+      return;
+    }
+    const items = [];
+    let skip = 0;
+    e.cells.forEach(c => {
+      const x = editCtx(S.cur, c.r, c.p);
+      if (!x || roWhy(x)) { skip++; return; }
+      if (norm(rawOf(S.cur, c.r, c.p)) !== norm(c.after)) { skip++; return; }   // 그사이 바뀐 칸은 그대로
+      items.push({x, v: c.before, old: c.after});
+    });
+    if (!items.length) { toast(`되돌릴 수 없어요 — 그사이 바뀌었거나 지금 안 보이는 칸 ${skip}개`, true); return; }
+    writeMany(S.cur, items, '되돌리기', {noUndo: true}).then(r => toast(`되돌리기 (${e.label}) · ${r.ok}칸${r.fail ? ` · 못 씀 ${r.fail}칸` : ''}${skip ? ` · 그대로 둔 칸 ${skip}개` : ''}`, !!r.fail));
+  }
+  const gridKeys = () => document.activeElement === grid && !CE.x && S.cell && S.cell.gid === S.cur && cellMode();
+  document.addEventListener('copy', e => {
+    if (!gridKeys() || !e.clipboardData) return;
+    const tsv = selTsv();
+    if (!tsv) return;
+    e.clipboardData.setData('text/plain', tsv);
+    e.preventDefault();
+    toast(`복사 · ${rngCells().length}칸`);
+  });
+  document.addEventListener('cut', e => {
+    if (!gridKeys() || !e.clipboardData) return;
+    const tsv = selTsv();
+    if (!tsv) return;
+    e.clipboardData.setData('text/plain', tsv);
+    e.preventDefault();
+    clearSel('잘라내기');
+  });
+  document.addEventListener('paste', e => {
+    if (!gridKeys()) return;
+    const text = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (text == null) return;
+    e.preventDefault();
+    pasteText(text);
   });
   function ceKey(e) {
     if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중 Enter 는 글자 확정
