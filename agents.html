@@ -554,9 +554,9 @@ const CHARACTERS = [
     hairColor:'#3b2a1a', cloth:'#0d9488',
     agentIds:[], alwaysOn:true, manual:true,
     taskLabel:'ERP 입고 반영 업무', scheduleLabel:'상시 대응 · 수락하면 바로 반영',
-    role:'입고 담당 · ERP MASTER 재고 반영',
+    role:'입고 담당 · ERP 재고 반영',
     knows:[
-      '"Baby ring-B 50개 입고완료" 처럼 말씀하시면 ERP MASTER 시트의 7개 브랜드(아페티·코페리·코즈미·식스에이·야르·프로덕트피알·아코이하우스)에서 상품을 찾아 남은 재고에 더합니다',
+      '"Baby ring-B 50개 입고완료" 처럼 말씀하시면 ERP 7개 브랜드(아페티·코페리·코즈미·식스에이·야르·프로덕트피알·아코이하우스)에서 상품을 찾아 남은 재고에 더합니다',
       '이름이 여러 브랜드에 있으면 "어떤 브랜드의 어떤 제품 맞습니까?" 로 먼저 여쭙니다 — 수락하셔야 반영',
       '여러 품목은 줄을 바꾸거나 쉼표로 한 번에 · "3개 불량 빼줘" 는 차감',
       '반영하면 남은 재고 칸 메모에 몇 시 몇 분 · 누가 넣었는지 남기고, 발주 잔량이 있으면 입고 수량 · 입고일도 같이 채웁니다',
@@ -2665,7 +2665,7 @@ async function getErp(force){
   let j = null, jErr = null, oc = null;
   try{
     j = await api('/erp/catalog' + (force ? '?fresh=1' : ''));
-    if(!j || j.ok === false) throw new Error((j && j.error) || 'ERP 시트를 불러오지 못했습니다');
+    if(!j || j.ok === false) throw new Error((j && j.error) || '구글시트를 불러오지 못했습니다');
   }catch(e){ j = null; jErr = e; }
   try{ oc = await edbCatalog(); }catch(e){ oc = null; }
   if(!j && !(oc && oc.cut.size)) throw jErr || new Error('ERP 를 불러오지 못했습니다');
@@ -2866,7 +2866,7 @@ async function receiveAgent(c, raw, t){
 
   /* --- 되묻는 중의 대답 --- */
   if(R.stage === 'confirm'){
-    if(saysNo(flat)){ delete sess[c.id]; abort('네, 그만두겠습니다. ERP 시트는 아무것도 바꾸지 않았습니다.'); return; }
+    if(saysNo(flat)){ delete sess[c.id]; abort('네, 그만두겠습니다. 재고는 아무것도 바꾸지 않았습니다.'); return; }
     if(saysYes(flat) || /^(수락|확인|넣어|넣어줘|반영|반영해|반영해줘|오케이)/.test(flat)){ await rcvCommit(c, R); return; }
     const ex = t.match(/(\d+)\s*번\s*(?:은|는)?\s*(빼|제외|말고)/);
     if(ex){
@@ -3044,7 +3044,7 @@ async function rcvAskProduct(c, R, it, hits, loose){
   R.stage = 'pick';
   if(!hits.length){
     it.cands = [];
-    say('agent', `${rcvTag(R)}ERP 시트(7개 브랜드)에서 "${it.q}" 를 못 찾았어요.\n이름 한 조각만 다시 알려주시거나(예: twinkle, cobaltiny), 이 건은 빼고 진행할 수 있어요.`, {
+    say('agent', `${rcvTag(R)}ERP 7개 브랜드에서 "${it.q}" 를 못 찾았어요.\n이름 한 조각만 다시 알려주시거나(예: twinkle, cobaltiny), 이 건은 빼고 진행할 수 있어요.`, {
       chips:[{label:'이 건 빼기', cmd:'#rskip'}, {label:'그만두기', cmd:'#cancel', style:'danger'}],
     });
     return;
@@ -3296,7 +3296,7 @@ async function rcvCommit(c, R){
         by: rcvWho(), raw: R.raw || '',
       }});
     }catch(e){
-      abort(`접수하지 못했습니다: ${e.message}\nERP 시트는 바뀌지 않았어요. 잠시 뒤 다시 말씀해 주세요.`);
+      abort(`접수하지 못했습니다: ${e.message}\n재고는 바뀌지 않았어요. 잠시 뒤 다시 말씀해 주세요.`);
       delete sess[c.id];
       return;
     }
@@ -3332,7 +3332,7 @@ async function rcvCommit(c, R){
     }else{
     if(nowIn.length){ edbPing(); say('agent', `⚡ ${rcvHM(Date.now())} 오피스앱 재고 ERP 에 바로 반영했어요\n${nowIn.join('\n')}\n\n구글시트에도 넣는 중이에요 — 보통 30초 안팎 걸립니다…`); }
     if(notIn.length) say('agent', `재고 ERP 에 바로 못 넣은 건 — 구글시트에 들어가면 1분 안에 따라 들어가요\n${notIn.join('\n')}`);
-    if(!nowIn.length && !notIn.length) say('agent', `ERP 시트에 넣는 중이에요 — 보통 30초 안팎 걸립니다…`);
+    if(!nowIn.length && !notIn.length) say('agent', `구글시트에 넣는 중이에요 — 보통 30초 안팎, 재고 ERP 는 그 뒤 1분 안에 따라와요…`);
     const done = await rcvWait(ids, 150000);
     const byId = new Map(done.map(m => [m.id, m]));
     let fixed = false;
@@ -3363,7 +3363,7 @@ async function rcvCommit(c, R){
       say('agent', '잘못 넣으셨으면 바로 되돌릴 수 있어요. 홈 맨 위 "입고 현황" 에도 올라갔습니다.', {chips:[
         {label:'방금 거 되돌리기', cmd:'#rundo'}, {label:'오늘 입고 내역', cmd:'#rtoday'},
       ]});
-      await doubleCheck(cutMode ? '재고 ERP 다시 읽어 확인' : 'ERP 시트 다시 읽어 확인', async () => {
+      await doubleCheck(cutMode ? '재고 ERP 다시 읽어 확인' : '구글시트 다시 읽어 확인', async () => {
         const {products} = await getErp(true);
         const diff = [];
         ok.forEach(({m, it}) => {
@@ -3371,7 +3371,7 @@ async function rcvCommit(c, R){
           const o = p && p.options.find(x => x.o === it.opt.o);
           if(!o || o.s !== m.after) diff.push(`${rcvLabel(it.prod, it.opt)} 지금 ${o ? rcvStock(o.s) : '없음'} (반영 직후 ${num(m.after)})`);
         });
-        return diff.length ? `⚠️ 그사이 값이 달라진 곳이 있어요 — 다른 작업이 바꿨을 수 있습니다.\n${diff.join('\n')}` : `${cutMode ? '재고 ERP' : '시트'} 남은 재고 ${ok.length}건 모두 반영값과 같습니다. ✓`;
+        return diff.length ? `⚠️ 그사이 값이 달라진 곳이 있어요 — 다른 작업이 바꿨을 수 있습니다.\n${diff.join('\n')}` : `${cutMode ? '재고 ERP' : '구글시트'} 남은 재고 ${ok.length}건 모두 반영값과 같습니다. ✓`;
       });
     } else {
       say('agent', DONE_MSG, {kind:'done'});
@@ -3440,7 +3440,7 @@ async function rcvCheck(c, q, brand){
   if(!q){ say('agent', '어떤 상품의 재고를 볼까요? 상품명 일부만 말씀하셔도 됩니다. (예: twinkle 재고)'); return; }
   const {products, data} = await getErp(true);
   const {hits, loose} = rcvFind(products, {q, brand});
-  if(!hits.length){ say('agent', `ERP 시트(7개 브랜드)에서 "${q}" 를 못 찾았어요. 이름 한 조각만 다시 알려주세요.`); return; }
+  if(!hits.length){ say('agent', `ERP 7개 브랜드에서 "${q}" 를 못 찾았어요. 이름 한 조각만 다시 알려주세요.`); return; }
   const lines = [];
   hits.slice(0, 8).forEach(p => {
     if(p.options.length === 1){
@@ -3452,7 +3452,7 @@ async function rcvCheck(c, q, brand){
     }
   });
   const ts = data && data.fetchedAt ? rcvHM(data.fetchedAt) : '';
-  say('agent', `${loose ? `"${q}" 와 비슷한 이름으로 찾았어요.\n` : ''}ERP 시트 기준${ts ? ` (${ts} 읽음)` : ''}\n\n${lines.join('\n')}${hits.length > 8 ? `\n…외 ${hits.length - 8}개` : ''}`);
+  say('agent', `${loose ? `"${q}" 와 비슷한 이름으로 찾았어요.\n` : ''}ERP 기준${ts ? ` (${ts} 읽음)` : ''}\n\n${lines.join('\n')}${hits.length > 8 ? `\n…외 ${hits.length - 8}개` : ''}`);
 }
 
 /* =========================================================================
