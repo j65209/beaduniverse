@@ -1770,7 +1770,7 @@
     });
     const total = (showRn ? RN_W : 0) + widths.reduce((s, w) => s + w, 0), sort = v.sort;
     let h = `<table class="tbl" style="width:max(100%,${total}px)"><colgroup>${showRn ? `<col style="width:${RN_W}px">` : ''}${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead><tr>`;
-    if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="시트 줄 번호 · 누르면 원래 순서로">행</th>`;
+    if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="줄 번호 · 누르면 원래 순서로">행</th>`;
     cols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
       const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '') + (fix[k] ? ' wfix' : '')).trim();
@@ -2296,7 +2296,7 @@
     const ent = S.cache.get(S.cur), raw = ent && ent.rows ? ent.rows.get(r) : null;
     const ed = raw && raw.src === 'office' && raw.edited_by ? ` · 마지막으로 오피스에서 고친 사람 ${raw.edited_by}${raw.edited_at ? ` (${new Date(raw.edited_at).toLocaleString('ko-KR', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})})` : ''}` : '';
     $('dSub').textContent = row.past ? [...subs, 'ERP 에 줄 없음'].join(' · ')
-      : [...subs, `시트 ${r}행`].join(' · ') + ed + (row.lv === 'low' ? ` · 품절 임박 (${LOW_STOCK}개 이하)` : row.lv === 'out' ? ' · 품절 (0 이하)' : '') + (row.pin ? ' · ⚠ ' + PIN_WHY[row.pin] : '');
+      : [...subs, `${r}행`].join(' · ') + ed + (row.lv === 'low' ? ` · 품절 임박 (${LOW_STOCK}개 이하)` : row.lv === 'out' ? ' · 품절 (0 이하)' : '') + (row.pin ? ' · ⚠ ' + PIN_WHY[row.pin] : '');
     $('dSheet').href = secretOk() && !row.past ? `${BASE}/edit#gid=${S.cur}&range=A${r}` : '#';
     $('dSheet').hidden = !secretOk() || !!row.past || cutTab(S.cur);   // 끊긴 탭은 시트가 옛 값이라 안 보임
     // 이름 · 카테고리 확인할 것 (재고 탭) — 맨 위에 빨간 글로
@@ -2724,7 +2724,7 @@
     const opts = multi ? [] : colValues(x);
     if (opts.length) { $('edList').innerHTML = opts.map(v => `<option value="${esc(v)}">`).join(''); inp.setAttribute('list', 'edList'); }
     const warn = nameWarn(x);
-    setEdMsg(warn || `${x.col.name} · 시트 ${colName(x.sc - 1)}${x.r}` + (hoverMQ.matches ? ` — ${multi ? 'Ctrl+Enter' : 'Enter'} 저장 · Esc 취소` : ''), warn ? 'err' : '');   // 휴대폰엔 Esc 가 없다
+    setEdMsg(warn || `${x.col.name} · ${cutTab(x.gid) ? `${x.r}행` : `시트 ${colName(x.sc - 1)}${x.r}`}` + (hoverMQ.matches ? ` — ${multi ? 'Ctrl+Enter' : 'Enter'} 저장 · Esc 취소` : ''), warn ? 'err' : '');   // 휴대폰엔 Esc 가 없다
     box.hidden = false;
     placeEditor(anchor);
     inp.focus();
@@ -3982,7 +3982,7 @@
     return `${SECS[m.sec] || '기타'} · ${m.label}${m.date ? ' ' + m.date : ''}`;
   }
   function logWho(h) {   // 동그라미 글자 · 색 · 이름
-    if (h.src === 'sheet') return {t: '시트', c: '#94a3b8', name: '구글시트 · 자동 차감'};
+    if (h.src === 'sheet') return {t: '시트', c: '#94a3b8', name: '구글시트에서 옮겨 옴 (11-20 끊기 전)'};
     if (h.src === 'admin') return {t: '정리', c: '#94a3b8', name: '관리자 정리'};
     const nm = String(h.who || '').trim() || '이름 모름';
     const base = nm.split(' · ')[0].trim() || nm;   // '김○○ · 모아 입고' (홈 입고 입력) 도 같은 사람 색 · 글자
@@ -4241,7 +4241,7 @@
     $('btnLog').classList.remove('on');
   }
   function logJump(gid, r, p, k, o) {   // 그 탭 · 그 줄 상세 창을 열고, 고친 칸을 잠깐 노랗게
-    if (!tabOf(gid)) { toast('지금은 없는 탭이에요 (시트에서 지워졌어요)', true); return; }
+    if (!tabOf(gid)) { toast('지금은 없는 탭이에요', true); return; }
     closeLog();
     if (S.cur !== gid) openTab(gid);
     let n = 0;
