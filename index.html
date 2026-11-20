@@ -12268,6 +12268,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     #viewMarketing .akoi-section .akoi-refresh-btn{width:34px}
     #viewMarketing .mkt-nav button{height:34px}
   }
+  /* ===== 기밀 숫자 · 링크 — 지희선 · 전승훈 · 전수빈만 (2026-11-20 사장님). secretApply() 가 secretOk() 일 때만 body.secret-ok 를 붙인다.
+     없으면(다른 직원 · 이름 고르기 전) .secret-only 는 아예 안 보인다. 숫자 · 링크는 되도록 JS 에서 그리지 않고, 이 줄은 안전망. */
+  body:not(.secret-ok) .secret-only{display:none !important}
 </style>
 </head>
 <body>
@@ -12598,7 +12601,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </button>
       </section>
 
-      <!-- 전략팀 — 전승훈 · 전수빈 · 김수민 PC 에만 노출 (stratRefreshAccess) -->
+      <!-- 전략팀 — 기밀 명단(전승훈 · 전수빈 · 지희선) PC 에만 노출 (stratRefreshAccess, 2026-11-20) -->
       <section class="hero hero-strategy" id="strategyHero" hidden>
         <div class="hero-eyebrow">STRATEGY</div>
         <button class="btn-neon btn-strategy" id="strategyBtn" onclick="triggerStrategy()">
@@ -12731,7 +12734,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-sub">브라이트비드 스타일 · 배지 + 텍스트 + 브랜드 워터마크 · PNG 저장</div>
           <div class="sub-module-tag">TOOL</div>
         </div>
-        <div class="sub-module m-promo" onclick="triggerPromoCalc()">
+        <div class="sub-module m-promo" data-secret-card hidden onclick="triggerPromoCalc()">
           <div class="sub-module-icon">🧮</div>
           <div class="sub-module-title">기획전 계산기</div>
           <div class="sub-module-sub">에이블리 · 코페리 정가 자동 · 조건별 마진 분석</div>
@@ -21561,10 +21564,28 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   function getRole(){return localStorage.getItem(ROLE_KEY)||'viewer'}
   function isMaster(){return getRole()==='master'}
+  /* ===== 기밀 숫자 · 링크 (2026-11-20 사장님 "단가, 가격, 링크정보 같은 기밀은 희선이랑 대표 2명만, 나머지는 아예 숫자 안 보이게") =====
+     대상: 원가 · 단가 · 매입가 · 공급가 · 발주 단가 · 마진 · 판매가 · 위안 금액, 구글시트 · 드롭박스 · 공급처 링크, 전략팀 손익 · 17번 시트.
+     매출 · 광고비 · ROAS 는 대상 아님 (사장님 "단가 · 가격 · 링크만"). 김수민도 이 명단 밖 (사장님 "김수민도 막기").
+     판정 = 이 PC 의 '나는 ○○○' 이름 — 대표 이름은 관리자 PIN PC 에서만 고를 수 있다. 명단 밖이면 숫자 · 링크를 아예 그리지 않고(가림표 없이),
+     그 데이터도 받지 않는다. 사람을 더하거나 뺄 땐 이 Set 하나만 고친다. */
+  const SECRET_ALLOWED=new Set(['전승훈','전수빈','지희선']);
+  function secretOk(){ try{ return SECRET_ALLOWED.has(String(localStorage.getItem('brightbeed_diary_me')||'').trim()); }catch(e){ return false; } }
+  function secretApply(){
+    const ok=secretOk();
+    document.body.classList.toggle('secret-ok',ok);
+    document.querySelectorAll('[data-secret-card]').forEach(el=>{ el.hidden=!ok; });   // 홈 · 폴더의 기밀 화면 카드 (기본 hidden)
+    if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
+  }
+  // 표 머리글로 기밀 칸 찾기 — 원가 · 단가 · 매입 · 공급가 · 마진 · 판매가 · 정가 · 할인가 · 가격 · 위안 · 링크 (매출 · 광고비 칸은 걸리지 않음)
+  const SECRET_HEAD_RE=/원가|단가|매입|공급가|마진|이익|판매가|소비자가|정가|할인가|가격|최저가|위안|[¥￥]|CNY|RMB|cost|price|margin|링크|url|구매처|공급처|발주\s*금액|구매\s*금액/i;
+  function secretHead(v){ const s=String(v==null?'':v).trim(); return !!s && s.length<=40 && SECRET_HEAD_RE.test(s); }
+  window.secretOk=secretOk; window.secretApply=secretApply; window.secretHead=secretHead;
   function applyRole(){
     const role=getRole();
     document.body.classList.toggle('role-master',role==='master');
     document.body.classList.toggle('role-viewer',role!=='master');
+    secretApply();
     // 마스터 ↔ 뷰어 전환 시 홈의 업무일지 카드 노출 재판정
     if(typeof _diaryApplyHomeVisibility==='function') _diaryApplyHomeVisibility();
     // '관리자 전용' 폴더의 명단 카드(대표 전용 금고 · 꿀꿀집 · 송년회)도 관리자 PIN 여부로 다시 판정 — 금고는 권한이 없어지면 잠근다
@@ -21955,7 +21976,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
 
+  // 화면 전체가 원가 · 판매가 · 마진인 곳 — 기밀 명단(지희선 · 전승훈 · 전수빈) 밖이면 홈 카드도 숨기고 주소로 들어와도 홈으로 (2026-11-20)
+  const SECRET_VIEWS=new Set(['viewPromoCalc']);
   function applyView(id){
+    if(SECRET_VIEWS.has(id) && !secretOk()){
+      toast('대표 · 지희선 전용 화면입니다','err');
+      history.replaceState({view:'viewHome'},'',location.pathname+location.search);
+      id='viewHome';
+    }
     VIEW_IDS.forEach(v=>{
       const el=document.getElementById(v);
       if(!el)return;
@@ -22131,7 +22159,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof rcvHomeRefresh === 'function') rcvHomeRefresh();
       // 리오더 경보 — 홈으로 돌아올 때 1분 넘었으면 다시 읽음
       if(typeof reoHomeRefresh === 'function') reoHomeRefresh();
-      // 전략팀 카드 (전승훈/전수빈/김수민 PC 에만 노출)
+      // 전략팀 카드 (기밀 명단 전승훈/전수빈/지희선 PC 에만 노출, 2026-11-20)
       if(typeof stratRefreshAccess === 'function') stratRefreshAccess();
       // 2026 송년회 (전승훈/전수빈 PC 에만 노출)
       if(typeof yeRefreshAccess === 'function') yeRefreshAccess();
@@ -22653,7 +22681,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function triggerNamegen(){ showView('viewNamegen'); }
   function triggerTopping(){ showView('viewTopping'); if(typeof initToppingView==='function') initToppingView(); }
   function triggerBadge(){ showView('viewBadge'); if(typeof initBadgeView==='function') initBadgeView(); }
-  function triggerPromoCalc(){ showView('viewPromoCalc'); if(typeof pcInit==='function') pcInit(); }
+  function triggerPromoCalc(){
+    if(!secretOk()){ toast('대표 · 지희선 전용 화면입니다','err'); return; }   // 원가 · 판매가 · 마진 계산기 (2026-11-20)
+    showView('viewPromoCalc'); if(typeof pcInit==='function') pcInit();
+  }
   /* ===== 업무용 툴 별도 페이지를 오피스 안 화면으로 (2026-11-16 사장님: "누르면 깃허브 주소가 뜨면서 다른 창으로 열린다 → 오피스앱 안에서 자연스럽게")
      - 광고 컨텐츠 스튜디오(studio/) · 메일 발송(mailer/) · 모델 지원자(models/) 는 따로 만든 페이지라 예전엔 새 탭으로 열었고,
        회사 주소(beaduniverse.kr/office/)에선 <base> 가 깃허브 주소라 새 탭이 j65209.github.io 로 떴다.
@@ -29765,6 +29796,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(typeof renderCredentials==='function') renderCredentials();
       if(typeof stratRefreshAccess==='function') stratRefreshAccess();
       if(typeof yeRefreshAccess==='function') yeRefreshAccess();
+      if(typeof secretApply==='function') secretApply();   // 기밀 숫자 · 링크 (지희선 · 전승훈 · 전수빈)
       if(typeof _diaryApplyHomeVisibility==='function') _diaryApplyHomeVisibility();
       toast(`${name}님으로 로그인되었습니다`, 'ok');
     };
@@ -51027,7 +51059,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.mdwSetTime=mdwSetTime;
 
   /* ===== 전략팀 (viewStrategy) — 채널별 일일 손익 보고서 =====
-     접근: diary_me ∈ {전승훈, 전수빈, 김수민}. 홈 카드 노출 · 화면 진입 모두 이 명단으로 판정 (마스터여도 명단 밖이면 숨김).
+     접근: diary_me ∈ 기밀 명단 SECRET_ALLOWED {전승훈, 전수빈, 지희선} (2026-11-20 사장님 "김수민도 막기" — 11-19 엔 {전승훈, 전수빈, 김수민}).
+     홈 카드 노출 · 화면 진입 모두 이 명단으로 판정 (마스터여도 명단 밖이면 숨김).
      채널: 공홈 탭 = BRAND_SECTIONS(8 브랜드 자사몰) · 플랫폼 탭 = PLATFORM_SECTIONS — 마케팅팀 매출 탭과 같은 목록·색.
      양식: 모든 채널이 에이블리 일일 보고서와 같은 JSON (sixshop-collector/src/ably-daily.ts 의 buildReport 결과).
      맥미니 수집기가 비공개 레포 j65209/brightbeed-reports 에 {경로}/index.json · {경로}/daily/{date}.json 을 기록하고
@@ -51036,7 +51069,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
        플랫폼 {플랫폼}/{브랜드}/     예) zigzag/kop/index.json — 코페리 에이블리만 기존 수집기 경로 ably/ 그대로
      index.json 이 없는(404) 채널 = 수집기 연결 전 → 같은 틀을 빈 값으로 보여 주는 "준비 중".
      보고서 JSON 에 assumptions.fee_label · fee_note · source, summary.coupon_by_platform 을 넣으면 채널 기본 문구 대신 쓴다. */
-  const STRAT_ALLOWED=new Set(['전승훈','전수빈','김수민']);
+  const STRAT_ALLOWED=SECRET_ALLOWED;   // 기밀 명단과 같은 3명 (2026-11-20)
   const STRAT_REPO_API='https://api.github.com/repos/j65209/brightbeed-reports/contents/';
   const STRAT_LEGACY_PATH={'ably-kop':'ably'};
   const STRAT_PLAT_ORDER=['ably','zigzag','smartstore','29cm','wconcept','ohou','eql'];
@@ -52107,9 +52140,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   //     같은 날 사장님 "아냐 그냥 김수민 pc로 지정된곳에서만 보이게 해줘" → 업무일지 이름이 김수민인 PC 만 그 파일을 받아 맨 아래에 붙인다
   //     (대표 PC 도 안 받음 — 전략팀 명단 stratHasAccess 를 쓰지 않는다). 다른 PC 는 그 파일을 받지도 않는다 (마스터 PIN 이어도).
   //     뷰어 PIN 이어도 보이게 admin 표시는 안 쓴다.
+  //   2026-11-20 사장님 "단가, 가격, 링크정보 같은 기밀은 희선이랑 대표 2명만" + "김수민도 막기"
+  //     → 이 목록(구글시트 링크) 전체가 기밀 명단 SECRET_ALLOWED {전승훈, 전수빈, 지희선} PC 에서만 받고 그린다. 17번도 같은 3명 (김수민 PC 는 이제 안 받음).
   const MDL_STRAT_PATH='strategy/sheet-links.json';
-  const MDL_STRAT_ONLY=new Set(['김수민']);
-  const _mdlStratOk=()=>{ try{ return MDL_STRAT_ONLY.has(String(localStorage.getItem('brightbeed_diary_me')||'').trim()); }catch(e){ return false; } };
+  const _mdlStratOk=()=>secretOk();
   const _mdl={data:null, at:0, loading:null, err:'', q:'', open:new Set()};
   async function _mdlGet(path){
     const gf=(typeof ghFetch==='function')?ghFetch:window.ghFetch;
@@ -52125,17 +52159,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function mdlInit(){
     if(!document.getElementById('mdlList')) return;
+    if(!secretOk()){ mdlRender(); return; }   // 기밀 명단 밖 PC 는 링크 목록을 받지도 않는다 (2026-11-20)
     mdlRender();
     if(!_mdl.data || Date.now()-_mdl.at>MDL_TTL) mdlLoad();
   }
   async function mdlLoad(){
+    if(!secretOk()) return;   // 기밀 명단 밖 — 받지 않음
     if(_mdl.loading) return _mdl.loading;
     _mdl.loading=(async()=>{
       try{
         const d=await _mdlGet(MDL_PATH);
         if(!d) throw new Error('아직 목록이 없어요');
         if(!Array.isArray(d.groups)) throw new Error('파일 모양이 달라요');
-        // 김수민 PC 만 — 따로 받아 맨 아래에 (못 받아도 나머지 목록은 그대로). 같은 키가 이미 있으면 붙이지 않는다
+        // 기밀 명단 PC 만 — 17번을 따로 받아 맨 아래에 (못 받아도 나머지 목록은 그대로). 같은 키가 이미 있으면 붙이지 않는다
         if(_mdlStratOk()){
           try{
             const s=await _mdlGet(MDL_STRAT_PATH);
@@ -52166,6 +52202,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function mdlRender(){
     const list=document.getElementById('mdlList'); if(!list) return;
+    if(!secretOk()){ list.innerHTML=''; list.hidden=true; return; }   // 구글시트 링크 = 기밀 (지희선 · 전승훈 · 전수빈만)
+    list.hidden=false;
     if(!_mdl.data){
       list.innerHTML=_mdl.err ? `<div class="mds-empty">구글시트 모음을 못 불러왔어요 (${_esc(_mdl.err)}) — 새로고침을 누르면 다시 받아요</div>` : '';
       return;
@@ -52196,7 +52234,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<section class="mds-book${open?' is-open':''}${it.admin?' master-only':''}" data-mk="${_esc(it.key)}">
         <header class="mds-book-head" onclick="mdlToggleBook(this)">
           <span class="mds-chev">▶</span><span class="mds-rank">${n}</span>
-          <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}${it.strat?'<span class="mdl-admin" title="업무일지 이름이 김수민인 PC 에만 보여요">김수민 PC 전용</span>':''}</span>
+          <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}${it.strat?'<span class="mdl-admin" title="지희선 · 전승훈 · 전수빈 PC 에만 보여요">전략팀</span>':''}</span>
           <span class="mds-book-meta">${_esc(g.title)} · 탭 ${tabs.length}개</span>
           <span class="mds-head-sp"></span>
           <a class="mds-open" href="${_esc(base)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트 ↗</a>
@@ -52424,7 +52462,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
                 <span class="mds-tab-metas">${_mdsTabMetaHtml(t,_mds.data[tk])}</span>
                 <span class="mds-head-sp"></span>
                 <span class="mds-move" onclick="event.stopPropagation()"><button type="button" onclick="mdsMoveTab(this,-1)" ${ti===0?'disabled':''} aria-label="위로">▲</button><button type="button" onclick="mdsMoveTab(this,1)" ${ti===tabs.length-1?'disabled':''} aria-label="아래로">▼</button></span>
-                ${b.url?`<a class="mds-open" href="${escapeHTML(b.url)}#gid=${encodeURIComponent(t.gid)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글 ↗</a>`:''}
+                ${b.url&&secretOk()?`<a class="mds-open" href="${escapeHTML(b.url)}#gid=${encodeURIComponent(t.gid)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글 ↗</a>`:''}
               </div>
               <div class="mds-tab-body" data-k="${escapeHTML(tk)}"></div>
             </div>`;
@@ -52436,7 +52474,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <span class="mds-book-meta">탭 ${tabs.length}개</span>
           <span class="mds-head-sp"></span>
           <span class="mds-move" onclick="event.stopPropagation()"><button type="button" onclick="mdsMoveBook(this,-1)" ${bi===0?'disabled':''} aria-label="위로">▲</button><button type="button" onclick="mdsMoveBook(this,1)" ${bi===books.length-1?'disabled':''} aria-label="아래로">▼</button></span>
-          ${b.url?`<a class="mds-open" href="${escapeHTML(b.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트 ↗</a>`:''}
+          ${b.url&&secretOk()?`<a class="mds-open" href="${escapeHTML(b.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트 ↗</a>`:''}
         </header>
         <div class="mds-book-body">${body}</div>
       </section>`;
@@ -52661,8 +52699,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     Object.keys(d.span).forEach(k=>used.add(+k.split(',')[1]));
     d.visCols=[];
     for(let c=0;c<(d.cols||0);c++) if(!hidden.has(c)&&used.has(c)) d.visCols.push(c);
+    if(!secretOk()) _mdsDropSecret(d);
     _mdsMeasureCols(d);
     return d;
+  }
+  /* 기밀 칸 (2026-11-20 사장님 "단가, 가격, 링크정보는 희선이랑 대표 2명만, 나머지는 아예 숫자 안 보이게") —
+     기밀 명단 밖 PC 에서는 머리글이 원가 · 단가 · 판매가 · 가격 · 위안 · 링크 … 인 열(위쪽 몇 줄에서 찾음)과 ￥ 값 열을 아예 그리지 않고,
+     남은 칸의 링크 주소도 지운다. 저장본(raw)은 그대로 두고 화면용 사본만 지운다 — 칸 고치기는 한 칸씩이라 영향 없음. 사진(IMAGE)은 위에서 이미 뽑아 둠. */
+  function _mdsDropSecret(d){
+    const scanTo=Math.min(d.lastRow, Math.max(d.hdrRows,1)+4), bad=new Set();
+    for(let c=0;c<(d.cols||0);c++){
+      for(let r=0;r<scanTo;r++){ if(secretHead((d.values[r]||[])[c])){ bad.add(c); break; } }
+      if(bad.has(c)) continue;
+      for(let r=0;r<Math.min(d.lastRow,80);r++){ if(/^\s*[¥￥]/.test(String((d.values[r]||[])[c]??''))){ bad.add(c); break; } }
+    }
+    d.values=d.values.map(row=>(row||[]).map((v,c)=>(bad.has(c)||/^\s*https?:\/\//i.test(String(v??'')))?'':v));
+    d.visCols=d.visCols.filter(c=>!bad.has(c));
+    d.secretCut=bad.size;
   }
 
   /* ── 칸 너비 — 구글 열 너비 대신 글자 길이(12px 기준)로 정하고, 화면 폭에 맞춰 줄인다 ── */
