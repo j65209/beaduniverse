@@ -474,7 +474,7 @@
   const RETRY_MS = 30e3, TIMEOUT_MS = 25e3, CACHE_MAX = 12;
   // 받은 자료는 이 브라우저(IndexedDB 'erp_cache')에도 저장해 두고, 열 때 · 탭을 바꿀 때 저장본을 먼저 띄운 뒤 바뀐 줄만 받는다.
   // 탭 목록도 저장(erp_tabs_v1)해 메뉴가 바로 뜨고, 첫 탭이 뜬 뒤 다른 브랜드 재고 탭을 미리 받아 둔다.
-  const LS_TABS = 'erp_tabs_v1', IDB_NAME = 'erp_cache', CACHE_VER = 3, PREFETCH_GAP = 300;
+  const LS_TABS = 'erp_tabs_v1', IDB_NAME = 'erp_cache', CACHE_VER = 4, PREFETCH_GAP = 300;
   const LS_TAB = 'erp_tab_v1', LS_DENSE = 'erp_dense_v1', LS_COLW = 'erp_colw_v1';
   const LOW_STOCK = 10;         // 품절 임박 = 남은 재고 10개 이하 (재고 연동이 식스샵프로 수량관리를 거는 기준과 같음)
   // 식스샵프로 상태 열 (재고 탭 맨 오른쪽) — 저장소 erp_pro: 재고 연동(stock-sync, 5분)이 식스샵 옵션 ↔ 줄 연결로 센 것을 맥미니가 올림
@@ -490,7 +490,7 @@
     {k: '프피', name: '프로덕트피알', color: '#f59e0b', re: /프피|프로덕트피알/},
     {k: '아코이', name: '아코이하우스', color: '#f472b6', re: /아코이/},
   ];
-  const SECS = {stock: '재고 · 송장출력', home: '공홈 주문 원본', plato: '플랫폼 주문 (플토)', defect: '불량 · 반품', etc: '기타'};
+  const SECS = {stock: '재고', home: '공홈 주문 원본', plato: '플랫폼 주문 (플토)', defect: '불량 · 반품', etc: '기타'};
   const SEC_ORDER = ['stock', 'home', 'plato', 'defect', 'etc'];
   const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
   const F_CELL = `400 13px ${FONT}`, F_BOLD = `700 13px ${FONT}`, F_HEAD = `700 12px ${FONT}`, F_TAG = `500 12px ${FONT}`;
@@ -818,9 +818,9 @@
     return out;
   }
 
-  /* ── 개인정보 가리기 — 날짜별 주문 원본 탭(코페리11.19 · 야르11.19 …)의 주문자 이름 등. 머리글(위 6줄 안) 이름으로 칸을 찾는다 ── */
+  /* ── 개인정보 가리기 — 날짜별 주문 원본 탭(코페리11.19 · 야르11.19 …)의 연락처 · 주소 · 메일. 머리글(위 6줄 안) 이름으로 칸을 찾는다.
+     주문자 이름은 가리지 않는다 (2026-11-20 사용자 "erp에서 주문자 이름 다 뜨게" — 맥미니 erp-db-sync 도 같이 뺌) ── */
   const PII = [
-    ['name', /^(주문자|수령인|수취인|구매자|주문인|받는(분|사람|이)|고객|보내는(분|사람|이)|발송인)(이름|명|성명)?$/],
     ['phone', /(연락처|전화|휴대폰|핸드폰|휴대전화)/],
     ['addr', /(주소|우편번호)/],
     ['mail', /(이메일|메일주소|e-?mail)/i],
@@ -1549,8 +1549,8 @@
   /* ── 위쪽 (제목 · 날짜 · 안내 · 요약 카드 · 칩) ── */
   function renderHead() {
     const t = tabOf(S.cur), m = t ? (t.meta || (t.meta = classify(t.name))) : null, it = curItem(), d = curData(), v = vstate();
-    // 휴대폰에선 ' · 송장출력' 을 빼고 '코페리 재고' 까지만 (제목 줄이 한 줄로 들어가게)
-    $('title').innerHTML = !m ? '불러오는 중…' : m.sec === 'stock' ? `${esc(m.label)} 재고<span class="t2"> · 송장출력</span>`
+    // 재고 탭 제목 = '코페리 재고' (2026-11-20 사용자 "재고 송장출력에서 송장출력은 삭제 — 재고만 기재")
+    $('title').innerHTML = !m ? '불러오는 중…' : m.sec === 'stock' ? `${esc(m.label)} 재고`
       : esc(m.sec === 'home' ? `${m.label} 공홈 주문 원본` : m.sec === 'plato' ? '플랫폼 주문 (플토)' : m.label);
     const multi = !!it && it.tabs.length > 1;
     $('dates').innerHTML = multi ? it.tabs.map(x => `<button type="button" class="${x.gid === S.cur ? 'on' : ''}" data-gid="${x.gid}">${esc(x.meta.date || x.name)}</button>`).join('') : '';
