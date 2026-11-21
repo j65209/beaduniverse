@@ -3,7 +3,7 @@
 하루 1번, KST 07:00~10:00 사이 아무 시각(분·초까지 매일 다름)에 카페 게시판에 글 1개를 올린다.
 공식 카페 글쓰기 API(네이버 로그인 토큰) 사용. 맥미니·PC 필요 없음.
 
-## 구성 (슈퍼베이스 브라이트비드오피스 ckyjkxbqsyjoqpuqwoce)
+## 구성 (슈퍼베이스 비드유니버스 ckyjkxbqsyjoqpuqwoce)
 - 표 `naver_cafe_config`(1줄): enabled · club_id · menu_id · window_start/end · next_run_at · 토큰 · cron_key
 - 표 `naver_cafe_posts`: 올릴 글 (subject, content_html, images[], repeat, sort_order, status ready/posted/paused/failed)
   - ready 중 sort_order·id 가 가장 작은 글을 올림. repeat=true 면 올린 뒤 맨 뒤로 돌림

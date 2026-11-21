@@ -1,6 +1,6 @@
-# 브라이트비드 오피스 (Brightbeed Office)
+# 비드유니버스 오피스 (Bead Universe Office)
 
-브라이트비드 내부 운영용 웹 대시보드.
+비드유니버스 내부 운영용 웹 대시보드. (예전 이름 브라이트비드 오피스)
 중국 발주, ERP 연동, 사내 자료 관리를 하나의 화면에서 다룬다.
 
 > **라이브 URL** · https://j65209.github.io/beaduniverse/
@@ -10,7 +10,7 @@
 
 ## 1. 프로젝트 개요
 
-- **이름** · 브라이트비드 오피스 (Brightbeed Office)
+- **이름** · 비드유니버스 오피스 (Bead Universe Office) — 예전 이름 브라이트비드 오피스
 - **목적** · 중국 발주 + 사내 운영 데이터를 한 화면에서 보고/관리
 - **호스팅** · GitHub Pages — `.github/workflows/pages.yml` 이 main 푸시마다 배포 (Settings → Pages → Source: GitHub Actions).
   배포는 한 줄로 세우고 일시 오류는 재시도한다. raw.githubusercontent 로 읽는 파일(업무일지 백업·광고 시트·기획전·환율)만 바뀐 커밋은 배포하지 않는다 — 목록은 워크플로 `paths-ignore`.
@@ -59,7 +59,7 @@ Brightbeed/
 
 새 대화창에서 아래 한 줄을 보내면 이 프로젝트를 바로 이어서 작업한다.
 
-> **"브라이트비드 오피스 수정하자: github.com/j65209/beaduniverse"**
+> **"비드유니버스 오피스 수정하자: github.com/j65209/beaduniverse"**
 
 Claude가 저장소 상태를 읽고 이 README를 기준으로 작업을 이어간다.
 
@@ -122,7 +122,7 @@ git add . && git commit -m "수정 내용" && git push
 
 | 항목 | 값 |
 |---|---|
-| 프로젝트 | `브라이트비드오피스` (`ckyjkxbqsyjoqpuqwoce`) |
+| 프로젝트 | `비드유니버스` (`ckyjkxbqsyjoqpuqwoce`, 2026-11-21 이름 바꿈 — 예전 `브라이트비드오피스`, 주소 · 키는 그대로) |
 | 테이블 | `diary_items` (본문) · `diary_item_history` (전 변경 이력) |
 | 실시간 | `supabase_realtime` 퍼블리케이션 등록 — 한 줄 고치면 전 직원 화면에 즉시 반영 |
 | 백업 | 10분마다 `data/diary.json` 스냅샷 자동 커밋 (사람이 읽을 수 있는 백업) |
@@ -292,7 +292,7 @@ studio/
 구글시트 **재고 ERP MASTER**(파일 이름 '식스샵 ERP MASTER')를 **업무 프로그램 화면**으로 보고 고치는 곳 — **고친 칸은 구글시트와 오피스 저장소에 바로 적힘** (아래 '고치기'). (2026-11-19 첫 판은 시트 모양 그대로였고, 같은 날 "구글시트랑 똑같이가 아니라 전문 프로그램처럼 — 칸 너비는 들어간 내용에 맞춰 자동으로"로 2판).
 
 **2026-11-20 오피스 자체 저장소로** (사용자 "현시간부로 구글시트와 연결은 우선 해두지만 독자적인 프로그램으로 운영 — 데이터를 다 들고와서 오피스앱 안에 저장 (구글에서 안불러오고 내부에 자료가 있어 로딩을 더 빠르게) · 안정화되면 구글시트는 나중에 끊는다"):
-- 저장소 = Supabase(브라이트비드오피스) `erp_tabs`(탭 · 순서 · 수식 칸 `fx` · 개인정보 칸 `pii_cols` · 마지막 맞춤 `synced_at` · 줄 번호표 `rows_ver`) · `erp_rows`(시트 한 줄 = 한 행, `v` = 칸 표시값 배열, `src` sheet/office, 지움은 `deleted_at`) · `erp_history`(바뀌기 전 값, 트리거) · `erp_config`(맥미니 키 지문). 읽기는 anon 표 직접, **쓰기는 함수만**: `erp_sync_tabs` · `erp_sync_rows` · `erp_sync_fx`(맥미니 키) · `erp_cell_edit`(오피스 화면) · `erp_poll`(화면 8초 확인 — 안 바뀌면 100바이트쯤).
+- 저장소 = Supabase(비드유니버스) `erp_tabs`(탭 · 순서 · 수식 칸 `fx` · 개인정보 칸 `pii_cols` · 마지막 맞춤 `synced_at` · 줄 번호표 `rows_ver`) · `erp_rows`(시트 한 줄 = 한 행, `v` = 칸 표시값 배열, `src` sheet/office, 지움은 `deleted_at`) · `erp_history`(바뀌기 전 값, 트리거) · `erp_config`(맥미니 키 지문). 읽기는 anon 표 직접, **쓰기는 함수만**: `erp_sync_tabs` · `erp_sync_rows` · `erp_sync_fx`(맥미니 키) · `erp_cell_edit`(오피스 화면) · `erp_poll`(화면 8초 확인 — 안 바뀌면 100바이트쯤).
 - 맥미니 `erp-db-sync`(sixshop-collector `erp/erp-db-sync.mjs`, 1분)가 보이는 탭을 공개 CSV 로 읽어 **바뀐 줄만** 올린다: 재고 7탭 매분 · 오늘/어제 날짜 탭 · 플토 · 불량 2분 · 나머지 15분, 탭 목록 5분, 수식 칸 위치 15분(브리지). 연락처 · 주소는 가린 값만 (주문자 이름은 그대로 — 2026-11-20). 빈 줄(빈칸 · FALSE · 0 뿐)은 안 올림. 오피스에서 막 고친 줄은 90초 동안 안 덮음 (CSV 가 늦게 따라와도 되돌아가지 않게).
 - 화면은 저장소에서만 읽는다 (구글 웹 보기 해석 코드는 뺌). 처음 · 10분마다 탭 전체, 그 사이엔 `ver` 로 바뀐 줄만. 맥미니가 오래 못 맞추면(재고 탭 기준 5분 주황 · 10분 빨강, 탭 주기에 맞춤) 상태 단추가 바뀌고 누르면 그 탭만 구글시트 CSV 를 바로 읽어 보여 준다 (가린 채, 저장본엔 안 남김).
 - 자동 차감 · 모아 · 발주 매칭 · 재고 연동 · 리오더는 **아직 구글시트를 읽고 쓴다** — 시트를 끊으려면 이들을 `erp_rows` 로 옮긴 뒤에.
