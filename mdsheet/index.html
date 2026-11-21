@@ -458,6 +458,70 @@
   .nr-save:disabled{opacity:.5;cursor:default}
   .nr-cancel{background:#f1f4f8;color:var(--text-2)}
   @media (max-width:720px){ .nr-in{font-size:16px} }
+  /* ── 휴대폰 글씨 한 단계 작게 (2026-11-21 사용자 "모바일에서 글씨가 커서 가독성이 떨어져") — ERP전산(erp/)과 같은 값 ──
+     표 13 → 12px · 머리글 12 → 11px · 줄 높이 42 → 36px · 칸 좌우 여백 8 → 6px (칸 너비를 재는 setFonts 와 같은 값).
+     위쪽(제목 · 요약 카드 · 칩 · 날짜), 상세 창도 같이 줄인다. PC 는 그대로. 입력 칸은 16px 그대로 (아이폰 화면 확대 막기) */
+  @media (max-width:720px){
+    :root{--row-h:36px}
+    .tbl{font-size:12px}
+    .tbl th{height:36px;padding:3px 6px;font-size:11px;line-height:1.25}
+    .tbl td{padding:0 6px}
+    .tbl td.r,.tbl td.c,.tbl th.r,.tbl th.c{padding-left:4px;padding-right:4px}
+    .tbl td .blank{font-size:10.5px}
+    .tbl tfoot .ft{font-size:11px}
+    .tag{padding:1px 7px;font-size:11px}
+    .pill{padding:1px 6px;font-size:11px}
+    .pill-sub{margin-left:5px;font-size:11px}
+    .hchip{margin-left:5px;padding:0 5px;font-size:10.5px}
+    .thumb{width:26px;height:26px;margin:1px 0}
+    .ck{width:16px;height:16px}
+    .ck0{width:13px;height:13px}
+    /* 위쪽 */
+    .bar{height:48px}
+    .find{height:34px}
+    .ib{width:36px;height:36px}
+    .tfav{width:28px;height:28px;font-size:15px}
+    .st #stText{font-size:11px}
+    .head{padding:8px 12px}
+    .trow h1{font-size:15px}
+    .tcap{font-size:11px}
+    .date{padding:1px 7px;font-size:11px}
+    .etog{height:26px;padding:0 9px;font-size:11px}
+    .parts button{height:24px;padding:0 9px;font-size:11.5px}
+    .dates button{height:26px;padding:0 9px;font-size:11.5px}
+    .alert{margin-top:8px;padding:7px 10px;font-size:11.5px}
+    .alert svg{width:15px;height:15px}
+    .al-more{font-size:11px}
+    .kpis{gap:6px;margin-top:6px}
+    .kpi{min-width:84px;height:44px;padding:0 10px;border-radius:10px}
+    .kpi b{font-size:15px}
+    .kpi b small{font-size:10.5px}
+    .kpi span{margin-top:1px;font-size:10.5px}
+    .chips{margin-top:8px;gap:5px}
+    .chip{height:28px;padding:0 10px;font-size:11.5px}
+    .chip em{font-size:10.5px}
+    /* 왼쪽 메뉴 (서랍) */
+    .nav-item{height:40px;font-size:13.5px}
+    .side-link{height:38px;font-size:12.5px}
+    /* 상세 창 */
+    .dh-cap{font-size:11px}
+    .d-title{font-size:15px}
+    .d-sub{font-size:11.5px}
+    .d-sheet{height:28px;font-size:11.5px}
+    .dl{grid-template-columns:88px 1fr}
+    .dl dt{padding:9px 0;font-size:11.5px}
+    .dl dd{padding:9px 0 9px 10px;font-size:12.5px}
+    .d-hint{font-size:11px}
+    .edbox .ed-cap,.edbox .ed-msg{font-size:11px}
+    .edbox button{height:30px;font-size:12px}
+    .fxv{font-size:11px}
+    .nr-auto{font-size:11px}
+    .nr-bar button{height:32px;font-size:12.5px}
+    /* 안내 · 알림 */
+    .msg{padding:18px;font-size:12.5px}
+    .msg b{font-size:14px}
+    .toast{padding:9px 14px;font-size:12px}
+  }
 </style>
 </head>
 <body>
@@ -546,7 +610,16 @@
   const TAB_DOTS = [{re: /^6a|식스에이/i, color: '#22d3ee'}, {re: /^yar|야르/i, color: '#a78bfa'}];
   const CORE_BOOKS = new Set(['apeti', 'coferry', 'kozmi']);   // 처음부터 펴 두는 시트
   const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
-  const F_CELL = `400 13px ${FONT}`, F_BOLD = `700 13px ${FONT}`, F_HEAD = `700 12px ${FONT}`, F_TAG = `500 12px ${FONT}`;
+  /* 칸 너비를 잴 글자 크기 — 아래 CSS 와 같아야 칸이 글자에 딱 맞는다. 휴대폰(720px 이하)은 한 단계 작게
+     (2026-11-21 사용자 "모바일에서 글씨가 커서 가독성이 떨어져" — 표 13 → 12px, 머리글 · 딱지 12 → 11px, 칸 좌우 여백 8 → 6px) */
+  let F_CELL, F_BOLD, F_HEAD, F_TAG, F_CHIP, PAD;   // PAD = 칸 좌우 여백 + 테두리 1 (PC 8 + 8 + 1, 휴대폰 6 + 6 + 1)
+  function setFonts() {
+    const m = matchMedia('(max-width:720px)').matches;
+    F_CELL = `400 ${m ? 12 : 13}px ${FONT}`; F_BOLD = `700 ${m ? 12 : 13}px ${FONT}`;
+    F_HEAD = `700 ${m ? 11 : 12}px ${FONT}`; F_TAG = `500 ${m ? 11 : 12}px ${FONT}`; F_CHIP = `600 ${m ? 10.5 : 11}px ${FONT}`;
+    PAD = m ? 13 : 17;
+  }
+  setFonts();
   const RN_W = 42;
   const OPT_RE = /^(옵션|상품옵션정보|옵션정보)$/;
   const DATE_RE = /^(\d{4}[-.]\s?\d{1,2}[-.]\s?\d{1,2}\.?(\s+\d{1,2}:\d{2}(:\d{2})?)?|\d{1,2}[./]\d{1,2})$/;
@@ -577,7 +650,6 @@
   const KEY_RE = /^(상품명|상품이름|온라인상품명|품목명|제품명)$/;   // 상품 이름 열 = 왼쪽에 고정 · 상세 창 제목
   // 한 칸에 날짜가 여러 번 쌓이는 칸 (예: '2026-09-30 695개⏎2026-11-09') — 칸엔 최근 것만 '11/9', 그 전은 '이전 N회' 에 마우스 · 상세 창
   const HIST = {'발주일및수량': '발주', '입고일': '입고', '입고예정일': '입고 예정'};
-  const F_CHIP = `600 11px ${FONT}`;
 
   const $ = id => document.getElementById(id);
   const app = $('app'), grid = $('grid'), qIn = $('q');
@@ -1768,7 +1840,7 @@
      · 글자 칸은 '가장 긴 값'이 아니라 대부분(90%)의 값에 맞추고, 그보다 긴 것만 … (마우스를 올리거나 상세 창에서 전체)
      · 화면 폭에 맞춘다: 모자라면 글자 칸만 최소 폭까지 줄이고, 남으면 잘린 글자 칸부터 원래 길이까지 늘린다.
        숫자 · 날짜 · 번호 · 체크 · 사진 칸은 잘리면 안 되니 줄이지 않는다. 그래도 모자라면 옆으로 넘김 */
-  const PAD = 17;   // 칸 좌우 여백 8 + 8 + 테두리 1
+  // PAD (칸 좌우 여백 + 테두리) 는 위 setFonts — 휴대폰은 좁게
   const mctx = document.createElement('canvas').getContext('2d'), MW = new Map();
   function tw(text, font) {
     const k = font + '\u0001' + text;
@@ -2089,7 +2161,7 @@
      화면에 보이는 줄 + 위아래 한 화면씩만 그리고, 나머지는 높이만 있는 빈 줄로 채워 스크롤 길이는 그대로 둔다. */
   const VR_MIN = 60;
   const rowKey = () => `${S.dense ? 1 : 0}${narrow.matches ? 1 : 0}`;
-  const rowHGuess = () => S.rowH[rowKey()] || (S.dense ? 28 : narrow.matches ? 42 : 34);
+  const rowHGuess = () => S.rowH[rowKey()] || (S.dense ? 28 : narrow.matches ? 36 : 34);
   // 행 번호 = 지금 보이는 순서대로 1, 2, 3 … (2026-11-20 사장님 "행 번호가 마음대로인데 행은 그냥 1번부터 다 기재" — 걸러 보기 · 정렬해도 위에서부터 1번).
   // 함수 주소(E5 등)는 여전히 시트 줄 번호(row.r)라 그 번호는 마우스를 올리면 보인다.
   function rowHtml(row, vr, i) {
@@ -4298,7 +4370,13 @@
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(tick, 300); });
   let rzT = 0;
   window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(tick, 180); });
-  narrow.addEventListener && narrow.addEventListener('change', () => { if (!narrow.matches) setNav(false); $('dscrim').hidden = !narrow.matches || $('detail').hidden; renderGrid({keep: true}); });
+  narrow.addEventListener && narrow.addEventListener('change', () => {
+    if (!narrow.matches) setNav(false);
+    $('dscrim').hidden = !narrow.matches || $('detail').hidden;
+    setFonts();   // 휴대폰 ↔ PC 글자 크기가 다르니 받아 둔 탭들 칸 너비를 다시 잰다
+    S.cache.forEach(ent => { if (ent && ent.data && ent.data.parts) ent.data.parts.forEach(fitCols); });
+    renderGrid({keep: true});
+  });
   compactMQ.addEventListener && compactMQ.addEventListener('change', () => { if (!compactMQ.matches) setHmin(false); });
 
   /* ── 시작 — 지난번 탭은 탭 목록을 기다리지 않고 바로 읽는다 ── */
