@@ -13076,8 +13076,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
         <div class="sub-module m-mileage" id="mileageCard" onclick="openMileagePage()" hidden>
           <div class="sub-module-icon">✈️</div>
-          <div class="sub-module-title">마일리지 캘린더</div>
-          <div class="sub-module-sub">대한항공 프레스티지 · 일등석 보너스 좌석 · 나라별 · 30분마다 자동 · 전승훈 · 전수빈만</div>
+          <div class="sub-module-title">마일리지 항공권</div>
+          <div class="sub-module-sub">프레스티지 왕복 · 2명 기준 · 대한항공 + 스카이팀 직항 · 30분마다 자동 · 전승훈 · 전수빈만</div>
           <div class="sub-module-tag">NEW</div>
         </div>
         <div class="sub-module m-yearend" id="yearEndCard" onclick="triggerYearEnd()" hidden>
@@ -23025,8 +23025,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     erp:{view:'viewErp',path:'erp/',title:'ERP전산팀',keep:true,bridge:false},
     seeding:{view:'viewSeeding',path:'seeding/',title:'시딩 마스터',keep:true,bridge:false},
     feed:{view:'viewFeed',path:'feed/',title:'인스타 피드 시뮬레이터',keep:true,bridge:false},
-    // 마일리지 캘린더(mileage/, '관리자 전용' 폴더, 2026-11-22) — 대표 전용 금고와 같은 판정 (관리자 PIN + 전승훈 · 전수빈)
-    mileage:{view:'viewMileage',path:'mileage/',title:'마일리지 캘린더',keep:false,bridge:false,
+    // 마일리지 항공권(mileage/, 옛 이름 마일리지 캘린더 — 11-22 사장님 "마일리지 항공권으로 네이밍 변경", '관리자 전용' 폴더, 2026-11-22) — 대표 전용 금고와 같은 판정 (관리자 PIN + 전승훈 · 전수빈)
+    mileage:{view:'viewMileage',path:'mileage/',title:'마일리지 항공권',keep:false,bridge:false,
       access(){ try{ return execHasAccess(); }catch(e){ return true; } }},
   };
   const TOOL_BRIDGE_KEY='bb_tool_bridge_v1';
@@ -23350,8 +23350,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 인스타 피드 시뮬레이터 — feed/ (브랜드별 피드 배치 미리보기 · 지금 인스타 피드는 함수 ig-feed · 계획 저장 feed_plans, 전 직원) */
   function openFeedPage(){ openToolPage('feed'); }
   window.openFeedPage=openFeedPage;
-  /* 마일리지 캘린더 — mileage/ (2026-11-22 사장님 "대표만 사용 할 수 있는 앱 · 30분마다 대한항공 마일리지로 예약 가능한 프레스티지, 일등석 가능한 나라 전부 캘린더로").
-     자료 = 대한항공 보너스 좌석 공개 현황 → 맥미니 수집기 sixshop-collector mileage/ke-award.py(자동 설치 관리자 ke-award, 30분) → Supabase ke_award_*. 카드는 '관리자 전용' 폴더 — execHasAccess 일 때만 (execRefreshAccess) */
+  /* 마일리지 항공권 — mileage/ (2026-11-22 사장님 "대표만 사용 할 수 있는 앱 · 30분마다 대한항공 마일리지로 예약 가능한 프레스티지, 일등석 가능한 나라 전부 캘린더로").
+     자료 = 로마일 2석 이상(맥미니 ke-roamile) + 대한항공 공개 현황 교차 확인(맥미니 ke-award) → Supabase ke_r2_* · ke_award_*. 카드는 '관리자 전용' 폴더 — execHasAccess 일 때만 (execRefreshAccess) */
   function openMileagePage(){ openToolPage('mileage'); }
   window.openMileagePage=openMileagePage;
   /* MD팀 시트 3종 — mdsheet/ (2026-11-20, MD팀 화면 맨 위 iframe #mdxBox). ERP전산팀(erp/)과 같은 화면으로 구글시트 '주얼리 MD' · 'MD coferry' · 'MD cosmi' 의 모든 탭.
@@ -39521,7 +39521,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ok=execHasAccess();
     const card=document.getElementById('execVaultCard');
     if(card) card.hidden=!ok;
-    const mc=document.getElementById('mileageCard');   // 마일리지 캘린더 — 같은 판정
+    const mc=document.getElementById('mileageCard');   // 마일리지 항공권 — 같은 판정
     if(mc) mc.hidden=!ok;
     if(!ok){ const mv=document.getElementById('viewMileage'); if(mv && !mv.hidden) goHome(); }
     snsRefreshAccess();
