@@ -222,6 +222,11 @@
   .rt .rd small { color: var(--t2); font-size: 11px; margin-left: 2px }
   .rt.no b { color: var(--text) }
   .rt.unk b { color: var(--warn) }
+  /* 2석 기준 · 로마일 자료 (2026-11-22) — 남은 좌석 · 확인 시각 */
+  .tag.seats { background: var(--text); color: #fff }
+  .fl .mi { color: var(--t2); font-size: 12px }
+  .fl .age { color: var(--t3); font-size: 11.5px }
+  .fl.old { opacity: .5 }
 
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 6px 0 14px }
   .stat { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px }
@@ -303,6 +308,10 @@
       <button type="button" data-rt="1" aria-pressed="true">왕복만 · 2~5일 뒤 귀국</button>
       <button type="button" data-rt="0" aria-pressed="false">편도 전체</button>
     </div>
+    <div class="seg" id="freshSeg" role="group" aria-label="확인 시각" hidden>
+      <button type="button" data-fresh="0" aria-pressed="true">확인 시각 전체</button>
+      <button type="button" data-fresh="1" aria-pressed="false">24시간 안 확인만</button>
+    </div>
     <div class="seg" id="tabSeg" role="group" aria-label="보기">
       <button type="button" data-tab="cal" aria-pressed="true">달력</button>
       <button type="button" data-tab="places" aria-pressed="false">나라별</button>
@@ -350,11 +359,11 @@
     <div>
       <h4>보는 법</h4>
       <ul>
-        <li>대한항공 홈페이지 <b>보너스 좌석 상황 보기</b>의 공개 현황이에요. 대한항공이 <b>하루 한 번</b> 갱신해요.</li>
-        <li>맥미니가 30분마다 오래된 노선부터 다시 읽어요 — 노선 212개 × 13달이 하루 이틀에 한 바퀴.</li>
+        <li><b>2명 기준</b> — <a href="https://www.roamile.com/" target="_blank" rel="noopener">로마일</a>이 확인한 남은 좌석이 <b>2석 이상</b>인 편만 보여요. 대한항공 운항편 + 스카이팀 제휴 <b>직항</b>만, 로마일이 다루는 도시만 나오고 좌석 수를 모르는 편은 뺐어요.</li>
+        <li>맥미니가 30분마다 로마일을 조금씩 다시 읽어요 (가까운 3달 4시간 · 그 뒤 12시간마다). 좌석 수는 로마일이 편마다 확인한 때의 값이라 몇 시간 ~ 며칠 지난 것도 있어요 — 편마다 <b>확인 시각</b>을 같이 보여 주고, 24시간 넘은 편은 흐리게 보여요.</li>
         <li><b>왕복만</b>(기본)은 가는 날 2~5일 뒤에 같은 도시에서 돌아오는 편이 있는 날만 보여요. 테두리만 있는 도시는 돌아오는 편을 아직 못 읽은 곳이에요.</li>
         <li>표시는 '보너스 좌석이 있다'는 뜻이고 좌석 수가 아니에요 (1석일 수도). <b>2명</b>은 대한항공 앱 · 홈페이지 <b>마일리지 항공권 예약</b>에서 성인 2명으로 다시 확인하세요.</li>
-        <li>대한항공이 직접 운항하는 편만 나와요 (제휴 · 공동운항 제외). 프레스티지 = O 등급, 일등석 = A 등급.</li>
+        <li>스카이팀 제휴편은 왕복으로 발권해야 하고 공제 마일이 달라요 — 대한항공 예약 화면에서 확인하세요. (대한항공 공개 현황 수집기도 참고용으로 계속 돌아요.)</li>
         <li><a href="https://www.koreanair.com/booking/book-and-manage/award-seat-availability" target="_blank" rel="noopener">대한항공 보너스 좌석 상황 보기 열기 ↗</a></li>
       </ul>
     </div>
@@ -387,7 +396,7 @@
   /* ── 기준값 ── */
   const HUBS = { ICN: '인천', GMP: '김포' };
   const REGIONS = [['all', '전체'], ['jp', '일본'], ['cn', '중국'], ['nea', '홍콩 · 대만 · 몽골'], ['sea', '동남아'], ['pac', '괌 · 사이판 · 팔라우'],
-    ['swa', '서남아 · 중앙아'], ['am', '미주'], ['eu', '유럽'], ['me', '중동'], ['oc', '대양주']];
+    ['swa', '서남아 · 중앙아'], ['am', '미주'], ['eu', '유럽'], ['me', '중동'], ['oc', '대양주'], ['etc', '기타']];
   const REGION_NAME = Object.fromEntries(REGIONS);
   // 대한항공 보너스 공제 (편도 · 평수기). 성수기 1.5배. 2026-11 기준 — 공식 홈페이지에서 확인
   const ZONES = {
@@ -398,8 +407,11 @@
   };
   const ZONE_RANK = { long: 0, swa: 1, sea: 2, nea: 3 };
   const CAB = { O: '프레스티지', A: '일등석' };
-  const LS = { cab: 'ml_cabins_v1', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1' };
+  const LS = { cab: 'ml_cabins_v1', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1', fresh: 'ml_fresh_v1' };
   const NEW_MS = 72 * 3600e3;
+  // 2석 기준 (2026-11-22 사장님 "로마일 · 스카이팀도 · 직항만 · 무조건 2명") — 로마일이 확인한 남은 좌석 2석 이상만 (자료 d.r2)
+  const FRESH_MS = 24 * 3600e3;   // '24시간 안 확인만'
+  const R2_GROUPS = 28;           // 대한항공 13달 × 가는 편 · 오는 편 + 스카이팀 2
   // 왕복 (2026-11-22 사장님 "출발날짜 +2~5일 돌아오는 프레스티지 좌석이 있는지 · 왕복 프레스티지가 필요") — 가는 날 + RT[0]~RT[1]일에 오는 편
   const RT = [2, 5];
 
@@ -410,6 +422,8 @@
     region: REGION_NAME[lsGet(LS.region)] ? lsGet(LS.region) : 'all',
     tab: ['cal', 'places', 'new'].includes(lsGet(LS.tab)) ? lsGet(LS.tab) : 'cal',
     rt: lsGet(LS.rt) !== '0',   // 기본 = 왕복만
+    fresh: lsGet(LS.fresh) === '1',   // 기본 = 확인 시각 상관없이 전부 (오래된 건 흐리게)
+    src: 'ke',                  // 'r2' = 로마일 2석 자료, 'ke' = 대한항공 공개 현황(좌석 수 모름)
     q: '', month: null, day: null, loading: false,
     modal: null,   // {place, pickOut, pickIn}
   };
@@ -460,11 +474,29 @@
       S.places.get(r.p).routes.push(r);
     }
     S.seats = [];
-    for (const a of d.seats || []) {
-      const r = S.routes.get(a[0] + '-' + a[1]);
-      if (!r) continue;
-      const out = !!HUBS[a[0]];
-      S.seats.push({ o: a[0], d: a[1], date: a[2], fn: a[3], t: a[4], c: a[5], first: a[6], opened: !!a[7], p: r.p, dir: out ? 'out' : 'in', hub: out ? a[0] : a[1] });
+    const r2 = d.r2 && Array.isArray(d.r2.seats) ? d.r2 : null;
+    S.src = r2 ? 'r2' : 'ke';
+    if (r2) {
+      // [범위, 출발, 도착, 날짜, 편명, 시각, 등급 O/A, 좌석 수, 항공사, 좌석 타입, 마일, 확인 시각, 처음 본 때, 새로 열림, 출발 도시, 도착 도시]
+      for (const a of r2.seats) {
+        const out = !!HUBS[a[1]];
+        if (!out && !HUBS[a[2]]) continue;
+        const code = out ? a[2] : a[1];
+        const r = S.routes.get(a[1] + '-' + a[2]);
+        let p = r ? r.p : code;
+        if (!S.places.has(p)) {   // 대한항공 노선표에 없는 도시 (스카이팀 제휴편만 가는 곳)
+          S.places.set(p, { code: p, city: (out ? a[15] : a[14]) || p, country: '', region: 'etc', zone: 'long', routes: [], sort: 1000 + S.places.size });
+        }
+        S.seats.push({ scope: a[0], o: a[1], d: a[2], date: a[3], fn: a[4], t: a[5], c: a[6], n: a[7], al: a[8], st: a[9], mi: a[10],
+          obs: a[11], first: a[12], opened: !!a[13], p, dir: out ? 'out' : 'in', hub: out ? a[1] : a[2] });
+      }
+    } else {
+      for (const a of d.seats || []) {
+        const r = S.routes.get(a[0] + '-' + a[1]);
+        if (!r) continue;
+        const out = !!HUBS[a[0]];
+        S.seats.push({ o: a[0], d: a[1], date: a[2], fn: a[3], t: a[4], c: a[5], first: a[6], opened: !!a[7], p: r.p, dir: out ? 'out' : 'in', hub: out ? a[0] : a[1] });
+      }
     }
     S.today = d.today; S.last = addDays(d.today, 360);
     if (!S.month || S.month < S.today.slice(0, 7) || S.month > S.last.slice(0, 7)) S.month = S.today.slice(0, 7);
@@ -480,17 +512,20 @@
     const dir = opts.dir || S.dir;
     // 왕복만: 가는 편은 +2~5일에 돌아오는 편이 있거나 아직 확인 전인 것만 ('없음'으로 확인된 것만 뺀다)
     const rt = dir === 'out' && (opts.rt != null ? opts.rt : S.rt);
-    return S.seats.filter(s => s.dir === dir && S.cabins.has(s.c) && placeOk(S.places.get(s.p), opts.ignoreRegion) && (!rt || rtInfo(s.p, s.date).state !== 'no'));
+    return S.seats.filter(s => s.dir === dir && seatOk(s) && placeOk(S.places.get(s.p), opts.ignoreRegion) && (!rt || rtInfo(s.p, s.date).state !== 'no'));
   }
+  // 확인 시각 (로마일 자료만) — 24시간 넘으면 흐리게, '24시간 안 확인만'이면 뺀다
+  const isFresh = s => !s.obs || Date.now() - Date.parse(s.obs) < FRESH_MS;
+  const seatOk = s => S.cabins.has(s.c) && (!S.fresh || S.src !== 'r2' || isFresh(s));
 
   /* ── 왕복: 가는 날 + 2~5일 돌아오는 편 ── */
   let RI = null;   // { seats, cab, idx: 도시 → 날짜 → 오는 편 좌석들, memo }
   function retIndex() {
-    const cab = [...S.cabins].sort().join('');
+    const cab = [...S.cabins].sort().join('') + (S.fresh ? '|24h' : '');
     if (RI && RI.seats === S.seats && RI.cab === cab && RI.data === S.data) return RI;
     const idx = new Map();
     for (const s of S.seats) {
-      if (s.dir !== 'in' || !S.cabins.has(s.c)) continue;
+      if (s.dir !== 'in' || !seatOk(s)) continue;
       let p = idx.get(s.p); if (!p) idx.set(s.p, p = new Map());
       let a = p.get(s.date); if (!a) p.set(s.date, a = []);
       a.push(s);
@@ -500,6 +535,11 @@
   }
   // 그 도시 → 한국 노선이 그 달을 다 읽었나 (안 읽었으면 '없음'이 아니라 '확인 전')
   function monthChecked(p, ym) {
+    if (S.src === 'r2') {   // 로마일: 그 달 대한항공 '오는 편' 묶음 + 스카이팀 '오는 편' 묶음을 읽었나
+      const g = (S.data.r2 && S.data.r2.groups) || {};
+      const ok = k => !!(g[k] && g[k].at);
+      return ok('koreanair|in|' + ym) && ok('skyteam|in|all');
+    }
     const scan = (S.data && S.data.scan) || {};
     const rs = p.routes.filter(r => !HUBS[r.o] && HUBS[r.d] && r.enabled !== false && r.active !== false);
     if (!rs.length) return true;   // 운항하는 오는 편 노선이 없음 → 없음으로 확정
@@ -527,7 +567,7 @@
       const rest = r.unk.length ? ` <span style="color:var(--t3);font-size:12px">나머지 ${r.unk.length}일은 아직 확인 전</span>` : '';
       return `<div class="rt ok">${head}${r.hits.map(h => {
         const fl = [...new Map(h.list.map(s => [s.o + s.fn, s])).values()]
-          .map(s => `${esc(s.fn)} ${esc(s.t || '')}${s.hub === 'GMP' ? ' 김포' : ''}${S.cabins.size > 1 && s.c === 'A' ? ' 일등석' : ''}`).join(' · ');
+          .map(s => `${esc(s.fn)} ${esc(s.t || '')}${s.n ? ' ' + s.n + '석' : ''}${s.hub === 'GMP' ? ' 김포' : ''}${S.cabins.size > 1 && s.c === 'A' ? ' 일등석' : ''}`).join(' · ');
         return `<span class="rd"><b>${esc(fmtD(h.date))}</b> ${h.n}박<small>${fl}</small></span>`;
       }).join('')}${rest}</div>`;
     }
@@ -577,6 +617,8 @@
     document.querySelectorAll('#tabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.tab === b.dataset.tab)));
     document.querySelectorAll('#rtSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.rt === (b.dataset.rt === '1'))));
     $('rtSeg').hidden = S.dir !== 'out';
+    document.querySelectorAll('#freshSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.fresh === (b.dataset.fresh === '1'))));
+    $('freshSeg').hidden = S.src !== 'r2';
     const nNew = filtered({ ignoreRegion: true, rt: false }).filter(isNew).length;
     $('newBadge').hidden = !nNew; $('newBadge').textContent = nNew > 99 ? '99+' : nNew;
     // 지역 칩 — 칩마다 좌석 있는 곳 수 (왕복만이면 왕복 되는 곳)
@@ -591,7 +633,20 @@
     $('zoneRows').innerHTML = Object.values(ZONES).map(z => `<tr><td>${esc(z.name)}</td><td class="num">${won(z.O)}</td><td class="num">${won(z.A)}</td><td class="num">${won(z.O * 2)}</td></tr>`).join('');
   }
 
+  function r2Info() {   // 로마일 수집 (맥미니 ke-roamile) — 묶음 28개
+    const r2 = (S.data && S.data.r2) || {}, g = r2.groups || {}, st = r2.state || {};
+    const done = Object.values(g).filter(x => x && x.at).length;
+    return { st, done, fails: Object.entries(g).filter(([, x]) => x && x.ok === false) };
+  }
   function statusInfo() {
+    if (S.src === 'r2') {
+      const { st, done } = r2Info();
+      if (!st.last_run_at) return { cls: 'bad', txt: '로마일 수집기가 아직 안 돌았어요' };
+      const age = Date.now() - Date.parse(st.last_run_at);
+      if (age > 3 * 3600e3) return { cls: 'bad', txt: '로마일 수집 멈춤 · ' + rel(st.last_run_at) };
+      if (done < R2_GROUPS) return { cls: 'ok', txt: '2석 기준 · 첫 한 바퀴 ' + done + '/' + R2_GROUPS + ' · ' + rel(st.last_run_at) };
+      return { cls: age > 50 * 6e4 ? 'warn' : 'ok', txt: '2석 기준 · 30분마다 · ' + rel(st.last_run_at) + ' 수집' };
+    }
     const st = S.status && S.status.state, cov = S.status && S.status.coverage;
     if (!st) return { cls: '', txt: '상태 모름' };
     if (st.blocked_until && Date.parse(st.blocked_until) > Date.now()) return { cls: 'warn', txt: '대한항공이 잠시 막음 · ' + hm(st.blocked_until) + ' 다시' };
@@ -610,11 +665,18 @@
     const st = S.status || {}, out = [];
     const pend = (st.collectors || []).filter(c => c.status === 'pending');
     if (pend.length) out.push(`<div class="notice info">새 수집기 <b>${esc(pend.map(c => c.name || '이름 없음').join(', '))}</b> 가 승인을 기다려요 · <button class="link" type="button" data-open-status>수집 상태에서 승인</button></div>`);
-    if (!(st.collectors || []).some(c => c.status === 'approved')) out.push('<div class="notice">승인된 수집기가 없어요. 맥미니 수집기(자동 설치 관리자 <code>ke-award</code>)를 확인해 주세요.</div>');
-    // 2026-11-22 사장님 "무조건 2좌석 · 1인으로 체킹하지마" — 공개 현황은 좌석 수를 안 준다
-    out.push('<div class="notice">대한항공 공개 현황은 좌석이 <b>있다 · 없다</b>만 알려줘요 — 몇 석인지는 안 나와서 1석뿐일 수도 있어요. <b>2명 왕복</b>은 대한항공 마일리지 항공권 예약에서 <b>성인 2명</b>으로 다시 확인하세요.</div>');
-    const cov = st.coverage;
-    if (cov && cov.total && cov.checked < cov.total) out.push(`<div class="notice info">처음 한 바퀴 도는 중이에요 — 노선 · 달 ${won(cov.checked)} / ${won(cov.total)} 확인 (가까운 달부터). 다 돌 때까지 비어 있는 곳이 있어요.</div>`);
+    if (S.status && !(st.collectors || []).some(c => c.status === 'approved')) out.push('<div class="notice">승인된 수집기가 없어요. 맥미니 수집기(자동 설치 관리자 <code>ke-award</code> · <code>ke-roamile</code>)를 확인해 주세요.</div>');
+    if (S.src === 'r2') {
+      // 2026-11-22 사장님 "무조건 2명" — 로마일이 확인한 남은 좌석 2석 이상만
+      const { done, fails } = r2Info();
+      out.push('<div class="notice info"><b>2명 기준</b> — 남은 좌석 <b>2석 이상</b>만 보여요 (대한항공 운항편 + 스카이팀 제휴 직항, 로마일 자료). 좌석 수는 로마일이 확인한 때의 값이라 각 편의 <b>확인 시각</b>을 보세요. 24시간이 넘은 편은 흐리게 보여요.</div>');
+      if (done < R2_GROUPS) out.push(`<div class="notice info">처음 한 바퀴 도는 중이에요 — 묶음 ${done} / ${R2_GROUPS} 읽음 (가까운 달부터). 다 돌 때까지 비어 있는 달이 있어요.</div>`);
+      if (fails.length) out.push(`<div class="notice">로마일에서 못 읽은 묶음 ${fails.length}개 — 옛 자료를 그대로 보여 줘요 (${esc(fails.slice(0, 2).map(([k, x]) => k + ': ' + (x.note || '')).join(' / '))})</div>`);
+    } else {
+      out.push('<div class="notice">대한항공 공개 현황은 좌석이 <b>있다 · 없다</b>만 알려줘요 — 몇 석인지는 안 나와서 1석뿐일 수도 있어요. <b>2명 왕복</b>은 대한항공 마일리지 항공권 예약에서 <b>성인 2명</b>으로 다시 확인하세요.</div>');
+      const cov = st.coverage;
+      if (cov && cov.total && cov.checked < cov.total) out.push(`<div class="notice info">처음 한 바퀴 도는 중이에요 — 노선 · 달 ${won(cov.checked)} / ${won(cov.total)} 확인 (가까운 달부터). 다 돌 때까지 비어 있는 곳이 있어요.</div>`);
+    }
     $('notices').innerHTML = out.join('');
   }
   function renderSummary() {
@@ -625,7 +687,8 @@
     $('summary').innerHTML =
       `<span><strong class="num">${places.size}</strong>곳</span>` +
       `<span><strong class="num">${dates.size}</strong>일</span>` +
-      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} 보너스 좌석` +
+      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} ${S.src === 'r2' ? '<b>2석 이상</b> · 대한항공 + 스카이팀 직항' : '보너스 좌석'}` +
+      (S.src === 'r2' && S.fresh ? ' · 24시간 안 확인만' : '') +
       (S.dir === 'out' && S.rt ? ` · <b>왕복만</b> (${RT[0]}~${RT[1]}일 뒤 돌아오는 편 있음${list.some(s => rtInfo(s.p, s.date).state === 'unk') ? ' · 확인 전 포함' : ''})` : '') +
       ' · 앞으로 361일' +
       (S.cabins.size > 1 ? ` · 프레스티지 ${won(nP)}편 · 일등석 ${won(nF)}편` : '') + '</span>';
@@ -691,7 +754,13 @@
       const s = g[0];
       const cabs = g.map(x => x.c).sort((a, b) => (a === 'O' ? -1 : 1)).map(c => `<span class="tag ${c}">${CAB[c]}</span>`).join('');
       const hub = showHub || s.hub === 'GMP' ? `<span class="tag hub">${HUBS[s.hub]}${s.dir === 'out' ? ' 출발' : ' 도착'}</span>` : '';
-      return `<div class="fl"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t || '')}</span>${cabs}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}</div>`;
+      // 로마일 자료: 남은 좌석 수 · 스카이팀 항공사 · 확인 시각 (24시간 넘으면 흐리게)
+      const n = Math.max(0, ...g.map(x => x.n || 0));
+      const seats = n ? `<span class="tag seats">${n >= 9 ? '9석+' : n + '석'}</span>` : '';
+      const al = s.al && s.al !== '대한항공' ? `<span class="tag hub">${esc(s.al)}</span>` : '';
+      const mi = s.mi ? `<span class="mi num">${won(s.mi)}마일</span>` : '';
+      const age = s.obs ? `<span class="age">${esc(rel(s.obs))} 확인</span>` : '';
+      return `<div class="fl${s.obs && !isFresh(s) ? ' old' : ''}"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t || '')}</span>${cabs}${seats}${al}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${mi}${age}</div>`;
     }).join('');
   }
   function milesLine(p) {
@@ -762,6 +831,7 @@
       if (without.length) {
         const scan = (S.data && S.data.scan) || {};
         const names = without.map(p => {
+          if (S.src === 'r2') return esc(p.city);   // 로마일에 없는 도시도 여기 (2석 확인 못 함)
           const rs = p.routes.filter(r => (S.dir === 'out') === !!HUBS[r.o]);
           const dead = rs.length && rs.every(r => !r.active);
           const seen = rs.some(r => scan[r.o + '-' + r.d]);
@@ -801,7 +871,7 @@
     if ($('placeModal').hidden && $('statusModal').hidden) document.body.style.overflow = '';
   }
   function heat(dir, p) {
-    const list = S.seats.filter(s => s.p === p.code && s.dir === dir && S.cabins.has(s.c));
+    const list = S.seats.filter(s => s.p === p.code && s.dir === dir && seatOk(s));
     const by = new Map();
     for (const s of list) { const v = by.get(s.date) || ''; if (!v.includes(s.c)) by.set(s.date, (v + s.c).split('').sort((a, b) => (a === 'O' ? -1 : 1)).join('')); }
     const months = monthsList(), md = S.modal;
@@ -847,7 +917,7 @@
     }
     let selBox = '';
     if (md.sel) {
-      const arr = S.seats.filter(s => s.p === p.code && s.dir === md.sel.dir && s.date === md.sel.date && S.cabins.has(s.c));
+      const arr = S.seats.filter(s => s.p === p.code && s.dir === md.sel.dir && s.date === md.sel.date && seatOk(s));
       selBox = `<div class="pc" style="margin:-4px 0 14px"><div class="pc-h"><b>${esc(fmtLong(md.sel.date))}</b><span>${md.sel.dir === 'out' ? '가는 편' : '오는 편'}</span></div>${arr.length ? flightRows(arr, true) : '<div class="fl" style="color:var(--t3)">이날은 보너스 좌석 없음</div>'}</div>`;
     }
     $('placeSheet').innerHTML =
@@ -869,8 +939,19 @@
     const cols = (st.collectors || []).map(c => `<tr><td>${esc(c.name || '이름 없음')}</td><td>${c.status === 'approved' ? '<span style="color:var(--ok);font-weight:700">승인됨</span>' : '<span style="color:var(--warn);font-weight:700">승인 대기</span>'}</td>` +
       `<td>${esc(rel(c.last_seen_at))}</td><td style="text-align:right">${c.status === 'pending' ? `<button class="btn pri" type="button" data-approve="${c.id}">승인</button> ` : ''}<button class="btn danger" type="button" data-revoke="${c.id}">끊기</button></td></tr>`).join('');
     const runs = (st.runs || []).map(r => `<tr><td>${esc(hm(r.at))}</td><td class="num">${r.requests}</td><td class="num">${r.ok}</td><td class="num">${r.failed}</td><td class="num">${r.new_seats}</td><td>${r.blocked ? '<span style="color:var(--warn)">막힘</span>' : ''}${r.note ? ' ' + esc(r.note) : ''}</td></tr>`).join('');
+    const R = r2Info();
+    const r2box = S.data && S.data.r2 ?
+      `<h4 style="margin:6px 0">2석 기준 · 로마일 (맥미니 <code>ke-roamile</code>, 30분마다)</h4><div class="stat-grid">` +
+      `<div class="stat"><div class="k">읽은 묶음</div><div class="v num">${R.done} / ${R2_GROUPS}</div><div class="progress"><i style="width:${Math.floor(R.done / R2_GROUPS * 100)}%"></i></div></div>` +
+      `<div class="stat"><div class="k">2석 이상 좌석</div><div class="v num">${won((S.data.r2.seats || []).length)}</div></div>` +
+      `<div class="stat"><div class="k">마지막 수집</div><div class="v">${esc(rel(R.st.last_run_at))}</div></div>` +
+      `<div class="stat"><div class="k">마지막 성공</div><div class="v">${esc(rel(R.st.last_ok_at))}</div></div></div>` +
+      (R.st.last_error ? `<div class="notice">${esc(R.st.last_error)}</div>` : '') +
+      `<div style="font-size:12px;color:var(--t3);margin:-6px 0 14px">로마일(roamile.com) 공개 검색에서 '좌석 수 2' · 직항 · 비즈니스/일등석을 읽어요. 대한항공은 달마다, 스카이팀은 한 번에. 가까운 3달 4시간 · 그 뒤 12시간마다 다시 읽어요.</div>` +
+      `<h4 style="margin:6px 0">대한항공 공개 현황 (좌석 수 모름 · 참고용)</h4>` : '';
     $('statusSheet').innerHTML =
-      `<div class="sheet-h"><div><h2>수집 상태</h2><div class="sub">맥미니 수집기가 30분마다 대한항공 공개 현황을 오래된 노선 · 달부터 읽어요</div></div><button class="x-btn" type="button" data-close="statusModal" aria-label="닫기">×</button></div>` +
+      `<div class="sheet-h"><div><h2>수집 상태</h2><div class="sub">맥미니 수집기 두 개가 30분마다 돌아요</div></div><button class="x-btn" type="button" data-close="statusModal" aria-label="닫기">×</button></div>` +
+      r2box +
       `<div class="stat-grid">` +
       `<div class="stat"><div class="k">확인한 노선 · 달</div><div class="v num">${won(cov.checked || 0)} / ${won(cov.total || 0)}</div><div class="progress"><i style="width:${pct}%"></i></div></div>` +
       `<div class="stat"><div class="k">48시간 안에 확인</div><div class="v num">${won(cov.fresh || 0)}</div></div>` +
@@ -909,6 +990,7 @@
     lsSet(LS.cab, [...S.cabins].join('')); renderAll();
   });
   $('dirSeg').addEventListener('click', e => { const b = e.target.closest('button[data-dir]'); if (!b) return; S.dir = b.dataset.dir; S.day = null; lsSet(LS.dir, S.dir); renderAll(); });
+  $('freshSeg').addEventListener('click', e => { const b = e.target.closest('button[data-fresh]'); if (!b) return; S.fresh = b.dataset.fresh === '1'; S.day = null; lsSet(LS.fresh, S.fresh ? '1' : '0'); renderAll(); });
   $('rtSeg').addEventListener('click', e => { const b = e.target.closest('button[data-rt]'); if (!b) return; S.rt = b.dataset.rt === '1'; S.day = null; lsSet(LS.rt, S.rt ? '1' : '0'); renderAll(); });
   $('tabSeg').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; lsSet(LS.tab, S.tab); renderAll(); });
   $('regionChips').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (!b) return; S.region = b.dataset.region; S.day = null; lsSet(LS.region, S.region); renderAll(); });
