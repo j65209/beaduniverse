@@ -39,7 +39,7 @@ Brightbeed/
 ├── mdsheet/         MD팀 시트 — MD 구글시트 15개를 erp/ 와 같은 화면 · 오피스 저장소로, MD팀 맨 위 (13장 참고)
 ├── voc/             VOC 전산 — CS팀 맨 아래, 구글시트 '비드유니버스 VOC'를 ERP 와 같은 화면으로 (14장 참고)
 ├── seeding/         시딩 마스터 — 자체 저장 엑셀식 시딩 프로그램 (업무용 툴 카드 · 따로 앱 설치, 15장 참고)
-├── mileage/         마일리지 캘린더 — 대표 전용 · 대한항공 프레스티지 · 일등석 보너스 좌석 달력 (관리자 전용 카드, 16장 참고)
+├── mileage/         마일리지 캘린더 — 대표 전용 · 대한항공 프레스티지 · 일등석 보너스 좌석 달력 · 왕복(2~5일 뒤 귀국) (관리자 전용 카드, 16장 참고)
 ├── README.md        본 문서
 └── .gitignore       Python 기본 ignore
 ```
@@ -401,12 +401,12 @@ CS 직원이 매일 적는 구글시트 **비드유니버스 VOC**(링크 보기
 | 항목 | 내용 |
 |---|---|
 | 들어오기 | 홈 '관리자 전용' 폴더 **마일리지 캘린더** 카드 (`#mileageCard`, 해시 `#mileage`). 관리자 PIN + '나는' 전승훈 · 전수빈 일 때만 보이고 열림 — 대표 전용 금고와 같은 판정(`execHasAccess`, `TOOL_PAGES.mileage.access`). `mileage/` 를 혼자 열어도 같은 조건 아니면 잠금 화면. 화면 가리기일 뿐 — 자료 자체는 대한항공 공개 정보 |
-| 자료 | 대한항공 홈페이지 **보너스 좌석 상황 보기**(비로그인 공개 현황, 대한항공이 하루 1번 갱신) — `POST /api/hmp/bonusSeatView/bonusSeatView {departureAirport, arrivalAirport, departureDate:'YYYYMM01'}` → 날짜별 편마다 X(일반) · O(프레스티지) · Z(승급) · A(일등석) 가능 여부. O · A 만 저장. 좌석 수 · 발권 가능은 아님(예매 화면에서 다시 확인). 대한항공 직접 운항편만 |
-| 수집기 | `scripts/mac/ke-award.py` (파이썬 표준 라이브러리만) · 설치 `bash scripts/mac/install-ke-award.sh` → launchd `com.brightbeed.ke-award` **30분마다**(본체는 `~/Library/Application Support/brightbeed/ke-award.py` 로 복사해 돌림, 기록 `~/Library/Logs/brightbeed-ke-award.log`). 한 번에 저장소가 고른 '가장 오래 안 본 노선 · 달' 40개를 3~5초 간격으로. 가까운 3달 20시간 · 그 뒤 44시간 · 운항 없는 노선 30일마다 → 노선 212개(103곳 × 가는 편 · 오는 편) × 13달이 하루 이틀에 한 바퀴 |
+| 자료 | 대한항공 홈페이지 **보너스 좌석 상황 보기**(비로그인 공개 현황, 대한항공이 하루 1번 갱신) — `POST /api/hmp/bonusSeatView/bonusSeatView {departureAirport, arrivalAirport, departureDate:'YYYYMM01'}` → 날짜별 편마다 X(일반) · O(프레스티지) · Z(승급) · A(일등석) 가능 여부. O · A 만 저장. 좌석 수 · 발권 가능은 아님(예매 화면에서 다시 확인). **좌석 수를 안 줘서 2석인지 모름** — 사장님은 늘 2명(11-22 "무조건 2좌석 · 1인으로 체킹하지마"), 화면에 '성인 2명으로 다시 확인' 안내. 응답 칸 이름은 수집기 기록 '응답 칸' 줄. 대한항공 직접 운항편만 |
+| 수집기 | 맥미니 **자동 설치 관리자** 작업 `ke-award` — 비공개 `j65209/sixshop-collector` 의 `mileage/ke-award.py`(파이썬 표준 라이브러리만) · `mac/jobs/ke-award.job` → launchd `com.brightbeed.ke-award` **30분마다**, 기록 `~/Library/Logs/brightbeed-ke-award.log`. 코드를 고치면 15분 안에 맥미니에 저절로 반영되고, 설치가 지워져도 다시 깔린다 (2026-11-22 맥북 손 설치 → 맥미니로 옮김, 옛 `scripts/mac/install-ke-award.sh` 는 걷어냄). 한 번에 저장소가 고른 '가장 오래 안 본 노선 · 달' 40개를 3~5초 간격으로. 가까운 3달 20시간 · 그 뒤 44시간 · 운항 없는 노선 30일마다 → 노선 212개(103곳 × 가는 편 · 오는 편) × 13달이 하루 이틀에 한 바퀴 |
 | 사무실 맥에서만 | 대한항공(Akamai)은 클라우드 IP(슈퍼베이스 · 깃허브 액션)를 403 으로 막는다 (2026-11-22 확인). 403 · 428 · 429 · Access Denied 면 그 회차를 멈추고 1 · 2 · 4 … 최대 24시간 쉰다(`ke_award_state.blocked_until`). 브라우저 흉내(UA 위장 · 쿠키 복사 · 캡차 · 프록시)는 하지 않는다 — UA `BrightbeedAwardCalendar/1.0` |
 | 수집기 열쇠 | 그 맥 `~/.config/brightbeed/ke-award.key`(0600) · 저장소엔 sha256 만(`ke_award_collectors`). 처음 돌면 '승인 대기' → 화면 오른쪽 위 상태 › 수집기 [승인] (또는 Claude SQL `ke_award_collector_set`). 승인은 최대 3대 |
 | 저장소 | Supabase(비드유니버스) `ke_award_routes`(노선 · 도시 · 나라 · 지역 · 공제 지역 · active 자동) · `ke_award_scan`(노선 × 달 마지막 확인) · `ke_award_seats`(지금 열린 O/A 날짜 · 편, `opened` = 다시 확인 때 새로 생김) · `ke_award_state` · `ke_award_runs`(30일) · `ke_award_collectors`. 표는 전부 서버 전용(RLS · 정책 없음 · 권한 회수). 함수: 수집기 `ke_award_register` · `ke_award_plan` · `ke_award_ingest` · `ke_award_report`, 화면 `ke_award_calendar` · `ke_award_status` · `ke_award_collector_set`. 정리 cron `ke-award-cleanup-daily`(04:10 KST) |
-| 화면 | 등급(프레스티지 기본 · 일등석) · 방향(가는 편 한국 출발 / 오는 편 한국 도착) · 지역 칩 · 도시/나라 찾기. **달력** = 13달 줄 + 달력(날마다 갈 수 있는 곳 수 · 도시) + 오른쪽 그날 목록(편명 · 시각 · 등급 · 편도 공제 마일). **나라별** = 지역마다 카드(가는 편 · 오는 편 가능 일수 · 가장 빠른 날 · 13달 막대). 도시를 누르면 **1년 보기** — 가는 편 · 오는 편 히트맵, 가는 날을 누르면 그 뒤 오는 편 가능한 날(N박). **새로 열림** = 최근 3일 사이 새로 생긴 좌석. 10분마다 다시 읽음 |
+| 화면 | 등급(프레스티지 기본 · 일등석) · 방향(가는 편 한국 출발 / 오는 편 한국 도착) · **왕복만 / 편도 전체**(기본 왕복만 — 가는 날 **2~5일 뒤** 같은 도시에서 돌아오는 편이 있거나 아직 확인 전인 날만, 2026-11-22 사장님 "출발날짜 +2~5일 돌아오는 프레스티지 · 왕복 프레스티지가 필요") · 지역 칩 · 도시/나라 찾기. **달력** = 13달 줄 + 달력(날마다 갈 수 있는 곳 수 · 도시) + 오른쪽 그날 목록(편명 · 시각 · 등급 · **돌아오는 편 2~5일 뒤: 날짜 · N박 · 편명 / 없음 / 아직 확인 전** · 편도 공제 마일). '확인 전' = 그 도시 → 한국 노선이 그 달을 아직 못 읽음(`ke_award_calendar` scan 의 `ms` 달 목록으로 가름) — 달력에선 테두리만 있는 도시. **나라별** = 지역마다 카드(가는 편 · 오는 편 가능 일수 · 가장 빠른 날 · 13달 막대). 도시를 누르면 **1년 보기** — 가는 편 · 오는 편 히트맵, 가는 날을 누르면 그 뒤 오는 편 가능한 날(N박). **새로 열림** = 최근 3일 사이 새로 생긴 좌석. 10분마다 다시 읽음 |
 | 공제 마일 | 화면 `ZONES` (편도 · 평수기): 동북아 프레스티지 22,500 / 일등석 32,500 · 동남아 · 괌 35,000 / 45,000 · 서남아 45,000 / 57,500 · 미주 · 유럽 · 대양주 · 중동 62,500 / 80,000. 성수기 1.5배. 대한항공이 공제표를 바꾸면 여기만 고친다 |
 | 노선 더하기 | `insert into ke_award_routes (origin, dest, place, city, country, region, zone, sort)` — 가는 편 · 오는 편 두 줄. 운항이 없으면 한 바퀴 뒤 active=false 로 자동 빠짐 |
 

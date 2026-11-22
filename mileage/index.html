@@ -33,7 +33,7 @@
   /* 마일리지 좌석 캘린더 — 대표 전용 (2026-11-22)
      사장님 요청: "30분마다 자동으로 대한항공 마일리지로 예약 가능한 프레스티지, 일등석 가능한 나라 전부 다 뜨고 캘린더로 만들어줘. 정보랑"
                  "대한항공 마일리지가 너무 많은데 프레스티지만 쓰고 싶거든"
-     · 자료 = 대한항공 '보너스 좌석 상황 보기' 공개 현황 → 사무실 맥 수집기(scripts/mac/ke-award.py, 30분마다) → 오피스 저장소 ke_award_*
+     · 자료 = 대한항공 '보너스 좌석 상황 보기' 공개 현황 → 맥미니 수집기(sixshop-collector mileage/ke-award.py · 자동 설치 관리자 ke-award, 30분마다) → 오피스 저장소 ke_award_*
      · 이 화면은 rpc ke_award_calendar · ke_award_status 로만 읽는다 (표는 서버 전용).
      · 들어오는 사람 = 관리자 PIN + '나는' 전승훈 · 전수빈 (대표 전용 금고와 같은 판정, 화면 가리기). 자료 자체는 대한항공 공개 정보. */
   :root {
@@ -212,6 +212,16 @@
   .pick-box b { color: var(--text) }
   .rets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px }
   .rets span { border: 1px solid var(--line); border-radius: 7px; padding: 2px 7px; background: #fff; font-size: 12px; white-space: nowrap }
+  /* 왕복 — 가는 날 +2~5일 돌아오는 편 (2026-11-22) */
+  .rets span.w { border-color: var(--text); color: var(--text); font-weight: 700 }
+  .hm button.ret.w { box-shadow: 0 0 0 2px #fff inset, 0 0 0 2px var(--text) }
+  .day .city.q { background: transparent; box-shadow: inset 0 0 0 1px var(--p-mid) }
+  .rt { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--line); font-size: 12.5px; color: var(--t2); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline }
+  .rt .k { flex-basis: 100%; color: var(--t3); font-size: 12px }
+  .rt .rd { border: 1px solid var(--p-mid); background: var(--p-bg); color: var(--p); border-radius: 7px; padding: 1px 7px; white-space: nowrap }
+  .rt .rd small { color: var(--t2); font-size: 11px; margin-left: 2px }
+  .rt.no b { color: var(--text) }
+  .rt.unk b { color: var(--warn) }
 
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 6px 0 14px }
   .stat { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px }
@@ -289,6 +299,10 @@
       <button type="button" data-dir="out" aria-pressed="true">가는 편 · 한국 출발</button>
       <button type="button" data-dir="in" aria-pressed="false">오는 편 · 한국 도착</button>
     </div>
+    <div class="seg" id="rtSeg" role="group" aria-label="왕복">
+      <button type="button" data-rt="1" aria-pressed="true">왕복만 · 2~5일 뒤 귀국</button>
+      <button type="button" data-rt="0" aria-pressed="false">편도 전체</button>
+    </div>
     <div class="seg" id="tabSeg" role="group" aria-label="보기">
       <button type="button" data-tab="cal" aria-pressed="true">달력</button>
       <button type="button" data-tab="places" aria-pressed="false">나라별</button>
@@ -337,8 +351,9 @@
       <h4>보는 법</h4>
       <ul>
         <li>대한항공 홈페이지 <b>보너스 좌석 상황 보기</b>의 공개 현황이에요. 대한항공이 <b>하루 한 번</b> 갱신해요.</li>
-        <li>사무실 맥이 30분마다 오래된 노선부터 다시 읽어요 — 노선 212개 × 13달이 하루 이틀에 한 바퀴.</li>
-        <li>표시는 '보너스 좌석이 있다'는 뜻이고 좌석 수가 아니에요. 실제 예약 가능 여부는 대한항공 앱 · 홈페이지 <b>마일리지 항공권 예약</b>에서 다시 확인하세요.</li>
+        <li>맥미니가 30분마다 오래된 노선부터 다시 읽어요 — 노선 212개 × 13달이 하루 이틀에 한 바퀴.</li>
+        <li><b>왕복만</b>(기본)은 가는 날 2~5일 뒤에 같은 도시에서 돌아오는 편이 있는 날만 보여요. 테두리만 있는 도시는 돌아오는 편을 아직 못 읽은 곳이에요.</li>
+        <li>표시는 '보너스 좌석이 있다'는 뜻이고 좌석 수가 아니에요 (1석일 수도). <b>2명</b>은 대한항공 앱 · 홈페이지 <b>마일리지 항공권 예약</b>에서 성인 2명으로 다시 확인하세요.</li>
         <li>대한항공이 직접 운항하는 편만 나와요 (제휴 · 공동운항 제외). 프레스티지 = O 등급, 일등석 = A 등급.</li>
         <li><a href="https://www.koreanair.com/booking/book-and-manage/award-seat-availability" target="_blank" rel="noopener">대한항공 보너스 좌석 상황 보기 열기 ↗</a></li>
       </ul>
@@ -383,8 +398,10 @@
   };
   const ZONE_RANK = { long: 0, swa: 1, sea: 2, nea: 3 };
   const CAB = { O: '프레스티지', A: '일등석' };
-  const LS = { cab: 'ml_cabins_v1', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1' };
+  const LS = { cab: 'ml_cabins_v1', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1' };
   const NEW_MS = 72 * 3600e3;
+  // 왕복 (2026-11-22 사장님 "출발날짜 +2~5일 돌아오는 프레스티지 좌석이 있는지 · 왕복 프레스티지가 필요") — 가는 날 + RT[0]~RT[1]일에 오는 편
+  const RT = [2, 5];
 
   const S = {
     data: null, status: null, seats: [], routes: new Map(), places: new Map(),
@@ -392,6 +409,7 @@
     dir: lsGet(LS.dir) === 'in' ? 'in' : 'out',
     region: REGION_NAME[lsGet(LS.region)] ? lsGet(LS.region) : 'all',
     tab: ['cal', 'places', 'new'].includes(lsGet(LS.tab)) ? lsGet(LS.tab) : 'cal',
+    rt: lsGet(LS.rt) !== '0',   // 기본 = 왕복만
     q: '', month: null, day: null, loading: false,
     modal: null,   // {place, pickOut, pickIn}
   };
@@ -460,7 +478,61 @@
   function filtered(opts) {
     opts = opts || {};
     const dir = opts.dir || S.dir;
-    return S.seats.filter(s => s.dir === dir && S.cabins.has(s.c) && placeOk(S.places.get(s.p), opts.ignoreRegion));
+    // 왕복만: 가는 편은 +2~5일에 돌아오는 편이 있거나 아직 확인 전인 것만 ('없음'으로 확인된 것만 뺀다)
+    const rt = dir === 'out' && (opts.rt != null ? opts.rt : S.rt);
+    return S.seats.filter(s => s.dir === dir && S.cabins.has(s.c) && placeOk(S.places.get(s.p), opts.ignoreRegion) && (!rt || rtInfo(s.p, s.date).state !== 'no'));
+  }
+
+  /* ── 왕복: 가는 날 + 2~5일 돌아오는 편 ── */
+  let RI = null;   // { seats, cab, idx: 도시 → 날짜 → 오는 편 좌석들, memo }
+  function retIndex() {
+    const cab = [...S.cabins].sort().join('');
+    if (RI && RI.seats === S.seats && RI.cab === cab && RI.data === S.data) return RI;
+    const idx = new Map();
+    for (const s of S.seats) {
+      if (s.dir !== 'in' || !S.cabins.has(s.c)) continue;
+      let p = idx.get(s.p); if (!p) idx.set(s.p, p = new Map());
+      let a = p.get(s.date); if (!a) p.set(s.date, a = []);
+      a.push(s);
+    }
+    RI = { seats: S.seats, cab, data: S.data, idx, memo: new Map() };
+    return RI;
+  }
+  // 그 도시 → 한국 노선이 그 달을 다 읽었나 (안 읽었으면 '없음'이 아니라 '확인 전')
+  function monthChecked(p, ym) {
+    const scan = (S.data && S.data.scan) || {};
+    const rs = p.routes.filter(r => !HUBS[r.o] && HUBS[r.d] && r.enabled !== false && r.active !== false);
+    if (!rs.length) return true;   // 운항하는 오는 편 노선이 없음 → 없음으로 확정
+    return rs.every(r => { const x = scan[r.o + '-' + r.d]; return !!(x && Array.isArray(x.ms) && x.ms.includes(ym)); });
+  }
+  function rtInfo(code, date) {
+    const R = retIndex(), key = code + '|' + date;
+    if (R.memo.has(key)) return R.memo.get(key);
+    const p = S.places.get(code), byDate = R.idx.get(code);
+    const hits = [], unk = [];
+    for (let n = RT[0]; n <= RT[1]; n++) {
+      const k = addDays(date, n), a = byDate && byDate.get(k);
+      if (a) hits.push({ date: k, n, list: a });
+      else if (k > S.last || !p || !monthChecked(p, k.slice(0, 7))) unk.push(k);
+    }
+    const r = { hits, unk, state: hits.length ? 'ok' : unk.length ? 'unk' : 'no' };
+    R.memo.set(key, r);
+    return r;
+  }
+  const cabLabel = () => [...S.cabins].sort().reverse().map(c => CAB[c]).join(' · ');
+  function rtLine(code, date) {
+    const r = rtInfo(code, date), lab = cabLabel();
+    const head = `<span class="k">돌아오는 ${esc(lab)} · 가는 날 ${RT[0]}~${RT[1]}일 뒤</span>`;
+    if (r.state === 'ok') {
+      const rest = r.unk.length ? ` <span style="color:var(--t3);font-size:12px">나머지 ${r.unk.length}일은 아직 확인 전</span>` : '';
+      return `<div class="rt ok">${head}${r.hits.map(h => {
+        const fl = [...new Map(h.list.map(s => [s.o + s.fn, s])).values()]
+          .map(s => `${esc(s.fn)} ${esc(s.t || '')}${s.hub === 'GMP' ? ' 김포' : ''}${S.cabins.size > 1 && s.c === 'A' ? ' 일등석' : ''}`).join(' · ');
+        return `<span class="rd"><b>${esc(fmtD(h.date))}</b> ${h.n}박<small>${fl}</small></span>`;
+      }).join('')}${rest}</div>`;
+    }
+    if (r.state === 'unk') return `<div class="rt unk">${head}<b>아직 확인 전</b> <span style="color:var(--t3);font-size:12px">— 처음 한 바퀴 도는 중이거나 361일 밖이에요</span></div>`;
+    return `<div class="rt no">${head}<b>없음</b></div>`;
   }
   const isNew = s => s.opened && Date.now() - Date.parse(s.first) < NEW_MS;
   function placeSort(a, b) { return ZONE_RANK[a.zone] - ZONE_RANK[b.zone] || a.sort - b.sort; }
@@ -503,11 +575,13 @@
     document.querySelectorAll('#cabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.cabins.has(b.dataset.cab))));
     document.querySelectorAll('#dirSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.dir === b.dataset.dir)));
     document.querySelectorAll('#tabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.tab === b.dataset.tab)));
-    const nNew = filtered({ ignoreRegion: true }).filter(isNew).length;
+    document.querySelectorAll('#rtSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.rt === (b.dataset.rt === '1'))));
+    $('rtSeg').hidden = S.dir !== 'out';
+    const nNew = filtered({ ignoreRegion: true, rt: false }).filter(isNew).length;
     $('newBadge').hidden = !nNew; $('newBadge').textContent = nNew > 99 ? '99+' : nNew;
-    // 지역 칩 — 칩마다 좌석 있는 곳 수
+    // 지역 칩 — 칩마다 좌석 있는 곳 수 (왕복만이면 왕복 되는 곳)
     const per = {};
-    const list = S.seats.filter(s => s.dir === S.dir && S.cabins.has(s.c) && matchQ(S.places.get(s.p)));
+    const list = filtered({ ignoreRegion: true });
     const seen = new Set();
     for (const s of list) { const p = S.places.get(s.p); if (seen.has(p.code)) continue; seen.add(p.code); per[p.region] = (per[p.region] || 0) + 1; }
     $('regionChips').innerHTML = REGIONS.map(([k, n]) => {
@@ -536,7 +610,9 @@
     const st = S.status || {}, out = [];
     const pend = (st.collectors || []).filter(c => c.status === 'pending');
     if (pend.length) out.push(`<div class="notice info">새 수집기 <b>${esc(pend.map(c => c.name || '이름 없음').join(', '))}</b> 가 승인을 기다려요 · <button class="link" type="button" data-open-status>수집 상태에서 승인</button></div>`);
-    if (!(st.collectors || []).some(c => c.status === 'approved')) out.push('<div class="notice">승인된 수집기가 없어요. 사무실 맥에서 <code>bash scripts/mac/install-ke-award.sh</code> 를 한 번 실행해 주세요.</div>');
+    if (!(st.collectors || []).some(c => c.status === 'approved')) out.push('<div class="notice">승인된 수집기가 없어요. 맥미니 수집기(자동 설치 관리자 <code>ke-award</code>)를 확인해 주세요.</div>');
+    // 2026-11-22 사장님 "무조건 2좌석 · 1인으로 체킹하지마" — 공개 현황은 좌석 수를 안 준다
+    out.push('<div class="notice">대한항공 공개 현황은 좌석이 <b>있다 · 없다</b>만 알려줘요 — 몇 석인지는 안 나와서 1석뿐일 수도 있어요. <b>2명 왕복</b>은 대한항공 마일리지 항공권 예약에서 <b>성인 2명</b>으로 다시 확인하세요.</div>');
     const cov = st.coverage;
     if (cov && cov.total && cov.checked < cov.total) out.push(`<div class="notice info">처음 한 바퀴 도는 중이에요 — 노선 · 달 ${won(cov.checked)} / ${won(cov.total)} 확인 (가까운 달부터). 다 돌 때까지 비어 있는 곳이 있어요.</div>`);
     $('notices').innerHTML = out.join('');
@@ -549,7 +625,9 @@
     $('summary').innerHTML =
       `<span><strong class="num">${places.size}</strong>곳</span>` +
       `<span><strong class="num">${dates.size}</strong>일</span>` +
-      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} 보너스 좌석 · 앞으로 361일` +
+      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} 보너스 좌석` +
+      (S.dir === 'out' && S.rt ? ` · <b>왕복만</b> (${RT[0]}~${RT[1]}일 뒤 돌아오는 편 있음${list.some(s => rtInfo(s.p, s.date).state === 'unk') ? ' · 확인 전 포함' : ''})` : '') +
+      ' · 앞으로 361일' +
       (S.cabins.size > 1 ? ` · 프레스티지 ${won(nP)}편 · 일등석 ${won(nF)}편` : '') + '</span>';
   }
 
@@ -597,7 +675,8 @@
       const anyNew = [...pm.values()].some(a => a.some(isNew));
       const chips = ps.slice(0, 3).map(p => {
         const onlyF = pm.get(p.code).every(s => s.c === 'A');
-        return `<span class="city${onlyF ? ' f' : ''}">${esc(p.city)}</span>`;
+        const q = S.dir === 'out' && rtInfo(p.code, k).state === 'unk';   // 돌아오는 편 아직 확인 전 — 테두리만
+        return `<span class="city${onlyF ? ' f' : ''}${q ? ' q' : ''}"${q ? ' title="돌아오는 편 아직 확인 전"' : ''}>${esc(p.city)}</span>`;
       }).join('');
       cells.push(`<button type="button" class="${cls.join(' ')}" data-day="${k}" aria-label="${esc(fmtLong(k))} ${n}곳">` +
         `<div class="dn"><span>${d}</span>${anyNew ? '<span class="nw" title="새로 열림"></span>' : ''}<span class="cnt num">${n}<i>곳</i></span></div>` +
@@ -633,10 +712,14 @@
       return;
     }
     const pm = map.get(S.day);
-    const ps = [...pm.keys()].map(c => S.places.get(c)).sort(placeSort);
-    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳 · D-${dayDiff(S.today, S.day)}</div>` +
+    const RANK = { ok: 0, unk: 1, no: 2 };
+    const ps = [...pm.keys()].map(c => S.places.get(c)).sort((a, b) =>
+      (S.dir === 'out' ? RANK[rtInfo(a.code, S.day).state] - RANK[rtInfo(b.code, S.day).state] : 0) || placeSort(a, b));
+    const nOk = S.dir === 'out' ? ps.filter(p => rtInfo(p.code, S.day).state === 'ok').length : 0;
+    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳${S.dir === 'out' ? ` · 왕복 ${nOk}곳` : ''} · D-${dayDiff(S.today, S.day)}</div>` +
       ps.map(p => `<div class="pc"><div class="pc-h"><b>${esc(p.city)}</b><span>${esc(p.country)}</span></div>` +
         flightRows(pm.get(p.code)) +
+        (S.dir === 'out' ? rtLine(p.code, S.day) : '') +
         `<div class="miles">${milesLine(p)}</div>` +
         `<div style="margin-top:6px"><button class="link" type="button" data-place="${p.code}" data-pick="${S.dir === 'out' ? S.day : ''}">${S.dir === 'out' ? '오는 편 날짜 보기 →' : '이 도시 1년 보기 →'}</button></div></div>`).join('');
   }
@@ -644,10 +727,14 @@
   function renderPlaces() {
     const el = $('viewPlaces');
     const months = monthsList();
-    const out = filtered({ dir: 'out' }), inn = filtered({ dir: 'in' });
+    const out = filtered({ dir: 'out', rt: false }), inn = filtered({ dir: 'in' });
     const stat = new Map();
-    const get = c => { if (!stat.has(c)) stat.set(c, { outD: new Set(), inD: new Set(), months: new Set(), next: null }); return stat.get(c); };
-    for (const s of out) { const x = get(s.p); x.outD.add(s.date); if (S.dir === 'out') x.months.add(s.date.slice(0, 7)); if (S.dir === 'out' && (!x.next || s.date < x.next)) x.next = s.date; }
+    const get = c => { if (!stat.has(c)) stat.set(c, { outD: new Set(), inD: new Set(), rtD: new Set(), months: new Set(), next: null, nextRt: null }); return stat.get(c); };
+    for (const s of out) {
+      const x = get(s.p); x.outD.add(s.date);
+      if (rtInfo(s.p, s.date).state === 'ok') { x.rtD.add(s.date); if (!x.nextRt || s.date < x.nextRt) x.nextRt = s.date; }
+      if (S.dir === 'out') x.months.add(s.date.slice(0, 7)); if (S.dir === 'out' && (!x.next || s.date < x.next)) x.next = s.date;
+    }
     for (const s of inn) { const x = get(s.p); x.inD.add(s.date); if (S.dir === 'in') x.months.add(s.date.slice(0, 7)); if (S.dir === 'in' && (!x.next || s.date < x.next)) x.next = s.date; }
     const html = [];
     for (const [rk, rn] of REGIONS) {
@@ -665,7 +752,10 @@
           return `<button type="button" class="card" data-place="${p.code}"><div class="nm">${esc(p.city)}<small>${esc(p.country)}</small></div>` +
             `<div class="row"><span>${S.dir === 'out' ? '가는 편' : '오는 편'}</span><b class="num">${mine.size}일</b></div>` +
             `<div class="row"><span>${S.dir === 'out' ? '오는 편' : '가는 편'}</span><b class="num">${other.size}일</b></div>` +
-            `<div class="row"><span>가장 빠른 날</span><b>${x.next ? esc(fmtD(x.next)) : '—'}</b></div>` +
+            `<div class="row"><span>왕복 (${RT[0]}~${RT[1]}일 뒤 귀국)</span><b class="num">${x.rtD.size}일</b></div>` +
+            (S.dir === 'out' && S.rt
+              ? `<div class="row"><span>가장 빠른 왕복</span><b>${x.nextRt ? esc(fmtD(x.nextRt)) : '—'}</b></div>`
+              : `<div class="row"><span>가장 빠른 날</span><b>${x.next ? esc(fmtD(x.next)) : '—'}</b></div>`) +
             `<div class="spark" aria-hidden="true">${sp}</div></button>`;
         }).join('') + '</div>');
       }
@@ -727,7 +817,10 @@
         const v = by.get(key) || '';
         const cls = [v];
         if (dir === 'out' && md.pickOut === key) cls.push('pick');
-        if (dir === 'in' && md.pickOut) { if (key <= md.pickOut) cls.push('dim'); else if (v) cls.push('ret'); }
+        if (dir === 'in' && md.pickOut) {
+          if (key <= md.pickOut) cls.push('dim');
+          else if (v) { cls.push('ret'); const n = dayDiff(md.pickOut, key); if (n >= RT[0] && n <= RT[1]) cls.push('w'); }
+        }
         if (md.sel && md.sel.dir === dir && md.sel.date === key) cls.push('on-sel');
         h += `<button type="button" class="${cls.join(' ')}" data-hm="${dir}" data-date="${key}" title="${esc(fmtD(key))}${v ? ' · ' + v.split('').map(c => CAB[c]).join(' · ') : ''}"${v ? '' : ' tabindex="-1"'}></button>`;
       }
@@ -743,8 +836,11 @@
     let pickBox = '';
     if (md.pickOut) {
       const rets = [...inH.by.keys()].filter(k => k > md.pickOut).sort().slice(0, 24);
-      pickBox = `<div class="pick-box">가는 날 <b>${esc(fmtD(md.pickOut))}</b> 고름 → 오는 편 가능한 날 ${rets.length ? '' : '<b>없음</b>'}` +
-        (rets.length ? `<div class="rets">${rets.map(k => `<span>${esc(fmtD(k))} · ${dayDiff(md.pickOut, k)}박</span>`).join('')}</div>` : '') +
+      const inWin = k => { const n = dayDiff(md.pickOut, k); return n >= RT[0] && n <= RT[1]; };
+      const r = rtInfo(p.code, md.pickOut);
+      const winTxt = r.state === 'ok' ? `<b>${r.hits.length}일 있음</b>` : r.state === 'unk' ? '<b>아직 확인 전</b>' : '<b>없음</b>';
+      pickBox = `<div class="pick-box">가는 날 <b>${esc(fmtD(md.pickOut))}</b> 고름 → ${RT[0]}~${RT[1]}일 뒤 돌아오는 편 ${winTxt} · 그 뒤 오는 편 가능한 날 ${rets.length ? '' : '<b>없음</b>'}` +
+        (rets.length ? `<div class="rets">${rets.map(k => `<span${inWin(k) ? ' class="w"' : ''}>${esc(fmtD(k))} · ${dayDiff(md.pickOut, k)}박</span>`).join('')}</div>` : '') +
         ` <button class="link" type="button" data-clear-pick style="margin-left:6px">고른 날 지우기</button></div>`;
     } else {
       pickBox = '<div class="pick-box">아래 <b>가는 편</b>에서 날짜를 누르면, 그 뒤 <b>오는 편</b> 가능한 날이 테두리로 표시돼요.</div>';
@@ -774,7 +870,7 @@
       `<td>${esc(rel(c.last_seen_at))}</td><td style="text-align:right">${c.status === 'pending' ? `<button class="btn pri" type="button" data-approve="${c.id}">승인</button> ` : ''}<button class="btn danger" type="button" data-revoke="${c.id}">끊기</button></td></tr>`).join('');
     const runs = (st.runs || []).map(r => `<tr><td>${esc(hm(r.at))}</td><td class="num">${r.requests}</td><td class="num">${r.ok}</td><td class="num">${r.failed}</td><td class="num">${r.new_seats}</td><td>${r.blocked ? '<span style="color:var(--warn)">막힘</span>' : ''}${r.note ? ' ' + esc(r.note) : ''}</td></tr>`).join('');
     $('statusSheet').innerHTML =
-      `<div class="sheet-h"><div><h2>수집 상태</h2><div class="sub">사무실 맥 수집기가 30분마다 대한항공 공개 현황을 오래된 노선 · 달부터 읽어요</div></div><button class="x-btn" type="button" data-close="statusModal" aria-label="닫기">×</button></div>` +
+      `<div class="sheet-h"><div><h2>수집 상태</h2><div class="sub">맥미니 수집기가 30분마다 대한항공 공개 현황을 오래된 노선 · 달부터 읽어요</div></div><button class="x-btn" type="button" data-close="statusModal" aria-label="닫기">×</button></div>` +
       `<div class="stat-grid">` +
       `<div class="stat"><div class="k">확인한 노선 · 달</div><div class="v num">${won(cov.checked || 0)} / ${won(cov.total || 0)}</div><div class="progress"><i style="width:${pct}%"></i></div></div>` +
       `<div class="stat"><div class="k">48시간 안에 확인</div><div class="v num">${won(cov.fresh || 0)}</div></div>` +
@@ -786,7 +882,7 @@
       (s.last_error ? `<div class="notice">${esc(s.last_error)}</div>` : '') +
       `<h4 style="margin:6px 0">수집기</h4>` +
       (cols ? `<table class="tbl"><thead><tr><th>맥</th><th>상태</th><th>마지막 연락</th><th></th></tr></thead><tbody>${cols}</tbody></table>` : '<div class="empty-msg">등록된 수집기가 없어요</div>') +
-      `<div style="font-size:12px;color:var(--t3);margin:6px 0 14px">새 맥에 설치: <code>bash scripts/mac/install-ke-award.sh</code> → 여기 '승인 대기'로 뜨면 [승인]. 사무실 맥(맥미니)에 두는 게 좋아요 — 대한항공이 클라우드 서버는 막아요.</div>` +
+      `<div style="font-size:12px;color:var(--t3);margin:6px 0 14px">맥미니 자동 설치 관리자(작업 <code>ke-award</code>)가 30분마다 돌려요. 다른 맥을 더하면 여기 '승인 대기'로 떠요 → [승인]. 대한항공이 클라우드 서버는 막아서 사무실 맥에서만 돼요.</div>` +
       `<h4 style="margin:6px 0">최근 수집</h4>` +
       (runs ? `<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>시각</th><th>요청</th><th>성공</th><th>실패</th><th>새 좌석</th><th>메모</th></tr></thead><tbody>${runs}</tbody></table></div>` : '<div class="empty-msg">아직 기록이 없어요</div>');
   }
@@ -813,6 +909,7 @@
     lsSet(LS.cab, [...S.cabins].join('')); renderAll();
   });
   $('dirSeg').addEventListener('click', e => { const b = e.target.closest('button[data-dir]'); if (!b) return; S.dir = b.dataset.dir; S.day = null; lsSet(LS.dir, S.dir); renderAll(); });
+  $('rtSeg').addEventListener('click', e => { const b = e.target.closest('button[data-rt]'); if (!b) return; S.rt = b.dataset.rt === '1'; S.day = null; lsSet(LS.rt, S.rt ? '1' : '0'); renderAll(); });
   $('tabSeg').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; lsSet(LS.tab, S.tab); renderAll(); });
   $('regionChips').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (!b) return; S.region = b.dataset.region; S.day = null; lsSet(LS.region, S.region); renderAll(); });
   let qT = 0;
