@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex,nofollow">
+<title>마일리지 좌석 캘린더 · 비드유니버스</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<script>
+  /* 오피스 안 화면(iframe, index.html 의 TOOL_PAGES 'mileage')으로 열렸으면 '← 오피스' 는 그 화면을 닫는다 (bbToolClose). */
+  (function () {
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    window.__mlInOffice = inOffice;
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) {
+        a.href = home;
+        if (inOffice) a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
+        });
+      });
+    });
+  })();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  /* 마일리지 좌석 캘린더 — 대표 전용 (2026-11-22)
+     사장님 요청: "30분마다 자동으로 대한항공 마일리지로 예약 가능한 프레스티지, 일등석 가능한 나라 전부 다 뜨고 캘린더로 만들어줘. 정보랑"
+                 "대한항공 마일리지가 너무 많은데 프레스티지만 쓰고 싶거든"
+     · 자료 = 대한항공 '보너스 좌석 상황 보기' 공개 현황 → 사무실 맥 수집기(scripts/mac/ke-award.py, 30분마다) → 오피스 저장소 ke_award_*
+     · 이 화면은 rpc ke_award_calendar · ke_award_status 로만 읽는다 (표는 서버 전용).
+     · 들어오는 사람 = 관리자 PIN + '나는' 전승훈 · 전수빈 (대표 전용 금고와 같은 판정, 화면 가리기). 자료 자체는 대한항공 공개 정보. */
+  :root {
+    --bg: #f3f5f8; --panel: #fff; --line: #e5e7eb; --line2: #d5dae2; --text: #0f172a; --t2: #475569; --t3: #94a3b8;
+    --acc: #4f7fcf; --acc-d: #2f5ea8; --acc-t: rgba(79, 127, 207, .11);
+    --p: #2457b8; --p-bg: #dfe9fb; --p-mid: #9dbbef;       /* 프레스티지 */
+    --f: #a76a00; --f-bg: #fbefd2; --f-mid: #e8c675;       /* 일등석 */
+    --new: #e11d48; --ok: #16a34a; --warn: #d97706; --bad: #dc2626;
+    --top: 56px; --r: 12px;
+    --font: Pretendard, -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  }
+  * { box-sizing: border-box }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased }
+  button, input, select { font-family: inherit; font-size: inherit; color: inherit }
+  button { cursor: pointer }
+  a { color: var(--acc-d) }
+  [hidden] { display: none !important }
+  .num { font-variant-numeric: tabular-nums }
+
+  /* ── 상단 ── */
+  .top { position: sticky; top: 0; z-index: 30; min-height: var(--top); display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+    background: rgba(255, 255, 255, .94); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--line) }
+  .back { color: var(--t2); text-decoration: none; font-weight: 600; font-size: 13px; white-space: nowrap; padding: 6px 8px; border-radius: 8px }
+  .back:hover { background: var(--bg) }
+  .ttl { font-weight: 800; font-size: 15px; letter-spacing: -.2px; white-space: nowrap; display: flex; align-items: center; gap: 8px; min-width: 0 }
+  .ttl svg { width: 20px; height: 20px; color: var(--p); flex: none }
+  .ttl small { font-weight: 600; color: var(--t3); font-size: 12px }
+  .grow { flex: 1 }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
+    padding: 5px 11px; font-size: 12.5px; font-weight: 600; color: var(--t2); white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis }
+  .pill:hover { border-color: var(--line2) }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t3); flex: none }
+  .dot.ok { background: var(--ok) } .dot.warn { background: var(--warn) } .dot.bad { background: var(--bad) }
+  .icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; color: var(--t2); flex: none }
+  .icon-btn:hover { border-color: var(--line2); color: var(--text) }
+  .icon-btn svg { width: 16px; height: 16px }
+  .icon-btn.spin svg { animation: spin 1s linear infinite }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 16px 16px 60px }
+
+  /* ── 거르기 ── */
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px }
+  .seg { display: inline-flex; background: #e9edf3; border-radius: 10px; padding: 3px; gap: 2px }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--t2); white-space: nowrap }
+  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: 0 1px 2px rgba(15, 23, 42, .08) }
+  .seg button.cab-O[aria-pressed="true"] { color: var(--p) }
+  .seg button.cab-A[aria-pressed="true"] { color: var(--f) }
+  .seg .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--new); color: #fff; font-size: 11px; line-height: 18px; text-align: center }
+  .search { flex: 1 1 180px; min-width: 150px; max-width: 280px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 7px 12px; outline: none }
+  .search:focus { border-color: var(--acc) }
+  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 10px }
+  .chips::-webkit-scrollbar { display: none }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; color: var(--t2); white-space: nowrap }
+  .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: #fff }
+  .chip b { font-weight: 700; margin-left: 3px; opacity: .65 }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; margin: 2px 0 14px; color: var(--t2); font-size: 13px }
+  .summary strong { color: var(--text); font-size: 18px; font-weight: 800; letter-spacing: -.3px; margin-right: 3px }
+  .notice { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: var(--r); padding: 10px 14px; margin: 0 0 14px; font-size: 13px }
+  .notice.info { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r) }
+
+  /* ── 달력 ── */
+  .months { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 8px; margin-bottom: 6px }
+  .mbtn { flex: none; width: 74px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 6px 6px 7px; text-align: left }
+  .mbtn[aria-pressed="true"] { border-color: var(--p); box-shadow: 0 0 0 1px var(--p) inset }
+  .mbtn .y { display: block; font-size: 10.5px; color: var(--t3); line-height: 1.1 }
+  .mbtn .m { font-weight: 800; font-size: 14px }
+  .mbtn .c { display: block; font-size: 11px; color: var(--t2); margin-top: 1px }
+  .mbtn .meter { display: block; height: 4px; border-radius: 2px; background: #eef1f5; margin-top: 4px; overflow: hidden }
+  .mbtn .meter i { display: block; height: 100%; background: var(--p) }
+  .cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; align-items: start }
+  .cal { padding: 10px }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 10px }
+  .cal-head h2 { margin: 0; font-size: 17px; letter-spacing: -.3px }
+  .cal-head .nav { display: flex; gap: 6px }
+  .dow, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px }
+  .dow div { text-align: center; font-size: 11.5px; font-weight: 700; color: var(--t3); padding-bottom: 4px }
+  .dow div:first-child { color: #e11d48 } .dow div:last-child { color: #2563eb }
+  .day { min-height: 92px; border: 1px solid var(--line); border-radius: 9px; background: #fff; padding: 5px 6px; text-align: left; display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden }
+  .day.empty { border: 0; background: transparent; cursor: default }
+  .day.off { background: #f7f8fa; color: var(--t3); cursor: default }
+  .day .dn { font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 4px }
+  .day.sun .dn > span:first-child { color: #e11d48 } .day.sat .dn > span:first-child { color: #2563eb }
+  .day.today { border-color: var(--text) }
+  .day .cnt { font-size: 11px; font-weight: 800; color: var(--p); white-space: nowrap }
+  .day .cnt i { font-style: normal }
+  .day .cities { display: flex; flex-direction: column; gap: 2px; min-width: 0 }
+  .day .city { font-size: 11px; line-height: 15px; border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--p-bg); color: var(--p) }
+  .day .city.f { background: var(--f-bg); color: var(--f) }
+  .day .more { font-size: 10.5px; color: var(--t3) }
+  .day.has { cursor: pointer }
+  .day.has:hover { border-color: var(--p-mid) }
+  .day.sel { border-color: var(--p); box-shadow: 0 0 0 1px var(--p) inset }
+  .day.lv1 { background: #fbfcff } .day.lv2 { background: #f3f7fe } .day.lv3 { background: #e9f0fd }
+  .day .nw { width: 7px; height: 7px; border-radius: 50%; background: var(--new); flex: none }
+
+  .side { position: sticky; top: calc(var(--top) + 12px); max-height: calc(100vh - var(--top) - 24px); overflow: auto; padding: 14px }
+  .side h3 { margin: 0 0 2px; font-size: 16px; letter-spacing: -.3px }
+  .side .sub { color: var(--t3); font-size: 12.5px; margin-bottom: 10px }
+  .empty-msg { color: var(--t3); font-size: 13px; padding: 18px 4px; text-align: center }
+
+  /* 장소 카드 (오른쪽 · 나라별) */
+  .pc { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: #fff }
+  .pc-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px }
+  .pc-h b { font-size: 14.5px; letter-spacing: -.2px }
+  .pc-h span { color: var(--t3); font-size: 12px; white-space: nowrap }
+  .fl { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-top: 5px; flex-wrap: wrap }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; background: var(--p-bg); color: var(--p); white-space: nowrap }
+  .tag.A { background: var(--f-bg); color: var(--f) }
+  .tag.new { background: var(--new); color: #fff }
+  .tag.hub { background: #eef1f5; color: var(--t2) }
+  .miles { color: var(--t2); font-size: 12px; margin-top: 6px }
+  .link { border: 0; background: none; padding: 0; color: var(--acc-d); font-weight: 600; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px }
+
+  /* ── 나라별 ── */
+  .rgn { margin-bottom: 18px }
+  .rgn h3 { font-size: 14px; margin: 0 0 8px; color: var(--t2); display: flex; gap: 8px; align-items: baseline }
+  .rgn h3 small { color: var(--t3); font-weight: 600 }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px }
+  .card { text-align: left; border: 1px solid var(--line); border-radius: 11px; background: #fff; padding: 11px 12px; display: flex; flex-direction: column; gap: 5px }
+  .card:hover { border-color: var(--p-mid) }
+  .card .nm { font-weight: 800; font-size: 14.5px; letter-spacing: -.2px }
+  .card .nm small { font-weight: 600; color: var(--t3); font-size: 12px; margin-left: 4px }
+  .card .row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--t2); gap: 8px }
+  .card .row b { color: var(--text) }
+  .spark { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; height: 16px; align-items: end }
+  .spark i { display: block; background: var(--p-bg); border-radius: 2px; min-height: 2px }
+  .spark i.on { background: var(--p) }
+  .none-line { color: var(--t3); font-size: 12.5px; margin-top: 4px }
+
+  /* ── 새로 열림 ── */
+  .list { padding: 6px 0 }
+  .li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 14px; border-top: 1px solid var(--line) }
+  .li:first-child { border-top: 0 }
+  .li .d { font-weight: 700 }
+  .li .w { color: var(--t3); font-size: 12px; white-space: nowrap }
+
+  /* ── 정보 ── */
+  .info { margin-top: 22px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px }
+  .info h4 { margin: 0 0 8px; font-size: 14px }
+  .info table { border-collapse: collapse; width: 100%; font-size: 12.5px }
+  .info th, .info td { border-bottom: 1px solid var(--line); padding: 6px 6px; text-align: right; white-space: nowrap }
+  .info th:first-child, .info td:first-child { text-align: left; white-space: normal }
+  .info thead th { color: var(--t3); font-weight: 700 }
+  .info ul { margin: 0; padding-left: 18px; color: var(--t2); font-size: 12.5px }
+  .info li { margin: 3px 0 }
+
+  /* ── 창 ── */
+  .modal { position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, .42); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto }
+  .sheet { background: var(--panel); border-radius: 14px; width: min(980px, 100%); padding: 18px 18px 20px; box-shadow: 0 20px 60px rgba(15, 23, 42, .25) }
+  .sheet-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px }
+  .sheet-h h2 { margin: 0; font-size: 19px; letter-spacing: -.4px }
+  .sheet-h .sub { color: var(--t2); font-size: 13px; margin-top: 2px }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--t2); margin: 6px 0 10px }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 4px }
+  .yr { margin-bottom: 16px }
+  .yr h4 { margin: 0 0 6px; font-size: 14px; display: flex; gap: 8px; align-items: baseline }
+  .yr h4 small { color: var(--t3); font-weight: 600 }
+  .hm { display: grid; grid-template-columns: 52px repeat(31, minmax(0, 1fr)); gap: 2px; font-size: 10.5px }
+  .hm .ml { color: var(--t2); font-weight: 700; display: flex; align-items: center; white-space: nowrap }
+  .hm .dh { color: var(--t3); text-align: center }
+  .hm .yy { color: var(--t3); font-weight: 600; margin-right: 2px; font-size: 9.5px }
+  .hm button { border: 0; padding: 0; height: 18px; border-radius: 3px; background: #eef1f5; min-width: 0 }
+  .hm button.x { background: transparent; cursor: default }
+  .hm button.off { background: #f6f7f9; cursor: default }
+  .hm button.O { background: var(--p) } .hm button.A { background: var(--f) }
+  .hm button.OA { background: linear-gradient(135deg, var(--p) 50%, var(--f) 50%) }
+  .hm button.pick { outline: 2px solid var(--text); outline-offset: 1px }
+  .hm button.dim { opacity: .25 }
+  .hm button.ret { box-shadow: 0 0 0 2px #fff inset, 0 0 0 1px var(--text) }
+  .hm button.on-sel { outline: 2px solid var(--new); outline-offset: 1px }
+  .pick-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--t2); margin-bottom: 14px; background: #fafbfc }
+  .pick-box b { color: var(--text) }
+  .rets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px }
+  .rets span { border: 1px solid var(--line); border-radius: 7px; padding: 2px 7px; background: #fff; font-size: 12px; white-space: nowrap }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 6px 0 14px }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px }
+  .stat .k { color: var(--t3); font-size: 12px }
+  .stat .v { font-size: 15px; font-weight: 800; margin-top: 2px }
+  .progress { height: 6px; background: #eef1f5; border-radius: 3px; overflow: hidden; margin-top: 6px }
+  .progress i { display: block; height: 100%; background: var(--p) }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12.5px }
+  .tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 6px 6px; text-align: left; white-space: nowrap }
+  .tbl th { color: var(--t3); font-weight: 700 }
+  .btn { border: 1px solid var(--line2); background: #fff; border-radius: 8px; padding: 5px 10px; font-weight: 600; font-size: 12.5px }
+  .btn.pri { background: var(--p); border-color: var(--p); color: #fff }
+  .btn.danger { color: var(--bad) }
+  .x-btn { border: 0; background: #eef1f5; border-radius: 8px; width: 32px; height: 32px; font-size: 18px; line-height: 1; color: var(--t2); flex: none }
+
+  .lock { position: fixed; inset: 0; z-index: 400; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; text-align: center }
+  .lock h2 { margin: 0 0 6px; font-size: 18px }
+  .lock p { margin: 0; color: var(--t2); font-size: 13px }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: #fff; border-radius: 10px; padding: 10px 16px; font-size: 13px; z-index: 500; max-width: calc(100% - 32px) }
+  .toast.err { background: var(--bad) }
+  .loading { padding: 50px 0; text-align: center; color: var(--t3) }
+
+  @media (max-width: 920px) {
+    .cal-wrap { grid-template-columns: 1fr }
+    .side { position: static; max-height: none }
+    .info { grid-template-columns: 1fr }
+  }
+  @media (max-width: 640px) {
+    .top { padding: 8px 12px; gap: 6px }
+    .ttl small { display: none }
+    .wrap { padding: 12px 16px 50px }
+    .day { min-height: 54px; padding: 4px }
+    .day .cities { display: none }
+    .day .dn { flex-wrap: wrap; row-gap: 4px }
+    .day .cnt { flex-basis: 100%; text-align: right; font-size: 12.5px }
+    .day .cnt i { display: none }
+    .ttl { flex: 1 1 auto; overflow: hidden }
+    .ttl span { overflow: hidden; text-overflow: ellipsis }
+    .grow { display: none }
+    .pill { max-width: 40vw }
+    .dow, .grid { gap: 3px }
+    .hm { grid-template-columns: 34px repeat(31, minmax(0, 1fr)); gap: 1px }
+    .hm .dh { visibility: hidden }
+    .hm button { height: 14px; border-radius: 2px }
+    .li { grid-template-columns: 74px minmax(0, 1fr); }
+    .li .w { grid-column: 2 }
+    .modal { padding: 16px 0 0; align-items: flex-end }
+    .sheet { border-radius: 14px 14px 0 0; padding: 16px }
+    .search { max-width: none }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="back" href="../">← 오피스</a>
+  <div class="ttl">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+    <span>마일리지 좌석 캘린더</span><small>대한항공 · 대표 전용</small>
+  </div>
+  <div class="grow"></div>
+  <button class="pill" id="statusBtn" type="button" title="수집 상태"><span class="dot" id="statusDot"></span><span id="statusTxt">불러오는 중</span></button>
+  <button class="icon-btn" id="reloadBtn" type="button" title="다시 불러오기" aria-label="다시 불러오기">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+  </button>
+</header>
+
+<main class="wrap" id="app" hidden>
+  <div class="bar">
+    <div class="seg" id="cabSeg" role="group" aria-label="좌석 등급">
+      <button type="button" class="cab-O" data-cab="O" aria-pressed="true">프레스티지</button>
+      <button type="button" class="cab-A" data-cab="A" aria-pressed="false">일등석</button>
+    </div>
+    <div class="seg" id="dirSeg" role="group" aria-label="방향">
+      <button type="button" data-dir="out" aria-pressed="true">가는 편 · 한국 출발</button>
+      <button type="button" data-dir="in" aria-pressed="false">오는 편 · 한국 도착</button>
+    </div>
+    <div class="seg" id="tabSeg" role="group" aria-label="보기">
+      <button type="button" data-tab="cal" aria-pressed="true">달력</button>
+      <button type="button" data-tab="places" aria-pressed="false">나라별</button>
+      <button type="button" data-tab="new" aria-pressed="false">새로 열림<span class="badge" id="newBadge" hidden></span></button>
+    </div>
+    <input class="search" id="q" type="search" placeholder="도시 · 나라 찾기 (예: 파리, 미국)" autocomplete="off">
+  </div>
+  <div class="chips" id="regionChips" role="group" aria-label="지역"></div>
+  <div id="notices"></div>
+  <div class="summary" id="summary"></div>
+
+  <section id="viewCal">
+    <div class="months" id="monthStrip"></div>
+    <div class="cal-wrap">
+      <div class="panel cal">
+        <div class="cal-head">
+          <h2 id="calTitle"></h2>
+          <div class="nav">
+            <button class="icon-btn" type="button" id="prevM" aria-label="이전 달"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <button class="icon-btn" type="button" id="nextM" aria-label="다음 달"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+          </div>
+        </div>
+        <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+        <div class="grid" id="calGrid"></div>
+      </div>
+      <aside class="panel side" id="dayPanel"></aside>
+    </div>
+  </section>
+
+  <section id="viewPlaces" hidden></section>
+  <section id="viewNew" class="panel" hidden></section>
+
+  <section class="panel info">
+    <div>
+      <h4>마일 공제 (편도 · 평수기 기준)</h4>
+      <table>
+        <thead><tr><th>지역</th><th>프레스티지</th><th>일등석</th><th>왕복 프레스티지</th></tr></thead>
+        <tbody id="zoneRows"></tbody>
+      </table>
+      <ul style="margin-top:8px">
+        <li>성수기에는 1.5배 공제돼요. 세금 · 유류할증료는 따로 내요.</li>
+        <li>공제표는 대한항공 공식 홈페이지에서 최종 확인하세요 (바뀔 수 있어요).</li>
+      </ul>
+    </div>
+    <div>
+      <h4>보는 법</h4>
+      <ul>
+        <li>대한항공 홈페이지 <b>보너스 좌석 상황 보기</b>의 공개 현황이에요. 대한항공이 <b>하루 한 번</b> 갱신해요.</li>
+        <li>사무실 맥이 30분마다 오래된 노선부터 다시 읽어요 — 노선 212개 × 13달이 하루 이틀에 한 바퀴.</li>
+        <li>표시는 '보너스 좌석이 있다'는 뜻이고 좌석 수가 아니에요. 실제 예약 가능 여부는 대한항공 앱 · 홈페이지 <b>마일리지 항공권 예약</b>에서 다시 확인하세요.</li>
+        <li>대한항공이 직접 운항하는 편만 나와요 (제휴 · 공동운항 제외). 프레스티지 = O 등급, 일등석 = A 등급.</li>
+        <li><a href="https://www.koreanair.com/booking/book-and-manage/award-seat-availability" target="_blank" rel="noopener">대한항공 보너스 좌석 상황 보기 열기 ↗</a></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="placeModal" hidden><div class="sheet" id="placeSheet" role="dialog" aria-modal="true"></div></div>
+<div class="modal" id="statusModal" hidden><div class="sheet" id="statusSheet" role="dialog" aria-modal="true"></div></div>
+
+<div id="lock" class="lock" hidden>
+  <h2>대표 전용 화면이에요</h2>
+  <p>관리자 PIN 으로 들어온 전승훈 · 전수빈 님 브라우저에서만 열려요 · <a href="../">오피스로 돌아가기</a></p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+  const SB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+  const ALLOWED = new Set(['전승훈', '전수빈']);   // 오피스 index.html EXEC_ALLOWED 와 같게 (카드 mileageCard · TOOL_PAGES.mileage.access)
+  const $ = id => document.getElementById(id);
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* noop */ } };
+
+  const me = (lsGet('brightbeed_diary_me') || '').trim();
+  if (!ALLOWED.has(me) || lsGet('brightbeed_role') !== 'master') { $('lock').hidden = false; return; }
+  $('app').hidden = false;
+
+  /* ── 기준값 ── */
+  const HUBS = { ICN: '인천', GMP: '김포' };
+  const REGIONS = [['all', '전체'], ['jp', '일본'], ['cn', '중국'], ['nea', '홍콩 · 대만 · 몽골'], ['sea', '동남아'], ['pac', '괌 · 사이판 · 팔라우'],
+    ['swa', '서남아 · 중앙아'], ['am', '미주'], ['eu', '유럽'], ['me', '중동'], ['oc', '대양주']];
+  const REGION_NAME = Object.fromEntries(REGIONS);
+  // 대한항공 보너스 공제 (편도 · 평수기). 성수기 1.5배. 2026-11 기준 — 공식 홈페이지에서 확인
+  const ZONES = {
+    long: { name: '미주 · 유럽 · 대양주 · 중동', O: 62500, A: 80000 },
+    swa: { name: '서남아 · 중앙아', O: 45000, A: 57500 },
+    sea: { name: '동남아 · 괌', O: 35000, A: 45000 },
+    nea: { name: '일본 · 중국 · 동북아', O: 22500, A: 32500 },
+  };
+  const ZONE_RANK = { long: 0, swa: 1, sea: 2, nea: 3 };
+  const CAB = { O: '프레스티지', A: '일등석' };
+  const LS = { cab: 'ml_cabins_v1', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1' };
+  const NEW_MS = 72 * 3600e3;
+
+  const S = {
+    data: null, status: null, seats: [], routes: new Map(), places: new Map(),
+    cabins: new Set((lsGet(LS.cab) || 'O').split('').filter(c => c === 'O' || c === 'A')),
+    dir: lsGet(LS.dir) === 'in' ? 'in' : 'out',
+    region: REGION_NAME[lsGet(LS.region)] ? lsGet(LS.region) : 'all',
+    tab: ['cal', 'places', 'new'].includes(lsGet(LS.tab)) ? lsGet(LS.tab) : 'cal',
+    q: '', month: null, day: null, loading: false,
+    modal: null,   // {place, pickOut, pickIn}
+  };
+  if (!S.cabins.size) S.cabins.add('O');
+
+  /* ── 도우미 ── */
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parseD = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate() + n); return iso(d); };
+  const dayDiff = (a, b) => Math.round((parseD(b) - parseD(a)) / 864e5);
+  const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  const fmtD = s => { const d = parseD(s); return `${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})`; };
+  const fmtLong = s => { const d = parseD(s); return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`; };
+  const won = n => n.toLocaleString('ko-KR');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function rel(t) {
+    if (!t) return '—';
+    const m = Math.round((Date.now() - Date.parse(t)) / 6e4);
+    if (m < 1) return '방금'; if (m < 60) return m + '분 전';
+    const h = Math.round(m / 60); if (h < 24) return h + '시간 전';
+    return Math.round(h / 24) + '일 전';
+  }
+  function hm(t) { try { return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t)); } catch (e) { return String(t).slice(0, 16); } }
+  let toastT = 0;
+  function toast(msg, err) {
+    const t = $('toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, err ? 4200 : 2400);
+  }
+  async function rpc(name, body) {
+    const r = await fetch(SB_URL + '/rest/v1/rpc/' + name, {
+      method: 'POST', cache: 'no-store',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+    const txt = await r.text();
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + txt.slice(0, 160));
+    return txt ? JSON.parse(txt) : null;
+  }
+
+  /* ── 자료 ── */
+  function ingest(d) {
+    S.data = d;
+    S.routes = new Map(); S.places = new Map();
+    for (const r of d.routes || []) {
+      S.routes.set(r.o + '-' + r.d, r);
+      if (!S.places.has(r.p)) S.places.set(r.p, { code: r.p, city: r.city, country: r.country, region: r.region, zone: r.zone, routes: [], sort: S.places.size });
+      S.places.get(r.p).routes.push(r);
+    }
+    S.seats = [];
+    for (const a of d.seats || []) {
+      const r = S.routes.get(a[0] + '-' + a[1]);
+      if (!r) continue;
+      const out = !!HUBS[a[0]];
+      S.seats.push({ o: a[0], d: a[1], date: a[2], fn: a[3], t: a[4], c: a[5], first: a[6], opened: !!a[7], p: r.p, dir: out ? 'out' : 'in', hub: out ? a[0] : a[1] });
+    }
+    S.today = d.today; S.last = addDays(d.today, 360);
+    if (!S.month || S.month < S.today.slice(0, 7) || S.month > S.last.slice(0, 7)) S.month = S.today.slice(0, 7);
+  }
+  function matchQ(p) {
+    const q = S.q.trim().toLowerCase();
+    if (!q) return true;
+    return (p.city + ' ' + p.country + ' ' + p.code + ' ' + (REGION_NAME[p.region] || '')).toLowerCase().includes(q);
+  }
+  function placeOk(p, ignoreRegion) { return p && (ignoreRegion || S.region === 'all' || p.region === S.region) && matchQ(p); }
+  function filtered(opts) {
+    opts = opts || {};
+    const dir = opts.dir || S.dir;
+    return S.seats.filter(s => s.dir === dir && S.cabins.has(s.c) && placeOk(S.places.get(s.p), opts.ignoreRegion));
+  }
+  const isNew = s => s.opened && Date.now() - Date.parse(s.first) < NEW_MS;
+  function placeSort(a, b) { return ZONE_RANK[a.zone] - ZONE_RANK[b.zone] || a.sort - b.sort; }
+  function monthsList() {
+    const out = []; let [y, m] = S.today.split('-').map(Number); const [ly, lm] = S.last.split('-').map(Number);
+    while (y < ly || (y === ly && m <= lm)) { out.push(`${y}-${pad(m)}`); m++; if (m > 12) { m = 1; y++; } }
+    return out;
+  }
+
+  async function load(quiet) {
+    if (S.loading) return;
+    S.loading = true; $('reloadBtn').classList.add('spin');
+    try {
+      const [cal, st] = await Promise.all([rpc('ke_award_calendar'), rpc('ke_award_status').catch(() => null)]);
+      if (!cal || !cal.ok) throw new Error('자료 형식');
+      ingest(cal);
+      S.status = st;
+      S.loadedAt = Date.now();
+      renderAll();
+    } catch (e) {
+      console.warn(e);
+      if (!quiet) toast('불러오지 못했어요: ' + (e.message || e), true);
+      if (!S.data) $('summary').innerHTML = '<div class="loading">자료를 불러오지 못했어요. 오른쪽 위 ↻ 로 다시 시도해 주세요.</div>';
+    } finally {
+      S.loading = false; $('reloadBtn').classList.remove('spin');
+    }
+  }
+
+  /* ── 그리기 ── */
+  function renderAll() {
+    renderControls(); renderStatusPill(); renderNotices(); renderSummary();
+    $('viewCal').hidden = S.tab !== 'cal'; $('viewPlaces').hidden = S.tab !== 'places'; $('viewNew').hidden = S.tab !== 'new';
+    if (S.tab === 'cal') { renderMonths(); renderCal(); renderDay(); }
+    if (S.tab === 'places') renderPlaces();
+    if (S.tab === 'new') renderNew();
+    if (S.modal) renderPlaceModal();
+  }
+
+  function renderControls() {
+    document.querySelectorAll('#cabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.cabins.has(b.dataset.cab))));
+    document.querySelectorAll('#dirSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.dir === b.dataset.dir)));
+    document.querySelectorAll('#tabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.tab === b.dataset.tab)));
+    const nNew = filtered({ ignoreRegion: true }).filter(isNew).length;
+    $('newBadge').hidden = !nNew; $('newBadge').textContent = nNew > 99 ? '99+' : nNew;
+    // 지역 칩 — 칩마다 좌석 있는 곳 수
+    const per = {};
+    const list = S.seats.filter(s => s.dir === S.dir && S.cabins.has(s.c) && matchQ(S.places.get(s.p)));
+    const seen = new Set();
+    for (const s of list) { const p = S.places.get(s.p); if (seen.has(p.code)) continue; seen.add(p.code); per[p.region] = (per[p.region] || 0) + 1; }
+    $('regionChips').innerHTML = REGIONS.map(([k, n]) => {
+      const c = k === 'all' ? seen.size : (per[k] || 0);
+      return `<button type="button" class="chip" data-region="${k}" aria-pressed="${S.region === k}">${esc(n)}<b>${c}</b></button>`;
+    }).join('');
+    $('zoneRows').innerHTML = Object.values(ZONES).map(z => `<tr><td>${esc(z.name)}</td><td class="num">${won(z.O)}</td><td class="num">${won(z.A)}</td><td class="num">${won(z.O * 2)}</td></tr>`).join('');
+  }
+
+  function statusInfo() {
+    const st = S.status && S.status.state, cov = S.status && S.status.coverage;
+    if (!st) return { cls: '', txt: '상태 모름' };
+    if (st.blocked_until && Date.parse(st.blocked_until) > Date.now()) return { cls: 'warn', txt: '대한항공이 잠시 막음 · ' + hm(st.blocked_until) + ' 다시' };
+    if (!st.last_run_at) return { cls: 'bad', txt: '수집기가 아직 안 돌았어요' };
+    const age = Date.now() - Date.parse(st.last_run_at);
+    if (age > 3 * 3600e3) return { cls: 'bad', txt: '수집 멈춤 · ' + rel(st.last_run_at) };
+    const pct = cov && cov.total ? Math.floor(cov.checked / cov.total * 100) : 100;
+    if (pct < 100) return { cls: 'ok', txt: '첫 한 바퀴 ' + pct + '% · ' + rel(st.last_run_at) + ' 수집' };
+    return { cls: age > 50 * 6e4 ? 'warn' : 'ok', txt: '30분마다 · ' + rel(st.last_run_at) + ' 수집' };
+  }
+  function renderStatusPill() {
+    const i = statusInfo();
+    $('statusDot').className = 'dot ' + i.cls; $('statusTxt').textContent = i.txt;
+  }
+  function renderNotices() {
+    const st = S.status || {}, out = [];
+    const pend = (st.collectors || []).filter(c => c.status === 'pending');
+    if (pend.length) out.push(`<div class="notice info">새 수집기 <b>${esc(pend.map(c => c.name || '이름 없음').join(', '))}</b> 가 승인을 기다려요 · <button class="link" type="button" data-open-status>수집 상태에서 승인</button></div>`);
+    if (!(st.collectors || []).some(c => c.status === 'approved')) out.push('<div class="notice">승인된 수집기가 없어요. 사무실 맥에서 <code>bash scripts/mac/install-ke-award.sh</code> 를 한 번 실행해 주세요.</div>');
+    const cov = st.coverage;
+    if (cov && cov.total && cov.checked < cov.total) out.push(`<div class="notice info">처음 한 바퀴 도는 중이에요 — 노선 · 달 ${won(cov.checked)} / ${won(cov.total)} 확인 (가까운 달부터). 다 돌 때까지 비어 있는 곳이 있어요.</div>`);
+    $('notices').innerHTML = out.join('');
+  }
+  function renderSummary() {
+    const list = filtered();
+    const places = new Set(list.map(s => s.p)), dates = new Set(list.map(s => s.date));
+    const cabTxt = [...S.cabins].map(c => CAB[c]).join(' · ');
+    const nP = list.filter(s => s.c === 'O').length, nF = list.filter(s => s.c === 'A').length;
+    $('summary').innerHTML =
+      `<span><strong class="num">${places.size}</strong>곳</span>` +
+      `<span><strong class="num">${dates.size}</strong>일</span>` +
+      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} 보너스 좌석 · 앞으로 361일` +
+      (S.cabins.size > 1 ? ` · 프레스티지 ${won(nP)}편 · 일등석 ${won(nF)}편` : '') + '</span>';
+  }
+
+  function dayMap(list) {
+    const m = new Map();
+    for (const s of list) {
+      let d = m.get(s.date); if (!d) m.set(s.date, d = new Map());
+      let a = d.get(s.p); if (!a) d.set(s.p, a = []);
+      a.push(s);
+    }
+    return m;
+  }
+  function renderMonths() {
+    const list = filtered(), months = monthsList();
+    const per = {};
+    for (const s of list) { const k = s.date.slice(0, 7); (per[k] = per[k] || new Set()).add(s.date); }
+    $('monthStrip').innerHTML = months.map(k => {
+      const [y, m] = k.split('-').map(Number);
+      const days = new Date(y, m, 0).getDate(), n = per[k] ? per[k].size : 0;
+      return `<button type="button" class="mbtn" data-month="${k}" aria-pressed="${S.month === k}"><span class="y">${y}</span><span class="m">${m}월</span>` +
+        `<span class="c num">${n ? n + '일 가능' : '없음'}</span><span class="meter"><i style="width:${Math.round(n / days * 100)}%"></i></span></button>`;
+    }).join('');
+    const sel = $('monthStrip').querySelector('[aria-pressed="true"]');
+    if (sel && sel.scrollIntoView) { const st = $('monthStrip'); const l = sel.offsetLeft - st.offsetLeft; if (l < st.scrollLeft || l + sel.offsetWidth > st.scrollLeft + st.clientWidth) st.scrollLeft = l - 40; }
+  }
+  function renderCal() {
+    const [y, m] = S.month.split('-').map(Number);
+    $('calTitle').textContent = `${y}년 ${m}월`;
+    const months = monthsList();
+    $('prevM').disabled = S.month <= months[0]; $('nextM').disabled = S.month >= months[months.length - 1];
+    const map = dayMap(filtered());
+    const first = new Date(y, m - 1, 1).getDay(), days = new Date(y, m, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < first; i++) cells.push('<div class="day empty"></div>');
+    for (let d = 1; d <= days; d++) {
+      const k = `${y}-${pad(m)}-${pad(d)}`, dow = (first + d - 1) % 7;
+      const cls = ['day']; if (dow === 0) cls.push('sun'); if (dow === 6) cls.push('sat'); if (k === S.today) cls.push('today');
+      if (k < S.today || k > S.last) { cls.push('off'); cells.push(`<div class="${cls.join(' ')}"><div class="dn"><span>${d}</span></div></div>`); continue; }
+      const pm = map.get(k);
+      if (!pm) { cells.push(`<div class="${cls.join(' ')}"><div class="dn"><span>${d}</span></div></div>`); continue; }
+      const ps = [...pm.keys()].map(c => S.places.get(c)).sort(placeSort);
+      const n = ps.length;
+      cls.push('has', n >= 6 ? 'lv3' : n >= 3 ? 'lv2' : 'lv1');
+      if (S.day === k) cls.push('sel');
+      const anyNew = [...pm.values()].some(a => a.some(isNew));
+      const chips = ps.slice(0, 3).map(p => {
+        const onlyF = pm.get(p.code).every(s => s.c === 'A');
+        return `<span class="city${onlyF ? ' f' : ''}">${esc(p.city)}</span>`;
+      }).join('');
+      cells.push(`<button type="button" class="${cls.join(' ')}" data-day="${k}" aria-label="${esc(fmtLong(k))} ${n}곳">` +
+        `<div class="dn"><span>${d}</span>${anyNew ? '<span class="nw" title="새로 열림"></span>' : ''}<span class="cnt num">${n}<i>곳</i></span></div>` +
+        `<div class="cities">${chips}${n > 3 ? `<span class="more">+${n - 3}곳</span>` : ''}</div></button>`);
+    }
+    $('calGrid').innerHTML = cells.join('');
+  }
+  function flightRows(arr, showHub) {
+    const byFn = new Map();
+    for (const s of arr) { const k = s.o + s.fn; if (!byFn.has(k)) byFn.set(k, []); byFn.get(k).push(s); }
+    return [...byFn.values()].sort((a, b) => (a[0].t || '').localeCompare(b[0].t || '')).map(g => {
+      const s = g[0];
+      const cabs = g.map(x => x.c).sort((a, b) => (a === 'O' ? -1 : 1)).map(c => `<span class="tag ${c}">${CAB[c]}</span>`).join('');
+      const hub = showHub || s.hub === 'GMP' ? `<span class="tag hub">${HUBS[s.hub]}${s.dir === 'out' ? ' 출발' : ' 도착'}</span>` : '';
+      return `<div class="fl"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t || '')}</span>${cabs}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}</div>`;
+    }).join('');
+  }
+  function milesLine(p) {
+    const z = ZONES[p.zone];
+    return [...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])}마일`).join(' · ') + ' <span style="color:var(--t3)">(평수기)</span>';
+  }
+  function renderDay() {
+    const el = $('dayPanel');
+    const map = dayMap(filtered());
+    if (!S.day || !map.has(S.day)) {
+      // 고른 날이 없으면 이번 달 첫 가능 날짜
+      const keys = [...map.keys()].filter(k => k.startsWith(S.month)).sort();
+      S.day = keys[0] || null;
+    }
+    if (!S.day) {
+      const [yy, mm] = S.month.split('-').map(Number);
+      el.innerHTML = `<h3>${yy}년 ${mm}월</h3><div class="empty-msg">이 달에는 조건에 맞는 보너스 좌석이 아직 없어요.<br>다른 달 · 지역 · 등급을 골라 보세요.</div>`;
+      return;
+    }
+    const pm = map.get(S.day);
+    const ps = [...pm.keys()].map(c => S.places.get(c)).sort(placeSort);
+    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳 · D-${dayDiff(S.today, S.day)}</div>` +
+      ps.map(p => `<div class="pc"><div class="pc-h"><b>${esc(p.city)}</b><span>${esc(p.country)}</span></div>` +
+        flightRows(pm.get(p.code)) +
+        `<div class="miles">${milesLine(p)}</div>` +
+        `<div style="margin-top:6px"><button class="link" type="button" data-place="${p.code}" data-pick="${S.dir === 'out' ? S.day : ''}">${S.dir === 'out' ? '오는 편 날짜 보기 →' : '이 도시 1년 보기 →'}</button></div></div>`).join('');
+  }
+
+  function renderPlaces() {
+    const el = $('viewPlaces');
+    const months = monthsList();
+    const out = filtered({ dir: 'out' }), inn = filtered({ dir: 'in' });
+    const stat = new Map();
+    const get = c => { if (!stat.has(c)) stat.set(c, { outD: new Set(), inD: new Set(), months: new Set(), next: null }); return stat.get(c); };
+    for (const s of out) { const x = get(s.p); x.outD.add(s.date); if (S.dir === 'out') x.months.add(s.date.slice(0, 7)); if (S.dir === 'out' && (!x.next || s.date < x.next)) x.next = s.date; }
+    for (const s of inn) { const x = get(s.p); x.inD.add(s.date); if (S.dir === 'in') x.months.add(s.date.slice(0, 7)); if (S.dir === 'in' && (!x.next || s.date < x.next)) x.next = s.date; }
+    const html = [];
+    for (const [rk, rn] of REGIONS) {
+      if (rk === 'all' || (S.region !== 'all' && S.region !== rk)) continue;
+      const ps = [...S.places.values()].filter(p => p.region === rk && matchQ(p)).sort((a, b) => a.sort - b.sort);
+      if (!ps.length) continue;
+      const withSeats = ps.filter(p => { const x = stat.get(p.code); return x && (S.dir === 'out' ? x.outD.size : x.inD.size); });
+      const without = ps.filter(p => !withSeats.includes(p));
+      const z = ZONES[ps[0].zone];
+      html.push(`<div class="rgn"><h3>${esc(rn)} <small>${withSeats.length}곳 가능 · 프레스티지 편도 ${won(z.O)}마일~</small></h3>`);
+      if (withSeats.length) {
+        html.push('<div class="cards">' + withSeats.map(p => {
+          const x = stat.get(p.code), mine = S.dir === 'out' ? x.outD : x.inD, other = S.dir === 'out' ? x.inD : x.outD;
+          const sp = months.map(k => `<i class="${x.months.has(k) ? 'on' : ''}" style="height:${x.months.has(k) ? 100 : 18}%" title="${k}"></i>`).join('');
+          return `<button type="button" class="card" data-place="${p.code}"><div class="nm">${esc(p.city)}<small>${esc(p.country)}</small></div>` +
+            `<div class="row"><span>${S.dir === 'out' ? '가는 편' : '오는 편'}</span><b class="num">${mine.size}일</b></div>` +
+            `<div class="row"><span>${S.dir === 'out' ? '오는 편' : '가는 편'}</span><b class="num">${other.size}일</b></div>` +
+            `<div class="row"><span>가장 빠른 날</span><b>${x.next ? esc(fmtD(x.next)) : '—'}</b></div>` +
+            `<div class="spark" aria-hidden="true">${sp}</div></button>`;
+        }).join('') + '</div>');
+      }
+      if (without.length) {
+        const scan = (S.data && S.data.scan) || {};
+        const names = without.map(p => {
+          const rs = p.routes.filter(r => (S.dir === 'out') === !!HUBS[r.o]);
+          const dead = rs.length && rs.every(r => !r.active);
+          const seen = rs.some(r => scan[r.o + '-' + r.d]);
+          return esc(p.city) + (dead ? ' (운항 없음)' : seen ? '' : ' (확인 전)');
+        });
+        html.push(`<div class="none-line">지금 없음 · ${names.join(', ')}</div>`);
+      }
+      html.push('</div>');
+    }
+    el.innerHTML = html.join('') || '<div class="panel empty-msg">찾는 곳이 없어요.</div>';
+  }
+
+  function renderNew() {
+    const el = $('viewNew');
+    const list = filtered({ ignoreRegion: false }).filter(isNew).sort((a, b) => b.first.localeCompare(a.first) || a.date.localeCompare(b.date));
+    if (!list.length) {
+      el.innerHTML = '<div class="empty-msg">최근 3일 사이 새로 열린 보너스 좌석이 없어요.<br>처음 한 바퀴를 도는 동안은 비교할 이전 값이 없어 여기 안 나와요.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="list">' + list.slice(0, 300).map(s => {
+      const p = S.places.get(s.p);
+      return `<div class="li"><div class="d num">${esc(fmtD(s.date))}</div>` +
+        `<div><b>${esc(p.city)}</b> <span style="color:var(--t3)">${esc(p.country)}</span><div class="fl" style="margin-top:2px"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t)}</span><span class="tag ${s.c}">${CAB[s.c]}</span>${s.hub === 'GMP' ? '<span class="tag hub">김포</span>' : ''}<button class="link" type="button" data-place="${p.code}" data-pick="${s.dir === 'out' ? s.date : ''}">1년 보기</button></div></div>` +
+        `<div class="w">${esc(rel(s.first))} 열림</div></div>`;
+    }).join('') + '</div>';
+  }
+
+  /* ── 도시 1년 보기 (가는 편 · 오는 편 같이 — 왕복 날짜 고르기) ── */
+  function openPlace(code, pick) {
+    S.modal = { place: code, pickOut: pick || null, sel: null };
+    $('placeModal').hidden = false; document.body.style.overflow = 'hidden';
+    renderPlaceModal();
+  }
+  function closeModal(id) {
+    $(id).hidden = true;
+    if (id === 'placeModal') S.modal = null;
+    if ($('placeModal').hidden && $('statusModal').hidden) document.body.style.overflow = '';
+  }
+  function heat(dir, p) {
+    const list = S.seats.filter(s => s.p === p.code && s.dir === dir && S.cabins.has(s.c));
+    const by = new Map();
+    for (const s of list) { const v = by.get(s.date) || ''; if (!v.includes(s.c)) by.set(s.date, (v + s.c).split('').sort((a, b) => (a === 'O' ? -1 : 1)).join('')); }
+    const months = monthsList(), md = S.modal;
+    let h = '<div class="hm"><div></div>';
+    for (let d = 1; d <= 31; d++) h += `<div class="dh">${d % 5 === 0 || d === 1 ? d : ''}</div>`;
+    for (const k of months) {
+      const [y, m] = k.split('-').map(Number), days = new Date(y, m, 0).getDate();
+      h += `<div class="ml">${m === 1 || k === months[0] ? `<small class="yy">’${String(y).slice(2)}</small>` : ''}${m}월</div>`;
+      for (let d = 1; d <= 31; d++) {
+        if (d > days) { h += '<button type="button" class="x" tabindex="-1" aria-hidden="true"></button>'; continue; }
+        const key = `${k}-${pad(d)}`;
+        if (key < S.today || key > S.last) { h += '<button type="button" class="off" tabindex="-1" aria-hidden="true"></button>'; continue; }
+        const v = by.get(key) || '';
+        const cls = [v];
+        if (dir === 'out' && md.pickOut === key) cls.push('pick');
+        if (dir === 'in' && md.pickOut) { if (key <= md.pickOut) cls.push('dim'); else if (v) cls.push('ret'); }
+        if (md.sel && md.sel.dir === dir && md.sel.date === key) cls.push('on-sel');
+        h += `<button type="button" class="${cls.join(' ')}" data-hm="${dir}" data-date="${key}" title="${esc(fmtD(key))}${v ? ' · ' + v.split('').map(c => CAB[c]).join(' · ') : ''}"${v ? '' : ' tabindex="-1"'}></button>`;
+      }
+    }
+    return { html: h + '</div>', by, n: by.size };
+  }
+  function renderPlaceModal() {
+    const md = S.modal, p = S.places.get(md.place);
+    if (!p) return;
+    const z = ZONES[p.zone];
+    const outH = heat('out', p), inH = heat('in', p);
+    const hubsOut = [...new Set(p.routes.filter(r => HUBS[r.o]).map(r => HUBS[r.o]))].join(' · ');
+    let pickBox = '';
+    if (md.pickOut) {
+      const rets = [...inH.by.keys()].filter(k => k > md.pickOut).sort().slice(0, 24);
+      pickBox = `<div class="pick-box">가는 날 <b>${esc(fmtD(md.pickOut))}</b> 고름 → 오는 편 가능한 날 ${rets.length ? '' : '<b>없음</b>'}` +
+        (rets.length ? `<div class="rets">${rets.map(k => `<span>${esc(fmtD(k))} · ${dayDiff(md.pickOut, k)}박</span>`).join('')}</div>` : '') +
+        ` <button class="link" type="button" data-clear-pick style="margin-left:6px">고른 날 지우기</button></div>`;
+    } else {
+      pickBox = '<div class="pick-box">아래 <b>가는 편</b>에서 날짜를 누르면, 그 뒤 <b>오는 편</b> 가능한 날이 테두리로 표시돼요.</div>';
+    }
+    let selBox = '';
+    if (md.sel) {
+      const arr = S.seats.filter(s => s.p === p.code && s.dir === md.sel.dir && s.date === md.sel.date && S.cabins.has(s.c));
+      selBox = `<div class="pc" style="margin:-4px 0 14px"><div class="pc-h"><b>${esc(fmtLong(md.sel.date))}</b><span>${md.sel.dir === 'out' ? '가는 편' : '오는 편'}</span></div>${arr.length ? flightRows(arr, true) : '<div class="fl" style="color:var(--t3)">이날은 보너스 좌석 없음</div>'}</div>`;
+    }
+    $('placeSheet').innerHTML =
+      `<div class="sheet-h"><div><h2>${esc(p.city)} <span style="color:var(--t3);font-weight:600;font-size:15px">${esc(p.country)} · ${esc(p.code)}</span></h2>` +
+      `<div class="sub">${esc(ZONES[p.zone].name)} · ${[...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])} · 왕복 ${won(z[c] * 2)}마일`).join(' / ')} (평수기) · ${esc(hubsOut || '인천')} 출발</div></div>` +
+      `<button class="x-btn" type="button" data-close="placeModal" aria-label="닫기">×</button></div>` +
+      `<div class="legend">${S.cabins.has('O') ? '<span><i style="background:var(--p)"></i>프레스티지</span>' : ''}${S.cabins.has('A') ? '<span><i style="background:var(--f)"></i>일등석</span>' : ''}${S.cabins.size > 1 ? '<span><i style="background:linear-gradient(135deg,var(--p) 50%,var(--f) 50%)"></i>둘 다</span>' : ''}<span><i style="background:#eef1f5"></i>없음</span></div>` +
+      pickBox + selBox +
+      `<div class="yr"><h4>가는 편 · 한국 → ${esc(p.city)} <small>${outH.n}일</small></h4>${outH.html}</div>` +
+      `<div class="yr"><h4>오는 편 · ${esc(p.city)} → 한국 <small>${inH.n}일</small></h4>${inH.html}</div>` +
+      `<div style="font-size:12px;color:var(--t3)">공개 현황 기준이에요. 예약 전 대한항공 앱 · 홈페이지 마일리지 항공권 예약에서 다시 확인하세요.</div>`;
+  }
+
+  /* ── 수집 상태 · 수집기 승인 ── */
+  function renderStatusModal() {
+    const st = S.status || {}, s = st.state || {}, cov = st.coverage || {};
+    const pct = cov.total ? Math.floor(cov.checked / cov.total * 100) : 0;
+    const blocked = s.blocked_until && Date.parse(s.blocked_until) > Date.now();
+    const cols = (st.collectors || []).map(c => `<tr><td>${esc(c.name || '이름 없음')}</td><td>${c.status === 'approved' ? '<span style="color:var(--ok);font-weight:700">승인됨</span>' : '<span style="color:var(--warn);font-weight:700">승인 대기</span>'}</td>` +
+      `<td>${esc(rel(c.last_seen_at))}</td><td style="text-align:right">${c.status === 'pending' ? `<button class="btn pri" type="button" data-approve="${c.id}">승인</button> ` : ''}<button class="btn danger" type="button" data-revoke="${c.id}">끊기</button></td></tr>`).join('');
+    const runs = (st.runs || []).map(r => `<tr><td>${esc(hm(r.at))}</td><td class="num">${r.requests}</td><td class="num">${r.ok}</td><td class="num">${r.failed}</td><td class="num">${r.new_seats}</td><td>${r.blocked ? '<span style="color:var(--warn)">막힘</span>' : ''}${r.note ? ' ' + esc(r.note) : ''}</td></tr>`).join('');
+    $('statusSheet').innerHTML =
+      `<div class="sheet-h"><div><h2>수집 상태</h2><div class="sub">사무실 맥 수집기가 30분마다 대한항공 공개 현황을 오래된 노선 · 달부터 읽어요</div></div><button class="x-btn" type="button" data-close="statusModal" aria-label="닫기">×</button></div>` +
+      `<div class="stat-grid">` +
+      `<div class="stat"><div class="k">확인한 노선 · 달</div><div class="v num">${won(cov.checked || 0)} / ${won(cov.total || 0)}</div><div class="progress"><i style="width:${pct}%"></i></div></div>` +
+      `<div class="stat"><div class="k">48시간 안에 확인</div><div class="v num">${won(cov.fresh || 0)}</div></div>` +
+      `<div class="stat"><div class="k">운항 노선</div><div class="v num">${won(cov.active_routes || 0)} / ${won(cov.routes || 0)}</div></div>` +
+      `<div class="stat"><div class="k">마지막 수집</div><div class="v">${esc(rel(s.last_run_at))}</div></div>` +
+      `<div class="stat"><div class="k">마지막 성공</div><div class="v">${esc(rel(s.last_ok_at))}</div></div>` +
+      `<div class="stat"><div class="k">대한항공 차단</div><div class="v" style="color:${blocked ? 'var(--warn)' : 'var(--ok)'}">${blocked ? esc(hm(s.blocked_until)) + ' 까지 쉼' : '없음'}</div></div>` +
+      `</div>` +
+      (s.last_error ? `<div class="notice">${esc(s.last_error)}</div>` : '') +
+      `<h4 style="margin:6px 0">수집기</h4>` +
+      (cols ? `<table class="tbl"><thead><tr><th>맥</th><th>상태</th><th>마지막 연락</th><th></th></tr></thead><tbody>${cols}</tbody></table>` : '<div class="empty-msg">등록된 수집기가 없어요</div>') +
+      `<div style="font-size:12px;color:var(--t3);margin:6px 0 14px">새 맥에 설치: <code>bash scripts/mac/install-ke-award.sh</code> → 여기 '승인 대기'로 뜨면 [승인]. 사무실 맥(맥미니)에 두는 게 좋아요 — 대한항공이 클라우드 서버는 막아요.</div>` +
+      `<h4 style="margin:6px 0">최근 수집</h4>` +
+      (runs ? `<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>시각</th><th>요청</th><th>성공</th><th>실패</th><th>새 좌석</th><th>메모</th></tr></thead><tbody>${runs}</tbody></table></div>` : '<div class="empty-msg">아직 기록이 없어요</div>');
+  }
+  async function openStatus() {
+    $('statusModal').hidden = false; document.body.style.overflow = 'hidden';
+    renderStatusModal();
+    try { S.status = await rpc('ke_award_status'); renderStatusModal(); renderStatusPill(); renderNotices(); } catch (e) { /* 그대로 */ }
+  }
+  async function setCollector(id, status) {
+    if (status === 'revoked' && !confirm('이 수집기를 끊을까요? 그 맥은 더 이상 자료를 올리지 못해요.')) return;
+    try {
+      const r = await rpc('ke_award_collector_set', { p_id: id, p_status: status });
+      if (!r || !r.ok) throw new Error((r && r.error) || '실패');
+      toast(status === 'approved' ? '승인했어요 — 다음 회차(30분 안)부터 읽어요' : '끊었어요');
+      S.status = await rpc('ke_award_status'); renderStatusModal(); renderStatusPill(); renderNotices();
+    } catch (e) { toast('못 바꿨어요: ' + e.message, true); }
+  }
+
+  /* ── 이벤트 ── */
+  $('cabSeg').addEventListener('click', e => {
+    const b = e.target.closest('button[data-cab]'); if (!b) return;
+    const c = b.dataset.cab;
+    if (S.cabins.has(c)) { if (S.cabins.size > 1) S.cabins.delete(c); } else S.cabins.add(c);
+    lsSet(LS.cab, [...S.cabins].join('')); renderAll();
+  });
+  $('dirSeg').addEventListener('click', e => { const b = e.target.closest('button[data-dir]'); if (!b) return; S.dir = b.dataset.dir; S.day = null; lsSet(LS.dir, S.dir); renderAll(); });
+  $('tabSeg').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; lsSet(LS.tab, S.tab); renderAll(); });
+  $('regionChips').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (!b) return; S.region = b.dataset.region; S.day = null; lsSet(LS.region, S.region); renderAll(); });
+  let qT = 0;
+  $('q').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { S.q = e.target.value; S.day = null; renderAll(); }, 120); });
+  $('monthStrip').addEventListener('click', e => { const b = e.target.closest('button[data-month]'); if (!b) return; S.month = b.dataset.month; S.day = null; renderAll(); });
+  function shiftMonth(n) {
+    const ms = monthsList(), i = ms.indexOf(S.month) + n;
+    if (i < 0 || i >= ms.length) return; S.month = ms[i]; S.day = null; renderAll();
+  }
+  $('prevM').addEventListener('click', () => shiftMonth(-1));
+  $('nextM').addEventListener('click', () => shiftMonth(1));
+  $('calGrid').addEventListener('click', e => {
+    const b = e.target.closest('button[data-day]'); if (!b) return;
+    S.day = b.dataset.day; renderCal(); renderDay();
+    if (window.matchMedia('(max-width: 920px)').matches) $('dayPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.addEventListener('click', e => {
+    const pl = e.target.closest('[data-place]');
+    if (pl && !e.target.closest('#placeSheet')) { openPlace(pl.dataset.place, pl.dataset.pick || null); return; }
+    const cl = e.target.closest('[data-close]'); if (cl) { closeModal(cl.dataset.close); return; }
+    if (e.target.closest('[data-open-status]')) { openStatus(); return; }
+    const ap = e.target.closest('[data-approve]'); if (ap) { setCollector(ap.dataset.approve, 'approved'); return; }
+    const rv = e.target.closest('[data-revoke]'); if (rv) { setCollector(rv.dataset.revoke, 'revoked'); return; }
+    if (e.target.closest('[data-clear-pick]')) { S.modal.pickOut = null; renderPlaceModal(); return; }
+    const hmB = e.target.closest('button[data-hm]');
+    if (hmB && S.modal) {
+      const dir = hmB.dataset.hm, date = hmB.dataset.date;
+      const hasSeat = hmB.classList.contains('O') || hmB.classList.contains('A') || hmB.classList.contains('OA');
+      if (dir === 'out' && hasSeat) S.modal.pickOut = S.modal.pickOut === date ? null : date;
+      S.modal.sel = { dir, date };
+      renderPlaceModal(); return;
+    }
+    if (e.target.classList && e.target.classList.contains('modal')) closeModal(e.target.id);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('statusModal').hidden) closeModal('statusModal'); else if (!$('placeModal').hidden) closeModal('placeModal');
+  });
+  $('statusBtn').addEventListener('click', openStatus);
+  $('reloadBtn').addEventListener('click', () => load(false));
+  // 10분마다 · 화면으로 돌아올 때 다시 읽기
+  setInterval(() => { if (!document.hidden) load(true); }, 10 * 6e4);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.data && Date.now() - (S.loadedAt || 0) > 5 * 6e4) load(true); });
+
+  $('summary').innerHTML = '<div class="loading">불러오는 중…</div>';
+  load(false);
+})();
+</script>
+</body>
+</html>
