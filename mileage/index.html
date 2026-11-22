@@ -175,7 +175,7 @@
   .li .w { color: var(--t3); font-size: 12px; white-space: nowrap }
 
   /* ── 정보 ── */
-  .info { margin-top: 22px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px }
+  .info { margin-top: 22px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px }
   .info h4 { margin: 0 0 8px; font-size: 14px }
   .info table { border-collapse: collapse; width: 100%; font-size: 12.5px }
   .info th, .info td { border-bottom: 1px solid var(--line); padding: 6px 6px; text-align: right; white-space: nowrap }
@@ -225,7 +225,6 @@
   /* 2석 기준 · 로마일 자료 (2026-11-22) — 남은 좌석 · 확인 시각 */
   .tag.seats { background: var(--text); color: #fff }
   .fl .mi { color: var(--t2); font-size: 12px }
-  .fl .age { color: var(--t3); font-size: 11.5px }
   .tag.ke { background: #eef1f5; color: var(--t2) }
 
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 6px 0 14px }
@@ -304,21 +303,11 @@
       <button type="button" data-dir="out" aria-pressed="true">가는 편 · 한국 출발</button>
       <button type="button" data-dir="in" aria-pressed="false">오는 편 · 한국 도착</button>
     </div>
-    <div class="seg" id="rtSeg" role="group" aria-label="왕복">
-      <button type="button" data-rt="1" aria-pressed="true">왕복만 · 2~5일 뒤 귀국</button>
-      <button type="button" data-rt="0" aria-pressed="false">편도 전체</button>
-    </div>
-    <div class="seg" id="freshSeg" role="group" aria-label="확인 시각" hidden>
-      <button type="button" data-fresh="0" aria-pressed="true">확인 시각 전체</button>
-      <button type="button" data-fresh="24" aria-pressed="false">24시간 안</button>
-      <button type="button" data-fresh="6" aria-pressed="false">6시간 안</button>
-    </div>
     <div class="seg" id="tabSeg" role="group" aria-label="보기">
       <button type="button" data-tab="cal" aria-pressed="true">달력</button>
       <button type="button" data-tab="places" aria-pressed="false">나라별</button>
       <button type="button" data-tab="new" aria-pressed="false">새로 열림<span class="badge" id="newBadge" hidden></span></button>
     </div>
-    <input class="search" id="q" type="search" placeholder="도시 · 나라 찾기 (예: 파리, 미국)" autocomplete="off">
   </div>
   <div class="chips" id="regionChips" role="group" aria-label="지역"></div>
   <div id="notices"></div>
@@ -355,18 +344,6 @@
       <ul style="margin-top:8px">
         <li>성수기에는 1.5배 공제돼요. 세금 · 유류할증료는 따로 내요.</li>
         <li>공제표는 대한항공 공식 홈페이지에서 최종 확인하세요 (바뀔 수 있어요).</li>
-      </ul>
-    </div>
-    <div>
-      <h4>보는 법</h4>
-      <ul>
-        <li><b>2명 기준</b> — <a href="https://www.roamile.com/" target="_blank" rel="noopener">로마일</a>이 확인한 남은 좌석이 <b>2석 이상</b>인 편만 보여요. 대한항공 운항편 + 스카이팀 제휴 <b>직항</b>만, 로마일이 다루는 도시만 나오고 좌석 수를 모르는 편은 뺐어요.</li>
-        <li>맥미니가 30분마다 로마일을 조금씩 다시 읽어요 (이번 달 · 다음 달 30분, 셋째 달 3시간, 그 뒤 12시간마다). 좌석 수는 로마일이 편마다 확인한 때의 값이라 몇 시간 ~ 며칠 지난 것도 있어요 — 편마다 <b>확인 시각</b>을 같이 보여 주고, '6시간 안' · '24시간 안' 버튼으로 최근 것만 볼 수 있어요.</li>
-        <li><b>교차 확인</b> — 대한항공 운항편은 맥미니가 대한항공 공개 현황으로 로마일 후보부터 자주(가까운 3달 2시간마다) 다시 봐요. 같은 편이 열려 있으면 <b>대한항공 ✓</b>, 로마일 확인 뒤 대한항공에서 닫혔으면 화면에서 빼요. 공개 현황엔 좌석 수가 없어서 2석은 로마일 숫자 기준이에요.</li>
-        <li><b>왕복만</b>(기본)은 가는 날 2~5일 뒤에 같은 도시에서 돌아오는 편이 있는 날만 보여요. 테두리만 있는 도시는 돌아오는 편을 아직 못 읽은 곳이에요.</li>
-        <li>표시는 '보너스 좌석이 있다'는 뜻이고 좌석 수가 아니에요 (1석일 수도). <b>2명</b>은 대한항공 앱 · 홈페이지 <b>마일리지 항공권 예약</b>에서 성인 2명으로 다시 확인하세요.</li>
-        <li>스카이팀 제휴편은 왕복으로 발권해야 하고 공제 마일이 달라요 — 대한항공 예약 화면에서 확인하세요. (대한항공 공개 현황 수집기도 참고용으로 계속 돌아요.)</li>
-        <li><a href="https://www.koreanair.com/booking/book-and-manage/award-seat-availability" target="_blank" rel="noopener">대한항공 보너스 좌석 상황 보기 열기 ↗</a></li>
       </ul>
     </div>
   </section>
@@ -409,7 +386,7 @@
   };
   const ZONE_RANK = { long: 0, swa: 1, sea: 2, nea: 3 };
   const CAB = { O: '프레스티지', A: '일등석' };
-  const LS = { cab: 'ml_cabins_v1', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1', fresh: 'ml_fresh_v1' };
+  const LS = { cab: 'ml_cabins_v2', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1', fresh: 'ml_fresh_v1' };
   const NEW_MS = 72 * 3600e3;
   // 2석 기준 (2026-11-22 사장님 "로마일 · 스카이팀도 · 직항만 · 무조건 2명") — 로마일이 확인한 남은 좌석 2석 이상만 (자료 d.r2)
   const R2_GROUPS = 28;           // 대한항공 13달 × 가는 편 · 오는 편 + 스카이팀 2
@@ -418,12 +395,12 @@
 
   const S = {
     data: null, status: null, seats: [], routes: new Map(), places: new Map(),
-    cabins: new Set((lsGet(LS.cab) || 'O').split('').filter(c => c === 'O' || c === 'A')),
+    cabins: new Set((lsGet(LS.cab) || 'OA').split('').filter(c => c === 'O' || c === 'A')),
     dir: lsGet(LS.dir) === 'in' ? 'in' : 'out',
     region: REGION_NAME[lsGet(LS.region)] ? lsGet(LS.region) : 'all',
     tab: ['cal', 'places', 'new'].includes(lsGet(LS.tab)) ? lsGet(LS.tab) : 'cal',
-    rt: lsGet(LS.rt) !== '0',   // 기본 = 왕복만
-    fresh: ({ '6': 6, '24': 24, '1': 24 })[lsGet(LS.fresh)] || 0,   // 확인 시각 거르기 (시간) — 0 = 전부
+    rt: true,   // 왕복만 — '편도 전체'는 없앰 (11-22 사장님 "왕복만 보이게")
+    fresh: 0,   // 확인 시각 거르기는 없앰 (11-22 사장님 "2명 기준 · 2석 이상 · 확인 시각 이런 거 없애줘")
     src: 'ke',                  // 'r2' = 로마일 2석 자료, 'ke' = 대한항공 공개 현황(좌석 수 모름)
     q: '', month: null, day: null, loading: false,
     modal: null,   // {place, pickOut, pickIn}
@@ -524,69 +501,78 @@
   function filtered(opts) {
     opts = opts || {};
     const dir = opts.dir || S.dir;
-    // 왕복만: 가는 편은 +2~5일에 돌아오는 편이 있거나 아직 확인 전인 것만 ('없음'으로 확인된 것만 뺀다)
-    const rt = dir === 'out' && (opts.rt != null ? opts.rt : S.rt);
-    return S.seats.filter(s => s.dir === dir && seatOk(s) && placeOk(S.places.get(s.p), opts.ignoreRegion) && (!rt || rtInfo(s.p, s.date).state !== 'no'));
+    // 왕복만 (항상): 가는 편은 2~5일 뒤 오는 편, 오는 편은 2~5일 전 가는 편이 있거나 아직 확인 전인 것만 ('없음'으로 확인된 것만 뺀다)
+    const rt = opts.rt != null ? opts.rt : S.rt;
+    return S.seats.filter(s => s.dir === dir && seatOk(s) && placeOk(S.places.get(s.p), opts.ignoreRegion) && (!rt || rtInfo(s.p, s.date, dir).state !== 'no'));
   }
   // 확인 시각 (로마일 자료만) — '6시간 안' · '24시간 안'을 고르면 그보다 오래된 건 뺀다 (흐리게는 안 함 — 11-22 사장님 "흐리게 안 해도 되는데 자주 체크해줘")
   const within = (s, h) => !s.obs || Date.now() - Date.parse(s.obs) < h * 3600e3;
   const keClosed = s => !!(s.ke && s.ke.st === 'closed');   // 로마일 뒤에 대한항공 공개 현황이 닫힘으로 봄
   const seatOk = s => S.cabins.has(s.c) && !keClosed(s) && (!S.fresh || S.src !== 'r2' || within(s, S.fresh));
 
-  /* ── 왕복: 가는 날 + 2~5일 돌아오는 편 ── */
-  let RI = null;   // { seats, cab, idx: 도시 → 날짜 → 오는 편 좌석들, memo }
+  /* ── 왕복: 가는 편은 2~5일 뒤 오는 편, 오는 편은 2~5일 전 가는 편 (11-22 사장님 "가는 편 오는 편 선택 · 왕복만 보이게") ── */
+  let RI = null;   // { seats, cab, idx: { out, in }: 도시 → 날짜 → 좌석들, memo }
   function retIndex() {
     const cab = [...S.cabins].sort().join('') + '|' + S.fresh;
     if (RI && RI.seats === S.seats && RI.cab === cab && RI.data === S.data) return RI;
-    const idx = new Map();
+    const idx = { out: new Map(), in: new Map() };
     for (const s of S.seats) {
-      if (s.dir !== 'in' || !seatOk(s)) continue;
-      let p = idx.get(s.p); if (!p) idx.set(s.p, p = new Map());
+      if (!seatOk(s)) continue;
+      const m = idx[s.dir];
+      let p = m.get(s.p); if (!p) m.set(s.p, p = new Map());
       let a = p.get(s.date); if (!a) p.set(s.date, a = []);
       a.push(s);
     }
     RI = { seats: S.seats, cab, data: S.data, idx, memo: new Map() };
     return RI;
   }
-  // 그 도시 → 한국 노선이 그 달을 다 읽었나 (안 읽었으면 '없음'이 아니라 '확인 전')
-  function monthChecked(p, ym) {
-    if (S.src === 'r2') {   // 로마일: 그 달 대한항공 '오는 편' 묶음 + 스카이팀 '오는 편' 묶음을 읽었나
+  // 그 도시 노선이 그 달을 다 읽었나 (안 읽었으면 '없음'이 아니라 '확인 전') — want = 찾는 편 방향 (in 오는 편 / out 가는 편)
+  function monthChecked(p, ym, want) {
+    want = want || 'in';
+    if (S.src === 'r2') {   // 로마일: 그 달 대한항공 묶음 + 스카이팀 묶음을 읽었나
       const g = (S.data.r2 && S.data.r2.groups) || {};
       const ok = k => !!(g[k] && g[k].at);
-      return ok('koreanair|in|' + ym) && ok('skyteam|in|all');
+      return ok('koreanair|' + want + '|' + ym) && ok('skyteam|' + want + '|all');
     }
     const scan = (S.data && S.data.scan) || {};
-    const rs = p.routes.filter(r => !HUBS[r.o] && HUBS[r.d] && r.enabled !== false && r.active !== false);
-    if (!rs.length) return true;   // 운항하는 오는 편 노선이 없음 → 없음으로 확정
+    const rs = p.routes.filter(r => (want === 'in' ? !HUBS[r.o] && HUBS[r.d] : HUBS[r.o] && !HUBS[r.d]) && r.enabled !== false && r.active !== false);
+    if (!rs.length) return true;   // 운항하는 노선이 없음 → 없음으로 확정
     return rs.every(r => { const x = scan[r.o + '-' + r.d]; return !!(x && Array.isArray(x.ms) && x.ms.includes(ym)); });
   }
-  function rtInfo(code, date) {
-    const R = retIndex(), key = code + '|' + date;
+  // dir = 보고 있는 편 방향 — 가는 편이면 2~5일 뒤 오는 편, 오는 편이면 2~5일 전 가는 편을 찾는다
+  function rtInfo(code, date, dir) {
+    dir = dir || 'out';
+    const want = dir === 'out' ? 'in' : 'out';
+    const R = retIndex(), key = dir + '|' + code + '|' + date;
     if (R.memo.has(key)) return R.memo.get(key);
-    const p = S.places.get(code), byDate = R.idx.get(code);
+    const p = S.places.get(code), byDate = R.idx[want].get(code);
     const hits = [], unk = [];
     for (let n = RT[0]; n <= RT[1]; n++) {
-      const k = addDays(date, n), a = byDate && byDate.get(k);
+      const k = addDays(date, dir === 'out' ? n : -n), a = byDate && byDate.get(k);
       if (a) hits.push({ date: k, n, list: a });
-      else if (k > S.last || !p || !monthChecked(p, k.slice(0, 7))) unk.push(k);
+      else if (dir === 'in' && k < S.today) continue;   // 지난 날 가는 편은 못 탐
+      else if (k > S.last || !p || !monthChecked(p, k.slice(0, 7), want)) unk.push(k);
     }
+    hits.sort((x, y) => x.date.localeCompare(y.date));
     const r = { hits, unk, state: hits.length ? 'ok' : unk.length ? 'unk' : 'no' };
     R.memo.set(key, r);
     return r;
   }
   const cabLabel = () => [...S.cabins].sort().reverse().map(c => CAB[c]).join(' · ');
-  function rtLine(code, date) {
-    const r = rtInfo(code, date), lab = cabLabel();
-    const head = `<span class="k">돌아오는 ${esc(lab)} · 가는 날 ${RT[0]}~${RT[1]}일 뒤</span>`;
+  function rtLine(code, date, dir) {
+    dir = dir || 'out';
+    const r = rtInfo(code, date, dir), lab = cabLabel();
+    const head = dir === 'out'
+      ? `<span class="k">돌아오는 ${esc(lab)} · ${RT[0]}~${RT[1]}일 뒤</span>`
+      : `<span class="k">가는 ${esc(lab)} · ${RT[0]}~${RT[1]}일 전</span>`;
     if (r.state === 'ok') {
-      const rest = r.unk.length ? ` <span style="color:var(--t3);font-size:12px">나머지 ${r.unk.length}일은 아직 확인 전</span>` : '';
       return `<div class="rt ok">${head}${r.hits.map(h => {
         const fl = [...new Map(h.list.map(s => [s.o + s.fn, s])).values()]
           .map(s => `${esc(s.fn)} ${esc(s.t || '')}${s.n ? ' ' + s.n + '석' : ''}${s.hub === 'GMP' ? ' 김포' : ''}${S.cabins.size > 1 && s.c === 'A' ? ' 일등석' : ''}`).join(' · ');
         return `<span class="rd"><b>${esc(fmtD(h.date))}</b> ${h.n}박<small>${fl}</small></span>`;
-      }).join('')}${rest}</div>`;
+      }).join('')}</div>`;
     }
-    if (r.state === 'unk') return `<div class="rt unk">${head}<b>아직 확인 전</b> <span style="color:var(--t3);font-size:12px">— 처음 한 바퀴 도는 중이거나 361일 밖이에요</span></div>`;
+    if (r.state === 'unk') return `<div class="rt unk">${head}<b>아직 확인 전</b></div>`;
     return `<div class="rt no">${head}<b>없음</b></div>`;
   }
   const isNew = s => s.opened && Date.now() - Date.parse(s.first) < NEW_MS;
@@ -630,10 +616,6 @@
     document.querySelectorAll('#cabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.cabins.has(b.dataset.cab))));
     document.querySelectorAll('#dirSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.dir === b.dataset.dir)));
     document.querySelectorAll('#tabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.tab === b.dataset.tab)));
-    document.querySelectorAll('#rtSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.rt === (b.dataset.rt === '1'))));
-    $('rtSeg').hidden = S.dir !== 'out';
-    document.querySelectorAll('#freshSeg button').forEach(b => b.setAttribute('aria-pressed', String(String(S.fresh) === b.dataset.fresh)));
-    $('freshSeg').hidden = S.src !== 'r2';
     const nNew = filtered({ ignoreRegion: true, rt: false }).filter(isNew).length;
     $('newBadge').hidden = !nNew; $('newBadge').textContent = nNew > 99 ? '99+' : nNew;
     // 지역 칩 — 칩마다 좌석 있는 곳 수 (왕복만이면 왕복 되는 곳)
@@ -659,8 +641,8 @@
       if (!st.last_run_at) return { cls: 'bad', txt: '로마일 수집기가 아직 안 돌았어요' };
       const age = Date.now() - Date.parse(st.last_run_at);
       if (age > 3 * 3600e3) return { cls: 'bad', txt: '로마일 수집 멈춤 · ' + rel(st.last_run_at) };
-      if (done < R2_GROUPS) return { cls: 'ok', txt: '2석 기준 · 첫 한 바퀴 ' + done + '/' + R2_GROUPS + ' · ' + rel(st.last_run_at) };
-      return { cls: age > 50 * 6e4 ? 'warn' : 'ok', txt: '2석 기준 · 30분마다 · ' + rel(st.last_run_at) + ' 수집' };
+      if (done < R2_GROUPS) return { cls: 'ok', txt: '첫 한 바퀴 ' + done + '/' + R2_GROUPS + ' · ' + rel(st.last_run_at) };
+      return { cls: age > 50 * 6e4 ? 'warn' : 'ok', txt: '30분마다 · ' + rel(st.last_run_at) + ' 수집' };
     }
     const st = S.status && S.status.state, cov = S.status && S.status.coverage;
     if (!st) return { cls: '', txt: '상태 모름' };
@@ -684,7 +666,6 @@
     if (S.src === 'r2') {
       // 2026-11-22 사장님 "무조건 2명" — 로마일이 확인한 남은 좌석 2석 이상만
       const { done, fails } = r2Info();
-      out.push('<div class="notice info"><b>2명 기준</b> — 남은 좌석 <b>2석 이상</b>만 보여요 (대한항공 운항편 + 스카이팀 제휴 직항, 로마일 자료). 좌석 수는 로마일이 확인한 때의 값이라 각 편의 <b>확인 시각</b>을 보세요. 위 <b>6시간 안</b> · <b>24시간 안</b> 버튼으로 최근 것만 볼 수 있어요. 이번 달 · 다음 달은 맥미니가 30분마다 다시 읽어요.</div>');
       if (done < R2_GROUPS) out.push(`<div class="notice info">처음 한 바퀴 도는 중이에요 — 묶음 ${done} / ${R2_GROUPS} 읽음 (가까운 달부터). 다 돌 때까지 비어 있는 달이 있어요.</div>`);
       if (fails.length) out.push(`<div class="notice">로마일에서 못 읽은 묶음 ${fails.length}개 — 옛 자료를 그대로 보여 줘요 (${esc(fails.slice(0, 2).map(([k, x]) => k + ': ' + (x.note || '')).join(' / '))})</div>`);
     } else {
@@ -702,10 +683,7 @@
     $('summary').innerHTML =
       `<span><strong class="num">${places.size}</strong>곳</span>` +
       `<span><strong class="num">${dates.size}</strong>일</span>` +
-      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} ${S.src === 'r2' ? '<b>2석 이상</b> · 대한항공 + 스카이팀 직항' : '보너스 좌석'}` +
-      (S.src === 'r2' && S.fresh ? ` · ${S.fresh}시간 안 확인만` : '') +
-      (S.src === 'r2' && S.seats.some(keClosed) ? ` · 대한항공에서 닫힌 ${won(S.seats.filter(keClosed).length)}편 뺌` : '') +
-      (S.dir === 'out' && S.rt ? ` · <b>왕복만</b> (${RT[0]}~${RT[1]}일 뒤 돌아오는 편 있음${list.some(s => rtInfo(s.p, s.date).state === 'unk') ? ' · 확인 전 포함' : ''})` : '') +
+      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} ${S.src === 'r2' ? '· 대한항공 + 스카이팀 직항' : '보너스 좌석'}` +
       ' · 앞으로 361일' +
       (S.cabins.size > 1 ? ` · 프레스티지 ${won(nP)}편 · 일등석 ${won(nF)}편` : '') + '</span>';
   }
@@ -754,7 +732,7 @@
       const anyNew = [...pm.values()].some(a => a.some(isNew));
       const chips = ps.slice(0, 3).map(p => {
         const onlyF = pm.get(p.code).every(s => s.c === 'A');
-        const q = S.dir === 'out' && rtInfo(p.code, k).state === 'unk';   // 돌아오는 편 아직 확인 전 — 테두리만
+        const q = rtInfo(p.code, k, S.dir).state === 'unk';   // 짝이 되는 편 아직 확인 전 — 테두리만
         return `<span class="city${onlyF ? ' f' : ''}${q ? ' q' : ''}"${q ? ' title="돌아오는 편 아직 확인 전"' : ''}>${esc(p.city)}</span>`;
       }).join('');
       cells.push(`<button type="button" class="${cls.join(' ')}" data-day="${k}" aria-label="${esc(fmtLong(k))} ${n}곳">` +
@@ -775,10 +753,9 @@
       const seats = n ? `<span class="tag seats">${n >= 9 ? '9석+' : n + '석'}</span>` : '';
       const al = s.al && s.al !== '대한항공' ? `<span class="tag hub">${esc(s.al)}</span>` : '';
       const mi = s.mi ? `<span class="mi num">${won(s.mi)}마일</span>` : '';
-      const age = s.obs ? `<span class="age">로마일 ${esc(rel(s.obs))} 확인</span>` : '';
       const kx = g.find(x => x.ke && x.ke.st === 'open');
-      const keTag = kx ? `<span class="tag ke" title="대한항공 공개 현황에서도 이 편 보너스 좌석이 열려 있어요 (좌석 수는 안 나옴)">대한항공 ✓ ${esc(rel(kx.ke.at))}</span>` : '';
-      return `<div class="fl"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t || '')}</span>${cabs}${seats}${al}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}${mi}${age}</div>`;
+      const keTag = kx ? `<span class="tag ke" title="대한항공 공개 현황에서도 이 편 보너스 좌석이 열려 있어요 · ${esc(hm(kx.ke.at))}">대한항공 ✓</span>` : '';
+      return `<div class="fl"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t || '')}</span>${cabs}${seats}${al}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}${mi}</div>`;
     }).join('');
   }
   function milesLine(p) {
@@ -801,12 +778,12 @@
     const pm = map.get(S.day);
     const RANK = { ok: 0, unk: 1, no: 2 };
     const ps = [...pm.keys()].map(c => S.places.get(c)).sort((a, b) =>
-      (S.dir === 'out' ? RANK[rtInfo(a.code, S.day).state] - RANK[rtInfo(b.code, S.day).state] : 0) || placeSort(a, b));
-    const nOk = S.dir === 'out' ? ps.filter(p => rtInfo(p.code, S.day).state === 'ok').length : 0;
-    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳${S.dir === 'out' ? ` · 왕복 ${nOk}곳` : ''} · D-${dayDiff(S.today, S.day)}</div>` +
+      RANK[rtInfo(a.code, S.day, S.dir).state] - RANK[rtInfo(b.code, S.day, S.dir).state] || placeSort(a, b));
+    const nOk = ps.filter(p => rtInfo(p.code, S.day, S.dir).state === 'ok').length;
+    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳 · 왕복 ${nOk}곳 · D-${dayDiff(S.today, S.day)}</div>` +
       ps.map(p => `<div class="pc"><div class="pc-h"><b>${esc(p.city)}</b><span>${esc(p.country)}</span></div>` +
         flightRows(pm.get(p.code)) +
-        (S.dir === 'out' ? rtLine(p.code, S.day) : '') +
+        rtLine(p.code, S.day, S.dir) +
         `<div class="miles">${milesLine(p)}</div>` +
         `<div style="margin-top:6px"><button class="link" type="button" data-place="${p.code}" data-pick="${S.dir === 'out' ? S.day : ''}">${S.dir === 'out' ? '오는 편 날짜 보기 →' : '이 도시 1년 보기 →'}</button></div></div>`).join('');
   }
@@ -819,7 +796,7 @@
     const get = c => { if (!stat.has(c)) stat.set(c, { outD: new Set(), inD: new Set(), rtD: new Set(), months: new Set(), next: null, nextRt: null }); return stat.get(c); };
     for (const s of out) {
       const x = get(s.p); x.outD.add(s.date);
-      if (rtInfo(s.p, s.date).state === 'ok') { x.rtD.add(s.date); if (!x.nextRt || s.date < x.nextRt) x.nextRt = s.date; }
+      if (rtInfo(s.p, s.date, 'out').state === 'ok') { x.rtD.add(s.date); if (!x.nextRt || s.date < x.nextRt) x.nextRt = s.date; }
       if (S.dir === 'out') x.months.add(s.date.slice(0, 7)); if (S.dir === 'out' && (!x.next || s.date < x.next)) x.next = s.date;
     }
     for (const s of inn) { const x = get(s.p); x.inD.add(s.date); if (S.dir === 'in') x.months.add(s.date.slice(0, 7)); if (S.dir === 'in' && (!x.next || s.date < x.next)) x.next = s.date; }
@@ -840,7 +817,7 @@
             `<div class="row"><span>${S.dir === 'out' ? '가는 편' : '오는 편'}</span><b class="num">${mine.size}일</b></div>` +
             `<div class="row"><span>${S.dir === 'out' ? '오는 편' : '가는 편'}</span><b class="num">${other.size}일</b></div>` +
             `<div class="row"><span>왕복 (${RT[0]}~${RT[1]}일 뒤 귀국)</span><b class="num">${x.rtD.size}일</b></div>` +
-            (S.dir === 'out' && S.rt
+            (true
               ? `<div class="row"><span>가장 빠른 왕복</span><b>${x.nextRt ? esc(fmtD(x.nextRt)) : '—'}</b></div>`
               : `<div class="row"><span>가장 빠른 날</span><b>${x.next ? esc(fmtD(x.next)) : '—'}</b></div>`) +
             `<div class="spark" aria-hidden="true">${sp}</div></button>`;
@@ -959,9 +936,9 @@
     const runs = (st.runs || []).map(r => `<tr><td>${esc(hm(r.at))}</td><td class="num">${r.requests}</td><td class="num">${r.ok}</td><td class="num">${r.failed}</td><td class="num">${r.new_seats}</td><td>${r.blocked ? '<span style="color:var(--warn)">막힘</span>' : ''}${r.note ? ' ' + esc(r.note) : ''}</td></tr>`).join('');
     const R = r2Info();
     const r2box = S.data && S.data.r2 ?
-      `<h4 style="margin:6px 0">2석 기준 · 로마일 (맥미니 <code>ke-roamile</code>, 30분마다)</h4><div class="stat-grid">` +
+      `<h4 style="margin:6px 0">로마일 (맥미니 <code>ke-roamile</code>, 30분마다)</h4><div class="stat-grid">` +
       `<div class="stat"><div class="k">읽은 묶음</div><div class="v num">${R.done} / ${R2_GROUPS}</div><div class="progress"><i style="width:${Math.floor(R.done / R2_GROUPS * 100)}%"></i></div></div>` +
-      `<div class="stat"><div class="k">2석 이상 좌석</div><div class="v num">${won((S.data.r2.seats || []).length)}</div></div>` +
+      `<div class="stat"><div class="k">좌석</div><div class="v num">${won((S.data.r2.seats || []).length)}</div></div>` +
       `<div class="stat"><div class="k">마지막 수집</div><div class="v">${esc(rel(R.st.last_run_at))}</div></div>` +
       `<div class="stat"><div class="k">마지막 성공</div><div class="v">${esc(rel(R.st.last_ok_at))}</div></div></div>` +
       (R.st.last_error ? `<div class="notice">${esc(R.st.last_error)}</div>` : '') +
@@ -1008,12 +985,8 @@
     lsSet(LS.cab, [...S.cabins].join('')); renderAll();
   });
   $('dirSeg').addEventListener('click', e => { const b = e.target.closest('button[data-dir]'); if (!b) return; S.dir = b.dataset.dir; S.day = null; lsSet(LS.dir, S.dir); renderAll(); });
-  $('freshSeg').addEventListener('click', e => { const b = e.target.closest('button[data-fresh]'); if (!b) return; S.fresh = Number(b.dataset.fresh) || 0; S.day = null; lsSet(LS.fresh, String(S.fresh)); renderAll(); });
-  $('rtSeg').addEventListener('click', e => { const b = e.target.closest('button[data-rt]'); if (!b) return; S.rt = b.dataset.rt === '1'; S.day = null; lsSet(LS.rt, S.rt ? '1' : '0'); renderAll(); });
   $('tabSeg').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; lsSet(LS.tab, S.tab); renderAll(); });
   $('regionChips').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (!b) return; S.region = b.dataset.region; S.day = null; lsSet(LS.region, S.region); renderAll(); });
-  let qT = 0;
-  $('q').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { S.q = e.target.value; S.day = null; renderAll(); }, 120); });
   $('monthStrip').addEventListener('click', e => { const b = e.target.closest('button[data-month]'); if (!b) return; S.month = b.dataset.month; S.day = null; renderAll(); });
   function shiftMonth(n) {
     const ms = monthsList(), i = ms.indexOf(S.month) + n;
