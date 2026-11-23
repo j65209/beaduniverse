@@ -5000,15 +5000,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 홈 운영 카드 한 줄 — 왼쪽 리오더 경보 · 오른쪽 입고 현황 (2026-11-17 사장님 "좌/우로 세팅 · 무드 · 톤 같이 맞춰")
-     두 카드는 같은 틀이다: 흰 카드 · 같은 머리줄 · 같은 칩 줄 · 같은 줄 모양(왼쪽 알약 · 가운데 글 · 오른쪽 큰 숫자).
+     두 카드는 같은 틀이다: 흰 카드 · 같은 머리줄 · 같은 가로 칸(브랜드 · 상품 · 큰 숫자).
      같은 날 2차 "컬러감 너무 많아 눈 아파" → 무채색 바탕. 색은 빨강 한 가지만 — 품절 · 모자람 · 실패 · 7일 안(연한 빨강).
      브랜드는 이름표 앞 작은 점(.reo-b-* 의 --bc)으로만. 버튼은 둘 다 먹색.
-     한 줄에서 높이가 같게 늘어나고(입고 세 줄이 남는 높이를 나눠 가짐), 900px 아래에서는 위아래로 쌓인다. ===== */
+     한 줄에서 높이가 같게 늘어나고, 900px 아래에서는 위아래로 쌓인다. ===== */
   .home-ops-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch;margin:6px 0 18px}
   .home-reo-card,.home-rcv-card{display:flex;flex-direction:column;min-width:0;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:12px 16px 14px}
   .hro-head,.hrc-head{display:flex;align-items:center;gap:6px 12px;margin-bottom:10px;flex-wrap:wrap;min-height:32px}
   .hro-title,.hrc-title{font-size:15px;font-weight:800;color:var(--text-0);display:flex;align-items:baseline;gap:8px;min-width:0}
-  .hro-sub,.hrc-sub{font-size:11.5px;font-weight:600;color:var(--text-3)}
   .hro-meta,.hrc-meta{font-size:11.5px;color:var(--text-3);margin-left:auto;font-variant-numeric:tabular-nums}
   .hro-meta.err,.hrc-meta.err{color:#b91c1c;font-weight:700}
   .hro-actions,.hrc-actions{display:flex;gap:6px}
@@ -5017,13 +5016,35 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .hro-btn:hover,.hrc-btn:hover{background:#000}
   .hro-btn-ghost,.hrc-btn-ghost{background:var(--bg-2);color:var(--text-1);min-width:32px;padding:6px 10px;font-size:14px}
   .hro-btn-ghost:hover,.hrc-btn-ghost:hover{background:var(--bg-3)}
-  /* 칩 줄 — 리오더: 품절 · 7일 안 / 입고: 반영 중 · 실패 · 차감. 0 이면 흐리게, 누르면 전체 창 */
-  .hro-chips,.hrc-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-  .hro-chip,.hrc-chip{display:inline-flex;align-items:baseline;gap:5px;min-height:32px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:var(--text-2);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
-  .hro-chip b,.hrc-chip b{font-size:15px;font-variant-numeric:tabular-nums}
-  .hro-chip.zero,.hrc-chip.zero{opacity:.55}
-  .hro-chip.out:not(.zero),.hrc-chip.fail:not(.zero){background:#fef2f2;border-color:#fecaca;color:#b91c1c}   /* 색은 품절 · 실패가 있을 때만 */
-  .hro-list,.hrc-list{display:flex;flex-direction:column;gap:6px;flex:1 1 auto}
+  /* 2026-11-23 사장님 "입고현황 반영중 · 실패 · 차감 없애고 오늘 · 이번주 · 이번달 선택해서 가로로 · 리오더 경보도 정보가 너무 많아, 간단하게 가로로"
+     → 두 카드 모두 가로 칸(.hop-tile) 한두 줄. 자세한 건 칸이나 [전체 보기]를 누르면 나오는 창에. 칸 수는 JS 가 --c(보통) · --cw(넓은 PC)로 */
+  .hro-cnt{font-size:12px;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums}
+  .hro-cnt em{font-style:normal;color:#b91c1c}
+  .hrc-tabs{order:5;flex:1 0 100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .hrc-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1;min-height:34px;padding:6px 12px;border:1px solid var(--line-2);border-radius:999px;background:var(--bg-1);color:var(--text-2);font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;cursor:pointer}
+  .hrc-tabs button:hover{background:var(--bg-2)}
+  .hrc-tabs button b{font-size:13.5px;font-weight:800;color:var(--text-0);font-variant-numeric:tabular-nums}
+  .hrc-tabs button.on,.hrc-tabs button.on b{color:#fff}
+  .hrc-tabs button.on{background:#1f2329;border-color:#1f2329}
+  .hop-tiles{flex:1 1 auto;display:grid;grid-template-columns:repeat(var(--c,3),minmax(0,1fr));gap:8px}
+  .hop-tile{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;min-height:84px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg-1);color:var(--text-1);font-family:inherit;text-align:left;cursor:pointer}
+  .hop-tile:hover{border-color:var(--line-2);background:var(--bg-0);box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  .hop-top{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;min-height:19px}
+  .hop-brand{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;font-weight:700;color:var(--text-2)}
+  .hop-brand::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--bc,var(--text-3));margin-right:5px;vertical-align:1px}
+  .hop-top>.reo-sev{flex:none}
+  .hop-name{display:flex;align-items:baseline;gap:5px;min-width:0;font-size:13px;line-height:1.35}
+  .hop-name b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;color:var(--text-0)}
+  .hop-name i{flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:normal;font-size:12px;color:var(--text-3)}
+  .hop-num{font-size:22px;font-weight:900;line-height:1.1;letter-spacing:-.5px;color:var(--text-0);font-variant-numeric:tabular-nums}
+  .hop-num small{font-size:13px;font-weight:800;letter-spacing:0;margin-left:2px}
+  .hop-num.zero{color:#b91c1c}
+  .hop-tile.more{align-items:center;justify-content:center;background:var(--bg-2);border-color:transparent;color:var(--text-1);font-size:13px;font-weight:700;text-align:center}
+  @media (min-width:1700px){
+    /* 넓은 PC — 기간 탭이 머리줄로 올라가고 칸은 한 줄 */
+    .hrc-tabs{order:0;flex:0 0 auto;grid-template-columns:none;grid-auto-flow:column}
+    .hop-tiles{grid-template-columns:repeat(var(--cw,5),minmax(0,1fr))}
+  }
   /* 브랜드 색 — 브랜드 리포트(BREP_BRANDS dot)와 같은 색. 2026-11-16 "브랜드별로 폰트나 칸컬러는 다르게" 로 칸 바탕 · 띠 · 글씨였다가
      11-17 "컬러감 너무 많아 눈 아파" → 이름표 앞 작은 점에만 쓴다 (리오더 · 입고 · 두 전체 창) */
   .reo-b-kop {--bc:#818cf8}
@@ -5033,24 +5054,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-b-yar {--bc:#a78bfa}
   .reo-b-pp  {--bc:#f59e0b}
   .reo-b-akoi{--bc:#f472b6}
-  .hro-row,.hrc-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;width:100%;text-align:left;padding:8px 14px 8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg-1);font-family:inherit;color:var(--text-1);cursor:pointer;min-height:52px}
-  .hro-row:hover,.hrc-row:hover{border-color:var(--line-2);background:var(--bg-0);box-shadow:0 2px 10px rgba(0,0,0,.05)}
-  /* 입고 줄 — 오늘 / 이번 주 / 이번 달. 왼쪽 카드가 더 길면 남는 높이를 셋이 나눠 가진다 */
-  .hrc-row{flex:1 1 auto}
-  .hro-row>.reo-sev,.hrc-row>.reo-sev{min-width:52px;text-align:center}
   .reo-sev{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--bg-3);color:var(--text-2)}
   .reo-sev.out{background:#dc2626;color:#fff}
   .reo-sev.urg{background:#fee2e2;color:#b91c1c}
-  .reo-sev.rcv{background:var(--bg-3);color:var(--text-1)}
-  .hrc-main{min-width:0;display:flex;flex-direction:column;gap:3px}
-  .hrc-it{display:flex;align-items:baseline;min-width:0;font-size:13px;line-height:1.4}
-  .hrc-it .reo-brand{flex:none}
-  .hrc-it .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;color:var(--text-0)}
-  .hrc-it .nm i{font-style:normal;font-weight:500;color:var(--text-3);margin-left:4px}
-  .hrc-it>b{flex:none;margin-left:10px;font-weight:800;color:var(--text-1);font-variant-numeric:tabular-nums}
-  .hrc-cnt{font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
-  .hrc-cnt .go{color:var(--text-1);font-weight:700;white-space:nowrap}
-  .hrc-none{font-size:12.5px;color:var(--text-3)}
   .reo-main{min-width:0;display:flex;flex-direction:column;gap:2px}
   .reo-name{min-width:0;font-size:13.5px;line-height:1.35}
   .reo-brand{display:inline-block;font-size:11.5px;font-weight:700;color:var(--text-2);background:var(--bg-1);border:1px solid var(--line-2);border-radius:6px;padding:0 6px;margin-right:6px;vertical-align:1px;white-space:nowrap}
@@ -5426,12 +5432,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-left b{font-size:26px;font-weight:900;color:var(--text-0);letter-spacing:-.5px}
   .reo-left b small{font-size:15px;font-weight:800;letter-spacing:0;margin-left:2px}   /* 숫자 바로 옆 '개' — 숫자와 같은 색 */
   .reo-left.zero b{color:#b91c1c}
-  .reo-left.hrc-left{min-width:104px}  /* 2,686개 같은 네 자리도 세 줄의 점선이 한 줄로 서게 */
-  .reo-left.hrc-left.none b{color:var(--text-3)}
   .hro-empty{font-size:13px;color:var(--text-2);padding:6px 2px}
   .hro-empty.ok{color:var(--text-1);font-weight:700}
   /* 목록 자리의 안내(불러오는 중 · 없음)는 남는 높이를 채우는 점선 칸 — 옆 카드와 높이가 맞게 */
-  .hro-list>.hro-empty,.hrc-list>.hro-empty{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:52px;padding:10px;border:1px dashed var(--line-2);border-radius:10px;text-align:center}
+  .hop-tiles>.hro-empty{grid-column:1/-1;flex:1 1 100%;display:flex;align-items:center;justify-content:center;min-height:52px;padding:10px;border:1px dashed var(--line-2);border-radius:10px;text-align:center}
   .hro-more{font-size:12px;font-weight:700;color:var(--text-1);padding:2px 2px 0;background:none;border:0;font-family:inherit;cursor:pointer;text-align:left;min-height:32px}
   .reo-panel{width:min(980px,100%)}
   .reo-tabs{flex-wrap:wrap}
@@ -5441,10 +5445,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .reo-mrow a.reo-sheet{font-size:11.5px;font-weight:700;color:var(--text-1);text-decoration:underline;text-underline-offset:2px;white-space:nowrap;padding:6px 4px}
   .reo-pend{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:var(--bg-3);color:var(--text-2)}
   .reo-basis{font-size:11.5px;color:var(--text-3);line-height:1.6;border-top:1px solid var(--line);padding-top:8px}
-  .hro-need{display:block;width:100%;text-align:left;margin:-2px 0 10px;padding:8px 12px;min-height:36px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc;color:#334155;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
-  .hro-need b{font-size:14px;color:#0f172a}
-  .hro-need:hover{border-color:#475569;background:#f1f5f9}
-  .hro-need[hidden]{display:none}  /* display:block 이 hidden 을 이겨 빈 점선 칸이 떠 있었다 */
   .reo-need{border-top:1px solid var(--line);padding-top:8px}
   .reo-need-head{font-size:13px;font-weight:800;color:#0f172a;padding:2px 2px 2px}
   .reo-need-sub{font-size:11.5px;color:var(--text-3);line-height:1.5;padding:2px 2px 8px}
@@ -5459,32 +5459,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   @media (max-width:900px){
     /* 좁은 화면 — 두 카드를 위아래로 (리오더 경보가 위) */
     .home-ops-pair{grid-template-columns:minmax(0,1fr);gap:14px}
-    .hrc-row{flex:0 0 auto}
   }
   @media (max-width:700px){
     .home-ops-pair{margin:6px 0 14px}
     .home-reo-card,.home-rcv-card{padding:10px 12px 12px}
     .hro-head,.hrc-head{gap:4px 8px;margin-bottom:8px}
-    .hro-sub,.hrc-sub{display:none}
     .hro-meta,.hrc-meta{margin-left:0;width:100%;order:3}
+    .hro-meta:not(.err),.hrc-meta:not(.err){display:none}   /* 휴대폰은 문제가 있을 때만 */
     .hro-actions,.hrc-actions{margin-left:auto}
-    /* 휴대폰: 칩을 한 줄에 · 목록은 JS 가 리오더 3줄 · 입고 품목 2개까지만 */
-    .hro-chips,.hrc-chips{display:grid;gap:6px;margin-bottom:8px}
-    .hro-chips{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .hrc-chips{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .hro-chip,.hrc-chip{justify-content:center;padding:5px 4px;font-size:11.5px;gap:3px;min-height:36px}
-    .hro-chip b,.hrc-chip b{font-size:14px}
-    .hro-row,.hrc-row{gap:8px;padding:8px 10px 8px 8px}
-    .hro-row>.reo-sev,.hrc-row>.reo-sev{min-width:46px}
+    /* 휴대폰: 기간 탭 한 줄 · 칸은 옆으로 밀어서 (다음 칸이 살짝 보이게) */
+    .hrc-tabs button{padding:6px 4px;gap:4px;font-size:12px;min-height:38px}
+    .hrc-tabs button b{font-size:13px}
+    .hop-tiles{display:flex;overflow-x:auto;margin:0 -12px;padding:0 12px;scroll-padding:0 12px;scroll-snap-type:x proximity;scrollbar-width:none}
+    .hop-tiles::-webkit-scrollbar{display:none}
+    .hop-tile{flex:1 0 148px;scroll-snap-align:start}
+    .hop-tile.more{flex:0 0 92px}
     .reo-left{min-width:58px;padding-left:8px}
-    .reo-left.hrc-left{min-width:84px}
     .reo-left b{font-size:22px}
     .reo-left b small{font-size:13px}
-    /* 입고 품목 — 휴대폰은 칸이 좁아 이름표 · 이름 · 수량을 따로 세우면 옵션까지 잘린다 → 한 문장처럼 이어 쓰고 줄바꿈 */
-    .hrc-it{display:block;font-size:12.5px;overflow-wrap:anywhere}
-    .hrc-it .reo-brand{margin-right:4px}
-    .hrc-it .nm{display:inline;white-space:normal;overflow:visible}
-    .hrc-it>b{margin-left:4px;white-space:nowrap}
     .reo-mrow{grid-template-columns:auto minmax(0,1fr) auto;gap:8px;padding:8px 8px}
     .reo-mrow a.reo-sheet{grid-column:2/4;justify-self:start;padding:4px 0}
     .reo-mrow .reo-sheet-none{display:none}
@@ -12710,29 +12702,32 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     </div>
 
     <!-- 홈 운영 카드 한 줄 (2026-11-17 사장님 "리오더경보, 입고현황 좌/우로 · 무드 · 톤 같이") — 왼쪽 리오더 경보 · 오른쪽 입고 현황.
-         같은 틀(위 색 띠 · 머리줄 · 칩 줄 · 알약/글/큰 숫자 줄)로 맞춤, 900px 아래에서는 위아래(리오더가 위). -->
+         같은 틀(머리줄 · 가로 칸)로 맞춤, 900px 아래에서는 위아래(리오더가 위). -->
     <div class="home-ops-pair">
     <!-- 리오더 경보 — 홈 맨 위 고정 (2026-11-16 사장님 "리오더 경보는 확실하게 배치해줘. 상단으로 무조건 고정").
          모든 PC · 휴대폰 · 보기 PIN 에 보이고 숨기거나 접을 수 없다. 서버 /erp/reorder (맥미니 scripts/reorder_alert.py, 30분) -->
     <section id="homeReorderCard" class="home-reo-card" aria-label="리오더 경보">
       <div class="hro-head">
-        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-sub">7일 안에 바닥 · 계속 팔리는 상품</span></div>
+        <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-cnt" id="homeReoCnt"></span></div>
         <div class="hro-meta" id="homeReoMeta">불러오는 중…</div>
         <div class="hro-actions">
           <button class="hro-btn hro-btn-ghost" type="button" onclick="reoHomeLoad(true)" title="지금 다시 계산 (1분쯤 걸려요)">↻</button>
           <button class="hro-btn" type="button" onclick="reoModalOpen()">전체 보기</button>
         </div>
       </div>
-      <div class="hro-chips" id="homeReoChips"></div>
-      <button type="button" class="hro-need" id="homeReoNeed" hidden onclick="reoModalOpen('need')"></button>
-      <div class="hro-list" id="homeReoList"></div>
+      <div class="hop-tiles" id="homeReoList"></div>
     </section>
 
     <!-- 입고 현황 (2026-11-13) — 에이전트 오피스 물류팀 모아가 식스샵 ERP MASTER 에 반영한 입고 · 차감.
-         기록 원본은 ERP 시트 숨김 탭 '물류 입고기록' (서버 /erp/moves). 줄(오늘 · 이번 주 · 이번 달)을 누르면 그 기간 내역 -->
+         기록 원본은 ERP 시트 숨김 탭 '물류 입고기록' (서버 /erp/moves). 탭(오늘 · 이번 주 · 이번 달)으로 고르고 — 누가 열어도 처음은 오늘 — 칸을 누르면 그 기간 내역 -->
     <section id="homeRcvCard" class="home-rcv-card" aria-label="입고 현황">
       <div class="hrc-head">
-        <div class="hrc-title">📦 <span>입고 현황</span><span class="hrc-sub">재고 반영 기록</span></div>
+        <div class="hrc-title">📦 <span>입고 현황</span></div>
+        <div class="hrc-tabs" id="homeRcvTabs" role="tablist" aria-label="입고 기간">
+          <button type="button" role="tab" data-period="today" class="on" aria-selected="true" onclick="rcvHomePeriod('today')">오늘<b>–</b></button>
+          <button type="button" role="tab" data-period="week" aria-selected="false" onclick="rcvHomePeriod('week')">이번 주<b>–</b></button>
+          <button type="button" role="tab" data-period="month" aria-selected="false" onclick="rcvHomePeriod('month')">이번 달<b>–</b></button>
+        </div>
         <div class="hrc-meta" id="homeRcvMeta">불러오는 중…</div>
         <div class="hrc-actions">
           <button class="hrc-btn hrc-btn-ghost" type="button" onclick="rcvHomeLoad()" title="지금 다시 읽기">↻</button>
@@ -12740,12 +12735,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <button class="hrc-btn master-only" type="button" onclick="pstOpen()" title="식스샵프로 판매가능 · 품절 · 판매중지 바꾸기 (관리자만)">상품 상태</button>
         </div>
       </div>
-      <div class="hrc-chips" id="homeRcvChips"></div>
-      <div class="hrc-list" id="homeRcvList">
-        <button type="button" class="hrc-row" data-period="today" onclick="rcvModalOpen('today')"><span class="reo-sev rcv">오늘</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b></span></button>
-        <button type="button" class="hrc-row" data-period="week" onclick="rcvModalOpen('week')"><span class="reo-sev rcv">이번 주</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b></span></button>
-        <button type="button" class="hrc-row" data-period="month" onclick="rcvModalOpen('month')"><span class="reo-sev rcv">이번 달</span><span class="hrc-main"><span class="hrc-none">불러오는 중…</span></span><span class="reo-left hrc-left none"><b>–</b></span></button>
-      </div>
+      <div class="hop-tiles" id="homeRcvList"><div class="hro-empty">불러오는 중…</div></div>
     </section>
     </div>
 
@@ -16361,10 +16351,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      에이전트 오피스 물류팀 모아가 식스샵 ERP MASTER 에 반영한 입고 · 차감.
      서버 /erp/moves = 오피스 재고 ERP 원장(모아) + 사람이 ERP 화면에서 남은 재고를 직접 올린 입고(direct, 2026-11-23)
                     + 전환 전 시트 기록 + 아직 반영 전인 대기 건 (맥미니 프록시 scripts/erp_moves.py).
-     타일(오늘 · 이번 주 · 이번 달)은 반영된 입고만 센다 — 반영 중 · 실패 · 차감은 배지. 누르면 그 기간 내역 창.
+     탭(오늘 · 이번 주 · 이번 달)과 칸은 반영된 입고만 센다 — 반영 중 · 실패 · 차감은 홈에서 뺌(11-23), 칸을 누르면 나오는 내역 창에 있다.
      내역 창 검색칸은 다시 그리는 목록 밖에 있어서 1분 갱신이 입력을 지우지 않는다. */
   const RCV_BRAND_LABEL = {apt:'아페티', kop:'코페리', koz:'코즈미', '6a':'식스에이', yar:'야르', pp:'프로덕트피알', akoi:'아코이하우스'};
-  const _rcvHome = {rows:[], at:0, loading:false, err:'', busy:[], period:'today', q:'', withOut:true, timer:null};
+  const _rcvHome = {rows:[], at:0, loading:false, err:'', tab:'today', tabDay:'', period:'today', q:'', withOut:true, timer:null};
   function _rcvStarts(){
     const d0 = new Date(); d0.setHours(0,0,0,0);
     const w = new Date(d0); w.setDate(w.getDate() - ((w.getDay() + 6) % 7));   // 이번 주 = 월요일부터
@@ -16385,7 +16375,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const r = await fetch(`${base}/erp/moves?from=${Math.min(st.week, st.month)}`, {headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'}, cache:'no-store'});
       const j = await r.json().catch(() => ({}));
       if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      _rcvHome.rows = j.moves || []; _rcvHome.at = Date.now(); _rcvHome.err = ''; _rcvHome.busy = j.busy || [];
+      _rcvHome.rows = j.moves || []; _rcvHome.at = Date.now(); _rcvHome.err = '';
     }catch(e){ _rcvHome.err = (e && e.message) || String(e); }
     finally{
       _rcvHome.loading = false;
@@ -16406,57 +16396,60 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       qty: ins.reduce((a, r) => a + (r.qty||0), 0), outQty: outs.reduce((a, r) => a + (r.qty||0), 0),
       items: [...byItem.values()].sort((a, b) => b.q - a.q)};
   }
+  /* 홈 가로 칸 (입고 · 리오더 공용) — 칸 수는 화면 폭에 맞게, 넘치면 마지막 칸이 '+N 더' */
+  const _hopWide = window.matchMedia('(min-width:1700px)');
+  const _hopPhone = window.matchMedia('(max-width:700px)');
+  const _hopOpt = o => String(o || '').split(' / ').map(x => x.replace(/^[^:]{1,12}:\s*/, '')).join(' / ');   // 'Color: White' → 'White'
+  const _hopName = n => String(n || '').replace(/^\s*\[[^\]]*\]\s*/, '').replace(/\s*\(\d+\s*colou?rs?\)\s*$/i, '') || String(n || '');   // 앞 [SILVER925] · 뒤 (2 color) 는 칸에서만 뺌 (올려 두면 전체 이름)
+  function _hopTile(brand, label, name, opt, pill, num, zero, onclick){
+    return `<button type="button" class="hop-tile reo-b-${_rcvEsc(brand)}" title="${_rcvEsc(label)} · ${_rcvEsc(name)}${opt ? ' · ' + _rcvEsc(opt) : ''}" onclick="${onclick}">`
+      + `<span class="hop-top"><span class="hop-brand">${_rcvEsc(label)}</span>${pill}</span>`
+      + `<span class="hop-name"><b>${_rcvEsc(_hopName(name))}</b>${opt ? `<i>${_rcvEsc(_hopOpt(opt))}</i>` : ''}</span>`
+      + `<span class="hop-num${zero ? ' zero' : ''}">${num}<small>개</small></span></button>`;
+  }
+  function _hopFill(list, tiles, cap, more, onMore){
+    const show = tiles.length > cap ? tiles.slice(0, cap - 1) : tiles;
+    const n = show.length + (tiles.length > show.length ? 1 : 0);
+    list.style.setProperty('--c', n === 4 ? 2 : Math.min(n, 3));
+    list.style.setProperty('--cw', n);
+    list.innerHTML = show.join('') + (tiles.length > show.length ? `<button type="button" class="hop-tile more" onclick="${onMore}">+${more(tiles.length - show.length)} 더 ›</button>` : '');
+  }
+  function rcvHomePeriod(p){ _rcvHome.tab = p; _rcvHome.tabDay = new Date().toDateString(); rcvHomeRender(); }
   function rcvHomeRender(){
     const card = document.getElementById('homeRcvCard');
     if(!card) return;
+    // 누구에게나 처음은 오늘 — 고른 탭은 저장하지 않고, 켜 둔 화면도 날이 바뀌면 오늘로
+    if(_rcvHome.tab !== 'today' && _rcvHome.tabDay !== new Date().toDateString()) _rcvHome.tab = 'today';
+    const p = _rcvHome.tab;
     const meta = document.getElementById('homeRcvMeta');
     if(meta){
-      if(_rcvHome.err && !_rcvHome.at){ meta.textContent = `불러오지 못함 — ${_rcvHome.err}`; meta.classList.add('err'); }
-      else {
-        meta.classList.toggle('err', !!_rcvHome.err);
-        meta.textContent = _rcvHome.at
-          ? `${_rcvHM(_rcvHome.at)} 갱신 · 1분마다${_rcvHome.err ? ' · 최근 갱신 실패' : ''}${(_rcvHome.busy||[]).length ? ' · ERP 송장 처리 중 — 끝나면 이어서 반영' : ''}`
-          : '불러오는 중…';
-      }
+      meta.classList.toggle('err', !!_rcvHome.err);
+      meta.textContent = _rcvHome.at ? `${_rcvHM(_rcvHome.at)} 기준${_rcvHome.err ? ' · 최근 갱신 실패' : ''}`
+        : (_rcvHome.err ? `불러오지 못함 — ${_rcvHome.err}` : '불러오는 중…');
     }
-    const chips = document.getElementById('homeRcvChips');
+    document.querySelectorAll('#homeRcvTabs button').forEach(b => {
+      const on = b.dataset.period === p;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if(_rcvHome.at) b.querySelector('b').textContent = `${_rcvN(_rcvStat(_rcvPeriodRows(b.dataset.period)).qty)}개`;
+    });
     const list = document.getElementById('homeRcvList');
+    if(!list) return;
     if(!_rcvHome.at){
-      if(_rcvHome.err && list) list.innerHTML = '<div class="hro-empty">입고 현황을 불러오지 못했어요. 잠시 뒤 ↻ 를 눌러 주세요.</div>';
+      if(_rcvHome.err) list.innerHTML = '<div class="hro-empty">입고 현황을 불러오지 못했어요. 잠시 뒤 ↻ 를 눌러 주세요.</div>';
       return;
     }
-    /* 2026-11-17 리오더 경보 옆 한 줄 — 리오더 카드와 같은 모양:
-       칩 줄 = 반영 중(지금) · 실패 · 차감(이번 달), 줄 = 오늘 · 이번 주 · 이번 달 (알약 · 많이 들어온 품목 · 오른쪽 큰 숫자).
-       큰 숫자는 반영된 입고만 센다 (전엔 타일 안 배지였던 반영 중 · 실패 · 차감은 칩으로). */
-    const mon = _rcvStat(_rcvPeriodRows('month'));
-    const waitN = _rcvHome.rows.filter(r => r.status === 'pending').length;
-    if(chips){
-      chips.innerHTML = [
-        {n: waitN, t: '반영 중', cls: 'wait', tip: '시트에 반영되는 중인 입력 (보통 1~2분)'},
-        {n: mon.fail.length, t: '실패', cls: 'fail', tip: '이번 달 반영 실패 — 내역에서 이유를 볼 수 있어요'},
-        {n: mon.outs.length, t: '차감', cls: 'out', tip: `이번 달 차감 ${mon.outs.length}건 · ${_rcvN(mon.outQty)}개`},
-      ].map(c => `<button type="button" class="hrc-chip ${c.cls}${c.n ? '' : ' zero'}" title="${c.tip}" onclick="rcvModalOpen('month'${c.cls === 'out' ? ', true' : ''})"><b>${_rcvN(c.n)}</b>${c.t}</button>`).join('');
+    const items = _rcvStat(_rcvPeriodRows(p)).items;
+    if(!items.length){
+      list.innerHTML = `<div class="hro-empty">${{today:'오늘은', week:'이번 주는', month:'이번 달은'}[p]} 아직 입고가 없어요</div>`;
+      return;
     }
-    if(!list) return;
-    const topN = window.matchMedia('(max-width:700px)').matches ? 2 : 3;   // 휴대폰은 품목 2개까지
-    list.innerHTML = [['today', '오늘'], ['week', '이번 주'], ['month', '이번 달']].map(([p, t]) => {
-      const s = _rcvStat(_rcvPeriodRows(p));
-      const top = s.items.slice(0, topN);
-      const items = top.map(x => `<span class="hrc-it"><span class="reo-brand reo-b-${_rcvEsc(x.r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[x.r.brand] || x.r.brand)}</span>`
-        + `<span class="nm" title="${_rcvEsc(x.r.product)}${x.r.option ? ' ' + _rcvEsc(x.r.option) : ''}">${_rcvEsc(x.r.product)}${x.r.option ? `<i>${_rcvEsc(x.r.option)}</i>` : ''}</span><b>+${_rcvN(x.q)}</b></span>`).join('');
-      const rest = s.items.length - top.length;
-      const cnt = s.ins.length ? `${s.items.length}품목 · ${s.ins.length}건 · <span class="go">${rest > 0 ? `+${rest}품목 더 ›` : '내역 ›'}</span>` : '';
-      return `<button type="button" class="hrc-row" data-period="${p}" onclick="rcvModalOpen('${p}')">`
-        + `<span class="reo-sev rcv">${t}</span>`
-        + `<span class="hrc-main">${items || `<span class="hrc-none">${p === 'today' ? '아직 오늘 입고가 없어요' : '아직 입고 기록이 없어요'}</span>`}${cnt ? `<span class="hrc-cnt">${cnt}</span>` : ''}</span>`
-        + `<span class="reo-left hrc-left${s.qty ? '' : ' none'}" title="${t} 입고 (반영된 것만)"><b>${_rcvN(s.qty)}<small>개</small></b></span>`
-        + `</button>`;
-    }).join('');
+    const open = `rcvModalOpen('${p}')`;
+    _hopFill(list, items.map(x => _hopTile(x.r.brand, RCV_BRAND_LABEL[x.r.brand] || x.r.brand, x.r.product, x.r.option, '', '+' + _rcvN(x.q), false, open)),
+      _hopWide.matches ? 5 : (_hopPhone.matches ? 6 : 3), n => `${n}품목`, open);
   }
-  function rcvModalOpen(p, showOut){
+  function rcvModalOpen(p){
     _rcvHome.period = p || 'today';
-    // '차감' 칩으로 열면 차감 줄이 보이게 (전에 '차감도 보기' 를 꺼 뒀어도)
-    if(showOut){ _rcvHome.withOut = true; const c = document.getElementById('rcvModalOut'); if(c) c.checked = true; }
     const m = document.getElementById('rcvModal');
     if(!m) return;
     m.hidden = false;
@@ -16522,6 +16515,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function rcvHomeBoot(){
     rcvHomeLoad();
     if(_rcvHome.timer) return;
+    [_hopWide, _hopPhone].forEach(m => m.addEventListener('change', () => { rcvHomeRender(); reoHomeRender(); }));   // 창 크기가 바뀌면 칸 수 다시
     // 홈이 보일 때만 1분마다 (다른 화면 · 숨은 탭에서는 쉰다)
     _rcvHome.timer = setInterval(() => {
       const home = document.getElementById('viewHome');
@@ -16535,7 +16529,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(e.key === 'Escape' && m && !m.hidden) rcvModalClose();
     });
   }
-  function rcvHomeRefresh(){ if(Date.now() - _rcvHome.at > 20000) rcvHomeLoad(); }
+  function rcvHomeRefresh(){ rcvHomePeriod('today'); if(Date.now() - _rcvHome.at > 20000) rcvHomeLoad(); }   // 홈에 돌아오면 다시 오늘부터
   /* ===== 리오더 경보 — 홈 맨 위 고정 (2026-11-16 사장님 "리오더 경보는 확실하게 배치해줘. 상단으로 무조건 고정") =====
      서버 /erp/reorder = 맥미니 scripts/reorder_alert.py 가 30분마다 계산한 것 (읽기만 — 자동 품절 · 출고보류 없음).
      재고: 코페리 · 아페티 · 코즈미 = 식스샵 ERP MASTER 남은 재고(L) — 쇼핑몰이 수량관리 안함이라 0개가 돼도 계속 팔린다 → 이 카드가 유일한 안전장치.
@@ -16612,7 +16606,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const card = document.getElementById('homeReorderCard');
     if(!card) return;
     const meta = document.getElementById('homeReoMeta');
-    const chips = document.getElementById('homeReoChips');
     const list = document.getElementById('homeReoList');
     const d = _reo.data;
     if(meta){
@@ -16622,7 +16615,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const failed = job.status === 'failed';
       meta.classList.toggle('err', !!(_reo.err || old || failed));
       meta.textContent = !d ? (_reo.err ? `불러오지 못함 — ${_reo.err}` : '불러오는 중…')
-        : `${_reoHM(calcAt)} 계산 · 30분마다`
+        : `${_reoHM(calcAt)} 기준`
           + (d.refreshing ? ' · 다시 계산 중' : '')
           + (failed ? ' · 최근 계산 실패 — 이전 값' : '')
           + (old ? ' · 오래된 값' : '')
@@ -16634,27 +16627,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     items.forEach(i => { if(cnt[i.sev] != null) cnt[i.sev]++; });
     card.classList.toggle('alarm', cnt.out + cnt.urgent > 0);
     card.classList.toggle('calm', !items.length);
-    if(chips){
-      chips.innerHTML = REO_ORDER.map(k => `<button type="button" class="hro-chip ${REO_SEV[k].cls}${cnt[k] ? '' : ' zero'}" onclick="reoModalOpen('${k}')"><b>${cnt[k]}</b>${REO_SEV[k].t}</button>`).join('');
-    }
-    // 시트에 실제 개수가 없는 상품 (식스샵 '수량관리 안함'이라 빈칸에서 시작해 판매만 빠진 마이너스) — 품절이 아니라 실사 필요
-    const needBtn = document.getElementById('homeReoNeed');
-    const need = d.needCount || [];
-    if(needBtn){
-      needBtn.hidden = !need.length;
-      if(need.length) needBtn.innerHTML = `📝 시트에 실제 개수가 없는 상품 <b>${need.length}</b>개 — 품절 아님, 실사 필요 ›`;
-    }
+    const cntEl = document.getElementById('homeReoCnt');
+    if(cntEl) cntEl.innerHTML = items.length ? `${cnt.out ? `<em>품절 ${cnt.out}</em>` : `품절 0`} · 7일 안 ${cnt.urgent}` : '';
     if(!list) return;
     if(!items.length){
       list.innerHTML = '<div class="hro-empty ok">✅ 7일 안에 바닥날 상품이 없어요</div>';
       return;
     }
-    // 휴대폰은 3줄까지만 (첫 화면을 이 카드가 다 덮지 않게) — 나머지는 '전체 보기'
-    const show = items.filter(i => REO_SEV[i.sev]).slice(0, window.matchMedia('(max-width:700px)').matches ? 3 : 6);
-    list.innerHTML = show.map(it => `<button type="button" class="hro-row reo-b-${_reoEsc(it.b)}" onclick="reoModalOpen('${it.sev}')">`
-        + `<span class="reo-sev ${REO_SEV[it.sev].cls}">${REO_SEV[it.sev].t}</span>`
-        + _reoMainHtml(it) + _reoLeftHtml(it) + `</button>`).join('')
-      + (items.length > show.length ? `<button type="button" class="hro-more" onclick="reoModalOpen()">+${items.length - show.length}개 더 · 전체 보기 ›</button>` : '');
+    // 칸에는 브랜드 · 상품 · 남은 개수 · 언제 바닥나는지만 — 하루 판매 · 발주 잔량 · 경보 며칠째 · 실사 필요는 전체 창에 (11-23 사장님 "정보가 너무 많아")
+    _hopFill(list, items.filter(i => REO_SEV[i.sev]).map(it => _hopTile(it.b, _reoLabel(it.b), it.n, it.o,
+        `<span class="reo-sev ${REO_SEV[it.sev].cls}">${it.sev === 'out' ? '품절' : (it.days < 1 ? '하루 안' : `${Math.round(it.days)}일 뒤`)}</span>`,
+        it.stock < 0 ? '−' + _reoN(-it.stock) : _reoN(it.stock), it.stock <= 0, `reoModalOpen('${it.sev}')`)),
+      _hopWide.matches ? 5 : 6, n => `${n}개`, 'reoModalOpen()');
   }
   function reoModalOpen(sev){
     const m = document.getElementById('reoModal');
@@ -16663,7 +16647,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     m.hidden = false;
     document.body.style.overflow = 'hidden';
     reoModalRender();
-    if(sev === 'need'){ const n = document.getElementById('reoModalNeed'); if(n && !n.hidden) n.scrollIntoView({block:'start'}); }
     if(Date.now() - _reo.at > 60000) reoHomeLoad(false);
   }
   function reoModalClose(){
@@ -16806,7 +16789,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const d = document.getElementById('rcvChatDrawer');
     if(e.key === 'Escape' && d && !d.hidden) rcvChatClose();
   });
-  Object.assign(window, {rcvModalOpen, rcvModalClose, rcvModalPeriod, rcvModalSearch, rcvModalToggleOut, rcvHomeBoot, rcvHomeRefresh, rcvChatOpen, rcvChatClose});
+  Object.assign(window, {rcvHomePeriod, rcvModalOpen, rcvModalClose, rcvModalPeriod, rcvModalSearch, rcvModalToggleOut, rcvHomeBoot, rcvHomeRefresh, rcvChatOpen, rcvChatClose});
 
   /* ===== 상품 상태 (판매가능 · 품절 · 판매중지) — 2026-11-18 사장님 "입고 입력 옆에 상품 상태 변경, 판매중지 · 품절 · 판매가능만" =====
      홈 입고 현황 [상품 상태] → #pstModal. 식스샵프로 공식 API 로 바로 바꾼다 (맥미니 프록시 /sx/pro-status, 관리자 PIN 만).
