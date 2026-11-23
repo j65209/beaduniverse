@@ -338,8 +338,8 @@
   .tbl.xl td{border-right:1px solid var(--line-2);cursor:cell;user-select:none;-webkit-user-select:none}
   .tbl.xl td.rn{cursor:pointer;background:#f8fafc;border-right:1px solid #d5dce5}
   .tbl.xl thead th{cursor:pointer}
-  .tbl.xl thead tr.lt th{top:0;height:22px;padding:0 4px;background:#f8fafc;color:var(--text-4);font-size:11px;font-weight:600;text-align:center;border-bottom:1px solid var(--line-2)}
-  .tbl.xl thead tr.hd th{top:22px;position:sticky;padding-right:22px}
+  .tbl.xl thead tr.hd th{top:0;position:sticky;padding-right:22px}
+  .tbl.xl thead tr.hd th.hl{background:#eef4ff;color:var(--text)}   /* 고른 칸의 열 머리글 (열 글자 줄 대신) */
   .tbl.xl thead tr.hd th.rn{padding-right:7px}
   .tbl.xl thead th.hl,.tbl.xl td.rn.hl{background:#dbeafe;color:#1d4ed8}
   .tbl.xl thead th .hm{position:absolute;right:3px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--text-4);font-size:10px;opacity:0}
@@ -2189,17 +2189,14 @@
     });
     const total = widths.reduce((s, w) => s + w, 0), v = vstate(), sort = v.sort;
     let h = `<table class="tbl xl" style="width:max(100%,${total}px)"><colgroup>${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead>`;
-    if (!isAll) {
-      h += '<tr class="lt">';
-      vcols.forEach((c, k) => { const ps = posOf[k]; h += `<th data-c="${k}"${ps ? ` class="${ps.cls.trim()}" style="${ps.style}"` : ''} title="${colName(c.idx)}열 — 누르면 열 고르기">${colName(c.idx)}</th>`; });
-      h += '<th class="fill"></th></tr>';
-    }
+    // 열 글자(A B C) 줄도 2026-11-23 사용자 "그것도 빼줘" 로 뺐다 — 칸 이름 머리글 한 줄만. 열 글자는 머리글에 마우스를 올리거나
+    // 칸을 고르면 수식 입력줄 왼쪽 주소(A2)로 보인다 (수식 A1 · A:A 는 그대로)
     h += '<tr class="hd">';
     vcols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.vk === c.vk ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
       const flt = v.filters && v.filters[c.vk];
       const cls = ((ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '')).trim();
-      h += `<th data-c="${k}" class="h${cls ? ' ' + cls : ''}" style="${ps ? ps.style : ''}${isAll ? 'top:0;' : ''}" title="${esc(c.name)}${c.pii ? ' (개인정보 — 가려 보임)' : ''} · 두 번 누르면 칸 이름 · 종류 바꾸기">${esc(c.name)}${c.pii ? '<span class="ph">🔒</span>' : ''}${ar}`
+      h += `<th data-c="${k}" class="h${cls ? ' ' + cls : ''}" style="${ps ? ps.style : ''}" title="${isAll ? '' : colName(c.idx) + '열 · '}${esc(c.name)}${c.pii ? ' (개인정보 — 가려 보임)' : ''} · 두 번 누르면 칸 이름 · 종류 바꾸기">${esc(c.name)}${c.pii ? '<span class="ph">🔒</span>' : ''}${ar}`
         + `<button type="button" class="hm${flt || ar ? ' on' : ''}" data-c="${k}" title="정렬 · 걸러보기 · 열 설정">${flt ? '⏷' : '▾'}</button>${!isAll && !c.brand ? `<span class="rz" data-c="${k}" title="끌어서 너비 · 두 번 누르면 자동"></span>` : ''}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
@@ -2480,7 +2477,7 @@
     if (act) { act.classList.add('act'); S.marked.push(act); }
     const br = S.tds[R.r1] && S.tds[R.r1][R.c1];
     if (br && !coarse.matches && !(S.ed && S.ed.on)) { br.classList.add('fh'); S.marked.push(br); }
-    grid.querySelectorAll('thead tr.lt th[data-c]').forEach(th => { const c = +th.dataset.c; if (c >= R.c0 && c <= R.c1) { th.classList.add('hl'); S.hlMarked.push(th); } });
+    grid.querySelectorAll('thead tr.hd th[data-c]').forEach(th => { const c = +th.dataset.c; if (c >= R.c0 && c <= R.c1) { th.classList.add('hl'); S.hlMarked.push(th); } });
   }
   function stickyRight() {
     const g = grid.getBoundingClientRect(), last = grid.querySelector('thead tr.hd th.skl');
@@ -4452,7 +4449,7 @@
         <kbd>오른쪽 누르기</kbd><span>칸 · 행 · 열 메뉴 (휴대폰은 길게 누르기)</span>
       </div>
       <h3 style="margin-top:18px">수식</h3>
-      <p class="sub" style="margin:4px 0 0">칸에 <b>=</b> 로 시작해서 써요. 1행 = 칸 이름, 2행부터 줄 · 열은 위 A B C …<br>
+      <p class="sub" style="margin:4px 0 0">칸에 <b>=</b> 로 시작해서 써요. 1행 = 칸 이름, 2행부터 줄 · 열은 왼쪽부터 A B C … (칸을 누르면 수식 입력줄 왼쪽에 A2 처럼 보여요 · 머리글에 마우스를 올려도)<br>
       예) <code>=COUNTA(A:A)-1</code> 인원 · <code>=COUNTIF(G:G,"김수민")</code> 책임자별 · <code>=COUNTIF('APETI'!E:E,"회신*")</code> 다른 탭 · <code>=IF(E2="","대기","회신")</code><br>
       수식을 쓰다가 칸을 누르면 주소가 들어가요 (Shift = 범위). fx 단추 = 함수 ${FN_INFO.length}개 목록.</p>
       <h3 style="margin-top:18px">따로 프로그램처럼 쓰기</h3>
