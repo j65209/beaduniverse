@@ -8375,6 +8375,36 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   .dcs.dcs-flash-new{animation:dcsFlash 1.2s ease-in-out 3;border-color:#f6d99a !important}
 
+  /* 불성실 작성자 배너 — 업무일지 맨 위 (2026-11-23 사장님 "업무일지 최상단에 불성실 작성자 배너 · 며칠 전에 작성 이런 것들").
+     홈 입고 현황 · 리오더 경보와 같은 가로 칸(.hop-tile). 색은 빨강 하나만 — 안 쓴 날 */
+  .dsl-card{background:var(--bg-1);border:1px solid #fecaca;border-radius:12px;padding:14px 16px;margin:0 0 16px}
+  .dsl-card[hidden]{display:none}
+  .dsl-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin-bottom:10px}
+  .dsl-title{font-size:16px;font-weight:800;color:var(--text-0);letter-spacing:-.2px}
+  .dsl-title b{color:#b91c1c;margin-left:4px;font-variant-numeric:tabular-nums}
+  .dsl-sub{margin-left:auto;font-size:11.5px;color:var(--text-3)}
+  .dsl-tile{gap:4px;min-height:92px}
+  .dsl-name{font-size:14.5px;font-weight:800;color:var(--text-0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dsl-name small{font-size:11.5px;font-weight:600;color:var(--text-3);margin-left:6px}
+  .dsl-last{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 7px}
+  .dsl-last b{font-size:22px;font-weight:900;line-height:1.15;letter-spacing:-.5px;color:var(--text-0);font-variant-numeric:tabular-nums}
+  .dsl-last b.late{color:#b91c1c}
+  .dsl-last span{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
+  .dsl-why{font-size:12.5px;color:var(--text-2);font-variant-numeric:tabular-nums}
+  .dsl-why em{font-style:normal;font-weight:800;color:#b91c1c}
+  .dsl-lines{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .dsl-lines:empty,.dsl-tiles:empty{display:none}
+  .dsl-tiles:empty + .dsl-lines{margin-top:0}
+  .dsl-line{display:flex;align-items:center;flex-wrap:wrap;gap:5px 6px;font-size:12.5px;font-weight:700;color:var(--text-2)}
+  .dsl-line button{min-height:28px;padding:3px 11px;border:1px solid var(--line-2);border-radius:999px;background:var(--bg-1);color:var(--text-0);font:inherit;font-weight:700;cursor:pointer}
+  .dsl-line button:hover{background:var(--bg-2)}
+  @media (max-width:700px){
+    .dsl-card{padding:12px}
+    .dsl-sub{margin-left:0;width:100%}
+    .dsl-tile{flex:1 0 208px}
+    .dsl-line button{min-height:34px}
+  }
+
   /* 미작성 전광판 (평일 · 오늘 · 미작성자 있을 때만) — LED 스코어보드 */
   .diary-scoreboard{
     position:relative;
@@ -13509,6 +13539,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <span class="diary-save-tag" id="diarySaveTag" hidden></span>
       </div>
     </div>
+
+    <!-- 불성실 작성자 배너 (2026-11-23) — 업무일지 맨 위. 코드는 _dslRender -->
+    <section class="dsl-card" id="diarySloppy" hidden aria-label="불성실 작성자">
+      <div class="dsl-head">
+        <div class="dsl-title">⚠️ 불성실 작성자<b id="diarySloppyCnt"></b></div>
+        <div class="dsl-sub">최근 근무일 10일 기준 (오늘 · 연차 제외)</div>
+      </div>
+      <div class="hop-tiles dsl-tiles" id="diarySloppyTiles"></div>
+      <div class="dsl-lines" id="diarySloppyLines"></div>
+    </section>
 
     <!-- 미작성 전광판 (오늘 · 평일) -->
     <div class="diary-scoreboard" id="diaryAlert" hidden>
@@ -31993,6 +32033,103 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       board.appendChild(_diaryBuildStaffCard(st));
     });
     _diaryUpdateAlert();
+    _dslRender();
+    _dslLoad();
+  }
+
+  /* ===== 불성실 작성자 배너 — 업무일지 맨 위 (2026-11-23 사장님) =====
+     최근 근무일 10일(오늘 빼고). 근무일 = 평일 중 누구라도 한 일을 쓴 날 — 아무도 안 쓴 평일은 휴일로 본다.
+     본인 연차 · 경조사휴가와 입사일(첫날까지)은 뺀다. 반차 · 대체휴무 적립은 쓰는 날.
+     안 씀 = 글자 없음(빈 줄만 있어도), 한 줄만 = 그날 전체가 1줄. 둘을 더해 3일 이상이거나 직전 근무일까지 2일 넘게 이어서 안 쓰면 칸에 오른다.
+     주간 계획 · 월 목표는 완료 체크로 지운 것도 쓴 것이라 지운 줄까지 따로 받는다.
+     연차 · 계획 · 숨김 명단 중 하나라도 못 받으면 띄우지 않는다 (엉뚱한 사람을 올리지 않게). */
+  const DSL_DAYS = 10;
+  const _dsl = {at:0, loading:false, data:null};
+  function _dslAdd(d, n){
+    const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n);
+    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+  }
+  async function _dslLoad(){
+    if(_dsl.loading || Date.now() - _dsl.at < 5*60*1000) return;
+    _dsl.loading = true;
+    try{
+      const from = _dslAdd(_diaryTodayStr(), -75);
+      const get = async u => { const r = await fetch(`${SUPABASE_URL}/rest/v1/${u}`, {headers:_sbHeaders(), cache:'no-cache'}); const j = r.ok ? await r.json() : null; if(!Array.isArray(j)) throw new Error('load'); return j; };
+      const [plans, leave, gone, off] = await Promise.all([
+        _diarySbGetAll(`select=id,staff_name,kind,created_on,text&kind=in.(weekly,monthly)&created_on=gte.${from}`),
+        get(`leave_entries?select=staff_name,start_date,end_date&leave_type=in.(${encodeURIComponent('연차')},${encodeURIComponent('경조사휴가')})&start_date=gte.${from}&order=id.asc&limit=1000`),
+        get('staff_hidden?select=staff_name'), get('staff_diary_hidden?select=staff_name'),
+      ]);
+      if(!plans) throw new Error('load');
+      _dsl.data = {plans: plans.filter(r => String(r.text || '').trim()), leave, out: new Set([...gone, ...off].map(r => r.staff_name))};
+      _dsl.at = Date.now();
+    }catch(e){ _dsl.at = Date.now() - 4*60*1000; }   // 1분 뒤 다시
+    finally{ _dsl.loading = false; }
+    _dslRender();
+  }
+  function _dslCompute(){
+    const D = _dsl.data, today = _diaryTodayStr(), all = loadDiaryAll();
+    const staff = _diarySortStaff(_diaryVisibleStaff().filter(s => !s.ceo && !D.out.has(s.name)));
+    const lines = (n, d) => ((((all[n] || {}).daily || {})[d] || {}).tasks || []).filter(t => String(t && t.text || '').trim()).length;
+    const wd = [];   // 최근 근무일, 가까운 날부터
+    for(let i = 1; i <= 45 && wd.length < DSL_DAYS; i++){
+      const d = _dslAdd(today, -i), dow = new Date(d + 'T00:00:00').getDay();
+      if(dow !== 0 && dow !== 6 && staff.some(s => lines(s.name, d))) wd.push(d);
+    }
+    if(!wd.length) return null;
+    const onLeave = (n, d) => D.leave.some(l => l.staff_name === n && l.start_date <= d && d <= (l.end_date || l.start_date));
+    // 계획은 직전 근무일이 든 주(월요일엔 지난주) · 근무일 3일째부터 새 달
+    const week = _diaryWeekStart(wd[0]), month = _diaryMonthKey(wd[Math.min(2, wd.length - 1)]);
+    const planned = (n, kind, key) => {
+      const k = kind === 'weekly' ? _diaryWeekStart : _diaryMonthKey, s = all[n] || {};
+      if(D.plans.some(r => r.staff_name === n && r.kind === kind && k(r.created_on) === key)) return true;
+      return [...(s[kind] || []), ...Object.values(s[kind + 'Archive'] || {}).flat()].some(it => it && String(it.text || '').trim() && k(it.createdAt) === key);
+    };
+    const people = staff.map(s => {
+      const need = wd.filter(d => d > (s.hire || '') && !onLeave(s.name, d));
+      const miss = need.filter(d => !lines(s.name, d)).length, weak = need.filter(d => lines(s.name, d) === 1).length;
+      let trail = 0; while(trail < need.length && !lines(s.name, need[trail])) trail++;
+      const last = Object.keys((all[s.name] || {}).daily || {}).filter(d => d <= today && lines(s.name, d)).sort().pop() || '';
+      return {name: s.name, team: s.team || s.dept || '', days: need.length, miss, weak, trail, last,
+        noWeek: need.some(d => _diaryWeekStart(d) === week) && !planned(s.name, 'weekly', week),
+        noMonth: need.some(d => _diaryMonthKey(d) === month) && !planned(s.name, 'monthly', month)};
+    });
+    return {people, bad: people.filter(p => p.miss + p.weak >= 3 || p.trail >= 2).sort((a, b) => b.miss - a.miss || b.weak - a.weak),
+      weekLabel: week === _diaryWeekStart(today) ? '이번 주' : '지난주', monthLabel: `${+month.slice(5)}월`, today};
+  }
+  function _dslRender(){
+    const card = document.getElementById('diarySloppy');
+    if(!card) return;
+    const r = (_diaryRowsLoaded && _dsl.data) ? _dslCompute() : null;
+    const noWeek = r ? r.people.filter(p => p.noWeek) : [], noMonth = r ? r.people.filter(p => p.noMonth) : [];
+    card.hidden = !r || !(r.bad.length || noWeek.length || noMonth.length);
+    if(card.hidden) return;
+    const W = ['일','월','화','수','목','금','토'];
+    const ago = d => Math.round((new Date(r.today + 'T00:00:00') - new Date(d + 'T00:00:00')) / 86400000);
+    const when = d => { const n = ago(d); return n === 0 ? '오늘' : n === 1 ? '어제' : `${n}일 전`; };
+    const day = d => `${+d.slice(5,7)}/${+d.slice(8)}(${W[new Date(d + 'T00:00:00').getDay()]})`;
+    document.getElementById('diarySloppyCnt').textContent = `${r.bad.length}명`;
+    const tiles = document.getElementById('diarySloppyTiles');
+    tiles.style.setProperty('--c', r.bad.length === 4 ? 2 : Math.min(r.bad.length || 1, 3));
+    tiles.style.setProperty('--cw', Math.min(r.bad.length || 1, 5));
+    tiles.innerHTML = r.bad.map(p => `<button type="button" class="hop-tile dsl-tile" data-dsl="${_esc(p.name)}">`
+      + `<span class="dsl-name">${_esc(p.name)}<small>${_esc(p.team)}</small></span>`
+      + `<span class="dsl-last"><b class="${p.trail ? 'late' : ''}">${p.last ? when(p.last) : '기록 없음'}</b>${p.last ? `<span>마지막 작성 ${day(p.last)}</span>` : ''}</span>`
+      + `<span class="dsl-why">${p.days}일 중 ${[p.miss ? `<em>${p.miss}일 안 씀</em>` : '', p.weak ? `${p.weak}일 한 줄만` : ''].filter(Boolean).join(' · ')}</span></button>`).join('');
+    const line = (t, list) => list.length ? `<div class="dsl-line">${t}${list.map(p => `<button type="button" data-dsl="${_esc(p.name)}">${_esc(p.name)}</button>`).join('')}</div>` : '';
+    document.getElementById('diarySloppyLines').innerHTML = line(`${r.weekLabel} 주간 계획 안 씀`, noWeek) + line(`${r.monthLabel} 목표 안 씀`, noMonth);
+    if(!card._bound){
+      card._bound = true;
+      // 이름을 누르면 그 사람 카드로
+      card.addEventListener('click', e => {
+        const b = e.target.closest('[data-dsl]');
+        const t = b && [...document.querySelectorAll('#diaryBoard .dcs')].find(x => x.dataset.staff === b.dataset.dsl);
+        if(!t) return;
+        t.scrollIntoView({behavior:'smooth', block:'center'});
+        t.classList.add('dcs-flash-new');
+        setTimeout(() => t.classList.remove('dcs-flash-new'), 3600);
+      });
+    }
   }
 
   /* 업무일지 카드로 노출할 직원 — 퇴사(숨김) 처리된 사람만 제외.
