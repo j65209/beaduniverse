@@ -16348,7 +16348,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   ];
   /* ===== 홈 입고 현황 (2026-11-13) =====
      에이전트 오피스 물류팀 모아가 식스샵 ERP MASTER 에 반영한 입고 · 차감.
-     서버 /erp/moves = ERP 시트 숨김 탭 '물류 입고기록' + 아직 반영 전인 대기 건 (맥미니 프록시 scripts/erp_moves.py).
+     서버 /erp/moves = 오피스 재고 ERP 원장(모아) + 사람이 ERP 화면에서 남은 재고를 직접 올린 입고(direct, 2026-11-23)
+                    + 전환 전 시트 기록 + 아직 반영 전인 대기 건 (맥미니 프록시 scripts/erp_moves.py).
      타일(오늘 · 이번 주 · 이번 달)은 반영된 입고만 센다 — 반영 중 · 실패 · 차감은 배지. 누르면 그 기간 내역 창.
      내역 창 검색칸은 다시 그리는 목록 밖에 있어서 1분 갱신이 입력을 지우지 않는다. */
   const RCV_BRAND_LABEL = {apt:'아페티', kop:'코페리', koz:'코즈미', '6a':'식스에이', yar:'야르', pp:'프로덕트피알', akoi:'아코이하우스'};
@@ -16497,10 +16498,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const stock = r.after != null ? `${r.before == null ? '빈칸' : _rcvN(r.before)} → ${_rcvN(r.after)}` : '';
       html += `<div class="rcv-row">`
         + `<span class="t">${_rcvHM(_rcvAt(r))}</span>`
-        + `<span class="n"><span class="b reo-b-${_rcvEsc(r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}</span>`
+        + `<span class="n"><span class="b reo-b-${_rcvEsc(r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}${r.direct ? '<i title="ERP 화면에서 남은 재고를 직접 올린 입고">· ERP에서 직접</i>' : ''}</span>`
         + `<span class="q ${r.kind === 'out' ? 'out' : 'in'}">${r.kind === 'out' ? '−' : '+'}${_rcvN(r.qty)}</span>`
         + `<span class="s" title="남은 재고 (반영 전 → 후)">${stock}</span>`
-        + `<span class="w" title="입력자">${_rcvEsc(r.by || '–')}</span>`
+        + `<span class="w" title="입력자">${_rcvEsc((r.direct ? String(r.by || '').replace(' (ERP 직접)', '') : r.by) || '–')}</span>`
         + `<span class="st ${stCls}">${stTxt}</span>`
         + (stCls === 'fail' && r.reason ? `<span class="why">${_rcvEsc(r.reason)}</span>` : '')
         + `</div>`;
