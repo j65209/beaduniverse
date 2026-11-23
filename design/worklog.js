@@ -54,6 +54,13 @@ const saveUi = () => { try{ localStorage.setItem(K.ui, JSON.stringify({group:S.g
 
 /* ============================================================ 글자 조각 ============================================================ */
 const MK = ['b', 'i', 's', 'u', 'c'];
+/* 이모지 — 줄 앞에 붙은 것은 건너뛰고 [업체] · 날짜를 읽는다. 반쪽만 남은 글자(저장소가 거부)는 버린다 */
+const EMO1 = '(?:[\\u{1F1E6}-\\u{1F1FF}]{2}|[0-9#*]\\uFE0F?\\u20E3|\\p{Extended_Pictographic}(?:\\uFE0F|[\\u{1F3FB}-\\u{1F3FF}])*(?:\\u200D\\p{Extended_Pictographic}(?:\\uFE0F|[\\u{1F3FB}-\\u{1F3FF}])*)*)';
+const RE_EMO = new RegExp(EMO1, 'gu'), RE_LEAD = new RegExp('^(?:\\s*' + EMO1 + ')+\\s*', 'u');
+const leadOf = s => (String(s || '').match(RE_LEAD) || [''])[0];
+const noLead = s => String(s || '').slice(leadOf(s).length);
+const wf = s => /[\uD800-\uDFFF]/.test(s) ? s.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, m => m.length === 2 ? m : '') : s;
+const cut = (s, n) => wf(String(s).slice(0, n));
 const segText = r => (r || []).map(x => x.t || '').join('');
 const bText = b => segText(b.r);
 const isEmpty = b => !b.src && b.t !== 'hr' && !bText(b).trim();
@@ -66,7 +73,8 @@ function segNorm(r){
     if(p && MK.every(k => !!p[k] === !!s[k]) && (p.h || '') === (s.h || '') && (p.a || '') === (s.a || '')) p.t += s.t;
     else{ const n = {t:s.t}; MK.forEach(k => { if(s[k]) n[k] = 1; }); if(s.h) n.h = s.h; if(s.a) n.a = s.a; out.push(n); }
   }
-  return out;
+  out.forEach(x => { x.t = wf(x.t); });
+  return out.filter(x => x.t);
 }
 function segSlice(r, a, z){
   const out = []; let p = 0;
@@ -86,6 +94,7 @@ const mmdd = s => { const m = +s.slice(0, 2), d = +s.slice(2, 4); return m >= 1 
 function decoPlain(t, first, res){
   let out = '', s = t;
   if(first){
+    const ld = leadOf(s); if(ld){ out += E(ld); s = s.slice(ld.length); }
     for(let i = 0; i < 2; i++){
       const m = s.match(/^(\s*)\[([^\]\n\[]{1,24})\](\s*)/);
       if(!m) break;
@@ -107,14 +116,14 @@ function decoPlain(t, first, res){
 }
 function deco(b){
   const r = b.r || [];
-  let out = '', pos = 0, res = false;
+  let out = '', pos = 0, res = false, seen = '';
   const arrows = b.t === 'li' || b.t === 'todo' || b.t === 'p';
   for(const s of r){
     const parts = [];
     if(arrows && !res && AR.test(s.t)){ const i = s.t.search(AR); if(i > 0) parts.push([s.t.slice(0, i), false]); parts.push([s.t.slice(i), true]); res = true; }
     else parts.push([s.t, res]);
     for(const [t, isRes] of parts){
-      let h = decoPlain(t, pos === 0 && !isHead(b), isRes);
+      let h = decoPlain(t, !isHead(b) && (pos === 0 || !noLead(seen).trim()), isRes);
       if(isRes){ const m = t.match(/^(⇒|=>|→)/); if(m) h = `<span class="wl-ar">${E(m[0])}</span>` + decoPlain(t.slice(m[0].length), false, true); h = `<span class="wl-res">${h}</span>`; }
       if(s.c) h = `<code>${h}</code>`;
       if(s.b) h = `<b>${h}</b>`;
@@ -124,7 +133,7 @@ function deco(b){
       if(s.h && s.h !== 'default_background') h = `<span class="wl-h-${E(String(s.h).replace(/[^a-z_]/g, ''))}" data-h="${E(s.h)}">${h}</span>`;
       if(s.a) h = `<a class="wl-a" data-a="${E(s.a)}"${/^https?:/.test(s.a) ? ` href="${E(s.a)}" target="_blank" rel="noopener noreferrer"` : ''}>${h}</a>`;
       out += h;
-      pos += t.length;
+      pos += t.length; seen += t;
     }
   }
   if(segText(r).endsWith('\n')) out += '<br data-fill="1">';
@@ -159,12 +168,13 @@ function selIn(el){
   const g = s.getRangeAt(0), off = (n, o) => { const r = document.createRange(); r.selectNodeContents(el); r.setEnd(n, o); return r.toString().length; };
   return [off(g.startContainer, g.startOffset), off(g.endContainer, g.endOffset)];
 }
+const midEmo = (s, i) => { while(i > 0 && i < s.length && (/[\uDC00-\uDFFF\uFE0F\u200D\u20E3]/.test(s[i]) || s[i - 1] === '\u200D' || (s[i] === '\uD83C' && /[\uDFFB-\uDFFF]/.test(s[i + 1] || '')))) i--; return i; };
 function putSel(el, a, z){
   if(!el) return;
   if(document.activeElement !== el) el.focus({preventScroll:true});
   const find = p => {
     const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n, last = null, left = p;
-    while((n = w.nextNode())){ last = n; if(left <= n.nodeValue.length) return [n, left]; left -= n.nodeValue.length; }
+    while((n = w.nextNode())){ last = n; if(left <= n.nodeValue.length) return [n, midEmo(n.nodeValue, left)]; left -= n.nodeValue.length; }
     return last ? [last, last.nodeValue.length] : [el, 0];
   };
   const [n1, o1] = find(a), [n2, o2] = find(z == null ? a : z), r = document.createRange(), s = getSelection();
@@ -432,7 +442,7 @@ function sections(blocks){
 /* 보이는 차례 — 오늘 할 일 · 진행 중인 일 먼저, 데일리 체크 · 목표는 뒤로 (적힌 차례는 그대로) */
 const SEC_RANK = {today:0, pin:0.5, hold:2, tomorrow:3, daily:4, goalW:5, goalM:6};
 const secOrder = (p, ss) => p.kind !== 'daily' ? ss : ss.map((s, i) => [s, i]).sort((a, b) => (SEC_RANK[a[0].type] ?? 1) - (SEC_RANK[b[0].type] ?? 1) || a[1] - b[1]).map(x => x[0]);
-const norm = s => String(s || '').toLowerCase().replace(/[\s.,·_\-~!?()\[\]{}"'“”‘’:;/\\⇒→=>★※…]+/g, '');
+const norm = s => String(s || '').replace(RE_EMO, '').toLowerCase().replace(/[\s.,·_\-~!?()\[\]{}"'“”‘’:;/\\⇒→=>★※…]+/g, '');
 function info(p){           // 글 하나를 한 번 훑어 둔 것 (고치면 버림)
   if(!p || !p.blocks) return null;
   const c = S.caches.get(p.id);
@@ -443,7 +453,7 @@ function info(p){           // 글 하나를 한 번 훑어 둔 것 (고치면 �
     s.items.forEach(b => {
       if(isEmpty(b) && !b.src) return;
       const t = bText(b);
-      const l = {b, id:b.id, o:b.o || b.id, t, n:norm(t), hd:norm(t.replace(/^\s*(\[[^\]]{1,24}\]\s*)+/, '').split(AR)[0]), sec:s.type, head:s.head ? bText(s.head) : '', lv:(b.lv || 0) - base};
+      const l = {b, id:b.id, o:b.o || b.id, t, n:norm(t), hd:norm(noLead(t).replace(/^\s*(\[[^\]]{1,24}\]\s*)+/, '').split(AR)[0]), sec:s.type, head:s.head ? bText(s.head) : '', lv:(b.lv || 0) - base};
       lines.push(l); by.set(b.id, l);
     });
   });
@@ -513,7 +523,7 @@ function stOf(b, sec){
   const t = bText(b), i = t.search(AR), try1 = s => { for(const [k, re] of ST_RE) if(re.test(s)) return k; return ''; };
   return (i >= 0 && try1(t.slice(i))) || try1(i >= 0 ? t.slice(0, i) : t);
 }
-const tagOf = t => { const m = String(t).match(/^\s*\[([^\]\n\[]{1,24})\]/); return m && !/^[\d\s\-~./]+/.test(m[1]) ? m[1].trim() : ''; };
+const tagOf = t => { const m = noLead(t).match(/^\s*\[([^\]\n\[]{1,24})\]/); return m && !/^[\d\s\-~./]+/.test(m[1]) ? m[1].trim() : ''; };
 /* 발주 · 입고 — '[업체] MMDD_상품 200ea' 줄, '… MMDD 입고예정' 줄을 모은다 */
 function ordersOf(p){
   const A = info(p); if(!A) return {orders:[], due:[]};
@@ -527,7 +537,7 @@ function ordersOf(p){
   };
   const orders = [], due = [];
   A.lines.forEach(l => {
-    const m = l.t.match(/^\s*(?:\[([^\]]+)\])?\s*(\d{4})_(.+?)\s*([\d,]+)\s*ea\b/i);
+    const m = noLead(l.t).match(/^\s*(?:\[([^\]]+)\])?\s*(\d{4})_(.+?)\s*([\d,]+)\s*ea\b/i);
     if(m && mmdd(m[2])) orders.push({id:l.id, v:m[1] || '', day:iso(m[2]), name:m[3].trim(), q:m[4], done:!!l.b.k});
     else{
       const e = l.t.match(/(?:^|[^\d])(\d{1,2})[\/.](\d{1,2})\s*(입고|도착|발송|출고|회신|미팅)?\s*예정/) || l.t.match(/(?:^|[^\d])(\d{2})(\d{2})\s*(입고|도착|발송|출고|회신|미팅)?\s*예정/);
@@ -751,14 +761,14 @@ function renderNav(){
   for(let i = 0; i < first; i++) cells += '<i></i>';
   for(let d = 1; d <= n; d++){
     const s = `${S.month}-${String(d).padStart(2, '0')}`, has = by.get(s);
-    cells += `<button type="button" class="${has ? 'has' : ''}${s === S.today ? ' tod' : ''}${p && p.day === s ? ' cur' : ''}${isOff(s) ? ' off' : ''}" data-day="${s}"${has ? ` title="${E(has.map(x => x.title).join(' · '))}"` : ''}>${d}</button>`;
+    cells += `<button type="button" class="${has ? 'has' : ''}${s === S.today ? ' tod' : ''}${p && p.day === s ? ' cur' : ''}${isOff(s) ? ' off' : ''}" data-day="${s}"${has ? ` title="${E(has.map(x => icoOf(x) + x.title).join(' · '))}"` : ''}>${d}</button>`;
   }
   const kinds = [['all', '전체']].concat(Object.entries(KINDS)), shown = ps.filter(x => S.kind === 'all' || x.kind === S.kind);
   let lastM = '', rows = '';
   shown.slice(0, S.navAll ? 2000 : 40).forEach(x => {
     const mk = x.day.slice(0, 7);
     if(mk !== lastM){ lastM = mk; rows += `<div class="wl-nm">${mk.slice(0, 4) === S.today.slice(0, 4) ? '' : mk.slice(0, 4) + '년 '}${+mk.slice(5)}월</div>`; }
-    rows += `<button type="button" class="wl-ni${S.cur === x.id ? ' on' : ''}" data-open="${x.id}"><span class="d">${+x.day.slice(8)}<small>${WK[dow(x.day)]}</small></span><span class="t">${E(x.title || '(제목 없음)')}</span><span class="c">${x.n ? (x.nd ? `${x.nd}/` : '') + x.n : ''}</span></button>`;
+    rows += `<button type="button" class="wl-ni${S.cur === x.id ? ' on' : ''}" data-open="${x.id}"><span class="d">${+x.day.slice(8)}<small>${WK[dow(x.day)]}</small></span><span class="t">${E(icoOf(x) + (x.title || '(제목 없음)'))}</span><span class="c">${x.n ? (x.nd ? `${x.nd}/` : '') + x.n : ''}</span></button>`;
   });
   if(shown.length > 40 && !S.navAll) rows += `<button type="button" class="wl-ni more" data-act="navall">더 보기 ${shown.length - 40}개</button>`;
   el.innerHTML = `<div class="wl-mc"><div class="wl-mch"><button type="button" data-mon="-1" aria-label="지난달">‹</button><b>${y}년 ${m}월</b><button type="button" data-mon="1" aria-label="다음달">›</button></div>
@@ -774,12 +784,13 @@ function lineHtml(b, s, x){
   const cls = `wl-b t-${b.t}${b.k ? ' is-done' : ''}${b.bg && b.bg !== 'default_background' ? ' bg-' + String(b.bg).replace(/_background$/, '') : ''}${kids ? ' has-k' : ''}${b.f ? ' is-fold' : ''}${isEmpty(b) ? ' is-empty' : ''}${dim ? ' is-dim' : ''}${st === 'hold' && x.norm ? ' is-hold' : ''}${S.sel && S.sel.ids.has(b.id) ? ' is-sel' : ''}`;
   const grip = '<button type="button" class="wl-grip" draggable="true" data-act="menu" tabindex="-1" aria-label="줄 메뉴" title="누르면 메뉴 · 끌면 옮기기">⠿</button>';
   const del = '<button type="button" class="wl-x2" data-act="del" tabindex="-1" aria-label="이 줄 지우기" title="지우기">×</button>';
+  const emo = '<button type="button" class="wl-emb" data-act="emo" tabindex="-1" aria-label="이모지 넣기" title="이모지 넣기 (Ctrl E)"><i class="wl-smile"></i></button>';
   if(b.t === 'img') return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}<figure class="wl-fig"><img src="${E(imgUrl(b.src))}" alt="${E(b.cap || '')}" loading="lazy" data-act="zoom">${b.cap ? `<figcaption>${E(b.cap)}</figcaption>` : ''}</figure>${del}</div>`;
   if(b.t === 'file') return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}<a class="wl-file" href="${E(imgUrl(b.src))}" target="_blank" rel="noopener noreferrer">📎 ${E(b.name || bText(b) || '파일')}${b.size ? `<small>${Math.max(1, Math.round(b.size / 1024)).toLocaleString()}KB</small>` : ''}</a>${del}</div>`;
   const dot = b.t === 'p' || b.t === 'quote' || b.t === 'callout' || b.t === 'code' ? '<span class="wl-dot none"></span>' : `<button type="button" class="wl-dot" data-act="done" tabindex="-1" aria-label="${b.k ? '끝냄 풀기' : '끝냄'}" title="${b.k ? '다시 할 일로' : '끝냈으면 누르기'}"></button>`;
   const side = [x.norm && days >= 5 ? `<em class="age${days >= 14 ? ' old' : ''}" title="${E(d0)} 부터 남아 있어요">${days + 1}일째</em>` : '',
     st && x.norm && lv <= 1 ? `<button type="button" class="st s-${st}" data-act="st" tabindex="-1" title="누르면 상태를 골라요">${STS[st]}</button>` : ''].join('');
-  return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}${kids ? '<button type="button" class="wl-fo" data-act="fold" tabindex="-1" aria-label="접기 · 펼치기" title="접기 · 펼치기"></button>' : '<span class="wl-fo"></span>'}${dot}<div class="wl-x" contenteditable="true" spellcheck="false" role="textbox" data-ph="${b.t === 'p' ? '적기' : '할 일 적기'}">${deco(b)}</div>${side ? `<span class="wl-bs">${side}</span>` : ''}${del}</div>`;
+  return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}${kids ? '<button type="button" class="wl-fo" data-act="fold" tabindex="-1" aria-label="접기 · 펼치기" title="접기 · 펼치기"></button>' : '<span class="wl-fo"></span>'}${dot}<div class="wl-x" contenteditable="true" spellcheck="false" role="textbox" data-ph="${b.t === 'p' ? '적기' : '할 일 적기'}">${deco(b)}</div>${emo}${side ? `<span class="wl-bs">${side}</span>` : ''}${del}</div>`;
 }
 function ctxOf(p){
   const ss = sections(p.blocks), I = info(p), own = new Map(), tags = new Map();
@@ -796,7 +807,7 @@ function secHtml(s, c){
   const real = s.items.filter(b => !isEmpty(b) && b.t !== 'hr'), dn = real.filter(b => b.k).length;
   const fold = s.head && s.head.f;
   return `<section class="wl-sec${s.type ? ' k-' + s.type : ''}${fold ? ' is-fold' : ''}" data-sec="${s.key}">
-    ${s.head ? `<header class="wl-sh wl-b t-h" data-id="${s.head.id}"><button type="button" class="wl-grip" draggable="true" data-act="menu" tabindex="-1" title="누르면 메뉴 · 끌면 구역째 옮기기">⠿</button><button type="button" class="wl-fo" data-act="fold" tabindex="-1" aria-label="접기 · 펼치기" title="접기 · 펼치기"></button><div class="wl-x" contenteditable="true" spellcheck="false" role="textbox" data-ph="구역 이름">${deco(s.head)}</div><span class="wl-cnt">${dn ? `${dn}/` : ''}${real.length || ''}</span><button type="button" class="wl-x2" data-act="delsec" tabindex="-1" title="구역째 지우기">×</button></header>` : ''}
+    ${s.head ? `<header class="wl-sh wl-b t-h" data-id="${s.head.id}"><button type="button" class="wl-grip" draggable="true" data-act="menu" tabindex="-1" title="누르면 메뉴 · 끌면 구역째 옮기기">⠿</button><button type="button" class="wl-fo" data-act="fold" tabindex="-1" aria-label="접기 · 펼치기" title="접기 · 펼치기"></button><div class="wl-x" contenteditable="true" spellcheck="false" role="textbox" data-ph="구역 이름">${deco(s.head)}</div><button type="button" class="wl-emb" data-act="emo" tabindex="-1" aria-label="이모지 넣기" title="이모지 넣기"><i class="wl-smile"></i></button><span class="wl-cnt">${dn ? `${dn}/` : ''}${real.length || ''}</span><button type="button" class="wl-x2" data-act="delsec" tabindex="-1" title="구역째 지우기">×</button></header>` : ''}
     <div class="wl-bs-list">${rows}</div>
     <button type="button" class="wl-add" data-act="addline" data-sec="${s.key}">＋ 줄</button></section>`;
 }
@@ -830,7 +841,7 @@ function renderPage(){
       <div class="wl-pd"><button type="button" class="wl-step" data-open="${pv ? pv.id : ''}"${pv ? '' : ' disabled'} title="이전 글" aria-label="이전 글">‹</button>
         <button type="button" class="wl-date" data-act="pickday" title="날짜 바꾸기"><b>${+p.day.slice(5, 7)}월 ${+p.day.slice(8)}일</b> <span>${WK[dow(p.day)]}요일</span>${p.day === S.today ? '<em>오늘</em>' : ''}</button>
         <button type="button" class="wl-step" data-open="${nx ? nx.id : ''}"${nx ? '' : ' disabled'} title="다음 글" aria-label="다음 글">›</button></div>
-      <input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목" aria-label="제목">
+      ${icoBtn(p)}<input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목" aria-label="제목">
       <select class="wl-kind" id="wlKind" aria-label="글 종류">${Object.entries(KINDS).map(([k, t]) => `<option value="${k}"${p.kind === k ? ' selected' : ''}>${t}</option>`).join('')}</select>
       <span class="wl-sp"></span>
       <span class="wl-meta">${p.ub && p.ub !== 'notion' ? E(p.ub) + ' · ' : ''}${p.ua ? `${md(ymd(new Date(p.ua)))} ${hm(p.ua)} 수정` : ''}${p.origin === 'notion' ? ' · 노션에서 옮김' : ''}</span>
@@ -839,6 +850,7 @@ function renderPage(){
     ${band ? `<div class="wl-band" id="wlBand">${bandHtml(p)}</div>${grid(A, addSecBtn())}${B.length ? `<div class="wl-band sub"><b>그 밖</b><span>${[...new Set(B.map(s => s.head ? bText(s.head) : ''))].filter(Boolean).join(' · ')}</span></div>${grid(B, '')}` : ''}` : grid(A, addSecBtn())}`;
   renderSide();
 }
+const icoBtn = p => { const v = (p.meta || {}).icon; return `<button type="button" class="wl-ic${v ? ' on' : ''}" data-act="icon" title="글 아이콘" aria-label="글 아이콘">${v ? E(v) : '<i class="wl-smile"></i>'}</button>`; };
 function bandHtml(p){ const it = todayItems(p), d = it.filter(x => x.b.k).length; return `<b>${p.day === S.today ? '오늘 업무' : `${md(p.day)} 업무`}</b><em>${d}/${it.length}</em>${p.day === S.today ? '<span>위 전광판과 같은 목록이에요 — 어느 쪽에서 고쳐도 같이 바뀌어요</span>' : ''}`; }
 function renderBand(){ const el = document.getElementById('wlBand'), p = cur(); if(el && p && p.blocks) el.innerHTML = bandHtml(p); }
 const addSecBtn = () => '<button type="button" class="wl-addsec" data-act="addsec">＋ 구역</button>';
@@ -878,7 +890,7 @@ function overHtml(){
   });
   const order = S.group === 'status' ? ['chk', 'go', 'wait', 'none', 'hold', 'done'] : [...groups.keys()].sort((a, b) => groups.get(b).length - groups.get(a).length);
   const name = k => S.group === 'status' ? (STS[k] || '표시 없음') : k;
-  return bar + `<div class="wl-og">${order.filter(k => groups.get(k)).map(k => { const ls = groups.get(k), min = Math.min(...ls.map(l => l.lv)); return `<section class="wl-oc"><h4>${E(name(k))} <small>${ls.filter(l => l.lv === min).length}</small></h4>${ls.map(l => `<button type="button" class="wl-ol${l.b.k ? ' is-done' : ''}" style="--lv:${Math.max(0, l.lv - min)}" data-go="${l.id}" data-pid="${p.id}"><span>${deco({t:'li', r:T(S.group === 'vendor' && tagOf(l.t) ? l.t.replace(/^\s*\[[^\]]+\]\s*/, '') : l.t)})}</span></button>`).join('')}</section>`; }).join('')}</div>`;
+  return bar + `<div class="wl-og">${order.filter(k => groups.get(k)).map(k => { const ls = groups.get(k), min = Math.min(...ls.map(l => l.lv)); return `<section class="wl-oc"><h4>${E(name(k))} <small>${ls.filter(l => l.lv === min).length}</small></h4>${ls.map(l => `<button type="button" class="wl-ol${l.b.k ? ' is-done' : ''}" style="--lv:${Math.max(0, l.lv - min)}" data-go="${l.id}" data-pid="${p.id}"><span>${deco({t:'li', r:T(S.group === 'vendor' && tagOf(l.t) ? leadOf(l.t) + noLead(l.t).replace(/^\s*\[[^\]]+\]\s*/, '') : l.t)})}</span></button>`).join('')}</section>`; }).join('')}</div>`;
 }
 function weekData(){
   const mon = monOf(S.today), days = dailies().filter(p => p.day >= mon && p.day <= addD(mon, 6)).reverse(), done = [], add = [], seen = new Set();
@@ -910,7 +922,7 @@ function calHtml(){
   for(let i = 0; i < 42; i++){
     const s = addD(start, i), out = s.slice(0, 7) !== S.month;
     if(i >= 35 && out && addD(start, 35).slice(0, 7) !== S.month) break;
-    c += `<div class="wl-cd${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-cday="${s}"><b>${+s.slice(8)}</b>${(by.get(s) || []).map(x => `<button type="button" class="wl-ce" data-open="${x.id}">${E(x.title || '(제목 없음)')}${x.n ? `<small>${x.n}</small>` : ''}</button>`).join('')}${pins.filter(b => b.due === s).map(b => `<span class="wl-cp">📌 ${E(b.title)}</span>`).join('')}${due.filter(x => x.day === s).map(x => `<span class="wl-cp">${E(x.t)}</span>`).join('')}${ords.filter(x => x.day === s).map(x => `<button type="button" class="wl-co${arrDone(x) ? ' is-done' : ''}" data-open="${x.id}">${E(oTitle(x))}</button>`).join('')}</div>`;
+    c += `<div class="wl-cd${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-cday="${s}"><b>${+s.slice(8)}</b>${(by.get(s) || []).map(x => `<button type="button" class="wl-ce" data-open="${x.id}">${E(icoOf(x) + (x.title || '(제목 없음)'))}${x.n ? `<small>${x.n}</small>` : ''}</button>`).join('')}${pins.filter(b => b.due === s).map(b => `<span class="wl-cp">📌 ${E(b.title)}</span>`).join('')}${due.filter(x => x.day === s).map(x => `<span class="wl-cp">${E(x.t)}</span>`).join('')}${ords.filter(x => x.day === s).map(x => `<button type="button" class="wl-co${arrDone(x) ? ' is-done' : ''}" data-open="${x.id}">${E(oTitle(x))}</button>`).join('')}</div>`;
   }
   return `<div class="wl-ob"><button type="button" class="wl-step" data-mon="-1" aria-label="지난달">‹</button><b class="wl-cm">${y}년 ${m}월</b><button type="button" class="wl-step" data-mon="1" aria-label="다음달">›</button></div><div class="wl-cal">${WK.map(w => `<em>${w}</em>`).join('')}${c}</div>`;
 }
@@ -934,7 +946,7 @@ function findHtml(){
   const f = S.find, n = f.rows.reduce((a, r) => a + (r.lines ? r.lines.length : 0), 0);
   let last = '';
   return `<div class="wl-ob"><b class="wl-cm">‘${E(f.q)}’</b><span class="wl-meta">${f.busy ? '찾는 중…' : f.err ? '찾지 못했어요 — 다시 해 주세요' : `${f.rows.length}개 글 · ${n}줄`}</span><span class="wl-sp"></span><button type="button" class="wl-btn sm" data-act="findoff">닫기</button></div>
-    <div class="wl-fr">${f.rows.map(r => { const ls = (r.lines || []).map(t => { const same = t.trim() === last; last = t.trim(); return `<button type="button" class="wl-fl1${same ? ' same' : ''}" data-open="${r.id}" data-find="${E(t)}">${hl(t, f.q)}</button>`; }).join(''); return `<div class="wl-fg"><button type="button" class="wl-fd" data-open="${r.id}"><b>${md(r.day)}</b> ${WK[dow(r.day)]} <span>${E(r.title)}${r.kind === 'order' ? ' · 발주 샘플' : ''}</span></button><div>${ls || '<p class="wl-none">제목 · 여러 줄에 나뉘어 있어요</p>'}</div></div>`; }).join('') || (f.busy ? '' : '<p class="wl-none">없어요</p>')}</div>`;
+    <div class="wl-fr">${f.rows.map(r => { const ls = (r.lines || []).map(t => { const same = t.trim() === last; last = t.trim(); return `<button type="button" class="wl-fl1${same ? ' same' : ''}" data-open="${r.id}" data-find="${E(t)}">${hl(t, f.q)}</button>`; }).join(''); return `<div class="wl-fg"><button type="button" class="wl-fd" data-open="${r.id}"><b>${md(r.day)}</b> ${WK[dow(r.day)]} <span>${E(icoOf(S.pages.get(r.id)) + r.title)}${r.kind === 'order' ? ' · 발주 샘플' : ''}</span></button><div>${ls || '<p class="wl-none">제목 · 여러 줄에 나뉘어 있어요</p>'}</div></div>`; }).join('') || (f.busy ? '' : '<p class="wl-none">없어요</p>')}</div>`;
 }
 function openPage(id, opt){
   if(!id || !S.pages.has(id)) return;
@@ -967,7 +979,8 @@ const OKN = {po:'발주', in:'입고', sreq:'샘플 요청', sin:'샘플 입고'
 const OST = ['미입고', '파샬 입고', '국외발송완료', '국외입고완료', '국내입고완료', '입고 완료'];
 const okAuto = t => /휴무|휴일|연휴/.test(t) ? 'etc' : /재샘플|(샘플|원단)\s*(요청|투입|발주|주문)/.test(t) ? 'sreq' : /샘플.*(입고|도착)/.test(t) ? 'sin' : /발송|출고/.test(t) ? 'ship' : /입고|도착/.test(t) ? 'in' : /발주|주문/.test(t) ? 'po' : 'etc';
 const okOf = p => (p.meta && p.meta.ok) || okAuto(String(p.title || ''));
-const oTitle = p => String(p.title || '').replace(/^\s*\d{4}\s+/, '').trim() || OKN[okOf(p)];
+const icoOf = p => { const v = p && p.meta && p.meta.icon; return v ? v + ' ' : ''; };
+const oTitle = p => { const t = String(p.title || ''), ld = leadOf(t); return icoOf(p) + ((ld + t.slice(ld.length).replace(/^\s*\d{4}\s+/, '')).trim() || OKN[okOf(p)]); };
 const oFac = p => (p.meta && p.meta.fac) || [];
 const oSt = p => (p.meta && p.meta.st) || [];
 const oLines = p => (p.blocks || []).filter(b => !isEmpty(b) && b.t !== 'hr' && !b.src).map(b => bText(b).replace(/\s+/g, ' ').trim());
@@ -986,7 +999,7 @@ function ordMove(p, day){          // 날짜 옮기기 — 제목 앞 MMDD 가 �
   if(!day || day === p.day) return;
   beforeEdit(p);
   const old = p.day.slice(5, 7) + p.day.slice(8), now = day.slice(5, 7) + day.slice(8), end = (p.meta || {}).end;
-  if(String(p.title || '').startsWith(old)) p.title = now + p.title.slice(4);
+  { const ld = leadOf(p.title); if(String(p.title || '').startsWith(old, ld.length)) p.title = ld + now + p.title.slice(ld.length + 4); }
   if(end) p.meta = Object.assign({}, p.meta, {end:addD(end, dayDiff(day, p.day))});
   p.day = day; touch(p);
 }
@@ -1034,7 +1047,7 @@ function renderOrd(){
 /* 오른쪽 상세 — 줄 고치기는 업무일지와 같은 편집기 */
 function orderPage(p, c, vis){
   const ok = okOf(p), st = oSt(p), fac = oFac(p), facs = [...new Set([...facList().map(x => x[0]), ...fac])], chip = (k, v, t, on) => `<button type="button" class="${on ? 'on' : ''}" data-oset="${k}" data-v="${E(v)}">${E(t)}</button>`;
-  return `<div class="wl-ph"><input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목 (예: 1126 입고예정)" aria-label="제목"><span class="wl-sp"></span><button type="button" class="wl-btn sm" data-act="undo" title="되돌리기 (Ctrl+Z)">되돌리기</button><button type="button" class="wl-btn sm" data-act="copy">복사</button><button type="button" class="wl-btn sm ico" data-act="pagemenu" aria-label="이 일정 메뉴">⋯</button><button type="button" class="wl-btn sm ico" data-oact="close" aria-label="닫기">×</button></div>
+  return `<div class="wl-ph">${icoBtn(p)}<input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목 (예: 1126 입고예정)" aria-label="제목"><span class="wl-sp"></span><button type="button" class="wl-btn sm" data-act="undo" title="되돌리기 (Ctrl+Z)">되돌리기</button><button type="button" class="wl-btn sm" data-act="copy">복사</button><button type="button" class="wl-btn sm ico" data-act="pagemenu" aria-label="이 일정 메뉴">⋯</button><button type="button" class="wl-btn sm ico" data-oact="close" aria-label="닫기">×</button></div>
     <dl class="wl-of"><dt>날짜</dt><dd><input type="date" data-om="day" value="${p.day}" aria-label="날짜"><i>~</i><input type="date" data-om="end" value="${E((p.meta || {}).end || '')}" aria-label="끝나는 날 (없어도 돼요)"></dd>
       <dt>종류</dt><dd class="wl-chips sm">${Object.entries(OKN).map(([k, t]) => chip('ok', k, t, ok === k)).join('')}</dd>
       <dt>공장</dt><dd class="wl-chips sm">${facs.map(f => chip('fac', f, f, fac.includes(f))).join('')}<button type="button" data-oact="facadd" aria-label="공장 더하기">＋</button></dd>
@@ -1197,6 +1210,7 @@ function todayItems(p){
   });
   return out;
 }
+const emoBtn = '<button type="button" class="wl-be" data-bact="emo" tabindex="-1" title="이모지 넣기" aria-label="이모지 넣기"><i class="wl-smile"></i></button>';
 const todayPage = () => dailies().find(x => x.day <= S.today && x.blocks) || null;
 const todayLeft = () => { const p = todayPage(); return p && p.day === S.today ? todayItems(p).filter(x => !x.b.k).length : 0; };
 function todayWork(){
@@ -1206,10 +1220,10 @@ function todayWork(){
   shown.forEach(x => {
     if(x.head !== last && !x.b.k){ last = x.head; if(x.head) h += `<h5>${E(x.head)}</h5>`; }
     const st = stOf(x.b, x.type), d0 = age.get(x.b.id), dd = d0 && !x.b.k ? dayDiff(p.day, d0) : 0;
-    h += `<div class="wl-r wk${x.b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-bact="wdone" data-pid="${p.id}" data-lid="${x.b.id}" aria-pressed="${!!x.b.k}" aria-label="끝냄" title="끝났으면 누르기"></button>${S.twEdit === x.b.id ? `<input class="wl-in" data-tw="${x.b.id}" data-pid="${p.id}" maxlength="500" value="${E(bText(x.b).replace(/\n/g, ' '))}" aria-label="오늘 업무 고치기">` : `<button type="button" class="wl-rt" data-go="${x.b.id}" data-pid="${p.id}" title="업무일지에서 이 줄 보기"><span>${E(bText(x.b))}</span></button>`}<span class="wl-rm">${[dd >= 13 ? `<b class="bad">${dd + 1}일째</b>` : '', st && st !== 'done' ? (st === 'chk' ? `<b>${STS[st]}</b>` : STS[st]) : ''].filter(Boolean).join(' ')}</span><span class="wl-bc"><button type="button" data-bact="wedit" data-pid="${p.id}" data-lid="${x.b.id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="wdel" data-pid="${p.id}" data-lid="${x.b.id}" title="지우기" aria-label="지우기">×</button></span></div>`;
+    h += `<div class="wl-r wk${x.b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-bact="wdone" data-pid="${p.id}" data-lid="${x.b.id}" aria-pressed="${!!x.b.k}" aria-label="끝냄" title="끝났으면 누르기"></button>${S.twEdit === x.b.id ? `<input class="wl-in" data-tw="${x.b.id}" data-pid="${p.id}" maxlength="500" value="${E(bText(x.b).replace(/\n/g, ' '))}" aria-label="오늘 업무 고치기">${emoBtn}` : `<button type="button" class="wl-rt" data-go="${x.b.id}" data-pid="${p.id}" title="업무일지에서 이 줄 보기"><span>${E(bText(x.b))}</span></button>`}<span class="wl-rm">${[dd >= 13 ? `<b class="bad">${dd + 1}일째</b>` : '', st && st !== 'done' ? (st === 'chk' ? `<b>${STS[st]}</b>` : STS[st]) : ''].filter(Boolean).join(' ')}</span><span class="wl-bc"><button type="button" data-bact="wedit" data-pid="${p.id}" data-lid="${x.b.id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="wdel" data-pid="${p.id}" data-lid="${x.b.id}" title="지우기" aria-label="지우기">×</button></span></div>`;
   });
   const more = left.length + done.length - shown.length;
-  return `<section class="wl-tw"><h4>${is ? '오늘 업무' : `${md(p.day)} 업무일지에서 남은 일`} <small>${is ? `${done.length}/${all.length}` : left.length}</small></h4>${!is && !isOff(S.today) ? '<button type="button" class="wl-go" data-bact="wstart">오늘 업무일지 시작 — 남은 일 이어받기</button>' : ''}${h || '<p class="wl-bz">적힌 일이 없어요</p>'}${more > 0 || S.twAll ? `<button type="button" class="wl-off1" data-bact="wmore">${S.twAll ? '접기' : `외 ${more}개${done.length ? ` (끝낸 일 ${done.length})` : ''} 더 보기`}</button>` : ''}${is ? `<form class="wl-ba" data-add="today"><input type="text" maxlength="300" placeholder="＋ 오늘 할 일 — 적고 Enter" aria-label="오늘 할 일 더하기"></form>` : ''}</section>`;
+  return `<section class="wl-tw"><h4>${is ? '오늘 업무' : `${md(p.day)} 업무일지에서 남은 일`} <small>${is ? `${done.length}/${all.length}` : left.length}</small></h4>${!is && !isOff(S.today) ? '<button type="button" class="wl-go" data-bact="wstart">오늘 업무일지 시작 — 남은 일 이어받기</button>' : ''}${h || '<p class="wl-bz">적힌 일이 없어요</p>'}${more > 0 || S.twAll ? `<button type="button" class="wl-off1" data-bact="wmore">${S.twAll ? '접기' : `외 ${more}개${done.length ? ` (끝낸 일 ${done.length})` : ''} 더 보기`}</button>` : ''}${is ? `<form class="wl-ba" data-add="today"><input type="text" maxlength="300" placeholder="＋ 오늘 할 일 — 적고 Enter" aria-label="오늘 할 일 더하기">${emoBtn}</form>` : ''}</section>`;
 }
 function doneIn(p, id){
   const i = idx(p, id); if(i < 0) return;
@@ -1231,7 +1245,7 @@ const setText = (b, t) => { b.r = (b.r || []).length === 1 ? [Object.assign({}, 
 function twCommit(i){
   const p = S.pages.get(i.dataset.pid), id = i.dataset.tw, t = i.value.trim();
   if(S.twEdit !== id) return;
-  S.twEdit = null;
+  S.twEdit = null; emoClose(true);
   const b = p && (p.blocks || []).find(x => x.id === id);
   i.blur(); S.boardDefer = false;
   if(b && t && t !== bText(b).replace(/\n/g, ' ')) pageEdit(p, () => setText(b, t)); else renderBoard();
@@ -1242,7 +1256,7 @@ function pinTextSoon(p){
   clearTimeout(pinTextT);
   pinTextT = setTimeout(() => {
     if(p.kind !== 'daily' || !p.blocks) return;
-    pins().forEach(it => { const r = pinLineOf(it); if(!r || r.p !== p) return; const t = bText(r.b).replace(/\s+/g, ' ').trim().slice(0, 300); if(t && t !== it.title) boardSave(it.id, {title:t}); });
+    pins().forEach(it => { const r = pinLineOf(it); if(!r || r.p !== p) return; let t = bText(r.b).replace(/\s+/g, ' ').trim(); t = cut(t, 300); if(t && t !== it.title) boardSave(it.id, {title:t}); });
   }, 1200);
 }
 function addToday(t){
@@ -1290,7 +1304,7 @@ const autoBy = (it, s) => { const c = S.checks.get(ckKey(it.id, s.day)); return 
 function renderBoard(){
   const el = document.getElementById('wlBoard'); if(!el) return;
   const ae = document.activeElement;
-  if((ae && ae.tagName === 'INPUT' && el.contains(ae) && ae.value) || (S.ptr && el.matches(':hover'))){ S.boardDefer = true; return; }
+  if((ae && ae.tagName === 'INPUT' && el.contains(ae) && ae.value) || (EMO.hold && el.contains(EMO.hold)) || (S.ptr && el.matches(':hover'))){ S.boardDefer = true; return; }
   if(!S.ready && !S.board.size && !S.pages.size){ el.hidden = true; return; }
   el.hidden = false;
   syncLog();
@@ -1300,7 +1314,7 @@ function renderBoard(){
   const ctl = id => `<span class="wl-bc"><button type="button" data-bact="edit" data-bid="${id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="del" data-bid="${id}" title="지우기" aria-label="지우기">×</button></span>`;
   const rRow = ([it, s]) => `<div class="wl-r${s.done ? ' done' : ''}${s.late || (!s.done && late17) ? ' late' : ''}${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="check" data-bid="${it.id}" data-day="${s.day}" aria-pressed="${s.done}" aria-label="${E(it.title)} 체크"></button><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span>${(it.rule || {}).auto === 'in' ? `<small>${E(inb.rows ? inbSum() : inb.err ? '콰이디에어 · ERP 를 못 읽었어요 — ' + inb.err : '콰이디에어 · ERP 확인 중…')}</small>` : ''}${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${s.done && autoBy(it, s) ? `자동 확인 ${hm(autoBy(it, s))}` : s.late ? `<b class="bad">${md(s.day)}(${WK[dow(s.day)]}) 것 밀림</b>` : E([it.slot, (it.rule || {}).t === 'day' ? '' : ruleText(it.rule)].filter(Boolean).join(' · '))}</span>${dots(it)}${ctl(it.id)}</div>`;
   const pRow = it => `<div class="wl-r pin${it.hot ? ' hot' : ''}${it.done_at ? ' done' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="pindone" data-bid="${it.id}" aria-pressed="${!!it.done_at}" aria-label="${E(it.title)} 끝냄" title="${it.done_at ? '다시 누르면 풀려요 · 지우려면 ×' : '끝났으면 누르기 (지우기 전까지 여기 남아요)'}"></button><button type="button" class="wl-rt" data-bact="${pinLineOf(it) ? 'golink' : 'edit'}" data-bid="${it.id}"><span>${E(it.title)}</span>${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${it.due && !it.done_at ? dday(it.due) + ' ' + md(it.due) : ''}</span>${ctl(it.id)}</div>`;
-  const add = (k, ph) => `<form class="wl-ba" data-add="${k}"><input type="text" maxlength="200" placeholder="${ph}" aria-label="${ph}"></form>`;
+  const add = (k, ph) => `<form class="wl-ba" data-add="${k}"><input type="text" maxlength="200" placeholder="${ph}" aria-label="${ph}">${emoBtn}</form>`;
   el.className = 'wl-board' + (S.boardFold ? ' is-fold' : '');
   el.innerHTML = `<div class="wl-bh"><b>전광판</b><span class="wl-bd">${+S.today.slice(5, 7)}월 ${+S.today.slice(8)}일 ${WK[dow(S.today)]}요일</span><span class="wl-bn${left || wl ? '' : ' ok'}">${wl ? `오늘 업무 <b>${wl}</b>` : tp && tp.day === S.today ? '오늘 업무 끝' : ''}${left ? `${wl ? ' · ' : ' '}루틴 <b>${left}</b>` : ''}${left || wl ? ' 남음' : ''}</span><span class="wl-sp"></span><button type="button" class="wl-bb" data-bact="tolog">업무일지로 ↓</button><button type="button" class="wl-bb" data-bact="tolst">라인시트로 ↓</button><button type="button" class="wl-bb" data-bact="fold">${S.boardFold ? '펼치기' : '접기'}</button></div>
     <div class="wl-bg">${tw}<section><h4>오늘 루틴 <small>${done}/${on.length}</small></h4>${on.map(rRow).join('') || '<p class="wl-bz">오늘 챙길 루틴이 없어요</p>'}${off.length ? `<details class="wl-off"${S.offOpen ? ' open' : ''}><summary>다른 날 루틴 ${off.length}</summary>${off.map(([it, s]) => `<div class="wl-r dim" data-bid="${it.id}"><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span></button><span class="wl-rm">${E(ruleText(it.rule))}${s.next ? ` · 다음 ${md(s.next)}(${WK[dow(s.next)]})` : ''}</span>${ctl(it.id)}</div>`).join('')}</details>` : ''}${add('routine', '＋ 루틴 — 적고 Enter')}</section>
@@ -1365,7 +1379,7 @@ function pinLine(b, p){
   const dm = t.match(/(?:^|[^\d])(\d{2})(\d{2})\s*(?:입고|도착|발송|출고|회신|미팅)?\s*예정/); let due = '';
   if(dm && mmdd(dm[1] + dm[2])) due = `${p.day.slice(0, 4)}-${dm[1]}-${dm[2]}`;
   const id = uuid();
-  boardSave(id, {kind:'pin', title:t.slice(0, 200), due, link:{page:p.id, line:b.o || b.id}, sort:Date.now() / 1000}).then(ok => { if(ok) snack('전광판에 올렸어요', () => boardDel(id)); });
+  boardSave(id, {kind:'pin', title:cut(t, 200), due, link:{page:p.id, line:b.o || b.id}, sort:Date.now() / 1000}).then(ok => { if(ok) snack('전광판에 올렸어요', () => boardDel(id)); });
 }
 /* ============================================================ 전광판 ↔ 업무일지 ============================================================
    2026-11-23 사장님 "전광판이랑 하단 업무일지랑 동기화 — 전광판에서 수정하거나 추가해도 밑에 보이게"
@@ -1492,17 +1506,19 @@ function logUnlink(it){
 function boardEdit(id, at){
   const it = S.board.get(id); if(!it) return;
   const r = Object.assign({t:'day'}, it.rule || {}), isR = it.kind === 'routine';
-  const body = `<label>${isR ? '할 일' : '꼭 챙길 것'}<textarea data-f="title" rows="2" maxlength="300">${E(it.title)}</textarea></label>
+  const eb = '<button type="button" class="wl-emb2" data-emo="1" title="이모지 넣기" aria-label="이모지 넣기"><i class="wl-smile"></i></button>';
+  const body = `<label>${isR ? '할 일' : '꼭 챙길 것'}<textarea data-f="title" rows="2" maxlength="300">${E(it.title)}</textarea>${eb}</label>
     ${isR ? `<div class="wl-pl">언제 하나요</div><div class="wl-chips" data-f="t">${[['day', '평일 매일'], ['week', '요일'], ['month', '매월'], ['date', '한 번']].map(([k, t]) => `<button type="button" data-v="${k}" class="${r.t === k ? 'on' : ''}">${t}</button>`).join('')}</div>
       <div class="wl-chips sm" data-f="wd"${r.t === 'week' ? '' : ' hidden'}>${[1, 2, 3, 4, 5, 6, 0].map(w => `<button type="button" data-v="${w}" class="${(r.wd || []).includes(w) ? 'on' : ''}">${WK[w]}</button>`).join('')}</div>
       <div data-f="dm"${r.t === 'month' ? '' : ' hidden'}><input type="text" data-k="dm" value="${E((r.dm || []).map(x => x === 'L' ? '말일' : x).join(', '))}" placeholder="예: 1, 15, 말일"></div>
       <div data-f="d"${r.t === 'date' ? '' : ' hidden'}><input type="date" data-k="d" value="${E(r.d || '')}"></div>
       <div class="wl-pl">저절로 체크</div><div class="wl-chips sm" data-f="auto"><button type="button" data-v="" class="${r.auto ? '' : 'on'}">안 함</button><button type="button" data-v="in" class="${r.auto === 'in' ? 'on' : ''}">입고 · 발송 확인 (콰이디에어 · ERP)</button></div><div class="wl-pl">시간대 <small>(안 적어도 돼요)</small></div><div class="wl-chips sm" data-f="slot">${['출근 직후', '오전', '점심 후', '오후', '퇴근 전'].map(t => `<button type="button" data-v="${t}" class="${it.slot === t ? 'on' : ''}">${t}</button>`).join('')}</div><input type="text" data-k="slot" maxlength="40" value="${E(it.slot)}" placeholder="직접 적기 (예: 3시)">`
     : `<label>날짜 <small>(있으면 D-day 로 보여요)</small><input type="date" data-k="due" value="${E(it.due || '')}"></label>`}
-    <label>메모<textarea data-k="memo" rows="2" maxlength="2000" placeholder="안 적어도 돼요">${E(it.memo)}</textarea></label>
+    <label>메모<textarea data-k="memo" rows="2" maxlength="2000" placeholder="안 적어도 돼요">${E(it.memo)}</textarea>${eb}</label>
     <label class="wl-hot"><input type="checkbox" data-k="hot"${it.hot ? ' checked' : ''}> 중요 — 맨 위에 굵게</label>
     <div class="wl-pf"><button type="button" class="wl-btn" data-x="del">지우기</button><span class="wl-sp"></span><button type="button" class="wl-btn" data-x="no">닫기</button><button type="button" class="wl-btn pri" data-x="ok">저장</button></div>`;
   pop(at, body, 'form', (e, box, close) => {
+    const em = e.target.closest('[data-emo]'); if(em){ e.preventDefault(); return emoInput($('textarea', em.parentNode), em); }
     const c = e.target.closest('.wl-chips button');
     if(c){
       const f = c.parentNode.dataset.f;
@@ -1545,6 +1561,7 @@ function onBoardClick2(e){
     if(k === 'wdone'){ const p = S.pages.get(a.dataset.pid); if(p) doneIn(p, a.dataset.lid); return; }
     if(k === 'wedit'){ S.twEdit = a.dataset.lid; setTimeout(() => { renderBoard(); const i = $(`#wlBoard [data-tw="${S.twEdit}"]`); if(i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 60); return; }   // 누름이 끝난 뒤 그린다
     if(k === 'wdel'){ const p = S.pages.get(a.dataset.pid); if(!p) return; const back = pageEdit(p, bs => { const i = bs.findIndex(b => b.id === a.dataset.lid); if(i < 0) return false; bs.splice(i, subEnd(bs, i) - i); }); if(back) snack('오늘 업무에서 지웠어요 (업무일지에서도)', back); return; }
+    if(k === 'emo') return emoInput($('input', a.parentNode), a);
     if(k === 'wstart'){ showCenter(); poll().then(() => newPage('daily', S.today)).then(() => toLog()); return; }
     if(k === 'wmore'){ S.twAll = !S.twAll; return renderBoard(); }
     if(k === 'golink'){ const it = S.board.get(id), r = pinLineOf(it); if(!r) return boardEdit(id, a); showCenter(); openPage(r.p.id, {line:r.b.id}); return; }
@@ -1557,17 +1574,18 @@ function goOrders(){ showCenter(); flushSoon(); S.view = 'order'; S.find = null;
 const showCenter = () => { try{ if(_dsgCurTab !== 'center') dsgSwitchTab('center'); }catch(e){} };
 function bindBoard(el){
   el.addEventListener('click', onBoardClick);
+  el.addEventListener('mousedown', e => { if(e.target.closest('.wl-be')) e.preventDefault(); });
   el.addEventListener('toggle', e => { if(e.target.classList && e.target.classList.contains('wl-off')) S.offOpen = e.target.open; }, true);
   el.addEventListener('submit', e => {
     const f = e.target.closest('[data-add]'); if(!f) return;
-    e.preventDefault();
+    e.preventDefault(); emoClose(true);
     const i = $('input', f), t = i.value.trim(); if(!t) return;
     const kind = f.dataset.add, id = uuid(); i.value = ''; i.blur();
     if(kind === 'today') return addToday(t);
     boardSave(id, Object.assign({kind, title:t, sort:Date.now() / 1000}, kind === 'routine' ? {rule:{t:'day'}} : {})).then(ok => { if(ok){ const row = $(`#wlBoard .wl-r[data-bid="${id}"] .wl-rt`); if(row) boardEdit(id, row); } });
   });
   el.addEventListener('focusout', () => setTimeout(settle, 60));
-  el.addEventListener('focusout', e => { if(e.target.dataset && e.target.dataset.tw) twCommit(e.target); });
+  el.addEventListener('focusout', e => { if(e.target.dataset && e.target.dataset.tw && EMO.hold !== e.target) twCommit(e.target); });
   el.addEventListener('keydown', e => { const i = e.target; if(!i.dataset || !i.dataset.tw || e.isComposing || e.keyCode === 229) return; if(e.key === 'Enter'){ e.preventDefault(); twCommit(i); } if(e.key === 'Escape'){ S.twEdit = null; i.blur(); S.boardDefer = false; renderBoard(); } });
   let drag = null;
   el.addEventListener('dragstart', e => { const r = e.target.closest('.wl-r[draggable]'); if(!r) return; drag = r.dataset.bid; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ''); });
@@ -1592,20 +1610,24 @@ function bindBoard(el){
 }
 
 /* ============================================================ 작은 창 · 알림 ============================================================ */
+function placePop(b, at){
+  const r0 = at && at.getBoundingClientRect ? at.getBoundingClientRect() : at, r = r0 && (r0.width || r0.height || r0.top) ? r0 : {left:innerWidth / 2 - 140, right:innerWidth / 2 + 140, top:120, bottom:120};
+  const w = b.offsetWidth, h = b.offsetHeight;
+  b.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left)) + 'px';
+  b.style.top = Math.max(8, r.bottom + 6 + h < innerHeight - 8 ? r.bottom + 6 : r.top - h - 6 > 8 ? r.top - h - 6 : innerHeight - h - 8) + 'px';
+}
 function pop(at, html, cls, onClick){
   closePop();
   const b = document.createElement('div');
   b.className = 'wl-pop ' + (cls || ''); b.id = 'wlPop'; b.innerHTML = html;
   document.body.appendChild(b);
-  const r = at && at.getBoundingClientRect ? at.getBoundingClientRect() : at || {left:innerWidth / 2 - 140, right:innerWidth / 2 + 140, top:120, bottom:120};
-  const w = b.offsetWidth, h = b.offsetHeight;
-  b.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left)) + 'px';
-  b.style.top = Math.max(8, r.bottom + 6 + h < innerHeight - 8 ? r.bottom + 6 : r.top - h - 6 > 8 ? r.top - h - 6 : innerHeight - h - 8) + 'px';
+  placePop(b, at);
+  b.addEventListener('mousedown', e => { if(e.target.closest('[data-emo]')) e.preventDefault(); });
   b.addEventListener('click', e => onClick && onClick(e, b, closePop));
   setTimeout(() => document.addEventListener('mousedown', popOut, true), 0);
   return b;
 }
-function popOut(e){ const b = document.getElementById('wlPop'); if(b && !b.contains(e.target)) closePop(); }
+function popOut(e){ const b = document.getElementById('wlPop'); if(b && !b.contains(e.target) && !(EMO.el && EMO.el.contains(e.target))) closePop(); }
 function closePop(){ const b = document.getElementById('wlPop'); if(b) b.remove(); document.removeEventListener('mousedown', popOut, true); }
 let snackT = 0;
 function snack(msg, undoFn){
@@ -1633,7 +1655,7 @@ async function copyText(t, ok){
 }
 function pageText(p, ids){
   const L = [];
-  if(!ids) L.push(`${+p.day.slice(5, 7)}월 ${+p.day.slice(8)}일 (${WK[dow(p.day)]}) ${p.title}`);
+  if(!ids) L.push(`${+p.day.slice(5, 7)}월 ${+p.day.slice(8)}일 (${WK[dow(p.day)]}) ${icoOf(p)}${p.title}`);
   (p.blocks || []).forEach(b => {
     if(ids && !ids.has(b.id)) return;
     if(b.t === 'hr') return;
@@ -1646,6 +1668,199 @@ function pageText(p, ids){
   return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/* ============================================================ 이모지 ============================================================
+   2026-11-23 사장님 "디자인팀 업무일지에는 이모지같은것도 추가 할 수 있게 해주고"
+   · 이모지는 그냥 글자로 넣는다 (저장 모양 그대로) — 줄 오른쪽 웃는 얼굴 · 줄 메뉴(줄 앞에 붙이기) · 글 중간에 ':불' 치고 Tab · Ctrl E · 전광판 적는 칸 · 루틴 고치는 창
+   · 글 아이콘만 meta.icon (목록 · 달력에도 보임)
+   · 전체 목록은 처음 쓸 때 불러온다 (시딩 마스터와 같은 자료, 한글로 찾기). 못 불러오면 아래 기본 묶음
+   · 줄 앞에 이모지가 있어도 [업체] · 날짜 · 발주 줄을 그대로 알아본다 (noLead) */
+const EMO_URL = 'https://cdn.jsdelivr.net/npm/emoji-picker-element-data@1.8.0/ko/cldr/data.json';
+const EMO_G = [[0, '표정', '😀'], [1, '사람', '👋'], [3, '동물 · 자연', '🌿'], [4, '음식', '🍎'], [5, '장소 · 이동', '🚚'], [6, '활동', '🎉'], [7, '물건', '👗'], [8, '기호', '✅'], [9, '깃발', '🏳️']];
+const EMO_DEF = ['✅', '⭐', '🔥', '❗', '📌', '👀', '💡', '🎨', '🧵', '✂️', '👗', '📦', '🚚', '📸', '📅', '⏰', '💬', '🙏', '👍', '🎉', '❤️', '❌', '⏸️', '🚨'];
+/* 일할 때 쓰는 말 — 이모지 이름에 없는 것 */
+const EMO_WORD = [['급함 긴급 급해', '🔥🚨❗⚡'], ['중요 필수 꼭', '⭐❗📌'], ['완료 끝 다함 오케이 ok', '✅👌🎉'], ['확인 체크 검토', '✅👀🔍☑️'], ['보류 홀딩 멈춤', '⏸️✋'], ['취소 안됨 탈락', '❌🚫'], ['대기 기다림', '⏳💤'], ['진행 진행중', '🔄🏃'], ['마감 시간 기한', '⏰⌛'], ['일정 날짜', '📅🗓️'],
+  ['입고 재고 박스 택배', '📦'], ['발송 출고 배송', '🚚📮✈️'], ['샘플', '👗🧵'], ['원단 봉제 실', '🧵🪡✂️'], ['패턴 재단', '📐✂️'], ['부자재 단추 지퍼', '🧷🪡'], ['디자인 컬러 색', '🎨🖌️'], ['촬영 사진 룩북', '📸📷'], ['옷 의상 룩', '👗👚👕🧥'], ['가방', '👜👛🎒'], ['신발', '👟👠👢'], ['주얼리 악세사리 반지 목걸이', '💍💎📿'], ['미팅 회의', '🤝💬'], ['연락 문의 회신 답장', '💬📞✉️'], ['전화', '📞'], ['메일', '✉️📧'], ['금액 단가 돈', '💰💳'], ['발주 주문', '🛒📝'], ['메모', '📝'], ['아이디어', '💡'], ['링크', '🔗'], ['공장', '🏭'], ['중국', '🇨🇳'], ['한국', '🇰🇷'], ['휴무 휴가', '🏖️😴'], ['축하', '🎉👏'], ['감사 부탁', '🙏🙇‍♀️'], ['수정 고침', '✏️🛠️'], ['불량 문제', '⚠️🚨'], ['질문 궁금', '❓🤔'], ['새것 신상 신규', '🆕✨']];
+const EMO = {all:null, busy:null, el:null, pick:null, hold:null, keep:false};
+const emo1 = e => e.replace(/^(\p{Emoji_Presentation})\uFE0F$/u, '$1');
+const emoList = s => String(s).match(RE_EMO) || [];
+const emoRecent = () => { try{ const a = JSON.parse(localStorage.getItem('wl_emo_v1') || '[]'); return Array.isArray(a) ? a.filter(x => typeof x === 'string' && x.length < 30).map(emo1).slice(0, 24) : []; }catch(e){ return []; } };
+const emoUse = e => { try{ localStorage.setItem('wl_emo_v1', JSON.stringify([e, ...emoRecent().filter(x => x !== e)].slice(0, 24))); }catch(x){} };
+const emoQuick = n => [...new Set([...emoRecent(), ...EMO_DEF])].slice(0, n);
+function emoCan(){           // 이 PC 글꼴이 컬러로 그릴 수 있는 것까지만 (윈도우는 나라 깃발 · 새 이모지가 글자로 깨진다)
+  const r = {v:13, flag:true};
+  try{
+    const c = document.createElement('canvas'), g = c.getContext('2d', {willReadFrequently:true}); c.width = c.height = 22;
+    const F = '15px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    const draw = (t, col) => { g.clearRect(0, 0, 22, 22); g.font = F; g.textBaseline = 'top'; g.fillStyle = col; g.fillText(t, 0, 3); return g.getImageData(0, 0, 22, 22).data.join(); };
+    const w = t => { g.font = F; return g.measureText(t).width; }, w0 = w('😀');
+    const ok = t => { const a = draw(t, '#000'); return /[1-9]/.test(a) && a === draw(t, '#fff') && w(t) < w0 * 1.5; };
+    const hit = [[16, '🫩'], [15.1, '🐦‍🔥'], [15, '🫨'], [14, '🫠'], [13.1, '😮‍💨'], [13, '🥲'], [12.1, '🧑‍🦰'], [12, '🥱'], [11, '🥰']].find(x => ok(x[1]));
+    r.v = hit ? hit[0] : 5; r.flag = ok('🇰🇷');
+  }catch(e){}
+  return r;
+}
+function emoBuild(rows){
+  const can = emoCan(), by = new Map(), out = [];
+  rows.forEach(x => {
+    if(!x || !x.emoji || (x.version || 0) > can.v || (x.group === 9 && !can.flag)) return;
+    const o = {e:emo1(x.emoji), g:x.group, w:[x.annotation, ...(x.tags || []), ...(x.shortcodes || [])].filter(Boolean).join(' ').toLowerCase(), n:x.annotation || '', i:out.length};
+    out.push(o); by.set(x.emoji.replace(/️/g, ''), o);
+  });
+  EMO_WORD.forEach(([w, s]) => emoList(s).forEach((e, k) => { const o = by.get(e.replace(/️/g, '')); if(o) (o.x = o.x || []).push(...w.split(' ').map(t => [t, k])); }));
+  return out;
+}
+function emoLoad(){
+  if(EMO.all) return Promise.resolve(EMO.all);
+  return EMO.busy || (EMO.busy = fetch(EMO_URL).then(r => { if(!r.ok) throw new Error('emoji ' + r.status); return r.json(); }).then(j => (EMO.all = emoBuild(j))).finally(() => { EMO.busy = null; }));
+}
+/* 한글로 찾기 — 한 글자(불 · 꽃)도. 업무 말 > 이름이 같음 > 이름으로 시작 > 들어 있음 */
+function emoFind(q, strict){
+  const ts = String(q || '').toLowerCase().split(/\s+/).filter(Boolean); if(!ts.length || !EMO.all) return [];
+  const score = (o, t) => {
+    let s = 0;
+    (o.x || []).forEach(([w, k]) => { if(w === t) s = Math.max(s, 60 - k); else if(w.startsWith(t)) s = Math.max(s, (t.length > 1 ? 40 : 24) - k); });
+    const ws = o.w.split(/[\s_|·,-]+/);
+    if(o.n === t) s = Math.max(s, 55); else if(ws.includes(t)) s = Math.max(s, 35); else if(ws.some(w => w.startsWith(t))) s = Math.max(s, 20);
+    else if(!strict && t.length > 1 && o.w.includes(t)) s = Math.max(s, 8);
+    return s;
+  };
+  return EMO.all.map(o => { let m = 0; for(const t of ts){ const s = score(o, t); if(!s) return null; m += s; } return [m, o]; }).filter(Boolean).sort((a, b) => b[0] - a[0] || a[1].i - b[1].i).map(x => x[1]).slice(0, 120);
+}
+/* 이모지 창 — onPick(이모지). opt: keep 누르는 대로 계속 · hold 적던 칸(창을 쓰는 동안 저장하지 않고 기다림) · back 닫을 때 · clear 없애기 */
+function emoOpen(at, onPick, opt){
+  emoClose();
+  opt = opt || {};
+  const b = document.createElement('div'), btn = (e, n) => `<button type="button" data-e="${E(e)}" title="${E(n || '')}">${e}</button>`;
+  b.className = 'wl-pop emo'; b.id = 'wlEmo'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', '이모지 고르기');
+  b.innerHTML = `<div class="eh"><input type="text" maxlength="30" autocomplete="off" spellcheck="false" placeholder="찾기 — 불, 박스, 촬영, 급함" aria-label="이모지 찾기">${opt.clear ? '<button type="button" class="wl-btn sm" data-eno="1">없애기</button>' : ''}<button type="button" class="ex" data-ex="1" aria-label="닫기">×</button></div><div class="et" hidden></div><div class="eg"></div>${opt.keep ? '<div class="ef">누르는 대로 계속 들어가요 · 글을 적거나 Esc 를 누르면 닫혀요</div>' : ''}`;
+  document.body.appendChild(b);
+  EMO.el = b; EMO.pick = onPick; EMO.hold = opt.hold || null; EMO.keep = !!opt.keep; EMO.back = opt.back || null; EMO.clear = opt.clear || null;
+  const inp = $('input', b), box = $('.eg', b), tabs = $('.et', b);
+  let act = -1;
+  const sec = (k, t, h) => h ? `<section data-g="${k}"><h5>${t}</h5><div>${h}</div></section>` : '';
+  const home = () => {
+    const A = EMO.all;
+    tabs.hidden = !A;
+    if(A) tabs.innerHTML = [['q', '자주 쓴 것', '🕘'], ...EMO_G].filter(([g]) => g === 'q' || A.some(o => o.g === g)).map(([g, t, e]) => `<button type="button" data-et="${g}" title="${t}" aria-label="${t}">${e}</button>`).join('');
+    box.innerHTML = sec('q', '자주 쓴 것', emoQuick(24).map(e => btn(e)).join('')) + (A ? EMO_G.map(([g, t]) => sec(g, t, A.filter(o => o.g === g).map(o => btn(o.e, o.n)).join(''))).join('') : EMO.err ? '<p class="wl-none">전체 이모지를 불러오지 못했어요 <button type="button" class="wl-btn sm" data-ere="1">다시</button></p>' : '<p class="wl-none">전체 이모지 불러오는 중…</p>');
+  };
+  const draw = () => {
+    const q = inp.value.trim(); act = -1;
+    if(!q) return home();
+    tabs.hidden = true;
+    if(!EMO.all){ box.innerHTML = '<p class="wl-none">불러오는 중…</p>'; return; }
+    const r = emoFind(q); box.innerHTML = r.length ? sec('f', '찾은 것', r.map(o => btn(o.e, o.n)).join('')) : '<p class="wl-none">없어요 — 다른 낱말로 찾아 주세요</p>';
+    if(r.length) mv(0);
+  };
+  const cells = () => $$('[data-e]', box);
+  const mv = n => { const c = cells(); if(!c.length) return; act = Math.max(0, Math.min(c.length - 1, n)); c.forEach((x, i) => x.classList.toggle('on', i === act)); c[act].scrollIntoView({block:'nearest'}); };
+  const take = (e, keep) => { emoUse(e); const f = EMO.pick; if(!keep) emoClose(true); f(e); };
+  const load = () => { EMO.err = 0; emoLoad().then(() => { if(EMO.el === b) draw(); }).catch(() => { EMO.err = 1; if(EMO.el === b) draw(); }); };
+  home(); placePop(b, at); if(!EMO.all) load();
+  inp.addEventListener('input', draw);
+  inp.addEventListener('keydown', e => {
+    if(e.isComposing || e.keyCode === 229) return;
+    const c = cells(), per = Math.max(1, Math.round(box.clientWidth / ((c[0] || {}).offsetWidth || 36)));
+    if(e.key === 'Enter'){ e.preventDefault(); const x = c[act < 0 ? 0 : act]; if(x && (act >= 0 || inp.value.trim())) take(x.dataset.e, false); return; }
+    const d = {ArrowDown:per, ArrowUp:-per, ArrowRight:1, ArrowLeft:-1}[e.key];
+    if(d && (act >= 0 || Math.abs(d) > 1)){ e.preventDefault(); mv(act < 0 ? 0 : act + d); }
+  });
+  b.addEventListener('mousedown', e => { if(e.target !== inp) e.preventDefault(); });          // 적던 칸의 커서를 지킨다
+  b.addEventListener('click', e => {
+    const t = e.target, x = t.closest('[data-e]');
+    if(x) return take(x.dataset.e, EMO.keep);
+    if(t.closest('[data-ex]')) return emoClose();
+    if(t.closest('[data-eno]')){ const f = EMO.clear; emoClose(true); return f && f(); }
+    if(t.closest('[data-ere]')){ home(); return load(); }
+    const g = t.closest('[data-et]'); if(g){ const s = $(`[data-g="${g.dataset.et}"]`, box); if(s) box.scrollTop = s.offsetTop - box.offsetTop; }
+  });
+  setTimeout(() => document.addEventListener('mousedown', emoOut, true), 0);
+  if(matchMedia('(hover:hover)').matches) inp.focus({preventScroll:true});
+}
+function emoOut(e){ if(EMO.el && !EMO.el.contains(e.target)) emoClose(); }
+function emoClose(quiet){
+  document.removeEventListener('mousedown', emoOut, true);
+  const b = EMO.el; if(!b) return;
+  const h = EMO.hold, back = EMO.back;
+  b.remove(); EMO.el = EMO.pick = EMO.hold = EMO.back = EMO.clear = null;
+  if(h && h.isConnected) h.focus({preventScroll:true}); else if(!quiet && back) back();
+  setTimeout(settle, 60);
+}
+/* 업무일지 줄에 넣기 — 커서 자리(없으면 줄 끝). pos 를 주면 그 글자 범위를 바꾼다 */
+function emoPut(pid, id, pos, t){
+  const p = cur(); if(!p || p.id !== pid || !p.blocks) return null;
+  const b = p.blocks.find(q => q.id === id), x = xEl(id); if(!b || !x) return null;
+  if(document.activeElement === x) b.r = parseX(x);
+  const n = segLen(b.r), a = Math.min(pos[0], n), z = Math.min(pos[1], n), L = segSlice(b.r, 0, a), f = L[L.length - 1], ins = Object.assign({}, f && !f.a && !f.c ? f : {}, {t});
+  beforeEdit(p); mark(p);
+  putSegs(x, b, [...L, ins, ...segSlice(b.r, z, 1e9)], a + t.length);
+  return [a + t.length, a + t.length];
+}
+function emoLine(id, at){
+  const x = xEl(id), p = cur(); if(!x || !p) return;
+  const foc = document.activeElement === x, n = x.textContent.length;
+  let pos = (foc && selIn(x)) || [n, n], first = !foc;
+  if(foc) x.blur();          // 적던 한글 조합을 마치고 나서
+  emoOpen(at || x, e => {
+    const x2 = xEl(id); if(!x2) return emoClose();
+    if(document.activeElement === x2) pos = selIn(x2) || pos;
+    const b = p.blocks.find(q => q.id === id), t = b ? bText(b) : '';
+    const r = emoPut(p.id, id, pos, (first && pos[0] && pos[0] >= t.length && !/\s$/.test(t) ? ' ' : '') + e); first = false;
+    if(r) pos = r; else emoClose();
+  }, {keep:true, back:() => { const x2 = xEl(id); if(x2 && foc) putSel(x2, pos[0], pos[1]); }});
+}
+/* 글 칸(전광판 · 고치는 창)에 넣기 */
+function emoInput(i, at){
+  if(!i) return;
+  let pos = document.activeElement === i ? [i.selectionStart, i.selectionEnd] : [i.value.length, i.value.length], mine = false;
+  const typed = () => { if(mine) return; i.removeEventListener('input', typed); if(EMO.hold === i) emoClose(true); };
+  i.addEventListener('input', typed);
+  emoOpen(at, e => {
+    if(!i.isConnected) return emoClose(true);
+    if(document.activeElement === i) pos = [i.selectionStart, i.selectionEnd];
+    i.setRangeText(e, pos[0], pos[1], 'end'); pos = [i.selectionStart, i.selectionEnd];
+    mine = true; i.dispatchEvent(new Event('input', {bubbles:true})); mine = false; i.focus({preventScroll:true});
+  }, {keep:true, hold:i});
+}
+/* 줄 앞에 붙이기 · 바꾸기 · 떼기 (여러 줄도) */
+function lineEmo(ids, e){
+  const set = new Set(ids);
+  edit(bs => {
+    const L = bs.filter(b => set.has(b.id) && !b.src && b.t !== 'hr'); if(!L.length) return false;
+    const off = !e || L.every(b => leadOf(bText(b)).trim() === e);
+    L.forEach(b => { b.r = segNorm([...(off ? [] : [{t:e + ' '}]), ...segSlice(b.r || [], leadOf(bText(b)).length, 1e9)]); });
+  });
+  if(e) emoUse(e);
+}
+function pageIcon(at){
+  const p = cur(); if(!p) return;
+  const set = v => { const q = S.pages.get(p.id); if(!q) return; ordSet(q, {icon:v}); renderPage(); if(q.kind === 'order') renderOrd(); else renderNav(); };
+  emoOpen(at, set, {clear:(p.meta || {}).icon ? () => set('') : null});
+}
+/* 글 중간에서 ':불' — 고를 것이 있으면 아래에 작은 목록. Tab 이나 누르기로 넣는다 (Enter 는 ↑↓ 로 고른 뒤에만 — 'A :완료' 처럼 적은 글이 바뀌지 않게) */
+const SUG = {el:null, id:'', pos:null, i:0, mv:false, L:[]};
+function sugSync(x, b){
+  const s = selIn(x), m = s && s[0] === s[1] && b.t !== 'code' ? bText(b).slice(0, s[0]).match(/(?:^|\s):([가-힣a-zA-Z]{1,12})$/) : null;
+  if(!m) return sugClose();
+  const q = m[1], pos = [s[0] - q.length - 1, s[0]];
+  emoLoad().then(() => {
+    if(document.activeElement !== x || !bText(b).slice(0, pos[1]).endsWith(':' + q)) return;
+    const L = emoFind(q, true).slice(0, 6); if(!L.length) return sugClose();
+    if(!SUG.el){ SUG.el = document.createElement('div'); SUG.el.className = 'wl-pop sug'; document.body.appendChild(SUG.el); SUG.el.addEventListener('mousedown', e => { e.preventDefault(); const c = e.target.closest('[data-i]'); if(c) sugPick(+c.dataset.i); }); }
+    Object.assign(SUG, {id:b.id, pid:S.cur, pos, i:0, mv:false, L});
+    SUG.el.innerHTML = L.map((o, i) => `<button type="button" tabindex="-1" data-i="${i}" class="${i ? '' : 'on'}"><span>${o.e}</span>${E(o.n)}</button>`).join('') + '<div class="ef">Tab 넣기 · ↑↓ 고르기 · Esc 닫기</div>';
+    const g = getSelection(), r = g.rangeCount && g.getRangeAt(0).getClientRects()[0] || x.getBoundingClientRect();
+    placePop(SUG.el, r);
+  }).catch(() => {});
+}
+function sugMove(d){ SUG.i = (SUG.i + d + SUG.L.length) % SUG.L.length; SUG.mv = true; $$('[data-i]', SUG.el).forEach((c, i) => c.classList.toggle('on', i === SUG.i)); }
+function sugPick(i){
+  const o = SUG.L[i], {pid, id, pos} = SUG, x = xEl(id); sugClose(); if(!o || !x) return;
+  if(S.comp) x.blur();          // 한글 조합을 마치고 바꾼다
+  emoUse(o.e); emoPut(pid, id, pos, o.e);
+}
+function sugClose(){ if(SUG.el){ SUG.el.remove(); SUG.el = null; } }
+
 /* ============================================================ 메뉴 ============================================================ */
 function lineMenu(id, at){
   const p = cur(), b = p && p.blocks.find(x => x.id === id); if(!b) return;
@@ -1657,12 +1872,14 @@ function lineMenu(id, at){
     ${h ? '' : `<div class="wl-pt">상태</div><div class="wl-chips sm" data-g="st"><button type="button" data-v="" class="${b.st ? '' : 'on'}">자동</button>${Object.entries(STS).filter(([k]) => k !== 'done').map(([k, t]) => `<button type="button" data-v="${k}" class="${b.st === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     <div class="wl-pt">줄 색</div><div class="wl-sw" data-g="bg">${['', 'yellow_background', 'red_background', 'blue_background', 'teal_background', 'gray_background'].map(c => `<button type="button" data-v="${c}" class="bg-${c.replace('_background', '') || 'no'}${(b.bg || '') === c ? ' on' : ''}" aria-label="${c || '색 없음'}"></button>`).join('')}</div>
     <div class="wl-pt">모양</div><div class="wl-chips sm" data-g="t">${[['li', '글머리'], ['todo', '체크칸'], ['p', '본문'], ['h3', '구역 제목'], ['quote', '인용']].map(([k, t]) => `<button type="button" data-v="${k}" class="${b.t === k ? 'on' : ''}">${t}</button>`).join('')}</div>`}
+    <div class="wl-pt">이모지 <small>줄 앞에 · 다시 누르면 떼기</small></div><div class="wl-eq" data-g="em">${emoQuick(8).map(e => `<button type="button" data-v="${E(e)}" class="${leadOf(bText(b)).trim() === e ? 'on' : ''}">${e}</button>`).join('')}<button type="button" data-v="+" class="m" title="모든 이모지" aria-label="모든 이모지">⋯</button>${leadOf(bText(b)) ? '<button type="button" data-v="-" class="m" title="떼기" aria-label="이모지 떼기">×</button>' : ''}</div>
     <div class="wl-pt">옮기기</div>${many ? '' : `<div class="wl-chips sm" data-g="mv"><button type="button" data-v="up">위로</button><button type="button" data-v="down">아래로</button>${h ? '' : '<button type="button" data-v="in">들여쓰기</button><button type="button" data-v="out">내어쓰기</button>'}</div>`}
     ${many ? B('in', '들여쓰기', 'Tab') + B('out', '내어쓰기', 'Shift Tab') : ''}${h ? B('toli', '구역 풀기 (보통 줄로)') : B('dup', '똑같은 줄 하나 더')}${B('photo', '사진 · 파일 넣기')}${B('cp', '글자로 복사')}`;
   pop(at, html, 'menu', (e, box, close) => {
     const g = e.target.closest('[data-g] button');
     if(g){
       const k = g.parentNode.dataset.g, v = g.dataset.v; close();
+      if(k === 'em') return v === '+' ? emoOpen(at, x => lineEmo(ids, x)) : lineEmo(ids, v === '-' ? '' : v);
       if(k === 'mv'){ if(v === 'up' || v === 'down') h ? moveSec(id, v === 'up' ? -1 : 1) : moveLine(id, v === 'up' ? -1 : 1); else indent([id], v === 'in' ? 1 : -1); return; }
       return setProp(ids, x => { if(k === 't'){ x.t = v; if(v === 'h3') x.lv = 0; } else if(v) x[k] = v; else delete x[k]; });
     }
@@ -1683,7 +1900,7 @@ function lineMenu(id, at){
 }
 function showHist(b){
   // 상품 이름으로 — 앞의 [업체] · 날짜 · 수량 · ⇒ 뒤를 떼고 앞 낱말 몇 개
-  const t = bText(b).replace(/^\s*(\[[^\]]+\]\s*)+/, '').replace(/^\d{4}_/, '').split(AR)[0].replace(/[\d,]+\s*(ea|원|위안|kg).*/i, '').replace(/\(.*?\)/g, ' ').replace(/[^\w가-힣\s]/g, ' ').trim();
+  const t = noLead(bText(b)).replace(/^\s*(\[[^\]]+\]\s*)+/, '').replace(/^\d{4}_/, '').split(AR)[0].replace(/[\d,]+\s*(ea|원|위안|kg).*/i, '').replace(/\(.*?\)/g, ' ').replace(/[^\w가-힣\s]/g, ' ').trim();
   const q = (t || bText(b)).split(/\s+/).slice(0, 2).join(' ').slice(0, 30);
   const i = document.getElementById('wlQ'); if(i) i.value = q;
   findRun(q);
@@ -1787,7 +2004,7 @@ function moreMenu(at){
     const m = e.target.closest('[data-m]'); if(!m) return; close();
     if(m.dataset.m === 'trash') return trash();
     if(m.dataset.m === 'reload') return boot().then(renderAll);
-    modal('단축키', `<div class="wl-keys">${[['Enter', '아래에 새 줄'], ['Shift Enter', '줄 안에서 줄바꿈'], ['Tab · Shift Tab', '들여쓰기 · 내어쓰기'], ['Ctrl Enter', '끝냄 · 다시 할 일로'], ['Alt ↑ ↓', '줄 옮기기'], ['Ctrl Z · Ctrl Shift Z', '되돌리기 · 다시 하기'], ['Ctrl B', '굵게 (글자를 고른 뒤)'], ['여러 줄 끌기', '여러 줄 고르기 → Del 지우기 · Tab 들여쓰기 · Ctrl C 복사'], ['## + 빈칸', '구역 제목'], ['[] + 빈칸', '체크칸']].map(([a, b]) => `<div><kbd>${a}</kbd><span>${b}</span></div>`).join('')}</div>`);
+    modal('단축키', `<div class="wl-keys">${[['Enter', '아래에 새 줄'], ['Shift Enter', '줄 안에서 줄바꿈'], ['Tab · Shift Tab', '들여쓰기 · 내어쓰기'], ['Ctrl Enter', '끝냄 · 다시 할 일로'], ['Alt ↑ ↓', '줄 옮기기'], ['Ctrl Z · Ctrl Shift Z', '되돌리기 · 다시 하기'], ['Ctrl B', '굵게 (글자를 고른 뒤)'], ['Ctrl E', '이모지 넣기'], [':불 → Tab', '글 적다가 이모지 (:박스, :완료 …)'], ['여러 줄 끌기', '여러 줄 고르기 → Del 지우기 · Tab 들여쓰기 · Ctrl C 복사'], ['## + 빈칸', '구역 제목'], ['[] + 빈칸', '체크칸']].map(([a, b]) => `<div><kbd>${a}</kbd><span>${b}</span></div>`).join('')}</div>`);
   });
 }
 function addSec(){ edit(bs => { const h = nb({t:'h3', r:[]}), l = nb(); let z = bs.length; const t = bs.findIndex(b => isHead(b) && secType(b) === 'tomorrow'); if(t >= 0) z = t; bs.splice(z, 0, h, l); S.fresh.add(h.id); return {focus:h.id}; }); }
@@ -1854,7 +2071,7 @@ function bindLog(w){
   });
   w.addEventListener('focusout', e => {
     const x = e.target.closest && e.target.closest('.wl-x');
-    if(x){ const l = x.closest('.wl-b'), p = cur(), b = p && p.blocks && p.blocks.find(q => q.id === l.dataset.id); if(b){ x.innerHTML = deco(b); l.classList.toggle('is-empty', isEmpty(b)); } hideBar(); }
+    if(x){ const l = x.closest('.wl-b'), p = cur(), b = p && p.blocks && p.blocks.find(q => q.id === l.dataset.id); if(b){ x.innerHTML = deco(b); l.classList.toggle('is-empty', isEmpty(b)); } hideBar(); sugClose(); }
     if(x) sideSoon();
     setTimeout(settle, 60);
   });
@@ -1863,6 +2080,7 @@ function bindLog(w){
   w.addEventListener('mousedown', e => {
     if(e.button !== 0) return;
     const l = e.target.closest('.wl-b'), x = e.target.closest('.wl-x');
+    if(e.target.closest('.wl-emb')) e.preventDefault();          // 적던 커서를 지킨다
     if(S.sel && !e.target.closest('.wl-grip')) clearSel();
     if(x && e.shiftKey){ const f = focusedId(); if(f && f !== l.dataset.id){ e.preventDefault(); selRange(f, l.dataset.id); return; } }
     down = x ? {id:l.dataset.id} : null;
@@ -1901,7 +2119,7 @@ function bindLog(w){
   document.addEventListener('dragend', () => { S.dragLine = null; S.dragOrd = null; $$('#wl .wl-cd.over').forEach(x => x.classList.remove('over')); $$('#wl .is-drag,#wl .dr-a,#wl .dr-b').forEach(x => x.classList.remove('is-drag', 'dr-a', 'dr-b')); });
   document.addEventListener('selectionchange', barSync);
   document.addEventListener('keydown', e => {
-    if(e.key === 'Escape'){ if(document.getElementById('wlPop')){ closePop(); e.stopPropagation(); return; } if(document.getElementById('wlModal')){ closeModal(); return; } const lb = $('.wl-lb'); if(lb){ lb.remove(); return; } if(S.sel) clearSel(); }
+    if(e.key === 'Escape'){ if(EMO.el){ emoClose(); e.preventDefault(); e.stopPropagation(); return; } if(SUG.el){ sugClose(); e.preventDefault(); e.stopPropagation(); return; } if(document.getElementById('wlPop')){ closePop(); e.stopPropagation(); return; } if(document.getElementById('wlModal')){ closeModal(); return; } const lb = $('.wl-lb'); if(lb){ lb.remove(); return; } if(S.sel) clearSel(); }
     if(S.sel && !editing()) return selKey(e);
     // 체크 · 지우기처럼 글자 칸 밖에서 한 일도 Ctrl+Z 로 (오피스 공용 되돌리기보다 먼저 — 업무일지는 자체 되돌리기)
     if((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z') && !e.isComposing && !e.altKey && !editing() && visible() && Date.now() - (S.actAt || 0) < 60000){ const a = document.activeElement, u = S.cur && S.undo.get(S.cur); if(u && (e.shiftKey ? u.rd : u.st).length && (!a || a === document.body || a.closest('#wl, #wlBoard'))){ e.preventDefault(); e.stopPropagation(); undo(e.shiftKey); } }
@@ -1975,6 +2193,8 @@ function onClick(e){
   if(k === 'fold') return edit(bs => { const b = bs.find(x => x.id === id); if(!b) return false; if(b.f) delete b.f; else b.f = 1; });
   if(k === 'st') return lineMenu(id, c);
   if(k === 'zoom') return lightbox(c.src);
+  if(k === 'emo') return emoLine(id, c);
+  if(k === 'icon') return pageIcon(c);
   if(k === 'addline') return addLine(c.dataset.sec);
   if(k === 'addsec') return addSec();
   if(k === 'addfirst') return edit(bs => { const n = nb(); bs.push(n); S.fresh.add(n.id); return {focus:n.id}; });
@@ -2003,12 +2223,14 @@ function onInput(e){
   if(e.target.id === 'wlQ'){ return findRun(e.target.value); }
   if(e.target.id === 'wlTitle'){ const p = cur(); if(!p) return; beforeEdit(p); p.title = e.target.value; touch(p); if(p.kind === 'order') S.lineDirty = true; return; }
   const x = e.target.closest('.wl-x'); if(!x) return;
+  if(EMO.el) emoClose(true);          // 이모지를 넣고 글을 이어 적으면 창을 닫는다
   const b = blockOf(x), p = cur(); if(!b) return;
   beforeEdit(p); mark(p, 'type:' + b.id);
   b.r = parseX(x);
   S.lineDirty = true;
   x.closest('.wl-b').classList.toggle('is-empty', isEmpty(b));
   touch(p);
+  sugSync(x, b);
   // 적으면서 모양 바꾸기
   if(!e.isComposing){
     const t = bText(b), m = t.match(/^(#{1,3}|\[\]|\[ \]|-|\*)\s/);
@@ -2048,6 +2270,13 @@ function onKey(e){
   if(e.target.id === 'wlTitle'){ if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); e.target.blur(); } return; }
   if(!x || e.isComposing || e.keyCode === 229) return;
   const b = blockOf(x), p = cur(), mod = e.metaKey || e.ctrlKey; if(!b) return;
+  if(SUG.el && !mod && !e.altKey){
+    if(e.key === 'Tab' && !e.shiftKey){ e.preventDefault(); return sugPick(SUG.i); }
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); return sugMove(e.key === 'ArrowDown' ? 1 : -1); }
+    if(e.key === 'Enter' && SUG.mv){ e.preventDefault(); return sugPick(SUG.i); }
+    if(/^(Enter|Arrow|Home|End|Page)/.test(e.key)) sugClose();
+  }
+  if((/Mac|iP/.test(navigator.platform) ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'e' || e.key === 'E')){ e.preventDefault(); e.stopPropagation(); return emoLine(b.id, caretRect(x)); }
   if(mod && e.key === 'Enter'){ e.preventDefault(); if(!isHead(b)){ const pos = caretPos(); toggleDone(b.id); focusB(b.id, pos); } return; }
   if(mod && (e.key === 'z' || e.key === 'Z')){ e.preventDefault(); e.stopPropagation(); return undo(e.shiftKey); }
   if(mod && (e.key === 'y' || e.key === 'Y')){ e.preventDefault(); return undo(true); }
@@ -2086,6 +2315,7 @@ function onKey(e){
     if(v[j]){ e.preventDefault(); focusB(v[j], Math.min(s[0], 1e6) === 0 ? 'start' : up ? s[0] : s[0]); }
   }
 }
+const caretRect = x => { const g = getSelection(); return (g.rangeCount && g.getRangeAt(0).getClientRects()[0]) || x; };
 function atEdge(x, up){
   const s = getSelection(); if(!s.rangeCount) return true;
   const r = s.getRangeAt(0).cloneRange(); r.collapse(up);
