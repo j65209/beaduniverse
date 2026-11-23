@@ -9414,6 +9414,35 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-ls .ls-sum span{font-size:11.5px;font-weight:700;color:#78716c;background:#f0eeea;border-radius:999px;padding:3px 10px;white-space:nowrap}
   .tpl-ls .ls-sum b{color:#1c1917;margin-left:4px}
   .tpl-ls:not(.is-clean) .ls-top{border-bottom:2px solid #000;margin-bottom:6px}
+  /* 2026-11-23 디자인센터 라인시트 — 카드 폭에 꽉 (is-fit, 칸 너비는 _tplLsCols 의 몫대로) · 찾기 · 샘플 대기 · 엑셀 · 되돌리기 */
+  .tpl-ls.is-fit{width:100%}
+  .tpl-ls .ls-block[hidden],.tpl-ls .ls-add[hidden],.ls-hits[hidden]{display:none !important}
+  .tpl-ls .ls-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .ls-find{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid #e7e3dd;border-radius:9px;background:#fff;cursor:text}
+  .ls-find:focus-within{border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.15)}
+  .ls-find span{font-size:12px;opacity:.6}
+  .ls-find input{border:0;outline:0;background:transparent;font:500 13px var(--sans);color:#1c1917;width:190px;padding:0}
+  .ls-chip{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 11px;border:1px solid #e7e3dd;border-radius:9px;background:#fff;font:700 12px var(--sans);color:#57534e;cursor:pointer;white-space:nowrap}
+  .ls-chip:hover{border-color:#1c1917;color:#1c1917}
+  .ls-chip b{color:#ea580c;font-weight:800}
+  .ls-chip.is-on{background:#fff7ed;border-color:#f97316;color:#9a3412}
+  .ls-chip-sub{font-weight:600;color:#a8a29e;margin-left:3px}
+  .ls-hits{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 2px 0;font-size:12.5px;font-weight:700;color:#57534e}
+  .ls-hits .ls-hits-o{color:#a8a29e;font-weight:600;margin-left:6px}
+  .ls-hits .mb-chip{padding:3px 10px;font-size:12px}
+  .ls-hits-x{border:0;background:transparent;font:700 12px var(--sans);color:#a8a29e;cursor:pointer;padding:3px 6px}
+  .ls-hits-x:hover{color:#1c1917}
+  .tpl-ls.is-clean .tx.is-hit{box-shadow:inset 0 0 0 2px #f97316}
+  .tpl-ls .tx.is-wait .tc[contenteditable]:empty::before{color:#ea580c;font-weight:700}
+  .tpl-ls .tx.is-late .tc[contenteditable]:empty::before{color:#dc2626}
+  .tpl-ur{display:inline-flex;gap:3px}
+  .tpl-ur .mb-btn{padding:5px 10px;font-size:15px;line-height:1.1}
+  .tpl-ur .mb-btn:disabled{opacity:.35;cursor:default}
+  @media (max-width:760px){
+    .tpl-ls .ls-tools{margin-left:0;width:100%}
+    .ls-find{flex:1;min-width:0}
+    .ls-find input{width:100%;font-size:16px}
+  }
   /* 칸 고르기 목록 · 달력 */
   .tpl-sug{position:fixed;z-index:10075;max-width:340px;max-height:320px;overflow:auto;background:#fff;border:1px solid var(--line-2);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.18);padding:5px;display:flex;flex-direction:column;gap:1px}
   .tpl-sug[hidden]{display:none}
@@ -13730,6 +13759,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="tpl-modes" id="tplModes" role="group" aria-label="보기"></div>
         <span class="mb-sp"></span>
         <span class="tpl-save" id="tplSave"></span>
+        <span class="tpl-ur" role="group" aria-label="되돌리기 · 다시 하기">
+          <button type="button" class="mb-btn" id="tplUndoBtn" onmousedown="event.preventDefault()" onclick="tplUndo()" title="되돌리기 (칸 밖에서 Ctrl+Z) — 상품 지우기 · 옮기기 · 칸 색 · 사진 · 글자" disabled>↶</button>
+          <button type="button" class="mb-btn" id="tplRedoBtn" onmousedown="event.preventDefault()" onclick="tplUndo(true)" title="다시 하기 (Ctrl+Y)" disabled>↷</button>
+        </span>
         <span class="tpl-pal" role="group" aria-label="칸 색 · 굵게" title="칸을 누른 뒤 색을 고르면 그 칸 색이 바뀌어요 (같은 색 한 번 더 = 지우기)">
           <button type="button" class="tpl-sw sw-none" onmousedown="event.preventDefault()" onclick="tplPaint('')" title="색 없애기">⊘</button>
           <button type="button" class="tpl-sw sw-y" onmousedown="event.preventDefault()" onclick="tplPaint('y')" title="노랑"></button>
@@ -25961,8 +25994,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     let ref = null;
     try{
       ref = await _tplUpload(file);
+      const snap = _tplUndoBegin(doc);
       _tplPathSet(doc, path, ref);
       _tplTouch(doc, 'data');
+      _tplUndoEnd(doc, snap);
     }catch(e){ toast('사진을 넣지 못했어요 — 아이폰 HEIC 는 JPG 로 바꿔서, 인터넷 연결도 확인해 주세요', 'err'); }
     // 그 칸만 다시 그린다 (다른 칸에서 글자를 적는 중이어도 끊기지 않게) — 부자재 글자 칸이 같이 있는 칸은 전체를
     const now = document.querySelector(sel);
@@ -26108,7 +26143,183 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ============ 라인시트 종이 ============ */
   // 칸 너비 — 한 화면에 더 많이 (2026-11-20 "칸 너무 넓게 썼다, 더 많이 보이게")
-  function _tplLsCols(sec){ return '44px 104px 124px 124px 82px 112px 104px 52px 88px 88px 100px 250px' + (sec ? ' 210px' : ''); }
+  // [최소 px, 늘어나는 몫] — 화면(디자인센터 카드)에선 남는 폭을 몫대로 나눠 오른쪽 빈 곳 없이 꽉 채운다 (2026-11-23 사용자 "칸 우측 공백 안 보이게 깔끔하게 채워"),
+  //   번호 · 샘플 차수는 그대로, 사진 · 특이사항 · 라벨 단가가 많이 늘어난다. PDF · 편집 창은 예전 고정 너비 그대로
+  const TPL_LS_W = [[44, 0], [104, 1], [124, 1.3], [124, 1.3], [82, .8], [112, 1.1], [104, 1], [52, 0], [88, .5], [88, .5], [100, 1], [250, 2.6], [210, 1.8]];
+  function _tplLsCols(sec, fit){ const w = TPL_LS_W.slice(0, sec ? 13 : 12); return w.map(([px, g]) => fit && g ? `minmax(${px}px, ${g}fr)` : px + 'px').join(' '); }
+  const _tplLsMinW = sec => TPL_LS_W.slice(0, sec ? 13 : 12).reduce((s, x) => s + x[0], 0) + 2;
+  /* ── 샘플 대기 (2026-11-23 디자이너용) — 컬러 줄에 요청일은 있는데 입고일이 비었으면 '⏳ N일째' (입고일 칸 안내 글), 14일 넘으면 빨강.
+        날짜는 2026.11.20 · 2026-11-20 · 26.11.20 · 11.20 · 11/20 모두 읽는다 ── */
+  function _tplDate(s){
+    s = String(s || '').trim();
+    let m = s.match(/^(\d{2,4})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})/), y, mo, d;
+    if(m){ y = +m[1]; if(y < 100) y += 2000; mo = +m[2]; d = +m[3]; }
+    else{ m = s.match(/^(\d{1,2})\s*[.\-/월]\s*(\d{1,2})/); if(!m) return null; y = new Date().getFullYear(); mo = +m[1]; d = +m[2]; }
+    const t = new Date(y, mo - 1, d);
+    return isNaN(t) || t.getMonth() !== mo - 1 ? null : t;
+  }
+  function _tplLsWaitDays(c){
+    if(!c || !String(c.q || '').trim() || String(c.a || '').trim()) return null;
+    const t = _tplDate(c.q);
+    if(!t) return null;
+    const n = Math.floor((Date.now() - t.getTime()) / 864e5);
+    return n < 0 ? null : n;
+  }
+  const _tplLsWaitPh = n => n == null ? '' : `⏳ ${n}일째`;
+  const _tplLsWaitCls = n => n == null ? '' : n >= 14 ? 'is-wait is-late' : 'is-wait';
+  function _tplLsWaitHtml(d){
+    let w = 0, a = 0;
+    (d.items || []).forEach(it => (it.colors || []).forEach(c => { if(!c) return; if(_tplLsWaitDays(c) != null) w++; else if(String(c.a || '').trim()) a++; }));
+    return `⏳ 샘플 대기 <b>${w}</b><span class="ls-chip-sub">입고 ${a}</span>`;
+  }
+  // 입고일 · 요청일을 고치면 그 줄의 '⏳ N일째' 와 대기 수를 바로 다시
+  function _tplLsWaitPaint(doc, i, j){
+    const it = (doc.data.items || [])[i], c = it && (it.colors || [])[j], el = document.querySelector(`#tplStage [data-doc="${doc.id}"] [data-f="items.${i}.colors.${j}.a"]`);
+    if(el){
+      const n = _tplLsWaitDays(c), box = el.closest('.tx');
+      el.dataset.ph = n != null ? _tplLsWaitPh(n) : (el.closest('.is-mob') && j === 0 ? '입고일' : '');
+      if(box){ box.classList.remove('is-wait', 'is-late'); const k = _tplLsWaitCls(n); if(k) box.classList.add(...k.split(' ')); }
+    }
+    document.querySelectorAll('#tplStage [data-wait]').forEach(x => { x.innerHTML = _tplLsWaitHtml(doc.data); });
+  }
+  /* ── 찾기 (2026-11-23 디자이너용) — 상품명 · 시즌 · 카테고리 · 업체 · 원단 · 컬러 · 차수 · 날짜 · 공장 · 메모에서 찾아 그 상품만 보이고 맞는 칸을 칠한다.
+        '⏳ 샘플 대기' 를 누르면 대기 컬러가 있는 상품만. 다른 시즌에도 있으면 아래에 그 시즌 단추 ── */
+  function _tplLsText(it){
+    return [it.no, it.name, it.season, it.cat, it.first, it.solo, it.vendor, it.fabric, it.factory, it.note, it.reason,
+      ...(it.colors || []).flatMap(c => c ? [c.c, c.r, c.q, c.a] : [])].filter(Boolean).join('\n').toLowerCase();
+  }
+  function _tplLsFilter(){
+    const paper = document.querySelector('#tplStage .tpl-ls[data-doc]');
+    if(!paper) return;
+    const doc = _tplFind(+paper.dataset.doc);
+    if(!doc || doc.kind !== 'linesheet') return;
+    const q = String(_tpl.lsQ || '').trim().toLowerCase(), wait = !!_tpl.lsWait;
+    let shown = 0;
+    paper.querySelectorAll('.ls-block[data-i]').forEach(b => {
+      const it = doc.data.items[+b.dataset.i] || {};
+      const ok = (!q || _tplLsText(it).includes(q)) && (!wait || (it.colors || []).some(c => _tplLsWaitDays(c) != null));
+      b.hidden = !ok;
+      if(ok) shown++;
+    });
+    paper.querySelectorAll('.tx.is-hit').forEach(x => x.classList.remove('is-hit'));
+    if(q) paper.querySelectorAll('.ls-block:not([hidden]) [data-f]').forEach(el => { if(el.textContent.toLowerCase().includes(q)){ const b = el.closest('.tx'); if(b) b.classList.add('is-hit'); } });
+    const add = paper.querySelector('.ls-add');
+    if(add) add.hidden = !!(q || wait);
+    const hits = paper.querySelector('.ls-hits');
+    if(!hits) return;
+    const E = escapeHTML, other = q ? (_tpl.docs.linesheet || []).filter(x => x.id !== doc.id).map(x => ({x, n:(x.data.items || []).filter(it => _tplLsText(it).includes(q)).length})).filter(o => o.n) : [];
+    const msg = (q || wait) ? `<span>${shown ? `${shown}개 상품` : '이 시즌엔 없어요'}${wait ? ' · 샘플 대기만' : ''}</span>` : '';
+    hits.innerHTML = msg + (other.length ? `<span class="ls-hits-o">다른 시즌</span>${other.map(o => `<button type="button" class="mb-chip" onclick="tplPick(${o.x.id})">${E(_tplLsTab(o.x))} <b>${o.n}</b></button>`).join('')}` : '')
+      + ((q || wait) ? '<button type="button" class="ls-hits-x" data-act="ls-find-x">✕ 모두 보기</button>' : '');
+    hits.hidden = !(q || wait);
+  }
+  /* ── 엑셀 내려받기 (2026-11-23 디자이너용) — 지금 시즌을 CSV(엑셀에서 바로 열림). 컬러 줄마다 한 줄, 상품 칸은 줄마다 되풀이 (엑셀 필터 · 정렬이 되게).
+        정상가 · 라벨 단가는 기밀이라 디자인팀 명단 PC 에서만 들어간다 ── */
+  function _tplLsCsv(doc){
+    const sec = designSecretOk(), hold = _tplLsHold(doc), d = doc.data;
+    const head = ['번호', '상품명', '시즌 구분', '제품 카테고리', ...(sec ? ['정상가'] : []), '첫발주일', '단독여부', '진행업체', 'FABRIC', 'COLOR', '샘플 차수', '샘플 요청일', '샘플 입고일', '진행공장', hold ? '홀딩 사유' : '개발 특이사항 및 진행상황', ...(sec ? ['라벨 추가 시 단가'] : [])];
+    const out = [head];
+    d.items.forEach((it, i) => {
+      if(!it || !(it.name || (it.colors || []).some(c => c && (c.c || c.q || c.a)))) return;
+      const F = (f, desig) => { const x = _tplF(doc, 'items', i, f, desig); return x.lock ? '' : x.val; };
+      const cs = (it.colors || []).filter(c => c && (c.c || c.r || c.q || c.a));
+      (cs.length ? cs : [{}]).forEach(c => out.push([it.no || String(i + 1), it.name, it.season, it.cat, ...(sec ? [F('price', true)] : []), it.first, it.solo, it.vendor, it.fabric,
+        c.c, c.r, c.q, c.a, it.factory, hold ? it.reason : it.note, ...(sec ? [F('label', true)] : [])]));
+    });
+    const cell = v => { v = String(v == null ? '' : v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const blob = new Blob(['﻿' + out.map(r => r.map(cell).join(',')).join('\r\n')], {type:'text/csv;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(_tplTitleOf(doc) || _tplLsTab(doc) || 'COFERRY LINE SHEET').replace(/[\\/:*?"<>|]/g, ' ').trim()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(`엑셀로 내려받았어요 (${out.length - 1}줄)`, 'ok');
+  }
+  /* ── 되돌리기 · 다시 하기 (2026-11-23 디자이너용) — 상품 지우기 · 옮기기 · 칸 색 · 사진 · 글자 고치기를 문서 통째로 기억 (최근 50번).
+        칸 안에서 글자를 고치는 중의 Ctrl+Z 는 브라우저 기본(그 칸 글자)이고, 칸 밖에서 Ctrl+Z · Ctrl+Y 또는 위 ↶ ↷ 단추 ── */
+  _tpl.undo = []; _tpl.redo = []; _tpl.pre = null;
+  const _tplSnap = doc => ({id:doc.id, data:JSON.stringify(doc.data), secret:designSecretOk() ? JSON.stringify(doc.secret || {}) : null});
+  const _tplSame = (a, b) => !!(a && b && a.id === b.id && a.data === b.data && a.secret === b.secret);
+  function _tplUndoUi(){
+    const u = document.getElementById('tplUndoBtn'), r = document.getElementById('tplRedoBtn');
+    if(u) u.disabled = !_tpl.undo.length;
+    if(r) r.disabled = !_tpl.redo.length;
+  }
+  function _tplUndoPush(s){
+    if(_tplSame(_tpl.undo[_tpl.undo.length - 1], s)) return;
+    _tpl.undo.push(s);
+    if(_tpl.undo.length > 50) _tpl.undo.shift();
+    _tpl.redo.length = 0;
+    _tplUndoUi();
+  }
+  // 글자를 고치던 칸 — 들어갈 때 모습(_tpl.pre)과 달라졌으면 그 모습을 쌓는다
+  function _tplUndoPre(){
+    const p = _tpl.pre;
+    if(!p) return;
+    const doc = _tplFind(p.id);
+    if(!doc){ _tpl.pre = null; return; }
+    const now = _tplSnap(doc);
+    if(!_tplSame(now, p)){ _tplUndoPush(p); _tpl.pre = now; }
+  }
+  function _tplUndoBegin(doc){ _tplUndoPre(); return _tplSnap(doc); }
+  function _tplUndoEnd(doc, s){
+    const now = _tplSnap(doc);
+    if(_tplSame(now, s)) return;
+    _tplUndoPush(s);
+    if(_tpl.pre && _tpl.pre.id === doc.id) _tpl.pre = now;
+  }
+  function tplUndo(redo){
+    const ae = document.activeElement;
+    if(ae && ae.closest && ae.closest('#tplStage [data-f]')) ae.blur();   // 고치던 칸부터 마무리
+    _tplUndoPre(); _tpl.pre = null;
+    const from = redo ? _tpl.redo : _tpl.undo, to = redo ? _tpl.undo : _tpl.redo;
+    const s = from.pop();
+    if(!s){ toast(redo ? '다시 할 게 없어요' : '되돌릴 게 없어요', 'info'); _tplUndoUi(); return; }
+    const doc = _tplFind(s.id);
+    if(!doc){ _tplUndoUi(); return; }
+    to.push(_tplSnap(doc));
+    doc.data = JSON.parse(s.data);
+    _tplTouch(doc, 'data');
+    if(s.secret != null && designSecretOk()){ doc.secret = JSON.parse(s.secret); _tplTouch(doc, 'secret'); }
+    const k = doc.kind;
+    if(k === _tplKind() && !(doc.data && doc.data.parent) && _tpl.cur[k] !== doc.id) _tpl.cur[k] = doc.id;
+    _tpl.sig = '';
+    _tplRender();
+    _tplUndoUi();
+    toast(redo ? '다시 했어요' : '되돌렸어요', 'ok');
+  }
+  window.tplUndo = tplUndo;
+  document.addEventListener('keydown', e => {
+    if(!(e.ctrlKey || e.metaKey) || e.altKey || e.isComposing) return;
+    const k = String(e.key || '').toLowerCase();
+    if(k !== 'z' && k !== 'y') return;
+    if(!_tplVisible()) return;
+    const t = e.target;
+    if(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;   // 칸 안 = 브라우저 기본 (그 칸 글자)
+    e.preventDefault();
+    tplUndo(k === 'y' || e.shiftKey);
+  });
+  // 엔터 = 바로 아래 칸으로 (시트처럼). 아래 칸이 없으면 마무리
+  function _tplMoveDown(el){
+    const paper = el.closest('.tpl-paper'), box = el.closest('.tx, td');
+    if(!paper || !box) return false;
+    const r = box.getBoundingClientRect(), cx = r.left + r.width / 2;
+    let best = null, bd = 1e9;
+    paper.querySelectorAll('[data-f][contenteditable]').forEach(c => {
+      if(c === el) return;
+      const b = c.closest('.tx, td');
+      if(!b || b.closest('[hidden]')) return;
+      const q = b.getBoundingClientRect();
+      if(q.top < r.bottom - 2 || cx < q.left || cx > q.right || !q.height) return;
+      if(q.top - r.bottom < bd){ bd = q.top - r.bottom; best = c; }
+    });
+    if(!best) return false;
+    best.focus();
+    try{ const rg = document.createRange(); rg.selectNodeContents(best); rg.collapse(false); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg); }catch(e){}
+    const b = best.closest('.tx, td');
+    if(b) b.scrollIntoView({block:'nearest'});
+    return true;
+  }
   /* 상단 한 줄 — 시즌 제목 + SKU · BAG · ACC 개수 (제품 카테고리로 저절로: 첫 낱말에 bag · 백 · backpack → BAG, acc · 키링 · 비니 · 지갑 … → ACC) */
   /* 참고 블록 (2026-11-20 사장님 "구(리뉴얼 전) 같은 건 같은 탭에서 하단으로") — 시트에서 한 탭 아래에 있던 블록을 그 스타일 아래에 그대로 */
   const _tplKids = doc => (_tpl.docs.matching || []).filter(d => d.data && +d.data.parent === doc.id);
@@ -26134,9 +26345,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return {n:items.length, bag, acc};
   }
   function _tplLsSumHtml(c){ return `<span>SKU <b>${c.n}</b></span><span>BAG <b>${c.bag}</b></span><span>ACC <b>${c.acc}</b></span>`; }
-  function _tplLsTop(doc, ce){
+  function _tplLsTop(doc, ce, ed){
     const d = doc.data, hold = _tplLsHold(doc);
-    return `<div class="ls-top"><div class="tx ls-top-t${_tplCls(d, 'title')}">${ce('title', d.title, hold ? '홀딩' : '시즌 COFERRY LINE SHEET (예: 27FW COFERRY LINE SHEET)')}</div><div class="ls-sum" data-sum="1" title="제품 카테고리로 저절로 세요">${_tplLsSumHtml(_tplLsCount(d))}</div></div>`;
+    const tools = ed ? `<div class="ls-tools">
+        <label class="ls-find" title="상품명 · 컬러 · 업체 · 공장 · 날짜 · 메모에서 찾기 (Esc = 지우기)"><span aria-hidden="true">🔍</span><input type="search" id="lsFind" placeholder="찾기" value="${escapeHTML(_tpl.lsQ || '')}" autocomplete="off" spellcheck="false" enterkeyhint="search"></label>
+        <button type="button" class="ls-chip${_tpl.lsWait ? ' is-on' : ''}" data-act="ls-wait" data-wait="1" title="샘플 요청일은 있는데 입고일이 빈 컬러 — 누르면 그 상품만 보기">${_tplLsWaitHtml(d)}</button>
+        <button type="button" class="ls-chip" data-act="ls-csv" title="이 시즌을 엑셀(CSV)로 내려받기 — 컬러 줄마다 한 줄">⬇ 엑셀</button>
+      </div>` : '';
+    return `<div class="ls-top"><div class="tx ls-top-t${_tplCls(d, 'title')}">${ce('title', d.title, hold ? '홀딩' : '시즌 COFERRY LINE SHEET (예: 27FW COFERRY LINE SHEET)')}</div><div class="ls-sum" data-sum="1" title="제품 카테고리로 저절로 세요">${_tplLsSumHtml(_tplLsCount(d))}</div>${tools}</div>${ed ? '<div class="ls-hits" hidden></div>' : ''}`;
   }
   /* 폰 — 상품 하나 = 세로 카드 (같은 칸 주소라 저장 · 고르기 · 칸 색 그대로) */
   function _tplLsMobileHtml(doc, o){
@@ -26149,7 +26365,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       let rows = '';
       for(let j = 0; j < R; j++){
         const c = it.colors[j] || {}, q = `${p}colors.${j}.`;
-        rows += `<div class="lm-crow">${[['c', 'color'], ['r', '차수'], ['q', '요청일'], ['a', '입고일']].map(([f, ph]) => `<div class="tx${_tplCls(c, f)}">${ce(q + f, c[f] || '', j ? '' : ph)}</div>`).join('')}</div>`;
+        const wd = _tplLsWaitDays(c);
+        rows += `<div class="lm-crow">${[['c', 'color'], ['r', '차수'], ['q', '요청일'], ['a', '입고일']].map(([f, ph]) => `<div class="tx${f === 'a' && wd != null ? ' ' + _tplLsWaitCls(wd) : ''}${_tplCls(c, f)}">${ce(q + f, c[f] || '', f === 'a' && wd != null ? _tplLsWaitPh(wd) : j ? '' : ph)}</div>`).join('')}</div>`;
       }
       return `<div class="lm-card ls-block" data-cut="1" data-i="${i}">
         <div class="lm-head"><div class="tx lm-no${_tplCls(it, 'no')}">${ce(p + 'no', it.no, String(i + 1))}</div><div class="tx lm-name${_tplCls(it, 'name')}">${ce(p + 'name', it.name, '상품명 / 한글명')}</div>${ed ? `<button type="button" class="ls-menu-b" data-act="ls-menu" data-i="${i}" title="옮기기 · 지우기">⋯</button>` : ''}</div>
@@ -26160,7 +26377,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
-    return `<div class="tpl-paper tpl-ls is-clean is-mob" data-doc="${doc.id}">${_tplLsTop(doc, ce)}${blocks}${add}</div>`;
+    return `<div class="tpl-paper tpl-ls is-clean is-mob" data-doc="${doc.id}">${_tplLsTop(doc, ce, ed)}${blocks}${add}</div>`;
   }
   const _tplMob = () => _tpl.host === 'tab' && !!window.matchMedia && window.matchMedia('(max-width:760px)').matches;
   function _tplLsHtml(doc, o){
@@ -26168,7 +26385,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const ce = (path, val, ph, ml) => ed && path ? `<div class="tc" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-ph="${E(ph || '')}"${ml ? ' data-ml="1"' : ''}>${E(val)}</div>` : `<div class="tc">${E(val)}</div>`;
     const at = (r0, c0, r1, c1) => ` style="grid-area:${r0} / ${c0} / ${r1} / ${c1}"`;
     const X = (r0, c0, r1, c1, inner, cls, obj, f) => `<div class="tx${cls ? ' ' + cls : ''}${_tplCls(obj, f)}"${at(r0, c0, r1, c1)}>${inner}</div>`;
-    const head = _tplLsTop(doc, ce);
+    const head = _tplLsTop(doc, ce, ed), fit = !!(o.clean && ed);   // fit = 디자인센터 카드 (화면 폭에 꽉) — PDF(edit:false) · 편집 창은 고정 너비
     const blocks = d.items.map((it, i) => {
       const R = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0), p = `items.${i}.`, end = R + 2, cells = [];
       const F = (f, desig) => _tplF(doc, 'items', i, f, desig);
@@ -26200,7 +26417,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         cells.push(X(2 + j, 7, 3 + j, 8, ce(q + 'c', c.c || '', j ? '' : 'color'), '', c, 'c'));
         cells.push(X(2 + j, 8, 3 + j, 9, ce(q + 'r', c.r || '', ''), '', c, 'r'));
         cells.push(X(2 + j, 9, 3 + j, 10, ce(q + 'q', c.q || '', j ? '' : '2026.11.20'), '', c, 'q'));
-        cells.push(X(2 + j, 10, 3 + j, 11, ce(q + 'a', c.a || '', ''), '', c, 'a'));
+        const wd = _tplLsWaitDays(c);
+        cells.push(X(2 + j, 10, 3 + j, 11, ce(q + 'a', c.a || '', _tplLsWaitPh(wd)), _tplLsWaitCls(wd), c, 'a'));
       }
       cells.push(V(2, 11, end, 12, 'factory', '진행공장', '', true));
       cells.push(V(2, 12, end, 13, nf, hold ? '홀딩 사유' : '개발 특이사항 · 진행상황', 'ls-note', true));
@@ -26208,7 +26426,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<div class="tpl-g ls-block" data-cut="1" data-i="${i}" style="grid-template-columns:var(--ls-cols);grid-template-rows:30px repeat(${R}, minmax(30px, auto))">${cells.join('')}</div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
-    return `<div class="tpl-paper tpl-ls${o.clean ? ' is-clean' : ''}" data-doc="${doc.id}" style="--ls-cols:${_tplLsCols(sec)}">${head}${blocks}${add}</div>`;
+    return `<div class="tpl-paper tpl-ls${o.clean ? ' is-clean' : ''}${fit ? ' is-fit' : ''}" data-doc="${doc.id}" style="--ls-cols:${_tplLsCols(sec, fit)}${fit ? `;min-width:${_tplLsMinW(sec)}px` : ''}">${head}${blocks}${add}</div>`;
   }
 
   /* ============ 편집 창 ============ */
@@ -26267,6 +26485,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     st.innerHTML = html + `<div class="tpl-meta">${doc.updated_at ? `마지막 저장 ${new Date(doc.updated_at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'})}${doc.updated_by ? ' · ' + escapeHTML(doc.updated_by) : ''}` : ''}</div>`;
     const sc = st.querySelector('.tpl-scroll');
     if(sc) sc.scrollLeft = keepX;
+    if(kind === 'linesheet') _tplLsFilter();   // 찾기 · 샘플 대기 보기는 다시 그려도 그대로
+    _tplUndoUi();
   }
   async function _tplLoad(kind, force){
     if(_tpl.busy[kind]) return _tpl.busy[kind];
@@ -26278,6 +26498,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(!r.ok) throw new Error('http_' + r.status);
         const rows = await r.json(), old = _tpl.docs[kind] || [];
         _tpl.docs[kind] = rows.map(x => { const o = old.find(d => d.id === x.id); return o && (_tpl.dirty.has(o.id) || o.updated_at === x.updated_at) ? o : _tplNorm(x); });
+        // 다른 사람이 고쳐 새로 받은 문서는 되돌리기 기억을 버린다 (옛 모습으로 덮어쓰지 않게)
+        const fresh = new Set(old.filter(o => !_tpl.docs[kind].includes(o)).map(o => o.id));
+        if(fresh.size){ ['undo', 'redo'].forEach(k => { _tpl[k] = _tpl[k].filter(s => !fresh.has(s.id)); }); if(_tpl.pre && fresh.has(_tpl.pre.id)) _tpl.pre = null; _tplUndoUi(); }
         _tpl.loaded[kind] = Date.now();
       }catch(e){ _tpl.err[kind] = '불러오지 못했어요. 잠시 후 다시 들어와 주세요.'; }
     })();
@@ -26408,7 +26631,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!doc || !path){ toast('색을 바꿀 칸을 먼저 누른 뒤 색을 골라 주세요', 'err'); return; }
     const ref = _tplRef(doc, path);
     if(!ref) return;
-    const o = ref.obj;
+    const o = ref.obj, snap = _tplUndoBegin(doc);
     if(c === 'bold'){ o.bd = o.bd || {}; if(o.bd[ref.f]) delete o.bd[ref.f]; else o.bd[ref.f] = 1; }
     else{
       o.hl = o.hl || {};
@@ -26417,6 +26640,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }
     _tplTouch(doc, ref.root);
     if(ref.root === 'secret' && doc.secret.cost) doc.secret.cost.touched = true;
+    _tplUndoEnd(doc, snap);
     const el = fe && fe.dataset.f === path ? fe : document.querySelector(`#tplStage [data-doc="${doc.id}"] [data-f="${CSS.escape(path)}"]`), box = el && el.closest('.tx, td');
     if(box) box.className = box.className.replace(/\s*\b(is-hl|is-b|hl-[a-z])\b/g, '') + _tplCls(o, ref.f);
     if(el && (!window.matchMedia || window.matchMedia('(hover:hover)').matches)) el.focus();
@@ -26489,6 +26713,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _tplCostPaint(doc);
     }
     if(/^items\.\d+\.(cat|name)$/.test(path)) document.querySelectorAll('#tplStage [data-sum]').forEach(x => { x.innerHTML = _tplLsSumHtml(_tplLsCount(doc.data)); });
+    const mw = path.match(/^items\.(\d+)\.colors\.(\d+)\.[qa]$/);
+    if(mw) _tplLsWaitPaint(doc, +mw[1], +mw[2]);
     if(path === 'title'){
       const chip = document.querySelector('#tplChips .mb-chip.is-on');
       if(chip) chip.textContent = doc.kind === 'linesheet' ? _tplLsTab(doc) : (_tplTitleOf(doc) || '(이름 없음)');
@@ -26498,6 +26724,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const doc = _tplDocOf(btn);
     if(!doc) return;
     const d = doc.data, i = +btn.dataset.i;
+    // 고치지 않는 단추 (보기 · 내려받기 · 메뉴)
+    if(act === 'ls-wait'){ _tpl.lsWait = !_tpl.lsWait; btn.classList.toggle('is-on', _tpl.lsWait); _tplLsFilter(); return; }
+    if(act === 'ls-find-x'){ _tpl.lsQ = ''; _tpl.lsWait = false; const f = document.getElementById('lsFind'); if(f) f.value = ''; document.querySelectorAll('#tplStage [data-wait]').forEach(x => x.classList.remove('is-on')); _tplLsFilter(); return; }
+    if(act === 'ls-csv'){ _tplLsCsv(doc); return; }
+    if(act === 'ls-menu'){ _tplLsMenu(btn, i); return; }
+    const snap = _tplUndoBegin(doc);   // 되돌리기 — 고치기 전 모습
+    let focusI = null, focusName = false;
     const filled = o => o && Object.entries(o).some(([k, v]) => k !== 'u' && k !== 'hl' && k !== 'w' && k !== 'rows' && v != null && v !== '' && !(Array.isArray(v) && !v.some(x => x != null && (typeof x !== 'object' || filled(x)))));
     if(act === 'slot+' || act === 'slot-'){
       const n = d.slots + (act === 'slot+' ? 1 : -1);
@@ -26520,9 +26753,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(d.hw.length <= d.slots) return;
       if(d.hw.slice(-d.slots).some(filled) && !confirm('마지막 부자재 줄에 적힌 내용이 있어요. 지울까요?')) return;
       d.hw.splice(-d.slots);
-    }else if(act === 'vat'){ const r = doc.secret.cost.rows[i]; r.vat = !r.vat; doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); btn.classList.toggle('is-on', r.vat); _tplCostPaint(doc); return; }
-    else if(act === 'cost-add'){ doc.secret.cost.rows.push({u:_tplUid(), name:'', color:'', size:'', cny:'', conv:'', krw:'', vat:false, qty:'1', hl:{}}); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
-    else if(act === 'cost-del'){ const r = doc.secret.cost.rows[i]; if(r && (r.name || r.cny || r.krw) && !confirm(`'${r.name || '이 줄'}' 줄을 지울까요?`)) return; doc.secret.cost.rows.splice(i, 1); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplRenderPaper(true); return; }
+    }else if(act === 'vat'){ const r = doc.secret.cost.rows[i]; r.vat = !r.vat; doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); btn.classList.toggle('is-on', r.vat); _tplCostPaint(doc); return; }
+    else if(act === 'cost-add'){ doc.secret.cost.rows.push({u:_tplUid(), name:'', color:'', size:'', cny:'', conv:'', krw:'', vat:false, qty:'1', hl:{}}); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); _tplRenderPaper(true); return; }
+    else if(act === 'cost-del'){ const r = doc.secret.cost.rows[i]; if(r && (r.name || r.cny || r.krw) && !confirm(`'${r.name || '이 줄'}' 줄을 지울까요?`)) return; doc.secret.cost.rows.splice(i, 1); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); _tplRenderPaper(true); return; }
     else if(act === 'kid-add'){
       const data = _tplBlankMatch();
       _tplSetSlots(data, 4);
@@ -26531,9 +26764,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
     else if(act === 'kid-del'){ tplDelete(doc); return; }
-    else if(act === 'ls-add'){ const it = _tplBlankLsItem(); it.no = String(d.items.filter(x => x.name || x.no).length + 1); d.items.push(it); }
-    else if(act === 'ls-menu'){ _tplLsMenu(btn, i); return; }
-    else if(act === 'ls-up' || act === 'ls-down'){ const j = i + (act === 'ls-up' ? -1 : 1); if(j < 0 || j >= d.items.length) return; [d.items[i], d.items[j]] = [d.items[j], d.items[i]]; }
+    else if(act === 'ls-add'){ const it = _tplBlankLsItem(); it.no = String(d.items.filter(x => x.name || x.no).length + 1); d.items.push(it); focusI = d.items.length - 1; focusName = true; }
+    else if(act === 'ls-up' || act === 'ls-down'){ const j = i + (act === 'ls-up' ? -1 : 1); if(j < 0 || j >= d.items.length) return; [d.items[i], d.items[j]] = [d.items[j], d.items[i]]; focusI = j; }
+    else if(act === 'ls-first' || act === 'ls-last'){ if(!d.items[i]) return; const [it] = d.items.splice(i, 1); if(act === 'ls-first') d.items.unshift(it); else d.items.push(it); focusI = act === 'ls-first' ? 0 : d.items.length - 1; }
+    else if(act === 'ls-dup'){
+      // 상품 복제 (2026-11-23 디자이너용) — 바로 아래에 똑같이 (사진 · 컬러 줄 · 칸 색 포함), 이름 뒤에 (복사). 기밀 칸(정상가 · 라벨 단가)도 같이
+      const src = d.items[i];
+      if(!src) return;
+      const it = JSON.parse(JSON.stringify(src));
+      it.u = _tplUid(); it.no = '';
+      if(it.name) it.name = `${it.name} (복사)`;
+      d.items.splice(i + 1, 0, it);
+      const sp = ((doc.secret || {}).p || {})[src.u];
+      if(sp && designSecretOk()){ doc.secret.p[it.u] = JSON.parse(JSON.stringify(sp)); _tplTouch(doc, 'secret'); }
+      focusI = i + 1;
+    }
     else if(act === 'ls-row+'){ const it = d.items[i]; it.rows = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0) + 1; }
     else if(act === 'ls-row-'){
       const it = d.items[i], R = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0);
@@ -26545,9 +26790,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!confirm(`'${it.name || '이 상품'}' 상품을 라인시트에서 지울까요?`)) return;
       d.items.splice(i, 1);
       if(!d.items.length) d.items.push(_tplBlankLsItem());
+      setTimeout(() => toast('상품을 지웠어요 — 위 ↶ 되돌리기(Ctrl+Z)로 살릴 수 있어요', 'ok'), 0);
     }else return;
     _tplTouch(doc, 'data');
+    _tplUndoEnd(doc, snap);
     _tplRenderPaper(true);
+    if(focusI != null){   // 옮기거나 더한 상품을 잠깐 표시
+      const b = document.querySelector(`#tplStage [data-doc="${doc.id}"] .ls-block[data-i="${focusI}"]`);
+      if(b && !b.hidden){
+        b.classList.add('is-focus');
+        b.scrollIntoView({block:'nearest', behavior:'smooth'});
+        setTimeout(() => b.classList.remove('is-focus'), 1600);
+        const nm = focusName && b.querySelector(`[data-f="items.${focusI}.name"]`);
+        if(nm) nm.focus();
+      }
+    }
   }
   function _tplLsMenu(btn, i){
     let m = document.getElementById('tplLsMenu');
@@ -26559,7 +26816,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       document.addEventListener('pointerdown', e => { if(!m.hidden && !m.contains(e.target) && !e.target.closest('.ls-menu-b')) m.hidden = true; }, true);
     }
     const n = (_tplCurDoc() || {data:{items:[]}}).data.items.length;
-    m.innerHTML = [['ls-up', '▲ 위로 옮기기', i > 0], ['ls-down', '▼ 아래로 옮기기', i < n - 1], ['ls-row+', '＋ 컬러 줄 더하기', true], ['ls-row-', '− 마지막 컬러 줄 빼기', true], ['ls-del', '🗑 이 상품 지우기', true]]
+    m.innerHTML = [['ls-dup', '⧉ 이 상품 복제 (바로 아래에)', true], ['ls-up', '▲ 위로 옮기기', i > 0], ['ls-down', '▼ 아래로 옮기기', i < n - 1], ['ls-first', '⤒ 맨 위로', i > 1], ['ls-last', '⤓ 맨 아래로', i < n - 2],
+      ['ls-row+', '＋ 컬러 줄 더하기', true], ['ls-row-', '− 마지막 컬러 줄 빼기', true], ['ls-del', '🗑 이 상품 지우기', true]]
       .filter(x => x[2]).map(x => `<button type="button" data-act="${x[0]}" data-i="${i}">${x[1]}</button>`).join('');
     const r = btn.getBoundingClientRect();
     m.style.left = Math.min(innerWidth - 200, r.left) + 'px';
@@ -26571,18 +26829,34 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const st = document.getElementById('tplStage');
     if(!st) return;
     _tpl.bound = true;
-    st.addEventListener('input', e => { const el = e.target.closest('[data-f]'); if(el){ _tplOnInput(el); _tplSugShow(el); } });
-    st.addEventListener('focusin', e => { const el = e.target.closest('[data-f]'); if(el){ _tpl.focusF = el.dataset.f; _tpl.focusEl = el; _tplSugShow(el); } });
+    st.addEventListener('input', e => {
+      if(e.target.id === 'lsFind'){ _tpl.lsQ = e.target.value; _tplLsFilter(); return; }   // 라인시트 찾기
+      const el = e.target.closest('[data-f]'); if(el){ _tplOnInput(el); _tplSugShow(el); }
+    });
+    st.addEventListener('focusin', e => {
+      const el = e.target.closest('[data-f]');
+      if(el){
+        _tpl.focusF = el.dataset.f; _tpl.focusEl = el; _tplSugShow(el);
+        const doc = _tplDocOf(el);
+        if(doc){ _tplUndoPre(); _tpl.pre = _tplSnap(doc); }   // 되돌리기 — 이 칸에 들어갈 때 모습
+      }
+    });
     st.addEventListener('focusout', e => {
       const el = e.target.closest('[data-f]');
+      if(el){ _tplUndoPre(); _tpl.pre = null; }   // 고쳤으면 고치기 전 모습을 쌓는다
       if(el){ const sg = document.getElementById('tplSug'); if(sg && sg._cell === el) _tplSugHide(); }
       if(el && /\.conv$/.test(el.dataset.f)){ const doc = _tplCurDoc(); if(doc) _tplCostPaint(doc); }
       if(_tpl.dirty.size){ clearTimeout(_tpl.timer); _tpl.timer = setTimeout(_tplFlush, 250); }
     });
     st.addEventListener('keydown', e => {
+      if(e.target.id === 'lsFind'){   // 찾기 — Esc = 지우기, Enter = 첫 상품으로
+        if(e.key === 'Escape' && e.target.value){ e.preventDefault(); e.target.value = ''; _tpl.lsQ = ''; _tplLsFilter(); }
+        else if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); const h = st.querySelector('.ls-block:not([hidden]) .tx.is-hit') || st.querySelector('.ls-block:not([hidden])'); if(h) h.scrollIntoView({block:'center', behavior:'smooth'}); }
+        return;
+      }
       const el = e.target.closest('[contenteditable]');
       if(el && _tplSugKeys(el, e)) return;
-      if(el && e.key === 'Enter' && !e.isComposing && !el.dataset.ml && !e.shiftKey && !e.altKey){ e.preventDefault(); el.blur(); return; }
+      if(el && e.key === 'Enter' && !e.isComposing && !el.dataset.ml && !e.shiftKey && !e.altKey){ e.preventDefault(); if(!_tplMoveDown(el)) el.blur(); return; }   // 엔터 = 아래 칸 (시트처럼)
       if(el && e.key === 'Escape'){ el.blur(); return; }
       const tp = e.target.closest('.tp[data-p]');
       if(tp && e.target === tp && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); tp.click(); }
@@ -26595,7 +26869,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         if(act === 'ph-del' && tp){
           e.stopPropagation();
           const doc = _tplDocOf(tp);
-          if(doc){ _tplPathSet(doc, tp.dataset.p, null); _tplTouch(doc, 'data'); _tplRenderPaper(true); }
+          if(doc){ const snap = _tplUndoBegin(doc); _tplPathSet(doc, tp.dataset.p, null); _tplTouch(doc, 'data'); _tplUndoEnd(doc, snap); _tplRenderPaper(true); }
           return;
         }
         _tplAct(act, b);
