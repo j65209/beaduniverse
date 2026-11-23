@@ -5041,6 +5041,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .hop-num small{font-size:13px;font-weight:800;letter-spacing:0;margin-left:2px}
   .hop-num.zero{color:#b91c1c}
   .hop-tile.more{align-items:center;justify-content:center;background:var(--bg-2);border-color:transparent;color:var(--text-1);font-size:13px;font-weight:700;text-align:center}
+  /* 입고 현황 슬라이드 (2026-11-23) — 칸이 한 화면(--n)보다 많으면 .slide: 한 줄 가로 밀기 + 양옆 ‹ › (끝에서는 흐리게) */
+  .hop-slide{flex:1 1 auto;display:flex;gap:6px;align-items:stretch;min-width:0}
+  .hop-slide>.hop-tiles{min-width:0}
+  .hop-tiles.slide{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+  .hop-tiles.slide::-webkit-scrollbar{display:none}
+  .hop-tiles.slide>.hop-tile{flex:0 0 calc((100% - (var(--n,3) - 1) * 8px) / var(--n,3));scroll-snap-align:start}
+  .hop-arrow{flex:0 0 30px;display:flex;align-items:center;justify-content:center;padding:0 0 3px;border:0;border-radius:10px;background:var(--bg-2);color:var(--text-0);font-size:24px;font-weight:700;line-height:1;font-family:inherit;cursor:pointer}
+  .hop-arrow:hover:not(:disabled){background:var(--bg-3)}
+  .hop-arrow:disabled{opacity:.35;cursor:default}
+  .hop-arrow[hidden]{display:none}
   @media (min-width:1700px){
     /* 넓은 PC — 기간 탭이 머리줄로 올라가고 칸은 한 줄 */
     .hrc-tabs{order:0;flex:0 0 auto;grid-template-columns:none;grid-auto-flow:column}
@@ -5475,6 +5485,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .hop-tiles::-webkit-scrollbar{display:none}
     .hop-tile{flex:1 0 148px;scroll-snap-align:start}
     .hop-tile.more{flex:0 0 92px}
+    .hop-arrow{display:none}
+    .hop-tiles.slide{scroll-snap-type:x proximity}
+    .hop-tiles.slide>.hop-tile{flex:0 0 148px}
+    .hop-tiles.slide>.hop-tile.more{flex:0 0 92px}
     .reo-left{min-width:58px;padding-left:8px}
     .reo-left b{font-size:22px}
     .reo-left b small{font-size:13px}
@@ -12977,7 +12991,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <button class="hrc-btn master-only" type="button" onclick="pstOpen()" title="식스샵프로 판매가능 · 품절 · 판매중지 바꾸기 (관리자만)">상품 상태</button>
         </div>
       </div>
-      <div class="hop-tiles" id="homeRcvList"><div class="hro-empty">불러오는 중…</div></div>
+      <!-- 2026-11-23 사장님 "입고가 많으면 슬라이드 방식으로 넘길 수 있게 버튼 보이게" — 한 화면 칸 수(넓은 PC 5 · 보통 3)보다 많으면
+           전부 한 줄로 두고 양옆 ‹ › 로 한 화면씩 넘김. 휴대폰은 버튼 없이 손가락으로 밀기 -->
+      <div class="hop-slide">
+        <button type="button" class="hop-arrow" id="homeRcvPrev" onclick="rcvHomeSlide(-1)" aria-label="이전 입고 칸" title="이전" hidden>‹</button>
+        <div class="hop-tiles" id="homeRcvList"><div class="hro-empty">불러오는 중…</div></div>
+        <button type="button" class="hop-arrow" id="homeRcvNext" onclick="rcvHomeSlide(1)" aria-label="다음 입고 칸" title="다음" hidden>›</button>
+      </div>
     </section>
     </div>
 
@@ -16537,8 +16557,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
     const open = `rcvModalOpen('${p}')`;
-    _hopFill(list, items.map(x => _hopTile(x.r.brand, RCV_BRAND_LABEL[x.r.brand] || x.r.brand, x.r.product, x.r.option, '', '+' + _rcvN(x.q), false, open)),
-      _hopWide.matches ? 5 : (_hopPhone.matches ? 6 : 3), n => `${n}품목`, open);
+    const tiles = items.map(x => _hopTile(x.r.brand, RCV_BRAND_LABEL[x.r.brand] || x.r.brand, x.r.product, x.r.option, '', '+' + _rcvN(x.q), false, open));
+    const per = _hopWide.matches ? 5 : (_hopPhone.matches ? 6 : 3);   // 한 화면 칸 수
+    if(tiles.length <= per){
+      list.classList.remove('slide');
+      _hopFill(list, tiles, per, n => `${n}품목`, open);
+    }else{
+      // 슬라이드 — 다 한 줄로 (40칸 넘으면 마지막이 '+N 더'). 1분 갱신 때는 보던 자리 그대로, 기간 탭을 바꾸면 처음으로
+      const keep = (list.classList.contains('slide') && _rcvHome.slideP === p) ? list.scrollLeft : 0;
+      list.classList.add('slide');
+      list.style.setProperty('--n', per);
+      const MAX = 40, show = tiles.length > MAX ? tiles.slice(0, MAX - 1) : tiles;
+      list.innerHTML = show.join('') + (tiles.length > show.length ? `<button type="button" class="hop-tile more" onclick="${open}">+${tiles.length - show.length}품목 더 ›</button>` : '');
+      list.scrollLeft = keep;
+    }
+    _rcvHome.slideP = p;
+    requestAnimationFrame(_rcvSlideSync);
+  }
+  /* ‹ › — 칸이 넘칠 때만 보이고, 맨 앞 · 맨 끝에서는 흐리게. 한 번 누르면 한 화면(칸 n개)씩 */
+  function _rcvSlideSync(){
+    const list = document.getElementById('homeRcvList');
+    const prev = document.getElementById('homeRcvPrev'), next = document.getElementById('homeRcvNext');
+    if(!list || !prev || !next) return;
+    const over = list.classList.contains('slide') && list.scrollWidth > list.clientWidth + 2;
+    prev.hidden = next.hidden = !over;
+    if(!over) return;
+    prev.disabled = list.scrollLeft <= 2;
+    next.disabled = list.scrollLeft + list.clientWidth >= list.scrollWidth - 2;
+  }
+  function rcvHomeSlide(dir){
+    const list = document.getElementById('homeRcvList');
+    if(list) list.scrollBy({left: dir * (list.clientWidth + 8), behavior: 'smooth'});
   }
   function rcvModalOpen(p){
     _rcvHome.period = p || 'today';
@@ -16608,6 +16657,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     rcvHomeLoad();
     if(_rcvHome.timer) return;
     [_hopWide, _hopPhone].forEach(m => m.addEventListener('change', () => { rcvHomeRender(); reoHomeRender(); }));   // 창 크기가 바뀌면 칸 수 다시
+    const rl = document.getElementById('homeRcvList');   // 슬라이드 ‹ › 상태 — 밀거나 창 크기가 바뀌면 다시
+    if(rl){
+      rl.addEventListener('scroll', _rcvSlideSync, {passive: true});
+      if(window.ResizeObserver) new ResizeObserver(_rcvSlideSync).observe(rl);
+    }
     // 홈이 보일 때만 1분마다 (다른 화면 · 숨은 탭에서는 쉰다)
     _rcvHome.timer = setInterval(() => {
       const home = document.getElementById('viewHome');
