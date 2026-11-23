@@ -18485,6 +18485,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function brepStep(dir){ const [a,b]=_brepStepRange(_brep.start,_brep.end,dir); _brepSetRange(a,b); }
   window.brepPreset=brepPreset; window.brepOnDate=brepOnDate; window.brepStep=brepStep;
 
+  /* 데이터분석관 통로 (analyst.js · 2026-11-23 사장님 "데이터분석관을 플로팅배너에") — 읽기만. 숫자 계산은 analyst.js 가 이 기록들로 한다.
+     sales = 직원용 사본 sales-index.json (원가 · 순이익 없음) · plan = 질문 글만 맥미니로 (매출 · 광고 숫자는 안 보냄) */
+  window.AnalystData={
+    brands:()=>BREP_BRANDS.map(b=>({key:b.key, name:b.display})),
+    channels:b=>_brepChannels(b),
+    sales:path=>_brepLoadIdx(path),
+    products:b=>_pixLoadIdx(b),
+    adSheet:async id=>{ const f=await ghGetFile(ADSH_API(id)); if(f.error) throw new Error(f.error); return f.sha ? JSON.parse(f.text) : null; },
+    adReport:async b=>{ const r=await metaAdsFetch(b); return r ? (typeof r.json==='function' ? r.json() : r) : null; },
+    plan:async body=>{
+      const base=await loadProxyBase(); if(!base) return {ok:false};
+      const c=new AbortController(), t=setTimeout(()=>c.abort(), 16000);
+      try{
+        const r=await fetch(base+'/analyst/plan',{method:'POST', headers:{'Content-Type':'application/json','X-Brightbeed-PIN':ghPin()}, body:JSON.stringify(body), signal:c.signal});
+        return r.ok ? await r.json() : {ok:false};
+      }finally{ clearTimeout(t); }
+    },
+  };
+
   /* ── 불러오기 ── */
   function _brepChannels(brand){
     const out=[{id:'home-'+brand, kind:'home', path:'home/'+brand}];
@@ -55887,5 +55906,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 </div>
 <script src="office-live.js?v=1" defer></script><!-- 실시간 알림선 (office-live.js) -->
 <script src="erp-alert.js?v=1" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
+<script src="analyst.js?v=1" defer></script><!-- 데이터분석관 — 떠 있는 분석 대화 (analyst.js) -->
 </body>
 </html>
