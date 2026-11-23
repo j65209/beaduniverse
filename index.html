@@ -12594,41 +12594,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   html.ios-solo.solo-app .container{padding-top:24px}
   /* MD팀 새 탭 (2026-11-23 사장님 "md팀도 디자인팀처럼 새로운탭으로 열어줘. 동일하게") — 주소 ?app=md#md (openMdPage). 위 막대가 없는 만큼 MD팀 시트를 더 길게 */
   html.solo-md #viewMd .mdx-box{height:max(520px,calc(100vh - 130px));height:max(520px,calc(100dvh - 130px))}
-  /* CS팀 새 탭 (2026-11-23 사장님 "cs팀 탭 클릭시 디자인팀 동일하게 새창으로 만들고. 가득 채워줘") — 주소 ?app=cs#cs (openCsPage).
-     넓은 창(1560px+) = 왼쪽 카카오톡 상담 · 오른쪽 VOC 전산을 창 높이에 꼭 맞게(목록만 안에서 스크롤), 좁은 창 = 예전처럼 위아래인데 각각 한 화면 가득.
-     VOC '개선 요청 · 작업 보드'(ext-on)는 칸 길이만큼 늘어나 페이지가 스크롤되고 왼쪽 상담은 따라 내려온다 — sticky 는 쌓임 맥락을 만들어
-     채팅방 · 시나리오 북 창이 VOC 밑에 깔리므로, 그 창이 열려 있는 동안은 푼다 */
-  html.solo-cs .footer{display:none}
-  html.solo-cs .container{padding-bottom:14px}
+  /* CS팀 새 탭 (2026-11-23 사장님 "cs팀 탭 클릭시 디자인팀 동일하게 새창으로 만들고. 가득 채워줘" → 같은 날 "카카오톡 상담 위주로 해줘. voc는 사실상 굳이 지금 필요가없어.." · "voc밑으로내려").
+     주소 ?app=cs#cs (openCsPage). 첫 화면 = 카카오톡 상담이 창 가득, VOC 전산은 그 아래(스크롤해서 봄).
+     넓은 창(1100px+) = 카카오톡 PC 처럼 왼쪽 상담 목록 · 오른쪽 대화창(줄을 누르면 덮는 창 대신 오른쪽 칸에 열림, 비면 안내 글). 에이전트 학습 탭은 두 칸을 다 씀.
+     좁은 창 = 예전처럼 목록이 창 높이만큼, 대화창은 오른쪽에서 덮어 열림 */
   html.solo-cs #viewCs .view-head{margin-bottom:12px;padding-bottom:12px}
-  html.solo-cs #vocEmbed{scroll-margin-top:14px}
-  html.solo-cs #kkoBox{display:flex;flex-direction:column;margin-top:0}
+  html.solo-cs #kkoBox{display:flex;flex-direction:column;margin:0;min-height:calc(100vh - 80px);min-height:calc(100dvh - 80px)}
   html.solo-cs #kkoBox>*{flex:none}
   html.solo-cs #kkoBox>.kko-pane:not([hidden]){flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
   html.solo-cs #kkoPaneChat>*{flex:none}
   html.solo-cs #kkoPaneChat>.kko-list{flex:1 1 auto}
-  @media (max-width:1559.98px){
-    html.solo-cs #kkoBox{min-height:calc(100vh - 104px);min-height:calc(100dvh - 104px)}
-    html.solo-cs .voc-split{margin:22px 0 14px}
-    html.solo-cs .voc-embed:not(.ext-on){height:calc(100vh - 28px);height:calc(100dvh - 28px)}
-    html.solo-cs .voc-embed{margin-bottom:0}
-  }
-  @media (min-width:1560px){
-    html.solo-cs #viewCs:not([hidden]){display:grid;grid-template:auto minmax(0,1fr)/clamp(440px,27vw,660px) minmax(0,1fr);gap:12px 16px;height:calc(100vh - 28px);height:calc(100dvh - 28px);min-height:620px}
-    html.solo-cs #viewCs>.view-head{grid-column:1/-1;margin-bottom:0}
-    html.solo-cs #viewCs>.voc-split{display:none}
-    html.solo-cs #kkoBox{grid-column:1;min-height:0;margin:0;overflow:hidden}
-    html.solo-cs #vocEmbed{grid-column:2;height:auto;min-height:0;margin:0}
+  html.solo-cs .voc-split{margin:28px 0 14px}
+  html.solo-cs .voc-embed:not(.ext-on){height:calc(100vh - 28px);height:calc(100dvh - 28px);max-height:none}
+  html.solo-cs #vocEmbed{scroll-margin-top:14px}
+  @media (min-width:1100px){
+    html.solo-cs #kkoBox{display:grid;grid-template:auto auto auto minmax(0,1fr)/clamp(400px,30%,560px) minmax(0,1fr);column-gap:20px;height:calc(100vh - 80px);height:calc(100dvh - 80px);min-height:560px}
+    html.solo-cs #kkoBox>.kko-head{grid-column:1/-1}
+    html.solo-cs #kkoBox>.kko-tabs,html.solo-cs #kkoBox>#kkoWarn{grid-column:1}
+    html.solo-cs #kkoBox>.kko-pane{grid-column:1;grid-row:4}
     html.solo-cs #kkoPaneChat>.kko-list{min-height:0;overflow-y:auto;overscroll-behavior:contain}
-    html.solo-cs #kkoBox>#kkoPaneLearn:not([hidden]){display:block;overflow-y:auto;overscroll-behavior:contain;margin:0 -8px;padding:0 8px}
-    html.solo-cs #kkoCh,html.solo-cs #kkoFindOut{max-height:34vh;overflow-y:auto}
+    html.solo-cs #kkoCh,html.solo-cs #kkoFindOut{max-height:30vh;overflow-y:auto}
     html.solo-cs .kko-find #kkoFindQ{flex:1 1 110px}
     html.solo-cs .kko-find #kkoFindP{width:112px}
-    /* 개선 요청 · 작업 보드 */
-    html.solo-cs #viewCs:has(#vocEmbed.ext-on){height:auto;min-height:calc(100vh - 28px);min-height:calc(100dvh - 28px);align-items:start}
-    html.solo-cs #viewCs:has(#vocEmbed.ext-on) #kkoBox{height:calc(100vh - 104px);height:calc(100dvh - 104px)}
-    html.solo-cs #viewCs:has(#vocEmbed.ext-on) #kkoBox:not(:has(.kko-chat:not([hidden]),.kbk:not([hidden]))){position:sticky;top:14px}
-    html.solo-cs .voc-ext{min-height:calc(100vh - 106px - var(--voc-top,0px));min-height:calc(100dvh - 106px - var(--voc-top,0px))}
+    /* 대화창 = 오른쪽 칸 (덮는 창 · 어두운 막 없이) */
+    html.solo-cs #kkoBox>.kko-chat:not([hidden]){position:relative;inset:auto;z-index:auto;display:flex;grid-column:2;grid-row:2/-1;min-height:0;margin-top:6px}
+    html.solo-cs #kkoBox>.kko-chat .kko-chat-dim{display:none}
+    html.solo-cs #kkoBox>.kko-chat .kko-chat-box{width:100%;height:100%;border-radius:14px;overflow:hidden;box-shadow:none}
+    html.solo-cs #kkoBox>.kko-chat .kko-mcol{max-width:min(78%,680px)}
+    html.solo-cs #kkoBox:has(#kkoChat[hidden])::after{content:'왼쪽 목록에서 상담을 누르면 여기에 대화가 열립니다';grid-column:2;grid-row:2/-1;display:flex;align-items:center;justify-content:center;margin-top:6px;border-radius:14px;background:#f4f6f8;color:#9aa3ad;font-size:13.5px;font-weight:600}
+    /* 에이전트 학습 탭 = 두 칸 다 (대화창은 채팅 탭으로 돌아오면 그대로) */
+    html.solo-cs #kkoBox:has(#kkoPaneLearn:not([hidden]))>#kkoPaneLearn{grid-column:1/-1;display:block;overflow-y:auto;overscroll-behavior:contain;margin:0 -8px;padding:0 8px}
+    html.solo-cs #kkoBox:has(#kkoPaneLearn:not([hidden]))>.kko-chat,html.solo-cs #kkoBox:has(#kkoPaneLearn:not([hidden]))::after{display:none}
   }
 
   /* ===== 홈 정리 (2026-11-20 사장님 "메인화면 깔끔하게 · 강조할 숫자는 강조 · 자주 쓰는 것 우선 · 숨김은 깔끔하게") =====
@@ -17890,9 +17886,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     pop.innerHTML=`<div class="g${im.length>1 ? ' n2' : ''}">${im.map(()=>'<img alt="받은 사진">').join('')}</div><span>사진 불러오는 중…</span>`;
     pop.hidden=false;
     // 자리: PC 는 채팅방 창 왼쪽(어두운 곳), 누른 경우 · 휴대폰 · 좁은 화면은 가운데
-    const box=host.querySelector('.kko-chat-box').getBoundingClientRect(), vw=host.clientWidth;
+    // CS팀 새 탭(넓은 창)은 대화창이 오른쪽 칸에 붙어 있어 창 기준 좌표를 그 칸 기준으로 바꾼다 (덮는 창이면 hr.left = 0 이라 그대로)
+    const box=host.querySelector('.kko-chat-box').getBoundingClientRect(), vw=host.clientWidth, hl=host.getBoundingClientRect().left;
     const side=!pin && box.left>=300, w=side ? Math.min(440, box.left-32) : Math.min(vw-24, 640);
-    pop.style.width=w+'px'; pop.style.left=Math.round(side ? box.left-w-16 : (vw-w)/2)+'px'; pop.style.top='50%'; pop.style.transform='translateY(-50%)';
+    pop.style.width=w+'px'; pop.style.left=Math.round(side ? box.left-hl-w-16 : (vw-w)/2)+'px'; pop.style.top='50%'; pop.style.transform='translateY(-50%)';
     // 작은 사진(thumb, 몇 KB)을 먼저 바로 띄우고, 원본(full)이 오면 바꿔 끼움 — 서버(11-19 세션 2): 둘 다 /cs/kakao-img 통로,
     // 맥미니가 받아 둔 사진만(카카오 주소는 1시간이면 닫혀서 2분마다 받아 둠, 4일 보관) — 못 받은 옛 사진은 imgs 없이 '(사진)'
     const imgs=[...pop.querySelectorAll('img')], note=pop.querySelector('span');
