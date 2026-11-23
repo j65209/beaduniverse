@@ -5499,6 +5499,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kbk-tbl td.own::before{content:'';display:inline-block;width:6px;height:6px;margin-right:5px;border-radius:50%;background:#c9a500;vertical-align:2px}
   .kbk-empty{padding:16px;font-size:13px;color:var(--kko-gray)}
   .kbk ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.6;color:#444}
+  /* 시험 답변 (11-23) — 시나리오 북 창 모양 그대로, 답 세 줄만 더 */
+  .kko-testbtn{margin-top:8px;background:var(--kko-pill)}
+  .kko-testbtn:hover{background:#e8e8e8}
+  .kko-testbtn small{color:#666}
+  .kko-testbtn[hidden]{display:none}
+  .kts-row{margin-top:8px}
+  .kts-row .kbk-lbl{display:flex;align-items:center;gap:6px;margin-top:0}
+  .kts-g{font-weight:700;color:#666}
+  .kts-g.bad{color:var(--kko-redt)}
+  .kts-bub{display:inline-block;max-width:min(680px,100%);margin-top:3px;padding:7px 11px;border-radius:12px;background:#f6f8fa;font-size:13px;line-height:1.55;color:#444;white-space:pre-wrap;overflow-wrap:anywhere}
+  @media (max-width:760px){ #kkoTest .ctl{flex-wrap:wrap} #kkoTest .ctl select{flex:1 1 0;min-width:0} #kkoTest .ctl input{flex:1 1 0;width:auto;min-width:0;order:3} #kkoTest .ctl .kbk-x{order:4} }
+  .kts-more{display:block;width:100%;margin:4px 0 0;min-height:40px;border:0;border-radius:10px;background:var(--kko-pill);color:var(--kko-ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
   @media (max-width:760px){
     .kbk-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
     .kbk-nav{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;border-right:0;border-bottom:1px solid #f0f0f0}
@@ -14013,6 +14025,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="kko-pane" id="kkoPaneLearn" role="tabpanel" aria-labelledby="kkoTabLearn" hidden>
         <!-- 시나리오 북 (2026-11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") — 누르면 화면 전체 창 #kkoBook -->
         <button type="button" class="kko-bookbtn" onclick="kkoBookOpen()"><span class="t"><b>시나리오 북</b><small>에이전트가 어떤 글에 무엇을 하는지 · 브랜드별로 나가는 말 · 지난 6개월 대화 예시</small></span><span class="go">열기 ›</span></button>
+        <!-- 시험 답변 (2026-11-23 사장님 "너가 테스트 답변을 우선 오피스앱에서 먼저 해볼래?") — AI 두뇌가 같은 문의에 쓴 답, 고객에게 안 나감. 관리자만 (kkoTab 이 보이게 함) -->
+        <button type="button" class="kko-bookbtn kko-testbtn" id="kkoTestBtn" onclick="kkoTestOpen()" hidden><span class="t"><b>시험 답변</b><small>AI 두뇌가 실제 문의에 써 본 답 · 지금 규칙 답 · 실제 나간 답을 나란히 · 고객에게는 안 나가요</small></span><span class="go">열기 ›</span></button>
         <div class="kko-learn" id="kkoLearn" aria-label="에이전트 학습"></div>
         <div class="kko-faq" id="kkoFaq" hidden></div>
       </div>
@@ -14020,6 +14034,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="kko-chat" id="kkoChat" hidden></div>
       <!-- 시나리오 북 창 — kkoBookOpen · _kkoBookPaint 가 채운다 -->
       <div class="kbk" id="kkoBook" hidden></div>
+      <!-- 시험 답변 창 — kkoTestOpen · _kkoTestPaint 가 채운다 -->
+      <div class="kbk" id="kkoTest" hidden></div>
     </section>
     <!-- 카카오톡 상담 ↔ 아래 VOC 전산 (2026-11-19 "카카오톡 상담이랑 하단이랑 분리 확실하게 해줘" · 11-20 "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리") -->
 
@@ -17505,6 +17521,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(p) p.hidden=!on;
     });
     if(L && !_kko.faq && !_kko.faqLoading) kkoFaqLoad();
+    const tb=document.getElementById('kkoTestBtn'); if(tb) tb.hidden=localStorage.getItem(ROLE_KEY)!=='master';
     kkoRenderFaq();
   }
   function kkoTabKey(e){
@@ -18171,6 +18188,109 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const m2=document.getElementById('kbkMain'); if(m2) m2.scrollTop=top;
     _kkoBookFilter();
     if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); if(el.id==='kbkQ'){ const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} } } }
+  }
+
+  /* ===== 시험 답변 (2026-11-23 사장님 "너가 테스트 답변을 우선 오피스앱에서 먼저 해볼래?") =====
+     서버 /cs/kakao-test = 맥미니 state/kakao/learn/test.json — 가린 실제 문의(지금 답 기다리는 문의 · 학습에 안 쓴 새 대화 · 지난 대화)에 AI 두뇌가 쓴 답 · 지금 규칙 답 · 실제 나간 답과 채점.
+     고객에게 나가지 않는다 · 보기만. 관리자만(서버도 막음), 고객 글은 사무실 인터넷에서만(밖이면 숫자만). 창 모양은 시나리오 북(.kbk) 그대로. */
+  const _kts={data:null,err:'',loading:false,open:false,ret:null,ov:'',m:'opus',f:'all',q:'',n:20,t:null};
+  const KTS_ACT={answer:'바로 답',ask:'정보를 물음',staff:'직원에게 넘김'};
+  const KTS_G={good:'맞음',weak:'아쉬움',bad:'틀림'};
+  const KTS_SET=[['wait','지금 답 기다리는 문의','시험을 돌린 때 답을 기다리던 문의예요. 채점은 없어요.'],['new','새 대화','에이전트가 한 번도 보지 못한 11-20 오후 뒤 대화예요. 실제 실력에 가장 가까워요.'],['past','지난 대화','9-20 뒤 대화에서 무작위로 뽑은 100건이에요.']];
+  const KTS_F=[['all','전체'],['auto','AI 가 바로 답한 것'],['staff','AI 가 직원에게 넘긴 것'],['weak','AI 가 아쉽거나 틀린 것'],['rule','규칙이 틀린 것']];
+  async function kkoTestLoad(){
+    if(_kts.loading) return;
+    _kts.loading=true;
+    try{
+      const base=await loadProxyBase();
+      if(!base) throw new Error('서버 연결 안 됨');
+      const r=await fetch(`${base}/cs/kakao-test`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      _kts.data=j; _kts.err='';
+    }catch(e){ _kts.err=(e && e.message) || String(e); }
+    finally{ _kts.loading=false; if(_kts.open) _kkoTestPaint(); }
+  }
+  function kkoTestOpen(){
+    const box=document.getElementById('kkoTest');
+    if(!box) return;
+    _kts.open=true; _kts.ret=document.activeElement; _kts.n=20;
+    box.hidden=false;
+    _kts.ov=document.body.style.overflow; document.body.style.overflow='hidden';
+    _kkoTestPaint();
+    const x=document.getElementById('ktsX'); if(x) x.focus({preventScroll:true});
+    kkoTestLoad();
+  }
+  function kkoTestClose(){
+    const box=document.getElementById('kkoTest');
+    if(!box || !_kts.open) return;
+    _kts.open=false; box.hidden=true; box.innerHTML='';
+    document.body.style.overflow=_kts.ov||'';
+    const r=_kts.ret; if(r && r.focus && r.isConnected) r.focus({preventScroll:true});
+  }
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kts.open){ e.preventDefault(); e.stopImmediatePropagation(); kkoTestClose(); } }, true);
+  function kkoTestSet(k,v){ _kts[k]=v; _kts.n=20; _kkoTestPaint(); }
+  function kkoTestFind(v){ _kts.q=String(v||''); clearTimeout(_kts.t); _kts.t=setTimeout(()=>{ _kts.n=20; _kkoTestPaint(); },250); }
+  function kkoTestMore(){ _kts.n+=40; _kkoTestPaint(); }
+  function kkoTestGo(id){ const el=document.getElementById(id); if(el){ el.scrollIntoView({block:'start'}); return; } _kts.n=999; _kkoTestPaint(); const e2=document.getElementById(id); if(e2) e2.scrollIntoView({block:'start'}); }
+  function _kkoTestPaint(){
+    const box=document.getElementById('kkoTest');
+    if(!box || !_kts.open) return;
+    const E=_kkoEsc, d=_kts.data, M=_kts.m;
+    const when=s=>{ const t=new Date(s); return isNaN(t) ? '' : `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; };
+    const fid=(document.activeElement && box.contains(document.activeElement)) ? document.activeElement.id : '';
+    const opt=(v,l,cur)=>`<option value="${E(v)}"${v===cur ? ' selected' : ''}>${E(l)}</option>`;
+    const head=`<div class="kbk-head"><h2 id="ktsTitle">시험 답변</h2><span class="sub">${d ? E(when(d.at))+' 기준 · ' : ''}고객에게 나가지 않아요</span>`
+      + `<div class="ctl">${d ? `<select id="ktsM" aria-label="두뇌" onchange="kkoTestSet('m',this.value)">${(d.models||[]).map(m=>opt(m.id,m.label,M)).join('')}</select><select id="ktsF" aria-label="걸러 보기" onchange="kkoTestSet('f',this.value)">${KTS_F.map(f=>opt(f[0],f[1],_kts.f)).join('')}</select>` : ''}`
+      + `<input type="search" id="ktsQ" placeholder="찾기 — 배송 · 환불 · 야르" value="${E(_kts.q)}" oninput="kkoTestFind(this.value)" aria-label="시험 답변에서 찾기" autocomplete="off">`
+      + `<button type="button" class="kbk-x" id="ktsX" onclick="kkoTestClose()" aria-label="닫기" title="닫기 (Esc)">✕</button></div></div>`;
+    if(!d){
+      box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="ktsTitle">${head}<div class="kbk-empty">${_kts.err ? '불러오지 못했어요 — '+E(_kts.err) : '불러오는 중…'}</div></div>`;
+      return;
+    }
+    const A=(d.sums||{}).all||{}, nm=id=>((d.models||[]).find(m=>m.id===id)||{});
+    const won=v=>v>=10000 ? `약 ${Math.round(v/10000)}만 원` : `약 ${Math.round(v/1000)*1000>0 ? (Math.round(v/1000)*1000).toLocaleString('ko-KR') : v}원`;
+    const tr=(id,label,w)=>{ const x=A[id]; if(!x) return ''; const t=x.auto+x.staff; return `<tr><th>${E(label)}</th><td>${x.auto} / ${t}</td><td>${x.autoG.good}</td><td>${x.autoG.weak}</td><td>${x.autoG.bad ? `<i>${x.autoG.bad}</i>` : 0}</td><td>${x.staff || '없음'}</td><td>${w}</td></tr>`; };
+    const ov=`<section class="kbk-sec" id="kts-ov"><h3>한눈에</h3><p>에이전트 규칙이 '내가 답하겠다'고 한 문의 ${A.rule ? A.rule.auto : ''}건을 AI 두뇌에게 다시 풀게 했어요. 실제 나간 답은 안 보여 줬고, 채점은 누가 쓴 답인지 가리고 섞어서 했어요.</p>`
+      + `<div class="kbk-tbl"><table><thead><tr><th></th><th>바로 답함</th><th>맞음</th><th>아쉬움</th><th>틀림</th><th>직원에게 넘김</th><th>한 달 비용 어림</th></tr></thead><tbody>${tr('rule','지금 규칙','무료')}${(d.models||[]).map(m=>tr(m.id,m.label,won(m.monthWon||0))).join('')}</tbody></table></div>`
+      + `<div class="kbk-note">비용은 하루 새 문의 ${E(d.perDay)}건 · 1달러 1,400원으로 어림한 값이에요. 직원에게 넘길 때도 고객에게 먼저 보낼 말과 직원에게 남길 한 줄을 써요.</div></section>`;
+    const pick=c=>{
+      const a=c[M]||{}, g=(a.g||{}).s;
+      if(_kts.f==='auto' && a.action==='staff') return false;
+      if(_kts.f==='staff' && a.action!=='staff') return false;
+      if(_kts.f==='weak' && !(g==='weak' || g==='bad')) return false;
+      if(_kts.f==='rule' && ((c.rule||{}).g||{}).s!=='bad') return false;
+      const q=_kts.q.trim().toLowerCase();
+      return !q || [c.label,c.q,a.reply,a.note,(c.rule||{}).reply,c.real].join(' ').toLowerCase().includes(q);
+    };
+    const gr=g=>g && KTS_G[g.s] ? `<span class="kts-g${g.s==='bad' ? ' bad' : ''}" title="${E(g.why||'')}">${KTS_G[g.s]}</span>` : '';
+    const WHO={staff:'직원',ai:'카나나',bot:'자동응답'};
+    const card=c=>{
+      const a=c[M]||{}, r=c.rule||{};
+      const why=a.g && a.g.s!=='good' && a.g.why ? `<div class="kbk-note">채점: ${E(a.g.why)}</div>` : '';
+      const ctx=(c.ctx||[]).length>1 ? `<details class="kbk-ex"><summary>앞 대화 ${c.ctx.length}줄</summary><div class="kbk-exi">${c.ctx.map(x=>`<div class="${/\] 고객:/.test(x) ? 'q' : 'x'}">${E(x)}</div>`).join('')}</div></details>` : '';
+      return `<article class="kbk-card"><div class="kbk-h"><b>${E(c.label)}</b><span class="kbk-tag">${E(when(c.at))}</span><span class="kbk-tag ${a.action==='staff' ? 'none' : 'agent'}">${E(KTS_ACT[a.action]||'')}</span></div>`
+        + `<div class="kts-row"><div class="kbk-lbl">고객</div><div class="kbk-bub c">${E(c.q)}</div></div>`
+        + `<div class="kts-row"><div class="kbk-lbl">AI 시험 답 ${gr(a.g)}</div><div class="kbk-bub">${E(a.reply)}</div>${a.note ? `<div class="kbk-note">직원에게: ${E(a.note)}</div>` : ''}${why}</div>`
+        + `<div class="kts-row"><div class="kbk-lbl">지금 규칙 ${c.set==='wait' ? `<span class="kts-g">${r.owner==='staff' ? '직원에게 넘김' : '바로 답'}</span>` : gr(r.g)}</div><div class="kts-bub">${E(r.reply||'(답 없음)')}</div></div>`
+        + (c.real ? `<div class="kts-row"><div class="kbk-lbl">실제 나간 답 · ${E(WHO[c.actual]||c.actual)}</div><div class="kts-bub">${E(c.real)}</div></div>` : '')
+        + ctx + `</article>`;
+    };
+    let left=_kts.n, hidden=0;
+    const cnt={};
+    const secs=d.outside ? '<div class="kbk-empty">고객 글은 사무실 인터넷에서만 보여요 — 밖에서는 숫자만 보여요.</div>' : KTS_SET.map(([k,t,p])=>{
+      const all=(d.cases||[]).filter(c=>c.set===k), xs=all.filter(pick); cnt[k]=xs.length;
+      if(!xs.length) return '';
+      const show=xs.slice(0,Math.max(0,left)); left-=show.length; hidden+=xs.length-show.length;
+      return show.length ? `<section class="kbk-sec" id="kts-${k}"><h3>${E(t)} ${xs.length}건</h3><p>${E(p)}</p>${show.map(card).join('')}</section>` : '';
+    }).join('') + (hidden>0 ? `<button type="button" class="kts-more" onclick="kkoTestMore()">더 보기 (${hidden}건 남음)</button>` : '');
+    const none=!d.outside && !KTS_SET.some(x=>cnt[x[0]]) ? '<div class="kbk-empty">맞는 것이 없어요.</div>' : '';
+    const nb=(id,label,n)=>`<button type="button" onclick="kkoTestGo('${id}')">${E(label)}${n!=null ? `<em>${n}</em>` : ''}</button>`;
+    const nav=`<nav class="kbk-nav" aria-label="시험 답변 차례">${nb('kts-ov','한눈에')}${d.outside ? '' : KTS_SET.filter(x=>cnt[x[0]]).map(x=>nb('kts-'+x[0],x[1],cnt[x[0]])).join('')}</nav>`;
+    const main=document.getElementById('ktsMain'), top=main ? main.scrollTop : 0;
+    box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="ktsTitle">${head}<div class="kbk-body">${nav}<div class="kbk-main" id="ktsMain">${ov}${secs}${none}</div></div></div>`;
+    const m2=document.getElementById('ktsMain'); if(m2) m2.scrollTop=top;
+    if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); if(el.id==='ktsQ'){ const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} } } }
   }
 
   // 주문 찾기 — 주문번호 / 이름 + 전화 뒷 4자리 / 전화 전체
