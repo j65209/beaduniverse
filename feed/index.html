@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <title>인스타 피드 시뮬레이터 · 비드유니버스</title>
+<script src="../office-undo.js?v=1" data-skip="rpc/feed_plan_save"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
 <script>
@@ -556,7 +557,7 @@
     p.items = o.items.map(normItem); p.pool = o.pool.map(normItem); p.opts = o.opts;
   }
   function undo() {
-    if (!S.hist.length || S.brand === ALL) return;
+    if (!S.hist.length || S.brand === ALL) { if (window.OfficeUndo && OfficeUndo.can()) OfficeUndo.undo(); return; }   // 배치 말고 다른 일 — 오피스 공용 되돌리기
     const p = plan(S.brand);
     S.fut.push(snapOf(p)); restoreSnap(S.hist.pop()); render(); scheduleSave(S.brand);
   }

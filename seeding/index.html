@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <title>시딩 마스터 · 비드유니버스</title>
+<script src="../office-undo.js?v=1" data-skip="rpc/seeding_edit"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
@@ -3163,7 +3164,7 @@
   function undo() {
     if (S.ed && S.ed.on) return;
     const a = S.undo.pop();
-    if (!a) { toast('되돌릴 게 없어요'); return; }
+    if (!a) { if (window.OfficeUndo && OfficeUndo.can()) { OfficeUndo.undo(); return; } toast('되돌릴 게 없어요'); return; }   // 칸 말고 다른 일 — 오피스 공용 되돌리기 (office-undo.js)
     applyAction(a, 'undo');
     S.redo.push(a);
     bump();

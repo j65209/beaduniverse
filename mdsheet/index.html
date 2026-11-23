@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <title>MD팀 시트 · 비드유니버스 오피스</title>
+<script src="../office-undo.js?v=1" data-skip="rpc/(mdx_cell_edit|mdx_ofmt_set|mdx_ofx_set|mdx_row_delete)"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <script>
   /* 오피스 잠금 연동 (erp/ 와 같은 방식) — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음.
@@ -4432,7 +4433,7 @@
   }
   function undo() {
     const st = UNDO.get(S.cur);
-    if (!st || !st.length) { toast('되돌릴 게 없어요 (이 화면에서 이 탭에 한 일만 되돌려요)', true); return; }
+    if (!st || !st.length) { if (window.OfficeUndo && OfficeUndo.can()) { OfficeUndo.undo(); return; } toast('되돌릴 게 없어요 (이 화면에서 이 탭에 한 일만 되돌려요)', true); return; }   // 칸 말고 다른 일(탭 지우기 등) — 오피스 공용 되돌리기
     const e = st.pop();
     if (e.rows) { undoRows(e, st); return; }   // 줄 지우기 · 붙여넣기 · 옮기기
     if (e.fmt) {   // 서식
