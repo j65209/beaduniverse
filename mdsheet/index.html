@@ -290,8 +290,19 @@
   .ck{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#dcfce7;color:#15803d;vertical-align:middle}
   .ck svg{width:12px;height:12px}
   .ck0{display:inline-block;width:14px;height:14px;border-radius:4px;border:1.5px solid #bcc7d4;background:#fff;vertical-align:middle}
-  .thumb{display:block;margin:2px 0;width:30px;height:30px;border-radius:6px;object-fit:cover;background:#f1f5f9;cursor:zoom-in}
+  .thumb{display:block;margin:2px 0;width:30px;height:30px;border-radius:6px;object-fit:cover;background:#f1f5f9;cursor:copy;transition:box-shadow .15s}
+  .thumb:hover{box-shadow:0 0 0 2px #93c5fd}
+  .thumb.copied{box-shadow:0 0 0 3px #22c55e}   /* 2026-11-23 표 사진 = 누르면 사진 주소 복사 (잠깐 초록 테두리) */
   .app.dense .thumb{width:24px;height:24px;margin:1px 0}
+  /* 2026-11-23 사장님 — 주소 칸(1688.com)은 [바로가기][복사], 사진 칸은 사진 옆 [복사][수정] 단추 */
+  .pcell{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
+  .cbtns{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;white-space:nowrap}
+  .cbtn{display:inline-flex;align-items:center;height:22px;padding:0 7px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--text-2,#334155);font-family:inherit;font-size:11px;font-weight:600;line-height:1;text-decoration:none;cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+  .cbtn:hover{background:#f1f5f9;border-color:#cbd5e1;color:var(--text);text-decoration:none}
+  .cbtn.go{color:var(--info);border-color:#bfdbfe;background:#eff6ff}
+  .cbtn.go:hover{background:#dbeafe;border-color:#93c5fd}
+  .cbtn.done{background:#dcfce7;border-color:#86efac;color:#15803d}
+  .app.dense .cbtn{height:19px;padding:0 6px}
   .lnk{color:var(--info);text-decoration:none}
   .lnk:hover{text-decoration:underline}
   mark{background:#fef08a;color:inherit;border-radius:2px;padding:0 1px}
@@ -479,8 +490,13 @@
   .tmenu button{display:flex;align-items:center;gap:7px;width:100%;height:34px;padding:0 10px;border-radius:7px;font-size:13px;font-weight:600;color:var(--danger);text-align:left}
   .tmenu button:hover{background:#fef2f2}
   .tmenu svg{width:14px;height:14px}
+  .tmenu button.hd{color:var(--text)}
+  .tmenu button.hd:hover{background:#f1f5f9}
   .nav-item.gone .nm{color:var(--side-mute)}
   .nav-item.gone .rv{flex:none;font-size:11px;color:#a5b4fc}
+  /* 탭 숨김 (2026-11-23 사장님 "탭 삭제말고 숨김처리") — 숨긴 탭은 메뉴 맨 아래 '숨긴 탭'에 흐리게 */
+  .nav-item.hid .nm{color:var(--side-mute);font-style:italic}
+  .nav-item.hid .rv{flex:none;font-size:11px;color:#a5b4fc}
   @media (max-width:720px){ .tdel{padding:0 7px!important} .tdel span{display:none} }
   @media (max-width:720px){ .nr-in{font-size:16px} }
   /* ── 휴대폰 글씨 한 단계 작게 (2026-11-21 사용자 "모바일에서 글씨가 커서 가독성이 떨어져") — ERP전산(erp/)과 같은 값 ──
@@ -499,6 +515,7 @@
     .pill-sub{margin-left:5px;font-size:11px}
     .hchip{margin-left:5px;padding:0 5px;font-size:10.5px}
     .thumb{width:26px;height:26px;margin:1px 0}
+    .cbtn{height:21px;padding:0 6px;font-size:10.5px}
     .ck{width:16px;height:16px}
     .ck0{width:13px;height:13px}
     /* 위쪽 */
@@ -773,7 +790,7 @@
     const dot = TAB_DOTS.find(x => x.re.test(n));
     return {sec: book || '', label: n, key: `${book}:${n}`, date: '', color: dot ? dot.color : (BOOK_COLOR[book] || '#64748b'), raw: /판매원본|TOP\s*10|월별\s*판매/i.test(n)};
   }
-  const mkTab = x => ({gid: x.tk, sgid: String(x.gid), book: x.book, name: String(x.name || ''), meta: classify(x.name, x.book), info: x.info || null});
+  const mkTab = x => ({gid: x.tk, sgid: String(x.gid), book: x.book, name: String(x.name || ''), meta: classify(x.name, x.book), info: x.info || null, th: !!x.th});   // th = 숨긴 탭 (저장해 둔 메뉴로 먼저 그릴 때)
 
   /* ── 오피스 함수 계산기 (2026-11-20 사장님 "구글시트를 이제 안쓸건데? 기능을 오피스앱 내부 엠디팀 시트에 넣어주면 안돼?") ──
      엑셀 · 구글시트와 같은 꼴의 함수를 오피스가 직접 계산한다. 같은 탭의 칸만 가리킨다 (E5 · $E$5 · E2:E9 · E:E · E2:E).
@@ -1443,7 +1460,7 @@
         S.pollMax = Math.max(S.pollMax, +j.max || 0);
         S.gone = (Array.isArray(j.gone) ? j.gone : []).filter(x => live.has(x.book));   // 지운 탭 (되살리기)
         lsSet(LS_TABS, JSON.stringify({books: books.map(b => ({book: b.book, title: b.title, grp: b.grp, pos: b.pos, edit: b.edit})),
-          tabs: out.map(t => ({tk: t.gid, gid: t.sgid, book: t.book, name: t.name}))}));   // 다음에 열 때 메뉴를 바로 그린다
+          tabs: out.map(t => ({tk: t.gid, gid: t.sgid, book: t.book, name: t.name, th: tabHid(t) ? 1 : 0}))}));   // 다음에 열 때 메뉴를 바로 그린다
         const liveTk = new Set(out.map(t => t.gid));
         if (!S.pruned) { S.pruned = true; store.keys().then(ks => (ks || []).forEach(g => { if (!liveTk.has(String(g))) store.del(g); })); }   // 지워진 탭의 저장본
         if (Object.keys(S.counts).some(k => !liveTk.has(k))) { Object.keys(S.counts).forEach(k => { if (!liveTk.has(k)) delete S.counts[k]; }); lsSet(LS_COUNTS, JSON.stringify(S.counts)); }
@@ -1467,12 +1484,13 @@
       const t = tabs.find(x => x.gid === w) || tabs.find(x => x.name === w) || tabs.find(x => x.name.includes(w));
       if (t) return t.gid;
     }
+    const vis = tabs.filter(x => !tabHid(x)).length ? tabs.filter(x => !tabHid(x)) : tabs;   // 지난번 탭 · 처음 탭은 숨긴 탭 말고 (주소 ?tab= 로 콕 집으면 숨긴 탭도 연다)
     if (saved) {
-      const t = tabs.find(x => x.gid === saved.tk) || tabs.find(x => x.book === saved.book && x.name === saved.name) || (saved.book ? tabs.find(x => x.book === saved.book) : null);
+      const t = vis.find(x => x.gid === saved.tk) || vis.find(x => x.book === saved.book && x.name === saved.name) || (saved.book ? vis.find(x => x.book === saved.book) : null);
       if (t) return t.gid;
     }
     const b0 = S.books[0];
-    return (tabs.find(x => b0 && x.book === b0.book && /^product\s*list$/i.test(x.name)) || tabs.find(x => /^product\s*list$/i.test(x.name)) || tabs[0]).gid;
+    return (vis.find(x => b0 && x.book === b0.book && /^product\s*list$/i.test(x.name)) || vis.find(x => /^product\s*list$/i.test(x.name)) || vis[0]).gid;
   }
   // 전략팀 시트 링크 (저장소에 넣지 않고 오피스 PIN 프록시로 링크만) — 오피스 MD팀 구글시트 모음에 있던 것
   // 2026-11-20 사장님 "대표만 보게하고 숨김처리" → 기밀 명단(지희선 포함)이 아니라 대표 둘(전승훈 · 전수빈) PC 에서만 받고 그린다
@@ -1949,6 +1967,21 @@
     if (c.href && /^https?:\/\//i.test(t)) { try { return new URL(c.href).hostname.replace(/^www\./, '').split('.').slice(-2).join('.'); } catch (e) { return t; } }   // 주소는 사이트 이름만 (1688.com)
     return t.replace(/\s*\n\s*/g, ' · ');
   }
+  /* 단추 칸 (2026-11-23 사장님 "상품링크에도 1688.com 없애고 바로가기 · 복사하기", "상품사진에는 복사하기랑 수정하기 버튼")
+     · 주소만 적힌 칸 = [바로가기][복사] (기밀 명단 밖이면 공급처 · 구글시트 주소는 예전처럼 안 보임)
+     · 사진 칸 = 사진 + [복사][수정] — 수정 = 그 칸의 사진 주소를 고친다. =IMAGE 수식 사진(왼쪽 칸을 그대로 보여 주는 칸)과 못 고치는 사람은 [복사]만 */
+  const linkBtnOk = c => !!(c && c.href && !c.img && /^https?:\/\//i.test(c.t) && (secretOk() || !SECRET_LINK_RE.test(c.href)));
+  const photoEditOk = (c, ed) => !!(ed && c && c.img && c.t);
+  const btnW = s => Math.ceil(tw(s, F_CHIP)) + 16;
+  function photoHtml(c, ed) {
+    return `<span class="pcell"><img class="thumb" src="${esc(c.img)}" data-u="${esc(c.img)}" alt="" title="누르면 사진 주소 복사" loading="lazy" decoding="async" referrerpolicy="no-referrer">`   // data-u = 원래 주소 (못 열린 사진은 src 가 blob: 으로 바뀜)
+      + `<span class="cbtns"><button type="button" class="cbtn" data-act="copy" data-u="${esc(c.img)}" data-what="사진 주소" title="사진 주소 복사">복사</button>`
+      + (photoEditOk(c, ed) ? `<button type="button" class="cbtn" data-act="edit" title="사진 주소 고치기 — 새 주소를 넣으면 사진이 바뀌어요">수정</button>` : '') + '</span></span>';
+  }
+  function linkHtml(c) {
+    return `<span class="cbtns"><a class="cbtn go" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">바로가기</a>`
+      + `<button type="button" class="cbtn" data-act="copy" data-u="${esc(c.href)}" data-what="링크" title="링크 복사">복사</button></span>`;
+  }
   function headMin(name) {   // 머리글을 두 줄로 접었을 때 폭 — 띄어쓰기에서, 없으면 글자 가운데에서
     const w = s => tw(s, F_HEAD), words = name.split(/\s+/).filter(Boolean);
     if (!words.length) return 0;
@@ -1959,6 +1992,7 @@
   }
   function fitCols(d) {
     const fRows = d.hid && d.hid.size && !S.showHid ? d.rows.filter(r => !d.hid.has(r.r)) : d.rows;   // 숨긴 줄은 칸 너비에 안 친다
+    const ed = canEdit();   // [수정] 단추가 보이는 사람만 그 폭까지
     d.cols.forEach(col => {
       const boldAt = (row, c) => c.st.bold || col.strong || !!(d.gid && (fmtSelf(d.gid, row.r, col.p) || {}).b);   // 굵은 칸은 굵은 글자 폭으로 (숫자가 … 로 잘리지 않게)
       const narrowPad = col.type === 'num' || col.type === 'check' || col.type === 'img';   // 숫자 · 체크 · 사진 칸은 여백 6px
@@ -1971,8 +2005,9 @@
         let cw = 0;
         const bd = boldAt(row, c);
         if (col.type === 'check' || (c.cb && !c.t)) cw = 18;
-        else if (c.img) cw = 30;
+        else if (c.img) cw = 30 + 6 + btnW('복사') + (photoEditOk(c, ed) ? 4 + btnW('수정') : 0);   // 사진 + [복사][수정]
         else if (c.chips.length) cw = c.chips.reduce((s, x) => s + tw(x.t, F_TAG) + 19, 0) + (c.chips.length - 1) * 4;
+        else if (linkBtnOk(c)) cw = btnW('바로가기') + 4 + btnW('복사');   // 주소 칸 = [바로가기][복사]
         else if (c.t) {
           cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? display(col, c).replace(/\d/g, '0') : display(col, c), bd ? F_BOLD : F_CELL);   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
           const hx = col.hist && hxOf(c);
@@ -2098,12 +2133,13 @@
     if (c) {
       if (c.st.bold || col.strong) cls += ' b';
       if (col.type === 'check' || (c.cb && !c.t)) inner = c.cb === 2 ? CK1 : c.cb === 1 ? CK0 : '';
-      else if (c.img) inner = `<img class="thumb" src="${esc(c.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+      else if (c.img) inner = photoHtml(c, canEdit());   // 사진 + [복사][수정]
       else if (c.chips.length) inner = c.chips.map(tagHtml).join('');
       else if (col.status) { inner = statusHtml(c.t, false); title = c.t; }
       else if (col.hist && hxOf(c)) {   // 최근 날짜만 + '이전 N회' (마우스를 올리면 전부)
         inner = hl(display(col, c)) + (hxOf(c).prev.length ? `<span class="hchip" data-r="${row.r}" data-p="${col.p}">이전 ${hxOf(c).prev.length}회</span>` : '');
       }
+      else if (linkBtnOk(c)) { inner = linkHtml(c); title = c.t; }   // 주소 칸 = [바로가기][복사] (1688.com 글자 대신)
       else if (c.t) {
         const d = display(col, c);
         inner = c.href && (secretOk() || !SECRET_LINK_RE.test(c.href)) ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : richHtml(S.cur, row.r, col.p, d) || hl(d);
@@ -2365,7 +2401,7 @@
     tc.hidden = !tc.textContent;
     const fv = $('tFav'), isFav = !!t && S.fav.includes(t.gid);
     fv.hidden = !t;
-    $('delTab').hidden = !canDelTab(t);
+    paintHideBtn(t);   // 제목 줄 '탭 숨기기' · 숨긴 탭이면 '다시 보이기' (2026-11-23 — '탭 삭제' 단추 대신)
     fv.textContent = isFav ? '★' : '☆';
     fv.classList.toggle('on', isFav);
     fv.title = isFav ? '즐겨찾기에서 빼기' : '즐겨찾기 — 왼쪽 메뉴 맨 위에 모아 둬요';
@@ -2455,17 +2491,18 @@
       + `<i class="dot" style="background:${t.meta.color}"></i><span class="nm">${esc(t.name)}</span>${b ? `<span class="bk">${esc(b.title)}</span>` : ''}`
       + `${n != null && !b ? `<span class="nd">${n ? fmt(n) : '빈 탭'}</span>` : ''}<span class="fv${fav ? ' on' : ''}" data-fav="${esc(t.gid)}" title="${fav ? '즐겨찾기에서 빼기' : '즐겨찾기'}">${fav ? '★' : '☆'}</span></button>`;
   }
+  function tabHid(t) { return !!(t && (t.info ? t.info.th : t.th)); }   // 숨긴 탭 (저장소 mdx_tabs.tab_hidden_at) — 메뉴에서만 빠지고 줄 · 함수 · 자동 업무는 그대로
   function renderNav() {
     const list = [];
     let h = '';
-    const favs = S.fav.map(tabOf).filter(Boolean);
+    const favs = S.fav.map(tabOf).filter(t => t && !tabHid(t));
     if (favs.length) {
       h += '<div class="nav-gt">즐겨찾기</div>';
       favs.forEach(t => { h += navItem(t, true); });
     }
     let grp = null;
     for (const b of S.books) {
-      const tabs = S.tabs.filter(t => t.book === b.book);
+      const tabs = S.tabs.filter(t => t.book === b.book && !tabHid(t));   // 숨긴 탭은 맨 아래 '숨긴 탭'으로
       if (!tabs.length) continue;   // 탭을 다 지운 시트
       if (b.grp !== grp) {
         if (SHOW_ERP_LINK && grp === '재고 · 발주') h += erpItem();
@@ -2482,6 +2519,16 @@
     if (SHOW_STRAT && S.strat.length && bossOk()) {
       h += '<div class="nav-gt">전략팀 (대표 전용)</div>';
       S.strat.forEach((x, i) => { h += `<button type="button" class="nav-item lnk-item" data-strat="${i}" title="구글시트로 열기 (새 탭)"><i class="dot" style="background:#d4af37"></i><span class="nm">${esc(x.title)}</span><span class="go">↗</span></button>`; });
+    }
+    const hid = canEdit() ? S.tabs.filter(tabHid) : [];   // 숨긴 탭 — 고칠 수 있는 사람(관리자 · MD팀)만, 처음엔 접어 둔다. 누르면 열어 보고, 제목 줄 '다시 보이기'
+    if (hid.length) {
+      h += `<div class="nav-grp${isFolded('_hid') ? ' off' : ''}"><button type="button" class="nav-sec" data-fold="_hid" title="숨긴 탭 — 누르면 열어 볼 수 있고, 제목 줄 '다시 보이기'로 메뉴에 되돌려요">${CHEV}<i class="bd" style="background:#64748b"></i><span class="bn">숨긴 탭</span><em>${hid.length}</em></button>`;
+      hid.forEach(t => {
+        const b = bookOf(t.book) || {};
+        list.push({key: t.gid, tabs: [t]});
+        h += `<button type="button" class="nav-item hid${t.gid === S.cur ? ' on' : ''}" data-gid="${esc(t.gid)}" title="${esc(`${b.title || ''} › ${t.name}${t.info.th_by ? ` — ${t.info.th_by} 숨김` : ''} · 누르면 열기 (오른쪽 버튼 = 다시 보이기)`)}"><i class="dot" style="background:${t.meta.color}"></i><span class="nm">${esc(t.name)}</span><span class="bk">${esc(b.title || '')}</span><span class="rv">숨김</span></button>`;
+      });
+      h += '</div>';
     }
     const gone = canEdit() ? (S.gone || []) : [];   // 지운 탭 — 처음엔 접어 둔다
     if (gone.length) {
@@ -2695,8 +2742,20 @@
       renderGrid({keep: true});
       return;
     }
+    const cb = e.target.closest('.cbtn');   // 칸 안 단추 — [바로가기] 는 링크 그대로 열고, [복사] = 주소 복사, [수정] = 사진 주소 고치기
+    if (cb) {
+      e.stopPropagation();
+      if (cb.dataset.act === 'copy') copyUrl(cb.dataset.u, cb, cb.dataset.what || '주소');
+      else if (cb.dataset.act === 'edit') {
+        const etr = cb.closest('tr[data-r]'), etd = cb.closest('td[data-p]');
+        if (!etr || !etd) return;
+        if (cellMode()) { if (document.activeElement !== grid) grid.focus({preventScroll: true}); pickCell(+etr.dataset.r, +etd.dataset.p, {edit: true, click: true, noScroll: true}); }
+        else openEditor(S.cur, +etr.dataset.r, +etd.dataset.p, etd);   // 휴대폰 · 터치 = 고칠 칸 창
+      }
+      return;
+    }
     const img = e.target.closest('img.thumb');
-    if (img) { e.stopPropagation(); openLb(img.currentSrc || img.src); return; }
+    if (img) { e.stopPropagation(); copyUrl(img.dataset.u || img.src, img, '사진 주소'); return; }   // 2026-11-23 사장님 "상품사진 링크복사로 · 그냥 누르면 바로 이미지 주소 복사" (크게 보기는 행 번호 → 상세 창 사진)
     if (e.target.closest('a')) return;
     const tr = e.target.closest('tbody tr[data-r]');
     if (!tr || e.target.closest('td.rn')) return;   // 행 번호는 아래 따로 (상세 창)
@@ -2886,6 +2945,30 @@
     if (dd && !(window.getSelection && String(window.getSelection()).length)) openEditor(S.cur, S.sel.r, +dd.dataset.p, dd);   // 글자를 끌어 고르는 중이면 안 염
   });
   function openLb(src) { $('lbImg').src = src; $('lb').hidden = false; }
+  // 주소를 클립보드로 — 표 사진 · [복사] 단추 (사진은 원래 주소 data-u — 화면용 blob: 주소가 아니라)
+  function copyUrl(u, el, what) {
+    if (!u || /^blob:/.test(u)) { toast(`이 칸은 ${what}가 없어요`, true); return; }
+    const done = () => {
+      if (el) {   // 잠깐 초록 (단추 글자는 그대로 — 칸 폭이 흔들리지 않게)
+        el.classList.add(el.classList.contains('cbtn') ? 'done' : 'copied');
+        setTimeout(() => el.classList.remove('done', 'copied'), 1000);
+      }
+      toast(`${what} 복사됨`);
+    };
+    const old = () => {   // 클립보드 API 가 막힌 곳 (http · 권한) — 글 상자에 넣고 복사. 표가 포커스를 잃어 표 복사(Ctrl+C) 처리와 안 겹친다
+      const ta = document.createElement('textarea');
+      ta.value = u; ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { /* 못 함 */ }
+      ta.remove();
+      if (grid && cellMode()) grid.focus({preventScroll: true});
+      ok ? done() : toast('복사가 막혔어요 — 주소: ' + u, true);
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(u).then(done, old);
+    else old();
+  }
   $('lb').addEventListener('click', () => { $('lb').hidden = true; $('lbImg').removeAttribute('src'); });
   // 칸 사진이 <img> 로 안 열리면 한 번 받아서 띄운다 (구글 사진 주소는 CORS 허용)
   document.addEventListener('error', e => {
@@ -3203,7 +3286,7 @@
     const cell = row.byP[p] || null;
     const why = d.side ? '집계 표는 시트가 자동으로 만든 표라 고칠 수 없어요'
       : (cell && cell.pii) || piiCol(col.name) ? EDIT_ERR.pii_cell
-      : cell && cell.img ? '사진 칸 — 사진 주소가 적힌 칸을 고치면 사진도 바뀌어요'
+      : cell && cell.img && !cell.t ? '수식 사진 칸 — 사진 주소가 적힌 칸(보통 왼쪽 상품사진)을 고치면 사진도 바뀌어요'   // 주소가 적힌 사진 칸은 [수정] 으로 주소를 고친다 (2026-11-23)
       : !cell ? '이 칸은 고칠 수 없어요' : '';
     const b = bookOf(t.book), info = tabInfo(gid), cr = (cell && cell.r) || r;
     const of = ofxGet(info, cr, p), gf0 = fxText(info, cr, p), oc = !!of && ofxConst(of);   // oc = 끊은 시트에서 값을 적은 칸 (값을 내는 오피스 함수 — 값 칸처럼)
@@ -3381,11 +3464,12 @@
     }
   }
   function setCellText(model, c, val) {
-    if (c.img) return;
+    if (c.img && !c.t) return;   // =IMAGE 수식 사진 칸
     const s = String(val);
     if (c.cb && /^(TRUE|FALSE)$/i.test(s)) { c.cb = /^TRUE$/i.test(s) ? 2 : 1; return; }
     c.t = s;
     c.href = /^https?:\/\/\S+$/i.test(s) ? s : '';
+    if (c.img) c.img = c.href;   // 사진 주소 칸 — 새 주소면 새 사진, 주소가 아니면 글 칸으로
   }
   // 줄 자료가 바뀌었을 때 다시 그리기 — 지금 보는 탭만, 손으로 넘기는 중이면 멈춘 뒤 (softRender)
   function rerender(gid) {
@@ -4433,8 +4517,49 @@
   delBtn.title = "이 탭 삭제 — 지운 탭은 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살릴 수 있어요";
   delBtn.setAttribute('aria-label', '탭 삭제');
   delBtn.innerHTML = `${ICON_TRASH}<span>탭 삭제</span>`;
-  $('addRow').after(delBtn);
-  delBtn.addEventListener('click', () => askDelTab(S.cur));
+  // 2026-11-23 사장님 "탭 삭제말고 숨김처리 기능 넣어줘" → 제목 줄 · 오른쪽 버튼 메뉴에서 '탭 삭제'를 빼고 '탭 숨기기'로. (지우기 함수 · '지운 탭' 되살리기는 그대로 둠)
+  /* ── 탭 숨기기 · 다시 보이기 ──
+     · 숨김 = 저장소 mdx_tab_hide (mdx_tabs.tab_hidden_at · tab_hidden_by) — 왼쪽 메뉴 · 즐겨찾기에서만 빠진다. 줄 · 함수 · 서식 · 자동 업무 · 다른 탭 함수는 그대로라
+       지우기처럼 막히는 탭이 없다 (시트에 보이는 탭이 하나는 남아야 함만). 모든 시트 · 관리자 · MD팀(canEdit)만. 기록 mdx_history op tab_hide · tab_show.
+     · 숨긴 탭 = 왼쪽 메뉴 맨 아래 '숨긴 탭'(고칠 수 있는 사람에게만) → 누르면 열리고 제목 줄 '다시 보이기'. 다른 PC 는 8초 안에(mdx_poll) */
+  const ICON_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c5 0 8.5 4.2 9.5 7-.4 1.1-1.2 2.5-2.4 3.8M6.6 6.6C4.6 7.9 3.2 9.9 2.5 12c1 2.8 4.5 7 9.5 7 1.9 0 3.6-.6 5-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+  const ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12C3.5 9.2 7 5 12 5s8.5 4.2 9.5 7c-1 2.8-4.5 7-9.5 7s-8.5-4.2-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const canHideTab = t => !!(t && canEdit());
+  const hideBtn = document.createElement('button');
+  hideBtn.type = 'button';
+  hideBtn.className = 'etog tdel';
+  hideBtn.id = 'hideTab';
+  hideBtn.hidden = true;
+  $('addRow').after(hideBtn);
+  hideBtn.addEventListener('click', () => { const t = tabOf(S.cur); if (t) hideTab(t, !tabHid(t)); });
+  function paintHideBtn(t) {
+    const ok = canHideTab(t), hid = ok && tabHid(t);
+    hideBtn.hidden = !ok;
+    if (!ok) return;
+    hideBtn.innerHTML = hid ? `${ICON_EYE}<span>다시 보이기</span>` : `${ICON_EYE_OFF}<span>탭 숨기기</span>`;
+    hideBtn.title = hid ? '숨긴 탭이에요 — 누르면 왼쪽 메뉴에 다시 나와요' : "이 탭을 왼쪽 메뉴에서 숨겨요 (내용은 그대로 · 맨 아래 '숨긴 탭'에서 다시 보이기)";
+    hideBtn.setAttribute('aria-label', hid ? '다시 보이기' : '탭 숨기기');
+  }
+  let hideBusy = false;
+  async function hideTab(t, hide) {
+    if (!canHideTab(t) || hideBusy) return;
+    const gid = t.gid;
+    hideBusy = true;
+    hideBtn.disabled = true;
+    try {
+      const j = await mdx('mdx_tab_hide', {p_tk: gid, p_hide: !!hide, p_who: whoAmI() || null});
+      if (!j || !j.ok) { toast(j && j.why === 'last' ? '이 시트에 보이는 탭이 하나는 있어야 해요' : '지금은 숨길 수 없어요', true); return; }
+      if (t.info) { t.info.th = !!hide; t.info.th_by = hide ? (whoAmI() || null) : null; } else t.th = !!hide;
+      if (hide && S.cur === gid) {   // 보고 있던 탭을 숨기면 같은 시트의 옆 탭으로
+        const same = S.tabs.filter(x => x.book === t.book && !tabHid(x)), all = S.tabs.filter(x => x.book === t.book), i = all.findIndex(x => x.gid === gid);
+        const next = all.slice(i + 1).find(x => !tabHid(x)) || all.slice(0, i).reverse().find(x => !tabHid(x)) || same[0];
+        openTab(next ? next.gid : pickTab(null, null));
+      } else { renderNav(); renderHead(); }
+      toast(hide ? `'${t.name}' 탭을 숨겼어요 — 왼쪽 메뉴 맨 아래 '숨긴 탭'에서 다시 보이게 할 수 있어요` : `'${t.name}' 탭이 다시 메뉴에 나와요`);
+      refreshTabs();
+    } catch (e) { toast(tabErr(e), true); refreshTabs(); }
+    finally { hideBusy = false; hideBtn.disabled = false; }
+  }
   let dlgNo = 0, dlgBusy = false;
   function openDlg(title, body, btns) {   // btns = [[글, 모양, 할 일]]
     DLG.innerHTML = `<div class="box" role="alertdialog" aria-modal="true" aria-label="${esc(title)}"><b class="t">${esc(title)}</b><p>${esc(body)}</p><div class="row">${btns.map((b, i) => `<button type="button" class="${b[1]}" data-i="${i}">${esc(b[0])}</button>`).join('')}</div></div>`;
@@ -4519,14 +4644,23 @@
   }
   $('nav').addEventListener('contextmenu', e => {
     const b = e.target.closest('.nav-item[data-gid]'), t = b && tabOf(b.dataset.gid);
-    if (!t || !canDelTab(t)) return;   // 지울 수 없는 시트는 브라우저 메뉴 그대로
+    if (!t || !canHideTab(t)) return;   // 고칠 수 없는 사람은 브라우저 메뉴 그대로
     e.preventDefault();
-    TM.innerHTML = `<div class="tm-t">${esc(t.name)}</div><button type="button" data-del="${esc(t.gid)}">${ICON_TRASH}탭 삭제</button>`;
+    TM.innerHTML = `<div class="tm-t">${esc(t.name)}</div>` + (tabHid(t)
+      ? `<button type="button" class="hd" data-show="${esc(t.gid)}">${ICON_EYE}다시 보이기</button>`
+      : `<button type="button" class="hd" data-hide="${esc(t.gid)}">${ICON_EYE_OFF}탭 숨기기</button>`);   // 2026-11-23 '탭 삭제' 대신
     TM.hidden = false;
     TM.style.left = Math.max(8, Math.min(e.clientX, innerWidth - TM.offsetWidth - 8)) + 'px';
     TM.style.top = Math.max(8, Math.min(e.clientY, innerHeight - TM.offsetHeight - 8)) + 'px';
   });
-  TM.addEventListener('click', e => { const b = e.target.closest('[data-del]'); if (b) { TM.hidden = true; setNav(false); askDelTab(b.dataset.del); } });
+  TM.addEventListener('click', e => {
+    const b = e.target.closest('[data-del],[data-hide],[data-show]');
+    if (!b) return;
+    TM.hidden = true;
+    if (b.dataset.del) { setNav(false); askDelTab(b.dataset.del); return; }
+    const t = tabOf(b.dataset.hide || b.dataset.show);
+    if (t) hideTab(t, !!b.dataset.hide);
+  });
   document.addEventListener('pointerdown', e => { if (!TM.hidden && !e.target.closest('#tmenu')) TM.hidden = true; }, true);
   $('nav').addEventListener('scroll', () => { TM.hidden = true; }, {passive: true});
 
@@ -4748,7 +4882,7 @@
     if (known && Array.isArray(known.tabs) && known.tabs.length) {
       S.books = (known.books || []).filter(bookVisible);
       const vis = new Set(S.books.map(b => b.book));
-      S.tabs = known.tabs.filter(t => t && t.tk && t.book && vis.has(t.book)).map(t => mkTab({tk: t.tk, gid: t.gid, book: t.book, name: t.name}));
+      S.tabs = known.tabs.filter(t => t && t.tk && t.book && vis.has(t.book)).map(t => mkTab({tk: t.tk, gid: t.gid, book: t.book, name: t.name, th: t.th}));
     }
     if (S.tabs.length) {
       const first = pickTab(want, saved);
