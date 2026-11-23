@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(max-width:1000px)">
 <meta name="theme-color" content="#0f172a">
 <title>ERP전산팀 · 비드유니버스 오피스</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -154,6 +155,7 @@
   .alert ul{margin:0;padding:0;list-style:none}
   .alert li+li{margin-top:2px}
   .al-more{display:none}   /* 휴대폰에서만 — 안내는 첫 줄만, 누르면 전부 */
+  .mstrip{display:none}   /* 휴대폰에서만 — 요약 카드 + 카테고리 칩을 제목 옆 한 줄로 (renderHead) */
   .kpis{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
   .kpi{min-width:124px;height:62px;display:flex;flex-direction:column;justify-content:center;padding:0 15px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:left;cursor:default}
   .kpi b{font-size:21px;font-weight:800;letter-spacing:-.025em;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--text)}
@@ -673,6 +675,67 @@
     .msg b{font-size:14px}
     .toast{padding:9px 14px;font-size:12px}
   }
+  /* ── 휴대폰 3판 (2026-11-23 사장님 "모바일에서 최상단에 흐리게 나오는거 다 없애줘 · 모바일 최적화 제대로") ──
+     · 맨 위: 제목 옆 한 줄 칩(전체 · 품절 임박 · 품절 · 리오더 … · 카테고리)만 — 옅은 요약 카드 · '실시간' · '빈 열 보기' · 노란 안내 · 초록 점은 뺌
+       (갱신 점은 오류 · 저장본일 때만, 안내는 보고서 탭에서 글 한 줄로). 위쪽이 182 → 92px.
+     · 표 맨 위로 올린 줄의 옅은 파랑 · 노랑 바탕을 빼고, 까닭은 상품명 아래 '리오더 시급' 딱지 · [⚠ 매핑] 로 또렷하게.
+     · 옵션은 상품명 아래 줄로 (renderGrid mg) — 남은 재고 · 식스샵프로 · 합계가 옆으로 안 밀어도 다 보인다. 나머지 칸은 옆으로 밀거나 줄을 눌러 상세 창. */
+  @media (max-width:720px),(max-height:520px){
+    html,body{background:#fff}
+    .st{display:none}
+    .st.is-err,.st.is-stored:not(.is-load){display:inline-flex}
+    .find input::placeholder{color:#64748b;opacity:1}
+    .date,.etog,.kpis,.chips,.fmtbar{display:none!important}
+    .head{padding:8px 12px}
+    .trow{display:flex;flex-wrap:wrap;align-items:center;gap:0 10px;min-height:30px}
+    .trow h1{flex:none;max-width:48%}
+    .mstrip{order:1;flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none;margin-right:-12px;padding-right:12px;overscroll-behavior-x:contain}
+    .mstrip::-webkit-scrollbar{display:none}
+    .mstrip .chip{height:30px;padding:0 11px;font-size:12px;color:var(--text);border-color:#cbd5e1}
+    .mstrip .chip em{font-size:12px;font-weight:700;color:inherit}
+    .mstrip .chip.red em{color:var(--danger)}
+    .mstrip .chip.on{color:#fff;border-color:var(--text)}
+    .mstrip .chip.on em{color:#fff}
+    .mstrip .mk{flex:none;font-size:12px;color:var(--text);white-space:nowrap}
+    .mstrip .mk b{margin-left:2px;font-variant-numeric:tabular-nums}
+    .mstrip .mk+.mk{margin-left:6px}
+    .tools{order:2;flex:1 0 100%;overflow-x:auto;scrollbar-width:none}
+    .tools::-webkit-scrollbar{display:none}
+    .parts{margin-top:7px}
+    .dates{order:3;flex:1 0 100%;margin:7px -12px 0;padding:0 12px}
+    .alert{margin-top:5px;padding:0;border:0;border-radius:0;background:none;color:var(--text);font-size:12px}
+    .alert>svg{display:none}
+    .alert.fold li{-webkit-line-clamp:1}
+    .al-more{align-self:flex-start;font-size:12px;color:var(--text-2)}
+    .d-hint:not(.no){display:none}
+    .side{--side-mute:#a3b1c6}
+  }
+  @media (pointer:coarse){ .fmtbar{display:none!important} }   /* 서식 단추는 마우스로 칸을 고르는 PC 만 — 휴대폰 · 태블릿에선 흐린 채로 떠 있기만 했다 */
+  @media (max-width:720px){
+    .tbl tbody tr.pin2:not(.lv-low):not(.lv-out) td:not(.fill),.tbl tbody tr.pin3:not(.lv-low):not(.lv-out) td:not(.fill){background:#fff}
+    .tbl tbody tr.lv-low.pin2 td:not(.fill),.tbl tbody tr.lv-low.pin3 td:not(.fill){background:#fff1f2}
+    .tbl tbody tr.lv-out.pin2 td:not(.fill),.tbl tbody tr.lv-out.pin3 td:not(.fill){background:#fde2e4}
+    /* 상품명 + 옵션 한 칸 — 이름 한 줄(m2) · 두 줄(m3), 그 아래 옵션 한 줄. 옵션이 없으면 이름이 그 줄까지 쓴다 */
+    .tbl.m2{--row-h:42px}
+    .tbl.m3{--row-h:56px}
+    .app.dense .tbl.m2 td{height:42px}
+    .app.dense .tbl.m3 td{height:56px}
+    .tbl th{color:var(--text-2)}
+    .m-n{font-weight:600;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .m-n.m-n2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;line-height:16px;word-break:keep-all;overflow-wrap:anywhere}
+    .m3 .m-n.m-n2{-webkit-line-clamp:3}
+    .m-i{font-size:11.5px;font-weight:400;color:var(--text-2)}
+    .tbl td .pill-sub{color:var(--text-2)}
+    .tbl td .pill-sub.red{color:#b91c1c;font-weight:700}
+    .tbl tfoot .ft{color:var(--text-2)}
+    .m-s{margin-top:1px;font-size:11.5px;font-weight:400;line-height:16px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .m-s .pill,.m-i .pill{padding:0 5px;border-radius:4px;font-size:10.5px;line-height:15px;vertical-align:1px}
+    .m-s .pill.red,.m-i .pill.red{background:#dc2626;color:#fff}
+    .tbl .m-s .pill-sub,.tbl .m-i .pill-sub{margin-left:4px;color:#b91c1c;font-weight:600;vertical-align:baseline}
+    .m-s .m-o:not(:first-child),.m-i .m-o:not(:first-child){margin-left:6px}
+    .m-s .mapb.sm,.m-i .mapb.sm{float:none;margin:0 4px 0 0;height:18px;vertical-align:0}
+    .tbl tbody tr.past .m-s,.tbl tbody tr.past .m-i{color:inherit}
+  }
 </style>
 </head>
 <body>
@@ -707,7 +770,7 @@
       <button type="button" class="logb" id="btnLog" title="수정 로그 — 누가 · 언제 · 어느 칸을 · 무엇에서 무엇으로 고쳤는지" aria-haspopup="dialog" aria-controls="logp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.4"/><path d="M3.5 3.5v4.9h4.9"/><path d="M12 7.5V12l3 2"/></svg><span class="logb-t">수정 로그</span><i class="logb-n" id="logN" hidden></i></button>
     </header>
     <section class="head">
-      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="tools"><div class="fmtbar" id="fmtBar" hidden title="고른 칸 서식 — Shift+누르기 · Shift+화살표로 여러 칸"><button type="button" class="fb" data-fmt="b" title="굵게 (Ctrl+B)"><b>B</b></button><button type="button" class="fb cl" data-fmt="fg" title="글자 색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L12 4l6 14M8.5 12.5h7"/></svg><i id="fgBar"></i></button><button type="button" class="fb cl" data-fmt="bg" title="칸 색 (채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15.5s2 2.2 2 3.5a2 2 0 0 1-4 0c0-1.3 2-3.5 2-3.5z"/></svg><i id="bgBar"></i></button><button type="button" class="fb" data-fmt="clear" title="서식 지우기 (굵게 · 글자 색 · 칸 색)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5l-3 14M14 14l6 6M20 14l-6 6"/></svg></button></div><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
+      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="mstrip" id="mstrip"></div><div class="tools"><div class="fmtbar" id="fmtBar" hidden title="고른 칸 서식 — Shift+누르기 · Shift+화살표로 여러 칸"><button type="button" class="fb" data-fmt="b" title="굵게 (Ctrl+B)"><b>B</b></button><button type="button" class="fb cl" data-fmt="fg" title="글자 색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L12 4l6 14M8.5 12.5h7"/></svg><i id="fgBar"></i></button><button type="button" class="fb cl" data-fmt="bg" title="칸 색 (채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15.5s2 2.2 2 3.5a2 2 0 0 1-4 0c0-1.3 2-3.5 2-3.5z"/></svg><i id="bgBar"></i></button><button type="button" class="fb" data-fmt="clear" title="서식 지우기 (굵게 · 글자 색 · 칸 색)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5l-3 14M14 14l6 6M20 14l-6 6"/></svg></button></div><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
       <div class="alert" id="alert" hidden></div>
       <div class="kpis" id="kpis"></div>
       <div class="chips" id="chips" hidden></div>
@@ -806,6 +869,7 @@
   const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
   /* 칸 너비를 잴 글자 크기 — 아래 CSS 와 같아야 칸이 글자에 딱 맞는다. 휴대폰(720px 이하)은 한 단계 작게
      (2026-11-21 사용자 "모바일에서 글씨가 커서 가독성이 떨어져" — 표 13 → 12px, 머리글 · 딱지 12 → 11px, 칸 좌우 여백 8 → 6px) */
+  const F_MN = `600 12px ${FONT}`, F_MS = `400 11.5px ${FONT}`;   // 휴대폰 상품명 + 옵션 칸 (.m-n · .m-s)
   let F_CELL, F_BOLD, F_HEAD, F_TAG, F_CHIP, PAD;   // PAD = 칸 좌우 여백 + 테두리 1 (PC 8 + 8 + 1, 휴대폰 6 + 6 + 1)
   function setFonts() {
     const m = matchMedia('(max-width:720px)').matches;
@@ -865,7 +929,7 @@
     stick: new Set(),     // 걸러 보는 중에 고친 줄 — 조건에서 벗어나도 걸러보기를 바꿀 때까지 그대로 보임 (엑셀 필터처럼)
     dense: false, shown: true, size: '', want: null, saved: null,
     showEmpty: false,     // 내용이 하나도 없는 열도 보기 ('빈 열 보기' 단추)
-    vr: null, rowH: {},   // 지금 그린 표 (보이는 줄 근처만 그리기 — paintRows) · 잰 줄 높이 (촘촘 · 휴대폰마다)
+    vr: null, rowH: {}, mrow: 0,   // 지금 그린 표 (보이는 줄 근처만 그리기 — paintRows) · 잰 줄 높이 (촘촘 · 휴대폰마다)
     touchAt: 0,           // 마지막으로 손대거나 넘긴 때 — 그 직후엔 1분 자동 갱신으로 표를 다시 그리지 않고 기다린다 (softRender)
     alertOpen: false,     // 휴대폰 — 노란 안내 전부 보기
   };
@@ -1721,6 +1785,7 @@
   function cellHtml(row, col, pos) {
     const c = row.byP[col.p];
     let cls = col.align + (pos ? pos.cls : '') + (col.key ? ' key' : ''), style = pos ? pos.style : '', inner = '', title = '';
+    const mg = col.key && S.vr && S.vr.opt ? S.vr : null;   // 휴대폰 — 상품명 아래에 옵션
     const pk = `${S.cur}|${row.r}|${col.p}`, pd = E.pend.get(pk);
     if (pd && pd.busy) cls += ' pend';                       // 구글시트 · 저장소에 쓰는 중
     if (S.cell && S.cell.gid === S.cur && S.cell.r === row.r && S.cell.p === col.p) cls += ' csel';
@@ -1732,14 +1797,14 @@
       if (col.type === 'check' || (c.cb && !c.t)) inner = c.cb === 2 ? CK1 : c.cb === 1 ? CK0 : '';
       else if (c.img) inner = `<img class="thumb" src="${esc(c.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
       else if (c.chips.length) inner = c.chips.map(tagHtml).join('');
-      else if (col.status) { inner = statusHtml(c.t, false); title = c.t; }
+      else if (col.status) { inner = S.vr && S.vr.opt ? `<span class="pill-sub${/^리오더/.test(c.t) ? ' red' : ''}">${hl(mgStat(c.t))}</span>` : statusHtml(c.t, false); title = c.t; }
       else if (col.hist && hxOf(c)) {   // 최근 날짜만 + '이전 N회' (마우스를 올리면 전부)
         inner = hl(display(col, c)) + (hxOf(c).prev.length ? `<span class="hchip" data-r="${row.r}" data-p="${col.p}">이전 ${hxOf(c).prev.length}회</span>` : '');
       }
       else if (c.t) {
         const d = display(col, c);
         inner = c.href && (secretOk() || !SECRET_LINK_RE.test(c.href)) ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : hl(d);
-        if (col.wrap) inner = `<div class="cl">${inner}</div>`;   // 두 줄까지
+        if (col.wrap && !mg) inner = `<div class="cl">${inner}</div>`;   // 두 줄까지
         if (d !== c.t || (col.type !== 'num' && d.length > 12)) title = c.t;
       }
       else if (col.stock && row.item) inner = '<span class="blank">빈칸</span>';   // 남은 재고 빈칸 = 세어서 적을 줄
@@ -1748,11 +1813,24 @@
     if (col.price) { inner = esc(priceText(row.pro)); if (row.pro && typeof row.pro[5] === 'number') title = '식스샵프로 판매가 — 이 줄로 이어지는 낱개 옵션' + (row.pro[6] !== undefined && row.pro[6] !== row.pro[5] ? ' (옵션마다 다름)' : ''); }
     if (col.pro && row.pro) { inner = proBadge(row.pro, row.pin === 1); title = row.past ? `식스샵프로 ${PRO_LABEL[row.pro[0]]} — 옵션 ${row.past.n}개 · ERP 에 줄 없음 · ${row.past.info}` : proText(row.pro) + (row.pin === 1 ? '\n⚠ ' + PIN_WHY[1] : ''); }
     if (row.map && norm(col.name) === '카테고리') { inner = `<button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>`; title = '재고 줄에 없던 주문 이름 (⚠ 매핑 확인 필요) — 눌러서 어느 재고 줄에서 뺄지 정하기'; }
-    else if (row.map && col.key && narrow.matches) inner = `<button type="button" class="mapb sm" data-map="${row.r}">⚠ 매핑</button>` + inner;   // 휴대폰은 카테고리 칸이 오른쪽 멀리 — 상품명 앞에도
+    else if (row.map && col.key && narrow.matches && !mg) inner = `<button type="button" class="mapb sm" data-map="${row.r}">⚠ 매핑</button>` + inner;   // 휴대폰은 카테고리 칸이 오른쪽 멀리 — 상품명 앞에도
+    if (mg) {
+      const sub = (row.map ? `<button type="button" class="mapb sm" data-map="${row.r}">⚠ 매핑</button>` : '') + mgSubHtml(row, mg.opt, mg.al);
+      inner = !sub ? `<div class="m-n m-n2">${inner}</div>`
+        : c && c.t && tw(display(col, c), F_MN) > mg.mgW ? `<div class="m-n m-n2">${inner} <span class="m-i">${sub}</span></div>`   // 긴 이름 — 옵션을 이어서
+        : `<div class="m-n">${inner}</div><div class="m-s">${sub}</div>`;
+    }
     if (col.key && row.iss) title = (title ? title + '\n' : '') + '⚠ ' + row.iss.join('\n⚠ ');
     cls = cls.trim();
     return `<td data-p="${col.p}"${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
   }
+  /* 휴대폰 상품명 칸 아래 줄 — '리오더 시급 7일 남음' 딱지 + 옵션 값 (옵션 이름표 'Color: ' 는 빼고 값만, 전체 글은 상세 창) */
+  function optShort(t) { return t.split(/\s+\/\s+/).map(x => x.replace(/^[^:：]{1,16}[:：]\s*(?=\S)/, '')).join(' / '); }
+  function mgOptText(row, opt) { const c = row.byP[opt.p]; return !c ? '' : c.t ? optShort(display(opt, c)) : c.chips.map(x => x.t).join(' · '); }
+  const mgStat = t => { const x = statusParts(t, false); return x.sub || x.pill; };   // 휴대폰 리오더 알림 칸 — 남은 날만
+  const mgAlText = (row, al) => { const c = al && row.byP[al.p]; return c && /^리오더/.test(c.t) ? c.t : ''; };
+  function mgSubHtml(row, opt, al) { const a = mgAlText(row, al), o = mgOptText(row, opt); return (a ? statusHtml(a, false) : '') + (o ? `<span class="m-o">${hl(o)}</span>` : ''); }
+  function mgSubW(row, opt, al) { const a = mgAlText(row, al), o = mgOptText(row, opt); return (row.map ? 52 : 0) + (a ? statusW(a) + 6 : 0) + (o ? tw(o, F_MS) : 0); }
   const proBadge = (s, warn) => `<span class="pro ${s[0]}${warn ? ' ovs' : ''}">${warn ? '⚠ ' : ''}${PRO_LABEL[s[0]] || ''}</span>`;   // warn = 재고 0 이하인데 판매중 (빨간 배지)
   function proText(s) {   // 마우스 · 상세 창 — 연결된 식스샵 옵션 수
     const parts = [s[1] ? `판매중 ${s[1]}` : '', s[2] ? `품절 ${s[2]}` : '', s[3] ? `판매중지 ${s[3]}` : ''].filter(Boolean);
@@ -1842,10 +1920,12 @@
     S.list = list;
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
     const nar = narrow.matches, showRn = !nar, vw = grid.clientWidth || 1000;
-    let cols = d.cols.filter(c => S.showEmpty || !c.empty || c.key || c.keep), stickN = 0, keyFirst = false;   // keep = 재고 탭 기본 칸 (비어도 보임)
+    let cols = d.cols.filter(c => (S.showEmpty && !nar) || !c.empty || c.key || c.keep), stickN = 0, keyFirst = false, mgOpt = null;   // keep = 재고 탭 기본 칸 (비어도 보임)
     if (nar && cols.some(c => c.key)) {
       const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.pro ? 2.5 : c.strong ? 3 : c.status ? 4 : 5;   // 휴대폰: 식스샵프로 상태는 남은 재고 바로 뒤
       cols = cols.map((c, i) => [c, i]).sort((x, y) => pri(x[0]) - pri(y[0]) || x[1] - y[1]).map(x => x[0]);
+      mgOpt = cols.find(c => !c.key && OPT_RE.test(norm(c.name))) || null;   // 옵션은 상품명 아래 줄로 — 남은 재고 · 상태가 첫 화면에 (2026-11-23)
+      if (mgOpt) cols = cols.filter(c => c !== mgOpt);
       stickN = 1;
       keyFirst = true;
     } else {   // 카테고리 · 상품명 · 옵션처럼 상품명이 앞쪽(3번째 안)에 있을 때만 왼쪽 고정 (옆으로 넘길 때)
@@ -1858,8 +1938,28 @@
     const widths = nar ? cols.map((c, k) => keyFirst && k === 0 ? Math.min(c.pref, Math.max(120, Math.round(vw * 0.42)))
       : c.flex ? Math.max(c.min, Math.min(c.pref, Math.round(vw * 0.62))) : c.pref)
       : fitWidths(cols, vw - (showRn ? RN_W : 0) - 2, fix);
+    if (nar && !mgOpt) {   // 휴대폰: 화면에 자리가 남으면 글자 칸을 원래 길이까지 (짧은 이름이 두 줄로 접히지 않게)
+      let room = vw - 2 - widths.reduce((s, w) => s + w, 0);
+      cols.forEach((c, k) => { if (room > 0 && c.flex) { const add = Math.min(room, Math.max(0, c.max - widths[k])); widths[k] += add; room -= add; } });
+    }
+    S.mrow = 0;
+    const mgAl = mgOpt ? cols.find(c => c.status) || null : null;
+    let mgW = 0;
+    if (mgOpt) {   // 상품명 칸 폭 = 남은 재고 · 식스샵프로 · 합계를 뺀 나머지 (이름이 짧으면 그만큼만)
+      const ess = cols.reduce((s, c, k) => s + (k && (c.stock || c.pro || (c.strong && !c.key)) ? widths[k] : 0), 0);
+      const nw = r => { const c = r.byP[cols[0].p]; return c && c.t ? tw(display(cols[0], c), F_MN) : 0; };
+      const sw = r => mgSubW(r, mgOpt, mgAl), ns = d.rows.filter(r => !r.past).map(r => Math.max(nw(r), sw(r))).sort((a, b) => a - b);
+      const need = ns.length ? Math.ceil(ns[Math.floor((ns.length - 1) * 0.97)]) + PAD + 4 : 150;
+      const room = ess ? Math.max(Math.round(vw * 0.46), vw - ess - 1) : Math.round(vw * 0.58);
+      widths[0] = Math.max(130, Math.min(need, room, Math.round(vw * 0.68)));
+      // 이름이 한 줄을 넘는 줄은 옵션을 이름 뒤에 이어 두 줄로 쓴다 (cellHtml mgLong) — 그래도 넘치는 줄이 여럿이면 그 탭만 세 줄 높이
+      mgW = widths[0] - PAD;
+      const live = d.rows.filter(r => !r.past), over = live.filter(r => nw(r) > mgW && nw(r) + 8 + sw(r) > mgW * 1.8).length;
+      S.mrow = over > live.length * 0.05 ? 3 : 2;
+      cols.forEach((c, k) => { if (c.status) widths[k] = Math.min(112, Math.max(c.hm, ...d.rows.map(r => { const t = r.byP[c.p]; return t && t.t ? Math.ceil(tw(mgStat(t.t), F_TAG)) + PAD + 2 : 0; }))); });   // 리오더 알림 칸은 남은 날만 (딱지는 상품명 아래)
+    }
     let left = showRn ? RN_W : 0;
-    while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (keyFirst ? 0.62 : 0.5)) stickN--;
+    while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (mgOpt ? 0.72 : keyFirst ? 0.62 : 0.5)) stickN--;
     const posOf = cols.map((c, k) => {
       if (c.pro && !nar) return {cls: ' skr', style: 'right:0;'};   // 식스샵프로 상태 — 오른쪽 끝 고정 (PC)
       if (k >= stickN) return null;
@@ -1868,17 +1968,17 @@
       return p;
     });
     const total = (showRn ? RN_W : 0) + widths.reduce((s, w) => s + w, 0), sort = v.sort;
-    let h = `<table class="tbl" style="width:max(100%,${total}px)"><colgroup>${showRn ? `<col style="width:${RN_W}px">` : ''}${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead><tr>`;
+    let h = `<table class="tbl${S.mrow ? ' m' + S.mrow : ''}" style="width:max(100%,${total}px)"><colgroup>${showRn ? `<col style="width:${RN_W}px">` : ''}${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead><tr>`;
     if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="줄 번호 · 누르면 원래 순서로">행</th>`;
     cols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
       const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '') + (fix[k] ? ' wfix' : '')).trim();
       const rz = nar ? '' : `<span class="rz" data-p="${c.p}" title="끌어서 칸 너비 조절 · 두 번 누르면 자동 너비"></span>`;
-      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬">${esc(c.name)}${ar}${rz}</th>`;
+      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬">${mgOpt && c.key ? '상품명 · 옵션' : esc(c.name)}${ar}${rz}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
     // 줄이 많으면(VR_MIN 넘게) 처음엔 높이만 잡아 두고, 스크롤 위치를 맞춘 뒤 보이는 줄 근처만 그린다 (paintRows)
-    const vr = S.vr = {list, cols, posOf, showRn, stickN, span: cols.length + (showRn ? 2 : 1), on: list.length > VR_MIN, a: 0, b: 0, rowH: rowHGuess(), tb: null};
+    const vr = S.vr = {list, cols, posOf, showRn, stickN, opt: mgOpt, al: mgAl, mgW, span: cols.length + (showRn ? 2 : 1), on: list.length > VR_MIN, a: 0, b: 0, rowH: rowHGuess(), tb: null};
     if (!list.length) h += `<tr class="empty"><td colspan="${vr.span}">${d.rows.length ? '조건에 맞는 줄이 없어요' : '이 탭은 비어 있어요'}</td></tr>`;
     else if (vr.on) h += vrBody(vr, 0, 0);
     else for (const row of list) h += rowHtml(row, vr);
@@ -1913,8 +2013,8 @@
      PC 에서도 한 번에 0.1초, 휴대폰은 그 몇 배가 걸려 누를 때마다 멈칫했다. 줄 높이는 늘 같으니(--row-h)
      화면에 보이는 줄 + 위아래 한 화면씩만 그리고, 나머지는 높이만 있는 빈 줄로 채워 스크롤 길이는 그대로 둔다. */
   const VR_MIN = 60;
-  const rowKey = () => `${S.dense ? 1 : 0}${narrow.matches ? 1 : 0}`;
-  const rowHGuess = () => S.rowH[rowKey()] || (S.dense ? 28 : narrow.matches ? 36 : 34);
+  const rowKey = () => `${S.dense ? 1 : 0}${narrow.matches ? 1 : 0}${S.mrow || 0}`;
+  const rowHGuess = () => S.rowH[rowKey()] || (S.mrow === 3 ? 56 : S.mrow === 2 ? 42 : S.dense ? 28 : narrow.matches ? 36 : 34);   // S.mrow = 휴대폰 상품명 + 옵션 한 칸 (이름 1줄 2 · 2줄 3)
   function rowHtml(row, vr) {
     const cls = ((S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? 'on' : '') + (row.lv ? ' lv-' + row.lv : '') + (row.pin ? ' pin' + row.pin : '') + (row.pinEnd ? ' pin-end' : '') + (row.past ? ' past' : '')).trim();
     let s = `<tr data-r="${row.r}"${cls ? ` class="${cls}"` : ''}>`;
@@ -2034,7 +2134,7 @@
       al.innerHTML = `${ICON_WARN}<ul>${lines.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`
         + (more ? `<button type="button" class="al-more">${S.alertOpen ? '접기' : lines.length > 1 ? `+${lines.length - 1}` : '더 보기'}</button>` : '');
       al.classList.toggle('fold', more && !S.alertOpen);
-      al.hidden = false;
+      al.hidden = compactMQ.matches && m && m.sec === 'stock' && cutTab(S.cur);   // 휴대폰: 구글시트를 끊은 재고 탭의 안내 줄은 옛 시트 글이라 안 보임
     } else al.hidden = true;
     $('kpis').innerHTML = d ? d.kpis.map(k => {
       const click = k.id === '' || !!k.pred, on = click && ((k.id === '' && !v.kpi) || (k.id && v.kpi === k.id));
@@ -2046,6 +2146,16 @@
         + d.cat.values.map(([val, n]) => `<button type="button" class="chip${v.cat === val ? ' on' : ''}" data-cat="${esc(val)}">${esc(val)} <em>${fmt(n)}</em></button>`).join('');
       ch.hidden = false;
     } else { ch.innerHTML = ''; ch.hidden = true; }
+    // 휴대폰: 요약 카드 · 카테고리 칩을 제목 옆 한 줄로 (0 인 것은 뺌)
+    const chipH = (attr, on, red, label, n) => `<button type="button" class="chip${red ? ' red' : ''}${on ? ' on' : ''}" ${attr}>${esc(label)} <em>${n}</em></button>`;
+    const ms = $('mstrip'), msH = !d ? '' : d.kpis.some(k => k.pred) || d.cat
+      ? chipH('data-all="1"', !v.kpi && v.cat == null, false, '전체', fmt(d.rows.filter(r => !r.past).length))
+        + d.kpis.filter(k => k.pred && (k.val || v.kpi === k.id)).map(k => chipH(`data-kpi="${k.id}"`, v.kpi === k.id, k.tone === 'red', k.label.replace(/ · (\d+개|0) 이하$/, ''), fmt(k.val) + (k.unit || ''))).join('')
+        + (d.cat ? d.cat.values.map(([val, n]) => chipH(`data-cat="${esc(val)}"`, v.cat === val, false, val, fmt(n))).join('') : '')
+      : d.kpis.map(k => `<span class="mk">${esc(k.label)} <b>${fmt(k.val)}${k.unit || ''}</b></span>`).join('');
+    if (S.msH !== msH) { S.msH = msH; ms.innerHTML = msH; }
+    if (S.msGid !== S.cur) { S.msGid = S.cur; ms.scrollLeft = 0; }   // 옆으로 넘긴 자리는 같은 탭 안에서만 그대로
+    qIn.placeholder = compactMQ.matches ? '상품 찾기' : '상품명 · 옵션 · 무엇이든 찾기';
     const href = S.cur ? `${BASE}/edit#gid=${S.cur}` : `${BASE}/edit`, sec = secretOk();
     $('btnSheet').href = sec ? href : '#';
     $('sideSheet').href = sec ? href : '#';
@@ -2069,6 +2179,18 @@
     v.cat = b.dataset.all ? null : (v.cat === b.dataset.cat ? null : b.dataset.cat);
     S.stick.clear();
     renderHead();
+    renderGrid({pos: {t: 0, l: grid.scrollLeft}});
+  });
+  $('mstrip').addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    const v = vstate(), x = $('mstrip').scrollLeft;
+    if (b.dataset.all) { v.kpi = null; v.cat = null; }
+    else if (b.dataset.kpi) v.kpi = v.kpi === b.dataset.kpi ? null : b.dataset.kpi;
+    else v.cat = v.cat === b.dataset.cat ? null : b.dataset.cat;
+    S.stick.clear();
+    renderHead();
+    $('mstrip').scrollLeft = x;
     renderGrid({pos: {t: 0, l: grid.scrollLeft}});
   });
   $('dates').addEventListener('click', e => { const b = e.target.closest('button[data-gid]'); if (b) openTab(b.dataset.gid); });
@@ -2425,7 +2547,7 @@
     const subs = [];
     d.cols.forEach(c => { if (c !== key && /^(옵션|상품옵션정보|카테고리|브랜드|쇼핑몰)$/.test(norm(c.name))) { const x = catVal(row, c.p); if (x) subs.push(x); } });
     const t = tabOf(S.cur);
-    $('dCap').textContent = t ? t.name : '상세';
+    $('dCap').textContent = !t ? '상세' : t.meta && t.meta.sec === 'stock' && cutTab(S.cur) ? `${t.meta.label} 재고` : t.name;   // 끊은 재고 탭 이름은 옛 날짜 · '송장출력' 이라 제목과 같게
     $('dTitle').textContent = kv || `${r}행`;
     const ent = S.cache.get(S.cur), raw = ent && ent.rows ? ent.rows.get(r) : null;
     const ed = raw && raw.src === 'office' && raw.edited_by ? ` · 마지막으로 오피스에서 고친 사람 ${raw.edited_by}${raw.edited_at ? ` (${new Date(raw.edited_at).toLocaleString('ko-KR', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'})})` : ''}` : '';
@@ -2433,9 +2555,12 @@
       : [...subs, `${r}행`].join(' · ') + ed + (row.lv === 'low' ? ` · 품절 임박 (${LOW_STOCK}개 이하)` : row.lv === 'out' ? ' · 품절 (0 이하)' : '') + (row.pin ? ' · ⚠ ' + PIN_WHY[row.pin] : '');
     $('dSheet').href = secretOk() && !row.past ? `${BASE}/edit#gid=${S.cur}&range=A${r}` : '#';
     $('dSheet').hidden = !secretOk() || !!row.past || cutTab(S.cur);   // 끊긴 탭은 시트가 옛 값이라 안 보임
+    // 휴대폰 재고 탭: 남은 재고 · 식스샵프로 · 판매가 · 합계 · 리오더 알림부터, 제목에 이미 있는 상품명 · 옵션 · 카테고리는 맨 아래 (고치기는 그대로)
+    const dpri = c => c.stock ? 0 : c.pro ? 1 : c.price ? 2 : c.strong && !c.key ? 3 : c.status ? 4 : c.key || /^(옵션|상품옵션정보|카테고리)$/.test(norm(c.name)) ? 9 : 5;
+    const dcols = narrow.matches && d.sec === 'stock' && !d.side ? d.cols.map((c, i) => [c, i]).sort((a, b) => dpri(a[0]) - dpri(b[0]) || a[1] - b[1]).map(x => x[0]) : d.cols;
     // 이름 · 카테고리 확인할 것 (재고 탭) — 맨 위에 빨간 글로
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}${row.map ? `<br><button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>` : ''}</dd>` : '')
-      + d.cols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' || (c.stock && row.redStk) ? ` class="${[c.type === 'num' ? 'r' : '', c.stock && row.redStk ? 'stk-red' : ''].filter(Boolean).join(' ')}"` : ''}>${c.price ? (priceText(row.pro) ? esc(priceText(row.pro)) : '<span class="none">-</span>') : c.pro ? (row.pro ? `${proBadge(row.pro, row.pin === 1)}<span class="pro-sub">${esc(proText(row.pro).replace(/^식스샵프로 \S+ — /, ''))}</span>` : '<span class="none">식스샵에 연결된 상품 없음</span>') : detailVal(c, row.byP[c.p], row)}</dd>`).join('');
+      + dcols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' || (c.stock && row.redStk) ? ` class="${[c.type === 'num' ? 'r' : '', c.stock && row.redStk ? 'stk-red' : ''].filter(Boolean).join(' ')}"` : ''}>${c.price ? (priceText(row.pro) ? esc(priceText(row.pro)) : '<span class="none">-</span>') : c.pro ? (row.pro ? `${proBadge(row.pro, row.pin === 1)}<span class="pro-sub">${esc(proText(row.pro).replace(/^식스샵프로 \S+ — /, ''))}</span>` : '<span class="none">식스샵에 연결된 상품 없음</span>') : detailVal(c, row.byP[c.p], row)}</dd>`).join('');
     markEditable();
     const det = $('detail'), was = det.hidden;
     det.hidden = false;
@@ -4476,7 +4601,7 @@
     S.cache.forEach(ent => { if (ent && ent.data && ent.data.parts) ent.data.parts.forEach(fitCols); });
     renderGrid({keep: true});
   });
-  compactMQ.addEventListener && compactMQ.addEventListener('change', () => { if (!compactMQ.matches) setHmin(false); });
+  compactMQ.addEventListener && compactMQ.addEventListener('change', () => { if (!compactMQ.matches) setHmin(false); renderHead(); });
 
   /* ── 시작 — 지난번 탭은 탭 목록을 기다리지 않고 바로 읽는다 ── */
   (async function boot() {
