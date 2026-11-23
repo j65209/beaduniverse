@@ -123,6 +123,38 @@
   .qn{flex:none;font-size:12px;font-weight:700;color:var(--info);white-space:nowrap;font-variant-numeric:tabular-nums}
   .qx{flex:none;width:24px;height:24px;border-radius:50%;color:var(--text-4);font-size:12px}
   .qx:hover{background:#e2e8f0;color:var(--text)}
+  /* 찾기 = 제품명 고르기 → 옵션 고르기 (2026-11-23 사장님 "재고erp에서 옵션도 선택할 수 있게 (검색) — 검색에 제품명 선택하고 옵션 선택할수있게") */
+  .qv{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:50%}
+  .find .qv svg{width:15px;height:15px}
+  .optw{flex:0 1 auto;min-width:84px;max-width:300px;display:flex;align-items:center;height:38px;border-radius:10px;background:#f1f4f8;border:1px solid transparent}
+  .optw:focus-within,.optw.open{background:#fff;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .optb{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:100%;padding:0 12px;outline:0;font-size:13.5px;color:var(--text-2)}
+  .optb span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .optb svg{flex:none;width:15px;height:15px;color:var(--text-4)}
+  .optb:disabled{color:var(--text-4);cursor:default}
+  .optb:disabled svg{display:none}
+  .optw .qx{margin-right:7px}
+  .optw.on{background:var(--text);border-color:var(--text)}
+  .optw.on .optb{color:#fff;font-weight:700;padding-right:4px}
+  .optw.on .optb svg{display:none}
+  .optw.on .qx{color:#fff}
+  .optw.on .qx:hover{background:#334155;color:#fff}
+  .sug{position:fixed;z-index:56;display:flex;flex-direction:column;overflow:hidden;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 18px 44px rgba(15,23,42,.2)}
+  .sug-q{flex:none;padding:8px 8px 6px}
+  .sug-q input{width:100%;height:36px;padding:0 11px;border:1px solid #cbd5e1;border-radius:8px;outline:0;font:inherit;font-size:13.5px;color:var(--text)}
+  .sug-q input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .sug-h{flex:none;padding:9px 13px 0;font-size:12px;font-weight:700;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sug-l{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px}
+  .sgi{width:100%;min-height:38px;display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;text-align:left;font-size:13.5px;color:var(--text)}
+  .sgi:hover,.sgi.hi{background:#f1f5f9}
+  .sgi.on{background:#e8f0fe;font-weight:700}
+  .sgi.all{color:var(--info);font-weight:600}
+  .sgi.past{color:var(--text-3)}
+  .sgi .sg-n{flex:1;min-width:0;line-height:1.35;overflow-wrap:anywhere}
+  .sgi .sg-s{flex:none;font-size:12px;font-weight:400;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .sgi .sg-s.red{color:var(--danger);font-weight:700}
+  .sgi .pro{flex:none}
+  .sug-e{padding:16px 10px;text-align:center;font-size:13px;color:var(--text-3)}
   .sp{flex:1;min-width:0}
   .st{flex:none;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:9px;font-size:12.5px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums}
   .st:hover{background:#f1f4f8;color:var(--text)}
@@ -566,7 +598,7 @@
   }
   @media (prefers-reduced-motion:reduce){ .logp{animation:none} }
   /* 아이폰 · 아이패드는 16px 보다 작은 입력 칸을 누르면 화면을 확대해 버린다 (찾기 · 고치기 칸 · 수정 로그 고르기) */
-  @media (max-width:720px),(pointer:coarse){ .find input,.edbox input,.edbox textarea,.lgf select{font-size:16px} }
+  @media (max-width:720px),(pointer:coarse){ .find input,.sug-q input,.edbox input,.edbox textarea,.lgf select{font-size:16px} }
 
   /* ── 좁은 화면 ── 2026-11-20 사용자 "모바일에서 조금 불안정하거나 최적화가 안 된 것 같아 — 완벽하게" */
   @media (max-width:1000px){
@@ -757,11 +789,18 @@
     .find input{font-weight:600;color:#0f172a}
     .find input::placeholder{color:#0f172a;-webkit-text-fill-color:#0f172a;font-weight:600;opacity:1}
     .qx{color:#0f172a;font-size:14px;font-weight:700}
+    .find .qv svg{width:16px;height:16px}
+    .optw,.optw:focus-within,.optw.open{background:#fff;border:2px solid #0f172a}
+    .optw .optb{font-weight:600;color:#0f172a}
+    .optw .optb svg{width:16px;height:16px;color:#0f172a;stroke-width:2.8}
+    .optw.on,.optw.on:focus-within,.optw.on.open{background:#0f172a}
+    .optw.on .optb,.optw.on .qx{color:#fff}
+    .sgi{min-height:44px;font-size:14px}
     .bar .ib,.bar .logb{color:#0f172a}
     .bar .ib svg,.bar .logb svg{stroke-width:2.5}
     .bar .logb{border-color:#64748b}
   }
-  @media (max-width:720px){ .logb-n{top:-7px;right:-5px;min-width:16px;height:16px;padding:0 4px;font-size:9.5px;line-height:16px} .find{height:40px} .bar .menu{width:40px;height:40px} .bar .menu svg{width:22px;height:22px} }
+  @media (max-width:720px){ .logb-n{top:-7px;right:-5px;min-width:16px;height:16px;padding:0 4px;font-size:9.5px;line-height:16px} .find,.optw{height:40px} .optw{flex:none;min-width:0;max-width:132px} .optb{padding:0 9px;gap:3px;font-size:13px} .optw.on .optb{padding-left:11px} .optw .qx{margin-right:4px} .optw.off{display:none} .bar .menu{width:40px;height:40px} .bar .menu svg{width:22px;height:22px} }
   /* 아이폰 맨 위 흐림 막기 (2026-11-23 사장님 "아이폰으로 봤을때 위가 흐려 — 위에 공백을 더 줘야하나?") —
      아이폰 사파리는 화면 맨 위에 흐림 효과를 덮는데, 화면에 고정된(position:fixed) 단색 막대가 맨 위에 닿아 있을 때만 그 자리를 단색으로 바꾼다.
      전엔 막대가 그냥 첫 줄이라 흐림이 찾기 칸 위에 덮였다 → 휴대폰 · 태블릿은 막대를 맨 위에 고정하고, 아이폰 · 아이패드로 혼자 연 화면은 위를 14px 더 비운다.
@@ -826,12 +865,17 @@
   <div class="main">
     <header class="bar">
       <button type="button" class="ib menu" id="btnMenu" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-      <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓴 낱말이 모두 들어간 줄만 · Enter 로 한 줄씩">
+      <label class="find" for="q" title="찾기 (Ctrl+F) — 제품명을 고르거나, 띄어 쓴 낱말이 모두 들어간 줄만 · Enter 로 한 줄씩">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         <input id="q" type="search" placeholder="상품명 · 옵션 · 무엇이든 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
         <span class="qn" id="qn"></span>
+        <span class="qv" id="qv" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
         <button type="button" class="qx" id="qx" hidden aria-label="찾기 지우기">✕</button>
       </label>
+      <div class="optw" id="optW" hidden>
+        <button type="button" class="optb" id="optB" aria-haspopup="listbox" aria-expanded="false" aria-controls="sug"><span id="optT">옵션</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button type="button" class="qx" id="optX" hidden aria-label="옵션 고르기 지우기">✕</button>
+      </div>
       <div class="sp"></div>
       <button type="button" class="st is-load" id="st"><i class="dot"></i><span id="stText">불러오는 중…</span></button>
       <button type="button" class="ib" id="btnDense" title="줄 간격 촘촘하게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 9.7h16M4 14.3h16M4 19h16"/></svg></button>
@@ -886,6 +930,7 @@
 <div class="edbox" id="edbox" hidden></div>
 <datalist id="edList"></datalist>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="sug" id="sug" hidden><div class="sug-h" id="sugH" hidden></div><div class="sug-q" id="sugQ" hidden><input id="sugIn" type="search" autocomplete="off" spellcheck="false" enterkeyhint="done" aria-label="옵션 찾기"></div><div class="sug-l" id="sugL" role="listbox"></div></div>
 <div class="pal" id="pal" hidden></div>
 <div class="cmenu" id="cmenu" hidden role="menu"></div>
 <div class="mscrim" id="mscrim" hidden></div>
@@ -1010,6 +1055,7 @@
     synced: {}, skew: 0,  // gid → 맥미니가 시트와 마지막으로 맞춘 시각 · 서버 시계 - 이 PC 시계
     pro: {}, proBusy: {}, // gid → {ver, at, map: {시트행: [on|sold|off, 판매중 수, 품절 수, 판매중지 수, 세트로만]}} 식스샵프로 상태
     terms: [], hlRe: null, list: [], sel: null,
+    pick: null, opt: null,   // 찾기에서 고른 제품명 {name} · 옵션 {ks: Set(optKey), t} — 이 탭에서만 (다른 탭으로 가면 지움)
     cell: null,           // PC 에서 고른 칸 {gid, r, p} (엑셀처럼 화살표로 옮김)
     stick: new Set(),     // 걸러 보는 중에 고친 줄 — 조건에서 벗어나도 걸러보기를 바꿀 때까지 그대로 보임 (엑셀 필터처럼)
     dense: false, shown: true, size: '', want: null, saved: null,
@@ -1529,7 +1575,7 @@
           if (cInfo !== cName) put(cInfo, info);
           const pro = [st === 'off' ? 'off' : 'sold', 0, st === 'off' ? 0 : +n || 0, st === 'off' ? +n || 0 : 0, 0];
           const kk = `${name} 지난 상품 ${PRO_LABEL[pro[0]]} ${info}`.toLowerCase();
-          outRows.push({r: rr, byP, k: kk, k2: kk.replace(/\s+/g, ''), pro, past: {last, qty: +qty || 0, n: +n || 0, info}});
+          outRows.push({r: rr, byP, k: kk, k2: kk.replace(/\s+/g, ''), pro, past: {last, qty: +qty || 0, n: +n || 0, info, opt: optT ? String(optT) : ''}});
         });
         // 요약 카드는 안 늘림 (카드 줄이 두 줄이 됨) — 카테고리 칩 '지난 상품 N' 으로 모아 보기
       }
@@ -1929,7 +1975,7 @@
     return `<td data-p="${col.p}"${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
   }
   /* 휴대폰 상품명 칸 아래 줄 — '리오더 시급 7일 남음' 딱지 + 옵션 값 (옵션 이름표 'Color: ' 는 빼고 값만, 전체 글은 상세 창) */
-  function optShort(t) { return t.split(/\s+\/\s+/).map(x => x.replace(/^[^:：]{1,16}[:：]\s*(?=\S)/, '')).join(' / '); }
+  function optShort(t) { return t.split(/\s+[\/|]\s+/).map(x => x.replace(/^[^:：]{1,16}[:：]\s*(?=\S)/, '')).join(' / '); }
   function mgOptText(row, opt) { const c = row.byP[opt.p]; return !c ? '' : c.t ? optShort(display(opt, c)) : c.chips.map(x => x.t).join(' · '); }
   const mgStat = t => { const x = statusParts(t, false); return x.sub || x.pill; };   // 휴대폰 리오더 알림 칸 — 남은 날만
   const mgAlText = (row, al) => { const c = al && row.byP[al.p]; return c && /^리오더/.test(c.t) ? c.t : ''; };
@@ -1952,6 +1998,8 @@
     if (v.kpi) { const k = d.kpis.find(x => x.id === v.kpi); if (k && k.pred) rows = rows.filter(r => ((!r.past || k.id === 'past') && k.pred(r)) || keep(r)); }   // 지난 상품은 '지난 상품' 카드에서만
     if (v.cat != null && d.cat) rows = rows.filter(r => catVal(r, d.cat.p) === v.cat || keep(r));
     if (S.terms.length) rows = rows.filter(r => S.terms.every(t => r.k.includes(t) || r.k2.includes(t)) || keep(r));
+    if (S.pick) rows = rows.filter(r => rowName(d, r) === S.pick.name || keep(r));   // 찾기에서 고른 제품 · 옵션
+    if (S.opt && optCol(d)) rows = rows.filter(r => S.opt.ks.has(optKey(rowOpt(d, r))) || keep(r));
     if (v.sort) {
       const col = d.cols.find(c => c.p === v.sort.p), dir = v.sort.dir;
       if (col) {
@@ -2019,7 +2067,7 @@
     const d = curData();
     S.size = sizeKey();
     clearTimeout(S.softT);   // 기다리던 자동 갱신 그리기는 이번 그리기로 끝
-    if (!d) { grid.innerHTML = skeleton(); S.list = []; S.vr = null; paintCount(); return; }
+    if (!d) { grid.innerHTML = skeleton(); S.list = []; S.vr = null; paintCount(); paintOpt(); return; }
     const v = vstate(), list = filtered(d, v);
     S.list = list;
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
@@ -2105,6 +2153,8 @@
     grid.scrollLeft = keep.l;
     if (vr.on) paintRows(true);
     paintCount();
+    paintOpt();
+    if (SG.mode) renderSug(true);   // 열어 둔 제품 · 옵션 목록도 새 값으로 (찾는 글자 · 스크롤은 그대로)
     reanchor();
     // 그리고 나서 세로 스크롤바가 생기거나 없어져 폭이 바뀌었으면 그 폭으로 한 번 더 맞춘다
     if (!nar && !opt.again && grid.clientWidth && Math.abs(grid.clientWidth - vw) > 1) renderGrid({keep: true, again: true});
@@ -2259,7 +2309,7 @@
       : d.kpis.map(k => `<span class="mk">${esc(k.label)} <b>${fmt(k.val)}${k.unit || ''}</b></span>`).join('');
     if (S.msH !== msH) { S.msH = msH; ms.innerHTML = msH; }
     if (S.msGid !== S.cur) { S.msGid = S.cur; ms.scrollLeft = 0; }   // 옆으로 넘긴 자리는 같은 탭 안에서만 그대로
-    qIn.placeholder = compactMQ.matches ? '상품 찾기' : '상품명 · 옵션 · 무엇이든 찾기';
+    qIn.placeholder = compactMQ.matches ? '상품 찾기' : pickable(d) ? '제품명 고르기 · 무엇이든 찾기' : '상품명 · 옵션 · 무엇이든 찾기';
     const href = S.cur ? `${BASE}/edit#gid=${S.cur}` : `${BASE}/edit`, sec = secretOk();
     $('btnSheet').href = sec ? href : '#';
     $('sideSheet').href = sec ? href : '#';
@@ -2307,6 +2357,7 @@
     const v = vstate();
     if ((v.part || 0) === +b.dataset.part) return;
     Object.assign(v, {part: +b.dataset.part, sort: null, cat: null, kpi: null});
+    dropPick();
     closeDetail();
     renderHead();
     renderGrid();
@@ -2490,7 +2541,7 @@
   function openTab(gid) {
     if (!gid) return;
     if (S.cur && S.cur !== gid) { S.pos[S.cur] = {t: grid.scrollTop, l: grid.scrollLeft}; closeDetail(); }
-    if (S.cur !== gid) { setHmin(false); S.stick.clear(); if (CE.x) commitCell(0, 0, true); S.cell = null; }
+    if (S.cur !== gid) { setHmin(false); S.stick.clear(); dropPick(); closeSug(); if (CE.x) commitCell(0, 0, true); S.cell = null; }
     S.cur = gid;
     hideMsg();
     const t = tabOf(gid);
@@ -4434,7 +4485,7 @@
     st.title = tip + (m && m.masked ? `\n주문자 이름 등 개인정보 ${m.masked.toLocaleString('ko-KR')}칸은 가려서 보여 줌` : '')
       + (late === 'bad' || (s.k === 'err' && !(c && c.direct)) ? '\n누르면 구글시트에서 이 탭을 바로 읽기' : '\n누르면 지금 다시 받기');
   }
-  function paintCount() { $('qn').textContent = S.terms.length && curData() ? `${fmt(S.list.length)}줄` : ''; }
+  function paintCount() { $('qn').textContent = (S.terms.length || (S.pick || S.opt) && !narrow.matches) && curData() ? `${fmt(S.list.length)}줄` : ''; }
   function reloadNow() {
     const c = S.cache.get(S.cur), s = S.st[S.cur] || {};
     if (S.cur && !cutTab(S.cur) && (syncAge(S.cur) > syncLimits(S.cur).bad || (s.k === 'err' && !s.direct && !c))) { loadDirect(S.cur); return; }
@@ -4465,16 +4516,249 @@
     S.terms = String(v || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
     S.stick.clear();
     S.hlRe = S.terms.length ? new RegExp(S.terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi') : null;
-    $('qx').hidden = !v;
+    paintQx();
     renderGrid({pos: {t: 0, l: grid.scrollLeft}});
   }
   let qT = 0;
-  qIn.addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => setQuery(qIn.value), 140); });
-  qIn.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(qT); if (S.terms.join(' ') !== qIn.value.trim().toLowerCase().split(/\s+/).filter(Boolean).join(' ')) setQuery(qIn.value); moveSel(e.shiftKey ? -1 : 1); }
-    else if (e.key === 'Escape') { qIn.value = ''; setQuery(''); grid.focus({preventScroll: true}); }
+  qIn.addEventListener('input', () => {
+    if (S.pick) dropPick(true);   // 고른 제품 이름을 고쳐 치면 그냥 찾기로
+    openSug('p');
+    clearTimeout(qT);
+    qT = setTimeout(() => setQuery(qIn.value), 140);
   });
-  $('qx').addEventListener('click', () => { qIn.value = ''; setQuery(''); qIn.focus(); });
+  qIn.addEventListener('keydown', e => {
+    if (SG.mode === 'p') { if (sugKey(e)) return; }
+    else if (e.key === 'ArrowDown' && !e.isComposing && pickable(curData())) { e.preventDefault(); openSug('p'); return; }
+    if (e.key === 'Enter') { e.preventDefault(); closeSug(); clearTimeout(qT); if (!S.pick && S.terms.join(' ') !== qIn.value.trim().toLowerCase().split(/\s+/).filter(Boolean).join(' ')) setQuery(qIn.value); moveSel(e.shiftKey ? -1 : 1); }
+    else if (e.key === 'Escape') { dropPick(); qIn.value = ''; setQuery(''); grid.focus({preventScroll: true}); }
+  });
+  $('qx').addEventListener('click', e => { e.preventDefault(); clearTimeout(qT); dropPick(); qIn.value = ''; setQuery(''); qIn.focus(); openSug('p'); });
+
+  /* ── 제품명 고르기 → 옵션 고르기 (2026-11-23 사장님 "재고erp에서 옵션도 선택할 수 있게 (검색)" · "검색에 제품명 선택하고 옵션 선택할수있게") ──
+     · 찾기 칸을 누르거나 글자를 치면 이 탭의 제품 목록이 아래로 열린다 (한 제품 = 한 줄, 옵션 수 · 남은 재고 합).
+       글자를 치는 동안 표는 전처럼 낱말 찾기 그대로 — 제품을 고르면 그 제품 줄만 남고, 옵션이 둘 이상이면 옆 [옵션] 목록이 바로 열린다.
+     · 옵션 이름표('컬러: ' 등)는 빼고 값만, 대소문자 · 띄어쓰기만 다른 것은 같은 옵션. 옵션 목록 안에서도 찾기 — Enter = 그 글자가 들어간 옵션 전부.
+     · 제품을 안 고르고 [옵션] 을 누르면 지금 보이는 줄들의 옵션 전부에서 고른다.
+     · 고른 것은 이 탭에서만 — 다른 탭으로 가면 지워진다. 찾기 ✕ = 둘 다, 옵션 ✕ = 옵션만 지움. */
+  const SG = {mode: '', i: -1, items: [], h: ''};
+  const sug = $('sug'), sugL = $('sugL'), oIn = $('sugIn'), findBox = document.querySelector('.find');
+  const pickable = d => !!d && !d.side && d.keyIdx >= 0;
+  const optCol = d => pickable(d) ? d.cols.find(c => !c.key && OPT_RE.test(norm(c.name))) || null : null;
+  const rowName = (d, r) => d.keyIdx >= 0 ? catVal(r, d.cols[d.keyIdx].p).trim() : '';
+  function rowOpt(d, r) { if (r.past) return r.past.opt; const c = optCol(d); return c ? catVal(r, c.p).trim() : ''; }
+  const optKey = t => optShort(String(t || '').replace(/\s*\n\s*/g, ' ')).toLowerCase().replace(/\s+/g, '');
+  const qWords = s => String(s || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const hasWords = (k, ws) => { const k2 = k.replace(/\s+/g, ''); return ws.every(w => k.includes(w) || k2.includes(w)); };
+  const wordsRe = ws => ws.length ? new RegExp(ws.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi') : null;
+  function hlWords(s, ws) { const keep = S.hlRe; S.hlRe = wordsRe(ws); try { return hl(s); } finally { S.hlRe = keep; } }
+  const PRODS = new WeakMap();   // 탭 자료 → 제품 목록 (자료가 바뀌면 새로)
+  function prodItems(d) {
+    let out = PRODS.get(d);
+    if (out) return out;
+    const m = new Map(), cs = d.cols.find(c => c.stock), cc = d.cols.find(c => norm(c.name) === '카테고리');
+    d.rows.forEach(r => {
+      const n = rowName(d, r);
+      if (!n) return;
+      let x = m.get(n);
+      if (!x) m.set(n, x = {name: n, n: 0, opts: new Set(), txt: '', stk: null, past: true, st: ''});
+      x.n++;
+      if (!r.past) x.past = false;
+      const o = rowOpt(d, r);
+      if (o) x.opts.add(optKey(o));
+      x.txt += ` ${o}${cc ? ' ' + catVal(r, cc.p) : ''}`;
+      const q = cs && r.item ? numOf(catVal(r, cs.p)) : null;
+      if (q !== null) x.stk = (x.stk || 0) + q;
+    });
+    out = [...m.values()];
+    out.forEach(x => { x.k = `${x.name}${x.txt}`.toLowerCase(); x.nk = x.name.toLowerCase(); });
+    out.sort((a, b) => (a.past ? 1 : 0) - (b.past ? 1 : 0));   // 지난 상품은 맨 아래
+    PRODS.set(d, out);
+    return out;
+  }
+  function optBase(d, name) {   // 옵션을 고를 줄들 — 고른 제품의 줄, 안 골랐으면 지금 걸러 본 줄 (옵션 고르기는 빼고)
+    if (name) return d.rows.filter(r => rowName(d, r) === name);
+    const o = S.opt, pinEnd = d.rows.map(r => r.pinEnd);
+    S.opt = null;
+    try { return filtered(d, vstate()); } finally { S.opt = o; d.rows.forEach((r, i) => { r.pinEnd = pinEnd[i]; }); }
+  }
+  function optItems(d, name) {
+    if (!optCol(d)) return [];
+    const m = new Map(), cs = d.cols.find(c => c.stock);
+    optBase(d, name).forEach(r => {
+      const o = rowOpt(d, r), k = optKey(o);
+      if (!k && !name) return;
+      let x = m.get(k);
+      if (!x) m.set(k, x = {k, t: o ? optShort(o.replace(/\s*\n\s*/g, ' ')) : '옵션 없음', txt: o.toLowerCase(), n: 0, stk: null, pro: null, past: true});
+      x.n++;
+      if (!r.past) x.past = false;
+      const q = cs && r.item ? numOf(catVal(r, cs.p)) : null;
+      if (q !== null) x.stk = (x.stk || 0) + q;
+      if (r.pro && (!x.pro || PRO_ORDER[r.pro[0]] < PRO_ORDER[x.pro[0]])) x.pro = r.pro;
+    });
+    const out = [...m.values()];
+    if (!name) out.sort((a, b) => a.t.localeCompare(b.t, 'ko', {numeric: true}));
+    return out;
+  }
+  function paintQx() { const has = !!qIn.value || !!S.pick; $('qx').hidden = !has; $('qv').hidden = has || !pickable(curData()); }
+  function paintOpt() {
+    const d = curData(), ok = !!optCol(d) && (!!S.opt || !!S.pick || d.rows.some(r => rowOpt(d, r)));
+    const w = $('optW');
+    w.hidden = !ok;
+    paintQx();
+    if (!ok) { if (SG.mode === 'o') closeSug(); return; }
+    const its = S.pick ? optItems(d, S.pick.name) : [], n = its.length, none = !!S.pick && !S.opt && n < 2;
+    const txt = S.opt ? S.opt.t : !S.pick ? '옵션' : n > 1 ? (narrow.matches ? `옵션 ${n}` : `옵션 ${n}개 중 고르기`) : n ? its[0].t : '옵션 없음';
+    $('optT').textContent = txt;
+    $('optB').disabled = none;
+    $('optB').title = S.opt ? `옵션 · ${txt}` : none ? '이 제품은 고를 옵션이 없어요' : S.pick ? `${S.pick.name} 옵션 고르기` : '옵션 고르기';
+    $('optX').hidden = !S.opt;
+    w.classList.toggle('on', !!S.opt);
+    w.classList.toggle('off', none);   // 휴대폰은 고를 옵션이 없으면 자리를 비운다
+  }
+  function dropPick(keepText) {   // 고른 제품 · 옵션 지우기 (찾기 글자도, keepText 면 글자는 그대로)
+    if (S.pick && !keepText) qIn.value = '';
+    S.pick = null;
+    S.opt = null;
+    paintQx();
+  }
+  function pickProd(name, rest) {
+    const d = curData(), v = vstate();
+    if (!d) return;
+    clearTimeout(qT);
+    if (S.opt && !optItems(d, name).some(x => S.opt.ks.has(x.k))) S.opt = null;   // 먼저 고른 옵션이 이 제품에도 있으면 그대로
+    S.pick = {name};
+    S.terms = [];
+    S.hlRe = null;
+    v.kpi = null;   // 걸러 보던 카드 · 카테고리 때문에 고른 제품이 안 보이지 않게
+    v.cat = null;
+    S.stick.clear();
+    qIn.value = name;
+    qIn.setSelectionRange(0, 0);
+    closeSug();
+    if (!cellMode()) qIn.blur();
+    renderHead();
+    renderGrid({pos: {t: 0, l: grid.scrollLeft}});
+    if (!S.opt && optItems(d, name).length > 1) openSug('o', rest);
+    else if (cellMode()) grid.focus({preventScroll: true});
+  }
+  function pickOpt(x) {   // x = {ks, t} · null = 옵션 전체
+    S.opt = x;
+    S.stick.clear();
+    closeSug();
+    renderHead();
+    renderGrid({pos: {t: 0, l: grid.scrollLeft}});
+    if (cellMode()) grid.focus({preventScroll: true});
+  }
+  function openSug(mode, rest) {
+    const d = curData();
+    if (mode === 'p' ? !pickable(d) : !optCol(d)) return;
+    if (SG.mode !== mode) {
+      if (SG.mode) closeSug();
+      SG.mode = mode;
+      SG.i = -1;
+      SG.h = '';
+      $('sugQ').hidden = $('sugH').hidden = mode !== 'o';
+      if (mode === 'o') {
+        oIn.value = rest || '';
+        $('sugH').textContent = S.pick ? S.pick.name : '옵션 고르기';
+        oIn.placeholder = S.pick ? '이 제품의 옵션 찾기' : '옵션 찾기 (예: 블루)';
+        $('optW').classList.add('open');
+        $('optB').setAttribute('aria-expanded', 'true');
+      }
+    }
+    sug.hidden = false;
+    renderSug();
+    if (mode === 'o' && cellMode()) oIn.focus({preventScroll: true});   // 휴대폰은 자판이 목록을 가리지 않게 누를 때만
+  }
+  function closeSug() {
+    if (!SG.mode) return;
+    SG.mode = '';
+    SG.items = [];
+    sug.hidden = true;
+    $('optW').classList.remove('open');
+    $('optB').setAttribute('aria-expanded', 'false');
+    if (document.activeElement === oIn) oIn.blur();
+  }
+  function placeSug() {
+    const a = (SG.mode === 'o' ? $('optW') : findBox).getBoundingClientRect(), vv = window.visualViewport;
+    const bottom = vv ? vv.offsetTop + vv.height : innerHeight, top = a.bottom + 6;
+    const w = narrow.matches ? innerWidth - 16 : Math.max(a.width, SG.mode === 'o' ? 360 : 440);
+    sug.style.width = w + 'px';
+    sug.style.left = Math.max(8, Math.min(a.left, innerWidth - w - 8)) + 'px';
+    sug.style.top = top + 'px';
+    sug.style.maxHeight = Math.max(150, Math.min(narrow.matches ? 520 : 400, bottom - top - 10)) + 'px';
+  }
+  function renderSug(refresh) {
+    const d = curData(), mode = SG.mode;
+    if (!mode) return;
+    if (!d || (mode === 'p' ? !pickable(d) : !optCol(d))) { closeSug(); return; }
+    const stk = q => q === null ? '' : `<span class="sg-s${q <= 0 ? ' red' : ''}">재고 ${fmt(q)}</span>`;
+    let h = '';
+    if (mode === 'p') {
+      const ws = S.pick ? [] : qWords(qIn.value), list = prodItems(d).filter(x => hasWords(x.k, ws));
+      if (ws.length) list.sort((a, b) => (hasWords(b.nk, ws) ? 1 : 0) - (hasWords(a.nk, ws) ? 1 : 0));   // 이름에 있는 것 먼저 (옵션 · 카테고리로 맞은 것은 뒤)
+      SG.items = list.map(x => ({name: x.name, rest: ws.filter(w => !hasWords(x.nk, [w])).join(' ')}));
+      if (!list.length) { sug.hidden = true; SG.h = ''; return; }   // 제품에 없는 말(날짜 · 숫자 등) — 표의 낱말 찾기만
+      h = list.map((x, i) => `<button type="button" class="sgi${x.past ? ' past' : ''}${S.pick && S.pick.name === x.name ? ' on' : ''}" data-i="${i}" role="option" tabindex="-1"><span class="sg-n">${hlWords(x.name, ws)}</span>`
+        + (x.opts.size > 1 ? `<span class="sg-s">옵션 ${x.opts.size}</span>` : '') + (x.past ? '<span class="sg-s">지난 상품</span>' : stk(x.stk)) + '</button>').join('');
+    } else {
+      const ws = qWords(oIn.value), all = optItems(d, S.pick ? S.pick.name : ''), list = all.filter(x => hasWords(`${x.txt} ${x.t.toLowerCase()}`, ws));
+      const items = [];
+      const add = (it, inner, cls) => { h += `<button type="button" class="sgi${cls || ''}" data-i="${items.length}" role="option" tabindex="-1">${inner}</button>`; items.push(it); };
+      if (!ws.length && S.opt) add({o: null}, '<span class="sg-n">옵션 전체 보기</span>', ' all');
+      if (ws.length && list.length > 1) add({o: {ks: new Set(list.map(x => x.k)), t: `${oIn.value.trim()} · ${list.length}개`}}, `<span class="sg-n">‘${esc(oIn.value.trim())}’ 들어간 옵션 전부</span><span class="sg-s">${list.length}개</span>`, ' all');
+      list.forEach(x => add({o: {ks: new Set([x.k]), t: x.t}}, `<span class="sg-n">${hlWords(x.t, ws)}</span>${stk(x.stk)}${x.pro ? proBadge(x.pro) : ''}${x.stk === null && !x.pro ? `<span class="sg-s">${x.n}줄</span>` : ''}`,
+        (x.past ? ' past' : '') + (S.opt && S.opt.ks.has(x.k) ? ' on' : '')));
+      if (!list.length) h += `<div class="sug-e">${all.length ? '그 글자가 들어간 옵션이 없어요' : '고를 옵션이 없어요'}</div>`;
+      SG.items = items;
+    }
+    sug.hidden = false;
+    if (h !== SG.h) {
+      const t = sugL.scrollTop;
+      SG.h = h;
+      sugL.innerHTML = h;
+      if (!refresh) SG.i = -1;
+      sugL.scrollTop = refresh ? t : 0;
+    }
+    if (SG.i >= SG.items.length) SG.i = -1;
+    paintHi();
+    placeSug();
+  }
+  function paintHi(into) {
+    sugL.querySelectorAll('.sgi').forEach((b, i) => { b.classList.toggle('hi', i === SG.i); if (into && i === SG.i) b.scrollIntoView({block: 'nearest'}); });
+  }
+  function takeSug(i) {
+    const it = SG.items[i];
+    if (!it) return;
+    if (SG.mode === 'p') pickProd(it.name, it.rest); else pickOpt(it.o);
+  }
+  function sugKey(e) {   // 목록이 열려 있을 때 — ↑↓ 옮기기 · Enter 고르기 · Esc 닫기 (처리했으면 true)
+    if (e.isComposing) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const n = SG.items.length;
+      e.preventDefault();
+      if (n) { SG.i = SG.i < 0 ? (e.key === 'ArrowDown' ? 0 : n - 1) : (SG.i + (e.key === 'ArrowDown' ? 1 : -1) + n) % n; paintHi(true); }
+      return true;
+    }
+    if (e.key === 'Enter' && SG.i >= 0 && !sug.hidden) { e.preventDefault(); takeSug(SG.i); return true; }
+    if (e.key === 'Escape' && !sug.hidden) { e.preventDefault(); e.stopPropagation(); closeSug(); return true; }
+    if (e.key === 'Tab') closeSug();
+    return false;
+  }
+  qIn.addEventListener('focus', () => { if (S.pick) qIn.select(); });
+  findBox.addEventListener('click', () => { if (document.activeElement === qIn) openSug('p'); });
+  oIn.addEventListener('input', () => { SG.i = -1; renderSug(); });
+  oIn.addEventListener('keydown', e => {
+    if (sugKey(e)) return;
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); if (oIn.value.trim() && SG.items.length) takeSug(0); else closeSug(); }   // 맨 위 = '들어간 옵션 전부' (하나뿐이면 그 옵션)
+  });
+  $('optB').addEventListener('click', () => { if (SG.mode === 'o') closeSug(); else openSug('o'); });
+  $('optX').addEventListener('click', () => pickOpt(null));
+  sug.addEventListener('mousedown', e => { if (e.target !== oIn) e.preventDefault(); });   // 찾기 칸에서 포커스를 뺏지 않게
+  sugL.addEventListener('click', e => { const b = e.target.closest('.sgi'); if (b) takeSug(+b.dataset.i); });
+  document.addEventListener('pointerdown', e => { if (SG.mode && !e.target.closest('#sug,.find,#optW')) closeSug(); }, true);
+  addEventListener('resize', () => { if (SG.mode) placeSug(); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { if (SG.mode) placeSug(); });
   // 휴대폰: 찾기 칸을 누르면 자판이 올라오니 위쪽을 접어 결과를 넓게, 찾을 말 없이 나가면 다시 편다
   qIn.addEventListener('focus', () => { if (compactMQ.matches) setHmin(true); });
   qIn.addEventListener('blur', () => { if (!qIn.value.trim() && grid.scrollTop < 56) setHmin(false); });
