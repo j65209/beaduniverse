@@ -13552,7 +13552,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <section class="dsl-card" id="diarySloppy" hidden aria-label="불성실 작성자">
       <div class="dsl-head">
         <div class="dsl-title">⚠️ 불성실 작성자<b id="diarySloppyCnt"></b></div>
-        <div class="dsl-sub">최근 근무일 10일 기준 (오늘 · 연차 제외)</div>
+        <div class="dsl-sub">최근 근무일 10일 기준 (오늘 · 주말 · 공휴일 · 연차 제외)</div>
       </div>
       <div class="hop-tiles dsl-tiles" id="diarySloppyTiles"></div>
       <div class="dsl-lines" id="diarySloppyLines"></div>
@@ -31967,12 +31967,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const dow = now.getDay();      // 0=일, 6=토
     const isWeekday = (dow >= 1 && dow <= 5);
 
-    if(!(isToday && isWeekday)){
+    if(!(isToday && isWeekday) || _dslHol().has(today)){   // 주말 · 공휴일(대체휴일 포함)은 안 띄움
       alert.hidden = true;
       return;
     }
 
-    // 오늘 '한 일'을 하나도 안 적은 사람 (대표는 판단에서 제외, 퇴사자도 당연히 제외 · 오늘 연차 · 경조사휴가인 사람도 제외 2026-11-23)
+    // 오늘 '한 일'을 하나도 안 적은 사람 (대표는 판단에서 제외, 퇴사자도 당연히 제외 · 오늘 연차 · 경조사휴가 · 출산휴가인 사람도 제외 2026-11-23)
     const missing = (typeof _diaryVisibleStaff === 'function' ? _diaryVisibleStaff() : STAFF).filter(st=>{
       if(st.ceo || _dslOnLeave(st.name, today)) return false;
       const e = _diaryEntries[st.name];
@@ -32052,21 +32052,46 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 불성실 작성자 배너 — 업무일지 맨 위 (2026-11-23 사장님) =====
-     최근 근무일 10일(오늘 빼고). 근무일 = 평일 중 누구라도 한 일을 쓴 날 — 아무도 안 쓴 평일은 휴일로 본다.
-     본인 연차 · 경조사휴가와 입사일(첫날까지)은 뺀다. 반차 · 대체휴무 적립은 쓰는 날.
+     최근 근무일 10일(오늘 빼고). 근무일 = 주말 · 공휴일(구글 공휴일, /cal)이 아니고 누구라도 한 일을 쓴 날 — 아무도 안 쓴 평일은 회사 휴일로 본다.
+     본인 연차 · 경조사휴가 · 출산휴가와 입사일(첫날까지)은 뺀다. 반차 · 대체휴무 적립은 쓰는 날.
      안 씀 = 글자 없음(빈 줄만 있어도), 한 줄만 = 그날 전체가 1줄. 둘을 더해 3일 이상이거나 직전 근무일까지 2일 넘게 이어서 안 쓰면 칸에 오른다.
      주간 계획 · 월 목표는 완료 체크로 지운 것도 쓴 것이라 지운 줄까지 따로 받는다.
      연차 · 계획 · 숨김 명단 중 하나라도 못 받으면 띄우지 않는다 (엉뚱한 사람을 올리지 않게). */
   const DSL_DAYS = 10;
-  const _dsl = {at:0, loading:false, data:null};
+  const DSL_LEAVE = ['연차', '경조사휴가', '출산휴가'];
+  // 구글 공휴일 달력에 같이 들어 있는 '안 쉬는 날' — 나머지(쉬는 날 ○○ = 대체휴일 포함)는 모두 쉬는 날
+  const DSL_WORKDAY = /^(국군의\s*날|크리스마스 이브|섣달 그믐날|식목일|어버이날|스승의\s*날)$/;
+  const DSL_HOL_KEY = 'brightbeed_dsl_hol_v1';   // 못 받을 때 쓰는 지난번 공휴일 목록
+  function _dslHol(){
+    if(_dsl.hol) return _dsl.hol;
+    let a = []; try{ a = JSON.parse(localStorage.getItem(DSL_HOL_KEY) || '[]') }catch(e){}
+    return (_dsl.hol = new Set(Array.isArray(a) ? a : []));
+  }
+  async function _dslLoadHol(){
+    if(Date.now() - _dsl.holAt < 12*3600*1000) return;
+    try{
+      const base = await loadProxyBase();
+      const r = base && await fetch(`${base}/cal`, {headers:{'X-Brightbeed-PIN':ghPin()}, cache:'no-cache'});
+      const ev = r && r.ok ? (await r.json()).events : null;
+      if(!Array.isArray(ev)) return;
+      const days = new Set();
+      ev.filter(e => e.source === 'holiday' && !DSL_WORKDAY.test(String(e.title || '').trim())).forEach(e => {
+        for(let d = e.start, i = 0; d <= (e.end || e.start) && i < 10; d = _dslAdd(d, 1), i++) days.add(d);
+      });
+      if(!days.size) return;
+      _dsl.hol = days; _dsl.holAt = Date.now();
+      try{ localStorage.setItem(DSL_HOL_KEY, JSON.stringify([...days])) }catch(e){}
+    }catch(e){}
+  }
+  const _dsl = {at:0, loading:false, data:null, hol:null, holAt:0};
   function _dslAdd(d, n){
     const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n);
     return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
   }
-  // 하루 쉬는 휴가(연차 · 경조사휴가)인지 — 서버에서 받은 것, 받기 전엔 이 PC 에 있는 연차 기록. 반차는 쓰는 날
+  // 하루 쉬는 휴가(연차 · 경조사휴가 · 출산휴가)인지 — 서버에서 받은 것, 받기 전엔 이 PC 에 있는 연차 기록. 반차는 쓰는 날
   function _dslOnLeave(name, d){
     const list = _dsl.data ? _dsl.data.leave.map(l => ({name: l.staff_name, start: l.start_date, end: l.end_date || l.start_date}))
-      : collectAllLeaveEvents().filter(e => e.type === '연차' || e.type === '경조사휴가');
+      : collectAllLeaveEvents().filter(e => DSL_LEAVE.includes(e.type));
     return list.some(l => l.name === name && l.start <= d && d <= l.end);
   }
   async function _dslLoad(){
@@ -32077,8 +32102,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const get = async u => { const r = await fetch(`${SUPABASE_URL}/rest/v1/${u}`, {headers:_sbHeaders(), cache:'no-cache'}); const j = r.ok ? await r.json() : null; if(!Array.isArray(j)) throw new Error('load'); return j; };
       const [plans, leave, gone, off] = await Promise.all([
         _diarySbGetAll(`select=id,staff_name,kind,created_on,text&kind=in.(weekly,monthly)&created_on=gte.${from}`),
-        get(`leave_entries?select=staff_name,start_date,end_date&leave_type=in.(${encodeURIComponent('연차')},${encodeURIComponent('경조사휴가')})&start_date=gte.${from}&order=id.asc&limit=1000`),
-        get('staff_hidden?select=staff_name'), get('staff_diary_hidden?select=staff_name'),
+        get(`leave_entries?select=staff_name,start_date,end_date&leave_type=in.(${DSL_LEAVE.map(encodeURIComponent).join(',')})&or=(start_date.gte.${from},end_date.gte.${from})&order=id.asc&limit=1000`),
+        get('staff_hidden?select=staff_name'), get('staff_diary_hidden?select=staff_name'), _dslLoadHol(),
       ]);
       if(!plans) throw new Error('load');
       _dsl.data = {plans: plans.filter(r => String(r.text || '').trim()), leave, out: new Set([...gone, ...off].map(r => r.staff_name))};
@@ -32095,7 +32120,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const wd = [];   // 최근 근무일, 가까운 날부터
     for(let i = 1; i <= 45 && wd.length < DSL_DAYS; i++){
       const d = _dslAdd(today, -i), dow = new Date(d + 'T00:00:00').getDay();
-      if(dow !== 0 && dow !== 6 && staff.some(s => lines(s.name, d))) wd.push(d);
+      if(dow !== 0 && dow !== 6 && !_dslHol().has(d) && staff.some(s => lines(s.name, d))) wd.push(d);
     }
     if(!wd.length) return null;
     // 계획은 직전 근무일이 든 주(월요일엔 지난주) · 근무일 3일째부터 새 달
