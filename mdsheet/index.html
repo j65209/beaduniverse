@@ -59,7 +59,7 @@
          기밀 명단 밖은 이 표에 보이는 칸만 함수에 쓸 수 있다 — 가린 칸 · 다른 탭 · 줄 전체 · 이름 · INDIRECT · OFFSET · IMPORT… 는 막음 (fxGuard).
        · 새 줄: 제목 줄 '＋ 새 줄' — 마지막 줄 다음 줄에 적고, 그 줄의 수식(공급가 · 마진율 등)은 시트가 자동으로 계산.
        · MD 시트 아래쪽 '수식만 남은 빈 줄'은 표 · 개수에서 빼고, TOP 10 처럼 한 탭에 표가 여럿이면 '공홈 · 일별' 단추로 나눈다.
-       · 탭 삭제 (2026-11-23): 제목 줄 '탭 삭제' · 왼쪽 메뉴 탭에 오른쪽 버튼 — 메뉴에 보이는 시트 모두(구글이 원본인 발주 리스트는 오피스에서만 사라짐), 지운 탭은 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살린다. */
+       · 탭 숨기기 (2026-11-23): 제목 줄 '탭 숨기기' · 왼쪽 메뉴 탭 · 시트 이름에 오른쪽 버튼 — 모든 PC 메뉴에서만 빠지고, 왼쪽 메뉴 맨 아래 '숨긴 탭'에서 다시 보인다 (탭 삭제는 왼쪽 메뉴 오른쪽 버튼 메뉴에 같이 — '지운 탭'에서 되살린다). */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -498,6 +498,8 @@
   /* 탭 숨김 (2026-11-23 사장님 "탭 삭제말고 숨김처리") — 숨긴 탭은 메뉴 맨 아래 '숨긴 탭'에 흐리게 */
   .nav-item.hid .nm{color:var(--side-mute);font-style:italic}
   .nav-item.hid .rv{flex:none;font-size:11px;color:#a5b4fc}
+  .nav-item.hid.all .nm{color:var(--side-text);font-style:normal;font-weight:700}   /* 시트 통째로 다시 보이기 */
+  .dlg .ok{background:#0f172a;color:#fff}
   @media (max-width:720px){ .tdel{padding:0 7px!important} .tdel span{display:none} }
   @media (max-width:720px){ .nr-in{font-size:16px} }
   /* ── 휴대폰 글씨 한 단계 작게 (2026-11-21 사용자 "모바일에서 글씨가 커서 가독성이 떨어져") — ERP전산(erp/)과 같은 값 ──
@@ -2524,10 +2526,14 @@
     const hid = canEdit() ? S.tabs.filter(tabHid) : [];   // 숨긴 탭 — 고칠 수 있는 사람(관리자 · MD팀)만, 처음엔 접어 둔다. 누르면 열어 보고, 제목 줄 '다시 보이기'
     if (hid.length) {
       h += `<div class="nav-grp${isFolded('_hid') ? ' off' : ''}"><button type="button" class="nav-sec" data-fold="_hid" title="숨긴 탭 — 누르면 열어 볼 수 있고, 제목 줄 '다시 보이기'로 메뉴에 되돌려요">${CHEV}<i class="bd" style="background:#64748b"></i><span class="bn">숨긴 탭</span><em>${hid.length}</em></button>`;
-      hid.forEach(t => {
-        const b = bookOf(t.book) || {};
-        list.push({key: t.gid, tabs: [t]});
-        h += `<button type="button" class="nav-item hid${t.gid === S.cur ? ' on' : ''}" data-gid="${esc(t.gid)}" title="${esc(`${b.title || ''} › ${t.name}${t.info.th_by ? ` — ${t.info.th_by} 숨김` : ''} · 누르면 열기 (오른쪽 버튼 = 다시 보이기)`)}"><i class="dot" style="background:${t.meta.color}"></i><span class="nm">${esc(t.name)}</span><span class="bk">${esc(b.title || '')}</span><span class="rv">숨김</span></button>`;
+      S.books.forEach(b => {
+        const hs = hid.filter(t => t.book === b.book);
+        if (hs.length > 1) h += `<button type="button" class="nav-item hid all" data-showbook="${esc(b.book)}" title="${esc(`${b.title} — 숨긴 탭 ${hs.length}개를 모두 메뉴에 다시 보이기`)}"><i class="dot" style="background:${BOOK_COLOR[b.book] || '#64748b'}"></i><span class="nm">${esc(b.title)} ${hs.length}개</span><span class="rv">모두 보이기</span></button>`;
+        hs.forEach(t => {
+          const by = t.info && t.info.th_by;   // 저장해 둔 메뉴로 먼저 그릴 땐 탭 정보가 아직 없다
+          list.push({key: t.gid, tabs: [t]});
+          h += `<button type="button" class="nav-item hid${t.gid === S.cur ? ' on' : ''}" data-gid="${esc(t.gid)}" title="${esc(`${b.title} › ${t.name}${by ? ` — ${by} 숨김` : ''} · 누르면 열기 (오른쪽 버튼 = 다시 보이기)`)}"><i class="dot" style="background:${t.meta.color}"></i><span class="nm">${esc(t.name)}</span><span class="bk">${esc(b.title)}</span><span class="rv">숨김</span></button>`;
+        });
       });
       h += '</div>';
     }
@@ -2604,6 +2610,7 @@
     if (b.dataset.erp) { openErp(); return; }
     if (b.dataset.strat != null) { const x = S.strat[+b.dataset.strat]; if (x) window.open(x.url, '_blank', 'noopener'); return; }
     if (b.dataset.back) { restoreTab(b.dataset.back); return; }
+    if (b.dataset.showbook) { hideBook(b.dataset.showbook, false); return; }
     openTab(b.dataset.gid);
     setNav(false);
   });
@@ -4521,7 +4528,9 @@
   // 2026-11-23 사장님 "탭 삭제말고 숨김처리 기능 넣어줘" → 제목 줄 · 오른쪽 버튼 메뉴에서 '탭 삭제'를 빼고 '탭 숨기기'로. (지우기 함수 · '지운 탭' 되살리기는 그대로 둠)
   /* ── 탭 숨기기 · 다시 보이기 ──
      · 숨김 = 저장소 mdx_tab_hide (mdx_tabs.tab_hidden_at · tab_hidden_by) — 왼쪽 메뉴 · 즐겨찾기에서만 빠진다. 줄 · 함수 · 서식 · 자동 업무 · 다른 탭 함수는 그대로라
-       지우기처럼 막히는 탭이 없다 (시트에 보이는 탭이 하나는 남아야 함만). 모든 시트 · 관리자 · MD팀(canEdit)만. 기록 mdx_history op tab_hide · tab_show.
+       지우기처럼 막히는 탭이 없다 (MD 시트 전체에 보이는 탭이 하나는 남아야 함만 — 시트의 탭을 다 숨기면 그 시트는 메뉴에서 빠진다).
+     · 시트째 숨기기 = 왼쪽 메뉴 시트 이름에 오른쪽 버튼 → 시트 숨기기 (그 시트 탭 전부, hideBook) · '숨긴 탭'에서 시트마다 '모두 보이기'
+       (2026-11-23 사장님 "숨김처리 기능 너가 만들어줘" — 맨 아래 발주 리스트를 통째로 치울 수 있게). 모든 시트 · 관리자 · MD팀(canEdit)만. 기록 mdx_history op tab_hide · tab_show.
      · 숨긴 탭 = 왼쪽 메뉴 맨 아래 '숨긴 탭'(고칠 수 있는 사람에게만) → 누르면 열리고 제목 줄 '다시 보이기'. 다른 PC 는 8초 안에(mdx_poll) */
   const ICON_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c5 0 8.5 4.2 9.5 7-.4 1.1-1.2 2.5-2.4 3.8M6.6 6.6C4.6 7.9 3.2 9.9 2.5 12c1 2.8 4.5 7 9.5 7 1.9 0 3.6-.6 5-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
   const ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12C3.5 9.2 7 5 12 5s8.5 4.2 9.5 7c-1 2.8-4.5 7-9.5 7s-8.5-4.2-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -4549,7 +4558,7 @@
     hideBtn.disabled = true;
     try {
       const j = await mdx('mdx_tab_hide', {p_tk: gid, p_hide: !!hide, p_who: whoAmI() || null});
-      if (!j || !j.ok) { toast(j && j.why === 'last' ? '이 시트에 보이는 탭이 하나는 있어야 해요' : '지금은 숨길 수 없어요', true); return; }
+      if (!j || !j.ok) { toast(j && j.why === 'last' ? '마지막 남은 탭은 숨길 수 없어요' : '지금은 숨길 수 없어요', true); return; }
       if (t.info) { t.info.th = !!hide; t.info.th_by = hide ? (whoAmI() || null) : null; } else t.th = !!hide;
       if (hide && S.cur === gid) {   // 보고 있던 탭을 숨기면 같은 시트의 옆 탭으로
         const same = S.tabs.filter(x => x.book === t.book && !tabHid(x)), all = S.tabs.filter(x => x.book === t.book), i = all.findIndex(x => x.gid === gid);
@@ -4560,6 +4569,39 @@
       refreshTabs();
     } catch (e) { toast(tabErr(e), true); refreshTabs(); }
     finally { hideBusy = false; hideBtn.disabled = false; }
+  }
+  // 시트째 — 그 시트의 탭을 모두 숨기기 · 모두 다시 보이기
+  async function hideBook(bk, hide) {
+    const b = bookOf(bk), list = b && canEdit() ? S.tabs.filter(t => t.book === bk && tabHid(t) !== hide) : [];
+    if (!list.length || hideBusy) return;
+    if (hide && S.tabs.filter(t => !tabHid(t)).length <= list.length) { toast('마지막 남은 시트는 숨길 수 없어요', true); return; }
+    if (CE.x) commitCell(0, 0, true);   // 고치던 칸은 먼저 저장
+    hideBusy = true;
+    hideBtn.disabled = true;
+    let n = 0, err = null;
+    for (const t of list) {
+      try {
+        const j = await mdx('mdx_tab_hide', {p_tk: t.gid, p_hide: hide, p_who: whoAmI() || null});
+        if (!j || !j.ok) continue;
+        n++;
+        if (t.info) { t.info.th = hide; t.info.th_by = hide ? (whoAmI() || null) : null; } else t.th = hide;
+      } catch (e) { err = e; break; }
+    }
+    hideBusy = false;
+    hideBtn.disabled = false;
+    const cur = tabOf(S.cur);
+    if (hide && cur && cur.book === bk && tabHid(cur)) openTab(pickTab(null, null));
+    else if (!hide && n) { openTab(list[0].gid); setNav(false); }
+    else { renderNav(); renderHead(); }
+    if (err) toast(tabErr(err), true);
+    else toast(hide ? `'${b.title}' 시트를 숨겼어요 — 왼쪽 메뉴 맨 아래 '숨긴 탭'에서 다시 보이게 할 수 있어요` : `'${b.title}' 탭 ${n}개가 다시 메뉴에 나와요`);
+    refreshTabs();
+  }
+  function askHideBook(bk) {
+    const b = bookOf(bk), n = b ? S.tabs.filter(t => t.book === bk && !tabHid(t)).length : 0;
+    if (!n || dlgBusy) return;
+    openDlg(`'${b.title}' 시트를 숨길까요?`, `탭 ${n}개가 모든 PC 의 왼쪽 메뉴에서 안 보여요. 내용 · 함수 · 자동 업무는 그대로예요. 왼쪽 메뉴 맨 아래 '숨긴 탭'에서 다시 보이게 할 수 있어요.`,
+      [['취소', 'no', closeDlg], ['숨기기', 'ok', () => { closeDlg(); hideBook(bk, true); }]]);
   }
   let dlgNo = 0, dlgBusy = false;
   function openDlg(title, body, btns) {   // btns = [[글, 모양, 할 일]]
@@ -4645,9 +4687,11 @@
   }
   $('nav').addEventListener('contextmenu', e => {
     const b = e.target.closest('.nav-item[data-gid]'), t = b && tabOf(b.dataset.gid);
-    if (!t || !canHideTab(t)) return;   // 고칠 수 없는 사람은 브라우저 메뉴 그대로
+    const sec = b ? null : e.target.closest('.nav-sec[data-fold]'), bk = sec && bookOf(sec.dataset.fold);   // 시트 이름 = 시트째 숨기기
+    if (bk ? !canEdit() : !t || !canHideTab(t)) return;   // 고칠 수 없는 사람은 브라우저 메뉴 그대로
     e.preventDefault();
-    TM.innerHTML = `<div class="tm-t">${esc(t.name)}</div>` + (tabHid(t)
+    if (bk) TM.innerHTML = `<div class="tm-t">${esc(bk.title)}</div><button type="button" class="hd" data-hidebook="${esc(bk.book)}">${ICON_EYE_OFF}시트 숨기기 (탭 ${S.tabs.filter(x => x.book === bk.book && !tabHid(x)).length}개)</button>`;
+    else TM.innerHTML = `<div class="tm-t">${esc(t.name)}</div>` + (tabHid(t)
       ? `<button type="button" class="hd" data-show="${esc(t.gid)}">${ICON_EYE}다시 보이기</button>`
       : `<button type="button" class="hd" data-hide="${esc(t.gid)}">${ICON_EYE_OFF}탭 숨기기</button>`)
       + (canDelTab(t) ? `<div class="tm-sep"></div><button type="button" data-del="${esc(t.gid)}">${ICON_TRASH}탭 삭제</button>` : '');   // 2026-11-23 사장님 "삭제도 같이" — 숨기기 아래 빨간 '탭 삭제' (확인 창 · '지운 탭'에서 되살리기)
@@ -4656,9 +4700,10 @@
     TM.style.top = Math.max(8, Math.min(e.clientY, innerHeight - TM.offsetHeight - 8)) + 'px';
   });
   TM.addEventListener('click', e => {
-    const b = e.target.closest('[data-del],[data-hide],[data-show]');
+    const b = e.target.closest('[data-del],[data-hide],[data-show],[data-hidebook]');
     if (!b) return;
     TM.hidden = true;
+    if (b.dataset.hidebook) { setNav(false); askHideBook(b.dataset.hidebook); return; }
     if (b.dataset.del) { setNav(false); askDelTab(b.dataset.del); return; }
     const t = tabOf(b.dataset.hide || b.dataset.show);
     if (t) hideTab(t, !!b.dataset.hide);
