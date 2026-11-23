@@ -9446,6 +9446,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-ls:not(.is-clean) .ls-top{border-bottom:2px solid #000;margin-bottom:6px}
   /* 2026-11-23 디자인센터 라인시트 — 카드 폭에 꽉 (is-fit, 칸 너비는 _tplLsCols 의 몫대로) · 찾기 · 샘플 대기 · 엑셀 · 되돌리기 */
   .tpl-ls.is-fit{width:100%}
+  /* 2차 — 머리글은 한 줄 (샘플 차수 2층 없앰) · 상품 정보 = 회색 이름표 | 값 (값은 왼쪽 정렬, 칸 색은 값 칸만) · 빈 자리는 옅은 바탕 · 메모 칸은 왼쪽 위부터 */
+  .tpl-ls .tx.th:not(.ls-name) .tc{white-space:nowrap}
+  .tpl-ls.is-clean .tx.ls-lab{padding:2px 4px;letter-spacing:-.01em;justify-content:center}
+  .tpl-ls.is-clean .tx.ls-val{justify-content:flex-start;text-align:left;padding:2px 8px}
+  .tpl-ls.is-clean .tx.ls-fill{background:#fbfaf8}
+  .tpl-ls.is-clean .tx.ls-note{justify-content:flex-start;align-items:flex-start;text-align:left;padding:9px 12px;line-height:1.6}
   .tpl-ls .ls-block[hidden],.tpl-ls .ls-add[hidden],.ls-hits[hidden]{display:none !important}
   .tpl-ls .ls-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
   .ls-find{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid #e7e3dd;border-radius:9px;background:#fff;cursor:text}
@@ -9496,9 +9502,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-ls.is-mob .lm-row{display:flex;flex-direction:column;gap:2px;min-width:0}
   .tpl-ls.is-mob .lm-l{font-size:10.5px;font-weight:800;color:#a8a29e;padding-left:2px}
   .tpl-ls.is-mob .lm-colors{display:flex;flex-direction:column;gap:4px}
-  .tpl-ls.is-mob .lm-ch,.tpl-ls.is-mob .lm-crow{display:grid;grid-template-columns:1.4fr .6fr 1fr 1fr;gap:4px}
+  .tpl-ls.is-mob .lm-ch,.tpl-ls.is-mob .lm-crow{display:grid;grid-template-columns:minmax(0,1fr) 40px minmax(78px,.9fr) minmax(78px,.9fr);gap:4px}   /* 2026-11-23 날짜가 '2026.09.0 / 2' 로 잘리던 것 — 차수는 좁게, 날짜는 한 줄 */
+  .tpl-ls.is-mob .lm-crow .tx:nth-child(2){justify-content:center;text-align:center}
+  .tpl-ls.is-mob .lm-crow .tx:nth-child(n+3) .tc{white-space:nowrap}
   .tpl-ls.is-mob .lm-ch span{font-size:10.5px;font-weight:800;color:#a8a29e;padding-left:2px}
-  .tpl-ls.is-mob .lm-crow .tx{min-height:32px;padding:3px 6px;font-size:12px}
+  .tpl-ls.is-mob .lm-crow .tx{min-height:32px;padding:3px 5px;font-size:12px}
   .tpl-ls.is-mob .ls-block.is-focus{outline:3px solid #f97316}
   @media (max-width:760px){
     .lst{padding:8px 10px 12px;border-radius:12px}
@@ -26185,9 +26193,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 칸 너비 — 한 화면에 더 많이 (2026-11-20 "칸 너무 넓게 썼다, 더 많이 보이게")
   // [최소 px, 늘어나는 몫] — 화면(디자인센터 카드)에선 남는 폭을 몫대로 나눠 오른쪽 빈 곳 없이 꽉 채운다 (2026-11-23 사용자 "칸 우측 공백 안 보이게 깔끔하게 채워"),
   //   번호 · 샘플 차수는 그대로, 사진 · 특이사항 · 라벨 단가가 많이 늘어난다. PDF · 편집 창은 예전 고정 너비 그대로
-  const TPL_LS_W = [[44, 0], [104, 1], [124, 1.3], [124, 1.3], [82, .8], [112, 1.1], [104, 1], [52, 0], [88, .5], [88, .5], [100, 1], [250, 2.6], [210, 1.8]];
-  function _tplLsCols(sec, fit){ const w = TPL_LS_W.slice(0, sec ? 13 : 12); return w.map(([px, g]) => fit && g ? `minmax(${px}px, ${g}fr)` : px + 'px').join(' '); }
-  const _tplLsMinW = sec => TPL_LS_W.slice(0, sec ? 13 : 12).reduce((s, x) => s + x[0], 0) + 2;
+  //   2026-11-23 2차 (사용자 "칸 간격 잘 배치 · 샘플 차수가 2층 · 직관성 · 단독여부 칸 안에 칸 컬러") — 상품 정보 칸을 이름표 | 값 두 칸으로 나눔, 샘플 차수 한 줄 폭
+  //   순서: 번호 · 이름표 · 값 · 사진 · 사진 · 진행업체 · FABRIC · COLOR · 차수 · 요청일 · 입고일 · 진행공장 · 특이사항 · (라벨 단가 — 기밀)
+  //   [화면 최소 px, 늘어나는 몫, PDF · 편집 창 고정 px] — 화면 최소 합 1324px 라 1440 노트북에서도 옆으로 안 밀리고, 넓은 화면은 몫대로 커진다
+  const TPL_LS_W = [[44, 0, 44], [58, 0, 60], [100, .9, 108], [104, 1.5, 130], [104, 1.5, 130], [84, .8, 90], [100, 1.1, 112], [92, 1.1, 104], [68, 0, 68], [84, .35, 92], [84, .35, 92], [100, 1, 104], [170, 2, 230], [140, 1.4, 190]];
+  const _tplLsW = sec => TPL_LS_W.slice(0, TPL_LS_W.length - (sec ? 0 : 1));
+  function _tplLsCols(sec, fit){ return _tplLsW(sec).map(([px, g, base]) => fit ? (g ? `minmax(${px}px, ${g}fr)` : px + 'px') : base + 'px').join(' '); }
+  const _tplLsMinW = sec => _tplLsW(sec).reduce((s, x) => s + x[0], 0) + 2;
   /* ── 샘플 대기 (2026-11-23 디자이너용) — 컬러 줄에 요청일은 있는데 입고일이 비었으면 '⏳ N일째' (입고일 칸 안내 글), 14일 넘으면 빨강.
         날짜는 2026.11.20 · 2026-11-20 · 26.11.20 · 11.20 · 11/20 모두 읽는다 ── */
   function _tplDate(s){
@@ -26421,7 +26433,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   const _tplMob = () => _tpl.host === 'tab' && !!window.matchMedia && window.matchMedia('(max-width:760px)').matches;
   function _tplLsHtml(doc, o){
-    const E = escapeHTML, d = doc.data, ed = !!o.edit, sec = designSecretOk(), NC = sec ? 13 : 12, hold = _tplLsHold(doc), nf = hold ? 'reason' : 'note';
+    const E = escapeHTML, d = doc.data, ed = !!o.edit, sec = designSecretOk(), NC = sec ? 14 : 13, hold = _tplLsHold(doc), nf = hold ? 'reason' : 'note';
     const ce = (path, val, ph, ml) => ed && path ? `<div class="tc" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-ph="${E(ph || '')}"${ml ? ' data-ml="1"' : ''}>${E(val)}</div>` : `<div class="tc">${E(val)}</div>`;
     const at = (r0, c0, r1, c1) => ` style="grid-area:${r0} / ${c0} / ${r1} / ${c1}"`;
     const X = (r0, c0, r1, c1, inner, cls, obj, f) => `<div class="tx${cls ? ' ' + cls : ''}${_tplCls(obj, f)}"${at(r0, c0, r1, c1)}>${inner}</div>`;
@@ -26431,38 +26443,40 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const F = (f, desig) => _tplF(doc, 'items', i, f, desig);
       const V = (r0, c0, r1, c1, f, ph, cls, ml, desig) => { const x = F(f, desig); return X(r0, c0, r1, c1, x.lock ? '<div class="tc"></div>' : ce(x.path, x.val, ph, ml), cls, x.obj, f); };
       const HD = (c, t) => X(1, c, 2, c + 1, `<div class="tc">${t}</div>`, 'th');
-      cells.push(X(1, 1, 2, 2, ed ? `<button type="button" class="ls-menu-b" data-act="ls-menu" data-i="${i}" title="상품 옮기기 · 줄 더하기 · 지우기">⋯</button>` : '', 'th'));
-      cells.push(HD(2, '시즌 카테고리'));
-      cells.push(X(1, 3, 2, 5, ce(p + 'name', it.name, '상품명 / 한글명'), 'th ls-name', it, 'name'));
-      ['진행업체', 'FABRIC', 'COLOR', '샘플 차수', '샘플 요청일', '샘플 입고일', '진행공장', hold ? '홀딩 사유' : '개발 특이사항 및 진행상황'].forEach((t, k) => cells.push(HD(5 + k, t)));
-      if(sec) cells.push(HD(13, '라벨 추가 시 단가'));
-      cells.push(X(2, 1, end, 2, ce(p + 'no', it.no, String(i + 1)), 'ls-no', it, 'no'));
-      // B열 — 시즌 구분 · 제품 카테고리 · 정상가(기밀) · 첫발주일 · 단독여부 (검은 칸 = 이름표, 그 아래 = 값)
-      const B = [['v', 'season', 'New / 컬러추가'], ['l', '제품 카테고리'], ['v', 'cat', 'shoulder bag'], ...(sec ? [['l', '정상가'], ['v', 'price', '₩0', true]] : []), ['l', '첫발주일'], ['v', 'first', '-'], ['pair', 'solo', '단독여부']];
+      // 열 번호 (grid 줄 번호) — TPL_LS_W 순서와 같게
+      const C = {no:1, bl:2, bv:3, p1:4, p2:5, ven:6, fab:7, col:8, r:9, q:10, a:11, fac:12, note:13, lab:14};
+      cells.push(X(1, C.no, 2, C.no + 1, ed ? `<button type="button" class="ls-menu-b" data-act="ls-menu" data-i="${i}" title="상품 복제 · 옮기기 · 줄 더하기 · 지우기">⋯</button>` : '', 'th'));
+      cells.push(X(1, C.bl, 2, C.bv + 1, '<div class="tc">상품 정보</div>', 'th'));
+      cells.push(X(1, C.p1, 2, C.p2 + 1, ce(p + 'name', it.name, '상품명 / 한글명'), 'th ls-name', it, 'name'));
+      [['진행업체', C.ven], ['FABRIC', C.fab], ['COLOR', C.col], ['샘플 차수', C.r], ['샘플 요청일', C.q], ['샘플 입고일', C.a], ['진행공장', C.fac], [hold ? '홀딩 사유' : '개발 특이사항 및 진행상황', C.note]].forEach(([t, c]) => cells.push(HD(c, t)));
+      if(sec) cells.push(HD(C.lab, '라벨 추가 시 단가'));
+      cells.push(X(2, C.no, end, C.no + 1, ce(p + 'no', it.no, String(i + 1)), 'ls-no', it, 'no'));
+      // 상품 정보 — 왼쪽 회색 이름표 | 오른쪽 값 (한 줄에 하나씩, 칸 색은 값 칸에만). 예전엔 이름표 줄 · 값 줄이 번갈았고 단독여부만 한 칸 안에 이름표가 겹쳐 있었다
+      const B = [['시즌', 'season', 'New / 컬러추가'], ['카테고리', 'cat', 'shoulder bag'], ...(sec ? [['정상가', 'price', '₩0', true]] : []), ['첫발주일', 'first', ''], ['단독', 'solo', 'O / X']];
       let r = 2;
-      B.forEach(b => {
-        if(b[0] === 'l') cells.push(X(r, 2, r + 1, 3, `<div class="tc">${b[1]}</div>`, 'th ls-lab'));
-        else if(b[0] === 'v') cells.push(V(r, 2, r + 1, 3, b[1], b[2], '', false, b[3]));
-        else { const x = F('solo'); cells.push(`<div class="tx ls-pair${_tplCls(it, 'solo')}"${at(r, 2, r + 1, 3)}><span class="ls-pair-l">${b[2]}</span>${ce(x.path, x.val, 'O / X')}</div>`); }
+      B.forEach(([lab, f, ph, desig]) => {
+        cells.push(X(r, C.bl, r + 1, C.bl + 1, `<div class="tc">${lab}</div>`, 'th ls-lab'));
+        cells.push(V(r, C.bv, r + 1, C.bv + 1, f, ph, 'ls-val', false, desig));
         r++;
       });
-      if(r < end) cells.push(X(r, 2, end, 3, '', ''));
+      if(r < end) cells.push(X(r, C.bl, end, C.bv + 1, '', 'ls-fill'));
       // 사진 2 × 2
       const h = Math.ceil(R / 2);
-      [[2, 3, 2 + h, 4], [2, 4, 2 + h, 5], [2 + h, 3, end, 4], [2 + h, 4, end, 5]].forEach((g, k) => cells.push(`<div class="tx tpx"${at(...g)}>${_tplPh(p + 'imgs.' + k, it.imgs[k], ed, '', true)}</div>`));
-      cells.push(V(2, 5, end, 6, 'vendor', '진행업체', 'ls-vendor'));
-      cells.push(V(2, 6, end, 7, 'fabric', 'Main / Inside 원단', '', true));
+      [[2, C.p1, 2 + h, C.p1 + 1], [2, C.p2, 2 + h, C.p2 + 1], [2 + h, C.p1, end, C.p1 + 1], [2 + h, C.p2, end, C.p2 + 1]].forEach((g, k) => cells.push(`<div class="tx tpx"${at(...g)}>${_tplPh(p + 'imgs.' + k, it.imgs[k], ed, '', true)}</div>`));
+      // 긴 칸 · 컬러 줄 — 안내 글은 비움 (머리글에 이름이 있고, 회색 예시가 진짜 값처럼 보였다)
+      cells.push(V(2, C.ven, end, C.ven + 1, 'vendor', '', 'ls-vendor'));
+      cells.push(V(2, C.fab, end, C.fab + 1, 'fabric', '', '', true));
       for(let j = 0; j < R; j++){
         const c = it.colors[j] || {}, q = `${p}colors.${j}.`;
-        cells.push(X(2 + j, 7, 3 + j, 8, ce(q + 'c', c.c || '', j ? '' : 'color'), '', c, 'c'));
-        cells.push(X(2 + j, 8, 3 + j, 9, ce(q + 'r', c.r || '', ''), '', c, 'r'));
-        cells.push(X(2 + j, 9, 3 + j, 10, ce(q + 'q', c.q || '', j ? '' : '2026.11.20'), '', c, 'q'));
+        cells.push(X(2 + j, C.col, 3 + j, C.col + 1, ce(q + 'c', c.c || '', ''), 'ls-cr', c, 'c'));
+        cells.push(X(2 + j, C.r, 3 + j, C.r + 1, ce(q + 'r', c.r || '', ''), 'ls-cr', c, 'r'));
+        cells.push(X(2 + j, C.q, 3 + j, C.q + 1, ce(q + 'q', c.q || '', ''), 'ls-cr', c, 'q'));
         const wd = _tplLsWaitDays(c);
-        cells.push(X(2 + j, 10, 3 + j, 11, ce(q + 'a', c.a || '', _tplLsWaitPh(wd)), _tplLsWaitCls(wd), c, 'a'));
+        cells.push(X(2 + j, C.a, 3 + j, C.a + 1, ce(q + 'a', c.a || '', _tplLsWaitPh(wd)), 'ls-cr' + (wd != null ? ' ' + _tplLsWaitCls(wd) : ''), c, 'a'));
       }
-      cells.push(V(2, 11, end, 12, 'factory', '진행공장', '', true));
-      cells.push(V(2, 12, end, 13, nf, hold ? '홀딩 사유' : '개발 특이사항 · 진행상황', 'ls-note', true));
-      if(sec) cells.push(V(2, 13, end, 14, 'label', '1) 메인라벨 - 0.2위안', 'ls-note', true, true));
+      cells.push(V(2, C.fac, end, C.fac + 1, 'factory', '', '', true));
+      cells.push(V(2, C.note, end, C.note + 1, nf, '', 'ls-note', true));
+      if(sec) cells.push(V(2, C.lab, end, C.lab + 1, 'label', '', 'ls-note', true, true));
       return `<div class="tpl-g ls-block" data-cut="1" data-i="${i}" style="grid-template-columns:var(--ls-cols);grid-template-rows:30px repeat(${R}, minmax(30px, auto))">${cells.join('')}</div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
