@@ -18271,6 +18271,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const KTS_G={good:'맞음',weak:'아쉬움',bad:'틀림'};
   // 11-23 2차 — 사장님 기준(직접 변경 · 취소 · 배송 확인) + 직원 · 카나나 실제 답 학습. 지금 규칙 답은 보여 주지 않음(사장님 "규칙이 틀린건 바로 지워줘")
   const KTS_SET=[['wait','지금 답 기다리는 문의','시험을 돌린 때 답을 기다리던 문의예요. 채점은 없어요.'],['new','새 문의','학습에 쓰지 않은 11-20 오후 뒤 문의 전부예요 (직원이 이미 상담하던 대화와 인사만 한 글은 빼고).']];
+  const KTS_BR={kop:'코페리',apt:'아페티',koz:'코즈미','6a':'식스에이',yar:'야르',akoi:'아코이하우스',pp:'프로덕트피알',ct:'클리어타입'};
   const KTS_F=[['all','전체'],['answer','바로 답한 것'],['ask','정보를 물은 것'],['staff','직원에게 넘긴 것'],['weak','아쉽거나 틀린 것']];
   async function kkoTestLoad(){
     if(_kts.loading) return;
@@ -18332,6 +18333,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + `<div class="kbk-over"><div class="kbk-card"><div class="kbk-h"><b>직원 없이 끝냄</b></div><div class="kbk-num"><span>${self} / ${tot} (${pct(self)})</span></div></div><div class="kbk-card"><div class="kbk-h"><b>직원에게 넘김</b></div><div class="kbk-num"><span>${(S.staff||{}).n||0} / ${tot} (${pct((S.staff||{}).n||0)})</span></div></div><div class="kbk-card"><div class="kbk-h"><b>1차 시험 때</b></div><div class="kbk-num"><span>넘김 ${B.staff||0} / ${(B.auto||0)+(B.staff||0)} (${(B.auto||0)+(B.staff||0) ? Math.round((B.staff||0)/((B.auto||0)+(B.staff||0))*100) : 0}%)</span></div></div></div>`
       + `<div class="kbk-tbl" style="margin-top:8px"><table><thead><tr><th></th><th>건수</th><th>맞음</th><th>아쉬움</th><th>틀림</th></tr></thead><tbody>${row('answer')}${row('ask')}${row('staff')}</tbody></table></div>`
       + `<div class="kbk-note">채점: ${E(d.grader||'')}. 한 달 비용 어림 ${d.monthLow ? `약 ${Math.round(d.monthLow/10000)}만~${Math.round(d.monthHigh/10000)}만 원` : ''} (하루 새 문의 ${E(d.perDay)}건 · 1달러 1,400원). 1차 시험은 규칙이 답하던 쉬운 문의만이라 그대로 비교하기는 어려워요.</div></section>`;
+    // 고정 시험지 (11-23 사장님 "고정 시험지 만들기") — 규칙을 고칠 때마다 맥미니 kakao-exam 이 다시 채점. 고객 글 없음
+    const x=d.exam;
+    const ex=x && x.total ? `<section class="kbk-sec" id="kts-exam"><h3>고정 시험지</h3><p>시험에서 맞은 답이 규칙을 고치다 다시 틀어지지 않게, 규칙이 바뀌면 자동으로 다시 풀어요.</p>`
+      + `<div class="kbk-over"><div class="kbk-card"><div class="kbk-h"><b>맞은 답 그대로</b></div><div class="kbk-num"><span>${N(x.pass)} / ${N(x.total)}</span></div></div><div class="kbk-card"><div class="kbk-h"><b>바뀐 답</b></div><div class="kbk-num"><span class="${(x.broken||[]).length ? 'kbk-miss' : ''}">${(x.broken||[]).length}건</span></div></div><div class="kbk-card"><div class="kbk-h"><b>아직 못 맞힌 것</b></div><div class="kbk-num"><span>${N((x.open||0)-(x.openNow||0))}건</span></div></div></div>`
+      + ((x.broken||[]).length ? `<div class="kbk-tbl" style="margin-top:8px"><table><thead><tr><th>번호</th><th>브랜드</th><th>정답</th><th>지금</th></tr></thead><tbody>${x.broken.map(b=>`<tr><th>${E(b.id)}</th><td>${E(KTS_BR[b.brand]||b.brand)}</td><td><i>${E(b.want)}</i></td><td>${E(b.got)}</td></tr>`).join('')}</tbody></table></div>` : '')
+      + `<div class="kbk-note">${E(when(x.at))} 채점${(x.missing||[]).length ? ` · 글을 못 찾은 문제 ${(x.missing||[]).length}` : ''}</div></section>` : '';
     const pick=c=>{
       const a=c.ai||{}, g=(a.g||{}).s;
       if(['answer','ask','staff'].includes(_kts.f) && a.action!==_kts.f) return false;
@@ -18367,9 +18374,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + gd.map(([b,v])=>`<details class="kbk-ex"><summary>${E(KL[b]||b)} ${v.length}개</summary>${v.map(g=>`<div class="kbk-exi"><div class="m">${E(g.topic||'')} · ${g.hand==='staff' ? '직원 처리' : g.hand==='ask' ? '정보 먼저' : '안내로 끝'}${g.n ? ' · 약 '+E(g.n)+'번' : ''}</div><div class="q">${E(g.when||'')}</div><div class="r">${E(g.say||'')}</div></div>`).join('')}</details>`).join('') + `</section>`;
     const none=!d.outside && !KTS_SET.some(x=>cnt[x[0]]) ? '<div class="kbk-empty">맞는 것이 없어요.</div>' : '';
     const nb=(id,label,n)=>`<button type="button" onclick="kkoTestGo('${id}')">${E(label)}${n!=null ? `<em>${n}</em>` : ''}</button>`;
-    const nav=`<nav class="kbk-nav" aria-label="시험 답변 차례">${nb('kts-ov','한눈에')}${d.outside ? '' : KTS_SET.filter(x=>cnt[x[0]]).map(x=>nb('kts-'+x[0],x[1],cnt[x[0]])).join('')}${guide ? nb('kts-guide','직원 지침') : ''}</nav>`;
+    const nav=`<nav class="kbk-nav" aria-label="시험 답변 차례">${nb('kts-ov','한눈에')}${ex ? nb('kts-exam','고정 시험지',(d.exam.broken||[]).length ? `바뀜 ${d.exam.broken.length}` : null) : ''}${d.outside ? '' : KTS_SET.filter(x=>cnt[x[0]]).map(x=>nb('kts-'+x[0],x[1],cnt[x[0]])).join('')}${guide ? nb('kts-guide','직원 지침') : ''}</nav>`;
     const main=document.getElementById('ktsMain'), top=main ? main.scrollTop : 0;
-    box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="ktsTitle">${head}<div class="kbk-body">${nav}<div class="kbk-main" id="ktsMain">${ov}${secs}${none}${guide}</div></div></div>`;
+    box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="ktsTitle">${head}<div class="kbk-body">${nav}<div class="kbk-main" id="ktsMain">${ov}${ex}${secs}${none}${guide}</div></div></div>`;
     const m2=document.getElementById('ktsMain'); if(m2) m2.scrollTop=top;
     if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); if(el.id==='ktsQ'){ const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} } } }
   }
