@@ -31958,9 +31958,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
 
-    // 오늘 '한 일'을 하나도 안 적은 사람 (대표는 판단에서 제외, 퇴사자도 당연히 제외)
+    // 오늘 '한 일'을 하나도 안 적은 사람 (대표는 판단에서 제외, 퇴사자도 당연히 제외 · 오늘 연차 · 경조사휴가인 사람도 제외 2026-11-23)
     const missing = (typeof _diaryVisibleStaff === 'function' ? _diaryVisibleStaff() : STAFF).filter(st=>{
-      if(st.ceo) return false;
+      if(st.ceo || _dslOnLeave(st.name, today)) return false;
       const e = _diaryEntries[st.name];
       if(!e) return true;
       return (e.tasks||[]).length === 0;
@@ -32049,6 +32049,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n);
     return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
   }
+  // 하루 쉬는 휴가(연차 · 경조사휴가)인지 — 서버에서 받은 것, 받기 전엔 이 PC 에 있는 연차 기록. 반차는 쓰는 날
+  function _dslOnLeave(name, d){
+    const list = _dsl.data ? _dsl.data.leave.map(l => ({name: l.staff_name, start: l.start_date, end: l.end_date || l.start_date}))
+      : collectAllLeaveEvents().filter(e => e.type === '연차' || e.type === '경조사휴가');
+    return list.some(l => l.name === name && l.start <= d && d <= l.end);
+  }
   async function _dslLoad(){
     if(_dsl.loading || Date.now() - _dsl.at < 5*60*1000) return;
     _dsl.loading = true;
@@ -32066,6 +32072,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ _dsl.at = Date.now() - 4*60*1000; }   // 1분 뒤 다시
     finally{ _dsl.loading = false; }
     _dslRender();
+    _diaryUpdateAlert();
   }
   function _dslCompute(){
     const D = _dsl.data, today = _diaryTodayStr(), all = loadDiaryAll();
@@ -32077,7 +32084,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(dow !== 0 && dow !== 6 && staff.some(s => lines(s.name, d))) wd.push(d);
     }
     if(!wd.length) return null;
-    const onLeave = (n, d) => D.leave.some(l => l.staff_name === n && l.start_date <= d && d <= (l.end_date || l.start_date));
     // 계획은 직전 근무일이 든 주(월요일엔 지난주) · 근무일 3일째부터 새 달
     const week = _diaryWeekStart(wd[0]), month = _diaryMonthKey(wd[Math.min(2, wd.length - 1)]);
     const planned = (n, kind, key) => {
@@ -32086,7 +32092,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return [...(s[kind] || []), ...Object.values(s[kind + 'Archive'] || {}).flat()].some(it => it && String(it.text || '').trim() && k(it.createdAt) === key);
     };
     const people = staff.map(s => {
-      const need = wd.filter(d => d > (s.hire || '') && !onLeave(s.name, d));
+      const need = wd.filter(d => d > (s.hire || '') && !_dslOnLeave(s.name, d));
       const miss = need.filter(d => !lines(s.name, d)).length, weak = need.filter(d => lines(s.name, d) === 1).length;
       let trail = 0; while(trail < need.length && !lines(s.name, need[trail])) trail++;
       const last = Object.keys((all[s.name] || {}).daily || {}).filter(d => d <= today && lines(s.name, d)).sort().pop() || '';
