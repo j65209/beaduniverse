@@ -101,6 +101,14 @@ function parseMemo(memo: string): { brand: string | null; phrase: string | null 
 const MATERIAL = /부자재|파우치|포장|박스|쇼핑백|원단|面料|스와치|色卡|라벨|와끼|지퍼|안감|겉감|단추|버클(?!리)|낚싯바늘|内径|내경|\d+\s*[*x×]\s*\d+\s*(?:cm|CM|mm|MM)|\d\s*미터/;
 const LEARN_ADD_MIN = 3.5;   // 학습으로만 정한 브랜드는 이 점수 넘을 때만 새 줄로 넣는다 (아니면 기록만)
 const SAMPLE = /샘플/;
+// 콰이디에어가 메모 끝에 붙이는 출고 기록 ("LCL11월19일 1번" · "11월23일우체국항공1번" · "/출고완료") — 새 줄 메모에선 뺀다
+// (발주신청이 이 메모를 다시 콰이디에어로 보내기 때문)
+const SHIP_NOTE = new RegExp([
+  'LCL\\s*\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일(?:\\s*\\d+\\s*번(?:\\s*[-~]\\s*\\d+\\s*번)?)?(?:\\s*[-/]?\\s*\\d+\\s*개)?',
+  '\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일\\s*(?:전자상\\s*사업자|전자상|준광\\s*사업자|준광|우체국\\s*항공|일반\\s*우체국|우체국|우채국|에어|항공|일통)(?:\\s*\\d+\\s*번(?:\\s*[-~]\\s*\\d+\\s*번)?)?(?:\\s*[-/]?\\s*\\d+\\s*개)?',
+  '/?\\s*출고완료',
+].join('|'), 'g');
+const shipless = (m: string) => clean(String(m || '').replace(SHIP_NOTE, ' ')).replace(/[\s/]+$/, '');
 const STOPW = new Set(['ring', 'rings', 'necklace', 'bracelet', 'bangle', 'earring', 'earrings', 'anklet', 'bag', 'bags', 'set', 'color', 'colour', 'size',
   'style', 'option', 'open', 'the', 'and', 'ver', 'version', 'new', 'silver', 'gold', 'white', 'black', 'type', 'sample', 'main', 'event', 'sale',
   '반지', '목걸이', '팔찌', '귀걸이', '발찌', '가방', '표기', '표기해주세요', '해주세요', '적어주세요', '부탁드립니다', '수량', '수량표기', '포함', '라고',
@@ -433,19 +441,26 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       fresh.push(L);
     }
     const tc = ti.trail;
-    const trailCells = (r: number, L: Line, cancelled: boolean) => [
-      { r, p: tc, v: L.date },
-      { r, p: tc + 1, v: cancelled ? '취소' : L.qty != null ? String(L.qty) : '' },
-      { r, p: tc + 2, v: L.priceTxt || (L.price != null ? String(L.price) : '') },
-      { r, p: tc + 3, v: L.sn },
+    const trailCells = (r: number, L: Line | null) => [
+      { r, p: tc, v: L ? L.date : '' },
+      { r, p: tc + 1, v: L && L.qty != null ? String(L.qty) : '' },
+      { r, p: tc + 2, v: L ? L.priceTxt || (L.price != null ? String(L.price) : '') : '' },
+      { r, p: tc + 3, v: L ? L.sn : '' },
     ];
     // 머리글 (비었을 때만)
     TRAIL.forEach((h, i) => P.cells.push({ r: 1, p: tc + i, v: h, blank: true, hdr: true }));
     for (const [r, ls] of byRow) {
       const act = ls.filter((x) => x.kind !== 'cancelled');
-      const use = (act.length ? act : ls).sort((a, b2) => (a.date + a.sn).localeCompare(b2.date + b2.sn)).pop()!;
-      P.cells.push(...trailCells(r, use, !act.length));
-      if (t.cols.cny >= 0 && use.price != null && use.price > 0 && act.length) P.cells.push({ r, p: t.cols.cny, v: use.priceTxt || String(use.price), blank: true });
+      if (!act.length) {
+        // 취소된 발주뿐 — 안 적는다. 예전에 우리가 그 발주로 적어 둔 칸이면 비운다
+        const cur = ((ti.rows.find((x) => x.r === r) || { v: [] as string[] }).v[tc + 3]) || '';
+        if (cur && ls.some((x) => x.sn === cur)) P.cells.push(...trailCells(r, null));
+        for (const L of ls) mdOf.set(L.sn, { tk: t.tk, r, how: 'cancelled' });
+        continue;
+      }
+      const use = act.sort((a, b2) => (a.date + a.sn).localeCompare(b2.date + b2.sn)).pop()!;
+      P.cells.push(...trailCells(r, use));
+      if (t.cols.cny >= 0 && use.price != null && use.price > 0) P.cells.push({ r, p: t.cols.cny, v: use.priceTxt || String(use.price), blank: true });
       for (const L of ls) mdOf.set(L.sn, { tk: t.tk, r, how: prev.get(L.sn)?.md_how === 'added' && prev.get(L.sn)?.md_r === r ? 'added' : 'matched' });
       P.matched++;
     }
@@ -463,7 +478,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       set(c.img, L.img);
       set(c.cny, L.priceTxt);
       set(c.opt, L.cs);
-      set(c.memo, L.memo);
+      set(c.memo, shipless(L.memo));
       set(c.qty, L.qty != null ? String(L.qty) : '');
       set(c.note, `콰이디 자동 추가 · 신청서 ${L.ords[L.ords.length - 1] || ''}`);
       v[tc] = L.date; v[tc + 1] = L.qty != null ? String(L.qty) : ''; v[tc + 2] = L.priceTxt; v[tc + 3] = L.sn;
