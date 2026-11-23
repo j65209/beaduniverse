@@ -266,6 +266,15 @@ function settle(){
 document.addEventListener('mousedown', e => { S.ptr = true; const t = e.target; if(S.sel && t.closest && !t.closest('#wl, .wl-pop, .wl-bar')) clearSel(); }, true);
 document.addEventListener('mouseup', () => { setTimeout(() => { S.ptr = false; setTimeout(settle, 30); }, 0); }, true);
 document.addEventListener('dragend', () => { S.ptr = false; setTimeout(settle, 30); }, true);
+const logX = () => { const a = document.activeElement; return a && a.classList && a.classList.contains('wl-x') && a.closest('#wl') ? a : null; };
+function renderKeep(){
+  const x = logX();
+  if(!x) return renderPage();
+  if(S.comp){ S.defer = true; return; }          // 한글 조합 중이면 끝난 뒤에
+  const id = x.closest('.wl-b').dataset.id, q = selIn(x);
+  renderPage();
+  const n = xEl(id); if(n && q) putSel(n, q[0], q[1]);
+}
 const editing = () => { const a = document.activeElement; return !!(a && a.closest && a.closest('#wl .wl-x, #wl input, #wl textarea, #wl select, #wlBoard input, #wlBoard textarea, #wlBoard select, .wl-pop')); };
 function persistDirty(){
   try{
@@ -297,6 +306,14 @@ function touch(p){
   saveTag('saving');
   clearTimeout(persistT); persistT = setTimeout(persistDirty, 250);
   scheduleSave(SAVE_MS);
+  liveSoon(p);
+}
+/* 업무일지를 적거나 체크하거나 지우면 전광판 '오늘 업무' 가 바로 (2026-11-23 사장님 "전광판 오늘 업무를 하단 업무일지에도 같이 동기화되게") — 그 전엔 줄을 벗어나거나 1분 뒤에야 바뀌었다 */
+let liveT = 0;
+function liveSoon(p){
+  if(p.kind === 'order') return;
+  clearTimeout(liveT);
+  liveT = setTimeout(() => { if(S.ptr) return liveSoon(p); renderBoard(); if(S.view === 'page' && !S.find){ renderSide(); renderBand(); } pinTextSoon(p); }, 160);
 }
 function scheduleSave(ms){ clearTimeout(S.saveT); S.saveT = setTimeout(flush, ms); }
 function merge3(base, mine, theirs){
@@ -345,7 +362,8 @@ async function flush(){
         { const bm = (d.bm && d.bm.meta) || {}, mm = p.meta || {}, om = o.meta || {}, r = {}; new Set([...Object.keys(mm), ...Object.keys(om)]).forEach(k => { const v = same(mm[k], bm[k]) ? om[k] : mm[k]; if(v !== undefined) r[k] = v; }); p.meta = r; }
         d.base = o.ver; d.bb = o.blocks; d.bm = {title:o.title, day:o.day, kind:o.kind, meta:o.meta || {}}; d.seq++;
         p.ver = o.ver;
-        if(id === S.cur){ if(editing() || S.ptr) S.defer = true; else renderPage(); }
+        if(id === S.cur){ if(S.ptr) S.defer = true; else renderKeep(); }
+        renderBoard();
         scheduleSave(120);
       }else if(j && j.gone){
         try{ localStorage.setItem(K.lost, JSON.stringify({at:Date.now(), page:p})); }catch(e){}
@@ -389,7 +407,7 @@ async function poll(){
     (j.checks || []).forEach(c => { const k = ckKey(c.item, c.day), o = S.checks.get(k); if(!o || o.ver < c.ver){ S.checks.set(k, c); bd = true; } });
     if(j.today && j.today !== S.today){ S.today = j.today; bd = pg = true; }
     S.max = Math.max(S.max, j.max || 0);
-    if(pg){ S.caches.clear(); if(editing() || S.ptr) S.defer = true; else{ renderAll(); } }
+    if(pg){ S.caches.clear(); if(S.ptr || (editing() && !logX())) S.defer = true; else if(logX()){ renderNav(); renderKeep(); renderBoard(); } else{ renderAll(); } }
     if(bd) renderBoard();
     if(pg || bd) cacheWrite();
   }catch(e){}
@@ -791,17 +809,16 @@ function renderPage(){
   if(prev && !prev.blocks && !prev._try){ prev._try = 1; loadBlocks([prev.id]).then(() => { S.caches.delete(p.id); if(S.cur === p.id && !editing()) renderPage(); }).catch(() => {}); }
   const c = ctxOf(p), seq = list(), i = seq.findIndex(x => x.id === p.id), nx = seq[i - 1], pv = seq[i + 1];
   const vis = secOrder(p, c.ss).filter(s => s.head || s.items.some(b => !isEmpty(b) || S.fresh.has(b.id)));
-  // 두 칸 나누기 — 글을 열 때 한 번 정하고 고치는 동안 자리를 안 바꾼다 (카드가 튀지 않게)
-  const wide = el.clientWidth >= 860;
-  let sp = S.split.get(p.id);
-  const keys = vis.map(s => s.key);
-  if(!sp || !keys.every(k => sp.has(k))){
-    const w = s => 2.2 + s.items.filter(b => !isEmpty(b)).reduce((a, b) => a + Math.max(1, Math.ceil(bText(b).length / 34)), 0), tot = vis.reduce((a, s) => a + w(s), 0);
-    const nsp = new Map(); let acc = 0, side = 0;
-    vis.forEach((s, k) => { const ww = w(s); if(sp && sp.has(s.key)) side = sp.get(s.key); else if(!sp && side === 0 && k > 0 && acc + ww / 2 > tot / 2) side = 1; nsp.set(s.key, side); acc += ww; });
-    sp = nsp; S.split.set(p.id, sp);
-  }
-  const col = n => vis.filter(s => (wide ? sp.get(s.key) || 0 : 0) === n).map(s => secHtml(s, c)).join('');
+  // 두 칸 나누기 — 글을 열 때 한 번 정하고 고치는 동안 자리를 안 바꾼다 (카드가 튀지 않게). 업무일지는 '오늘 업무'(전광판과 같은 목록) · '그 밖' 두 묶음
+  const wide = el.clientWidth >= 860, band = p.kind === 'daily', A = band ? vis.filter(s => !SIDE_SEC.includes(s.type)) : vis, B = band ? vis.filter(s => SIDE_SEC.includes(s.type)) : [];
+  const sp = S.split.get(p.id) || new Map();
+  const spread = L => {
+    const w = s => 2.2 + s.items.filter(b => !isEmpty(b)).reduce((a, b) => a + Math.max(1, Math.ceil(bText(b).length / 34)), 0), tot = L.reduce((a, s) => a + w(s), 0), fresh = !L.some(s => sp.has(s.key));
+    let acc = 0, side = 0;
+    L.forEach((s, k) => { const ww = w(s); if(sp.has(s.key)) side = sp.get(s.key); else{ if(fresh && side === 0 && k > 0 && acc + ww / 2 > tot / 2) side = 1; sp.set(s.key, side); } acc += ww; });
+  };
+  spread(A); spread(B); S.split.set(p.id, sp);
+  const grid = (L, end) => { const two = wide && L.some(s => sp.get(s.key) === 1), col = n => L.filter(s => (two ? sp.get(s.key) : 0) === n).map(s => secHtml(s, c)).join(''); return `<div class="wl-cols${two ? ' two' : ''}${S.hideDone ? ' hide-done' : ''}"><div>${col(0)}${two ? '' : end}</div>${two ? `<div>${col(1)}${end}</div>` : ''}</div>`; };
   const st = {}, tg = new Map();
   (c.I ? c.I.lines : []).forEach(l => { if(l.lv > 0) return; const s = c.own.get(l.id); if(s) st[s] = (st[s] || 0) + 1; const t = tagOf(l.t); if(t) tg.set(t, (tg.get(t) || 0) + 1); });
   const tags = [...tg].sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -819,9 +836,11 @@ function renderPage(){
       <span class="wl-meta">${p.ub && p.ub !== 'notion' ? E(p.ub) + ' · ' : ''}${p.ua ? `${md(ymd(new Date(p.ua)))} ${hm(p.ua)} 수정` : ''}${p.origin === 'notion' ? ' · 노션에서 옮김' : ''}</span>
       <button type="button" class="wl-btn sm" data-act="undo" title="되돌리기 (Ctrl+Z)">되돌리기</button><button type="button" class="wl-btn sm" data-act="copy" title="글자로 복사">복사</button><button type="button" class="wl-btn sm ico" data-act="pagemenu" aria-label="이 글 메뉴">⋯</button></div>
     <div class="wl-fl">${Object.entries(STS).filter(([k]) => st[k]).map(([k, t]) => `<button type="button" class="${S.fSt === k ? 'on' : ''}" data-fst="${k}">${t} <b>${st[k]}</b></button>`).join('')}${tags.length ? '<i></i>' : ''}${tags.map(([t, n]) => `<button type="button" class="tg${S.fTag === t ? ' on' : ''}" data-ftag="${E(t)}">${E(t)} <b>${n}</b></button>`).join('')}<span class="wl-sp"></span>${dn ? `<button type="button" class="${S.hideDone ? 'on' : ''}" data-act="hidedone">${S.hideDone ? `끝낸 일 ${dn} 보기` : `끝낸 일 ${dn} 숨기기`}</button>` : ''}</div>
-    <div class="wl-cols${wide && vis.some(s => sp.get(s.key) === 1) ? ' two' : ''}${S.hideDone ? ' hide-done' : ''}"><div>${col(0)}${!wide || !vis.some(s => sp.get(s.key) === 1) ? addSecBtn() : ''}</div>${wide && vis.some(s => sp.get(s.key) === 1) ? `<div>${col(1)}${addSecBtn()}</div>` : ''}</div>`;
+    ${band ? `<div class="wl-band" id="wlBand">${bandHtml(p)}</div>${grid(A, addSecBtn())}${B.length ? `<div class="wl-band sub"><b>그 밖</b><span>${[...new Set(B.map(s => s.head ? bText(s.head) : ''))].filter(Boolean).join(' · ')}</span></div>${grid(B, '')}` : ''}` : grid(A, addSecBtn())}`;
   renderSide();
 }
+function bandHtml(p){ const it = todayItems(p), d = it.filter(x => x.b.k).length; return `<b>${p.day === S.today ? '오늘 업무' : `${md(p.day)} 업무`}</b><em>${d}/${it.length}</em>${p.day === S.today ? '<span>위 전광판과 같은 목록이에요 — 어느 쪽에서 고쳐도 같이 바뀌어요</span>' : ''}`; }
+function renderBand(){ const el = document.getElementById('wlBand'), p = cur(); if(el && p && p.blocks) el.innerHTML = bandHtml(p); }
 const addSecBtn = () => '<button type="button" class="wl-addsec" data-act="addsec">＋ 구역</button>';
 /* ── 오른쪽 자동 정리 ── */
 function renderSide(){
@@ -1187,7 +1206,7 @@ function todayWork(){
   shown.forEach(x => {
     if(x.head !== last && !x.b.k){ last = x.head; if(x.head) h += `<h5>${E(x.head)}</h5>`; }
     const st = stOf(x.b, x.type), d0 = age.get(x.b.id), dd = d0 && !x.b.k ? dayDiff(p.day, d0) : 0;
-    h += `<div class="wl-r wk${x.b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-bact="wdone" data-pid="${p.id}" data-lid="${x.b.id}" aria-pressed="${!!x.b.k}" aria-label="끝냄" title="끝났으면 누르기"></button><button type="button" class="wl-rt" data-go="${x.b.id}" data-pid="${p.id}"><span>${E(bText(x.b))}</span></button><span class="wl-rm">${[dd >= 13 ? `<b class="bad">${dd + 1}일째</b>` : '', st && st !== 'done' ? (st === 'chk' ? `<b>${STS[st]}</b>` : STS[st]) : ''].filter(Boolean).join(' ')}</span></div>`;
+    h += `<div class="wl-r wk${x.b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-bact="wdone" data-pid="${p.id}" data-lid="${x.b.id}" aria-pressed="${!!x.b.k}" aria-label="끝냄" title="끝났으면 누르기"></button>${S.twEdit === x.b.id ? `<input class="wl-in" data-tw="${x.b.id}" data-pid="${p.id}" maxlength="500" value="${E(bText(x.b).replace(/\n/g, ' '))}" aria-label="오늘 업무 고치기">` : `<button type="button" class="wl-rt" data-go="${x.b.id}" data-pid="${p.id}" title="업무일지에서 이 줄 보기"><span>${E(bText(x.b))}</span></button>`}<span class="wl-rm">${[dd >= 13 ? `<b class="bad">${dd + 1}일째</b>` : '', st && st !== 'done' ? (st === 'chk' ? `<b>${STS[st]}</b>` : STS[st]) : ''].filter(Boolean).join(' ')}</span><span class="wl-bc"><button type="button" data-bact="wedit" data-pid="${p.id}" data-lid="${x.b.id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="wdel" data-pid="${p.id}" data-lid="${x.b.id}" title="지우기" aria-label="지우기">×</button></span></div>`;
   });
   const more = left.length + done.length - shown.length;
   return `<section class="wl-tw"><h4>${is ? '오늘 업무' : `${md(p.day)} 업무일지에서 남은 일`} <small>${is ? `${done.length}/${all.length}` : left.length}</small></h4>${!is && !isOff(S.today) ? '<button type="button" class="wl-go" data-bact="wstart">오늘 업무일지 시작 — 남은 일 이어받기</button>' : ''}${h || '<p class="wl-bz">적힌 일이 없어요</p>'}${more > 0 || S.twAll ? `<button type="button" class="wl-off1" data-bact="wmore">${S.twAll ? '접기' : `외 ${more}개${done.length ? ` (끝낸 일 ${done.length})` : ''} 더 보기`}</button>` : ''}${is ? `<form class="wl-ba" data-add="today"><input type="text" maxlength="300" placeholder="＋ 오늘 할 일 — 적고 Enter" aria-label="오늘 할 일 더하기"></form>` : ''}</section>`;
@@ -1198,6 +1217,33 @@ function doneIn(p, id){
   setDone(p.blocks, i, !p.blocks[i].k, !isRtLine(p.blocks[i]));
   touch(p); renderBoard(); logShow(p);
   logDone(p, [id]);
+}
+/* 전광판에서 오늘 업무 줄을 고치거나 지우는 길 — 업무일지 줄이 바로 바뀐다. 되돌리는 함수를 돌려준다 */
+function pageEdit(p, fn){
+  const snap = JSON.stringify(p.blocks);
+  beforeEdit(p); if(S.cur === p.id) mark(p);
+  if(fn(p.blocks, p) === false) return null;
+  const show = () => { touch(p); renderBoard(); logShow(p); };
+  show();
+  return () => { beforeEdit(p); if(S.cur === p.id) mark(p); p.blocks = JSON.parse(snap); show(); };
+}
+const setText = (b, t) => { b.r = (b.r || []).length === 1 ? [Object.assign({}, b.r[0], {t})] : T(t); };
+function twCommit(i){
+  const p = S.pages.get(i.dataset.pid), id = i.dataset.tw, t = i.value.trim();
+  if(S.twEdit !== id) return;
+  S.twEdit = null;
+  const b = p && (p.blocks || []).find(x => x.id === id);
+  i.blur(); S.boardDefer = false;
+  if(b && t && t !== bText(b).replace(/\n/g, ' ')) pageEdit(p, () => setText(b, t)); else renderBoard();
+}
+/* 업무일지에서 적은 글자 → 그 줄을 올린 '꼭 챙길 것' 이름도 (적기를 멈춘 뒤 한 번) */
+let pinTextT = 0;
+function pinTextSoon(p){
+  clearTimeout(pinTextT);
+  pinTextT = setTimeout(() => {
+    if(p.kind !== 'daily' || !p.blocks) return;
+    pins().forEach(it => { const r = pinLineOf(it); if(!r || r.p !== p) return; const t = bText(r.b).replace(/\s+/g, ' ').trim().slice(0, 300); if(t && t !== it.title) boardSave(it.id, {title:t}); });
+  }, 1200);
 }
 function addToday(t){
   const p = todayPage(); if(!p || p.day !== S.today) return;
@@ -1339,7 +1385,8 @@ function pinLineOf(it){           // 꼭 챙길 것과 이어진 업무일지 �
   for(const p of dailies()){ if(!p.blocks) continue; const b = p.blocks.find(x => x.bd === it.id || (L && (x.id === L || x.o === L))); if(b) return {p, b}; }
   return null;
 }
-function logShow(p){ if(!p || S.cur !== p.id || S.view !== 'page' || S.find) return; if(editing() || S.ptr) S.defer = true; else renderPage(); }
+function logShow(p){ if(!p || S.cur !== p.id || S.view !== 'page' || S.find) return; if(S.ptr && !boardClick) S.defer = true; else if(logX() || !editing()) renderKeep(); else S.defer = true; }
+let boardClick = false;          // 전광판 단추를 누르는 중 — 밑 업무일지는 바로 다시 그려도 된다 (누르는 곳이 업무일지가 아니라서)
 function logReveal(p){           // 전광판에서 더했는데 밑 업무일지가 다른 날을 보고 있으면 오늘 글로
   if(!p || S.view !== 'page' || S.find || S.cur === p.id || editing()) return false;
   S.cur = S.lastPage = p.id; S.month = p.day.slice(0, 7); S.sel = null; renderMain(); return true;
@@ -1482,7 +1529,8 @@ function boardEdit(id, at){
     close(); boardSave(id, patch).then(() => { if(isR && patch.rule.auto) inbTick(true); });
   });
 }
-function onBoardClick(e){
+function onBoardClick(e){ boardClick = true; setTimeout(() => { boardClick = false; }, 0); return onBoardClick2(e); }
+function onBoardClick2(e){
   const a = e.target.closest('[data-bact]');
   if(a){
     const id = a.dataset.bid, k = a.dataset.bact;
@@ -1495,6 +1543,8 @@ function onBoardClick(e){
     if(k === 'tolst'){ showCenter(); return toLog('lst'); }
     if(k === 'totop') return scrollTo({top:0, behavior:'smooth'});
     if(k === 'wdone'){ const p = S.pages.get(a.dataset.pid); if(p) doneIn(p, a.dataset.lid); return; }
+    if(k === 'wedit'){ S.twEdit = a.dataset.lid; setTimeout(() => { renderBoard(); const i = $(`#wlBoard [data-tw="${S.twEdit}"]`); if(i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 60); return; }   // 누름이 끝난 뒤 그린다
+    if(k === 'wdel'){ const p = S.pages.get(a.dataset.pid); if(!p) return; const back = pageEdit(p, bs => { const i = bs.findIndex(b => b.id === a.dataset.lid); if(i < 0) return false; bs.splice(i, subEnd(bs, i) - i); }); if(back) snack('오늘 업무에서 지웠어요 (업무일지에서도)', back); return; }
     if(k === 'wstart'){ showCenter(); poll().then(() => newPage('daily', S.today)).then(() => toLog()); return; }
     if(k === 'wmore'){ S.twAll = !S.twAll; return renderBoard(); }
     if(k === 'golink'){ const it = S.board.get(id), r = pinLineOf(it); if(!r) return boardEdit(id, a); showCenter(); openPage(r.p.id, {line:r.b.id}); return; }
@@ -1517,6 +1567,8 @@ function bindBoard(el){
     boardSave(id, Object.assign({kind, title:t, sort:Date.now() / 1000}, kind === 'routine' ? {rule:{t:'day'}} : {})).then(ok => { if(ok){ const row = $(`#wlBoard .wl-r[data-bid="${id}"] .wl-rt`); if(row) boardEdit(id, row); } });
   });
   el.addEventListener('focusout', () => setTimeout(settle, 60));
+  el.addEventListener('focusout', e => { if(e.target.dataset && e.target.dataset.tw) twCommit(e.target); });
+  el.addEventListener('keydown', e => { const i = e.target; if(!i.dataset || !i.dataset.tw || e.isComposing || e.keyCode === 229) return; if(e.key === 'Enter'){ e.preventDefault(); twCommit(i); } if(e.key === 'Escape'){ S.twEdit = null; i.blur(); S.boardDefer = false; renderBoard(); } });
   let drag = null;
   el.addEventListener('dragstart', e => { const r = e.target.closest('.wl-r[draggable]'); if(!r) return; drag = r.dataset.bid; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ''); });
   el.addEventListener('dragover', e => {
@@ -1793,6 +1845,8 @@ function bindLog(w){
   w.addEventListener('beforeinput', onBeforeInput);
   w.addEventListener('keydown', onKey);
   w.addEventListener('paste', onPaste);
+  w.addEventListener('compositionstart', () => { S.comp = true; });
+  w.addEventListener('compositionend', () => { S.comp = false; if(S.defer) setTimeout(() => { if(S.defer && !S.comp && !S.ptr && logX()){ S.defer = false; renderNav(); renderKeep(); renderBoard(); } }, 80); });
   w.addEventListener('change', e => {
     const p = cur(); if(!p) return;
     if(e.target.dataset && e.target.dataset.om){ return ordField(e.target); }
