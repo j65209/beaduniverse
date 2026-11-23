@@ -400,11 +400,12 @@
 
   /* ── 기준값 ── */
   const HUBS = { ICN: '인천', GMP: '김포' };
-  const REGIONS = [['all', '전체'], ['jp', '일본'], ['cn', '중국'], ['nea', '홍콩 · 대만 · 몽골'], ['sea', '동남아'], ['pac', '괌 · 사이판 · 팔라우'],
-    ['swa', '서남아 · 중앙아'], ['am', '미주'], ['eu', '유럽'], ['me', '중동'], ['oc', '대양주'], ['etc', '기타']];
+  // 지역 순서 = 화면 순서 (티켓 · 달력 칸 도시 · 지역 단추 · 나라별) — 11-23 사장님 "순서는 유럽-미주-동남아 이런 식으로": 먼 곳부터
+  const REGIONS = [['all', '전체'], ['eu', '유럽'], ['am', '미주'], ['oc', '대양주'], ['me', '중동'], ['swa', '서남아 · 중앙아'], ['sea', '동남아'],
+    ['pac', '괌 · 사이판 · 팔라우'], ['nea', '홍콩 · 대만 · 몽골'], ['cn', '중국'], ['jp', '일본'], ['etc', '기타']];
   const REGION_NAME = Object.fromEntries(REGIONS);
-  // 공제 마일 표시는 전부 뺌 (11-23 사장님 "마일리지 얼만지 필요없어") — 지역 묶음 순서만 남김
-  const ZONE_RANK = { long: 0, swa: 1, sea: 2, nea: 3 };
+  const REGION_RANK = Object.fromEntries(REGIONS.map(([k], i) => [k, i]));
+  const regionCmp = (a, b) => (REGION_RANK[a.region] ?? 99) - (REGION_RANK[b.region] ?? 99);
   const CAB = { O: '프레스티지', A: '일등석' };
   const LS = { cab: 'ml_cabins_v2', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1', fresh: 'ml_fresh_v1' };
   const NEW_MS = 72 * 3600e3;
@@ -654,7 +655,7 @@
     return `<div class="rt-st">${other} 없음</div>`;
   }
   const isNew = s => s.opened && Date.now() - Date.parse(s.first) < NEW_MS;
-  function placeSort(a, b) { return ZONE_RANK[a.zone] - ZONE_RANK[b.zone] || a.sort - b.sort; }
+  function placeSort(a, b) { return regionCmp(a, b) || a.sort - b.sort; }
   function monthsList() {
     const out = []; let [y, m] = S.today.split('-').map(Number); const [ly, lm] = S.last.split('-').map(Number);
     while (y < ly || (y === ly && m <= lm)) { out.push(`${y}-${pad(m)}`); m++; if (m > 12) { m = 1; y++; } }
@@ -859,7 +860,7 @@
     const pm = map.get(S.day);
     const RANK = { ok: 0, unk: 1, no: 2 };
     const ps = [...pm.keys()].map(c => S.places.get(c)).sort((a, b) =>
-      RANK[rtInfo(a.code, S.day, S.dir).state] - RANK[rtInfo(b.code, S.day, S.dir).state] || placeSort(a, b));
+      regionCmp(a, b) || RANK[rtInfo(a.code, S.day, S.dir).state] - RANK[rtInfo(b.code, S.day, S.dir).state] || a.sort - b.sort);   // 지역 순서가 먼저, 그 안에서 왕복 확인된 곳 먼저
     const nOk = ps.filter(p => rtInfo(p.code, S.day, S.dir).state === 'ok').length;
     const lg = S.cabins.size > 1 ? '<span class="lg"><span><i></i>프레스티지</span><span><i class="A"></i>일등석</span></span>' : '';
     // 티켓 하나 = 도시 하나 — '오는 편 날짜 보기' 단추 · 공제 마일 줄은 뺌 (11-23)
