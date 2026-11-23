@@ -98,7 +98,8 @@ function parseMemo(memo: string): { brand: string | null; phrase: string | null 
   if (phrase != null) phrase = clean(phrase.replace(/^[\s"'“”·,.-]+|[\s"'“”·,.-]+$/g, '')).replace(CAT_HEAD, '').trim();
   return { brand, phrase: phrase || null };
 }
-const MATERIAL = /부자재|파우치|포장|박스|쇼핑백|원단|面料|스와치|色卡|라벨|와끼|지퍼|안감|겉감|단추|버클(?!리)|낚싯바늘|内径|내경|\d+\s*[*x×]\s*\d+\s*(?:cm|CM|mm|MM)/;
+const MATERIAL = /부자재|파우치|포장|박스|쇼핑백|원단|面料|스와치|色卡|라벨|와끼|지퍼|안감|겉감|단추|버클(?!리)|낚싯바늘|内径|내경|\d+\s*[*x×]\s*\d+\s*(?:cm|CM|mm|MM)|\d\s*미터/;
+const LEARN_ADD_MIN = 3.5;   // 학습으로만 정한 브랜드는 이 점수 넘을 때만 새 줄로 넣는다 (아니면 기록만)
 const SAMPLE = /샘플/;
 const STOPW = new Set(['ring', 'rings', 'necklace', 'bracelet', 'bangle', 'earring', 'earrings', 'anklet', 'bag', 'bags', 'set', 'color', 'colour', 'size',
   'style', 'option', 'open', 'the', 'and', 'ver', 'version', 'new', 'silver', 'gold', 'white', 'black', 'type', 'sample', 'main', 'event', 'sale',
@@ -246,7 +247,7 @@ function buildLines(kd: Record<string, any>): Map<string, Line> {
     for (const mm of L.memos) { const p = parseMemo(mm); if (p.brand) { L.tag = p.brand; L.phrase = p.phrase; break; } }
     const all = L.memos.join(' ');
     if (!L.act.length) L.kind = 'cancelled';
-    else if ((SAMPLE.test(all) && (L.qty ?? 0) <= 10) || (L.qty != null && L.qty <= 3)) L.kind = 'sample';
+    else if ((SAMPLE.test(all) && (L.qty ?? 0) <= 10) || (L.qty != null && L.qty <= 5)) L.kind = 'sample';
     else if (MATERIAL.test(all) && !(L.tag && L.phrase && !MATERIAL.test(L.phrase))) L.kind = 'material';
     L.feat = featOf(L.link, L.img, [L.phrase || '', L.phrase ? '' : all, L.en]);
   }
@@ -273,6 +274,7 @@ function rowScore(L: Line, row: TabRow): number {
   if (cc && row.optC && cc === row.optC) s += 1;
   return strong && s >= 4 ? s : 0;
 }
+const sameKey = (L: Line) => `${compact(L.name)}|${L.feat.img || L.feat.offer || compact(L.memo)}`;
 function bestRow(L: Line, rows: TabRow[]): { r: number; s: number } | null {
   let best: { r: number; s: number } | null = null;
   for (const row of rows) {
@@ -426,6 +428,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       if (L.row && live.has(L.row.r)) { (byRow.get(L.row.r) || byRow.set(L.row.r, []).get(L.row.r)!).push(L); continue; }
       if (L.kind !== 'item') continue;
       if (L.how === 'check') continue;
+      if (L.how === 'learn' && !(L.alt && L.alt[0] && L.alt[0][1] >= LEARN_ADD_MIN)) { mdOf.set(L.sn, { tk: t.tk, r: null, how: 'weak' }); continue; }
       if (L.date < goLive) { mdOf.set(L.sn, { tk: t.tk, r: null, how: 'old' }); continue; }
       fresh.push(L);
     }
@@ -446,11 +449,11 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       for (const L of ls) mdOf.set(L.sn, { tk: t.tk, r, how: prev.get(L.sn)?.md_how === 'added' && prev.get(L.sn)?.md_r === r ? 'added' : 'matched' });
       P.matched++;
     }
-    // 새 줄 — 같은 사진(없으면 같은 1688 상품 + 메모)은 한 줄로, 오래된 것부터
+    // 새 줄 — 같은 상품(이름 + 사진/1688 상품)은 한 줄로, 오래된 것부터 (색이 다르면 이름이 달라 따로)
     fresh.sort((a, b2) => (a.date + a.sn).localeCompare(b2.date + b2.sn));
     const seen = new Map<string, { key: string; v: string[]; line: Line }>();
     for (const L of fresh) {
-      const k = L.feat.img || `${L.feat.offer || ''}|${compact(L.memo)}`;
+      const k = sameKey(L);
       const n = Math.max(tc + TRAIL.length, ti.maxLen);
       const v = new Array(n).fill('');
       const c = t.cols, set = (i: number, x: string) => { if (i >= 0) v[i] = x; };
@@ -503,7 +506,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       if (!L) continue;
       mdOf.set(L.sn, { tk: TABS[b].tk, r: a.r, how: 'added' });
       // 같은 상품이라 한 줄로 합친 앞 발주들도 그 줄로
-      for (const L2 of lines.values()) if (L2 !== L && L2.brand === b && !mdOf.has(L2.sn) && L2.kind === 'item' && L2.date >= goLive && (L2.feat.img || `${L2.feat.offer || ''}|${compact(L2.memo)}`) === (L.feat.img || `${L.feat.offer || ''}|${compact(L.memo)}`)) mdOf.set(L2.sn, { tk: TABS[b].tk, r: a.r, how: 'matched' });
+      for (const L2 of lines.values()) if (L2 !== L && L2.brand === b && !mdOf.has(L2.sn) && L2.kind === 'item' && L2.date >= goLive && sameKey(L2) === sameKey(L)) mdOf.set(L2.sn, { tk: TABS[b].tk, r: a.r, how: 'matched' });
     }
   }
   summary.writes = writes;
