@@ -12923,7 +12923,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </button>
       </section>
 
-      <!-- 전략팀 — 기밀 명단(전승훈 · 전수빈 · 지희선) PC 에만 노출 (stratRefreshAccess, 2026-11-20) -->
+      <!-- 전략팀 — 대표 2명(전승훈 · 전수빈) PC 에만 노출 (stratRefreshAccess, 2026-11-23) -->
       <section class="hero hero-strategy" id="strategyHero" hidden>
         <div class="hero-eyebrow">STRATEGY</div>
         <button class="btn-neon btn-strategy" id="strategyBtn" onclick="triggerStrategy()">
@@ -52487,8 +52487,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.mdwSetTime=mdwSetTime;
 
   /* ===== 전략팀 (viewStrategy) — 채널별 일일 손익 보고서 =====
-     접근: diary_me ∈ 기밀 명단 SECRET_ALLOWED {전승훈, 전수빈, 지희선} (2026-11-20 사장님 "김수민도 막기" — 11-19 엔 {전승훈, 전수빈, 김수민}).
-     홈 카드 노출 · 화면 진입 모두 이 명단으로 판정 (마스터여도 명단 밖이면 숨김).
+     접근: diary_me ∈ 대표 2명 {전승훈, 전수빈} (2026-11-23 사장님 "전략팀은 대표 2명만 보이게 해줘 기밀이야. 이건 중요해"
+       — 11-20 엔 기밀 명단 {전승훈, 전수빈, 지희선}, 11-19 엔 {전승훈, 전수빈, 김수민}). 기밀 명단(SECRET_ALLOWED)과 따로 둔다 — 지희선은 단가 · 링크만.
+     홈 카드 노출 · 화면 진입 · 보고서/메인보드 읽기 · 메인보드 저장 · 17번 '한 달 남는 돈' 링크 모두 이 명단으로 판정 (마스터여도 명단 밖이면 숨김).
+     대표 이름은 관리자 PIN PC 에서만 고를 수 있다 (_diaryPrivName).
      채널: 공홈 탭 = BRAND_SECTIONS(8 브랜드 자사몰) · 플랫폼 탭 = PLATFORM_SECTIONS — 마케팅팀 매출 탭과 같은 목록·색.
      양식: 모든 채널이 에이블리 일일 보고서와 같은 JSON (sixshop-collector/src/ably-daily.ts 의 buildReport 결과).
      맥미니 수집기가 비공개 레포 j65209/brightbeed-reports 에 {경로}/index.json · {경로}/daily/{date}.json 을 기록하고
@@ -52497,7 +52499,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
        플랫폼 {플랫폼}/{브랜드}/     예) zigzag/kop/index.json — 코페리 에이블리만 기존 수집기 경로 ably/ 그대로
      index.json 이 없는(404) 채널 = 수집기 연결 전 → 같은 틀을 빈 값으로 보여 주는 "준비 중".
      보고서 JSON 에 assumptions.fee_label · fee_note · source, summary.coupon_by_platform 을 넣으면 채널 기본 문구 대신 쓴다. */
-  const STRAT_ALLOWED=SECRET_ALLOWED;   // 기밀 명단과 같은 3명 (2026-11-20)
+  const STRAT_ALLOWED=new Set(['전승훈','전수빈']);   // 대표 2명만 (2026-11-23) — SECRET_ALLOWED 로 되돌리지 말 것
   const STRAT_REPO_API='https://api.github.com/repos/j65209/brightbeed-reports/contents/';
   const STRAT_LEGACY_PATH={'ably-kop':'ably'};
   const STRAT_PLAT_ORDER=['ably','zigzag','smartstore','29cm','wconcept','ohou','eql'];
@@ -52610,6 +52612,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   function stratInit(){
+    if(!stratHasAccess()) return;   // 대표 2명 PC 만 (2026-11-23)
     if(!_strat.inited){
       _strat.inited=true;
       if(!_strat.fromHash){
@@ -53122,6 +53125,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _sbPaint();
   }
   async function _sbFlush(){
+    if(!stratHasAccess()) return;   // 대표 2명 PC 만 저장 (2026-11-23)
     _sbOpsLoad();
     if(_sb.saving||!_sb.ops.length) return;
     _sb.saving=true;
@@ -53166,6 +53170,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _sbSaveTag(`✓ 저장됨 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`);
   }
   async function _sbLoadDoc(){
+    if(!stratHasAccess()) return;   // 대표 2명 PC 만 읽는다 (2026-11-23)
     const gen=_sb.saveGen;
     const f=await ghGetFile(SB_API);
     if(f.error||(f.sha&&!f.text)){ _sb.loadError=f.error||'read_empty'; return }
@@ -53178,6 +53183,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _sb.view=_sbApply(doc,_sb.ops);
   }
   async function sbInit(){
+    if(!stratHasAccess()) return;   // 대표 2명 PC 만 (2026-11-23)
     _sbBind();
     _sbOpsLoad();
     if(!_sb.month) _sb.month=_sbCurMonth();
@@ -53569,9 +53575,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   //     (대표 PC 도 안 받음 — 전략팀 명단 stratHasAccess 를 쓰지 않는다). 다른 PC 는 그 파일을 받지도 않는다 (마스터 PIN 이어도).
   //     뷰어 PIN 이어도 보이게 admin 표시는 안 쓴다.
   //   2026-11-20 사장님 "단가, 가격, 링크정보 같은 기밀은 희선이랑 대표 2명만" + "김수민도 막기"
-  //     → 이 목록(구글시트 링크) 전체가 기밀 명단 SECRET_ALLOWED {전승훈, 전수빈, 지희선} PC 에서만 받고 그린다. 17번도 같은 3명 (김수민 PC 는 이제 안 받음).
+  //     → 이 목록(구글시트 링크) 전체가 기밀 명단 SECRET_ALLOWED {전승훈, 전수빈, 지희선} PC 에서만 받고 그린다.
+  //   2026-11-23 사장님 "전략팀은 대표 2명만" → 17번(전략팀 원본)만은 대표 둘(stratHasAccess) PC 에서만 받는다 (지희선 PC 도 안 받음, MD팀 시트 bossOk 와 같음).
   const MDL_STRAT_PATH='strategy/sheet-links.json';
-  const _mdlStratOk=()=>secretOk();
+  const _mdlStratOk=()=>{ try{ return typeof window.stratHasAccess==='function' && window.stratHasAccess()===true; }catch(e){ return false; } };
   const _mdl={data:null, at:0, loading:null, err:'', q:'', open:new Set()};
   async function _mdlGet(path){
     const gf=(typeof ghFetch==='function')?ghFetch:window.ghFetch;
@@ -53662,7 +53669,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<section class="mds-book${open?' is-open':''}${it.admin?' master-only':''}" data-mk="${_esc(it.key)}">
         <header class="mds-book-head" onclick="mdlToggleBook(this)">
           <span class="mds-chev">▶</span><span class="mds-rank">${n}</span>
-          <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}${it.strat?'<span class="mdl-admin" title="지희선 · 전승훈 · 전수빈 PC 에만 보여요">전략팀</span>':''}</span>
+          <span class="mds-book-title">${_esc(it.title)}${it.name && it.name!==it.title?`<small>${_esc(it.name)}</small>`:''}${it.admin?'<span class="mdl-admin">관리자</span>':''}${it.strat?'<span class="mdl-admin" title="대표 2명(전승훈 · 전수빈) PC 에만 보여요">전략팀</span>':''}</span>
           <span class="mds-book-meta">${_esc(g.title)} · 탭 ${tabs.length}개</span>
           <span class="mds-head-sp"></span>
           <a class="mds-open" href="${_esc(base)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글시트 ↗</a>
