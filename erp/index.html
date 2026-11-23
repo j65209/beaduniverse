@@ -1563,6 +1563,13 @@
     if (!e.ord) return e.note;
     return `${e.m}/${e.d}` + (e.q !== null ? ` ${fmt(e.q)}개` : '') + (e.note ? ` ${e.note}` : '');
   }
+  /* 표 칸에 보이는 값 — 날짜만 (2026-11-23 사장님 "발주일에 수량 왜 적혀있어. 발주 수량에 넣어야지").
+     발주 매칭이 칸에 '2026-11-12 1530개' 처럼 날짜 + 수량을 같이 적어도 칸엔 '11/12' 만 — 수량은 옆 '발주 수량'(입고는 '입고 수량') 칸에 이미 합으로 있다.
+     날짜별 수량은 '이전 N회' 팝업 · 상세 창(histRows)과 찾기(histText)에 그대로 */
+  function histCell(e) {
+    if (!e.ord) return e.note;
+    return `${e.m}/${e.d}` + (e.note ? ` ${e.note}` : '');
+  }
   function histRows(hx, ctx) {   // 마우스 팝업 · 상세 창 — 최근 → 오래된 (ctx = pomCtx: 칸에 수량이 없는 줄은 발주 매칭 수량)
     const yNow = new Date().getFullYear();
     return hx.all.map((e, i) => {
@@ -1658,7 +1665,7 @@
     const t = c.t;
     if (!t) return '';
     const hx = col.hist && hxOf(c);
-    if (hx) return histText(hx.latest);
+    if (hx) return col.hist === '입고 예정' ? histText(hx.latest) : histCell(hx.latest);   // 입고 예정일은 옆에 수량 칸이 없어 그대로
     if (col.lead) return leadText(t);
     if (col.type === 'num') { const n = numOf(t); return n !== null && Number.isInteger(n) && !/[.%]/.test(t) ? n.toLocaleString('ko-KR') : t; }
     if (c.href && /^https?:\/\//i.test(t)) { try { return new URL(c.href).hostname.replace(/^www\./, '').split('.').slice(-2).join('.'); } catch (e) { return t; } }   // 주소는 사이트 이름만 (1688.com)
