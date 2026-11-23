@@ -1011,7 +1011,8 @@ function badge(n){
   try{
     if(document.documentElement.classList.contains('solo-design')){ const base = document.title.replace(/^\(\d+\)\s*/, ''); document.title = n ? `(${n}) ${base}` : base; }
     const b = document.getElementById('designBtn');
-    if(b){ let x = b.querySelector('.wl-home'); if(!n){ if(x) x.remove(); } else{ if(!x){ x = document.createElement('span'); x.className = 'wl-home'; b.appendChild(x); } x.textContent = `오늘 루틴 ${n}`; } }
+    // 2026-11-23 사장님 "디자인팀탭에 오늘 루틴 2 안뜨게해줘" — 홈 '디자인팀' 카드 배지는 안 붙인다(남아 있으면 지움)
+    if(b){ const x = b.querySelector('.wl-home'); if(x) x.remove(); }
   }catch(e){}
 }
 async function boardSave(id, patch, quiet){

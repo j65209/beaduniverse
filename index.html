@@ -28698,7 +28698,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
   }
   /* 디자인팀 업무일지 · 전광판 (design/worklog.js · worklog.css) — 디자인팀 화면에 들어올 때(홈 배지는 명단 PC 에서만) 한 번 불러온다 */
-  const WL_VER = '20261123a';
+  const WL_VER = '20261123b';
   let _wlLoading = null;
   function _wlLoad(){
     if(window.WL && window.WL.ready) return Promise.resolve(window.WL);
@@ -28720,11 +28720,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(el && !el.firstChild) el.innerHTML = '<div style="padding:40px 16px;text-align:center;font-size:13px;color:#78716c">업무일지를 불러오지 못했어요 — <button type="button" class="mb-btn" onclick="wlInit()">다시 불러오기</button></div>';
     });
   }
-  // 홈 '디자인팀' 카드의 '오늘 루틴 n' — 박시호 · 대표 2명 PC 에서만
-  function wlHomeBadge(){ if(designHasAccess() && !document.getElementById('viewHome')?.hidden) _wlLoad().then(w => w.homeBadge()).catch(() => {}); }
+  // 홈 '디자인팀' 카드의 '오늘 루틴 n' 배지 — 2026-11-23 사장님 요청으로 끔(홈에서 업무일지를 미리 불러오지 않음)
+  function wlHomeBadge(){}
   window.wlInit = wlInit; window.wlHomeBadge = wlHomeBadge;
-  setTimeout(wlHomeBadge, 4000);
-  document.addEventListener('visibilitychange', () => { if(!document.hidden) wlHomeBadge(); });
 
   function dcInit(){
     wlInit();
