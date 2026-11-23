@@ -670,7 +670,6 @@
   const SEC_ORDER = ['x', 'insta', 'list', 'guide'];
   const FONT = "Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
   const F_CELL = `400 13px ${FONT}`, F_BOLD = `700 13px ${FONT}`, F_HEAD = `700 12px ${FONT}`, F_TAG = `500 12px ${FONT}`, F_PILL = `700 11px ${FONT}`;
-  const RN_W = 46;
   const SENT_BG = '#fff2cc';   // 보냄 완료 = 아이디 칸 노란색 (시트에서 쓰던 그대로)
   const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
   const CK1 = '<span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 8.4l2.9 2.9 5.9-6.4"/></svg></span>';
@@ -2174,12 +2173,13 @@
     S.cat = buildCat(vcols, all);
     const list = S.list = filtered(vcols, all);
     const nar = narrow.matches, isAll = S.cur === ALL, vw = grid.clientWidth || 1000;
-    const widths = colWidths(vcols, vw - RN_W - 2);
-    // 왼쪽 고정: 행 번호 + (전체 보기는 브랜드) + 아이디 칸 — 휴대폰은 행 번호 · 아이디만
+    const widths = colWidths(vcols, vw - 2);
+    // 왼쪽 고정: (전체 보기는 브랜드) + 아이디 칸. 행 번호 칸은 2026-11-23 사용자 "행 번호 삭제해도 되잖아" 로 뺐다
+    // (행 넣기 · 삭제는 칸 오른쪽 누르기 메뉴 · 위 단추, 몇 행인지는 수식 입력줄 왼쪽 주소 · 상세 창에 그대로)
     let stickN = 0;
     const kI = vcols.findIndex(c => c.key);
     if (kI >= 0 && kI <= 1) stickN = kI + 1;
-    let left = RN_W;
+    let left = 0;
     while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (nar ? 0.7 : 0.5)) stickN--;
     const posOf = vcols.map((c, k) => {
       if (k >= stickN) return null;
@@ -2187,14 +2187,14 @@
       left += widths[k];
       return p;
     });
-    const total = RN_W + widths.reduce((s, w) => s + w, 0), v = vstate(), sort = v.sort;
-    let h = `<table class="tbl xl" style="width:max(100%,${total}px)"><colgroup><col style="width:${RN_W}px">${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead>`;
+    const total = widths.reduce((s, w) => s + w, 0), v = vstate(), sort = v.sort;
+    let h = `<table class="tbl xl" style="width:max(100%,${total}px)"><colgroup>${widths.map(w => `<col style="width:${w}px">`).join('')}<col></colgroup><thead>`;
     if (!isAll) {
-      h += `<tr class="lt"><th class="rn sk${stickN ? '' : ' skl'}" style="left:0" title="표 전체 고르기 (Ctrl+A)" data-all="1"></th>`;
+      h += '<tr class="lt">';
       vcols.forEach((c, k) => { const ps = posOf[k]; h += `<th data-c="${k}"${ps ? ` class="${ps.cls.trim()}" style="${ps.style}"` : ''} title="${colName(c.idx)}열 — 누르면 열 고르기">${colName(c.idx)}</th>`; });
       h += '<th class="fill"></th></tr>';
     }
-    h += `<tr class="hd"><th class="rn sk${stickN ? '' : ' skl'}" style="left:0${isAll ? ';top:0' : ''}" data-all="1" title="${isAll ? '각 브랜드 탭의 행 번호' : '1행 = 칸 이름 (수식에서 A1 …)'}">${isAll ? '행' : '1'}</th>`;
+    h += '<tr class="hd">';
     vcols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.vk === c.vk ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
       const flt = v.filters && v.filters[c.vk];
@@ -2203,15 +2203,15 @@
         + `<button type="button" class="hm${flt || ar ? ' on' : ''}" data-c="${k}" title="정렬 · 걸러보기 · 열 설정">${flt ? '⏷' : '▾'}</button>${!isAll && !c.brand ? `<span class="rz" data-c="${k}" title="끌어서 너비 · 두 번 누르면 자동"></span>` : ''}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
-    const span = vcols.length + 2;
+    const span = vcols.length + 1;
     if (!list.length && !all.length) h += `<tr class="empty"><td colspan="${span}">아직 줄이 없어요 — 아래 '+ 행 추가'로 시작하세요</td></tr>`;
     else if (!list.length) h += `<tr class="empty"><td colspan="${span}">조건에 맞는 줄이 없어요</td></tr>`;
     list.forEach((row, i) => {
-      h += `<tr data-i="${i}"><td class="rn sk${stickN ? '' : ' skl'}" style="left:0" title="${isAll ? esc((tabById(row.tab_id) || {}).name || '') + ' ' : ''}${tabRowNo(row)}행 — 누르면 줄 고르기">${tabRowNo(row)}</td>`;
+      h += `<tr data-i="${i}">`;
       for (let k = 0; k < vcols.length; k++) h += cellHtml(row, vcols[k], k, posOf[k]);
       h += '<td class="fill"></td></tr>';
     });
-    h += `<tr class="addr"><td class="rn sk${stickN ? '' : ' skl'}" style="left:0">+</td><td colspan="${span - 1}">+ 행 추가${isAll ? ' (고른 줄의 브랜드 탭에)' : ''} <span style="color:var(--text-4);font-size:11.5px;margin-left:6px">Ctrl+Enter = 고른 줄 아래에</span></td></tr>`;
+    h += `<tr class="addr"><td colspan="${span}">+ 행 추가${isAll ? ' (고른 줄의 브랜드 탭에)' : ''} <span style="color:var(--text-4);font-size:11.5px;margin-left:6px">Ctrl+Enter = 고른 줄 아래에</span></td></tr>`;
     grid.innerHTML = h + '</tbody></table>';
     S.tds = [];
     S.marked = [];
@@ -2481,7 +2481,6 @@
     const br = S.tds[R.r1] && S.tds[R.r1][R.c1];
     if (br && !coarse.matches && !(S.ed && S.ed.on)) { br.classList.add('fh'); S.marked.push(br); }
     grid.querySelectorAll('thead tr.lt th[data-c]').forEach(th => { const c = +th.dataset.c; if (c >= R.c0 && c <= R.c1) { th.classList.add('hl'); S.hlMarked.push(th); } });
-    for (let r = R.r0; r <= R.r1; r++) { const tr = S.tds[r], rn = tr && tr[0] ? tr[0].parentElement.firstElementChild : null; if (rn) { rn.classList.add('hl'); S.hlMarked.push(rn); } }
   }
   function stickyRight() {
     const g = grid.getBoundingClientRect(), last = grid.querySelector('thead tr.hd th.skl');
