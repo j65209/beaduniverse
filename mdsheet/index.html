@@ -212,6 +212,10 @@
   .pal .sw button.on{outline:2px solid var(--info);outline-offset:1px}
   .pal .cu{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:12px;color:var(--text-3)}
   .pal .cu input{width:34px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:#fff}
+  .tbl td.nt,.tbl th.nt{background-image:linear-gradient(225deg,#f59e0b 5px,transparent 5.5px)}   /* 구글시트 메모가 있던 칸 — 오른쪽 위 세모, 마우스를 올리면 글 */
+  .tbl .mgt{color:var(--text-4)}
+  .tbl tr.hrow td{opacity:.5}   /* 구글시트에서 숨겨 두었던 줄 (찾기 · '숨긴 줄 보기'로 나왔을 때) */
+  .dl dt .dnt{display:block;margin-top:2px;font-size:11px;font-weight:400;color:#b45309;white-space:pre-line}
   .tbl td.crng{box-shadow:inset 0 0 0 999px rgba(37,99,235,.12)}
   /* 2026-11-20 사용자 "일반적인 숫자는 블랙으로 다 변경" — 0 · 마이너스 · 시트 글자색 모두 검정 (품절 · 임박은 줄 색으로) */
   .tbl td.r{color:#111827}
@@ -285,7 +289,7 @@
   .dl .hp-r{padding:3px 0;grid-template-columns:minmax(74px,auto) 60px 1fr}
   .ck{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;background:#dcfce7;color:#15803d;vertical-align:middle}
   .ck svg{width:12px;height:12px}
-  .ck0{display:inline-block;width:14px;height:14px;border-radius:4px;border:1.5px solid #d5dce5;vertical-align:middle}
+  .ck0{display:inline-block;width:14px;height:14px;border-radius:4px;border:1.5px solid #bcc7d4;background:#fff;vertical-align:middle}
   .thumb{display:block;margin:2px 0;width:30px;height:30px;border-radius:6px;object-fit:cover;background:#f1f5f9;cursor:zoom-in}
   .app.dense .thumb{width:24px;height:24px;margin:1px 0}
   .lnk{color:var(--info);text-decoration:none}
@@ -581,7 +585,7 @@
   <aside class="side" aria-label="메뉴">
     <div class="side-top">
       <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span>
-      <div><b>MD팀 시트</b><small>MD · 가격표 · 발주 · 광고 · 디자인</small></div>
+      <div><b>MD팀 시트</b><small>MD 기본 시트 · 가격표 · 발주</small></div>
       <button type="button" class="side-fold" id="btnFold" title="메뉴 접기 (표를 넓게)" aria-label="메뉴 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
     </div>
     <nav class="nav" id="nav"></nav>
@@ -605,7 +609,7 @@
       <button type="button" class="ib" id="btnFull" title="전체 화면 (모니터 꽉 채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     </header>
     <section class="head">
-      <div class="trow"><h1 id="title">불러오는 중…</h1><button type="button" class="tfav" id="tFav" hidden title="즐겨찾기">☆</button><span class="date" id="tDate" hidden></span><span class="tcap" id="tCap" hidden></span><div class="dates" id="dates"></div><div class="tools"><div class="fmtbar" id="fmtBar" hidden title="고른 칸 서식 — Shift+누르기 · Shift+화살표로 여러 칸"><button type="button" class="fb" data-fmt="b" title="굵게 (Ctrl+B)"><b>B</b></button><button type="button" class="fb cl" data-fmt="fg" title="글자 색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L12 4l6 14M8.5 12.5h7"/></svg><i id="fgBar"></i></button><button type="button" class="fb cl" data-fmt="bg" title="칸 색 (채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15.5s2 2.2 2 3.5a2 2 0 0 1-4 0c0-1.3 2-3.5 2-3.5z"/></svg><i id="bgBar"></i></button><button type="button" class="fb" data-fmt="clear" title="서식 지우기 (굵게 · 글자 색 · 칸 색)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5l-3 14M14 14l6 6M20 14l-6 6"/></svg></button></div><button type="button" class="etog" id="addRow" hidden title="마지막 줄 다음에 새 줄 (수식 칸은 시트가 자동 계산)">＋ 새 줄</button><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
+      <div class="trow"><h1 id="title">불러오는 중…</h1><button type="button" class="tfav" id="tFav" hidden title="즐겨찾기">☆</button><span class="date" id="tDate" hidden></span><span class="tcap" id="tCap" hidden></span><div class="dates" id="dates"></div><div class="tools"><div class="fmtbar" id="fmtBar" hidden title="고른 칸 서식 — Shift+누르기 · Shift+화살표로 여러 칸"><button type="button" class="fb" data-fmt="b" title="굵게 (Ctrl+B)"><b>B</b></button><button type="button" class="fb cl" data-fmt="fg" title="글자 색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L12 4l6 14M8.5 12.5h7"/></svg><i id="fgBar"></i></button><button type="button" class="fb cl" data-fmt="bg" title="칸 색 (채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15.5s2 2.2 2 3.5a2 2 0 0 1-4 0c0-1.3 2-3.5 2-3.5z"/></svg><i id="bgBar"></i></button><button type="button" class="fb" data-fmt="clear" title="서식 지우기 (굵게 · 글자 색 · 칸 색)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5l-3 14M14 14l6 6M20 14l-6 6"/></svg></button></div><button type="button" class="etog" id="addRow" hidden title="마지막 줄 다음에 새 줄 (수식 칸은 시트가 자동 계산)">＋ 새 줄</button><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><button type="button" class="etog" id="hTog" hidden title="구글시트에서 숨겨 두었던 줄 · 열 — 찾기로 찾으면 숨긴 줄도 나와요"></button><button type="button" class="etog" id="pTog" hidden title="시트 위에 붙여 둔 그림 크게 보기"></button><div class="parts" id="parts" hidden></div></div></div>
       <div class="alert" id="alert" hidden></div>
       <div class="kpis" id="kpis"></div>
       <div class="chips" id="chips" hidden></div>
@@ -677,7 +681,7 @@
   const RN_W = 42;
   const OPT_RE = /^(옵션|상품옵션정보|옵션정보)$/;
   const DATE_RE = /^(\d{4}[-.]\s?\d{1,2}[-.]\s?\d{1,2}\.?(\s+\d{1,2}:\d{2}(:\d{2})?)?|\d{1,2}[./]\d{1,2})$/;
-  const LS_SIDE = 'mdx_side_v1', LS_EMPTY = 'mdx_empty_v1';
+  const LS_SIDE = 'mdx_side_v1', LS_EMPTY = 'mdx_empty_v1', LS_HID = 'mdx_hid_v1';
   const CK1 = '<span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 8.4l2.9 2.9 5.9-6.4"/></svg></span>';
   const CK0 = '<span class="ck0"></span>';
   const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>';
@@ -698,7 +702,11 @@
   };
   // 에이블리 · 지그재그 가격표 = 판매가 · 최저가뿐인 시트 (가격 열 이름이 플랫폼 · 옵션이라 열 이름으로 못 거름) — 기밀 명단 밖 PC 에선 시트째 안 보인다 (오피스 MDS_PRICE_BOOKS 와 같음)
   const PRICE_BOOKS = new Set(['ably_price', 'zig_price']);
-  const bookVisible = b => !!b && (!b.admin || lsGet('brightbeed_role') === 'master') && (secretOk() || !PRICE_BOOKS.has(b.book));
+  /* 2026-11-23 사장님 "md탭 안에 팀시트에서 광고 시트 안보이게하고 디자인 상품기획 라인시트랑 벤더 전략팀 재고 erp 시트는 가려줘" —
+     메뉴 · 즐겨찾기 · 지난번 탭 · 주소(?tab=) 에서 모두 뺀다 (화면에서만 — 저장소 자료 · 맥미니 맞춤 · 다른 팀 화면은 그대로). 다시 보이려면 여기서 빼면 된다 */
+  const HIDE_GRPS = new Set(['광고 시트', '디자인 · 상품 기획', '벤더']), HIDE_BOOKS = new Set(['old_stock']);
+  const SHOW_ERP_LINK = false, SHOW_STRAT = false;   // 메뉴의 '재고 ERP' 바로가기 · 전략팀 시트 링크
+  const bookVisible = b => !!b && !HIDE_GRPS.has(b.grp) && !HIDE_BOOKS.has(b.book) && (!b.admin || lsGet('brightbeed_role') === 'master') && (secretOk() || !PRICE_BOOKS.has(b.book));
   const CAT_RE = /^(카테고리|쇼핑몰|브랜드|플랫폼|분류)$/;            // 걸러보기 칩 열
   const ZERO_RE = /^(-|0|0\.0+|0%|0\.0+%|[₩￦]\s?0|#(DIV\/0!|N\/A|VALUE!|REF!|NUM!|ERROR!|NAME\?|NULL!)|FALSE|TRUE)$/i;   // 수식만 남은 줄의 값
   const KEY_RE = /^(상품명|상품이름|온라인상품명|품목명|제품명)$/;   // 상품 이름 열 = 왼쪽에 고정 · 상세 창 제목
@@ -732,6 +740,9 @@
     fold: {},             // 시트 묶음 접기 {book: true(접음) / false(폄)} — 없으면 MD 기본 시트만 펴 둠
     counts: {},           // tk → 표 줄 수 (왼쪽 메뉴 숫자 — 한 번이라도 읽은 탭)
     strat: [],            // 전략팀 시트 링크 (기밀 명단 PC 만)
+    known: new Set(),     // 저장소에 있는 탭 전부 (안 보이게 한 시트까지)
+    gf: {}, fmtSig: {}, fmtNew: {},   // gid → 구글시트에서 가져온 바탕 서식 (gfPrep) · 서식 지문 · 서식이 바뀜
+    showHid: false,       // 구글시트에서 숨겨 두었던 줄 · 열도 보기
   };
   try { S.fav = JSON.parse(localStorage.getItem(LS_FAV) || '[]') || []; } catch (e) { S.fav = []; }
   try { S.fold = JSON.parse(localStorage.getItem(LS_FOLD) || '{}') || {}; } catch (e) { S.fold = {}; }
@@ -1425,6 +1436,7 @@
           return mkTab({tk: x.tk, gid: x.gid, book: x.book, name: x.name, info});
         });
         S.tabs = out;
+        S.known = new Set((j.tabs || []).map(x => String(x.tk)));
         S.tabsAt = Date.now();
         S.tabsOk = true;
         out.forEach(t => { S.synced[t.gid] = t.info.synced_at; });
@@ -1468,7 +1480,7 @@
   const bossOk = () => secretOk() && BOSS.has(String(lsGet('brightbeed_diary_me') || '').trim());
   let stratP = null;
   function loadStrat() {
-    if (!bossOk() || stratP) return;
+    if (!SHOW_STRAT || !bossOk() || stratP) return;
     stratP = (async () => {
       let gf = null;
       try { gf = window.parent && window.parent !== window && typeof window.parent.ghFetch === 'function' ? window.parent.ghFetch : null; } catch (e) { gf = null; }
@@ -1495,6 +1507,7 @@
       let meta = false;
       for (const x of j.tabs || []) {
         const t = tabOf(String(x.tk));
+        if (!t && S.known.has(String(x.tk))) continue;   // 안 보이게 한 시트의 탭
         if (!t || !t.info) { meta = true; continue; }   // 새 탭 · 지워진 탭
         if (+x.ver !== +t.info.ver) meta = true;
         if (+x.rows_ver !== +t.info.rows_ver) t.info.rows_ver = +x.rows_ver;
@@ -1526,6 +1539,11 @@
       if (first) {   // 수식 칸 (맥미니가 브리지로 읽어 둔 것) — 고치기 막기 · 함수 보이기 · IMAGE 사진
         const t = tabOf(gid);
         if (t && t.info) { t.info.fx = j.fx || null; t.info.fx_list = j.fx_list || null; t.info.ofx = Array.isArray(j.ofx) ? j.ofx : []; t.info._ofxM = null; t.info.ofmt = j.ofmt && typeof j.ofmt === 'object' ? j.ofmt : {}; t.info.cut_at = j.cut_at || null; t.info.fmt = Array.isArray(j.fmt) ? j.fmt : null; t.info.fmt_list = Array.isArray(j.fmt_list) ? j.fmt_list : null; t.info.fxVer = t.info.ver; }
+        gfSet(gid, j.gfmt);
+        dvWarm(gid);
+        const sig = JSON.stringify([j.gfmt || null, j.ofmt || null]);   // 서식만 바뀌어도 (다른 PC 에서 칠한 색 등) 표를 다시 그린다
+        if (S.fmtSig[gid] !== undefined && S.fmtSig[gid] !== sig) S.fmtNew[gid] = true;
+        S.fmtSig[gid] = sig;
       }
       (j.rows || []).forEach(x => out.push(asRow(x)));
       if (!j.more || !(j.rows || []).length) return out;
@@ -1544,7 +1562,7 @@
 
   /* ── 줄 → 칸 자료 (표 그리기 · 고치기가 쓰는 모양) ──
      체크박스 = 값이 TRUE/FALSE 뿐인 열, 주소 = 링크(사진 주소 열은 작은 사진), 맨 위 ⚠ 한 칸짜리 긴 글 = 안내 줄(시트에선 병합).
-     가린 개인정보 칸(pii)은 고치기를 막는다. 시트 글자색 · 칸 색은 쓰지 않는다 (2026-11-20 — 숫자는 검정, 색은 품절 · 임박만) */
+     가린 개인정보 칸(pii)은 고치기를 막는다. 구글시트 칸 색 · 글자 색 · 굵게 등은 바탕 서식(S.gf)으로 — 2026-11-23 */
   const NOSTYLE = {};
   const hasVal = c => !!c && (c.t !== '' || c.chips.length > 0 || c.cb === 2 || !!c.img);
   const IMG_URL_RE = /^https?:\/\/\S+\.(jpe?g|png|webp|gif)(\?\S*)?$|^https?:\/\/([\w-]+\.)*alicdn\.com\/\S+$/i;
@@ -1595,6 +1613,19 @@
           const src = imageSrc(f, r, run[0] + 1, getV);
           if (src) c.img = src;
         }
+      });
+    }
+    // 구글시트에서 가져온 것 — 손으로 넣은 사진 칸 · 글자에 건 링크 · 세로 병합 (아래 줄엔 흐리게 같은 글)
+    const gf = tab && S.gf[tab.gid];
+    if (gf) {
+      const byR = new Map(mrows.map(x => [x.r, x])), cell = (r, p) => { const x = byR.get(r); return x && x.cells[p]; };
+      (gf.raw.img || []).forEach(([p, r0, r1, dp]) => {
+        for (let r = r0; r <= r1; r++) { const c = cell(r, p), d = cell(r, dp); if (c && d && !c.t && !c.img && /^https?:/i.test(d.href || '')) c.img = d.href; }
+      });
+      (gf.raw.pic || []).forEach(([r, p, src]) => { const c = cell(r, p); if (c && !c.t && !c.img) c.img = src; });
+      (gf.raw.link || []).forEach(([r, p, url, text]) => { const c = cell(r, p); if (c && !c.href && c.t === text) c.href = url; });
+      (gf.raw.vm || []).forEach(([r0, c0, r1, c1]) => {
+        for (let p = c0; p <= c1; p++) { const top = cell(r0, p); if (top && top.t && !top.img) for (let r = r0 + 1; r <= r1; r++) { const c = cell(r, p); if (c && !c.t && !c.img && !c.cb) c.mgt = top.t; } }
       });
     }
     return {cols, rows: mrows, fRows: 0, fCols: 0, sig: String(info.rows_ver || ''), cut: 0, masked: +info.masked || 0};
@@ -1779,18 +1810,20 @@
     const recent = !!meta.raw && !side;
     if (recent) outRows.reverse();
     const keyIdx = cols.findIndex(c => c.key);
+    // 구글시트에서 숨겨 두었던 줄 — 평소엔 안 보이고 ('숨긴 줄 보기' 단추 · 찾기로 나옴), 요약 카드 · 칩도 보이는 줄만 센다
+    const gfT = tab && S.gf[tab.gid], hid = (gfT && gfT.hr) || NOHID, kRows = hid.size && !S.showHid ? outRows.filter(r => !hid.has(r.r)) : outRows;
 
     // 위 요약 카드 — 누르면 그 줄만 (시트 값을 세기만 한다, 새 기준 없음)
     const val = (row, col) => { const c = col && row.byP[col.p]; return c ? c.t : ''; };
-    const cnt = pred => outRows.filter(pred).length;
-    const sumOf = col => outRows.reduce((s, r) => s + (numOf(val(r, col)) || 0), 0);
+    const cnt = pred => kRows.filter(pred).length;
+    const sumOf = col => kRows.reduce((s, r) => s + (numOf(val(r, col)) || 0), 0);
     const kpis = [];
     const cName = keyIdx >= 0 ? cols[keyIdx] : null, cYuan = cols.find(c => YUAN_RE.test(norm(c.name)));
     if (!side && cName && cYuan) {   // 상품 목록 탭 (Product List · 플랫폼 세트 · 6a · yar · 반지 · 부자재 …)
       const isItem = row => val(row, cName) !== '', named = cnt(isItem);
       // 상품명이 아직 없는 줄이 많은 탭(메인 미발매 · 발주 리스트 등 — 이름 정하기 전 상품)은 '줄'로 센다
-      if (named >= outRows.length * 0.6) kpis.push({id: '', label: '상품', val: named});
-      else kpis.push({id: '', label: '줄', val: outRows.length, sub: `상품명 있는 줄 ${fmt(named)}`});
+      if (named >= kRows.length * 0.6) kpis.push({id: '', label: '상품', val: named});
+      else kpis.push({id: '', label: '줄', val: kRows.length, sub: `상품명 있는 줄 ${fmt(named)}`});
       const noYuan = row => isItem(row) && val(row, cYuan) === '';
       if (cnt(noYuan)) kpis.push({id: 'yuan', label: `${cYuan.name} 빈칸`, tone: 'amber', val: cnt(noYuan), pred: noYuan});
       const cMemo = cols.find(c => /단가메모/.test(norm(c.name)));
@@ -1798,9 +1831,9 @@
       const cSold = cols.find(c => /^품절/.test(norm(c.name)) && c.type === 'check');
       if (cSold) { const sold = row => { const c = row.byP[cSold.p]; return !!c && c.cb === 2; }; if (cnt(sold)) kpis.push({id: 'sold', label: '품절 체크', val: cnt(sold), pred: sold}); }
     } else {
-      kpis.push({id: '', label: '줄', val: outRows.length, sub: recent ? '최근 순' : ''});
+      kpis.push({id: '', label: '줄', val: kRows.length, sub: recent ? '최근 순' : ''});
       const cOrder = cols.find(c => /주문번호/.test(norm(c.name)));
-      if (cOrder) kpis.push({label: '주문', unit: '건', val: new Set(outRows.map(r => val(r, cOrder)).filter(Boolean)).size});
+      if (cOrder) kpis.push({label: '주문', unit: '건', val: new Set(kRows.map(r => val(r, cOrder)).filter(Boolean)).size});
       const cQty = cols.find(c => c.type === 'num' && /수량/.test(c.name) && !/SUM/i.test(c.name));
       if (cQty) kpis.push({label: `${cQty.name} 합계`, unit: '개', val: sumOf(cQty)});
       const cMoney = !side && cols.find(c => c.type === 'num' && /순매출|실결제금액|정산금액/.test(norm(c.name)));
@@ -1811,10 +1844,12 @@
     const cCat = cols.find(c => CAT_RE.test(norm(c.name)));
     if (cCat) {
       const mm = new Map();
-      outRows.forEach(r => { const v = catVal(r, cCat.p); if (v) mm.set(v, (mm.get(v) || 0) + 1); });
+      kRows.forEach(r => { const v = catVal(r, cCat.p); if (v) mm.set(v, (mm.get(v) || 0) + 1); });
       if (mm.size >= 2 && mm.size <= 30) cat = {p: cCat.p, values: [...mm.entries()].sort((x, y) => y[1] - x[1])};
     }
-    const d = {cols, rows: outRows, banner: side ? [] : banner, keyIdx, kpis, cat: side ? null : cat, sec: meta.sec, side: !!side, caption, capLines, lastR, ghosts, recent};
+    const d = {cols, rows: outRows, banner: side ? [] : banner, keyIdx, kpis, cat: side ? null : cat, sec: meta.sec, side: !!side, caption, capLines, lastR, ghosts, recent,
+      capBg: tab && hi >= 0 ? (firsts.filter(k => k < hi).map(k => { const c = rows[k].cells.find(x => x.t); return c && (gfBase(tab.gid, rows[k].r, c.p) || {}).bg; }).find(Boolean) || '') : '',
+      gid: tab ? tab.gid : '', headR: hi >= 0 ? rows[hi].r : 0, hid, nHid: hid.size ? outRows.filter(r => hid.has(r.r)).length : 0, nShow: kRows.length, hcol: (gfT && gfT.hc) || NOHID};
     fitCols(d);
     return d;
   }
@@ -1923,20 +1958,23 @@
     return Math.ceil(best);
   }
   function fitCols(d) {
+    const fRows = d.hid && d.hid.size && !S.showHid ? d.rows.filter(r => !d.hid.has(r.r)) : d.rows;   // 숨긴 줄은 칸 너비에 안 친다
     d.cols.forEach(col => {
+      const boldAt = (row, c) => c.st.bold || col.strong || !!(d.gid && (fmtSelf(d.gid, row.r, col.p) || {}).b);   // 굵은 칸은 굵은 글자 폭으로 (숫자가 … 로 잘리지 않게)
       const narrowPad = col.type === 'num' || col.type === 'check' || col.type === 'img';   // 숫자 · 체크 · 사진 칸은 여백 6px
       const pad = narrowPad ? PAD - 4 : PAD, hm = headMin(col.name) + pad + 4, ws = [], w2 = [], lw = [];
       col.hm = hm;
       col.wrap = col.type === 'text' && !col.status && !col.link;   // 글자 칸은 두 줄까지 접어서 보인다 (줄 높이는 그대로) — 링크 칸은 한 줄
-      for (const row of d.rows) {
+      for (const row of fRows) {
         const c = row.byP[col.p];
         if (!c) continue;
         let cw = 0;
+        const bd = boldAt(row, c);
         if (col.type === 'check' || (c.cb && !c.t)) cw = 18;
         else if (c.img) cw = 30;
         else if (c.chips.length) cw = c.chips.reduce((s, x) => s + tw(x.t, F_TAG) + 19, 0) + (c.chips.length - 1) * 4;
         else if (c.t) {
-          cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? display(col, c).replace(/\d/g, '0') : display(col, c), c.st.bold || col.strong ? F_BOLD : F_CELL);   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
+          cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? display(col, c).replace(/\d/g, '0') : display(col, c), bd ? F_BOLD : F_CELL);   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
           const hx = col.hist && hxOf(c);
           if (hx && hx.prev.length) cw += 6 + tw(`이전 ${hx.prev.length}회`, F_CHIP) + 14;   // '이전 N회' 딱지
         }
@@ -1944,7 +1982,7 @@
         ws.push(cw + pad + 2);
         if (col.wrap && !c.chips.length && c.t) {
           w2.push(Math.ceil(cw * 0.56) + pad + 4);   // 두 줄로 접었을 때 폭 (낱말 경계 여유 포함)
-          lw.push(Math.max(...display(col, c).split(/\s+/).map(x => tw(x, c.st.bold || col.strong ? F_BOLD : F_CELL))) + pad + 2);   // 가장 긴 낱말 — 이보다 좁으면 낱말 중간에서 잘린다
+          lw.push(Math.max(...display(col, c).split(/\s+/).map(x => tw(x, bd ? F_BOLD : F_CELL))) + pad + 2);   // 가장 긴 낱말 — 이보다 좁으면 낱말 중간에서 잘린다
         }
       }
       const nFilled = ws.length;
@@ -1957,7 +1995,7 @@
       lw.sort((a, b) => a - b);
       const pct = (a, q) => a.length ? a[Math.floor((a.length - 1) * q)] : 0;
       const top = ws.length ? ws[ws.length - 1] : 0, base = w2.length ? w2 : ws;
-      col.sparse = (col.type === 'text' || col.type === 'id') && !col.key && nFilled < d.rows.length * 0.35;   // 대부분 빈 칸 (발주일 및 수량 · 메모 · 판매번호 등) — 먼저 줄인다
+      col.sparse = (col.type === 'text' || col.type === 'id') && !col.key && nFilled < fRows.length * 0.35;   // 대부분 빈 칸 (발주일 및 수량 · 메모 · 판매번호 등) — 먼저 줄인다
       const flex = col.flex = col.type === 'text' || (col.type === 'id' && col.sparse);   // 숫자 · 날짜 · 체크 · 사진 · (자주 쓰는) 번호 칸은 줄이지 않는다
       const max = Math.min(col.key ? 420 : 360, Math.max(hm, top));
       const pref = flex ? Math.min(max, Math.max(hm, pct(ws, 0.9))) : max;
@@ -2055,8 +2093,8 @@
     if (pd && pd.busy) cls += ' pend';                       // 구글시트 · 저장소에 쓰는 중
     if (S.cell && S.cell.gid === S.cur && S.cell.r === row.r && S.cell.p === col.p) cls += ' csel';
     if (S.rng && S.cell && S.cell.gid === S.cur && S.rng.has(row.r * 1024 + col.p)) cls += ' crng';   // Shift 로 고른 범위
-    const fm = fmtOf((tabOf(S.cur) || {}).info, row.r, col.p);   // 오피스 칸 서식 (굵게 · 글자 색 · 칸 색)
-    if (fm) { if (fm.b) cls += ' b'; const css = (fm.bg ? `background-color:${fm.bg};` : '') + (fm.fg ? `color:${fm.fg};` : ''); if (css) style = (style ? style.replace(/;?$/, ';') : '') + css; }
+    const fm = fmtEff(S.cur, row.r, col.p, row);   // 칸 서식 — 오피스에서 바꾼 것 → 조건부 서식 → 구글시트 바탕
+    if (fm) { if (fm.b) cls += ' b'; const css = (fm.bg ? `background-color:${fm.bg};` : '') + (fm.fg ? `color:${fm.fg};` : '') + (fm.i ? 'font-style:italic;' : '') + (fm.s ? 'text-decoration:line-through;' : '') + bdCss(fm); if (css) style = (style ? style.replace(/;?$/, ';') : '') + css; }
     if (c) {
       if (c.st.bold || col.strong) cls += ' b';
       if (col.type === 'check' || (c.cb && !c.t)) inner = c.cb === 2 ? CK1 : c.cb === 1 ? CK0 : '';
@@ -2068,12 +2106,15 @@
       }
       else if (c.t) {
         const d = display(col, c);
-        inner = c.href && (secretOk() || !SECRET_LINK_RE.test(c.href)) ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : hl(d);
+        inner = c.href && (secretOk() || !SECRET_LINK_RE.test(c.href)) ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : richHtml(S.cur, row.r, col.p, d) || hl(d);
         if (col.wrap) inner = `<div class="cl">${inner}</div>`;   // 두 줄까지
         if (d !== c.t || (col.type !== 'num' && d.length > 12)) title = c.t;
       }
+      else if (c.mgt) { inner = `<span class="mgt">${hl(c.mgt.replace(/\s*\n\s*/g, ' · '))}</span>`; title = `${c.mgt}\n(구글시트에서 위 줄과 합쳐져 있던 칸 — 적으면 이 줄만의 값이 돼요)`; }
       else if (col.stock && row.item) inner = '<span class="blank">빈칸</span>';   // 남은 재고 빈칸 = 세어서 적을 줄
     }
+    const nt = noteOf(S.cur, row.r, col.p);
+    if (nt) { cls += ' nt'; title = (title ? title + '\n\n' : '') + '메모: ' + nt; }
     if (col.key && row.iss) title = (title ? title + '\n' : '') + '⚠ ' + row.iss.join('\n⚠ ');
     cls = cls.trim();
     return `<td data-p="${col.p}"${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
@@ -2086,6 +2127,7 @@
   function filtered(d, v) {
     let rows = d.rows;
     const keep = r => S.stick.has(r.r);
+    if (d.hid && d.hid.size && !S.showHid && !S.terms.length) rows = rows.filter(r => !d.hid.has(r.r) || keep(r));   // 구글시트에서 숨긴 줄 (찾을 땐 나온다)
     if (v.kpi) { const k = d.kpis.find(x => x.id === v.kpi); if (k && k.pred) rows = rows.filter(r => k.pred(r) || keep(r)); }
     if (v.cat != null && d.cat) rows = rows.filter(r => catVal(r, d.cat.p) === v.cat || keep(r));
     if (S.terms.length) rows = rows.filter(r => S.terms.every(t => r.k.includes(t) || r.k2.includes(t)) || keep(r));
@@ -2146,7 +2188,7 @@
     S.list = list;
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
     const nar = narrow.matches, showRn = !nar, vw = grid.clientWidth || 1000;
-    let cols = d.cols.filter(c => S.showEmpty || !d.rows.length || !c.empty || c.key || c.keep), stickN = 0, keyFirst = false;   // 줄이 하나도 없는 탭은 머리글이라도
+    let cols = d.cols.filter(c => (S.showEmpty || !d.rows.length || !c.empty || c.key || c.keep) && (S.showHid || c.key || !d.hcol.has(c.p))), stickN = 0, keyFirst = false;   // 줄이 하나도 없는 탭은 머리글이라도
     if (nar && cols.some(c => c.key)) {
       const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.strong ? 3 : c.status ? 4 : 5;
       cols = cols.map((c, i) => [c, i]).sort((x, y) => pri(x[0]) - pri(y[0]) || x[1] - y[1]).map(x => x[0]);
@@ -2175,13 +2217,16 @@
     if (showRn) h += `<th class="rn sk${stickN ? '' : ' skl'}" style="left:0" data-sort="rn" title="줄 번호 (보이는 순서 1부터) · 누르면 원래 순서로">행</th>`;
     cols.forEach((c, k) => {
       const ps = posOf[k], ar = sort && sort.p === c.p ? `<span class="ar">${sort.dir > 0 ? '▲' : '▼'}</span>` : '';
-      const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '') + (fix[k] ? ' wfix' : '')).trim();
+      const hf = d.headR ? fmtEff(S.cur, d.headR, c.p, null) : null, hn = d.headR ? noteOf(S.cur, d.headR, c.p) : '';   // 머리글 칸 색 · 메모 (구글시트 그대로)
+      const hcss = (ps ? ps.style : '') + (hf && hf.bg ? `background-color:${hf.bg};color:${hf.fg || (darkBg(hf.bg) ? '#fff' : '#1f2937')};` : hf && hf.fg ? `color:${hf.fg};` : '') + (hf ? bdCss(hf) : '');
+      const cls = (c.align + (ps ? ps.cls : '') + (/\s/.test(c.name) ? ' ka' : '') + (fix[k] ? ' wfix' : '') + (hn ? ' nt' : '')).trim();
       const rz = nar ? '' : `<span class="rz" data-p="${c.p}" title="끌어서 칸 너비 조절 · 두 번 누르면 자동 너비"></span>`;
-      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${ps ? ` style="${ps.style}"` : ''} title="${colName(c.p)}열 · ${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬">${nar ? '' : `<i class="cl">${colName(c.p)}</i>`}${esc(c.name)}${ar}${rz}</th>`;
+      h += `<th data-p="${c.p}"${cls ? ` class="${cls}"` : ''}${hcss ? ` style="${hcss}"` : ''} title="${colName(c.p)}열 · ${esc(c.name)}${c.tip ? ` (${esc(c.tip)})` : ''} — 누르면 정렬${hn ? esc('\n\n메모: ' + hn) : ''}">${nar ? '' : `<i class="cl">${colName(c.p)}</i>`}${esc(c.name)}${ar}${rz}</th>`;
     });
     h += '<th class="fill"></th></tr></thead><tbody>';
     // 줄이 많으면(VR_MIN 넘게) 처음엔 높이만 잡아 두고, 스크롤 위치를 맞춘 뒤 보이는 줄 근처만 그린다 (paintRows)
-    const vr = S.vr = {list, cols, posOf, showRn, stickN, span: cols.length + (showRn ? 2 : 1), on: list.length > VR_MIN, a: 0, b: 0, rowH: rowHGuess(), tb: null};
+    const vr = S.vr = {list, cols, posOf, showRn, stickN, span: cols.length + (showRn ? 2 : 1), on: list.length > VR_MIN, a: 0, b: 0, rowH: rowHGuess(), tb: null, hid: d.hid};
+    S.dupN = null;   // 조건부 서식(겹친 상품명) 세기 — 그릴 때마다 새로
     if (!list.length) h += `<tr class="empty"><td colspan="${vr.span}">${d.rows.length ? '조건에 맞는 줄이 없어요' : '이 탭은 비어 있어요'}</td></tr>`;
     else if (vr.on) h += vrBody(vr, 0, 0);
     else list.forEach((row, i) => { h += rowHtml(row, vr, i); });
@@ -2221,7 +2266,7 @@
   // 행 번호 = 지금 보이는 순서대로 1, 2, 3 … (2026-11-20 사장님 "행 번호가 마음대로인데 행은 그냥 1번부터 다 기재" — 걸러 보기 · 정렬해도 위에서부터 1번).
   // 함수 주소(E5 등)는 여전히 시트 줄 번호(row.r)라 그 번호는 마우스를 올리면 보인다.
   function rowHtml(row, vr, i) {
-    const cls = ((S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? 'on' : '') + (row.lv ? ' lv-' + row.lv : '') + (row.sub ? ' sub' : '')).trim();
+    const cls = ((S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? 'on' : '') + (row.lv ? ' lv-' + row.lv : '') + (row.sub ? ' sub' : '') + (vr.hid && vr.hid.has(row.r) ? ' hrow' : '')).trim();
     let s = `<tr data-r="${row.r}"${cls ? ` class="${cls}"` : ''}>`;
     if (vr.showRn) s += `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0" title="${i + 1}번 줄 (함수 주소는 ${row.r}행) — 누르면 이 줄 전체 보기${row.lv === 'low' ? ' · 품절 임박' : row.lv === 'out' ? ' · 품절' : ''}">${i + 1}</td>`;
     for (let k = 0; k < vr.cols.length; k++) s += cellHtml(row, vr.cols[k], vr.posOf[k]);
@@ -2316,6 +2361,7 @@
     const tc = $('tCap');    // 그 옆 = 표 위의 제목 · 조건 줄 ('월별 판매 성과 분석' · '주문일 · 2026. 9. 1')
     tc.textContent = d && d.note ? d.note : '';
     tc.title = tc.textContent;
+    tc.style.cssText = d && d.capBg ? `background:${d.capBg};color:${darkBg(d.capBg) ? '#fff' : '#1f2937'};padding:2px 8px;border-radius:6px` : '';   // '해당 컬러는 …' 처럼 색으로 뜻을 적은 설명
     tc.hidden = !tc.textContent;
     const fv = $('tFav'), isFav = !!t && S.fav.includes(t.gid);
     fv.hidden = !t;
@@ -2330,6 +2376,13 @@
     et.hidden = !nEmpty;
     et.textContent = S.showEmpty ? `빈 열 ${nEmpty}개 숨기기` : `빈 열 ${nEmpty}개 보기`;
     et.title = nEmpty ? `내용이 하나도 없는 열: ${d.cols.filter(c => c.empty && !c.key && !c.keep).map(c => c.name).join(', ')}` : '';
+    const hT = $('hTog'), nhr = d ? d.nHid : 0, nhc = d ? d.cols.filter(c => d.hcol.has(c.p) && !c.key && (S.showEmpty || !c.empty)).length : 0;   // 구글시트에서 숨겨 둔 줄 · 열
+    const hTxt = [nhr ? `숨긴 줄 ${fmt(nhr)}` : '', nhc ? `숨긴 열 ${nhc}` : ''].filter(Boolean).join(' · ');
+    hT.hidden = !hTxt;
+    hT.textContent = `${hTxt} ${S.showHid ? '다시 숨기기' : '보기'}`;
+    const pics = d && secretOk() && S.gf[S.cur] && S.gf[S.cur].raw.pics || [], pT = $('pTog');   // 시트 위에 붙여 둔 그림 (칸이 아닌 것)
+    pT.hidden = !pics.length;
+    pT.textContent = `붙인 그림 ${pics.length}`;
     const all = curAll(), pt = $('parts');
     if (all && all.parts.length > 1) {
       const isSum = x => /SUM|합계|총계/i.test(x.caption + ' ' + x.cols.map(c => c.name).join(' '));   // 구글시트 피벗 = 집계 표
@@ -2353,7 +2406,7 @@
     }).join('') : '';
     const ch = $('chips');
     if (d && d.cat) {
-      ch.innerHTML = `<button type="button" class="chip${v.cat == null ? ' on' : ''}" data-all="1">전체 <em>${fmt(d.rows.length)}</em></button>`
+      ch.innerHTML = `<button type="button" class="chip${v.cat == null ? ' on' : ''}" data-all="1">전체 <em>${fmt(d.nShow)}</em></button>`
         + d.cat.values.map(([val, n]) => `<button type="button" class="chip${v.cat === val ? ' on' : ''}" data-cat="${esc(val)}">${esc(val)} <em>${fmt(n)}</em></button>`).join('');
       ch.hidden = false;
     } else { ch.innerHTML = ''; ch.hidden = true; }
@@ -2413,7 +2466,7 @@
     let grp = null;
     for (const b of S.books) {
       if (b.grp !== grp) {
-        if (grp === '재고 · 발주') h += erpItem();
+        if (SHOW_ERP_LINK && grp === '재고 · 발주') h += erpItem();
         grp = b.grp;
         h += `<div class="nav-gt">${esc(grp || '기타')}</div>`;
       }
@@ -2424,8 +2477,8 @@
       tabs.forEach(t => { h += navItem(t, false); });
       h += '</div>';
     }
-    if (grp === '재고 · 발주') h += erpItem();
-    if (S.strat.length && bossOk()) {
+    if (SHOW_ERP_LINK && grp === '재고 · 발주') h += erpItem();
+    if (SHOW_STRAT && S.strat.length && bossOk()) {
       h += '<div class="nav-gt">전략팀 (대표 전용)</div>';
       S.strat.forEach((x, i) => { h += `<button type="button" class="nav-item lnk-item" data-strat="${i}" title="구글시트로 열기 (새 탭)"><i class="dot" style="background:#d4af37"></i><span class="nm">${esc(x.title)}</span><span class="go">↗</span></button>`; });
     }
@@ -2445,7 +2498,7 @@
   const curItem = () => S.nav.find(it => it.key === S.cur) || null;
   // 왼쪽 메뉴 숫자 — 바뀌었을 때만 저장 · 다시 그림
   function setCount(gid, data) {
-    const n = data && data.parts && data.parts[0] ? data.parts[0].rows.length : null;
+    const n = data && data.parts && data.parts[0] ? (data.parts[0].nShow != null ? data.parts[0].nShow : data.parts[0].rows.length) : null;
     if (n === null || S.counts[gid] === n) return;
     S.counts[gid] = n;
     lsSet(LS_COUNTS, JSON.stringify(S.counts));
@@ -2476,6 +2529,16 @@
     renderGrid({keep: true});
   }
   $('btnFold').addEventListener('click', () => { if (wide.matches) setSide(false, true); else setNav(false); });
+  $('hTog').addEventListener('click', () => {
+    S.showHid = !S.showHid;
+    lsSet(LS_HID, S.showHid ? '1' : '0');
+    S.cache.forEach((ent, gid) => { if (ent && ent.rows && S.gf[gid] && S.gf[gid].hr) build(gid, ent); });   // 요약 카드 · 칩 숫자도 다시
+    renderHead();
+    renderGrid({keep: true});
+    const cc = S.cache.get(S.cur);
+    if (cc && cc.data) setCount(S.cur, cc.data);
+  });
+  $('pTog').addEventListener('click', () => { const g = S.gf[S.cur]; if (g && g.raw.pics && g.raw.pics[0]) openLb(g.raw.pics[0]); });
   $('eTog').addEventListener('click', () => {
     S.showEmpty = !S.showEmpty;
     lsSet(LS_EMPTY, S.showEmpty ? '1' : '0');
@@ -2524,7 +2587,7 @@
     }));
     return {
       get: gid => run('readonly', s => s.get(gid)).then(v => v && v.v === CACHE_VER && Array.isArray(v.rows) ? v : null),
-      put: (gid, rows, rowsVer, at) => run('readwrite', s => s.put({v: CACHE_VER, rows, rowsVer, at}, gid)),
+      put: (gid, rows, rowsVer, at, gf) => run('readwrite', s => s.put({v: CACHE_VER, rows, rowsVer, at, gf}, gid)),
       keys: () => run('readonly', s => s.getAllKeys()),
       del: gid => run('readwrite', s => s.delete(gid)),
     };
@@ -2536,7 +2599,7 @@
     if (!ent || ent.direct) return;
     if (!changed && Date.now() - (S.savedAt[gid] || 0) < 120e3) return;
     S.savedAt[gid] = Date.now();
-    store.put(gid, [...ent.rows.values()], ent.rowsVer, ent.at);
+    store.put(gid, [...ent.rows.values()], ent.rowsVer, ent.at, S.gf[gid] ? S.gf[gid].raw : null);
   }
   // 줄 → 칸 자료 → 업무 표 (고치는 중이라 저장 전인 칸은 고친 값으로)
   function build(gid, ent) {
@@ -2561,6 +2624,7 @@
   function useStored(gid) {   // 메모리에 없으면 저장본을 꺼내 바로 띄운다 (그 사이 새 자료가 왔으면 무시)
     return store.get(gid).then(hit => {
       if (!hit || S.cache.get(gid)) return false;
+      if (hit.gf && !S.gf[gid]) gfSet(gid, hit.gf);   // 칸 색도 저장본 먼저 (흰 표가 떴다가 색이 들어오지 않게)
       const ent = build(gid, {rows: new Map(hit.rows.map(x => [x.r, slim(x)])), rowsVer: +hit.rowsVer || 0, at: hit.at, stored: true});
       cachePut(gid, ent);
       S.savedAt[gid] = Date.now();
@@ -2607,6 +2671,7 @@
     renderHead();
     renderGrid({pos: S.pos[gid]});
     if (!c) useStored(gid);   // 저장본이 있으면 바로 띄우고, 새 자료(바뀐 줄)는 뒤에서
+    dvWarm(gid);
     const tt = tabOf(gid);   // 탭 정보(줄 번호표)를 아직 못 받았으면 저장본만 띄우고, 받은 뒤 loadTabs → syncCur 가 받는다
     if (tt && tt.info && (!c || c.stored || c.direct || c.rowsVer < +tt.info.rows_ver || Date.now() - (S.fullAt[gid] || 0) > FULL_MS)) loadSheet(gid);
     paintStatus();
@@ -2764,7 +2829,7 @@
     // 수식 칸은 값 아래에 함수 (ƒx =$E2*2)
     const info = tabInfo(S.cur);
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}</dd>` : '')
-      + d.cols.map(c => { const fx = secretOk() ? (ofxGet(info, r, c.p) || fxText(info, r, c.p)) : ''; return `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}${fx ? `<div class="fxv"><b>ƒx</b>${esc(fx)}</div>` : ''}</dd>`; }).join('');
+      + d.cols.map(c => { const fx = secretOk() ? (ofxGet(info, r, c.p) || fxText(info, r, c.p)) : ''; const nt = [d.headR ? noteOf(S.cur, d.headR, c.p) : '', noteOf(S.cur, r, c.p)].filter(Boolean).join('\n'); return `<dt>${esc(c.name)}${nt ? `<small class="dnt">메모: ${esc(nt)}</small>` : ''}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}${fx ? `<div class="fxv"><b>ƒx</b>${esc(fx)}</div>` : ''}</dd>`; }).join('');
     markEditable();
     const det = $('detail'), was = det.hidden;
     det.hidden = false;
@@ -3401,7 +3466,10 @@
     return true;
   }
   function colValues(x) {   // 같은 열에 쓰인 값 (카테고리 · 쇼핑몰처럼 몇 가지뿐인 열만) → 입력 칸 추천 목록
-    const d = curData();
+    const d = curData(), dv = dvValues(x.gid, x.r, x.p);
+    if (dv && dvOf(x.gid, x.r, x.p).tk) return dv;
+    if (dv && d && !x.col.key) d.rows.forEach(rw => { const v = catVal(rw, x.p).trim(); if (v && v.length <= 40 && dv.length < 120 && !dv.includes(v)) dv.push(v); });
+    if (dv) return dv;
     if (!d || x.col.type !== 'text' || x.col.key) return [];
     const m = new Map();
     d.rows.forEach(rw => { const v = catVal(rw, x.p); if (v && v.length <= 40 && !/^⚠|묶음|중복/.test(v)) m.set(v.trim(), (m.get(v.trim()) || 0) + 1); });
@@ -3658,7 +3726,7 @@
     ceSize();
   }, true);
   /* ── 칸 서식 — 굵게 · 글자 색 · 칸 색 (2026-11-20 사장님 "erp, md시트 폰트컬러 변경 및 폰트굵기 변경 가능하게 해줘. 칸 변경까지 부탁해") ──
-     오피스에서만 정한다 (구글시트 서식은 그대로 안 씀) — 저장소 mdx_tabs.ofmt (mdx_ofmt_set · mdx_rows_get 첫 쪽 ofmt) = {"줄:열": {b, fg, bg}}.
+     오피스에서 정한 것 (구글시트에서 온 바탕 서식 gfmt 위에) — 저장소 mdx_tabs.ofmt (mdx_ofmt_set · mdx_rows_get 첫 쪽 ofmt) = {"줄:열": {b, fg, bg}}.
      고르기: 칸 누르기 = 한 칸, Shift+누르기 · Shift+화살표 = 네모 범위 (보이는 줄 · 칸 순서). Ctrl+B = 굵게. PC · 고칠 수 있는 사람만 (도구가 보임) */
   const PALETTE = [
     '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
@@ -3672,6 +3740,96 @@
   ];
   const FMT_MAX = 3000;   // 한 번에 바꾸는 칸 수
   function fmtOf(info, r, p) { const m = info && info.ofmt; return (m && m[`${r}:${p}`]) || null; }
+  /* ── 구글시트 바탕 서식 (2026-11-23 사장님 "md팀 시트 칸 컬러설정이나 혹시 그대로 안넘어오고 누락된게 있는지 체크") ──
+     구글을 끊기 전 시트 모양을 그대로 — 저장소 mdx_tabs.gfmt (sixshop-collector md/md-gfmt.py 가 만들고 mdx_sync_gfmt 로 한 번 적음, mdx_rows_get 첫 쪽 gfmt):
+     st · run = 모양 목록 · [열, 첫 줄, 끝 줄, 모양] 묶음 (칸 색 · 글자 색 · 굵게 · 기울임 · 취소선 · 굵은 테두리 bb 아래 / br 오른쪽), cf = 조건부 서식(체크하면 색 · 겹친 상품명 · 값이 있으면 · 가격 비교),
+     note = 메모, dv = 고르는 목록, hr · hc = 숨긴 줄 · 열, rich = 칸 안 일부만 굵게 · 색, img · pic · link · vm = 손으로 넣은 사진 · 글자 링크 · 세로 병합, pics = 시트 위 그림.
+     앞서는 순서: 오피스에서 바꾼 서식(ofmt, 칸째) → 조건부 서식 → 바탕. 값 · 함수와는 상관없다 */
+  function gfSet(gid, g) {
+    if (!g || typeof g !== 'object') { delete S.gf[gid]; return; }
+    const col = new Map();
+    (g.run || []).forEach(x => { if (!col.has(x[0])) col.set(x[0], []); col.get(x[0]).push(x); });
+    col.forEach(a => a.sort((x, y) => x[1] - y[1]));
+    S.gf[gid] = {raw: g, col, st: g.st || [], cf: g.cf || [], note: new Map((g.note || []).map(x => [`${x[0]}:${x[1]}`, x[2]])), rich: new Map((g.rich || []).map(x => [`${x[0]}:${x[1]}`, x])),
+      hr: g.hr && g.hr.length ? new Set(g.hr) : null, hc: g.hc && g.hc.length ? new Set(g.hc) : null};
+  }
+  function gfBase(gid, r, p) {
+    const g = S.gf[gid], a = g && g.col.get(p);
+    if (!a) return null;
+    let lo = 0, hi = a.length - 1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (r < a[m][1]) hi = m - 1; else if (r > a[m][2]) lo = m + 1; else return g.st[a[m][3]] || null; }
+    return null;
+  }
+  // 조건부 서식 — 구글시트에 있던 네 가지 꼴만 (그 칸이 참 · 값이 있음 · 같은 열에 겹침 · 두 칸 비교)
+  function cfVal(gid, row, r, p) {
+    const c = row && row.r === r && row.byP[p];
+    if (c && c.cb) return c.cb === 2 ? 'TRUE' : 'FALSE';
+    return c && c.t !== '' ? c.t : rawOf(gid, r, p);
+  }
+  function cfDup(gid, p, r0) {
+    const k = `${gid}|${p}|${r0}`, m0 = S.dupN || (S.dupN = new Map());
+    if (!m0.has(k)) {
+      const m = new Map(), ent = S.cache.get(gid);
+      if (ent && ent.rows) ent.rows.forEach(x => { const t = x.r >= r0 ? String(x.v[p] || '').trim().toLowerCase() : ''; if (t) m.set(t, (m.get(t) || 0) + 1); });
+      m0.set(k, m);
+    }
+    return m0.get(k);
+  }
+  function cfHit(gid, R, r, p, row) {
+    const g = R.rg.find(x => r >= x[0] && r <= x[2] && p >= x[1] && p <= x[3]);
+    if (!g) return false;
+    if (R.t === 'true') { const v = cfVal(gid, row, r, p); return v === 'TRUE' || !!numOf(v); }
+    if (R.t === 'fill') return cfVal(gid, row, r, p).trim() !== '';
+    if (R.t === 'dup') { const t = rawOf(gid, r + (R.dr || 0), R.p).trim().toLowerCase(); return !!t && (cfDup(gid, R.p, R.r0).get(t) || 0) > 1; }
+    if (R.t === 'cmp') {
+      const num = z => { const v = cfVal(gid, row, r + z[2], z[1] ? z[0] : p + z[0]).trim(); return v === '' ? 0 : numOf(v); };
+      const a = num(R.a), b = num(R.b);
+      return a !== null && b !== null && (R.op === '<' ? a < b : a > b);
+    }
+    return false;
+  }
+  const NOHID = new Set();
+  const fmtSelf = (gid, r, p) => fmtOf((tabOf(gid) || {}).info, r, p) || gfBase(gid, r, p);   // 그 칸에 정해 둔 서식 (조건부 서식은 빼고)
+  function fmtEff(gid, r, p, row) {
+    const o = fmtOf((tabOf(gid) || {}).info, r, p), g = S.gf[gid], base = g ? gfBase(gid, r, p) : null;
+    if (o) return base && (base.bb || base.br) ? Object.assign({}, o, {bb: base.bb, br: base.br}) : o;   // 굵은 테두리는 바탕 그대로
+    if (!g) return null;
+    if (!row || !g.cf.length) return base;
+    let c = null;
+    for (const R of g.cf) if (cfHit(gid, R, r, p, row)) c = Object.assign({}, R.st, c || {});   // 앞 규칙이 먼저
+    if (!c) return base;
+    const f = Object.assign({}, base || {}, c);
+    if (f.bg === '#ffffff') delete f.bg;
+    if (f.fg === '#000000') delete f.fg;
+    return f;
+  }
+  const bdCss = f => (f.bb ? 'border-bottom:2px solid #1f2937;' : '') + (f.br ? 'border-right:2px solid #1f2937;' : '');   // 굵은 테두리 (세트 묶음)
+  const noteOf = (gid, r, p) => { const g = S.gf[gid]; return (g && g.note.get(`${r}:${p}`)) || ''; };
+  const darkBg = h => { const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h || ''); return !!m && 0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16) < 110; };
+  function richHtml(gid, r, p, text) {   // 칸 안 일부만 굵게 · 색 — 글자가 가져온 때와 같은 길이일 때만
+    const g = S.gf[gid], x = g && g.rich.get(`${r}:${p}`);
+    if (!x || x[3] !== text.length || rawOf(gid, r, p) !== text) return '';
+    let at = 0;
+    return x[2].map(([n, b, fg]) => { const t = hl(text.slice(at, at + n)); at += n; return b || fg ? `<span style="${b ? 'font-weight:700;' : ''}${fg ? `color:${fg}` : ''}">${t}</span>` : t; }).join('');
+  }
+  function dvOf(gid, r, p) { const g = S.gf[gid]; return ((g && g.raw.dv) || []).find(x => r >= x.rg[0] && r <= x.rg[2] && p >= x.rg[1] && p <= x.rg[3]) || null; }
+  // 고르는 목록이 다른 탭에서 오면 그 탭도 미리 받아 둔다 (보는 탭일 때만, 한 번)
+  function dvWarm(gid) {
+    const g = S.gf[gid];
+    if (gid !== S.cur || !g) return;
+    (g.raw.dv || []).forEach(x => { const t = x.tk && tabOf(x.tk); if (t && t.info && !S.busy[x.tk] && !S.cache.get(x.tk)) loadSheet(x.tk); });
+  }
+  // 고르는 목록 — 적어 둔 목록 또는 다른 탭의 열 (발주신청 상품명 ← 발주리스트). 목록에 없는 값도 적을 수 있다
+  function dvValues(gid, r, p) {
+    const x = dvOf(gid, r, p);
+    if (!x) return null;
+    if (x.list) return x.list.slice();
+    const ent = S.cache.get(x.tk);
+    if (!ent || !ent.rows) { if (tabOf(x.tk) && !S.busy[x.tk]) loadSheet(x.tk); return []; }
+    const out = new Set();
+    [...ent.rows.values()].sort((a, b) => a.r - b.r).forEach(y => { const t = y.r >= x.r0 ? String(y.v[x.p] || '').trim() : ''; if (t) out.add(t); });
+    return [...out];
+  }
   // 고른 칸들 [{r, p}] — 범위가 없으면 고른 한 칸
   function rngCells() {
     const c = S.cell, vr = S.vr;
@@ -3759,7 +3917,7 @@
     if (!on) return;
     const cs = S.cell && S.cell.gid === S.cur ? rngCells() : [];
     bar.querySelectorAll('[data-fmt]').forEach(b => { b.disabled = !cs.length; });
-    bar.querySelector('[data-fmt="b"]').classList.toggle('on', !!cs.length && cs.length <= FMT_MAX && cs.every(x => (fmtOf(t.info, x.r, x.p) || {}).b));
+    bar.querySelector('[data-fmt="b"]').classList.toggle('on', !!cs.length && cs.length <= FMT_MAX && cs.every(x => (fmtSelf(t.gid, x.r, x.p) || {}).b));
     const fg = $('fgBar'), bg = $('bgBar');
     if (fg) fg.style.background = lsGet('fmt_last_fg') || '#ff0000';
     if (bg) bg.style.background = lsGet('fmt_last_bg') || '#fff2cc';
@@ -3770,11 +3928,14 @@
     const t = tabOf(S.cur), info = t && t.info, cs = only || rngCells();
     if (!info || !cs.length) { toast('서식을 바꿀 칸을 먼저 눌러 고르세요 (Shift+누르기로 여러 칸)', true); return; }
     if (cs.length > FMT_MAX) { toast(`한 번에 ${FMT_MAX.toLocaleString()}칸까지 바꿀 수 있어요 — 범위를 줄여 주세요`, true); return; }
-    const prev = info.ofmt || {}, next = Object.assign({}, prev), cells = [];
+    const prev = info.ofmt || {}, next = Object.assign({}, prev), cells = [], same3 = (a, b) => !!a.b === !!b.b && (a.fg || '') === (b.fg || '') && (a.bg || '') === (b.bg || '');
     cs.forEach(x => {
-      const k = `${x.r}:${x.p}`, cur = prev[k] || {}, nu = fn(Object.assign({}, cur), x);
+      const k = `${x.r}:${x.p}`, base = gfBase(t.gid, x.r, x.p), cur = prev[k] || (base ? {b: base.b, fg: base.fg, bg: base.bg} : {});
+      let nu = fn(Object.assign({}, cur), x);
       Object.keys(nu).forEach(q => { if (!nu[q]) delete nu[q]; });
-      if (JSON.stringify(nu) === JSON.stringify(cur)) return;
+      if (same3(nu, cur)) return;
+      if (base && same3(nu, base)) nu = {};                                                              // 구글시트에서 온 모양 그대로 → 따로 적지 않음
+      else if (base && !Object.keys(nu).length) nu = base.bg ? {bg: '#ffffff'} : {fg: '#000000'};        // 바탕까지 지움 → '없음'을 적어 둠
       if (Object.keys(nu).length) next[k] = nu; else delete next[k];
       cells.push({r: x.r, p: x.p, b: nu.b ? 1 : 0, fg: nu.fg || '', bg: nu.bg || ''});
     });
@@ -3792,9 +3953,9 @@
     });
   }
   function fmtBold() {
-    const info = (tabOf(S.cur) || {}).info, cs = rngCells();
+    const cs = rngCells();
     if (!cs.length) return;
-    const all = cs.length <= FMT_MAX && cs.every(x => (fmtOf(info, x.r, x.p) || {}).b);
+    const all = cs.length <= FMT_MAX && cs.every(x => (fmtSelf(S.cur, x.r, x.p) || {}).b);
     fmtApply(f => Object.assign(f, {b: all ? 0 : 1}), all ? '굵게 풀기' : '굵게');
   }
   function fmtColor(kind, color) {
@@ -3805,7 +3966,7 @@
   function openPal(kind, btn) {
     const cs = rngCells();
     if (!cs.length) { toast('서식을 바꿀 칸을 먼저 눌러 고르세요 (Shift+누르기로 여러 칸)', true); return; }
-    const f0 = fmtOf((tabOf(S.cur) || {}).info, cs[0].r, cs[0].p) || {}, cur = String(f0[kind] || '').toLowerCase();
+    const f0 = fmtSelf(S.cur, cs[0].r, cs[0].p) || {}, cur = String(f0[kind] || '').toLowerCase();
     PAL.innerHTML = `<div class="pt"><b>${kind === 'bg' ? '칸 색 (채우기)' : '글자 색'}</b><button type="button" data-none="1">색 없음</button></div>`
       + `<div class="sw">${PALETTE.map(c => `<button type="button" style="background:${c}" data-c="${c}" title="${c}"${cur === c ? ' class="on"' : ''}></button>`).join('')}</div>`
       + `<label class="cu">직접 고르기 <input type="color" id="palPick" value="${/^#[0-9a-f]{6}$/.test(cur) ? cur : kind === 'bg' ? '#fff2cc' : '#ff0000'}"></label>`;
@@ -4043,7 +4204,7 @@
     const e = st.pop();
     if (e.fmt) {   // 서식
       const m = new Map(e.fmt.map(c => [`${c.r}:${c.p}`, c.f]));
-      fmtApply((f, x) => Object.assign({}, m.get(`${x.r}:${x.p}`) || {}), `되돌리기 (${e.label})`, e.fmt.map(c => ({r: c.r, p: c.p})), true);
+      fmtApply((f, x) => { const o = m.get(`${x.r}:${x.p}`), bs = o ? null : gfBase(S.cur, x.r, x.p); return o ? Object.assign({}, o) : bs ? {b: bs.b, fg: bs.fg, bg: bs.bg} : {}; }, `되돌리기 (${e.label})`, e.fmt.map(c => ({r: c.r, p: c.p})), true);
       return;
     }
     if (e.cells.length === 1 && e.cells[0].single) {   // 한 칸 고치기 — 같은 길로 (함수 · 오피스 함수도)
@@ -4380,7 +4541,8 @@
         const list = await fetchAllRows(gid);
         ent = {rows: new Map(list.map(x => [x.r, slim(x)])), rowsVer: target, at: Date.now()};
         S.fullAt[gid] = Date.now();
-        if (old && old.rows && !old.stored && sameRows(old.rows, ent.rows)) changed = false;
+        if (old && old.rows && !old.stored && sameRows(old.rows, ent.rows) && !S.fmtNew[gid]) changed = false;
+        delete S.fmtNew[gid];
       } else {
         const ch = await fetchChangedRows(gid, old.rowsVer);
         ent = {rows: new Map(old.rows), rowsVer: Math.max(old.rowsVer, target), at: Date.now()};
@@ -4569,6 +4731,7 @@
     setDense(lsGet(LS_DENSE) === '1', false);
     if (lsGet(LS_SIDE) === '0') app.classList.add('side-off');
     S.showEmpty = lsGet(LS_EMPTY) === '1';
+    S.showHid = lsGet(LS_HID) === '1';
     if (document.fonts && document.fonts.load) { try { document.fonts.load(F_CELL, '재고ABC123'); document.fonts.load(F_BOLD, '재고ABC123'); } catch (e) { /* noop */ } }
     let saved = null;
     try { saved = JSON.parse(lsGet(LS_TAB) || 'null'); } catch (e) { saved = null; }
