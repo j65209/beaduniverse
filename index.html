@@ -1574,6 +1574,56 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kd-refresh-btn:hover{background:var(--bg-3)}
   .kd-refresh-btn:disabled{opacity:.5;cursor:default}
 
+  /* ===== 물류팀 운송장 조회 (2026-11-23) — 맨 위 붙여넣기 칸 하나 + 결과 줄. 움직이는 효과 없음 ===== */
+  .trk{margin:0 0 14px}
+  .trk-bar{display:flex;align-items:center;gap:9px;height:46px;padding:0 8px 0 14px;background:var(--bg-1);border:1.5px solid var(--line-2);border-radius:12px;cursor:text}
+  .trk-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .trk-bar>svg{flex:none;color:var(--text-3)}
+  .trk-in{flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;font:500 14px/1 var(--sans);color:var(--text-1)}
+  .trk-in::placeholder{color:#9a937f;font-weight:400}
+  .trk-clear{flex:none;width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:var(--text-3);font-size:13px;cursor:pointer}
+  .trk-clear:hover{background:var(--bg-2);color:var(--text-1)}
+  .trk-list{margin-top:8px;background:var(--bg-1);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .trk-row{border-bottom:1px solid var(--line)}
+  .trk-row:last-child{border-bottom:0}
+  .trk-main{display:grid;grid-template-columns:minmax(0,180px) 84px minmax(0,1fr) auto 14px;column-gap:12px;align-items:center;padding:10px 14px;cursor:pointer}
+  .trk-main:hover{background:var(--bg-0)}
+  .trk-no{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;font-weight:600;color:var(--text-1);word-break:break-all;font-variant-numeric:tabular-nums}
+  .trk-k{justify-self:start;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;white-space:nowrap;color:var(--text-3);background:var(--bg-2)}
+  .trk-k-cainiao{color:#c2410c;background:rgba(234,88,12,.1)}
+  .trk-k-epost-intl,.trk-k-epost-dom{color:#b91c1c;background:rgba(220,38,38,.08)}
+  .trk-st{min-width:0}
+  .trk-st b{display:block;font-size:13px;font-weight:700;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .trk-st span{display:block;margin-top:2px;font-size:11.5px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .trk-st.trk-none b{font-weight:500;color:var(--text-3)}
+  .trk-tag{padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;color:#1d4ed8;background:rgba(59,130,246,.1)}
+  .trk-tag.trk-done{color:#15803d;background:rgba(22,163,74,.12)}
+  .trk-tag:empty{display:none}
+  .trk-caret{color:var(--text-3);font-size:11px;text-align:center}
+  .trk-row.open .trk-caret{transform:rotate(180deg)}
+  .trk-ev{display:none;padding:0 14px 12px}
+  .trk-row.open .trk-ev{display:block}
+  .trk-info{display:flex;flex-wrap:wrap;gap:3px 14px;margin:0 0 8px;font-size:11.5px;color:var(--text-3)}
+  .trk-info b{font-weight:600;color:var(--text-2)}
+  .trk-ev ol{list-style:none;margin:0;padding:0 0 0 12px;border-left:2px solid var(--line)}
+  .trk-ev li{padding:4px 0 4px 8px;font-size:12px;line-height:1.45;color:var(--text-2)}
+  .trk-ev li:first-child{font-weight:700;color:var(--text-1)}
+  .trk-ev time{display:inline-block;min-width:118px;margin-right:8px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;font-weight:400;color:var(--text-3)}
+  .trk-ev li i{font-style:normal;color:var(--text-3);margin-left:6px;font-weight:400}
+  .trk-src{display:inline-block;margin-top:8px;font-size:11.5px;color:var(--accent);text-decoration:none}
+  .trk-src:hover{text-decoration:underline}
+  @media (max-width:900px){
+    .trk{margin:0 8px 12px}
+    .trk-main{grid-template-columns:minmax(0,1fr) auto auto;row-gap:5px;column-gap:8px;padding:10px 12px}
+    .trk-no{grid-column:1;grid-row:1}
+    .trk-k{grid-column:2;grid-row:1;justify-self:end}
+    .trk-tag{grid-column:3;grid-row:1}
+    .trk-st{grid-column:1 / -1;grid-row:2}
+    .trk-caret{display:none}
+    .trk-ev{padding:0 12px 12px}
+    .trk-ev time{display:block;min-width:0}
+  }
+
   /* ===== 물류팀 출고 전광판 (2026-11-17) — 콰이디에어 출고완료 신청서를 메모 속 출고일 · 방식으로 묶어 보여 준다.
      사용자 요청: 움직이는 효과 없음 (흐르는 글자 · 깜박임 · 반짝임 없이 고정 화면) ===== */
   .lgb{
@@ -13888,6 +13938,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <h1 class="view-title">물류팀 <span class="view-title-brand">비드유니버스</span><span class="view-title-sub">/ 발주 관리</span></h1>
     </div>
     <!-- 2026-11-13 메인 · 브라이트비드 · 샤인비드 탭을 없애고 비드유니버스 하나로 합침 — 최근 발주 · 상품 리스트 모두 두 계정 것을 같이 보여 준다 (줄마다 브랜드 표시) -->
+
+    <!-- 운송장 조회 (2026-11-23) — 사용자 "최상단에 운송장만 붙여넣기 하게". 붙여넣으면 바로 조회 (우체국 국제등기 · EMS · 국내 등기 · LP 차이니아오).
+         서버 = 슈퍼베이스 엣지 함수 post-track (공개 조회 화면을 대신 읽기만, 저장 없음). trkInit() 이 붙인다 -->
+    <section class="trk" id="trkBox" aria-label="운송장 조회">
+      <label class="trk-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="trk-in" id="trkIn" type="text" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="운송장 번호"
+               placeholder="운송장 번호 붙여넣기 — 우체국 국제등기 · EMS · 등기 · LP…">
+        <button type="button" class="trk-clear" id="trkClear" aria-label="지우기" hidden>✕</button>
+      </label>
+      <div class="trk-list" id="trkList" hidden></div>
+    </section>
 
     <!-- 출고 전광판 (2026-11-17) — 콰이디에어 출고완료 신청서의 메모 속 출고일 · 방식. 움직이는 효과 없음. renderLgBoard() 가 채운다 -->
     <section class="lgb" id="lgBoard" aria-label="출고 전광판" hidden></section>
@@ -34645,6 +34707,92 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       btn.title='나머지 품목 사진 모두 보기';
     });
   }
+  // ===== 물류팀 운송장 조회 (2026-11-23) — 사용자 "최상단에 운송장만 붙여넣기 하게"
+  // 붙여넣으면 글 속에서 번호만 골라 바로 조회한다 (엑셀 한 열 · 메모 글 그대로 붙여도 됨, 한 번에 40개까지).
+  //   LP… = 차이니아오 · 영문2+숫자9+영문2 = 우체국 국제(EMS · 국제등기 · 소포) · 숫자 13자리 = 우체국 국내 등기
+  // 서버 = 슈퍼베이스 엣지 함수 post-track. 읽기만이라 GET 으로 부른다 (POST 면 office-undo 가 '바깥 일'로 표시함)
+  (function(){
+    const API='https://ckyjkxbqsyjoqpuqwoce.supabase.co/functions/v1/post-track';
+    const RE=/LP\d{8,20}|[A-Z]{2}\d{9}[A-Z]{2}|(?<!\d)\d{13}(?!\d)/gi;
+    const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const guess=n=>/^LP/.test(n)?['cainiao','차이니아오']:/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(n)?['epost-intl','우체국 국제']:/^\d{13}$/.test(n)?['epost-dom','우체국 국내']:['cainiao','차이니아오'];
+    let seq=0;
+    function pick(text){
+      const t=String(text||'').replace(/(\d)-(?=\d)/g,'$1');
+      const out=[...new Set((t.match(RE)||[]).map(s=>s.toUpperCase()))];
+      if(!out.length){   // 모양을 모르는 번호 하나 — 차이니아오가 다른 택배사 번호도 이어 주니 그대로 물어봄
+        const one=t.trim().toUpperCase().replace(/[\s-]/g,'');
+        if(/^[A-Z0-9]{8,30}$/.test(one)) out.push(one);
+      }
+      return out.slice(0,40);
+    }
+    function rowHTML(no, r){
+      if(!r){
+        const [k,l]=guess(no);
+        return `<div class="trk-row"><div class="trk-main" style="cursor:default"><span class="trk-no">${esc(no)}</span><span class="trk-k trk-k-${k}">${l}</span><span class="trk-st trk-none"><b>조회 중…</b></span><span class="trk-tag"></span><span class="trk-caret"></span></div></div>`;
+      }
+      const ok=!!r.found;
+      const st=ok?(r.status||(r.events&&r.events[0]&&r.events[0].s)||'기록 있음'):(r.error||'조회 기록 없음');
+      const sub=ok?[r.at, r.loc].filter(Boolean).join(' · '):'';
+      const info=(r.info||[]).map(([k,v])=>`<span>${esc(k)} <b>${esc(v)}</b></span>`).join('');
+      const evs=(r.events||[]).map(e=>`<li><time>${esc(e.t)}</time>${esc(e.s)}${e.loc?`<i>${esc(e.loc)}</i>`:''}${e.d&&e.d!==e.s?`<i>${esc(e.d)}</i>`:''}</li>`).join('');
+      const src=r.url?`<a class="trk-src" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.label)} 화면에서 보기 ↗</a>`:'';
+      const body=(info||evs||src)?`<div class="trk-ev">${info?`<div class="trk-info">${info}</div>`:''}${evs?`<ol>${evs}</ol>`:''}${src}</div>`:'';
+      return `<div class="trk-row"><div class="trk-main"${body?'':' style="cursor:default"'}>`
+        +`<span class="trk-no">${esc(no)}</span>`
+        +`<span class="trk-k trk-k-${esc(r.kind)}">${esc(r.label)}</span>`
+        +`<span class="trk-st${ok?'':' trk-none'}"><b title="${esc(st)}">${esc(st)}</b>${sub?`<span title="${esc(sub)}">${esc(sub)}</span>`:''}</span>`
+        +`<span class="trk-tag${r.delivered?' trk-done':''}">${r.delivered?'배달완료':''}</span>`
+        +`<span class="trk-caret">${body?'▾':''}</span></div>${body}</div>`;
+    }
+    async function run(nos){
+      const list=document.getElementById('trkList');
+      const my=++seq;
+      if(!nos.length){ list.hidden=true; list.innerHTML=''; return; }
+      list.hidden=false;
+      list.innerHTML=nos.map(n=>rowHTML(n,null)).join('');
+      try{
+        const res=await fetch(API+'?no='+encodeURIComponent(nos.join(',')),{cache:'no-store'});
+        const j=await res.json().catch(()=>({}));
+        if(my!==seq) return;
+        if(!j.ok) throw new Error(j.error||('응답 '+res.status));
+        const m=new Map((j.results||[]).filter(Boolean).map(x=>[x.no,x]));
+        list.innerHTML=nos.map(n=>rowHTML(n, m.get(n)||{no:n,kind:guess(n)[0],label:guess(n)[1],found:false,info:[],events:[],url:'',error:'결과 없음'})).join('');
+        if(nos.length===1){ const row=list.querySelector('.trk-row'); if(row && row.querySelector('.trk-ev')) row.classList.add('open'); }
+      }catch(e){
+        if(my!==seq) return;
+        list.innerHTML=`<div class="trk-row"><div class="trk-main" style="cursor:default"><span class="trk-st trk-none" style="grid-column:1 / -1"><b>조회 실패 — ${esc(e&&e.message||e)}</b><span>잠시 뒤 다시 붙여넣어 주세요</span></span></div></div>`;
+      }
+    }
+    function init(){
+      const inp=document.getElementById('trkIn'), clr=document.getElementById('trkClear'), list=document.getElementById('trkList');
+      if(!inp || inp._trk) return;
+      inp._trk=1;
+      const go=text=>{
+        const nos=pick(text);
+        if(nos.length) inp.value=nos.join('  ');
+        clr.hidden=!inp.value;
+        run(nos);
+        return nos.length;
+      };
+      inp.addEventListener('paste',e=>{
+        const t=(e.clipboardData||window.clipboardData)?.getData('text');
+        if(!t || !pick(t).length) return;   // 번호가 없으면 보통 붙여넣기
+        e.preventDefault();
+        go(t);
+      });
+      inp.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.isComposing){ e.preventDefault(); go(inp.value); } });
+      inp.addEventListener('input',()=>{ clr.hidden=!inp.value; if(!inp.value) run([]); });
+      clr.addEventListener('click',e=>{ e.preventDefault(); inp.value=''; clr.hidden=true; run([]); inp.focus(); });
+      list.addEventListener('click',e=>{
+        if(e.target.closest('a')) return;
+        const main=e.target.closest('.trk-main'); if(!main) return;
+        const row=main.parentElement;
+        if(row.querySelector('.trk-ev')) row.classList.toggle('open');
+      });
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+  })();
   // renderKDOrders 가 자료를 받을 때마다 부른다. 처음 한 번은 삭제 목록을 받은 뒤에 그린다 (삭제한 줄이 잠깐 보였다 사라지지 않게)
   function renderLgBoard(orders, fetchedAt){
     if(orders) _lgbRows=_lgbBuildRows(orders);
