@@ -14,6 +14,7 @@
   (function () {
     var inOffice = false, home = '';
     try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    try { if (window.parent === window) document.documentElement.classList.add('solo'); } catch (e) { /* noop */ }   // 혼자 열린 화면 — 아이폰 위 여백 (--top-in)
     if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
     if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
     try { if (window.parent === window && localStorage.getItem('brightbeed_unlocked') !== '1') { location.replace(home + '?from=erp'); return; } } catch (e) { /* noop */ }
@@ -712,8 +713,7 @@
   /* 휴대폰 · 태블릿 맨 위 막대를 또렷하게 (2026-11-23 사장님 "상품찾기 최상단 흐리다고 — 안 흐리게, 직원들이 못 찾아") —
      찾기 칸은 흰 바탕 + 진한 테두리 + 검정 굵은 글씨, 메뉴 · 수정 로그 단추도 검정. 상태 줄(시계 · 배터리)이 화면 위를 덮는 휴대폰에선 그 아래로 내린다 */
   @media (max-width:1000px),(max-height:520px){
-    .app{padding-top:env(safe-area-inset-top)}
-    .side{padding-top:env(safe-area-inset-top)}
+    .side{padding-top:var(--top-in)}
     .bar{background:#fff;border-bottom:1px solid #94a3b8}
     .find,.find:focus-within{background:#fff;border:2px solid #0f172a}
     .find:focus-within{border-color:var(--info);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
@@ -725,7 +725,19 @@
     .bar .ib svg,.bar .logb svg{stroke-width:2.5}
     .bar .logb{border-color:#64748b}
   }
-  @media (max-width:720px){ .bar{height:54px} .logb-n{top:-7px;right:-5px;min-width:16px;height:16px;padding:0 4px;font-size:9.5px;line-height:16px} .find{height:40px} .bar .menu{width:40px;height:40px} .bar .menu svg{width:22px;height:22px} }
+  @media (max-width:720px){ .logb-n{top:-7px;right:-5px;min-width:16px;height:16px;padding:0 4px;font-size:9.5px;line-height:16px} .find{height:40px} .bar .menu{width:40px;height:40px} .bar .menu svg{width:22px;height:22px} }
+  /* 아이폰 맨 위 흐림 막기 (2026-11-23 사장님 "아이폰으로 봤을때 위가 흐려 — 위에 공백을 더 줘야하나?") —
+     아이폰 사파리는 화면 맨 위에 흐림 효과를 덮는데, 화면에 고정된(position:fixed) 단색 막대가 맨 위에 닿아 있을 때만 그 자리를 단색으로 바꾼다.
+     전엔 막대가 그냥 첫 줄이라 흐림이 찾기 칸 위에 덮였다 → 휴대폰 · 태블릿은 막대를 맨 위에 고정하고, 아이폰 · 아이패드로 혼자 연 화면은 위를 14px 더 비운다.
+     막대를 다시 흐름 안(고정 아님)으로 돌리지 말 것 */
+  :root{--top-in:env(safe-area-inset-top,0px);--bar-h:58px}
+  @supports (-webkit-touch-callout:none){ html.solo{--top-in:calc(env(safe-area-inset-top,0px) + 14px)} }
+  @media (max-width:1000px){
+    .bar{position:fixed;top:0;left:0;right:0;z-index:30;height:calc(var(--bar-h) + var(--top-in));padding-top:var(--top-in);padding-left:calc(8px + env(safe-area-inset-left,0px));padding-right:calc(8px + env(safe-area-inset-right,0px))}
+    .main{padding-top:calc(var(--bar-h) + var(--top-in))}
+  }
+  @media (max-width:1000px) and (max-height:520px){ :root{--bar-h:52px} @supports (-webkit-touch-callout:none){ html.solo{--top-in:env(safe-area-inset-top,0px)} } }
+  @media (max-width:720px){ :root{--bar-h:54px} }
   @media (pointer:coarse){ .fmtbar{display:none!important} }   /* 서식 단추는 마우스로 칸을 고르는 PC 만 — 휴대폰 · 태블릿에선 흐린 채로 떠 있기만 했다 */
   @media (max-width:720px){
     .tbl tbody tr.pin2:not(.lv-low):not(.lv-out) td:not(.fill),.tbl tbody tr.pin3:not(.lv-low):not(.lv-out) td:not(.fill){background:#fff}
@@ -2948,7 +2960,7 @@
     const box = $('edbox');
     if (box.hidden) return;
     const vw = innerWidth, vh = innerHeight, rc = anchor && anchor.isConnected ? anchor.getBoundingClientRect() : null;
-    if (narrow.matches || !rc) { box.style.width = Math.min(vw - 16, 460) + 'px'; box.style.left = Math.max(8, (vw - Math.min(vw - 16, 460)) / 2) + 'px'; box.style.top = '12px'; return; }
+    if (narrow.matches || !rc) { box.style.width = Math.min(vw - 16, 460) + 'px'; box.style.left = Math.max(8, (vw - Math.min(vw - 16, 460)) / 2) + 'px'; box.style.top = 'calc(12px + var(--top-in, 0px))'; return; }
     const w = Math.min(vw - 16, Math.max(300, rc.width + 8));
     box.style.width = w + 'px';
     const h = box.offsetHeight;
@@ -4227,6 +4239,7 @@
   // 휴대폰: 찾기 칸을 누르면 자판이 올라오니 위쪽을 접어 결과를 넓게, 찾을 말 없이 나가면 다시 편다
   qIn.addEventListener('focus', () => { if (compactMQ.matches) setHmin(true); });
   qIn.addEventListener('blur', () => { if (!qIn.value.trim() && grid.scrollTop < 56) setHmin(false); });
+  document.addEventListener('focusout', () => setTimeout(() => { const a = document.activeElement; if (narrow.matches && window.scrollY > 0 && !(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) window.scrollTo(0, 0); }, 120));   // 자판이 닫힌 뒤 화면이 위로 밀려 있지 않게 (아이폰)
   /* ── 수정 로그 (오른쪽 위 [수정 로그], 2026-11-20 사용자 "재고 erp에서 수정로그를 우측 상단에 — 누가 뭘 수정하고 어찌했는지 알아야해서") ──
      자료 = 오피스 저장소 erp_history (erp_rows 가 바뀔 때마다 트리거 erp_rows_hist 가 전 줄 · 새 줄을 통째로 남김, anon 읽기).
      · 사람이 고친 것 = src office — who = 업무일지 '나는 ○○○' 이름(whoAmI), p = 직접 고친 칸 (erp_cell_edit 가 남김, 11-20 저녁부터).
