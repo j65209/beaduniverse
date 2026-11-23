@@ -51269,7 +51269,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const PC_FEE_RATE = 0.275;   // 실매출 × 27.5%
   const PC_FIX_COST = 2699;    // 고정 비용
   const PC_LS = {
-    selected: 'promoCalcV2_selected',    // JSON array of product names
+    selected: 'promoCalcV2_selected',    // (옛) JSON array of product names — 이 PC 에만 있던 것, 처음 한 번 아래로 옮김
+    selectedKv: 'promoCalcV2_selectedKv', // {상품명:1} — app_kv 'pc_selected' 의 이 PC 사본 (2026-11-23 사장님 "온라인으로")
     settings: 'promoCalcV2_settings',    // {productName: settingPrice}
     cond:     'promoCalcV2_condV3',      // {condText, aiNote, primaryTiers[], dupEnabled, dupTiers[]}
   };
@@ -51467,17 +51468,30 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     c.textContent=`${window._pcv2.selected.size}개 선택됨`;
   }
 
+  // 고른 상품도 서버(app_kv 'pc_selected')에 — 예전엔 PC 마다 따로라 같은 계산기라도 PC 마다 결과가 달랐다.
+  // {상품명:1} 모양이라 두 PC 가 동시에 다른 상품을 고르거나 빼도 칸별로 합쳐진다.
   function pcSaveSelection(){
-    try{ localStorage.setItem(PC_LS.selected, JSON.stringify([...window._pcv2.selected])); }catch(e){}
+    const map={};
+    window._pcv2.selected.forEach(n=>{ map[n]=1; });
+    kvSet('pc_selected',PC_LS.selectedKv,map);
+  }
+  function _pcApplySelMap(v){
+    if(!_kvIsObj(v)) return false;
+    const s=window._pcv2, valid=new Set(s.catalog.map(p=>p.name));
+    s.selected=new Set(Object.keys(v).filter(n=>v[n]&&valid.has(n)));
+    return true;
   }
 
   function pcRestoreSelection(){
     try{
-      const raw=localStorage.getItem(PC_LS.selected); if(!raw) return;
-      const arr=JSON.parse(raw); if(!Array.isArray(arr)) return;
-      const s=window._pcv2;
-      const valid=new Set(s.catalog.map(p=>p.name));
-      s.selected=new Set(arr.filter(n=>valid.has(n)));
+      let v=null;
+      try{ v=JSON.parse(localStorage.getItem(PC_LS.selectedKv)||'null'); }catch(e){}
+      if(!_kvIsObj(v)){
+        // 이 PC 에만 있던 옛 목록 → 서버 모양으로 한 번 옮김 (kvPull 이 처음 받을 때 서버 것과 합쳐 올린다)
+        const arr=JSON.parse(localStorage.getItem(PC_LS.selected)||'null');
+        if(Array.isArray(arr)){ v={}; arr.forEach(n=>{ if(n) v[n]=1; }); try{ localStorage.setItem(PC_LS.selectedKv,JSON.stringify(v)); }catch(e){} }
+      }
+      _pcApplySelMap(v);
     }catch(e){}
     // Restore settings
     try{
@@ -51491,6 +51505,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!_kvIsObj(v)) return;
       window._pcv2.settings=v;
       if(!typing()) pcCompute();
+    });
+    kvPull('pc_selected',PC_LS.selectedKv,v=>{
+      if(typing()) return false;
+      if(!_pcApplySelMap(v)) return;
+      pcRenderProductTable(); pcUpdateSelCount(); pcCompute();
     });
     kvPull('pc_cond',PC_LS.cond,()=>{
       if(typing()) return false;

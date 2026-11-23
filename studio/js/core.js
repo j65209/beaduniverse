@@ -317,29 +317,9 @@ const mem = { projects: new Map(), assets: new Map(), fonts: new Map(), meta: ne
 const req2p = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 const tx2p = (t) => new Promise((res, rej) => { t.oncomplete = () => res(); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); });
 
-export const db = {
+/* 이 PC 의 IndexedDB (바로 쓰는 사본) — 아래 db 가 감싸서 온라인 보관과 맞춘다 */
+const idb = {
   ok: false,
-  async open() {
-    if (_db) return _db;
-    try {
-      _db = await new Promise((res, rej) => {
-        const r = indexedDB.open(DB_NAME, 1);
-        r.onupgradeneeded = () => {
-          const d = r.result;
-          for (const [s, keyPath] of Object.entries(STORES)) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath });
-        };
-        r.onsuccess = () => res(r.result);
-        r.onerror = () => rej(r.error);
-        r.onblocked = () => rej(new Error('blocked'));
-      });
-      this.ok = true;
-      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* noop */ }
-    } catch (e) {
-      console.warn('IndexedDB 사용 불가 — 메모리 저장으로 동작', e);
-      this.ok = false;
-    }
-    return _db;
-  },
   async get(store, key) {
     if (!this.ok) return mem[store].get(key);
     return req2p(_db.transaction(store).objectStore(store).get(key));
@@ -364,6 +344,177 @@ export const db = {
     if (!this.ok) return [...mem[store].keys()];
     return req2p(_db.transaction(store).objectStore(store).getAllKeys());
   },
+};
+
+/* ---------- 온라인 보관 (2026-11-23 사장님 "내 컴퓨터에 있는것도 다 옮겨줘 · 온라인으로") ----------
+   예전엔 프로젝트 · 사진 · 글꼴이 이 브라우저 IndexedDB 에만 있어서 다른 PC 에선 안 보이고, 브라우저 자료를 지우면 사라졌다.
+   이제 오피스 Supabase 에 같이 둔다 — 프로젝트 = 표 studio_projects(jsonb), 사진 · 글꼴 파일 = 파일함 'studio' + 표 studio_files.
+   · IndexedDB 는 그대로 바로 쓰는 사본(빠르고 인터넷이 끊겨도 작업됨). 고친 것은 대기열(meta 'cloudq')에 남겨 두었다가 올린다.
+   · 열 때(db.open) 서버 목록과 비교 — 더 새 프로젝트 · 서버에만 있는 글꼴은 받고, 서버에 없는 이 PC 것은 올린다(옛 브라우저 자료 옮기기).
+   · 사진은 처음 쓸 때 받는다(db.get 에 없으면). 더 새 편집이 옛 편집에 덮이지 않게 서버 함수가 updatedAt 을 비교한다.
+   · 사진 정리(gcAssets)는 이 PC 사본만 지운다 — 서버 파일은 남김. */
+const SB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+const sbHead = (extra) => Object.assign({ apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }, extra || {});
+const studioWho = () => { try { return (localStorage.getItem('brightbeed_diary_me') || '').trim().slice(0, 40) || null; } catch (e) { return null; } };
+async function sbRpc(fn, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: sbHead({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(fn + ' ' + r.status);
+  return r.json();
+}
+async function upProject(id) {
+  const p = await idb.get('projects', id);
+  if (!p) return;
+  await sbRpc('studio_project_put', { p_id: id, p_data: p, p_ms: p.updatedAt || Date.now(), p_who: studioWho() });
+}
+async function upFile(store, id) {
+  const rec = await idb.get(store, id);
+  if (!rec || !rec.blob) return;
+  const type = rec.blob.type || rec.type || (store === 'fonts' ? 'font/ttf' : 'application/octet-stream');
+  const r = await fetch(`${SB_URL}/storage/v1/object/studio/${store}/${encodeURIComponent(id)}`, {
+    method: 'POST', headers: sbHead({ 'Content-Type': type, 'x-upsert': 'false', 'cache-control': '31536000' }), body: rec.blob,
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    if (!/exists|Duplicate|409/i.test(t)) { const e = new Error('파일 올리기 ' + r.status); if (r.status === 413 || /too large|exceeded/i.test(t)) e.fatal = true; throw e; }
+  }
+  await sbRpc('studio_file_put', { p: { id, store, name: rec.name || null, type, size: rec.blob.size || null, w: rec.w || null, h: rec.h || null,
+    family: rec.family || null, weight: rec.weight || null, created_ms: rec.createdAt || Date.now() } });
+}
+async function downFile(store, id) {
+  const r = await fetch(`${SB_URL}/rest/v1/studio_files?id=eq.${encodeURIComponent(id)}&deleted_at=is.null&select=*`, { headers: sbHead(), cache: 'no-store' });
+  if (!r.ok) return null;
+  const row = (await r.json())[0];
+  if (!row || row.store !== store) return null;
+  const f = await fetch(`${SB_URL}/storage/v1/object/public/studio/${row.path.split('/').map(encodeURIComponent).join('/')}`);
+  if (!f.ok) return null;
+  let blob = await f.blob();
+  if (row.type && blob.type !== row.type) blob = new Blob([blob], { type: row.type });
+  const rec = store === 'fonts'
+    ? { id, family: row.family, weight: row.weight, name: row.name, blob, createdAt: row.created_ms || Date.now() }
+    : { id, blob, w: row.w, h: row.h, name: row.name, type: row.type, preview: null, createdAt: row.created_ms || Date.now() };
+  await idb.put(store, rec).catch(() => {});
+  return rec;
+}
+const cloud = {
+  q: {}, timer: 0, busy: false,
+  async init() { try { const r = await idb.get('meta', 'cloudq'); this.q = (r && r.v) || {}; } catch (e) { this.q = {}; } },
+  save() { return idb.put('meta', { k: 'cloudq', v: this.q }).catch(() => {}); },
+  mark(store, id, op, quiet) {
+    this.q[store + ':' + id] = { op, t: Date.now() + Math.random() };
+    this.save();
+    if (!quiet) { clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 2500); }
+  },
+  async push() {
+    if (this.busy) { clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 3000); return; }
+    const keys = Object.keys(this.q);
+    if (!keys.length) return;
+    this.busy = true;
+    let fail = false;
+    for (const k of keys) {
+      const job = this.q[k];
+      if (!job) continue;
+      const i = k.indexOf(':'), store = k.slice(0, i), id = k.slice(i + 1);
+      try {
+        if (store === 'projects') {
+          if (job.op === 'del') await sbRpc('studio_project_del', { p_id: id, p_ms: Math.floor(job.t), p_who: studioWho() });
+          else await upProject(id);
+        } else if (job.op === 'del') await sbRpc('studio_file_del', { p_id: id });
+        else await upFile(store, id);
+        if (this.q[k] && this.q[k].t === job.t) delete this.q[k];   // 올리는 동안 또 고친 건 남긴다
+      } catch (e) {
+        fail = true;
+        console.warn('온라인 저장 실패', k, e);
+        if (e && e.fatal) { delete this.q[k]; toast(`파일이 너무 커서 온라인에 못 올렸어요 — 이 PC 에만 있어요`, 'warn', 6000); }
+      }
+    }
+    await this.save();
+    this.busy = false;
+    if (Object.keys(this.q).length) { clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), fail ? 30000 : 2000); }
+    bus.emit('cloud', { pending: Object.keys(this.q).length, fail });
+  },
+  // 열 때 한 번 — 서버와 이 PC 를 맞춘다
+  async pull() {
+    const r = await fetch(`${SB_URL}/rest/v1/studio_projects?select=id,updated_ms,deleted_at`, { headers: sbHead(), cache: 'no-store' });
+    if (!r.ok) return;
+    const remote = await r.json();
+    const local = await idb.all('projects');
+    const L = new Map(local.map((p) => [p.id, p])), R = new Map(remote.map((x) => [x.id, x]));
+    const need = [];
+    for (const x of remote) {
+      if (this.q['projects:' + x.id]) continue;   // 이 PC 에서 고친 게 아직 안 올라감
+      const p = L.get(x.id), lm = p ? (p.updatedAt || 0) : -1;
+      if (x.deleted_at) { if (p && lm <= x.updated_ms) await idb.del('projects', x.id); continue; }
+      if (!p || x.updated_ms > lm) need.push(x.id);
+    }
+    for (let i = 0; i < need.length; i += 20) {
+      const ids = need.slice(i, i + 20).map(encodeURIComponent).join(',');
+      const rr = await fetch(`${SB_URL}/rest/v1/studio_projects?select=data&id=in.(${ids})`, { headers: sbHead(), cache: 'no-store' });
+      if (!rr.ok) break;
+      for (const row of await rr.json()) if (row.data && row.data.id) await idb.put('projects', row.data);
+    }
+    for (const p of local) {
+      const x = R.get(p.id);
+      if (!x || (!x.deleted_at && (p.updatedAt || 0) > x.updated_ms)) this.mark('projects', p.id, 'put', true);
+    }
+    const fr = await fetch(`${SB_URL}/rest/v1/studio_files?select=id,store,deleted_at`, { headers: sbHead(), cache: 'no-store' });
+    if (!fr.ok) return;
+    const files = await fr.json();
+    const known = new Set(files.map((f) => f.store + ':' + f.id));
+    for (const store of ['assets', 'fonts']) for (const id of await idb.keys(store)) if (!known.has(store + ':' + id)) this.mark(store, id, 'put', true);
+    const localFonts = new Set(await idb.keys('fonts'));
+    for (const f of files) {
+      if (f.store !== 'fonts') continue;
+      if (f.deleted_at) { if (localFonts.has(f.id) && !this.q['fonts:' + f.id]) await idb.del('fonts', f.id); continue; }
+      if (!localFonts.has(f.id)) await downFile('fonts', f.id).catch(() => null);
+    }
+  },
+};
+
+export const db = {
+  ok: false,
+  async open() {
+    if (_db) return _db;
+    try {
+      _db = await new Promise((res, rej) => {
+        const r = indexedDB.open(DB_NAME, 1);
+        r.onupgradeneeded = () => {
+          const d = r.result;
+          for (const [s, keyPath] of Object.entries(STORES)) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath });
+        };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+        r.onblocked = () => rej(new Error('blocked'));
+      });
+      this.ok = idb.ok = true;
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* noop */ }
+    } catch (e) {
+      console.warn('IndexedDB 사용 불가 — 메모리 저장으로 동작', e);
+      this.ok = idb.ok = false;
+    }
+    // 온라인 맞추기 — 인터넷이 느려도 6초 넘게 기다리지 않는다 (넘으면 뒤에서 마저 하고 다음에 열 때 반영)
+    await cloud.init();
+    await Promise.race([cloud.pull().catch((err) => console.warn('온라인 맞추기 실패', err)), new Promise((res) => setTimeout(res, 6000))]);
+    cloud.push();
+    window.addEventListener('online', () => cloud.push());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) cloud.push(); });
+    return _db;
+  },
+  async get(store, key) {
+    const v = await idb.get(store, key);
+    if (v || (store !== 'assets' && store !== 'fonts') || !key) return v;
+    return downFile(store, key).catch(() => null);   // 다른 PC 에서 올린 사진 · 글꼴 — 처음 쓸 때 받아 둔다
+  },
+  async put(store, val) {
+    await idb.put(store, val);
+    if (store === 'projects' || store === 'assets' || store === 'fonts') cloud.mark(store, val[STORES[store]], 'put');
+  },
+  async del(store, key) {
+    await idb.del(store, key);
+    if (store === 'projects' || store === 'fonts') cloud.mark(store, key, 'del');   // 사진은 이 PC 사본만 정리 (서버 파일은 남김)
+  },
+  all(store) { return idb.all(store); },
+  keys(store) { return idb.keys(store); },
 };
 
 export async function getMeta(k, dflt = null) {

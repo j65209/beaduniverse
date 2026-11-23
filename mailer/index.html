@@ -343,13 +343,13 @@
       </div>
       <div class="step">
         <h4>💻 다른 PC에서도 쓰려면</h4>
-        <div class="muted" style="margin-bottom:10px">연결 코드를 복사해서 다른 PC의 이 화면 「연결 코드」 칸에 붙여넣으면 바로 연결돼요. 보조 계정이 붙어 있으면 그것도 같이 연결돼요.</div>
+        <div class="muted" style="margin-bottom:10px">연결 설정은 회사 비공개 저장소에 같이 보관돼서 다른 PC에서 이 화면을 열면 저절로 연결돼요. 안 될 때만 연결 코드를 복사해 다른 PC의 「연결 코드」 칸에 붙여넣으세요.</div>
         <div class="row"><button class="btn sm" id="copyLinkCode">연결 코드 복사</button>
-          <button class="btn sm" id="disconnect">이 PC에서 연결 해제</button></div>
+          <button class="btn sm" id="disconnect">연결 해제 (모든 PC)</button></div>
       </div>
       <div class="step">
         <h4>🧪 테스트용 내 주소</h4>
-        <div class="muted" style="margin-bottom:10px">여기 적은 주소는 예전에 보냈어도 다시 보내요 (중복 발송 방지 제외 · 이 PC에만 저장). 지금: <b id="testList">없음</b></div>
+        <div class="muted" style="margin-bottom:10px">여기 적은 주소는 예전에 보냈어도 다시 보내요 (중복 발송 방지 제외 · 모든 PC에 같이 저장). 지금: <b id="testList">없음</b></div>
         <div class="row"><input class="in" id="testInput" placeholder="내 테스트 주소 (쉼표로 여러 개)" style="flex:1">
           <button class="btn primary sm" id="testSave">저장</button></div>
       </div>
@@ -457,7 +457,7 @@
     server2: null,                       // { sender, remaining, logUrl }
     draft: lsGet(LS.draft, { subject: DEFAULT_SUBJECT, name: '브라이트비드', body: DEFAULT_BODY, interval: 3, attachments: [], dirty: false }),
     prev: new Map(),                     // 예전에 보낸 주소 → { source: 'log'|'gmail', when }
-    testEmails: new Set(lsGet(LS.testEmails, []) || []),  // 내 테스트 주소 — 중복 발송 방지에서 빼고 늘 다시 보냄 (이 PC에만, 공개 레포라 코드엔 안 넣음)
+    testEmails: new Set(lsGet(LS.testEmails, []) || []),  // 내 테스트 주소 — 중복 발송 방지에서 빼고 늘 다시 보냄 (비공개 저장소에 같이 보관, 공개 레포라 코드엔 안 넣음)
     checked: new Set(),                  // 이번 화면에서 서버에 확인한 주소
     checking: null,                      // 확인 중 진행 { done, total }
     version: 0,                          // 발송 서버 코드 버전
@@ -541,8 +541,10 @@
   async function connect(conn, quiet) {
     const r = await api('ping', null, conn);
     if (!r.ok) throw new Error(r.error || '연결에 실패했어요.');
+    const was = JSON.stringify(state.conn);
     state.conn = conn;
     lsSet(LS.conn, conn);
+    if (JSON.stringify(conn) !== was) cloudMark('conn');
     lsDel(LS.pendingKey);
     state.switching = null;
     state.server = { sender: r.sender, remaining: r.remaining, logUrl: r.logUrl };
@@ -607,8 +609,10 @@
     if (mainLog && logIdOf(r.logUrl) && logIdOf(r.logUrl) !== mainLog) {
       throw new Error('보조 서버가 다른 발송 기록 시트를 쓰고 있어요. 「보조 서버 코드 복사」로 받은 코드로 바꾼 뒤 setup ▶ 실행·새 버전 배포를 해 주세요.');
     }
+    const was2 = JSON.stringify(state.conn2);
     state.conn2 = conn;
     lsSet(LS.conn2, conn);
+    if (JSON.stringify(conn) !== was2) cloudMark('conn2');
     lsDel(LS.pendingKey2);
     state.server2 = { sender: r.sender, remaining: r.remaining, logUrl: r.logUrl };
     renderConn();
@@ -813,6 +817,7 @@
     const removed = p.already.length + p.dup + p.bad.length;
     $('recipients').value = p.fresh.join('\n');
     lsSet(LS.rcpt, $('recipients').value);
+    cloudMark('recipients', 3000);
     $('prevBox').hidden = true;
     renderStats();
     return removed;
@@ -831,6 +836,7 @@
     });
     ta.value = out.join('\n');
     lsSet(LS.rcpt, ta.value);
+    cloudMark('recipients', 60000);   // 발송 중엔 한 통마다 바뀌니 1분에 한 번만 올린다
   }
 
   /* 예전에 보낸 적 있는지 서버에 확인 (발송 기록 + 지메일 보낸편지함) */
@@ -1134,6 +1140,7 @@
     const list = ($('testInput').value.match(EMAIL_RE) || []).map((e) => e.toLowerCase());
     state.testEmails = new Set(list);
     lsSet(LS.testEmails, Array.from(state.testEmails));
+    cloudMark('testEmails');
     renderTestLine();
     renderStats();
     toast(list.length ? '테스트 주소를 저장했어요 · 이 주소들은 예전에 보냈어도 다시 보내요' : '테스트 주소를 비웠어요');
@@ -1141,7 +1148,7 @@
   let rcptTimer;
   $('recipients').addEventListener('input', () => {
     clearTimeout(rcptTimer);
-    rcptTimer = setTimeout(() => { lsSet(LS.rcpt, $('recipients').value); renderStats(); autoCheck(); }, 150);
+    rcptTimer = setTimeout(() => { lsSet(LS.rcpt, $('recipients').value); cloudMark('recipients', 5000); renderStats(); autoCheck(); }, 150);
   });
   $('cleanList').onclick = () => { const n = cleanRecipients(); toast(n ? `예전에 보낸 주소·중복·이메일 아닌 줄 ${n}개를 목록에서 지웠어요.` : '지울 주소가 없어요.'); };
   $('histSearch').addEventListener('input', renderHistory);
@@ -1247,7 +1254,7 @@
   };
   $('backupOff').onclick = () => {
     if (!confirm('보조 계정 연결을 해제할까요? (보조 서버와 기록은 그대로 남아요)')) return;
-    lsDel(LS.conn2); state.conn2 = null; state.server2 = null; renderConn();
+    lsDel(LS.conn2); state.conn2 = null; state.server2 = null; cloudMark('conn2'); renderConn();
   };
   $('copyLinkCode').onclick = async () => {
     if (!state.conn) return;
@@ -1256,11 +1263,125 @@
     catch (e) { prompt('아래 연결 코드를 복사하세요', code); }
   };
   $('disconnect').onclick = () => {
-    if (!confirm('이 PC에서 메일 발송 연결을 해제할까요? (발송 서버와 기록은 그대로 남아요)')) return;
+    if (!confirm('모든 PC에서 메일 발송 연결을 해제할까요? (발송 서버와 기록은 그대로 남아요)')) return;
     lsDel(LS.conn); state.conn = null; state.server = null; state.prev = new Map(); state.checked = new Set(); state.history = []; state.histCounts = null;
+    cloudMark('conn');
     renderConn(); renderStats(); closeModal('connModal');
   };
   window.addEventListener('beforeunload', (e) => { if (state.running) { e.preventDefault(); e.returnValue = ''; } });
+
+  /* ---------------------------------------------------------------- 온라인 보관 (2026-11-23 사장님 "내 컴퓨터에 있는것도 다 옮겨줘 · 온라인으로")
+     연결 설정(메인 · 보조 발송 키) · 받는 사람 목록 · 테스트 주소를 비공개 brightbeed-reports office/mailer.json 에 둔다 —
+     업무용 비밀번호 모음과 같은 길(프록시 /gh/ 관리자 경로). 예전엔 이 브라우저에만 있어 다른 PC 에서 열면 비어 있었다.
+     localStorage 는 바로 쓰는 사본. 고친 칸만 표시해 두었다가(cloudDirty) 서버 최신본 위에 그 칸만 얹어 올린다 — 다른 PC 가 고친 칸은 안 덮는다.
+     메일 문구 · 첨부는 원래부터 발송 서버(saveTemplate)에 저장돼 공유된다. 공개 경로로 옮기지 말 것(발송 키). */
+  const CLOUD = { path: '/gh/repos/j65209/brightbeed-reports/contents/office/mailer.json', tunnel: 'https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json',
+    pin: '0000', dirtyKey: 'bb_mailer_cloud_dirty_v1', seenKey: 'bb_mailer_cloud_seen_v1' };
+  const CLOUD_FIELDS = ['conn', 'conn2', 'recipients', 'testEmails'];
+  const cloudDirty = new Set(lsGet(CLOUD.dirtyKey, []) || []);
+  let cloudBase = null, cloudTimer = 0, cloudBusy = false;
+  async function cloudReq(method, body) {
+    if (!cloudBase) {
+      const t = await fetch(CLOUD.tunnel + '?cb=' + Date.now(), { cache: 'no-cache' });
+      cloudBase = String(((await t.json()) || {}).url || '').replace(/\/$/, '');
+      if (!cloudBase) throw new Error('proxy');
+    }
+    const url = cloudBase + CLOUD.path + (method === 'GET' ? '?ref=main&_=' + Date.now() : '');
+    const headers = { 'X-Brightbeed-PIN': CLOUD.pin, 'Accept': 'application/vnd.github+json' };
+    if (body) headers['Content-Type'] = 'application/json';
+    return fetch(url, { method, cache: 'no-cache', headers, body: body ? JSON.stringify(body) : undefined });
+  }
+  async function cloudGet() {
+    const r = await cloudReq('GET');
+    if (r.status === 404) return { sha: null, data: {} };
+    if (!r.ok) throw new Error('cloud ' + r.status);
+    const j = await r.json();
+    const txt = j.content ? decodeURIComponent(escape(atob(String(j.content).replace(/\s/g, '')))) : '{}';
+    const data = JSON.parse(txt || '{}');
+    return { sha: j.sha || null, data: data && typeof data === 'object' ? data : {} };
+  }
+  function cloudValue(f) {
+    if (f === 'recipients') return $('recipients').value || '';
+    if (f === 'testEmails') return Array.from(state.testEmails);
+    return state[f] || null;
+  }
+  function cloudMark(f, delay) {
+    cloudDirty.add(f);
+    lsSet(CLOUD.dirtyKey, Array.from(cloudDirty));
+    clearTimeout(cloudTimer);
+    cloudTimer = setTimeout(cloudPush, delay || 1500);
+  }
+  async function cloudPush() {
+    if (!cloudDirty.size) return;
+    if (cloudBusy) { clearTimeout(cloudTimer); cloudTimer = setTimeout(cloudPush, 2000); return; }
+    cloudBusy = true;
+    let retry = 0;
+    try {
+      for (let i = 0; i < 3; i++) {
+        const { sha, data } = await cloudGet();
+        const sent = Array.from(cloudDirty);
+        const next = Object.assign({}, data);
+        sent.forEach((f) => { next[f] = cloudValue(f); });
+        next.updatedAt = new Date().toISOString();
+        const body = { message: 'chore: 메일 발송 설정', content: btoa(unescape(encodeURIComponent(JSON.stringify(next, null, 2)))), branch: 'main' };
+        if (sha) body.sha = sha;
+        const r = await cloudReq('PUT', body);
+        if (r.status === 409) continue;   // 그 사이 다른 PC 가 저장 — 다시 받아 그 위에 얹는다
+        if (!r.ok) throw new Error('cloud ' + r.status);
+        sent.forEach((f) => { if (JSON.stringify(cloudValue(f)) === JSON.stringify(next[f])) cloudDirty.delete(f); });   // 올리는 동안 또 고친 칸은 남김
+        lsSet(CLOUD.dirtyKey, Array.from(cloudDirty));
+        lsSet(CLOUD.seenKey, 1);
+        break;
+      }
+    } catch (e) { retry = 30000; }   // 프록시 · 인터넷 문제 — 고친 칸 표시가 남아 있으니 30초 뒤 다시
+    finally {
+      cloudBusy = false;
+      if (cloudDirty.size) { clearTimeout(cloudTimer); cloudTimer = setTimeout(cloudPush, retry || 3000); }
+    }
+  }
+  // 서버 것을 받아 화면에 반영 — 바뀐 칸 이름을 돌려준다. 이 PC 에서 고치고 아직 못 올린 칸은 건드리지 않는다.
+  async function cloudPull() {
+    if (state.running) return [];
+    let got;
+    try { got = await cloudGet(); } catch (e) { return []; }
+    const d = got.data, first = !lsGet(CLOUD.seenKey, 0), changed = [];
+    CLOUD_FIELDS.forEach((f) => {
+      if (cloudDirty.has(f)) return;
+      const local = cloudValue(f);
+      const hasLocal = Array.isArray(local) ? local.length > 0 : !!local;
+      if (!(f in d)) { if (hasLocal) cloudDirty.add(f); return; }   // 서버에 아직 없는 칸 — 이 PC 것을 올린다 (옛 브라우저 자료 옮기기)
+      if (JSON.stringify(local) === JSON.stringify(d[f])) return;
+      if (first && hasLocal && (f === 'recipients' || f === 'testEmails')) {
+        // 처음 한 번 — 이 PC 에만 있던 목록이 사라지지 않게 서버 것과 합친다
+        if (f === 'recipients') {
+          const lines = [], seen = new Set();
+          String(d[f] || '').split(/\r?\n/).concat(String(local).split(/\r?\n/)).forEach((l) => { const t = l.trim(); if (t && !seen.has(t.toLowerCase())) { seen.add(t.toLowerCase()); lines.push(t); } });
+          $('recipients').value = lines.join('\n'); lsSet(LS.rcpt, $('recipients').value);
+        } else {
+          state.testEmails = new Set((d[f] || []).concat(local)); lsSet(LS.testEmails, Array.from(state.testEmails));
+        }
+        cloudDirty.add(f); changed.push(f); return;
+      }
+      if (f === 'recipients') { $('recipients').value = d[f] || ''; lsSet(LS.rcpt, d[f] || ''); }
+      else if (f === 'testEmails') { state.testEmails = new Set(Array.isArray(d[f]) ? d[f] : []); lsSet(LS.testEmails, Array.from(state.testEmails)); }
+      else { state[f] = d[f] || null; if (d[f]) lsSet(f === 'conn' ? LS.conn : LS.conn2, d[f]); else lsDel(f === 'conn' ? LS.conn : LS.conn2); }
+      changed.push(f);
+    });
+    if (cloudDirty.size) { lsSet(CLOUD.dirtyKey, Array.from(cloudDirty)); cloudPush(); }
+    else lsSet(CLOUD.seenKey, 1);
+    return changed;
+  }
+  async function cloudSync() {
+    const ch = await cloudPull();
+    if (!ch.length) return;
+    renderTestLine(); renderStats();
+    if (ch.includes('conn')) {
+      if (state.conn) connect(state.conn, true).then(() => ping2()).catch((e) => { renderConn(); toast(e.message, true); });
+      else { state.server = null; renderConn(); }
+    } else if (ch.includes('conn2')) { if (state.conn2) ping2(); else { state.server2 = null; renderConn(); } }
+    if (ch.includes('recipients')) autoCheck();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) cloudSync(); else if (cloudDirty.size && !state.running) cloudPush(); });
 
   /* ---------------------------------------------------------------- 시작 */
   fillForm();
@@ -1271,6 +1392,7 @@
   renderStats();
   renderConn();
   if (state.conn) connect(state.conn, true).then(() => ping2()).catch((e) => { renderConn(); toast(e.message, true); });
+  cloudSync();
 })();
 </script>
 </body>
