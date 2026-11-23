@@ -53264,10 +53264,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(s.kind!=='freelance'){
       const health=Math.round(base*R.health);
       ins=Math.round(base*R.pension)+health+Math.round(health*R.care)+Math.round(base*R.employ)+Math.round(base*R.injury);
-      sev=Math.round(pay/12);
+      // 퇴직금은 1년 이상 일해야 생긴다 — 퇴사일이 정해졌고 근속 1년 미만이면 적립하지 않는다
+      const short=st&&en&&_sbDaysBetween(st,en)<365;
+      sev=short?0:Math.round(pay/12);
     }
     const k=v=>Math.round(v*f);
-    return {pay:k(pay), ins:k(ins), sev:k(sev), total:k(pay+ins+sev), full:pay+ins+sev, days, dim, off:days===0};
+    return {pay:k(pay), ins:k(ins), sev:k(sev), total:k(pay+ins+sev), full:pay+ins+sev, days, dim, off:days===0, noSev:s.kind!=='freelance'&&!sev};
   }
   function _sbLabor(month){
     const out={rows:[], pay:0, ins:0, sev:0, total:0, active:0};
@@ -53527,7 +53529,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       });
       const part=!c.off&&c.days<c.dim?`<span class="sb-lb-part">${c.days}/${c.dim}일 · 한 달 ₩${w(c.full)}</span>`:'';
       tr.querySelector('[data-lb="ins"]').textContent=s.kind==='freelance'?'-':w(c.ins);
-      tr.querySelector('[data-lb="sev"]').textContent=s.kind==='freelance'?'-':w(c.sev);
+      const sevTd=tr.querySelector('[data-lb="sev"]');
+      sevTd.textContent=s.kind==='freelance'?'-':c.noSev?'1년 미만':w(c.sev);
+      sevTd.title=c.noSev?'퇴사일 기준 근속 1년 미만이라 퇴직금이 생기지 않아요':'';
       tr.querySelector('[data-lb="total"]').innerHTML=(c.off?'0':'₩'+w(c.total))+part;
     });
     const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
