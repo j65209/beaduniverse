@@ -108,7 +108,7 @@
   .mbtn .c { display: block; font-size: 11px; color: var(--t2); margin-top: 1px }
   .mbtn .meter { display: block; height: 4px; border-radius: 2px; background: #eef1f5; margin-top: 4px; overflow: hidden }
   .mbtn .meter i { display: block; height: 100%; background: var(--p) }
-  .cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 10px; align-items: start }
+  .cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start }   /* 11-23 사장님 "캘린더 밑에 좌석 다 · 세로로 내리는 거 말고" — 티켓은 달력 밑 가로 줄 */
   .cal { padding: 8px }
   .cal-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 10px }
   .cal-head h2 { margin: 0; font-size: 17px; letter-spacing: -.3px }
@@ -134,8 +134,13 @@
   .day.lv1 { background: #fbfcff } .day.lv2 { background: #f3f7fe } .day.lv3 { background: #e9f0fd }
   .day .nw { width: 7px; height: 7px; border-radius: 50%; background: var(--new); flex: none }
 
-  .side { position: sticky; top: calc(var(--top) + 12px); max-height: calc(100vh - var(--top) - 24px); overflow: auto; padding: 14px }
+  .side { padding: 14px; min-width: 0 }
+  .side-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px }
+  .side-h .tk-nav { display: flex; gap: 6px; flex: none }
   .side h3 { margin: 0 0 2px; font-size: 16px; letter-spacing: -.3px }
+  /* 티켓 가로 줄 — 옆으로 밀거나 ‹ › 로 넘긴다 */
+  .tks { display: flex; gap: 10px; align-items: flex-start; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; overscroll-behavior-x: contain; scroll-padding: 0 2px; padding: 2px 2px 8px; margin: 0 -2px }
+  .tks .tk { flex: 0 0 310px; margin-bottom: 0; scroll-snap-align: start }
   .side .sub { color: var(--t3); font-size: 12.5px; margin-bottom: 10px }
   .empty-msg { color: var(--t3); font-size: 13px; padding: 18px 4px; text-align: center }
 
@@ -267,8 +272,6 @@
   .loading { padding: 50px 0; text-align: center; color: var(--t3) }
 
   @media (max-width: 920px) {
-    .cal-wrap { grid-template-columns: 1fr }
-    .side { position: static; max-height: none }
   }
   @media (max-width: 640px) {
     .top { padding: 8px 12px; gap: 6px }
@@ -276,6 +279,7 @@
     .wrap { padding: 10px 6px 40px }
     .cal { padding: 5px }
     .side { padding: 10px }
+    .tks .tk { flex-basis: calc(100% - 34px) }   /* 휴대폰: 한 장 + 다음 장 끝이 살짝 보이게 */
     .day { min-height: 54px; padding: 3px; border-radius: 7px }
     .day .cities { gap: 1px }
     .day .city { font-size: 9.5px; line-height: 13px; padding: 0 2px; border-radius: 3px; text-overflow: clip; width: 100% }
@@ -835,6 +839,10 @@
       return `<div class="fl"><b class="num fn">${esc(fnTxt(s))}</b><span class="num tm">${esc(s.t || '')}</span>${cabs}${al}${via}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}</div>`;
     }).join('');
   }
+  function tksNav() {
+    const row = document.querySelector('#dayPanel .tks'), nav = document.querySelector('#dayPanel .tk-nav');
+    if (row && nav) nav.hidden = row.scrollWidth <= row.clientWidth + 4;
+  }
   function renderDay() {
     const el = $('dayPanel');
     const map = dayMap(filtered());
@@ -855,12 +863,16 @@
     const nOk = ps.filter(p => rtInfo(p.code, S.day, S.dir).state === 'ok').length;
     const lg = S.cabins.size > 1 ? '<span class="lg"><span><i></i>프레스티지</span><span><i class="A"></i>일등석</span></span>' : '';
     // 티켓 하나 = 도시 하나 — '오는 편 날짜 보기' 단추 · 공제 마일 줄은 뺌 (11-23)
-    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳 · 왕복 ${nOk}곳 · D-${dayDiff(S.today, S.day)}${lg}</div>` +
-      ps.map(p => {
+    // 달력 밑 가로 줄 (11-23 "캘린더 밑에 좌석 다 · 세로로 내리는 거 말고") — 넘칠 때만 ‹ › 단추
+    const chev = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    el.innerHTML = `<div class="side-h"><div><h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳 · 왕복 ${nOk}곳 · D-${dayDiff(S.today, S.day)}${lg}</div></div>` +
+      `<div class="tk-nav" hidden><button class="icon-btn" type="button" data-tks="-1" aria-label="앞 티켓">${chev('M15 18l-6-6 6-6')}</button><button class="icon-btn" type="button" data-tks="1" aria-label="다음 티켓">${chev('M9 18l6-6-6-6')}</button></div></div>` +
+      '<div class="tks">' + ps.map(p => {
         const arr = pm.get(p.code), cs = ['O', 'A'].filter(c => arr.some(s => s.c === c)).join('');
         return `<div class="pc tk"><div class="tk-top ${cs}"><div class="pc-h"><b>${esc(p.city)}</b><span>${esc(p.country)}</span></div>` +
           flightRows(arr) + '</div><div class="cut"></div>' + rtLine(p.code, S.day, S.dir) + '</div>';
-      }).join('');
+      }).join('') + '</div>';
+    tksNav();
   }
 
   function renderPlaces() {
@@ -1081,8 +1093,16 @@
   $('calGrid').addEventListener('click', e => {
     const b = e.target.closest('button[data-day]'); if (!b) return;
     S.day = b.dataset.day; renderCal(); renderDay();
-    if (window.matchMedia('(max-width: 920px)').matches) $('dayPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 티켓 줄은 달력 밑 — 휴대폰은 맨 위로, PC 는 화면에 다 들어올 만큼만 내린다
+    $('dayPanel').scrollIntoView({ behavior: 'smooth', block: window.matchMedia('(max-width: 920px)').matches ? 'start' : 'nearest' });
   });
+  $('dayPanel').addEventListener('click', e => {
+    const b = e.target.closest('button[data-tks]'); if (!b) return;
+    const row = $('dayPanel').querySelector('.tks'); if (!row) return;
+    const card = row.querySelector('.tk'), step = card ? card.offsetWidth + 10 : row.clientWidth * .8;
+    row.scrollBy({ left: Number(b.dataset.tks) * Math.max(step, Math.floor(row.clientWidth / step) * step), behavior: 'smooth' });
+  });
+  window.addEventListener('resize', tksNav);
   document.addEventListener('click', e => {
     const pl = e.target.closest('[data-place]');
     if (pl && !e.target.closest('#placeSheet')) { openPlace(pl.dataset.place, pl.dataset.pick || null); return; }
