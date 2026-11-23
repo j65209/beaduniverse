@@ -48,9 +48,8 @@
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
     --text:#0f172a; --text-2:#334155; --text-3:#64748b; --text-4:#94a3b8;
     --accent:#16a34a; --accent-ink:#15803d; --accent-soft:#ecfdf3;
-    --side:#0f172a; --side-text:#cbd5e1; --side-mute:#64748b;
     --danger:#dc2626; --warn:#d97706; --info:#2563eb;
-    --row-h:34px; --side-w:224px; --detail-w:400px;
+    --row-h:34px; --detail-w:400px;
   }
   *{box-sizing:border-box}
   [hidden]{display:none!important}
@@ -61,40 +60,35 @@
   a{color:inherit}
   .app{height:100vh;height:100dvh;display:flex;overflow:hidden;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 
-  /* ── 왼쪽 메뉴 ── */
-  .side{flex:none;width:var(--side-w);display:flex;flex-direction:column;background:var(--side);color:var(--side-text)}
-  .side-top{flex:none;display:flex;align-items:center;gap:11px;height:58px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.07)}
   .logo{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,#22c55e,#15803d);box-shadow:0 2px 10px rgba(34,197,94,.35)}
   .logo svg{width:16px;height:16px;color:#fff}
-  .side-top b{display:block;font-size:15px;font-weight:800;color:#fff;letter-spacing:-.02em}
-  .side-top small{display:block;margin-top:1px;font-size:11px;color:var(--side-mute)}
-  .side-fold{flex:none;margin-left:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--side-mute)}
-  .side-fold:hover{background:rgba(255,255,255,.08);color:#fff}
-  .side-fold svg{width:17px;height:17px}
-  /* 왼쪽 메뉴 접기 (PC) — 접으면 표가 그만큼 넓어지고, 위 막대의 ☰ 로 다시 편다 */
-  .app.side-off .menu{display:grid}
-  @media (min-width:1001px){ .app.side-off .side{display:none} }
-  .nav{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:6px 10px 16px;scrollbar-width:thin;scrollbar-color:#334155 transparent}
-  .nav-sec{margin:16px 0 6px;padding:0 10px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--side-mute)}
-  .nav-item{position:relative;width:100%;display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;font-size:13.5px;text-align:left;color:var(--side-text)}
-  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
-  .nav-item.on{background:rgba(34,197,94,.16);color:#fff;font-weight:700}
-  .nav-item.on::before{content:'';position:absolute;left:-10px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:#22c55e}
-  .nav-item .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#475569}
-  .nav-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .nav-item .nd{flex:none;font-size:11px;color:var(--side-mute);font-variant-numeric:tabular-nums}
-  .nav-item.on .nd{color:#86efac}
-  .side-foot{flex:none;padding:10px 10px 14px;border-top:1px solid rgba(255,255,255,.07)}
-  .side-link{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:8px;font-size:12.5px;color:var(--side-text);text-decoration:none}
-  .side-link:hover{background:rgba(255,255,255,.06);color:#fff}
-  .side-link svg{width:15px;height:15px;opacity:.8}
-  .scrim,.dscrim{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:45}
-  .dscrim{z-index:39}   /* 상세 창(40) 아래 — 전엔 45 라 휴대폰에서 상세 창 위를 덮어, 창을 누르면 그냥 닫혔다 (2026-11-20) */
+  .dscrim{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:39}   /* 상세 창(40) 아래 — 전엔 45 라 휴대폰에서 상세 창 위를 덮어, 창을 누르면 그냥 닫혔다 (2026-11-20) */
 
-  /* ── 본문 ── */
+  /* ── 본문 ── 2026-11-23 왼쪽 어두운 메뉴를 없애고 위 탭으로 (표가 화면 폭을 다 씀) */
   .main{flex:1;min-width:0;display:flex;flex-direction:column}
-  .bar{flex:none;display:flex;align-items:center;gap:8px;height:58px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line)}
-  .menu{display:none}
+  .bar{flex:none;display:flex;align-items:center;gap:8px;height:54px;padding:0 14px 0 16px;background:var(--card);border-bottom:1px solid var(--line-2)}
+  .brand{flex:none;display:flex;align-items:center;gap:9px;margin-right:10px}
+  .brand .logo{width:28px;height:28px}
+  .brand b{font-size:15.5px;font-weight:800;letter-spacing:-.025em;white-space:nowrap}
+
+  /* ── 위 탭 ── 누르면 바로 그 탭 (점 = 브랜드 색, 숫자 = 아이디 채운 사람 수) */
+  .tabs{flex:none;display:flex;align-items:stretch;height:46px;padding:0 10px;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:none;position:relative;z-index:0;display:inline-flex;align-items:center;gap:7px;padding:0 14px;font-size:14px;font-weight:600;color:var(--text-3);white-space:nowrap}
+  .tab:hover{color:var(--text)}
+  .tab:hover::before{content:'';position:absolute;inset:6px 3px;border-radius:8px;background:#f3f5f8;z-index:-1}
+  .tab .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#cbd5e1}
+  .tab small{font-size:11px;font-weight:600;color:var(--text-4)}
+  .tab em{flex:none;min-width:22px;height:20px;padding:0 7px;border-radius:999px;display:inline-grid;place-items:center;background:#f1f4f8;color:var(--text-3);font-style:normal;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .tab.on{color:var(--text);font-weight:800}
+  .tab.on::after{content:'';position:absolute;left:8px;right:8px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--accent)}
+  .tab.on em{background:var(--accent-soft);color:var(--accent-ink)}
+  .tab.on small{color:var(--text-3)}
+  .tab:focus-visible{outline:2px solid #93c5fd;outline-offset:-6px;border-radius:10px}
+  .tabs .tsep{align-self:center;height:18px;margin:0 6px}
+  .tab-add{flex:none;align-self:center;width:32px;height:32px;margin-left:4px;border-radius:8px;display:grid;place-items:center;color:var(--text-4)}
+  .tab-add:hover{background:#f1f4f8;color:var(--text)}
+  .tab-add svg{width:17px;height:17px}
   .find{flex:0 1 420px;min-width:0;display:flex;align-items:center;gap:7px;height:38px;padding:0 8px 0 13px;border-radius:10px;background:#f1f4f8;border:1px solid transparent;cursor:text}
   .find:focus-within{background:#fff;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
   .find svg{flex:none;width:16px;height:16px;color:var(--text-4)}
@@ -117,7 +111,7 @@
   .ib.on{background:#e8f0fe;color:var(--info)}
   .ib svg{width:18px;height:18px}
 
-  .head{flex:none;padding:14px 18px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+  .head{flex:none;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
   .trow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:30px}
   .trow h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.025em}
   .date{font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);border:1px solid #bbf7d0;border-radius:999px;padding:3px 10px;font-variant-numeric:tabular-nums}
@@ -132,23 +126,28 @@
   .parts button{height:28px;padding:0 12px;border-radius:7px;font-size:12.5px;color:var(--text-3);white-space:nowrap}
   .parts button:hover{color:var(--text)}
   .parts button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
-  .alert{margin-top:12px;display:flex;gap:10px;padding:10px 13px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12.5px;line-height:1.6}
-  .alert svg{flex:none;width:17px;height:17px;margin-top:1px;color:#d97706}
-  .alert ul{margin:0;padding:0;list-style:none}
-  .alert li+li{margin-top:2px}
+  .alert{display:flex;align-items:flex-start;gap:9px;margin-bottom:10px;padding:7px 12px;border-radius:9px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12.5px;line-height:1.55}
+  .alert svg{flex:none;width:16px;height:16px;margin-top:2px;color:#d97706}
+  .alert ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:1px 0}
+  .alert li+li::before{content:'·';margin:0 9px;color:#d97706;font-weight:800}
   .al-more{display:none}   /* 휴대폰에서만 — 안내는 첫 줄만, 누르면 전부 */
-  .kpis{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
-  .kpi{min-width:124px;height:62px;display:flex;flex-direction:column;justify-content:center;padding:0 15px;border-radius:12px;border:1px solid var(--line);background:#fff;text-align:left;cursor:default}
-  .kpi b{font-size:21px;font-weight:800;letter-spacing:-.025em;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--text)}
-  .kpi b small{font-size:12px;font-weight:700;margin-left:2px;color:var(--text-3)}
-  .kpi span{margin-top:3px;font-size:11.5px;color:var(--text-3);white-space:nowrap}
+  /* 요약 숫자 · 책임자 칩 · 단추를 한 줄로 (2026-11-23 — 전엔 큰 카드 줄 + 칩 줄 따로라 표가 아래로 밀렸다) */
+  .hrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .hrow .tools{margin-left:auto}
+  .kpis{display:flex;gap:6px;flex-wrap:wrap}
+  .kpis:empty{display:none}
+  .kpi{flex:none;display:inline-flex;align-items:baseline;gap:5px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:#fff;text-align:left;cursor:default;white-space:nowrap;line-height:30px}
+  .kpi b{font-size:15px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--text)}
+  .kpi b small{font-size:11px;font-weight:700;margin-left:1px;color:var(--text-3)}
+  .kpi span{font-size:12px;color:var(--text-3)}
   .kpi.click{cursor:pointer}
   .kpi.click:hover{border-color:#cbd5e1;background:#fafbfc}
   .kpi.red b{color:var(--danger)}
   .kpi.amber b{color:var(--warn)}
   .kpi.blue b{color:var(--info)}
-  .kpi.on{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,163,74,.14);background:#fff}
-  .chips{margin-top:12px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+  .kpi.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(22,163,74,.18);background:#f6fef9}
+  .kpi.on span{color:var(--text);font-weight:700}
+  .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-left:8px}
   .chips::-webkit-scrollbar{display:none}
   .chip{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;color:var(--text-2);white-space:nowrap}
   .chip:hover{border-color:#cbd5e1}
@@ -243,48 +242,35 @@
   /* 아이폰 · 아이패드는 16px 보다 작은 입력 칸을 누르면 화면을 확대해 버린다 (찾기 · 고치기 칸) */
   @media (max-width:720px),(pointer:coarse){ .find input,.edbox input,.edbox textarea{font-size:16px} }
 
-  /* ── 좁은 화면 ── 2026-11-20 사용자 "모바일에서 조금 불안정하거나 최적화가 안 된 것 같아 — 완벽하게" */
-  @media (max-width:1000px){
-    /* 닫혀 있을 땐 그림자 · 보이기도 끈다 (전엔 화면 왼쪽 끝에 서랍 그림자가 늘 비쳤다) */
-    .side{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);visibility:hidden;transition:transform .2s ease,visibility 0s linear .2s}
-    .app.nav-open .side{transform:none;visibility:visible;transition:transform .2s ease;box-shadow:12px 0 34px rgba(15,23,42,.3)}
-    .menu{display:grid}
-  }
-  /* 휴대폰 (세로) · 가로로 눕힌 휴대폰 — 위쪽은 작게, 표는 넓게 */
+  /* 휴대폰 (세로) · 가로로 눕힌 휴대폰 — 위쪽은 작게, 표는 넓게. 탭 줄은 옆으로 밀어 넘긴다 */
   @media (max-width:720px),(max-height:520px){
-    .bar{height:52px;padding:0 8px;gap:4px}
+    .bar{height:52px;padding:0 6px 0 10px;gap:4px}
+    .brand{margin-right:4px}
+    .brand b{display:none}
     .find{flex:1 1 auto;height:38px}
     .st{padding:0 8px}
     .st #stText,#btnFull,#btnDense{display:none}
     .st.is-err #stText,.st.is-stored #stText{display:inline;font-size:11.5px}
-    .head{padding:10px 12px}
-    /* 제목 줄은 한 줄 (길면 … ), 날짜 단추는 그 아래 한 줄로 옆으로 넘김 */
-    .trow{display:grid;grid-template-columns:minmax(0,max-content) auto 1fr auto;align-items:center;gap:8px;min-height:28px}
-    .trow h1{grid-column:1;grid-row:1;min-width:0;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .trow h1 .t2{display:none}
-    .date{grid-column:2;grid-row:1;padding:2px 8px;font-size:11.5px}
-    .tools{grid-column:4;grid-row:1;margin-left:0;gap:6px}
-    .etog{height:28px;padding:0 10px;font-size:11.5px}
-    .parts button{height:26px;padding:0 10px;font-size:12px}
-    .dates{grid-column:1/-1;grid-row:2;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px}
-    .dates::-webkit-scrollbar{display:none}
-    .dates:empty{display:none}
-    .dates button{flex:none;height:30px}
-    .alert{margin-top:10px;padding:8px 11px;font-size:12px;line-height:1.5;cursor:pointer}
-    .alert ul{flex:1;min-width:0}
+    .tabs{height:44px;padding:0 4px}
+    .tab{padding:0 12px;font-size:14px}
+    .tab small{display:none}
+    .head{padding:8px 12px}
+    .alert{margin-bottom:8px;padding:7px 11px;font-size:12px;line-height:1.5;cursor:pointer}
+    .alert ul{flex:1;min-width:0;display:block}
+    .alert li+li::before{content:none}
     .alert.fold li+li{display:none}
     .alert.fold li{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
     .al-more{display:block;flex:none;align-self:center;font-size:11.5px;font-weight:700;color:#b45309;white-space:nowrap}
-    .kpis{flex-wrap:nowrap;gap:8px;overflow-x:auto;scrollbar-width:none;margin:7px -12px -3px;padding:3px 12px}
-    .kpis::-webkit-scrollbar{display:none}
-    .kpi{flex:none;min-width:96px;height:52px;padding:0 12px;border-radius:11px}
-    .kpi b{font-size:17px}
-    .kpi span{font-size:11px}
-    .chips{margin:10px -12px 0;padding:0 12px}
+    /* 요약 숫자 · 칩 · 단추 = 한 줄, 옆으로 밀어 넘김 */
+    .hrow{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:1px 12px;overscroll-behavior-x:contain}
+    .hrow::-webkit-scrollbar{display:none}
+    .kpis,.chips{flex:none;flex-wrap:nowrap;overflow:visible}
+    .hrow .tools{flex:none;margin-left:6px;gap:6px}
+    .etog{height:30px;padding:0 11px;font-size:12px}
+    .kpi{height:32px;padding:0 11px}
     .chip{height:32px}
-    /* 표를 아래로 넘기면 위쪽(안내 · 요약 카드 · 칩 · 날짜)을 접어 표를 넓게 — 맨 위로 오거나 제목 줄을 누르면 다시 편다 (headScroll) */
-    .app.hmin .head{padding-top:8px;padding-bottom:8px;cursor:pointer}
-    .app.hmin .alert,.app.hmin .kpis,.app.hmin .chips,.app.hmin .dates{display:none}
+    /* 표를 아래로 넘기면 위쪽(안내 · 요약 숫자 · 칩)을 접어 표를 넓게 — 맨 위로 오면 다시 편다 (headScroll). 탭 줄은 그대로 */
+    .app.hmin .head{display:none}
   }
   @media (max-width:720px){
     :root{--row-h:42px}
@@ -302,17 +288,11 @@
   @keyframes sheetUp{from{transform:translateY(100%)}}
   @media (prefers-reduced-motion:reduce){ .detail{animation:none} }
   @media (pointer:coarse){   /* 손가락으로 누르기 좋게 */
-    .nav-item{height:44px;font-size:14.5px}
-    .side-link{height:42px;font-size:13.5px}
     .ib{width:40px;height:40px}
   }
 
   /* ── 시딩 마스터만 (위는 erp/index.html 과 같은 CSS) ── */
   .main{min-height:0}
-  .trow h1 .en{margin-left:7px;font-size:13px;font-weight:700;color:var(--text-4);letter-spacing:.03em}
-  .nav-item .nm small{margin-left:4px;font-size:10.5px;font-weight:600;letter-spacing:.03em;color:var(--side-mute)}
-  .nav-item.on .nm small{color:#86efac}
-  button.side-link{width:100%;text-align:left}
   .pill.sent{background:#fef3c7;color:#92400e}
   .tbl td .pill.sent{margin-left:6px;padding:1px 7px;font-size:11px}
   .bd{display:inline-flex;align-items:center;gap:7px;font-weight:600}
@@ -403,6 +383,13 @@
   .cmenu button kbd{margin-left:auto;font:500 11px var(--ui);color:var(--text-4)}
   .cmenu button.dng{color:var(--danger)}
   .cmenu hr{margin:4px 6px;border:0;border-top:1px solid var(--line-2)}
+  /* 위 막대 ⋯ (더 보기) — 새 탭 · 엑셀 · 도움말 · 오피스 홈 (예전 왼쪽 메뉴 아래 단추들) */
+  .cmenu.more{min-width:220px}
+  .cmenu.more a{display:flex;align-items:center;gap:9px;height:34px;padding:0 10px;border-radius:7px;color:var(--text);text-decoration:none}
+  .cmenu.more a:hover{background:#f1f4f8}
+  .cmenu.more button{height:34px}
+  .cmenu.more svg{flex:none;width:16px;height:16px;color:var(--text-3)}
+  @media (pointer:coarse){ .cmenu.more button,.cmenu.more a{height:42px;font-size:14px} }
   .pal{padding:10px;width:258px}
   .pal .pt{display:flex;align-items:center;gap:6px;margin-bottom:8px}
   .pal .pt b{flex:1;font-size:12.5px}
@@ -538,7 +525,7 @@
     .bar .ib{color:#0f172a}
     .bar .ib svg{stroke-width:2.5}
   }
-  @media (max-width:720px){ .bar{height:54px} .find{height:40px} .bar .menu{width:40px;height:40px} .bar .menu svg{width:22px;height:22px} }
+  @media (max-width:720px){ .bar{height:54px} .find{height:40px} }
   /* 아이폰 맨 위 흐림 막기 (2026-11-23 사장님 "아이폰으로 봤을때 위가 흐려" → "싹다 흐리지않게") — 아이폰 사파리는 화면 맨 위에 흐림 효과를 덮고,
      화면에 고정된(position:fixed) 단색 막대가 맨 위에 닿아 있을 때만 단색으로 바꾼다 (ERP 에서 확인). */
   :root{--top-in:0px;--bar-h:58px}
@@ -546,7 +533,6 @@
   @media (max-width:1000px){
     html.ios-solo .bar{position:fixed;top:0;left:0;right:0;z-index:30;height:calc(var(--bar-h) + var(--top-in));padding-top:var(--top-in)}
     html.ios-solo .main{padding-top:calc(var(--bar-h) + var(--top-in))}
-    html.ios-solo .side{padding-top:var(--top-in)}
   }
   @media (max-width:1000px) and (max-height:520px){ html.ios-solo{--bar-h:52px;--top-in:env(safe-area-inset-top,0px)} }
   @media (max-width:720px){ html.ios-solo{--bar-h:54px} }
@@ -570,24 +556,9 @@
 </div>
 <div class="ios-bot" aria-hidden="true"></div>
 <div class="app" id="app">
-  <aside class="side" aria-label="메뉴">
-    <div class="side-top">
-      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></span>
-      <div><b>시딩 마스터</b><small>X · 인스타 협찬 시딩</small></div>
-      <button type="button" class="side-fold" id="btnFold" title="메뉴 접기 (표를 넓게)" aria-label="메뉴 접기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
-    </div>
-    <nav class="nav" id="nav"></nav>
-    <div class="side-foot">
-      <button type="button" class="side-link" id="btnNewTab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>새 탭 만들기</button>
-      <button type="button" class="side-link" id="btnImport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>엑셀 · CSV 가져오기</button>
-      <button type="button" class="side-link" id="btnExport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>엑셀로 내보내기</button>
-      <a class="side-link" href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>오피스 홈</a>
-    </div>
-  </aside>
-  <div class="scrim" id="scrim" hidden></div>
   <div class="main">
     <header class="bar">
-      <button type="button" class="ib menu" id="btnMenu" aria-label="메뉴 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <div class="brand" title="시딩 마스터 — X · 인스타 협찬 시딩"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></span><b>시딩 마스터</b></div>
       <label class="find" for="q" title="찾기 (Ctrl+F) — 띄어 쓴 낱말이 모두 들어간 줄만 · Enter 로 한 줄씩">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
         <input id="q" type="search" placeholder="아이디 · 제품 · 책임자 · 무엇이든 찾기" autocomplete="off" spellcheck="false" enterkeyhint="search">
@@ -596,15 +567,15 @@
       </label>
       <div class="sp"></div>
       <button type="button" class="st is-load" id="st" title="누르면 지금 다시 받기"><i class="dot"></i><span id="stText">불러오는 중…</span></button>
-      <button type="button" class="ib" id="btnHelp" title="단축키 · 수식 도움말"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></button>
       <button type="button" class="ib" id="btnDense" title="줄 간격 촘촘하게"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16M4 9.7h16M4 14.3h16M4 19h16"/></svg></button>
       <button type="button" class="ib" id="btnFull" title="전체 화면 (모니터 꽉 채우기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button type="button" class="ib" id="btnMore" title="더 보기 — 새 탭 · 엑셀 가져오기 · 내보내기 · 도움말" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>
     </header>
+    <!-- 위 탭 (2026-11-23 사용자 "erp 디자인에서 상단 탭 눌러서 쉽게 바로 볼 수 있게") — 왼쪽 메뉴 대신. renderNav 가 채운다 -->
+    <nav class="tabs" id="tabs" role="tablist" aria-label="시딩 탭"></nav>
     <section class="head">
-      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="tools"><button type="button" class="etog solid" id="gTog" hidden title="주의사항의 첫 연락 DM · 콘텐츠 가이드 (복사해서 X DM 에 붙여 넣기)">✉ DM 양식</button><button type="button" class="etog" id="tabSet" hidden>⚙ 탭 설정</button></div></div>
       <div class="alert" id="alert" hidden></div>
-      <div class="kpis" id="kpis"></div>
-      <div class="chips" id="chips" hidden></div>
+      <div class="hrow"><div class="kpis" id="kpis"></div><div class="chips" id="chips" hidden></div><div class="tools"><button type="button" class="etog solid" id="gTog" hidden title="주의사항의 첫 연락 DM · 콘텐츠 가이드 (복사해서 X DM 에 붙여 넣기)">✉ DM 양식</button><button type="button" class="etog" id="tabSet" hidden>⚙ 탭 설정</button></div></div>
     </section>
     <div class="tbar" id="tbar">
       <button type="button" class="tb" data-cmd="undo" title="되돌리기 (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
@@ -651,6 +622,15 @@
 <textarea id="ed" class="idle" spellcheck="false" autocomplete="off" autocapitalize="off" rows="1" aria-label="칸 고치기"></textarea>
 <div class="ddl" id="ddl" hidden></div>
 <div class="cmenu" id="cmenu" hidden></div>
+<div class="cmenu more" id="moreMenu" role="menu" hidden>
+  <button type="button" role="menuitem" data-act="new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>새 탭 만들기</button>
+  <button type="button" role="menuitem" data-act="import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>엑셀 · CSV 가져오기</button>
+  <button type="button" role="menuitem" data-act="export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>엑셀로 내보내기</button>
+  <hr>
+  <button type="button" role="menuitem" data-act="help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg>단축키 · 수식 도움말</button>
+  <hr>
+  <a role="menuitem" href="../"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>오피스 홈</a>
+</div>
 <div class="pal" id="pal" hidden></div>
 <div class="emo" id="emo" hidden></div>
 <div class="modal" id="modal" hidden><div class="mbox" id="mbox" role="dialog" aria-modal="true"></div></div>
@@ -2008,14 +1988,14 @@
   const catVal = (row, vc) => textOf(row, vc) || '미지정';
   function buildCat(vcols, rows) {
     const kind = kindOfView();
-    const vc = S.cur === ALL ? vcols[0] : kind === 'ship' ? (findVc(vcols, /^브랜드$/) || findVc(vcols, /^(책임자|담당자?)$/)) : (findVc(vcols, /^(책임자|담당자?)$/) || findVc(vcols, /^브랜드$/));
+    // 전체 보기의 브랜드 칩은 뺐다 (2026-11-23) — 브랜드는 위 탭으로 바로 가니 겹친다. 대신 책임자 칩
+    const vc = S.cur === ALL ? findVc(vcols, /^(책임자|담당자?)$/) : kind === 'ship' ? (findVc(vcols, /^브랜드$/) || findVc(vcols, /^(책임자|담당자?)$/)) : (findVc(vcols, /^(책임자|담당자?)$/) || findVc(vcols, /^브랜드$/));
     if (!vc) return null;
     const mm = new Map();
     rows.forEach(r => { const x = catVal(r, vc); mm.set(x, (mm.get(x) || 0) + 1); });
     if (!mm.size || (mm.size === 1 && mm.has('미지정'))) return null;
-    let values = [...mm.entries()];
-    if (S.cur === ALL) { const order = xTabs().map(t => { const b = brandOf(t.brand, true) || brandOf(t.name, true); return b ? b.k : t.name; }); values.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0])); }
-    else values.sort((a, b) => b[1] - a[1] || (a[0] === '미지정') - (b[0] === '미지정'));
+    const values = [...mm.entries()];
+    values.sort((a, b) => b[1] - a[1] || (a[0] === '미지정') - (b[0] === '미지정'));
     return {vc, name: vc.name, values};
   }
 
@@ -2266,18 +2246,8 @@
       return /공통/.test(b) || (tb && brandOf(b, true) === tb) || low(b) === low(tab.name);
     }).map(r => String(r.cells[tc.k] || '').replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
   }
-  function renderHead() {
+  function renderHead() {   // 2026-11-23: 제목 줄은 없앴다 — 지금 탭은 위 탭 줄의 초록 밑줄로 보인다
     const t = curTab(), v = vstate();
-    let title = D.loaded ? '탭을 골라 주세요' : '불러오는 중…', badge = '';
-    if (S.cur === ALL) { title = 'X 시딩 전체'; badge = '브랜드별 한눈에'; }
-    else if (t) {
-      const b = brandOf(t.brand, true) || brandOf(t.name, true);
-      title = esc(t.name) + (b && low(b.k) !== low(t.name) ? `<span class="en">${esc(b.k)}</span>` : '');
-      badge = t.kind === 'x' ? 'X 시딩' : t.kind === 'guide' ? '안내 · DM 양식' : t.kind === 'insta' ? '인스타그램 시딩' : '목록';
-    }
-    $('title').innerHTML = title;
-    $('tDate').hidden = !badge;
-    $('tDate').textContent = badge;
     $('gTog').hidden = !guideTab() || !(S.cur === ALL || (t && t.kind === 'x'));
     $('tabSet').hidden = !t;
     $('tabSet').textContent = t && t.kind === 'guide' ? '＋ 주의사항 추가' : '⚙ 탭 설정';
@@ -2298,8 +2268,12 @@
     if (S.cat && !isGuideView()) {
       ch.innerHTML = `<button type="button" class="chip${v.cat == null ? ' on' : ''}" data-all="1">${esc(S.cat.name)} 전체 <em>${fmtN(S.cat.values.reduce((s, x) => s + x[1], 0))}</em></button>`
         + S.cat.values.map(([val, n]) => {
-          const b = S.cur === ALL ? BRANDS.find(x => x.k === val) : null;
-          return `<button type="button" class="chip${v.cat === val ? ' on' : ''}" data-cat="${esc(val)}">${b ? `<i style="width:8px;height:8px;border-radius:50%;background:${b.color}"></i>` : ''}${esc(val)} <em>${fmtN(n)}</em></button>`;
+          // 점 색 = 브랜드 색, 아니면 그 선택지 칩의 두 색(바탕 · 글자) 중 진한 쪽
+          const b = S.cat.vc.brand ? BRANDS.find(x => x.k === val) : null, o = !b && (S.cat.vc.opts || []).find(x => x.v === val);
+          const lum = c => { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''); if (!m) return 1; const n = parseInt(m[1], 16); return (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255; };
+          const oc = o ? [o.bg, o.fg].filter(c => /^#?[0-9a-f]{6}$/i.test(c || '')).sort((x, y) => lum(x) - lum(y))[0] : '';
+          const dot = b ? b.color : oc && lum(oc) < 0.85 ? '#' + oc.replace(/^#/, '') : '';
+          return `<button type="button" class="chip${v.cat === val ? ' on' : ''}" data-cat="${esc(val)}">${dot ? `<i style="width:8px;height:8px;border-radius:50%;background:${esc(dot)}"></i>` : ''}${esc(val)} <em>${fmtN(n)}</em></button>`;
         }).join('');
       ch.hidden = false;
     } else { ch.innerHTML = ''; ch.hidden = true; }
@@ -2324,37 +2298,81 @@
   });
   $('alert').addEventListener('click', () => { if (compactMQ.matches) { S.alertOpen = !S.alertOpen; renderHead(); } });
 
-  /* ── 왼쪽 메뉴 ── */
+  /* ── 위 탭 ── 2026-11-23 사용자 "erp 디자인에서 상단 탭 눌러서 쉽게 바로 볼 수 있게 변경하자" — 왼쪽 메뉴 대신.
+     순서: 전체 · 브랜드(X 시딩) | 담당자별 | 그 밖의 목록 | 주의사항, 묶음 사이에 세로 줄. 맨 끝 ＋ = 새 탭 */
   function renderNav() {
     const items = [], tabs = tabList();
-    if (tabs.some(t => t.kind === 'x')) items.push({id: ALL, sec: 'x', label: '전체', dot: '#22c55e', n: xTabs().reduce((s, t) => s + rowsOf(t.id).filter(hasId).length, 0), title: 'X 시딩 브랜드 탭 전부'});
+    if (tabs.some(t => t.kind === 'x')) items.push({id: ALL, sec: 'x', label: '전체', dot: '#22c55e', n: xTabs().reduce((s, t) => s + rowsOf(t.id).filter(hasId).length, 0), title: 'X 시딩 전체 — 브랜드 탭을 한 표로'});
     tabs.forEach(t => {
-      const b = brandOf(t.brand, true) || brandOf(t.name, true);
-      items.push({id: t.id, sec: SEC_ORDER.includes(t.kind) ? t.kind : 'list', label: t.name, en: b && low(b.k) !== low(t.name) ? b.k : '', dot: b ? b.color : t.kind === 'guide' ? '#fbbf24' : '', n: t.kind === 'guide' ? null : rowsOf(t.id).filter(hasId).length, title: t.name});
+      const b = brandOf(t.brand, true) || brandOf(t.name, true), sec = SEC_ORDER.includes(t.kind) ? t.kind : 'list';
+      items.push({id: t.id, sec, label: t.name, en: b && low(b.k) !== low(t.name) ? b.k : '', dot: b ? b.color : t.kind === 'guide' ? '#fbbf24' : '', n: t.kind === 'guide' ? null : rowsOf(t.id).filter(hasId).length, title: `${SECS[sec] || ''} — ${t.name}${b && low(b.k) !== low(t.name) ? ' (' + b.k + ')' : ''}`});
     });
     items.sort((a, b) => SEC_ORDER.indexOf(a.sec) - SEC_ORDER.indexOf(b.sec));
     let h = '', sec = '';
     items.forEach(it => {
-      if (it.sec !== sec) { sec = it.sec; h += `<div class="nav-sec">${esc(SECS[sec] || sec)}</div>`; }
-      h += `<button type="button" class="nav-item${it.id === S.cur ? ' on' : ''}" data-id="${esc(it.id)}" title="${esc(it.title)}"><i class="dot"${it.dot ? ` style="background:${it.dot}"` : ''}></i><span class="nm">${esc(it.label)}${it.en ? `<small>${esc(it.en)}</small>` : ''}</span>${it.n != null ? `<span class="nd">${fmtN(it.n)}명</span>` : ''}</button>`;
+      if (sec && it.sec !== sec) h += '<span class="tsep" aria-hidden="true"></span>';
+      sec = it.sec;
+      const on = it.id === S.cur;
+      h += `<button type="button" class="tab${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-id="${esc(it.id)}" title="${esc(it.title)}"><i class="dot"${it.dot ? ` style="background:${it.dot}"` : ''}></i>${esc(it.label)}${it.en ? `<small>${esc(it.en)}</small>` : ''}${it.n != null ? `<em>${fmtN(it.n)}</em>` : ''}</button>`;
     });
-    $('nav').innerHTML = h;
-    S.navIds = items.map(it => it.id);
+    h += '<button type="button" class="tab-add" id="btnNewTab" title="새 탭 만들기" aria-label="새 탭 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>';
+    const el = $('tabs'), x = el.scrollLeft;
+    el.innerHTML = h;
+    el.scrollLeft = x;
   }
-  function setNav(open) {
-    app.classList.toggle('nav-open', open);
-    $('scrim').hidden = !open;
-    if (open) { const on = $('nav').querySelector('.nav-item.on'); if (on) on.scrollIntoView({block: 'nearest'}); }
+  function showActiveTab() {   // 휴대폰 · 좁은 창 — 고른 탭이 탭 줄 밖에 있으면 보이게 옆으로 민다
+    const el = $('tabs'), b = el.querySelector('.tab.on');
+    if (!b) return;
+    const l = b.offsetLeft - 24, r = b.offsetLeft + b.offsetWidth + 24;
+    if (l < el.scrollLeft) el.scrollLeft = Math.max(0, l);
+    else if (r > el.scrollLeft + el.clientWidth) el.scrollLeft = r - el.clientWidth;
   }
-  function setSide(open, save) {
-    app.classList.toggle('side-off', !open);
-    if (save) lsSet(LS.side, open ? '1' : '0');
-    renderGrid();
+  $('tabs').addEventListener('click', e => {
+    if (e.target.closest('#btnNewTab')) { openNewTab(); return; }
+    const b = e.target.closest('.tab');
+    if (!b) return;
+    if (b.dataset.id === S.cur) { setHmin(false); grid.scrollTop = 0; return; }   // 지금 탭을 또 누르면 맨 위로
+    S.gFocus = null;
+    openTab(b.dataset.id);
+  });
+  // 탭 줄에서 ← → 로 옆 탭 (탭 단추에 손이 있을 때)
+  $('tabs').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const all = [...$('tabs').querySelectorAll('.tab')], i = all.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const id = all[(i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length].dataset.id;
+    S.gFocus = null;
+    openTab(id);
+    const f = [...$('tabs').querySelectorAll('.tab')].find(x => x.dataset.id === id);
+    if (f) f.focus();
+  });
+
+  /* ── 위 막대 ⋯ 더 보기 (새 탭 · 엑셀 가져오기 · 내보내기 · 도움말 · 오피스 홈) ── */
+  const MORE = $('moreMenu');
+  function setMore(open) {
+    MORE.hidden = !open;
+    $('btnMore').setAttribute('aria-expanded', String(open));
+    $('btnMore').classList.toggle('on', open);
+    if (!open) return;
+    const r = $('btnMore').getBoundingClientRect(), w = MORE.offsetWidth;
+    MORE.style.top = `${Math.round(r.bottom + 6)}px`;
+    MORE.style.left = `${Math.round(Math.max(8, Math.min(innerWidth - w - 8, r.right - w)))}px`;
   }
-  $('btnFold').addEventListener('click', () => { if (wide.matches) setSide(false, true); else setNav(false); });
-  $('btnMenu').addEventListener('click', () => { if (wide.matches) setSide(app.classList.contains('side-off'), true); else setNav(!app.classList.contains('nav-open')); });
-  $('scrim').addEventListener('click', () => setNav(false));
-  $('nav').addEventListener('click', e => { const b = e.target.closest('.nav-item'); if (b) { if (b.dataset.id !== S.cur) S.gFocus = null; openTab(b.dataset.id); setNav(false); } });
+  $('btnMore').addEventListener('click', () => setMore(MORE.hidden));
+  document.addEventListener('mousedown', e => { if (!MORE.hidden && !MORE.contains(e.target) && !e.target.closest('#btnMore')) setMore(false); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !MORE.hidden) { e.preventDefault(); e.stopPropagation(); setMore(false); $('btnMore').focus(); } }, true);
+  window.addEventListener('resize', () => setMore(false));
+  MORE.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (!b && !e.target.closest('a')) return;
+    setMore(false);
+    const act = b && b.dataset.act;
+    if (act === 'new') openNewTab();
+    else if (act === 'import') $('fileIn').click();
+    else if (act === 'export') exportXlsx();
+    else if (act === 'help') openHelp();
+  });
   function openTab(id) {
     if (!id) return;
     if (S.ed && S.ed.on) commitEdit(null);
@@ -2364,6 +2382,7 @@
     S.cur = id;
     lsSet(LS.tab, id);
     renderNav();
+    showActiveTab();
     renderGrid({top: true});
     renderHead();
     paintBar();
@@ -3681,7 +3700,6 @@
       };
     });
   }
-  $('btnNewTab').addEventListener('click', () => { setNav(false); openNewTab(); });
 
   /* ══════════════════════ 서식 (굵게 · 칸 색 · 글자 색 · 보냄 완료) ══════════════════════ */
   function styleSel(fn, label) {
@@ -4260,8 +4278,6 @@
     X.writeFile(wb, `시딩마스터_${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}.xlsx`);
     toast('엑셀 파일로 내보냈어요 — 탭마다 시트 하나, 수식은 수식 그대로');
   }
-  $('btnExport').addEventListener('click', () => { setNav(false); exportXlsx(); });
-  $('btnImport').addEventListener('click', () => { setNav(false); $('fileIn').click(); });
   $('fileIn').addEventListener('change', async () => {
     const f = $('fileIn').files[0];
     $('fileIn').value = '';
@@ -4419,7 +4435,7 @@
     m.hidden = false;
   }
   $('msg').addEventListener('click', e => { if (e.target.closest('[data-act="retry"]')) { $('msg').hidden = true; start2(); } });
-  $('btnHelp').addEventListener('click', () => {
+  function openHelp() {   // 위 막대 ⋯ → 단축키 · 수식 도움말
     openModal(`<h3>단축키 · 수식</h3><p class="sub">엑셀 · 구글시트와 거의 같아요. 고친 것은 바로 저장되고, 같이 쓰는 사람 화면에도 몇 초 안에 바뀌어요.</p>
       <div class="keys">
         <kbd>글자 치기</kbd><span>고른 칸에 바로 쓰기 (원래 값 바꿈)</span>
@@ -4443,7 +4459,7 @@
       <h3 style="margin-top:18px">따로 프로그램처럼 쓰기</h3>
       <p class="sub" style="margin:4px 0 0">크롬 · 엣지 주소창 오른쪽 <b>앱 설치</b>(⊕) 또는 메뉴 → '앱 설치 · 바로가기 만들기(창으로 열기)'를 누르면 바탕화면 · 작업 표시줄에 '시딩 마스터' 아이콘이 생겨요. 처음 한 번 오피스 접속 코드를 넣어요.</p>
       <div class="mact"><button type="button" class="btn pri" data-x>닫기</button></div>`, () => { $('mbox').classList.add('wide'); });
-  });
+  }
 
   /* ── 찾기 ── */
   function setQuery(v) {
@@ -4500,7 +4516,7 @@
     clearTimeout(rzT);
     rzT = setTimeout(() => { if (sizeKey() !== S.size) renderGrid(); placeEd(); }, 150);
   });
-  narrow.addEventListener && narrow.addEventListener('change', () => { if (!narrow.matches) setNav(false); $('dscrim').hidden = !narrow.matches || $('detail').hidden; renderGrid(); });
+  narrow.addEventListener && narrow.addEventListener('change', () => { $('dscrim').hidden = !narrow.matches || $('detail').hidden; renderGrid(); });
   compactMQ.addEventListener && compactMQ.addEventListener('change', () => { if (!compactMQ.matches) setHmin(false); });
   if (document.fonts && document.fonts.addEventListener) {
     let ft = 0;
@@ -4532,7 +4548,6 @@
     S.mask = lsGet(LS.mask) !== '0';
     $('tbar').querySelector('[data-cmd="mask"]').classList.toggle('on', !S.mask);
     setDense(lsGet(LS.dense) === '1', false);
-    if (lsGet(LS.side) === '0') app.classList.add('side-off');
     paintMe();
     paintColorBars();
     paintUndo();
