@@ -41,8 +41,8 @@
     --bg: #f3f5f8; --panel: #fff; --line: #e5e7eb; --line2: #d5dae2; --text: #0f172a; --t2: #475569; --t3: #94a3b8;
     --acc: #4f7fcf; --acc-d: #2f5ea8; --acc-t: rgba(79, 127, 207, .11);
     --p: #2457b8; --p-bg: #dfe9fb; --p-mid: #9dbbef;       /* 프레스티지 */
-    --f: #a76a00; --f-bg: #fbefd2; --f-mid: #e8c675;       /* 일등석 */
-    --new: #e11d48; --ok: #16a34a; --warn: #d97706; --bad: #dc2626;
+    --f: #d42a2a; --f-bg: #fde6e6; --f-mid: #f2a8a8;       /* 일등석 — 빨강 (11-23 사장님 "프레스티지는 블루, 일등석은 레드") */
+    --new: #ea580c;   /* 새로 열림 — 일등석 빨강과 헷갈리지 않게 주황 (11-23) */ --ok: #16a34a; --warn: #d97706; --bad: #dc2626;
     --top: 56px; --r: 12px;
     --font: Pretendard, -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
   }
@@ -149,7 +149,6 @@
   .tag.A { background: var(--f-bg); color: var(--f) }
   .tag.new { background: var(--new); color: #fff }
   .tag.hub { background: #eef1f5; color: var(--t2) }
-  .miles { color: var(--t2); font-size: 12px; margin-top: 6px }
   .link { border: 0; background: none; padding: 0; color: var(--acc-d); font-weight: 600; font-size: 12.5px; text-decoration: underline; text-underline-offset: 2px }
 
   /* ── 나라별 ── */
@@ -209,17 +208,42 @@
   .rets span.w { border-color: var(--text); color: var(--text); font-weight: 700 }
   .hm button.ret.w { box-shadow: 0 0 0 2px #fff inset, 0 0 0 2px var(--text) }
   .day .city.q { background: transparent; box-shadow: inset 0 0 0 1px var(--p-mid) }
-  .rt { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--line); font-size: 12.5px; color: var(--t2); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline }
-  .rt .k { flex-basis: 100%; color: var(--t3); font-size: 12px }
-  .rt .rd { border: 1px solid var(--p-mid); background: var(--p-bg); color: var(--p); border-radius: 7px; padding: 1px 7px; white-space: nowrap }
-  .rt .rd small { color: var(--t2); font-size: 11px; margin-left: 2px }
-  .rt.no b { color: var(--text) }
-  .rt.unk b { color: var(--warn) }
-  /* 2석 기준 · 로마일 자료 (2026-11-22) — 남은 좌석 · 확인 시각 */
-  .tag.seats { background: var(--text); color: #fff }
   .fl .mi { color: var(--t2); font-size: 12px }
   .tag.ke { background: #eef1f5; color: var(--t2) }
-  .rt .rd.long { white-space: normal }   /* 스카이팀 보기 — 돌아오는 편이 길어 줄을 바꾼다 */
+
+  /* ── 티켓 (오른쪽 날짜 카드 · 2026-11-23 사장님 "티켓이 잘 보이게" · "마일리지 얼만지 · 오는 편 날짜 보기 · 돌아오는 며칠 뒤 필요없어, 몇박인지 적혀 있잖아"
+        · "프레스티지는 블루, 일등석은 레드") — 위 = 가는 편 (왼쪽 등급 색 띠 · 편명 · 시각 크게, 등급 칸에 좌석 수),
+        점선 아래 = 짝이 되는 날짜 · 박 · 편 (등급은 색으로만) ── */
+  .tk { position: relative; border: 1px solid var(--line2); border-radius: 12px; padding: 0 14px 12px 19px; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, .07) }
+  /* 색 띠는 가는 편 칸에만 — 둘 다 있으면 위 파랑 · 아래 빨강 */
+  .tk-top { margin: 0 -14px 0 -19px; padding: 12px 14px 12px 19px; border-radius: 11px 11px 0 0; background: linear-gradient(var(--p), var(--p)) left / 6px 100% no-repeat }
+  .tk-top.A { background: linear-gradient(var(--f), var(--f)) left / 6px 100% no-repeat }
+  .tk-top.OA { background: linear-gradient(var(--p) 50%, var(--f) 50%) left / 6px 100% no-repeat }
+  .tk .pc-h b { font-size: 17px; font-weight: 800; letter-spacing: -.4px }
+  .tk .fl { margin-top: 7px; gap: 6px 7px }
+  .tk .fl .fn, .tk .fl .tm { font-size: 15.5px; font-weight: 800; letter-spacing: -.2px }
+  .tk .fl .tm { font-weight: 700 }
+  .tag.cab { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--p); color: #fff }
+  .tag.cab.A { background: var(--f) }
+  /* 절취선 — 양옆 반원 홈이 테두리를 끊는다 */
+  .tk .cut { position: relative; border-top: 2px dashed var(--line2); margin: 0 -14px 10px -19px }
+  .tk .cut::before, .tk .cut::after { content: ''; position: absolute; top: -9px; width: 9px; height: 16px; background: var(--panel); border: 1px solid var(--line2) }
+  .tk .cut::before { left: -1px; border-left: 0; border-radius: 0 9px 9px 0 }
+  .tk .cut::after { right: -1px; border-right: 0; border-radius: 9px 0 0 9px }
+  .tk .rt { display: grid; gap: 7px }
+  .tk .rr { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 8px; align-items: start }
+  .tk .rr .dt { font-weight: 800; font-size: 14px; line-height: 1.25; white-space: nowrap; padding-top: 2px }
+  .tk .rr .dt small { display: block; font-size: 12px; font-weight: 700; color: var(--t2) }
+  .tk .rfs { display: flex; flex-wrap: wrap; gap: 5px }
+  .rf { display: inline-block; border: 1px solid var(--p-mid); background: var(--p-bg); color: var(--p); border-radius: 7px; padding: 3px 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap; line-height: 1.35 }
+  .rf b { font-weight: 800 }
+  .rf.A { border-color: var(--f-mid); background: var(--f-bg); color: var(--f) }
+  .rf.long { white-space: normal }   /* 스카이팀 보기 — 경유편 글이 길어 줄을 바꾼다 */
+  .tk .rt-st { font-size: 13px; font-weight: 700; color: var(--t2) }
+  .tk .rt-st.unk { color: var(--warn) }
+  .lg { display: inline-flex; gap: 10px; margin-left: 8px; color: var(--t2) }
+  .lg i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; background: var(--p) }
+  .lg i.A { background: var(--f) }
 
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 6px 0 14px }
   .stat { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px }
@@ -375,13 +399,7 @@
   const REGIONS = [['all', '전체'], ['jp', '일본'], ['cn', '중국'], ['nea', '홍콩 · 대만 · 몽골'], ['sea', '동남아'], ['pac', '괌 · 사이판 · 팔라우'],
     ['swa', '서남아 · 중앙아'], ['am', '미주'], ['eu', '유럽'], ['me', '중동'], ['oc', '대양주'], ['etc', '기타']];
   const REGION_NAME = Object.fromEntries(REGIONS);
-  // 대한항공 보너스 공제 (편도 · 평수기). 성수기 1.5배. 2026-11 기준 — 공식 홈페이지에서 확인
-  const ZONES = {
-    long: { name: '미주 · 유럽 · 대양주 · 중동', O: 62500, A: 80000 },
-    swa: { name: '서남아 · 중앙아', O: 45000, A: 57500 },
-    sea: { name: '동남아 · 괌', O: 35000, A: 45000 },
-    nea: { name: '일본 · 중국 · 동북아', O: 22500, A: 32500 },
-  };
+  // 공제 마일 표시는 전부 뺌 (11-23 사장님 "마일리지 얼만지 필요없어") — 지역 묶음 순서만 남김
   const ZONE_RANK = { long: 0, swa: 1, sea: 2, nea: 3 };
   const CAB = { O: '프레스티지', A: '일등석' };
   const LS = { cab: 'ml_cabins_v2', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1', fresh: 'ml_fresh_v1' };
@@ -612,23 +630,24 @@
     R.memo.set(key, r);
     return r;
   }
-  const cabLabel = () => [...S.cabins].sort().reverse().map(c => CAB[c]).join(' · ');
+  const seatTxt = n => n ? (n >= 9 ? '9석+' : n + '석') : '';
+  // 티켓 아랫부분 — 짝이 되는 날짜 · 박 · 편. 머리말('돌아오는 … 2~5일 뒤')은 뺌, 등급은 색으로만 (11-23)
   function rtLine(code, date, dir) {
     dir = dir || 'out';
-    const r = rtInfo(code, date, dir), lab = cabLabel();
-    const head = dir === 'out'
-      ? `<span class="k">돌아오는 ${esc(lab)} · ${RT[0]}~${RT[1]}일 뒤</span>`
-      : `<span class="k">가는 ${esc(lab)} · ${RT[0]}~${RT[1]}일 전</span>`;
+    const r = rtInfo(code, date, dir), other = dir === 'out' ? '오는 편' : '가는 편';
     if (r.state === 'ok') {
-      return `<div class="rt ok">${head}${r.hits.map(h => {
-        const fl = [...new Map(h.list.map(s => [s.o + s.fn, s])).values()]
-          .sort((a, b) => skyOn() ? (a.segs ? 1 : 0) - (b.segs ? 1 : 0) || (a.t || '').localeCompare(b.t || '') : 0)
-          .map(s => `${skyOn() && isSky(s) ? esc(s.al) + ' ' : ''}${esc(fnTxt(s))} ${esc(s.t || '')}${s.n ? ' ' + s.n + '석' : ''}${s.segs ? ' ' + esc(viaTxt(s)) : ''}${s.hub === 'GMP' ? ' 김포' : ''}${S.cabins.size > 1 && s.c === 'A' ? ' 일등석' : ''}`).join(' · ');
-        return `<span class="rd${skyOn() ? ' long' : ''}"><b>${esc(fmtD(h.date))}</b> ${h.n}박<small>${fl}</small></span>`;
+      return `<div class="rt">${r.hits.map(h => {
+        const m = new Map();   // 같은 편 · 같은 등급은 하나로 (좌석 수는 큰 값)
+        for (const s of h.list) { const k = s.o + s.fn + '|' + s.c, x = m.get(k); if (!x || (s.n || 0) > (x.n || 0)) m.set(k, s); }
+        const fl = [...m.values()]
+          .sort((a, b) => (skyOn() ? (a.segs ? 1 : 0) - (b.segs ? 1 : 0) : 0) || (a.t || '').localeCompare(b.t || '') || (a.c === 'O' ? -1 : 1))
+          .map(s => `<span class="rf ${s.c === 'A' ? 'A' : 'O'}${skyOn() ? ' long' : ''}">${skyOn() && isSky(s) ? esc(s.al) + ' ' : ''}<b>${esc(fnTxt(s))}</b> ${esc(s.t || '')}` +
+            `${s.n ? ` <b>${seatTxt(s.n)}</b>` : ''}${s.segs ? ' ' + esc(viaTxt(s)) : ''}${s.hub === 'GMP' ? ' 김포' : ''}</span>`).join('');
+        return `<div class="rr"><div class="dt">${esc(fmtD(h.date))}<small>${h.n}박</small></div><div class="rfs">${fl}</div></div>`;
       }).join('')}</div>`;
     }
-    if (r.state === 'unk') return `<div class="rt unk">${head}<b>아직 확인 전</b></div>`;
-    return `<div class="rt no">${head}<b>없음</b></div>`;
+    if (r.state === 'unk') return `<div class="rt-st unk">${other} 아직 확인 전</div>`;
+    return `<div class="rt-st">${other} 없음</div>`;
   }
   const isNew = s => s.opened && Date.now() - Date.parse(s.first) < NEW_MS;
   function placeSort(a, b) { return ZONE_RANK[a.zone] - ZONE_RANK[b.zone] || a.sort - b.sort; }
@@ -803,24 +822,18 @@
     for (const s of arr) { const k = s.o + s.fn; if (!byFn.has(k)) byFn.set(k, []); byFn.get(k).push(s); }
     return [...byFn.values()].sort((a, b) => (a[0].segs ? 1 : 0) - (b[0].segs ? 1 : 0) || (a[0].t || '').localeCompare(b[0].t || '')).map(g => {
       const s = g[0];
-      const cabs = g.map(x => x.c).sort((a, b) => (a === 'O' ? -1 : 1)).map(c => `<span class="tag ${c}">${CAB[c]}</span>`).join('');
+      // 등급 칸 = 색 (프레스티지 파랑 · 일등석 빨강) + 그 등급 남은 좌석 수 (로마일 자료). 마일은 뺌 (11-23)
+      const cabs = ['O', 'A'].filter(c => g.some(x => x.c === c)).map(c => {
+        const n = Math.max(0, ...g.filter(x => x.c === c).map(x => x.n || 0));
+        return `<span class="tag cab ${c}">${CAB[c]}${n ? ' ' + seatTxt(n) : ''}</span>`;
+      }).join('');
       const hub = showHub || s.hub === 'GMP' ? `<span class="tag hub">${HUBS[s.hub]}${s.dir === 'out' ? ' 출발' : ' 도착'}</span>` : '';
-      // 로마일 자료: 남은 좌석 수 · 스카이팀 항공사 · 확인 시각
-      const n = Math.max(0, ...g.map(x => x.n || 0));
-      const seats = n ? `<span class="tag seats">${n >= 9 ? '9석+' : n + '석'}</span>` : '';
       const al = s.al && s.al !== '대한항공' ? `<span class="tag hub">${esc(s.al)}</span>` : '';
       const via = s.segs ? `<span class="tag hub">${esc(viaTxt(s))}</span><span class="mi num">${esc(durTxt(s.dur))}</span>` : '';
-      const mi = s.mi ? `<span class="mi num">${won(s.mi)}마일</span>` : '';
       const kx = g.find(x => x.ke && x.ke.st === 'open');
       const keTag = kx ? `<span class="tag ke" title="대한항공 공개 현황에서도 이 편 보너스 좌석이 열려 있어요 · ${esc(hm(kx.ke.at))}">대한항공 ✓</span>` : '';
-      return `<div class="fl"><b class="num">${esc(fnTxt(s))}</b><span class="num">${esc(s.t || '')}</span>${cabs}${seats}${al}${via}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}${mi}</div>`;
+      return `<div class="fl"><b class="num fn">${esc(fnTxt(s))}</b><span class="num tm">${esc(s.t || '')}</span>${cabs}${al}${via}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}</div>`;
     }).join('');
-  }
-  // 공제표는 대한항공 편 값 — 스카이팀 편만 있으면 안 보이고, 섞여 있으면 '대한항공'을 붙인다 (11-23)
-  function milesLine(p, arr) {
-    const z = ZONES[p.zone], sky = arr.some(isSky);
-    if (sky && arr.every(isSky)) return '';
-    return (sky || skyOn() ? '대한항공 ' : '') + [...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])}마일`).join(' · ') + ' <span style="color:var(--t3)">(평수기)</span>';
   }
   function renderDay() {
     const el = $('dayPanel');
@@ -840,12 +853,14 @@
     const ps = [...pm.keys()].map(c => S.places.get(c)).sort((a, b) =>
       RANK[rtInfo(a.code, S.day, S.dir).state] - RANK[rtInfo(b.code, S.day, S.dir).state] || placeSort(a, b));
     const nOk = ps.filter(p => rtInfo(p.code, S.day, S.dir).state === 'ok').length;
-    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳 · 왕복 ${nOk}곳 · D-${dayDiff(S.today, S.day)}</div>` +
-      ps.map(p => `<div class="pc"><div class="pc-h"><b>${esc(p.city)}</b><span>${esc(p.country)}</span></div>` +
-        flightRows(pm.get(p.code)) +
-        rtLine(p.code, S.day, S.dir) +
-        (ml => ml && `<div class="miles">${ml}</div>`)(milesLine(p, pm.get(p.code))) +
-        `<div style="margin-top:6px"><button class="link" type="button" data-place="${p.code}" data-pick="${S.dir === 'out' ? S.day : ''}">${S.dir === 'out' ? '오는 편 날짜 보기 →' : '이 도시 1년 보기 →'}</button></div></div>`).join('');
+    const lg = S.cabins.size > 1 ? '<span class="lg"><span><i></i>프레스티지</span><span><i class="A"></i>일등석</span></span>' : '';
+    // 티켓 하나 = 도시 하나 — '오는 편 날짜 보기' 단추 · 공제 마일 줄은 뺌 (11-23)
+    el.innerHTML = `<h3>${esc(fmtLong(S.day))}</h3><div class="sub">${S.dir === 'out' ? '한국 출발' : '한국 도착'} · ${ps.length}곳 · 왕복 ${nOk}곳 · D-${dayDiff(S.today, S.day)}${lg}</div>` +
+      ps.map(p => {
+        const arr = pm.get(p.code), cs = ['O', 'A'].filter(c => arr.some(s => s.c === c)).join('');
+        return `<div class="pc tk"><div class="tk-top ${cs}"><div class="pc-h"><b>${esc(p.city)}</b><span>${esc(p.country)}</span></div>` +
+          flightRows(arr) + '</div><div class="cut"></div>' + rtLine(p.code, S.day, S.dir) + '</div>';
+      }).join('');
   }
 
   function renderPlaces() {
@@ -868,8 +883,7 @@
       if (skyOn() && !ps.some(p => { const x = stat.get(p.code); return x && (S.dir === 'out' ? x.outD.size : x.inD.size); })) continue;
       const withSeats = ps.filter(p => { const x = stat.get(p.code); return x && (S.dir === 'out' ? x.outD.size : x.inD.size); });
       const without = ps.filter(p => !withSeats.includes(p));
-      const z = ZONES[ps[0].zone];
-      html.push(`<div class="rgn"><h3>${esc(rn)} <small>${withSeats.length}곳 가능${skyOn() ? '' : ` · 프레스티지 편도 ${won(z.O)}마일~`}</small></h3>`);
+      html.push(`<div class="rgn"><h3>${esc(rn)} <small>${withSeats.length}곳 가능</small></h3>`);
       if (withSeats.length) {
         html.push('<div class="cards">' + withSeats.map(p => {
           const x = stat.get(p.code), mine = S.dir === 'out' ? x.outD : x.inD, other = S.dir === 'out' ? x.inD : x.outD;
@@ -956,9 +970,7 @@
   function renderPlaceModal() {
     const md = S.modal, p = S.places.get(md.place);
     if (!p) return;
-    const z = ZONES[p.zone];
     const outH = heat('out', p), inH = heat('in', p);
-    const mine = pool().filter(s => s.p === p.code && seatOk(s)), mixSky = mine.some(isSky), onlySky = mixSky && mine.every(isSky);
     const hubsOut = [...new Set(p.routes.filter(r => HUBS[r.o]).map(r => HUBS[r.o]))].join(' · ');
     let pickBox = '';
     if (md.pickOut) {
@@ -979,7 +991,7 @@
     }
     $('placeSheet').innerHTML =
       `<div class="sheet-h"><div><h2>${esc(p.city)} <span style="color:var(--t3);font-weight:600;font-size:15px">${esc(p.country)} · ${esc(p.code)}</span></h2>` +
-      `<div class="sub">${esc(ZONES[p.zone].name)} · ${onlySky ? '' : (mixSky ? '대한항공 ' : '') + [...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])} · 왕복 ${won(z[c] * 2)}마일`).join(' / ') + ' (평수기) · '}${esc(hubsOut || '인천')} 출발</div></div>` +
+      `<div class="sub">${esc(hubsOut || '인천')} 출발</div></div>` +
       `<button class="x-btn" type="button" data-close="placeModal" aria-label="닫기">×</button></div>` +
       `<div class="legend">${S.cabins.has('O') ? '<span><i style="background:var(--p)"></i>프레스티지</span>' : ''}${S.cabins.has('A') ? '<span><i style="background:var(--f)"></i>일등석</span>' : ''}${S.cabins.size > 1 ? '<span><i style="background:linear-gradient(135deg,var(--p) 50%,var(--f) 50%)"></i>둘 다</span>' : ''}<span><i style="background:#eef1f5"></i>없음</span></div>` +
       pickBox + selBox +
