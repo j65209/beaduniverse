@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>/* 아이폰은 글씨 16px 미만 입력 칸을 누르면 화면을 자동 확대함 → iOS 에서만 끔 (손가락으로 확대는 계속 가능) */
 try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}   /* 아이폰에서 혼자 열린 화면 — 맨 위 흐림 막기 (.ios-top) */
-try{var m=/[?&]app=(design|md)(&|$)/.exec(location.search);if(m)document.documentElement.classList.add('solo-app','solo-'+m[1])}catch(e){}   /* 디자인팀 · MD팀 새 탭 (홈 카드 → openSoloPage) — 위 막대 없이 그 팀만 */
+try{var m=/[?&]app=(design|md|cs)(&|$)/.exec(location.search);if(m)document.documentElement.classList.add('solo-app','solo-'+m[1])}catch(e){}   /* 디자인팀 · MD팀 · CS팀 새 탭 (홈 카드 → openSoloPage) — 위 막대 없이 그 팀만 */
 if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){var _vp=document.querySelector('meta[name=viewport]');if(_vp)_vp.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';}</script>
 <title>Bead Universe Co., Ltd. · Office</title>
 <script src="office-undo.js?v=1" data-skip="rpc/dlog_"></script><!-- 어디서든 되돌리기 (office-undo.js) — 디자인팀 업무일지(dlog_*)는 적는 대로 저장되고 자체 되돌리기가 있어 뺌 -->
@@ -12589,11 +12589,47 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 디자인팀 새 탭 (2026-11-23 사용자 "디자인팀 탭 누르면 erp처럼 동일하게 새로운 탭으로 들어가서 크게") — 주소 ?app=design#design (openDesignPage).
      오피스 위 막대 · 홈 버튼 없이 디자인팀만 창 가득. 다른 화면으로 가면 html.solo-* 가 빠져 보통 오피스로 돌아감 (_soloExit) ===== */
   html.solo-app .topbar{display:none}
-  html.solo-design #viewDesign .view-head .btn-back,html.solo-md #viewMd .view-head .btn-back{display:none}
+  html.solo-design #viewDesign .view-head .btn-back,html.solo-md #viewMd .view-head .btn-back,html.solo-cs #viewCs .view-head .btn-back{display:none}
   html.solo-app .container{padding-top:14px}
   html.ios-solo.solo-app .container{padding-top:24px}
   /* MD팀 새 탭 (2026-11-23 사장님 "md팀도 디자인팀처럼 새로운탭으로 열어줘. 동일하게") — 주소 ?app=md#md (openMdPage). 위 막대가 없는 만큼 MD팀 시트를 더 길게 */
   html.solo-md #viewMd .mdx-box{height:max(520px,calc(100vh - 130px));height:max(520px,calc(100dvh - 130px))}
+  /* CS팀 새 탭 (2026-11-23 사장님 "cs팀 탭 클릭시 디자인팀 동일하게 새창으로 만들고. 가득 채워줘") — 주소 ?app=cs#cs (openCsPage).
+     넓은 창(1560px+) = 왼쪽 카카오톡 상담 · 오른쪽 VOC 전산을 창 높이에 꼭 맞게(목록만 안에서 스크롤), 좁은 창 = 예전처럼 위아래인데 각각 한 화면 가득.
+     VOC '개선 요청 · 작업 보드'(ext-on)는 칸 길이만큼 늘어나 페이지가 스크롤되고 왼쪽 상담은 따라 내려온다 — sticky 는 쌓임 맥락을 만들어
+     채팅방 · 시나리오 북 창이 VOC 밑에 깔리므로, 그 창이 열려 있는 동안은 푼다 */
+  html.solo-cs .footer{display:none}
+  html.solo-cs .container{padding-bottom:14px}
+  html.solo-cs #viewCs .view-head{margin-bottom:12px;padding-bottom:12px}
+  html.solo-cs #vocEmbed{scroll-margin-top:14px}
+  html.solo-cs #kkoBox{display:flex;flex-direction:column;margin-top:0}
+  html.solo-cs #kkoBox>*{flex:none}
+  html.solo-cs #kkoBox>.kko-pane:not([hidden]){flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  html.solo-cs #kkoPaneChat>*{flex:none}
+  html.solo-cs #kkoPaneChat>.kko-list{flex:1 1 auto}
+  @media (max-width:1559.98px){
+    html.solo-cs #kkoBox{min-height:calc(100vh - 104px);min-height:calc(100dvh - 104px)}
+    html.solo-cs .voc-split{margin:22px 0 14px}
+    html.solo-cs .voc-embed:not(.ext-on){height:calc(100vh - 28px);height:calc(100dvh - 28px)}
+    html.solo-cs .voc-embed{margin-bottom:0}
+  }
+  @media (min-width:1560px){
+    html.solo-cs #viewCs:not([hidden]){display:grid;grid-template:auto minmax(0,1fr)/clamp(440px,27vw,660px) minmax(0,1fr);gap:12px 16px;height:calc(100vh - 28px);height:calc(100dvh - 28px);min-height:620px}
+    html.solo-cs #viewCs>.view-head{grid-column:1/-1;margin-bottom:0}
+    html.solo-cs #viewCs>.voc-split{display:none}
+    html.solo-cs #kkoBox{grid-column:1;min-height:0;margin:0;overflow:hidden}
+    html.solo-cs #vocEmbed{grid-column:2;height:auto;min-height:0;margin:0}
+    html.solo-cs #kkoPaneChat>.kko-list{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+    html.solo-cs #kkoBox>#kkoPaneLearn:not([hidden]){display:block;overflow-y:auto;overscroll-behavior:contain;margin:0 -8px;padding:0 8px}
+    html.solo-cs #kkoCh,html.solo-cs #kkoFindOut{max-height:34vh;overflow-y:auto}
+    html.solo-cs .kko-find #kkoFindQ{flex:1 1 110px}
+    html.solo-cs .kko-find #kkoFindP{width:112px}
+    /* 개선 요청 · 작업 보드 */
+    html.solo-cs #viewCs:has(#vocEmbed.ext-on){height:auto;min-height:calc(100vh - 28px);min-height:calc(100dvh - 28px);align-items:start}
+    html.solo-cs #viewCs:has(#vocEmbed.ext-on) #kkoBox{height:calc(100vh - 104px);height:calc(100dvh - 104px)}
+    html.solo-cs #viewCs:has(#vocEmbed.ext-on) #kkoBox:not(:has(.kko-chat:not([hidden]),.kbk:not([hidden]))){position:sticky;top:14px}
+    html.solo-cs .voc-ext{min-height:calc(100vh - 106px - var(--voc-top,0px));min-height:calc(100dvh - 106px - var(--voc-top,0px))}
+  }
 
   /* ===== 홈 정리 (2026-11-20 사장님 "메인화면 깔끔하게 · 강조할 숫자는 강조 · 자주 쓰는 것 우선 · 숨김은 깔끔하게") =====
      블록 사이 간격 16px 통일. 팀 카드 · 업무용 툴 · 관리자 전용 카드는 한때 줄였다가 같은 날 저녁 사장님 지시로 원래 크기로 되돌림 (다시 줄이지 말 것)
@@ -12899,7 +12935,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
       <section class="hero hero-cs">
         <div class="hero-eyebrow">CS</div>
-        <button class="btn-neon btn-cs" id="csBtn" onclick="triggerCs()">
+        <button class="btn-neon btn-cs" id="csBtn" onclick="openCsPage()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
           <span id="csBtnLabel">CS팀</span>
         </button>
@@ -22540,7 +22576,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       history.replaceState({view:'viewHome'},'',location.pathname+location.search);
       id='viewHome';
     }
-    if(typeof _soloExit==='function') _soloExit(id);   // 디자인팀 · MD팀 새 탭에서 다른 화면으로 → 보통 오피스
+    if(typeof _soloExit==='function') _soloExit(id);   // 디자인팀 · MD팀 · CS팀 새 탭에서 다른 화면으로 → 보통 오피스
     VIEW_IDS.forEach(v=>{
       const el=document.getElementById(v);
       if(!el)return;
@@ -22817,6 +22853,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 홈 'MD팀' 카드 = 브라우저 새 탭 (2026-11-23 사장님 "md팀도 디자인팀처럼 새로운탭으로 열어줘. 동일하게") — 창 이름 'bead-md', 주소 ?app=md#md
   function openMdPage(){ openSoloPage('md',triggerMd); }
   window.openMdPage=openMdPage;
+  // 홈 'CS팀' 카드 = 브라우저 새 탭 (2026-11-23 사장님 "cs팀 탭 클릭시 디자인팀 동일하게 새창으로 만들고. 가득 채워줘") — 창 이름 'bead-cs', 주소 ?app=cs#cs
+  function openCsPage(){ openSoloPage('cs',triggerCs); }
+  window.openCsPage=openCsPage;
   // app = 주소 ?app= · #해시 · 창 이름(bead-app) · html 클래스(solo-app), inPlace = 새 탭을 못 쓸 때 이 창에서 열기
   function openSoloPage(app,inPlace){
     if(document.documentElement.classList.contains('solo-'+app)){ inPlace(); return; }   // 이미 그 팀 탭 안
@@ -22830,8 +22869,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!open){ try{ w.location.href=url; }catch(e){ inPlace(); return; } }   // 새 창 · 그 창이 다른 곳으로 갔으면 그 팀으로
     try{ w.focus(); }catch(e){}
   }
-  // 디자인팀 · MD팀 탭에서 다른 화면(홈 · 알림 눌러 업무일지 등)으로 가면 보통 오피스로 — 위 막대를 되살리고 주소의 ?app= 을 뺀다
-  const SOLO_VIEW={design:'viewDesign',md:'viewMd'}, SOLO_TITLE={design:'디자인팀 · Bead Universe',md:'MD팀 · Bead Universe'};
+  // 디자인팀 · MD팀 · CS팀 탭에서 다른 화면(홈 · 알림 눌러 업무일지 등)으로 가면 보통 오피스로 — 위 막대를 되살리고 주소의 ?app= 을 뺀다
+  const SOLO_VIEW={design:'viewDesign',md:'viewMd',cs:'viewCs'}, SOLO_TITLE={design:'디자인팀 · Bead Universe',md:'MD팀 · Bead Universe',cs:'CS팀 · Bead Universe'};
   function _soloExit(id){
     const h=document.documentElement, app=Object.keys(SOLO_VIEW).find(k=>h.classList.contains('solo-'+k));
     if(!app || SOLO_VIEW[app]===id) return;
