@@ -58,7 +58,8 @@
          함수를 적는 중엔 머리글 왼쪽 위에 열 글자(A · B …)가 뜨고, 다른 칸을 누르면 그 칸 주소(E5) · Shift 를 누르고 누르면 범위(E2:E9)가 들어간다.
          기밀 명단 밖은 이 표에 보이는 칸만 함수에 쓸 수 있다 — 가린 칸 · 다른 탭 · 줄 전체 · 이름 · INDIRECT · OFFSET · IMPORT… 는 막음 (fxGuard).
        · 새 줄: 제목 줄 '＋ 새 줄' — 마지막 줄 다음 줄에 적고, 그 줄의 수식(공급가 · 마진율 등)은 시트가 자동으로 계산.
-       · MD 시트 아래쪽 '수식만 남은 빈 줄'은 표 · 개수에서 빼고, TOP 10 처럼 한 탭에 표가 여럿이면 '공홈 · 일별' 단추로 나눈다. */
+       · MD 시트 아래쪽 '수식만 남은 빈 줄'은 표 · 개수에서 빼고, TOP 10 처럼 한 탭에 표가 여럿이면 '공홈 · 일별' 단추로 나눈다.
+       · 탭 삭제 (2026-11-23): 제목 줄 '탭 삭제' · 왼쪽 메뉴 탭에 오른쪽 버튼 — MD 시트 5개만, 지운 탭은 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살린다. */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -457,6 +458,26 @@
   .nr-save{background:var(--info);color:#fff}
   .nr-save:disabled{opacity:.5;cursor:default}
   .nr-cancel{background:#f1f4f8;color:var(--text-2)}
+  /* 탭 삭제 (2026-11-23) — 제목 줄 단추 · 확인 창 · 왼쪽 메뉴 오른쪽 버튼 · 지운 탭 */
+  .tdel{display:inline-flex;align-items:center;gap:5px}
+  .tdel svg{width:13px;height:13px}
+  .dlg{position:fixed;inset:0;z-index:75;display:grid;place-items:center;padding:16px;background:rgba(15,23,42,.42)}
+  .dlg .box{width:min(400px,100%);padding:20px;border-radius:14px;background:#fff;box-shadow:0 24px 60px rgba(15,23,42,.3)}
+  .dlg .t{display:block;font-size:15.5px;font-weight:800;line-height:1.4;word-break:keep-all;overflow-wrap:anywhere}
+  .dlg p{margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--text-2);word-break:keep-all;overflow-wrap:anywhere}
+  .dlg .row{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+  .dlg .row button{height:36px;padding:0 16px;border-radius:8px;font-size:13px;font-weight:700}
+  .dlg .no{background:#f1f4f8;color:var(--text-2)}
+  .dlg .del{background:var(--danger);color:#fff}
+  .dlg button:disabled{opacity:.5;cursor:default}
+  .tmenu{position:fixed;z-index:76;min-width:150px;max-width:240px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 34px rgba(15,23,42,.22)}
+  .tmenu .tm-t{padding:4px 10px 5px;font-size:11.5px;color:var(--text-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tmenu button{display:flex;align-items:center;gap:7px;width:100%;height:34px;padding:0 10px;border-radius:7px;font-size:13px;font-weight:600;color:var(--danger);text-align:left}
+  .tmenu button:hover{background:#fef2f2}
+  .tmenu svg{width:14px;height:14px}
+  .nav-item.gone .nm{color:var(--side-mute)}
+  .nav-item.gone .rv{flex:none;font-size:11px;color:#a5b4fc}
+  @media (max-width:720px){ .tdel{padding:0 7px!important} .tdel span{display:none} }
   @media (max-width:720px){ .nr-in{font-size:16px} }
   /* ── 휴대폰 글씨 한 단계 작게 (2026-11-21 사용자 "모바일에서 글씨가 커서 가독성이 떨어져") — ERP전산(erp/)과 같은 값 ──
      표 13 → 12px · 머리글 12 → 11px · 줄 높이 42 → 36px · 칸 좌우 여백 8 → 6px (칸 너비를 재는 setFonts 와 같은 값).
@@ -616,6 +637,8 @@
 <datalist id="edList"></datalist>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="pal" id="pal" hidden></div>
+<div class="tmenu" id="tmenu" hidden></div>
+<div class="dlg" id="dlg" hidden></div>
 <script>
 (function () {
   'use strict';
@@ -1406,6 +1429,7 @@
         S.tabsOk = true;
         out.forEach(t => { S.synced[t.gid] = t.info.synced_at; });
         S.pollMax = Math.max(S.pollMax, +j.max || 0);
+        S.gone = (Array.isArray(j.gone) ? j.gone : []).filter(x => live.has(x.book));   // 지운 탭 (되살리기)
         lsSet(LS_TABS, JSON.stringify({books: books.map(b => ({book: b.book, title: b.title, grp: b.grp, pos: b.pos, edit: b.edit})),
           tabs: out.map(t => ({tk: t.gid, gid: t.sgid, book: t.book, name: t.name}))}));   // 다음에 열 때 메뉴를 바로 그린다
         const liveTk = new Set(out.map(t => t.gid));
@@ -1413,7 +1437,7 @@
         if (Object.keys(S.counts).some(k => !liveTk.has(k))) { Object.keys(S.counts).forEach(k => { if (!liveTk.has(k)) delete S.counts[k]; }); lsSet(LS_COUNTS, JSON.stringify(S.counts)); }
         loadStrat();
         if (!S.cur) { hideMsg(); openTab(pickTab(S.want, S.saved)); }                       // 처음 · 실패 뒤 다시 읽힘
-        else if (!tabOf(S.cur)) openTab(pickTab(null, {book: S.lastBook, name: S.lastName}));   // 보던 탭이 지워짐
+        else if (!tabOf(S.cur)) { toast(`'${S.lastName}' 탭이 지워져서 다른 탭을 열었어요`); openTab(pickTab(null, {book: S.lastBook, name: S.lastName})); }   // 보던 탭이 지워짐
         else { renderNav(); renderHead(); saveTab(); syncCur(); }
         const cc = S.cache.get(S.cur);
         if (cc && !cc.stored) prefetch();   // 보던 탭이 먼저 받아졌으면 이제 미리 받기 시작
@@ -2295,6 +2319,7 @@
     tc.hidden = !tc.textContent;
     const fv = $('tFav'), isFav = !!t && S.fav.includes(t.gid);
     fv.hidden = !t;
+    $('delTab').hidden = !canDelTab(t);
     fv.textContent = isFav ? '★' : '☆';
     fv.classList.toggle('on', isFav);
     fv.title = isFav ? '즐겨찾기에서 빼기' : '즐겨찾기 — 왼쪽 메뉴 맨 위에 모아 둬요';
@@ -2404,6 +2429,15 @@
       h += '<div class="nav-gt">전략팀 (대표 전용)</div>';
       S.strat.forEach((x, i) => { h += `<button type="button" class="nav-item lnk-item" data-strat="${i}" title="구글시트로 열기 (새 탭)"><i class="dot" style="background:#d4af37"></i><span class="nm">${esc(x.title)}</span><span class="go">↗</span></button>`; });
     }
+    const gone = canEdit() ? (S.gone || []) : [];   // 지운 탭 — 처음엔 접어 둔다
+    if (gone.length) {
+      h += `<div class="nav-grp${isFolded('_gone') ? ' off' : ''}"><button type="button" class="nav-sec" data-fold="_gone" title="지운 탭 — 누르면 되살릴 수 있어요">${CHEV}<i class="bd" style="background:#475569"></i><span class="bn">지운 탭</span><em>${gone.length}</em></button>`;
+      gone.forEach(x => {
+        const b = bookOf(x.book) || {}, d = x.at ? new Date(x.at) : null;
+        h += `<button type="button" class="nav-item gone" data-back="${esc(x.tk)}" title="${esc(`${b.title || ''} › ${x.name}${d ? ` — ${d.getMonth() + 1}/${d.getDate()} 지움` : ''}${x.by ? ` (${x.by})` : ''} · 누르면 되살리기`)}"><i class="dot"></i><span class="nm">${esc(x.name)}</span><span class="bk">${esc(b.title || '')}</span><span class="rv">되살리기</span></button>`;
+      });
+      h += '</div>';
+    }
     S.nav = list;
     $('nav').innerHTML = h;
   }
@@ -2457,6 +2491,7 @@
     if (!b) return;
     if (b.dataset.erp) { openErp(); return; }
     if (b.dataset.strat != null) { const x = S.strat[+b.dataset.strat]; if (x) window.open(x.url, '_blank', 'noopener'); return; }
+    if (b.dataset.back) { restoreTab(b.dataset.back); return; }
     openTab(b.dataset.gid);
     setNav(false);
   });
@@ -2839,6 +2874,7 @@
     timeout: '구글시트 응답이 늦어요 — 잠시 뒤 다시 저장해 주세요',
     bad_cell: '칸 위치를 찾지 못했어요 — 새로 불러온 뒤 다시 해 주세요',
     pii_cell: '가린 개인정보 칸은 오피스에서 고칠 수 없어요 — 구글시트에서 고쳐 주세요',
+    unknown_tab: "그사이 지워진 탭이라 저장하지 못했어요 — 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살린 뒤 다시 해 주세요",
   };
   const RO_TAB = '자동 계산(QUERY 등)이 들어간 탭이라 오피스에서는 고치지 않아요';
   const editErr = m => EDIT_ERR[m] || (/^fx:/.test(m) ? m.slice(3) : /^http_|^cfg$|Failed to fetch|NetworkError|Load failed/.test(m) ? '구글시트에 저장하지 못했어요 — 인터넷 연결을 확인하고 다시 해 주세요' : `저장하지 못했어요 (${m})`);
@@ -4213,6 +4249,123 @@
     }
   }
   $('addRow').addEventListener('click', openNewRow);
+
+  /* ── 탭 삭제 · 되살리기 (2026-11-23 사장님 "엠디탭 시트에 탭 삭제 기능 넣어줘") ──
+     · 제목 줄 '탭 삭제' · 왼쪽 메뉴 탭에 오른쪽 버튼(안드로이드는 길게 누르기) → 확인 창. 관리자 · MD팀만, MD 시트 5개만
+       (나머지 시트는 아직 구글이 원본이라 지워도 맥미니 맞춤이 되살린다 — DB 도 거절).
+     · 지우기 = 저장소 mdx_tab_delete — deleted_at 만 적고 줄 · 함수 · 서식은 그대로 → 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살리면(mdx_tab_restore) 그대로.
+       기록 mdx_history op tab_delete · tab_restore. 다른 PC 는 8초 안에 메뉴에서 빠진다(mdx_poll).
+     · 못 지우는 탭 (DB 가 막음): 자동 업무(원가 보고서 · 가격 감시 · 기획전)가 읽는 탭 = mdx_tabs.keep · 다른 탭 함수가 읽는 탭 · 시트에 하나 남은 탭 */
+  const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
+  const DLG = $('dlg'), TM = $('tmenu');
+  const canDelTab = t => { const b = t && bookOf(t.book); return !!(b && b.edit && isCut(t.gid) && canEdit()); };
+  const TAB_ERR = {unknown_tab: '그사이 다른 곳에서 바뀐 탭이에요 — 목록을 새로 받았어요', read_only_book: '이 시트는 아직 구글시트가 원본이라 오피스에서 탭을 못 지워요', name_taken: '같은 이름의 탭이 있어서 되살릴 수 없어요'};
+  const tabErr = e => { const m = (e && e.message) || String(e); return TAB_ERR[m] || (/^(timeout|network)$/.test(m) ? '인터넷 연결을 확인하고 다시 해 주세요' : `하지 못했어요 (${m})`); };
+  const refreshTabs = () => Promise.resolve(S.tabsBusy).catch(() => {}).then(() => loadTabs()).catch(() => {});   // 받던 목록(바뀌기 전 것)이 있으면 끝난 뒤 다시
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'etog tdel';
+  delBtn.id = 'delTab';
+  delBtn.hidden = true;
+  delBtn.title = "이 탭 삭제 — 지운 탭은 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살릴 수 있어요";
+  delBtn.setAttribute('aria-label', '탭 삭제');
+  delBtn.innerHTML = `${ICON_TRASH}<span>탭 삭제</span>`;
+  $('addRow').after(delBtn);
+  delBtn.addEventListener('click', () => askDelTab(S.cur));
+  let dlgNo = 0, dlgBusy = false;
+  function openDlg(title, body, btns) {   // btns = [[글, 모양, 할 일]]
+    DLG.innerHTML = `<div class="box" role="alertdialog" aria-modal="true" aria-label="${esc(title)}"><b class="t">${esc(title)}</b><p>${esc(body)}</p><div class="row">${btns.map((b, i) => `<button type="button" class="${b[1]}" data-i="${i}">${esc(b[0])}</button>`).join('')}</div></div>`;
+    DLG.querySelectorAll('button[data-i]').forEach(el => { el.onclick = () => btns[+el.dataset.i][2](el); });
+    DLG.hidden = false;
+    DLG.querySelector('button').focus();
+  }
+  function closeDlg() {
+    if (dlgBusy) return;
+    dlgNo++;
+    DLG.hidden = true;
+    DLG.innerHTML = '';
+  }
+  DLG.addEventListener('click', e => { if (e.target === DLG) closeDlg(); });
+  document.addEventListener('keydown', e => {   // 확인 창 · 오른쪽 버튼 메뉴가 떠 있으면 Esc = 그것만 닫기
+    if (e.key !== 'Escape' || (DLG.hidden && TM.hidden)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    TM.hidden = true;
+    if (!DLG.hidden) closeDlg();
+  }, true);
+  function noDel(t, j) {
+    const why = j.why === 'keep' ? `자동 업무(${j.msg})가 이 탭을 읽고 있어요. 지우면 그 업무가 멈춰서 막아 두었어요.`
+      : j.why === 'refs' ? `${(j.tabs || []).map(x => `'${x}'`).join(' · ')} 탭의 함수가 이 탭을 읽고 있어요. 먼저 그 탭을 지우거나 함수를 빼면 지울 수 있어요.`
+      : j.why === 'last' ? '이 시트에 하나 남은 탭이에요.' : '지금은 지울 수 없어요.';
+    openDlg(`'${t.name}' 탭은 지울 수 없어요`, why, [['확인', 'no', closeDlg]]);
+  }
+  async function askDelTab(gid) {
+    const t = tabOf(gid);
+    if (!canDelTab(t) || dlgBusy) return;
+    if (CE.x) commitCell(0, 0, true);   // 고치던 칸은 먼저 저장
+    const no = ++dlgNo;
+    openDlg(`'${t.name}' 탭을 지울까요?`, '확인하는 중…', [['취소', 'no', closeDlg]]);
+    let j;
+    try {
+      await E.q.catch(() => {});   // 쓰는 중인 칸까지 끝난 뒤
+      j = await mdx('mdx_tab_delete', {p_tk: gid, p_who: whoAmI() || null, p_check: true});
+    } catch (e) {
+      if (no === dlgNo) closeDlg();
+      toast(tabErr(e), true);
+      refreshTabs();
+      return;
+    }
+    if (no !== dlgNo) return;   // 그사이 닫음
+    if (!j || !j.ok) { noDel(t, j || {}); return; }
+    openDlg(`'${t.name}' 탭을 지울까요?`, `${(bookOf(t.book) || {}).title || ''} · 내용 ${fmt(j.n || 0)}줄. 모든 PC 에서 사라지고, 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살릴 수 있어요.`,
+      [['취소', 'no', closeDlg], ['삭제', 'del', el => delTab(t, el)]]);
+  }
+  async function delTab(t, el) {
+    if (dlgBusy) return;
+    const gid = t.gid;
+    dlgBusy = true;
+    DLG.querySelectorAll('button').forEach(x => { x.disabled = true; });
+    el.textContent = '지우는 중…';
+    let j = null, err = null;
+    try { j = await mdx('mdx_tab_delete', {p_tk: gid, p_who: whoAmI() || null, p_check: false}); } catch (e) { err = e; }
+    dlgBusy = false;
+    if (err) { closeDlg(); toast(tabErr(err), true); refreshTabs(); return; }
+    if (!j || !j.ok) { noDel(t, j || {}); return; }
+    closeDlg();
+    const same = S.tabs.filter(x => x.book === t.book), i = same.findIndex(x => x.gid === gid), next = same[i + 1] || same[i - 1];
+    S.tabs = S.tabs.filter(x => x.gid !== gid);
+    S.gone = [{tk: gid, book: t.book, name: t.name, at: new Date().toISOString(), by: whoAmI() || null}].concat((S.gone || []).filter(x => x.tk !== gid));
+    if (S.cur === gid) openTab(next ? next.gid : pickTab(null, null)); else renderNav();   // 지운 탭을 보고 있었으면 옆 탭으로
+    S.cache.delete(gid);
+    store.del(gid);
+    toast(`'${t.name}' 탭을 지웠어요 — 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살릴 수 있어요`);
+    refreshTabs();
+  }
+  let backBusy = false;
+  async function restoreTab(tk) {
+    const g = (S.gone || []).find(x => x.tk === tk);
+    if (!g || backBusy) return;
+    backBusy = true;
+    try {
+      await mdx('mdx_tab_restore', {p_tk: tk, p_who: whoAmI() || null});
+      await refreshTabs();
+      if (tabOf(tk)) { openTab(tk); setNav(false); }
+      toast(`'${g.name}' 탭을 되살렸어요`);
+    } catch (e) { toast(tabErr(e), true); refreshTabs(); }
+    finally { backBusy = false; }
+  }
+  $('nav').addEventListener('contextmenu', e => {
+    const b = e.target.closest('.nav-item[data-gid]'), t = b && tabOf(b.dataset.gid);
+    if (!t || !canDelTab(t)) return;   // 지울 수 없는 시트는 브라우저 메뉴 그대로
+    e.preventDefault();
+    TM.innerHTML = `<div class="tm-t">${esc(t.name)}</div><button type="button" data-del="${esc(t.gid)}">${ICON_TRASH}탭 삭제</button>`;
+    TM.hidden = false;
+    TM.style.left = Math.max(8, Math.min(e.clientX, innerWidth - TM.offsetWidth - 8)) + 'px';
+    TM.style.top = Math.max(8, Math.min(e.clientY, innerHeight - TM.offsetHeight - 8)) + 'px';
+  });
+  TM.addEventListener('click', e => { const b = e.target.closest('[data-del]'); if (b) { TM.hidden = true; setNav(false); askDelTab(b.dataset.del); } });
+  document.addEventListener('pointerdown', e => { if (!TM.hidden && !e.target.closest('#tmenu')) TM.hidden = true; }, true);
+  $('nav').addEventListener('scroll', () => { TM.hidden = true; }, {passive: true});
 
   /* ── 읽기 · 상태 ── 저장소에서 그 탭 줄을 받는다 — 처음 · 10분마다 · 저장본이 오래됐으면 전체, 그 사이엔 바뀐 줄(ver)만 */
   function loadSheet(gid, opt) {
