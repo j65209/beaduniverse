@@ -5933,6 +5933,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-basis-tag{font-size:12px;font-weight:500;color:var(--text-3);margin-left:4px}
   .sb-fx-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--text-3)}
   .sb-fx-add{padding:6px 12px;border:1px solid var(--line-2);border-radius:6px;background:var(--bg-1);color:var(--text-1);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer}
+  .sb-fx tr.is-auto td{background:var(--bg-2)}
+  .sb-fx .sb-fx-auto-name{padding-left:10px;font-weight:600;color:var(--text-1)}
+  .sb-fx .sb-fx-auto-amt{padding-right:10px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text-2)}
+  .sb-lb{margin-top:22px}
+  .sb-lb-h{margin:0 0 8px;font-size:13.5px;font-weight:700;color:var(--text-1)}
+  .sb-lb-h span{margin-left:6px;font-size:12px;font-weight:500;color:var(--text-3)}
+  .sb-lb-tbl td{padding:3px 4px;vertical-align:middle}
+  .sb-lb-tbl .sb-in.sb-lb-txt{text-align:left;font-weight:500;min-width:84px}
+  .sb-lb-tbl .sb-in.sb-lb-name{min-width:64px;font-weight:600}
+  .sb-lb-tbl .sb-in.sb-lb-date{min-width:104px;font-weight:500}
+  .sb-lb-tbl .sb-in.sb-lb-memo{min-width:260px;font-weight:400;color:var(--text-2)}
+  .sb-lb-tbl select.sb-in{min-width:84px;text-align:left;font-weight:500;cursor:pointer}
+  .sb-lb-tbl td.n{padding-right:8px;font-variant-numeric:tabular-nums;color:var(--text-2)}
+  .sb-lb-tbl td.sb-lb-total{font-weight:700;color:var(--text-1)}
+  .sb-lb-tbl tr.is-off td{opacity:.45}
+  .sb-lb-tbl .sb-lb-part{display:block;font-size:10.5px;font-weight:500;color:var(--warn)}
   .strat-daily-fold{padding:0;border:0;background:none}
   .strat-daily-fold>summary{padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-1)}
   .strat-daily-fold>summary h2{font-size:14px;font-weight:700;color:var(--text-1)}
@@ -15739,6 +15755,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <div class="sb-fx-foot">
               <button type="button" class="sb-fx-add" onclick="sbFixedAdd()">＋ 항목 추가</button>
               <span>금액을 고치면 보고 있는 달부터 적용되고, 그 전 달 계산은 그대로예요.</span>
+            </div>
+            <!-- 인건비 명세 — 근로계약서 기준 직원별 회사 실부담 (2026-11-23 사장님 "실부담 예상액"). 합계가 위 표의 '인건비' 줄로 들어간다 -->
+            <div class="sb-lb" id="sbLaborBox" hidden>
+              <h3 class="sb-lb-h">인건비 명세 <span id="sbLaborSum"></span></h3>
+              <div class="ably-tbl-wrap"><table class="ably-tbl sb-lb-tbl" id="sbLabor"></table></div>
+              <div class="sb-fx-foot">
+                <button type="button" class="sb-fx-add" onclick="sbStaffAdd()">＋ 직원 추가</button>
+                <span id="sbLaborNote"></span>
+              </div>
             </div>
           </details>
         </div>
@@ -53104,7 +53129,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     {id:'akoi-wconcept',brand:'akoi',label:'W컨셉',    report:'wconcept-akoi', perOrderShip:true, noAutoAd:true},
   ].filter(c=>!PAUSED_BRANDS.has(c.brand));
   const _sb={month:'', doc:null, view:null, ready:false, loadError:'', loadedAt:0, seq:0, saveGen:0,
-             ops:null, inflight:0, saving:false, fail:0, timer:null, built:false, fixedSig:'', bound:false, paintQueued:false};
+             ops:null, inflight:0, saving:false, fail:0, timer:null, built:false, fixedSig:'', laborSig:'', bound:false, paintQueued:false};
 
   const _sbCurMonth=()=>_stratToday().slice(0,7);
   function _sbPrevMonth(m){ const [y,mo]=m.split('-').map(Number); return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`; }
@@ -53193,13 +53218,67 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return res;
   }
   function _sbFixed(month){
-    return (((_sb.view||{}).fixed)||[]).map(it=>{
+    const rows=(((_sb.view||{}).fixed)||[]).map(it=>{
       const keys=Object.keys(it.amounts||{}).filter(k=>k<=month).sort();
       if(!keys.length) return null;
       const a=it.amounts[keys[keys.length-1]];
       if(a===null) return null;
       return {id:it.id, name:it.name||'', memo:it.memo||'', amount:Number(a)||0, todo:!!it.todo&&!Number(a)};
     }).filter(Boolean);
+    // 인건비 명세 합계 — 직원별 회사 실부담을 한 줄로 (입력칸 없음, 아래 명세에서 고침)
+    const lb=_sbLabor(month);
+    if(lb.rows.length) rows.unshift({id:SB_LABOR_ROW, name:`인건비 · 직원 ${lb.active}명 실부담`, memo:'', amount:lb.total, todo:false, auto:true});
+    return rows;
+  }
+
+  /* ===== 인건비 명세 (2026-11-23 사장님 "근로계약서 넣어줘. 실부담 예상액") =====
+     저장: 같은 비공개 strategy/month-board.json 의 staff[] — 공개 레포 · 앱 키 표에 두지 않는다.
+       staff[] = {id, name, co(소속), team, kind('salary' 근로자 | 'freelance' 3.3% 프리랜서), start(근무 시작 · 일할), end(퇴사일), meal(비과세 식대), memo, pay{달: 세전 월급}}
+       pay 는 고정비처럼 "그 달부터" — 연봉이 바뀌면 그 달 칸만 고친다. null = 그 달부터 명세에서 뺌.
+     월 실부담 = 세전 월급 + 회사 몫 4대보험((월급 − 비과세 식대) × 요율) + 퇴직 적립(월급 ÷ 12). 입사 · 퇴사 달은 일한 날 비율.
+     프리랜서는 보수만 (3.3% 는 본인 몫에서 떼고 회사 보험 · 퇴직금 없음).
+     11월부터 이 합계가 사장님 시트의 '직원 월급' · '건보료 · 연금 보험료' 두 줄을 대신한다 (그 두 줄은 2026-11 부터 null). */
+  const SB_LABOR_ROW='labor-auto';
+  // 2026년 사업주 부담 요율 — 국민연금 9.5% 의 절반, 건강 7.19% 의 절반, 장기요양 = 건강보험료의 13.14%,
+  // 고용 = 실업급여 0.9% + 고용안정 · 직업능력개발 0.25%(150인 미만), 산재 등 = 도소매 0.8% + 출퇴근 0.06% + 임금채권 0.09%
+  const SB_LABOR_RATE={pension:0.0475, health:0.03595, care:0.1314, employ:0.0115, injury:0.0095};
+  function _sbDaysBetween(a,b){ return Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5)+1; }
+  function _sbStaffPay(s,month){
+    const keys=Object.keys(s.pay||{}).filter(k=>k<=month).sort();
+    if(!keys.length) return null;
+    const v=s.pay[keys[keys.length-1]];
+    return v===null?null:(Number(v)||0);
+  }
+  // 한 사람의 그 달 회사 실부담. 그 달 명세에 없으면 null
+  function _sbStaffCost(s,month){
+    const pay=_sbStaffPay(s,month);
+    if(pay===null) return null;
+    const dim=_sbDaysIn(month), first=month+'-01', last=month+'-'+String(dim).padStart(2,'0');
+    const day=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v:'';   // 입력 중인 반쯤 쓴 날짜는 없는 것으로
+    const st=day(s.start), en=day(s.end);
+    const from=st&&st>first?st:first, to=en&&en<last?en:last;
+    const days=from>to?0:_sbDaysBetween(from,to);
+    const f=days/dim;
+    const R=SB_LABOR_RATE, base=Math.max(0,pay-(Number(s.meal)||0));
+    let ins=0, sev=0;
+    if(s.kind!=='freelance'){
+      const health=Math.round(base*R.health);
+      ins=Math.round(base*R.pension)+health+Math.round(health*R.care)+Math.round(base*R.employ)+Math.round(base*R.injury);
+      sev=Math.round(pay/12);
+    }
+    const k=v=>Math.round(v*f);
+    return {pay:k(pay), ins:k(ins), sev:k(sev), total:k(pay+ins+sev), full:pay+ins+sev, days, dim, off:days===0};
+  }
+  function _sbLabor(month){
+    const out={rows:[], pay:0, ins:0, sev:0, total:0, active:0};
+    (((_sb.view||{}).staff)||[]).forEach(s=>{
+      const c=_sbStaffCost(s,month);
+      if(!c) return;
+      out.rows.push({s,c});
+      out.pay+=c.pay; out.ins+=c.ins; out.sev+=c.sev; out.total+=c.total;
+      if(!c.off) out.active++;
+    });
+    return out;
   }
   // 작업을 저장본에 적용 — 칸 · 항목이 독립적이라 서버 최신본 위에 그대로 얹는다
   function _sbApply(doc,ops){
@@ -53215,6 +53294,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }else if(o.k==='shipUnit'){
         d.shipUnit=d.shipUnit||{};
         if(o.v==null) delete d.shipUnit[o.m]; else d.shipUnit[o.m]=o.v;
+      }else if(o.k==='stAdd'){
+        d.staff=Array.isArray(d.staff)?d.staff:[];
+        if(!d.staff.some(x=>x.id===o.id)) d.staff.push({id:o.id, name:'', co:'', team:'', kind:'salary', start:'', end:'', meal:200000, memo:'', pay:{[o.m]:0}});
+      }else if(o.k==='st'){
+        const s=(Array.isArray(d.staff)?d.staff:[]).find(x=>x.id===o.id);
+        if(!s) return;
+        if(o.f==='pay') (s.pay=s.pay||{})[o.m]=o.v;
+        else s[o.f]=o.v;
       }else if(o.k==='fixAdd'){
         if(!d.fixed.some(x=>x.id===o.id)) d.fixed.push({id:o.id, name:o.name||'', amounts:{[o.m]:o.v}});
       }else{
@@ -53361,7 +53448,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const _sbEditing=()=>{ const a=document.activeElement; return !!(a&&a.classList&&a.classList.contains('sb-in')); };
   function _sbRender(){
     _sbBuildChannels();
-    if(!_sbEditing()) _sbBuildFixed();
+    if(!_sbEditing()){ _sbBuildFixed(); _sbBuildLabor(); }
     _sbPaint();
   }
   function _sbBuildChannels(){
@@ -53389,10 +53476,65 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(sig===_sb.fixedSig) return;
     _sb.fixedSig=sig;
     document.getElementById('sbFixed').innerHTML='<thead><tr><th>항목</th><th class="n">월 금액</th><th>메모</th><th></th></tr></thead><tbody>'
-      +rows.map(r=>`<tr><td><input class="sb-in sb-fx-name" data-fx="name" data-id="${_stratEsc(r.id)}" autocomplete="off" placeholder="항목 이름" aria-label="고정비 항목 이름"></td>`
+      +rows.map(r=>r.auto
+        ? `<tr class="is-auto"><td class="sb-fx-auto-name" id="sbLaborRowName"></td><td class="n sb-fx-auto-amt" id="sbLaborRowAmt"></td><td class="sb-fx-memo">월급 + 회사 4대보험 + 퇴직 적립 · 아래 인건비 명세에서 고쳐요</td><td></td></tr>`
+        : `<tr><td><input class="sb-in sb-fx-name" data-fx="name" data-id="${_stratEsc(r.id)}" autocomplete="off" placeholder="항목 이름" aria-label="고정비 항목 이름"></td>`
         +`<td><input class="sb-in sb-fx-amt" data-fx="amt" data-id="${_stratEsc(r.id)}" inputmode="numeric" autocomplete="off" aria-label="${_stratEsc(r.name)} 월 금액"></td>`
         +`<td class="sb-fx-memo"><input class="sb-in sb-fx-memo-in" data-fx="memo" data-id="${_stratEsc(r.id)}" autocomplete="off" placeholder="메모" aria-label="${_stratEsc(r.name)} 메모"></td><td><button type="button" class="sb-fx-del" data-del="${_stratEsc(r.id)}" aria-label="${_stratEsc(r.name)} 빼기" title="이 달부터 빼기">×</button></td></tr>`).join('')
       +'<tr class="is-total"><td>합계</td><td class="n" id="sbFixedTotal"></td><td></td><td></td></tr></tbody>';
+  }
+  // 인건비 명세 표 뼈대 — 값은 _sbPaintLabor 가 칸별로 넣는다 (입력 중 캐럿 보호)
+  function _sbBuildLabor(){
+    const lb=_sbLabor(_sb.month);
+    const sig=_sb.month+'|'+lb.rows.map(r=>r.s.id).join(',');
+    if(sig===_sb.laborSig) return;
+    _sb.laborSig=sig;
+    const has=lb.rows.length>0;   // 명세가 시작되기 전 달(10월 = 시트의 월급 · 보험료 두 줄)에는 숨김
+    document.getElementById('sbLaborBox').hidden=!has;
+    if(!has) return;
+    const esc=_stratEsc;
+    const txt=(s,f,ph,cls)=>`<td><input class="sb-in sb-lb-txt ${cls||''}" data-st="${f}" data-id="${esc(s.id)}" data-txt="1" autocomplete="off" placeholder="${ph}" aria-label="${esc(s.name)} ${ph}"></td>`;
+    // 돈 칸(월급 → 실부담)을 이름 바로 뒤에 — 좁은 화면에서도 옆으로 밀지 않고 실부담이 보이게
+    document.getElementById('sbLabor').innerHTML='<thead><tr><th>이름</th><th class="n">세전 월급</th><th class="n">4대보험 회사분</th><th class="n">퇴직 적립</th><th class="n">월 실부담</th><th>소속</th><th>업무</th><th>구분</th><th class="n">비과세 식대</th><th>근무 시작</th><th>퇴사일</th><th>메모</th><th></th></tr></thead><tbody>'
+      +lb.rows.map(({s})=>`<tr id="sb-lb-${esc(s.id)}">`
+        +txt(s,'name','이름','sb-lb-name')
+        +`<td><input class="sb-in" data-st="pay" data-id="${esc(s.id)}" inputmode="numeric" autocomplete="off" aria-label="${esc(s.name)} 세전 월급"></td>`
+        +`<td class="n" data-lb="ins"></td><td class="n" data-lb="sev"></td><td class="n sb-lb-total" data-lb="total"></td>`
+        +txt(s,'co','소속')+txt(s,'team','업무')
+        +`<td><select class="sb-in" data-st="kind" data-id="${esc(s.id)}" data-txt="1" aria-label="${esc(s.name)} 구분"><option value="salary">근로자</option><option value="freelance">프리랜서</option></select></td>`
+        +`<td><input class="sb-in" data-st="meal" data-id="${esc(s.id)}" inputmode="numeric" autocomplete="off" aria-label="${esc(s.name)} 비과세 식대"></td>`
+        +txt(s,'start','YYYY-MM-DD','sb-lb-date')+txt(s,'end','재직 중','sb-lb-date')
+        +txt(s,'memo','메모','sb-lb-memo')
+        +`<td><button type="button" class="sb-fx-del" data-stdel="${esc(s.id)}" aria-label="${esc(s.name)} 빼기" title="이 달부터 명세에서 빼기">×</button></td></tr>`).join('')
+      +'<tr class="is-total"><td>합계</td><td class="n" id="sbLbPay"></td><td class="n" id="sbLbIns"></td><td class="n" id="sbLbSev"></td><td class="n sb-lb-total" id="sbLbTotal"></td><td colspan="8"></td></tr></tbody>';
+  }
+  function _sbPaintLabor(active){
+    const box=document.getElementById('sbLaborBox');
+    if(!box||box.hidden) return;
+    const w=_stratW, lb=_sbLabor(_sb.month), R=SB_LABOR_RATE;
+    const pct=v=>(Math.round(v*100000)/1000)+'%';
+    lb.rows.forEach(({s,c})=>{
+      const tr=document.getElementById('sb-lb-'+s.id);
+      if(!tr) return;
+      tr.classList.toggle('is-off',c.off);
+      tr.querySelectorAll('.sb-in').forEach(el=>{
+        if(el===active) return;
+        const f=el.dataset.st;
+        if(f==='pay') el.value=w(_sbStaffPay(s,_sb.month)||0);
+        else if(f==='meal') el.value=w(Number(s.meal)||0);
+        else if(f==='kind') el.value=s.kind==='freelance'?'freelance':'salary';
+        else el.value=s[f]||'';
+      });
+      const part=!c.off&&c.days<c.dim?`<span class="sb-lb-part">${c.days}/${c.dim}일 · 한 달 ₩${w(c.full)}</span>`:'';
+      tr.querySelector('[data-lb="ins"]').textContent=s.kind==='freelance'?'-':w(c.ins);
+      tr.querySelector('[data-lb="sev"]').textContent=s.kind==='freelance'?'-':w(c.sev);
+      tr.querySelector('[data-lb="total"]').innerHTML=(c.off?'0':'₩'+w(c.total))+part;
+    });
+    const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+    set('sbLbPay',w(lb.pay)); set('sbLbIns',w(lb.ins)); set('sbLbSev',w(lb.sev)); set('sbLbTotal','₩'+w(lb.total));
+    document.getElementById('sbLaborSum').textContent=`₩${w(lb.total)} · ${lb.active}명`;
+    document.getElementById('sbLaborNote').innerHTML=
+      `월 실부담 = 세전 월급 + 회사 몫 4대보험 + 퇴직 적립(월급 ÷ 12). 4대보험은 (월급 − 비과세 식대) × 국민연금 ${pct(R.pension)} · 건강 ${pct(R.health)} · 장기요양(건강보험료의 ${pct(R.care)}) · 고용 ${pct(R.employ)} · 산재 등 ${pct(R.injury)} — 2026년 요율 추정이에요. 입사 · 퇴사 달은 일한 날만큼, 프리랜서는 보수만 셉니다. 월급을 고치면 보고 있는 달부터 적용돼요.`;
   }
   function _sbPaint(){
     if(!_sb.ready||!_sb.view) return;
@@ -53417,6 +53559,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
     if(res.partial.length) lines.push(`<span class="sb-warn">⚠ 이 달 중간부터 보고서가 있는 채널: ${_stratEsc(res.partial.join(', '))} — 있는 날만 합산했어요.</span>`);
+    if(fixed.some(x=>x.auto)) lines.push('월 고정비의 인건비는 근로계약서 기준 직원별 회사 실부담(세전 월급 + 4대보험 회사분 + 퇴직 적립) 추정이에요 — 월 고정비를 펼치면 직원별 명세가 있어요.');
     lines.push(`플랫폼 택배비 = 주문수 × ₩${w(res.unit)} (우리가 직접 보내 정산 때 나가는 비용). 지그재그 주문수는 스토어배송만 — 직진배송은 창고에서 나가고 출고비가 직배 이용료에 들어 있어요.`);
     document.getElementById('sbBasis').innerHTML=lines.join('<br>');
     document.getElementById('sbChBasis').textContent=cur?`· ${_sbMonthLabel(m)} 월말 예상`:`· ${_sbMonthLabel(m)} 한 달 합계`;
@@ -53455,6 +53598,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.getElementById('sbFixedSum').innerHTML=`₩${w(fixedSum)} · ${fixed.length}개`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'');
     const total=document.getElementById('sbFixedTotal');
     if(total) total.textContent='₩'+w(fixedSum);
+    const lbRow=fixed.find(x=>x.auto);
+    if(lbRow){
+      const nm=document.getElementById('sbLaborRowName'), am=document.getElementById('sbLaborRowAmt');
+      if(nm) nm.textContent=lbRow.name;
+      if(am) am.textContent=w(lbRow.amount);
+    }
+    _sbPaintLabor(active);
     document.querySelectorAll('#sbFixed .sb-in').forEach(el=>{
       const r=fixed.find(x=>x.id===el.dataset.id);
       if(!r||el===active) return;
@@ -53474,7 +53624,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const box=document.getElementById('stratBoard');
     box.addEventListener('focusin',e=>{
       const el=e.target;
-      if(!el.classList.contains('sb-in')||el.dataset.fx==='name'||el.dataset.fx==='memo') return;
+      if(!el.classList.contains('sb-in')||el.dataset.fx==='name'||el.dataset.fx==='memo'||el.dataset.txt) return;
       // 입력 중에는 쉼표 없이
       const n=_sbNum(el.value);
       if(n!=null) el.value=String(n);
@@ -53483,7 +53633,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     box.addEventListener('input',e=>{
       const el=e.target;
       if(!el.classList.contains('sb-in')) return;
-      if(el.dataset.unit) _sbOp({k:'shipUnit', m:_sb.month, v:_sbNum(el.value)||null});
+      if(el.dataset.st){
+        const f=el.dataset.st;
+        if(f==='pay') _sbOp({k:'st', id:el.dataset.id, f, m:_sb.month, v:_sbNum(el.value)||0});
+        else if(f==='meal') _sbOp({k:'st', id:el.dataset.id, f, v:_sbNum(el.value)||0});
+        else _sbOp({k:'st', id:el.dataset.id, f, v:String(el.value||'').trim()});
+      }
+      else if(el.dataset.unit) _sbOp({k:'shipUnit', m:_sb.month, v:_sbNum(el.value)||null});
       else if(el.dataset.fx==='name') _sbOp({k:'fixName', id:el.dataset.id, name:el.value});
       else if(el.dataset.fx==='memo') _sbOp({k:'fixMemo', id:el.dataset.id, memo:el.value});
       else if(el.dataset.fx==='amt') _sbOp({k:'fixAmt', id:el.dataset.id, m:_sb.month, v:_sbNum(el.value)||0});
@@ -53492,6 +53648,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     box.addEventListener('focusout',()=>setTimeout(()=>{ if(!_sbEditing()) _sbRender(); },0));
     box.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.classList.contains('sb-in')) e.target.blur(); });
     box.addEventListener('click',e=>{
+      const sid=e.target.dataset&&e.target.dataset.stdel;
+      if(sid){
+        const s=(((_sb.view||{}).staff)||[]).find(x=>x.id===sid);
+        if(!s||!confirm(`"${s.name||'이 직원'}" 을(를) ${_sbMonthLabel(_sb.month)}부터 인건비 명세에서 뺄까요? 그 전 달 계산은 그대로예요. (그 달 중간 퇴사면 퇴사일 칸을 채우는 게 맞아요)`)) return;
+        _sbOp({k:'st', id:sid, f:'pay', m:_sb.month, v:null});
+        _sbRender();
+        return;
+      }
       const id=e.target.dataset&&e.target.dataset.del;
       if(!id) return;
       const r=_sbFixed(_sb.month).find(x=>x.id===id);
@@ -53522,6 +53686,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.sbShift=sbShift;
   window.sbSetMonth=sbSetMonth;
   window.sbFixedAdd=sbFixedAdd;
+  function sbStaffAdd(){
+    const id='s'+Date.now().toString(36);
+    document.getElementById('sbFixedFold').open=true;
+    _sbOp({k:'stAdd', id, m:_sb.month});
+    _sbRender();
+    const el=document.querySelector(`#sbLabor [data-st="name"][data-id="${id}"]`);
+    if(el) el.focus();
+  }
+  window.sbStaffAdd=sbStaffAdd;
   window.stratDailyToggle=stratDailyToggle;
   window.triggerStrategy=triggerStrategy;
   window.stratHasAccess=stratHasAccess;
