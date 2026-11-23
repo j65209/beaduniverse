@@ -144,6 +144,7 @@ class Learn {
     if (f.offer) this.teach('o:' + f.offer, b, w);
     if (f.img) this.teach('i:' + f.img, b, w);
     if (f.seller) this.teach('s:' + f.seller, b, w);
+    for (const c of f.codes) this.teach('c:' + c, b, w);
     for (const t of f.toks) this.teach('t:' + t, b, w);
   }
   score(f: Feat, acct: string | null) {
@@ -159,13 +160,30 @@ class Learn {
     if (f.offer) add('o:' + f.offer, 4);
     if (f.img) add('i:' + f.img, 5);
     if (f.seller) add('s:' + f.seller, 1.5);
-    for (const t of f.toks.slice(0, 8)) add('t:' + t, 1.2);
+    for (const c of f.codes) add('c:' + c, 4);   // 업체 상품 코드 (JZ5212 · XL2218 · D151 …) — 1688옵션명 · 메모
+    for (const t of f.toks.slice(0, 8)) {
+      // 한 브랜드 상품 이름에만 나오는 고유 낱말(도시 이름 · 상품 이름) — 메모에 제품명만 적혀도 브랜드를 안다
+      const x = this.m.get('t:' + t);
+      add('t:' + t, x && x.size === 1 && t.length >= 5 && !GENERIC.has(t) ? 2.5 : 1.2);
+    }
     if (acct) add('a:' + acct, 0.6);
     return Object.entries(s).sort((a, b) => b[1] - a[1]);
   }
 }
-type Feat = { offer: string | null; img: string | null; seller: string | null; toks: string[] };
-const featOf = (link: string, img: string, names: string[]): Feat => ({ offer: offerOf(link), img: imgOf(img), seller: sellerOf(img), toks: toks(names.filter(Boolean).join(' ')) });
+type Feat = { offer: string | null; img: string | null; seller: string | null; codes: string[]; toks: string[] };
+const GENERIC = new Set(['star', 'cross', 'heart', 'flower', 'pearl', 'chain', 'line', 'wave', 'moon', 'belt', 'mini', 'bold', 'slim', 'twist', 'crown',
+  'angel', 'drop', 'ball', 'link', 'band', 'layer', 'basic', 'knot', 'luna', 'clear', 'square', 'twin', 'triple', 'double', 'duble', 'glow', 'rose', 'lily',
+  'leaf', 'cloud', 'space', 'spring', 'tree', 'skull', 'island', 'multi', 'plus', 'thin', 'pink', 'blue', 'green', 'mint', 'beige', 'brown', 'gray', 'grey',
+  'lime', 'cream', 'ivory', 'khaki', 'navy', 'wine', 'olive', 'teal', 'charcoal', 'vintage', 'antique', 'tiny', 'long', 'small', 'queen', 'king', 'nova',
+  'galaxy', 'candy', 'light', 'shine', 'shiny', 'bubble', 'water', 'flat', 'cute', 'lucky', 'love', 'dream', 'pure', 'frost', 'stone', 'point', 'simple',
+  'round', 'shell', 'ribbon', 'butterfly', 'bunny', 'puppy', 'chunky', 'stud', 'hoop', 'cubic', 'crystal', 'opal', 'velvet', 'leather', 'nylon']);
+const CODE_RE = /(?<![A-Za-z0-9])([A-Z]{1,3}-?\d{3,6}[A-Z]?)(?![0-9])/g;
+const codesOf = (s: string) => [...new Set([...strip(s).matchAll(CODE_RE)].map((m) => m[1].replace('-', ''))
+  .filter((c) => !/925$/.test(c) && !/^(?:LCL|SF|SB|EMS|DHL|CJ)\d/.test(c)))].slice(0, 6);
+const featOf = (link: string, img: string, names: string[], extra: string[] = []): Feat => ({
+  offer: offerOf(link), img: imgOf(img), seller: sellerOf(img),
+  codes: codesOf(names.concat(extra).filter(Boolean).join(' ')), toks: toks(names.filter(Boolean).join(' ')),
+});
 
 // ---------------------------------------------------------------- 자료 읽기
 async function proxyBase(): Promise<string> {
@@ -226,7 +244,7 @@ function buildLines(kd: Record<string, any>): Map<string, Line> {
         let L = g.get(s.sn);
         if (!L) {
           L = { sn: s.sn, date: s.date, acct, apps: [], act: [], status: '', qty: null, price: null, priceTxt: '', link: '', img: '', memo: '', memos: [], memosC: [],
-            cs: '', cn: '', en: '', ords: [], kind: 'item', tag: null, phrase: null, feat: { offer: null, img: null, seller: null, toks: [] },
+            cs: '', cn: '', en: '', ords: [], kind: 'item', tag: null, phrase: null, feat: { offer: null, img: null, seller: null, codes: [], toks: [] },
             brand: null, how: null, conf: 0, alt: null, name: '', row: null, erp: null };
           g.set(s.sn, L);
         }
@@ -257,7 +275,7 @@ function buildLines(kd: Record<string, any>): Map<string, Line> {
     if (!L.act.length) L.kind = 'cancelled';
     else if ((SAMPLE.test(all) && (L.qty ?? 0) <= 10) || (L.qty != null && L.qty <= 5)) L.kind = 'sample';
     else if (MATERIAL.test(all) && !(L.tag && L.phrase && !MATERIAL.test(L.phrase))) L.kind = 'material';
-    L.feat = featOf(L.link, L.img, [L.phrase || '', L.phrase ? '' : all, L.en]);
+    L.feat = featOf(L.link, L.img, [L.phrase || '', L.phrase ? '' : all, L.en], [all, L.cs]);
   }
   return g;
 }
@@ -314,7 +332,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
   // 저장된 기록 (사람이 고친 브랜드 · 넣은 줄)
   const prev = new Map<string, any>();
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await sb.from('po_lines').select('sn,brand_fix,md_tk,md_r,md_how,md_at,brand,brand_how').range(from, from + 999);
+    const { data, error } = await sb.from('po_lines').select('sn,brand_fix,md_tk,md_r,md_how,md_at,md_added_at,brand,brand_how').range(from, from + 999);
     if (error) throw new Error('po_lines ' + error.message);
     for (const x of data || []) prev.set(x.sn, x);
     if (!data || data.length < 1000) break;
@@ -339,7 +357,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       const p = cm >= 0 ? parseMemo(g(cm)) : { brand: null, phrase: null };
       const b = b0 || p.brand;
       if (!b) continue;
-      learn.teachItem(featOf(g(cl), g(ci), [name, p.phrase || '']), b, w);
+      learn.teachItem(featOf(g(cl), g(ci), [name, p.phrase || ''], [g(cm)]), b, w);
       if (cs >= 0) { const s = salesNo(g(cs)); if (s) sheetSn.set(s.sn, { b, name: clean(name), tk }); }
     }
   }
@@ -358,7 +376,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       if (ours.has(`${t.tk}#${row.r}`)) continue;
       const v = row.v, c = t.cols, g = (i: number) => (i >= 0 ? v[i] || '' : '');
       const p = parseMemo(g(c.memo));
-      learn.teachItem(featOf(g(c.link), g(c.img), [g(c.name), p.phrase || '']), b, 2);
+      learn.teachItem(featOf(g(c.link), g(c.img), [g(c.name), p.phrase || ''], [g(c.opt), g(c.memo)]), b, 2);
     }
   }
   // 맥미니 ERP 매칭 (재고 ERP 상품명) — 브랜드 · 이름
@@ -394,7 +412,8 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       const h = bestRow(L, tabInfo[b].rows);
       if (h && (!rowHit || h.s > rowHit.s)) rowHit = { tab: b, ...h };
     }
-    if (p && p.brand_fix) { L.brand = p.brand_fix; L.how = 'fix'; L.conf = 1; }
+    if (p && p.brand_fix === 'skip') { L.brand = null; L.how = 'fix'; L.conf = 1; L.kind = 'excluded'; }   // 사람이 '상품 아님'
+    else if (p && p.brand_fix) { L.brand = p.brand_fix; L.how = 'fix'; L.conf = 1; }
     else if (L.tag) { L.brand = L.tag; L.how = 'tag'; L.conf = 1; }
     else if (ss && ss.b) { L.brand = ss.b; L.how = 'sheet'; L.conf = 1; }
     else if (rowHit && rowHit.s >= 5) { L.brand = rowHit.tab; L.how = 'row'; L.conf = 0.9; }
@@ -541,6 +560,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       md_tk: m ? m.tk : keepMd ? p.md_tk : null, md_r: m ? m.r : keepMd ? p.md_r : null,
       md_how: m ? m.how : keepMd ? 'added' : L.kind !== 'item' ? 'skip' : L.how === 'check' ? 'check' : L.brand && !TABS[L.brand] ? 'no_tab' : 'none',
       md_at: m && (m.how === 'added' || m.how === 'matched') ? now : (p && p.md_at) || null, updated_at: now,
+      md_added_at: m && m.how === 'added' ? (p && p.md_how === 'added' && p.md_added_at) || now : (p && p.md_added_at) || null,
     };
   });
   for (let i = 0; i < recs.length; i += 500) {
