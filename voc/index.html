@@ -481,6 +481,20 @@
     .msg b{font-size:14px}
     .toast{padding:9px 14px;font-size:12px}
   }
+  /* 휴대폰 · 태블릿 맨 위 막대를 또렷하게 (2026-11-23 사장님 "상품찾기 최상단 흐리다고 — 안 흐리게, 직원들이 못 찾아" → ERP 와 똑같이) —
+     찾기 칸은 흰 바탕 + 진한 테두리 + 검정 굵은 글씨, 메뉴 단추도 검정 */
+  @media (max-width:1000px),(max-height:520px){
+    .bar{background:#fff;border-bottom:1px solid #94a3b8}
+    .find,.find:focus-within{background:#fff;border:2px solid #0f172a}
+    .find:focus-within{border-color:var(--info);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+    .find svg{width:18px;height:18px;color:#0f172a;stroke-width:2.8}
+    .find input{font-weight:600;color:#0f172a}
+    .find input::placeholder{color:#0f172a;-webkit-text-fill-color:#0f172a;font-weight:600;opacity:1}
+    .qx{color:#0f172a;font-size:14px;font-weight:700}
+    .bar .ib{color:#0f172a}
+    .bar .ib svg{stroke-width:2.5}
+  }
+  @media (max-width:720px){ .bar{height:54px} .find{height:40px} .bar .menu{width:40px;height:40px} .bar .menu svg{width:22px;height:22px} }
 </style>
 </head>
 <body>
@@ -656,6 +670,7 @@
 
   const $ = id => document.getElementById(id);
   const app = $('app'), grid = $('grid'), qIn = $('q');
+  { const mq = matchMedia('(max-width:720px)'), ph = () => { qIn.placeholder = mq.matches ? '상품 · 주문번호 찾기' : '상품 · 사유 · 고객 글 · 주문번호 찾기'; }; ph(); mq.addEventListener && mq.addEventListener('change', ph); }   // 휴대폰은 안내 글을 짧게 (잘리지 않게)
   const SKEL = '<div class="skel">' + Array.from({length: 10}, () => '<div><i style="width:60px"></i><i style="width:90px"></i><i style="width:220px"></i><i style="width:140px"></i></div>').join('') + '</div>';
   const S = {
     models: [], at: 0, stored: false, busy: null, err: '',
