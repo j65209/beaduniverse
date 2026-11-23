@@ -12795,6 +12795,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="rcv-sum" id="reoModalSum"></div>
         <div class="rcv-list" id="reoModalList"></div>
         <div class="reo-need" id="reoModalNeed" hidden></div>
+        <details class="reo-expired" id="reoModalRestock" hidden ontoggle="_reo.inOpen=this.open"></details>
         <details class="reo-expired" id="reoModalExpired" hidden ontoggle="_reo.expOpen=this.open"></details>
         <div class="reo-basis" id="reoModalBasis"></div>
       </div>
@@ -12956,7 +12957,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="hro-title">🚨 <span>리오더 경보</span><span class="hro-cnt" id="homeReoCnt"></span></div>
         <div class="hro-meta" id="homeReoMeta">불러오는 중…</div>
         <div class="hro-actions">
-          <button class="hro-btn hro-btn-ghost" type="button" onclick="reoHomeLoad(true)" title="지금 다시 계산 (1분쯤 걸려요)">↻</button>
+          <button class="hro-btn hro-btn-ghost" type="button" onclick="reoHomeLoad(true)" title="지금 다시 계산">↻</button>
           <button class="hro-btn" type="button" onclick="reoModalOpen()">전체 보기</button>
         </div>
       </div>
@@ -16663,6 +16664,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function rcvHomeRefresh(){ rcvHomePeriod('today'); if(Date.now() - _rcvHome.at > 20000) rcvHomeLoad(); }   // 홈에 돌아오면 다시 오늘부터
   /* ===== 리오더 경보 — 홈 맨 위 고정 (2026-11-16 사장님 "리오더 경보는 확실하게 배치해줘. 상단으로 무조건 고정") =====
      서버 /erp/reorder = 맥미니 scripts/reorder_alert.py 가 30분마다 계산한 것 (읽기만 — 자동 품절 · 출고보류 없음).
+     + 부를 때마다 지금 ERP 남은 재고를 덮어 준다(scripts/reorder_live.py) — 2026-11-23 사장님 "erp에서 재고 바로 추가하면 리오더 경보에서 빼줘야지":
+       경보에 떠 있던 상품에 사람이 재고를 더하면 바로 빠지고(restocked), 다시 0 이하가 되면 바로 뜬다. ERP 가 바뀌면 알림선 신호로 바로 다시 읽음(reoLiveSoon).
      재고: 코페리 · 아페티 · 코즈미 = 식스샵 ERP MASTER 남은 재고(L) — 쇼핑몰이 수량관리 안함이라 0개가 돼도 계속 팔린다 → 이 카드가 유일한 안전장치.
            식스에이 · 야르 · 프피 · 아코이도 2026-11-18부터 재고 마스터 L (사장님 "이젠 재고마스터 erp가 실재고다" — 식스샵프로 재고는 안 불러옴).
            빈칸 = 아직 안 센 것 → 품절이 아니라 '실사 필요'(needCount). 브랜드 리포트 '지금 상태' · 제품 분석 창도 이 숫자만 쓴다.
@@ -16675,7 +16678,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const REO_SEV = {out:{t:'품절', cls:'out', g:'지금 품절 — 남은 재고 0 이하인데 팔리는 중'},
                    urgent:{t:'7일 안', cls:'urg', g:'7일 안에 바닥'}};
   const REO_ORDER = ['out','urgent'];
-  const _reo = {data:null, at:0, loading:false, err:'', timer:null, brand:'all', q:'', sev:'', again:null, expOpen:false};
+  const _reo = {data:null, at:0, loading:false, err:'', timer:null, brand:'all', q:'', sev:'', again:null, expOpen:false, inOpen:false,
+                liveT:0, liveTick:0, liveMiss:false};
   const _reoEsc = v => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const _reoN = n => Number(n).toLocaleString('ko-KR', {maximumFractionDigits: 1});
   const _reoHM = ms => { const d = new Date(ms); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
@@ -16711,7 +16715,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function reoHomeLoad(fresh){
     if(_reo.loading) return;
     _reo.loading = true;
-    if(fresh){ const m = document.getElementById('homeReoMeta'); if(m){ m.classList.remove('err'); m.textContent = '다시 계산하는 중… (1분쯤)'; } }
+    if(fresh){ const m = document.getElementById('homeReoMeta'); if(m){ m.classList.remove('err'); m.textContent = '다시 계산하는 중…'; } }
     try{
       const base = await loadProxyBase();
       if(!base) throw new Error('서버 연결 안 됨');
@@ -16720,8 +16724,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
       if(!j.ok && !(j.items || []).length) throw new Error(j.error || '아직 계산 전');
       _reo.data = j; _reo.at = Date.now(); _reo.err = '';
-      // 다시 계산을 시켰으면 40초 · 90초 뒤 한 번씩 더 읽는다
-      if(j.refreshing){ clearTimeout(_reo.again); _reo.again = setTimeout(() => reoHomeLoad(false), 40000); setTimeout(() => reoHomeLoad(false), 90000); }
+      _reo.liveMiss = false;
+      // 다시 계산을 시켰으면 5초(오피스 ERP 로 바뀐 뒤 계산은 2초쯤) · 40초 뒤 한 번씩 더 읽는다
+      if(j.refreshing){ clearTimeout(_reo.again); _reo.again = setTimeout(() => reoHomeLoad(false), 5000); setTimeout(() => reoHomeLoad(false), 40000); }
     }catch(e){ _reo.err = (e && e.message) || String(e); }
     finally{
       _reo.loading = false;
@@ -16746,7 +16751,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const failed = job.status === 'failed';
       meta.classList.toggle('err', !!(_reo.err || old || failed));
       meta.textContent = !d ? (_reo.err ? `불러오지 못함 — ${_reo.err}` : '불러오는 중…')
-        : `${_reoHM(calcAt)} 기준`
+        : `${_reoHM(d.liveAt || calcAt)} 기준`
           + (d.refreshing ? ' · 다시 계산 중' : '')
           + (failed ? ' · 최근 계산 실패 — 이전 값' : '')
           + (old ? ' · 오래된 값' : '')
@@ -16804,7 +16809,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(title) title.textContent = _reo.sev ? `리오더 경보 — ${REO_SEV[_reo.sev].g}` : '리오더 경보';
     const sum = document.getElementById('reoModalSum');
     if(sum) sum.textContent = REO_ORDER.map(k => `${REO_SEV[k].t} ${rows.filter(i => i.sev === k).length}`).join(' · ')
-      + (d.fetchedAt ? ` · ${_reoHM(d.fetchedAt)} 계산` : '') + (_reo.err ? ` · 최근 불러오기 실패 (${_reo.err})` : '');
+      + (d.fetchedAt ? ` · ${_reoHM(d.liveAt || d.fetchedAt)} 기준` : '') + (_reo.err ? ` · 최근 불러오기 실패 (${_reo.err})` : '');
     const list = document.getElementById('reoModalList');
     if(list){
       if(!rows.length){
@@ -16842,6 +16847,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             }).join('');
       }
     }
+    // ERP 에서 재고를 더해 내린 상품 (11-23) — 접힌 채로 개수만
+    const inBox = document.getElementById('reoModalRestock');
+    if(inBox){
+      const rs = (d.restocked || []).filter(i => _reo.brand === 'all' || i.b === _reo.brand);
+      inBox.hidden = !rs.length;
+      if(rs.length){
+        inBox.open = !!_reo.inOpen;
+        inBox.innerHTML = `<summary>재고를 더해 내린 상품 ${rs.length}개 <span>— 다시 0개가 되면 바로 떠요</span></summary>`
+          + rs.map(it => `<div class="reo-exp-row reo-b-${_reoEsc(it.b)}"><span class="reo-name">${_reoNameHtml(it)}</span>`
+            + `<span class="reo-exp-num">남은 ${_reoN(it.stock)}개 · 하루 ${_reoN(it.rate)}개${it.inAt ? ` · ${new Date(it.inAt).getMonth() + 1}/${new Date(it.inAt).getDate()} ${_reoHM(it.inAt)} 더함` : ''}${it.inQty ? ` (+${_reoN(it.inQty)})` : ''}</span></div>`).join('');
+      }
+    }
     // 1주일 지나 내린 상품 — 접힌 채로 개수만 (열면 목록). 다시 그려도 열림 상태 유지
     const exp = document.getElementById('reoModalExpired');
     if(exp){
@@ -16859,13 +16876,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const src = {erp:'ERP', pro:'식스샵 재고 (실사 전)'};
       const lines = Object.keys(brands).map(b => {
         const x = brands[b];
-        const how = x.basis === 'sheet' ? `ERP 출고 기록 ${x.diaryDays}일` : '채널 판매 (최근 7 · 14일 중 빠른 쪽)';
+        const how = x.basis === 'sheet' || x.basis === 'office' ? `ERP 출고 기록 ${x.diaryDays}일` : '채널 판매 (최근 7 · 14일 중 빠른 쪽)';
         const cov = x.coverage == null ? '' : ` · 채널 판매 상품 맞춘 비율 ${Math.round(x.coverage * 100)}%`;
         return `<b>${_reoEsc(x.label)}</b> 재고: ${src[x.stockSource] || x.stockSource} · 판매 속도: ${how}${cov}`;
       });
       basis.innerHTML = lines.join('<br>')
         + '<br>재고 · 판매 속도 모두 ERP 만 봅니다 (채널 판매 집계는 섞지 않아요). 7일 안에 바닥나는 상품만, 최근 7일 중 3일 이상 출고됐거나 하루 1개 이상 나가는 상품만 띄웁니다. B급 · 하루 0.2개 미만은 뺍니다.'
-        + '<br>경보에 뜬 지 7일이 지나면 내립니다 — 그동안 리오더 안 한 걸로 봅니다. 입고로 재고가 늘면 다시 셉니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
+        + '<br>ERP 에서 재고를 더하면 바로 내립니다 — 다시 0개가 되거나, 더한 지 7일이 지나도 7일 안에 바닥이면 다시 띄웁니다.'
+        + '<br>경보에 뜬 지 7일이 지나면 내립니다 — 그동안 리오더 안 한 걸로 봅니다. 알림만 하고 품절 처리 · 출고보류는 하지 않아요.';
     }
   }
   function reoHomeBoot(){
@@ -16884,7 +16902,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(e.key === 'Escape' && m && !m.hidden) reoModalClose();
     });
   }
-  function reoHomeRefresh(){ if(Date.now() - _reo.at > 60000) reoHomeLoad(false); }
+  function reoHomeRefresh(){ if(_reo.liveMiss || Date.now() - _reo.at > 60000) reoHomeLoad(false); }
+  /* ERP 남은 재고가 바뀌었다는 신호(알림선 erp_rows) → 조금 뒤 다시 읽는다. 홈을 안 보고 있으면 돌아올 때 읽게만 적어 둔다.
+     서버가 같은 값을 1초 나눠 쓰므로 신호 뒤 1.5초에 읽고, 자동 차감처럼 신호가 몰려도 5초에 한 번까지만. */
+  function reoLiveSoon(){
+    _reo.liveTick = Date.now();
+    const modal = document.getElementById('reoModal'), home = document.getElementById('viewHome');
+    if(!((home && !home.hidden) || (modal && !modal.hidden))){ _reo.liveMiss = true; return; }
+    if(!_reo.liveT) _reo.liveT = setTimeout(_reoLiveRun, Math.max(1500, 5000 - (Date.now() - _reo.at)));
+  }
+  async function _reoLiveRun(){
+    if(_reo.loading){ _reo.liveT = setTimeout(_reoLiveRun, 1500); return; }
+    _reo.liveT = 0;
+    const from = Date.now();
+    await reoHomeLoad(false);
+    if(_reo.liveTick > from - 1300 && !_reo.liveT) _reo.liveT = setTimeout(_reoLiveRun, 5000);   // 읽는 사이 또 바뀜
+  }
   /* 입고 입력 대화창 — [+ 입고 입력] 을 누르면 에이전트 오피스로 넘어가지 않고 이 화면 위에 모아 대화창.
      지금 보고 있는 주소(j65209.github.io/beaduniverse/ 또는 beaduniverse.kr/office/) 의 agents.html 을 띄워서
      로그인 권한 · '나는 ○○○' 이름이 그대로 이어진다. 반영되면 대화창이 알려 와서 입고 현황을 바로 다시 읽는다. */
@@ -34994,6 +35027,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     L.on(['lg_board_deletes'], ()=>{ if(_lgbDelsAt){ _lgbDelsAt=1; return call(()=>_lgbLoadDels().then(ch=>{ if(ch) _lgbPaint(); })); } });
     // 홈 입고 현황 (모아 입고 · ERP 에서 직접 올린 입고) — 홈을 보고 있을 때만
     L.on(['erp_rows'], ()=>{ if(_bbLiveShown('viewHome') && Date.now()-_rcvHome.at>15000) return call(rcvHomeLoad); });
+    // 홈 리오더 경보 — ERP 에서 재고를 더하면 바로 빠지게 (11-23)
+    L.on(['erp_rows'], ()=>call(reoLiveSoon));
     // CS 기록 · 개선 요청
     L.on(['cs_issues','cs_requests','cs_daily_notes','cs_sales_qty'], ()=>{ if(_bbLiveShown('viewCs') && _csi.loaded && _csi.tab!=='work') return call(csiLoad,false); });
     // 원천세 (입력 중이면 그 함수가 알아서 미룬다)
