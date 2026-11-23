@@ -5294,6 +5294,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-find button{min-height:34px;padding:6px 16px;border-radius:8px;border:0;background:var(--kko-yellow);color:var(--kko-ink);font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer}
   .kko-find button:hover{background:var(--kko-yellow-h)}
   .kko-find-out{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  /* 주문 찾기 · 운송장 조회 바꾸기 (2026-11-23) — 지금 고른 쪽만 흰 바탕 */
+  .kko-find-top{flex:1 1 100%;display:flex}
+  .kko-find .kko-find-seg{display:inline-flex;gap:2px;padding:2px;border-radius:9px;background:var(--kko-pill)}
+  .kko-find .kko-find-seg button{min-height:30px;padding:4px 10px;border-radius:7px;background:none;color:#8a8a8a;font-size:12.5px;font-weight:800;white-space:nowrap}
+  .kko-find .kko-find-seg button:hover{background:rgba(255,255,255,.55);color:var(--kko-ink)}
+  .kko-find .kko-find-seg button[aria-pressed="true"]{background:#fff;color:var(--kko-ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .kko-find[data-mode="order"] .kko-fw,.kko-find[data-mode="wbl"] .kko-fo{display:none}
+  .kko-find #kkoTrackQ{flex:1 1 200px;min-width:0}
+  /* 운송장 조회 결과 — 최근 단계가 맨 위 */
+  .kko-trk-box{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--bg-1);font-size:12.5px}
+  .kko-ord .kko-trk{margin-top:6px}
+  .kko-ord .kko-trk-box{padding:6px 10px;background:#fafafa}
+  .kko-trk-h{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap}
+  .kko-trk-h b{font-weight:800;color:var(--text-0);font-variant-numeric:tabular-nums}
+  .kko-trk-h span{color:var(--text-3)}
+  .kko-trk-h a{margin-left:auto;color:var(--text-1);font-weight:700;white-space:nowrap}
+  .kko-trk-h .kko-trk-st{padding:1px 8px;border-radius:999px;background:var(--kko-pill);color:var(--kko-ink);font-size:11.5px;font-weight:800}
+  .kko-trk-st.ok{background:#e8f5ee;color:#166534}
+  .kko-trk-st.bad{background:#fdecec;color:var(--kko-redt)}
+  .kko-trk-l{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px}
+  .kko-trk-l li{display:grid;grid-template-columns:78px minmax(0,auto) minmax(0,1fr);gap:8px;align-items:baseline;color:var(--text-2)}
+  .kko-trk-l li .t{color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .kko-trk-l li b{font-weight:700;color:var(--text-1);white-space:nowrap}
+  .kko-trk-l li .p{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kko-trk-l li.now b{color:var(--kko-ink);font-weight:800}
+  .kko-trk-none{margin-top:6px;color:var(--text-2);line-height:1.5}
+  .kko-trk-src{margin-top:6px;font-size:11px;color:var(--text-3)}
+  .kko-trk-btn{margin-left:4px;padding:1px 8px;min-height:24px;border:1px solid var(--line-2);border-radius:999px;background:#fff;color:var(--text-1);font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
+  .kko-trk-btn:hover{border-color:var(--text-3)}
+  .kko-trk-btn[aria-expanded="true"]{background:var(--kko-ink);border-color:var(--kko-ink);color:#fff}
+  @media (pointer:coarse){ .kko-trk-btn{min-height:32px;padding:4px 12px} .kko-find .kko-find-seg button{min-height:34px} }
   .kko-find-out:empty{display:none}
   .kko-find-msg{font-size:12.5px;color:var(--text-3)}
   .kko-find-msg.err{color:#b91c1c;font-weight:700}
@@ -14045,16 +14076,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="kko-brands" id="kkoBrands" aria-label="브랜드"></div>
         <div class="kko-ch" id="kkoCh" hidden></div>
         <div class="kko-list" id="kkoList"></div>
-        <form class="kko-find" onsubmit="kkoFind(event)" autocomplete="off">
-          <span class="kko-find-t">주문 찾기</span>
-          <select id="kkoFindBrand" aria-label="브랜드">
+        <!-- 주문 찾기 · 운송장 조회 (2026-11-23 사장님 "주문찾기랑 운송장조회 또는 택배 번호 조회도 미리 만들어줘. 대한통운 api 연결할거야 추후에") — 같은 칸에서 바꿔 씀.
+             운송장 = 프록시 /cs/track (지금 CJ 공개 조회, 대한통운 API 를 붙이면 서버 cs-track.ts 만 바뀜). 찾은 주문의 CJ 송장에는 '단계 보기' -->
+        <form class="kko-find" id="kkoFindForm" data-mode="order" onsubmit="kkoFind(event)" autocomplete="off">
+          <div class="kko-find-top"><span class="kko-find-seg" role="group" aria-label="찾기 종류"><button type="button" data-m="order" aria-pressed="true" onclick="kkoLookMode('order')">주문 찾기</button><button type="button" data-m="wbl" aria-pressed="false" onclick="kkoLookMode('wbl')">운송장 조회</button></span></div>
+          <select id="kkoFindBrand" class="kko-fo" aria-label="브랜드">
             <option value="all">전체 브랜드</option>
             <option value="kop">코페리</option><option value="apt">아페티</option><option value="koz">코즈미</option>
             <option value="6a">식스에이</option><option value="yar">야르</option><option value="pp">프로덕트피알</option><option value="akoi">아코이하우스</option>
           </select>
-          <input id="kkoFindQ" type="text" placeholder="주문번호, 또는 주문자 · 받는 분 이름" aria-label="주문번호 또는 이름">
-          <input id="kkoFindP" type="text" inputmode="numeric" maxlength="13" placeholder="전화 뒷 4자리" aria-label="전화 뒷 4자리">
-          <button type="submit">찾기</button>
+          <input id="kkoFindQ" class="kko-fo" type="text" placeholder="주문번호, 또는 주문자 · 받는 분 이름" aria-label="주문번호 또는 이름">
+          <input id="kkoFindP" class="kko-fo" type="text" inputmode="numeric" maxlength="13" placeholder="전화 뒷 4자리" aria-label="전화 뒷 4자리">
+          <input id="kkoTrackQ" class="kko-fw" type="text" inputmode="numeric" maxlength="20" placeholder="운송장 번호 (CJ대한통운, 숫자만)" aria-label="운송장 번호">
+          <button type="submit" id="kkoFindGo">찾기</button>
         </form>
         <div class="kko-find-out" id="kkoFindOut"></div>
       </div>
@@ -17963,7 +17997,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _kkoOrderHtml(o, brand){
     const dt=new Date(o.orderedAt), ds=isNaN(dt) ? '' : `${dt.getFullYear()}.${dt.getMonth()+1}.${dt.getDate()}`;
     const items=(o.items||[]).map(i=>`<li>${_kkoEsc(i.name)}${i.option?` <i>${_kkoEsc(i.option)}</i>`:''} ×${_kkoEsc(i.qty)} — <em>${_kkoEsc(i.statusKo||i.status||'')}</em></li>`).join('');
-    const ships=(o.shipments||[]).filter(s=>s.trackingNumber).map(s=>`${_kkoEsc(s.companyName||s.company)} ${_kkoEsc(s.trackingNumber)}${/^https?:\/\//.test(s.trackingUrl||'')?` <a href="${_kkoEsc(s.trackingUrl)}" target="_blank" rel="noopener">배송 조회 ↗</a>`:''}`).join(' · ');
+    // CJ 송장은 '단계 보기' — 이 주문 칸 아래에 택배 처리 단계 (운송장 조회 2026-11-23, kkoTrackIn)
+    const cj=s=>/^\d{10,14}$/.test(s.trackingNumber||'') && (s.company==='04' || /CJ|대한통운/i.test(s.companyName||'') || /cjlogistics|carrier=04(?!\d)/.test(s.trackingUrl||''));
+    const ships=(o.shipments||[]).filter(s=>s.trackingNumber).map(s=>`${_kkoEsc(s.companyName||s.company)} ${_kkoEsc(s.trackingNumber)}${cj(s)?` <button type="button" class="kko-trk-btn" aria-expanded="false" onclick="kkoTrackIn(this,'${_kkoEsc(s.trackingNumber)}')">단계 보기</button>`:/^https?:\/\//.test(s.trackingUrl||'')?` <a href="${_kkoEsc(s.trackingUrl)}" target="_blank" rel="noopener">배송 조회 ↗</a>`:''}`).join(' · ');
     const meta=[ds, o.orderer, KKO_MARKET[o.market]||o.market, o.total ? Number(o.total).toLocaleString('ko-KR')+'원' : ''].filter(Boolean).map(_kkoEsc).join(' · ');
     const b=o.brand||brand;
     return `<div class="kko-ord"><div class="kko-ord-h">${b ? _kkoBrand(b,o.brandName) : ''}<b>${_kkoEsc(o.orderId)}</b><span>${meta}</span></div>`
@@ -18333,6 +18369,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 주문 찾기 — 주문번호 / 이름 + 전화 뒷 4자리 / 전화 전체
   async function kkoFind(ev){
     if(ev) ev.preventDefault();
+    if((document.getElementById('kkoFindForm')||{}).dataset?.mode==='wbl') return kkoTrack();
     const out=document.getElementById('kkoFindOut');
     const brand=document.getElementById('kkoFindBrand').value;
     const q=document.getElementById('kkoFindQ').value.trim();
@@ -18353,7 +18390,59 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!(j.results||[]).length){ out.innerHTML=`<div class="kko-find-msg">${_kkoEsc(j.note||'못 찾았어요')}</div>`; return; }
       out.innerHTML=j.results.map(o=>_kkoOrderHtml(o)).join('');
     }catch(e){ out.innerHTML=`<div class="kko-find-msg err">${_kkoEsc((e && e.message) || String(e))}</div>`; }
+  }  // 주문 찾기 · 운송장 조회 바꾸기 (2026-11-23 사장님 "주문찾기랑 운송장조회 또는 택배 번호 조회도 미리 만들어줘. 대한통운 api 연결할거야 추후에")
+  function kkoLookMode(m){
+    const f=document.getElementById('kkoFindForm'); if(!f) return;
+    m=m==='wbl' ? 'wbl' : 'order';
+    f.dataset.mode=m;
+    f.querySelectorAll('.kko-find-seg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.m===m)));
+    const go=document.getElementById('kkoFindGo'); if(go) go.textContent=m==='wbl' ? '조회' : '찾기';
+    const inp=document.getElementById(m==='wbl' ? 'kkoTrackQ' : 'kkoFindQ'); if(inp) inp.focus({preventScroll:true});
   }
+  // 운송장 조회 — 프록시 /cs/track (서버 cs-track.ts: 지금 CJ 공개 조회, 대한통운 API 를 붙이면 그쪽). 단계 · 시각 · 지점만 온다 (이름 · 전화 · 주소 없음)
+  async function _kkoTrackGet(wbl){
+    const base=await loadProxyBase();
+    if(!base) throw new Error('서버 연결 안 됨');
+    const r=await fetch(`${base}/cs/track?${new URLSearchParams({wbl})}`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    return j;
+  }
+  async function kkoTrack(){
+    const out=document.getElementById('kkoFindOut'), inp=document.getElementById('kkoTrackQ');
+    if(!out || !inp) return;
+    const wbl=inp.value.replace(/[\s-]/g,'');
+    if(!/^\d{10,14}$/.test(wbl)){ out.innerHTML='<div class="kko-find-msg err">운송장 번호(숫자 10~14자리)를 넣어 주세요</div>'; return; }
+    out.innerHTML='<div class="kko-find-msg">조회 중…</div>';
+    try{ out.innerHTML=_kkoTrackHtml(await _kkoTrackGet(wbl)); }
+    catch(e){ out.innerHTML=`<div class="kko-find-msg err">${_kkoEsc((e && e.message) || String(e))}</div>`; }
+  }
+  // 찾은 주문(주문 찾기 결과 · 대화창 위 주문 칸)의 CJ 송장 '단계 보기' — 그 주문 칸 아래에 펼침, 다시 누르면 접음
+  async function kkoTrackIn(btn, wbl){
+    const ord=btn && btn.closest('.kko-ord');
+    if(!ord || !/^\d{10,14}$/.test(String(wbl))) return;
+    let box=ord.querySelector(`.kko-trk[data-w="${wbl}"]`);
+    if(box){ box.remove(); btn.setAttribute('aria-expanded','false'); return; }
+    box=document.createElement('div'); box.className='kko-trk'; box.dataset.w=wbl;
+    box.innerHTML='<div class="kko-find-msg">조회 중…</div>';
+    ord.appendChild(box); btn.setAttribute('aria-expanded','true');
+    try{ box.innerHTML=_kkoTrackHtml(await _kkoTrackGet(wbl), true); }
+    catch(e){ box.innerHTML=`<div class="kko-find-msg err">${_kkoEsc((e && e.message) || String(e))}</div>`; }
+  }
+  const KKO_TRK_CLS={done:'ok',check:'bad'};
+  function _kkoTrackHtml(j, inner){
+    const md=s=>{ const m=/^(\d{4})-(\d{2})-(\d{2})\s*(\d{2}:\d{2})?/.exec(String(s||'')); return m ? `${+m[2]}/${+m[3]}${m[4] ? ' '+m[4] : ''}` : _kkoEsc(s||''); };
+    const steps=(j.steps||[]).slice().reverse(), last=steps[0];
+    const url=/^https:\/\//.test(j.url||'') ? j.url : '';
+    const head=`<div class="kko-trk-h">${inner ? '' : `<b>${_kkoEsc(j.carrier||'CJ대한통운')} ${_kkoEsc(j.wbl)}</b>`}<span class="kko-trk-st ${KKO_TRK_CLS[j.state]||''}">${_kkoEsc(j.stateKo||'')}</span>`
+      + (last ? `<span>${md(last.at)}${last.place ? ' · '+_kkoEsc(last.place) : ''}</span>` : '')
+      + (url ? `<a href="${_kkoEsc(url)}" target="_blank" rel="noopener">CJ 조회 화면 ↗</a>` : '') + `</div>`;
+    const body=steps.length
+      ? `<ol class="kko-trk-l">${steps.map((s,i)=>`<li${i===0 ? ' class="now"' : ''}><span class="t">${md(s.at)}</span><b>${_kkoEsc(s.step)}</b><span class="p">${_kkoEsc(s.place)}</span></li>`).join('')}</ol>`
+      : `<div class="kko-trk-none">아직 택배사 처리 기록이 없어요 — 운송장만 출력되고 기사님이 가져가기 전(집화 전)일 수 있어요.</div>`;
+    return `<div class="kko-trk-box">${head}${body}<div class="kko-trk-src">${j.source==='cj-api' ? '대한통운 API' : 'CJ대한통운 공개 조회'} 기준${j.cached ? ' · 3분 안에 조회한 결과' : ''}</div></div>`;
+  }
+
 
   /* 식스샵 자동화 — 서버 Mac proxy가 Playwright로 식스샵 어드민 자동 로그인+조작.
      기본 timeout 길게(180s) — Chromium 띄우는 시간 포함. */
