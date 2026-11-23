@@ -294,6 +294,10 @@
   .thumb:hover{box-shadow:0 0 0 2px #93c5fd}
   .thumb.copied{box-shadow:0 0 0 3px #22c55e}   /* 2026-11-23 표 사진 = 누르면 사진 주소 복사 (잠깐 초록 테두리) */
   .app.dense .thumb{width:24px;height:24px;margin:1px 0}
+  /* 2026-11-23 사장님 "이미지는 마우스오버로 볼 수 있게" — 표 사진에 마우스를 올리면 옆에 크게 (마우스 있는 PC 만) */
+  .ipop{position:fixed;z-index:70;padding:6px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 48px rgba(15,23,42,.22),0 0 0 1px rgba(15,23,42,.03);pointer-events:none}
+  .ipop img{display:block;width:auto;height:auto;max-width:min(320px,calc(100vw - 40px));max-height:min(320px,calc(100vh - 60px));min-width:120px;min-height:120px;object-fit:contain;border-radius:8px;background:#f1f5f9}
+  .ipop span{display:block;padding:5px 2px 0;font-size:11px;color:var(--text-3);text-align:center}
   /* 2026-11-23 사장님 — 주소 칸(1688.com)은 [바로가기][복사], 사진 칸은 사진 옆 [복사][수정] 단추 */
   .pcell{display:inline-flex;align-items:center;gap:6px;vertical-align:middle}
   .cbtns{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;white-space:nowrap}
@@ -1999,7 +2003,7 @@
   const photoEditOk = (c, ed) => !!(ed && c && c.img && c.t);
   const btnW = s => Math.ceil(tw(s, F_CHIP)) + 16;
   function photoHtml(c, ed) {
-    return `<span class="pcell"><img class="thumb" src="${esc(c.img)}" data-u="${esc(c.img)}" alt="" title="누르면 사진 주소 복사" loading="lazy" decoding="async" referrerpolicy="no-referrer">`   // data-u = 원래 주소 (못 열린 사진은 src 가 blob: 으로 바뀜)
+    return `<span class="pcell"><img class="thumb" src="${esc(c.img)}" data-u="${esc(c.img)}" alt=""${hoverMQ.matches ? '' : ' title="누르면 사진 주소 복사"'} loading="lazy" decoding="async" referrerpolicy="no-referrer">`   // data-u = 원래 주소 (못 열린 사진은 src 가 blob: 으로 바뀜)
       + `<span class="cbtns"><button type="button" class="cbtn" data-act="copy" data-u="${esc(c.img)}" data-what="사진 주소" title="사진 주소 복사">복사</button>`
       + (photoEditOk(c, ed) ? `<button type="button" class="cbtn" data-act="edit" title="사진 주소 고치기 — 새 주소를 넣으면 사진이 바뀌어요">수정</button>` : '') + '</span></span>';
   }
@@ -2869,7 +2873,39 @@
     hpop.style.top = Math.max(8, Math.min(innerHeight - h - 8, r.top + r.height / 2 - h / 2)) + 'px';
   });
   grid.addEventListener('mouseout', e => { const chip = e.target.closest && e.target.closest('.hchip'); if (chip && !chip.contains(e.relatedTarget)) hpop.hidden = true; });
-  grid.addEventListener('scroll', () => { hpop.hidden = true; paintRows(); headScroll(); touched(); }, {passive: true});
+  /* 표 사진에 마우스 → 옆에 크게 (2026-11-23 사장님 "이미지는 마우스오버로 볼 수 있게") — 누르면 여전히 사진 주소 복사.
+     휴대폰 · 터치는 행 번호 → 상세 창 사진(누르면 전체 화면). 화면에 보이는 사진(못 열린 사진은 blob:)을 그대로 쓴다 */
+  const ipop = document.createElement('div');
+  ipop.className = 'ipop';
+  ipop.hidden = true;
+  ipop.innerHTML = '<img alt="" referrerpolicy="no-referrer"><span>누르면 사진 주소 복사</span>';
+  document.body.appendChild(ipop);
+  const ipImg = ipop.firstChild;
+  let ipFor = null;
+  const ipHide = () => { ipop.hidden = true; ipFor = null; };
+  function ipPlace() {
+    if (!ipFor || !ipFor.isConnected) { ipHide(); return; }
+    const r = ipFor.getBoundingClientRect(), w = ipop.offsetWidth, h = ipop.offsetHeight;
+    let left = r.right + 10;
+    if (left + w > innerWidth - 8) left = Math.max(8, r.left - w - 10);
+    ipop.style.left = left + 'px';
+    ipop.style.top = Math.max(8, Math.min(innerHeight - h - 8, r.top + r.height / 2 - h / 2)) + 'px';
+  }
+  grid.addEventListener('mouseover', e => {
+    const im = e.target.closest && e.target.closest('img.thumb');
+    if (!im || im.style.visibility === 'hidden') { if (ipFor) ipHide(); return; }   // 사진 밖 · 끝내 못 연 사진 (표가 다시 그려져 사진이 바뀐 경우도)
+    if (!hoverMQ.matches || im === ipFor) return;
+    ipFor = im;
+    hpop.hidden = true;
+    ipImg.onload = ipPlace;
+    ipImg.src = im.currentSrc || im.src;
+    ipop.hidden = false;
+    ipPlace();
+  });
+  grid.addEventListener('mouseout', e => { if (ipFor && e.target === ipFor && e.relatedTarget !== ipFor) ipHide(); });
+  grid.addEventListener('mousedown', ipHide);
+  addEventListener('blur', ipHide);
+  grid.addEventListener('scroll', () => { hpop.hidden = true; ipHide(); paintRows(); headScroll(); touched(); }, {passive: true});
   if (window.ResizeObserver) new ResizeObserver(() => paintRows()).observe(grid);   // 위쪽을 접고 펴거나 화면 높이가 바뀌면 줄을 더 채운다
   function moveSel(dir) {
     if (!S.list.length) return;
