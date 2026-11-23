@@ -1445,14 +1445,16 @@
       if (cnt(iss)) kpis.push({id: 'iss', label: '이름 · 카테고리 확인', val: cnt(iss), pred: iss});
       // 지난 상품 (2026-11-20 사용자 "약 6개월전까지 판매했는데 판매중지 및 품절 제품들도 보이게해줘. 최하단에") — 최근 6개월 안에 공홈에서 팔렸지만
       // 지금 식스샵프로 판매중지 · 품절이고 재고 마스터에 줄이 없는 상품. 맥미니 erp-past-sales(1시간) + 재고 연동(5분) → erp_pro.pro._past
-      // [이름, off|sold, 마지막 주문일, 6개월 수량, 옵션 수]. 표 맨 아래 회색 줄 (filtered), 요약 숫자 · 고치기 밖 (editCtx PAST_WHY).
+      // [이름, off|sold, 마지막 주문일, 6개월 수량, 옵션 수, (옵션)]. 표 맨 아래 회색 줄 (filtered), 요약 숫자 · 고치기 밖 (editCtx PAST_WHY).
+      // 2026-11-23 사장님 "웬만하면 다 뜨게해줘. 판매중지나 품절은 하단에 두더라도. 식스에이는 너무 많다고 하지만 나머지 브랜드는" → 식스에이 말고는 안 팔린 것도 전부 ·
+      // (옵션) = 다른 옵션은 줄이 있는 상품의 빠진 품절 옵션 하나
       const past = proInfo && proInfo.map && Array.isArray(proInfo.map._past) ? proInfo.map._past : [];
       if (past.length && cName) {
         const cInfo = cOpt || cAlert;
         past.forEach((x, i) => {
-          const [name, st, last, qty, n] = x, rr = PAST_R0 + i, byP = {};
+          const [name, st, last, qty, n, optT] = x, rr = PAST_R0 + i, byP = {};
           const put = (col, t) => { if (col) byP[col.p] = {p: col.p, cs: 1, rs: 1, r: rr, st: NOSTYLE, t, chips: [], cb: 0, img: '', href: ''}; };
-          const info = `마지막 판매 ${/^\d{4}-\d\d-\d\d$/.test(last || '') ? `${+last.slice(5, 7)}/${+last.slice(8, 10)}` : '?'} · 6개월 ${fmt(+qty || 0)}개`;
+          const info = optT ? String(optT) : /^\d{4}-\d\d-\d\d$/.test(last || '') ? `마지막 판매 ${+last.slice(5, 7)}/${+last.slice(8, 10)} · 6개월 ${fmt(+qty || 0)}개` : '최근 6개월 공홈 판매 없음';
           put(cCatS, '지난 상품');
           put(cName, String(name || ''));
           if (cInfo !== cName) put(cInfo, info);
