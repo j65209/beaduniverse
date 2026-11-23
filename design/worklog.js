@@ -398,7 +398,8 @@ async function poll(){
 const visible = () => { const v = document.getElementById('viewDesign'); return !!(v && !v.hidden); };
 
 /* ============================================================ 자동 정리 (계산) ============================================================ */
-const SEC = [['goalM', /월간\s*목표|이번\s*달\s*목표/], ['goalW', /주간\s*목표|이번\s*주\s*목표/], ['daily', /데일리\s*체크|매일\s*체크|루틴/], ['tomorrow', /내일\s*할|낼\s*할/], ['today', /오늘\s*할/], ['hold', /홀딩|보류/]];
+const SEC = [['goalM', /월간\s*목표|이번\s*달\s*목표/], ['goalW', /주간\s*목표|이번\s*주\s*목표/], ['daily', /데일리\s*체크|매일\s*체크|루틴/], ['pin', /꼭\s*챙길/], ['tomorrow', /내일\s*할|낼\s*할/], ['today', /오늘\s*할/], ['hold', /홀딩|보류/]];
+const NO_AGE = ['goalM', 'goalW', 'daily', 'pin'];          // 'n일째' 를 안 세는 구역 (목표 · 루틴 · 전광판 고정은 원래 오래 남는다)
 const secType = h => { const t = h ? bText(h) : ''; for(const [k, re] of SEC) if(re.test(t)) return k; return ''; };
 function sections(blocks){
   const out = []; let c = null;
@@ -411,7 +412,7 @@ function sections(blocks){
   return out;
 }
 /* 보이는 차례 — 오늘 할 일 · 진행 중인 일 먼저, 데일리 체크 · 목표는 뒤로 (적힌 차례는 그대로) */
-const SEC_RANK = {today:0, hold:2, tomorrow:3, daily:4, goalW:5, goalM:6};
+const SEC_RANK = {today:0, pin:0.5, hold:2, tomorrow:3, daily:4, goalW:5, goalM:6};
 const secOrder = (p, ss) => p.kind !== 'daily' ? ss : ss.map((s, i) => [s, i]).sort((a, b) => (SEC_RANK[a[0].type] ?? 1) - (SEC_RANK[b[0].type] ?? 1) || a[1] - b[1]).map(x => x[0]);
 const norm = s => String(s || '').toLowerCase().replace(/[\s.,·_\-~!?()\[\]{}"'“”‘’:;/\\⇒→=>★※…]+/g, '');
 function info(p){           // 글 하나를 한 번 훑어 둔 것 (고치면 버림)
@@ -440,7 +441,7 @@ function dice(a, b){
   A.forEach((v, k) => { n += Math.min(v, B.get(k) || 0); });
   return 2 * n / (a.length + b.length - 2);
 }
-/* 바로 앞 글과 달라진 점 — 새로 · 고침 · 빠짐 */
+/* 바로 앞 글과 달라진 점 — 새로 · 고침 · 빠짐 (화면 표시는 2026-11-23 뺌, '이번 주' 정리만 씀) */
 function diffOf(p){
   const A = info(p), q = prevOf(p), B = info(q);
   if(!A || !B) return null;
@@ -474,7 +475,7 @@ function ageMap(p){
   if(!A) return new Map();
   if(A.age) return A.age;
   const out = new Map(), past = dailies().filter(x => x.day < p.day && x.blocks);
-  const live = new Map(A.lines.filter(l => l.n && !['goalM', 'goalW', 'daily'].includes(l.sec)).map(l => [l.id, l]));
+  const live = new Map(A.lines.filter(l => l.n && !NO_AGE.includes(l.sec)).map(l => [l.id, l]));
   live.forEach((l, id) => { if(l.b.d0) out.set(id, l.b.d0); });
   const open = new Map([...live].filter(([id, l]) => !l.b.d0));
   for(const q of past){
@@ -528,15 +529,16 @@ const BLANK = {
 };
 /* 어제 글 → 오늘 글: 끝낸 줄은 빼고, '내일 할 일' 은 '오늘 할 일' 로, 나머지는 그대로 이어받기 */
 function carry(src){
-  const age = ageMap(src), out = [], keep = b => nb({lv:b.lv || 0, t:b.t, r:clone(b.r || []), bg:b.bg, st:b.st === 'done' ? undefined : b.st, f:b.f, src:b.src, w:b.w, cap:b.cap, href:b.href, name:b.name, size:b.size, o:b.o || b.id, d0:b.d0 || age.get(b.id) || src.day});
-  const live = items => { const r = []; let cut = -1; items.forEach(b => { const lv = b.lv || 0; if(cut >= 0 && lv > cut) return; cut = -1; if(b.k){ cut = lv; return; } r.push(b); }); while(r.length && isEmpty(r[r.length - 1])) r.pop(); return r; };
+  const age = ageMap(src), out = [], keep = b => nb({lv:b.lv || 0, t:b.t, r:clone(b.r || []), bg:b.bg, st:b.st === 'done' ? undefined : b.st, f:b.f, src:b.src, w:b.w, cap:b.cap, href:b.href, name:b.name, size:b.size, o:b.o || b.id, d0:b.d0 || age.get(b.id) || src.day, bd:b.bd});
+  // 끝낸 줄은 빼되, 전광판 루틴 줄(bd)은 날마다 새로 체크하는 것이라 체크만 풀고 남긴다
+  const live = (items, rt) => { const r = []; let cut = -1; items.forEach(b => { const lv = b.lv || 0; if(cut >= 0 && lv > cut) return; cut = -1; if(b.k && !(rt && b.bd)){ cut = lv; return; } r.push(b); }); while(r.length && isEmpty(r[r.length - 1])) r.pop(); return r; };
   const ss = sections(src.blocks), todo = [];
   ss.forEach(s => { if(s.type === 'today' || s.type === 'tomorrow') todo.push(...live(s.items).filter(b => !isEmpty(b))); });
   const addHead = () => { out.push(nb({t:'h3', r:T('오늘 할 일')})); if(todo.length) todo.forEach(b => out.push(keep(b))); else out.push(nb()); };
   addHead();
   ss.forEach(s => {
     if(s.type === 'tomorrow' || s.type === 'today') return;
-    const its = live(s.items);
+    const its = live(s.items, s.type === 'daily');
     if(!s.head && !its.length) return;
     if(s.head) out.push(keep(s.head)); else if(out.length) out.push(nb({t:'hr'}));
     its.forEach(b => out.push(keep(b)));
@@ -564,6 +566,7 @@ async function newPage(kind, day, opt){
   S.caches.clear();
   persistDirty(); saveTag('saving'); scheduleSave(60);
   openPage(p.id);
+  if(kind === 'daily') renderBoard();          // 전광판 루틴 · 꼭 챙길 것을 새 글에 잇는다 (syncLog)
   return p;
 }
 const carryPlain = src => (src.blocks || []).filter(b => !b.k).map(b => { const x = nb(Object.assign(clone(b), {o:b.o || b.id, id:bid()})); x.id = bid(); return x; });
@@ -602,7 +605,14 @@ function edit(fn, o){           // 줄 구조를 바꾸는 모든 고침은 여�
   else if(o.focus) focusB(o.focus, o.pos);
 }
 function toggleDone(id){
-  edit((bs) => { const i = bs.findIndex(b => b.id === id); if(i < 0) return false; const on = !bs[i].k, z = subEnd(bs, i); for(let j = i; j < z; j++){ if(on) bs[j].k = 1; else delete bs[j].k; if(bs[j].st === 'done') delete bs[j].st; } });
+  const p = cur();
+  edit((bs) => { const i = bs.findIndex(b => b.id === id); if(i < 0) return false; setDone(bs, i, !bs[i].k, !isRtLine(bs[i])); });
+  logDone(p, [id]);
+}
+/* 끝냄 표시 — 아래 줄까지 (전광판 루틴 줄은 그 줄만: 밑에 달린 발주 줄의 '입고됨' 을 건드리지 않게) */
+function setDone(bs, i, on, deep){
+  const z = deep ? subEnd(bs, i) : i + 1;
+  for(let j = i; j < z; j++){ if(on) bs[j].k = 1; else delete bs[j].k; if(bs[j].st === 'done') delete bs[j].st; }
 }
 function removeLines(ids, quiet){
   const p = cur(); if(!p) return;
@@ -740,7 +750,7 @@ function renderNav(){
 }
 /* ── 글 ── */
 function lineHtml(b, s, x){
-  const lv = Math.max(0, (b.lv || 0) - x.base), kids = x.kids.has(b.id), st = x.norm ? stOf(b, s.type) : (b.k ? 'done' : ''), nm = x.diff ? x.diff.st.get(b.id) : '', d0 = x.age.get(b.id);
+  const lv = Math.max(0, (b.lv || 0) - x.base), kids = x.kids.has(b.id), st = x.norm ? stOf(b, s.type) : (b.k ? 'done' : ''), d0 = x.age.get(b.id);
   const days = d0 && !b.k ? dayDiff(x.p.day, d0) : 0, tag = tagOf(bText(b));
   const dim = (S.fSt && x.own.get(b.id) !== S.fSt) || (S.fTag && x.tagOf.get(b.id) !== S.fTag);
   const cls = `wl-b t-${b.t}${b.k ? ' is-done' : ''}${b.bg && b.bg !== 'default_background' ? ' bg-' + String(b.bg).replace(/_background$/, '') : ''}${kids ? ' has-k' : ''}${b.f ? ' is-fold' : ''}${isEmpty(b) ? ' is-empty' : ''}${dim ? ' is-dim' : ''}${st === 'hold' && x.norm ? ' is-hold' : ''}${S.sel && S.sel.ids.has(b.id) ? ' is-sel' : ''}`;
@@ -749,15 +759,14 @@ function lineHtml(b, s, x){
   if(b.t === 'img') return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}<figure class="wl-fig"><img src="${E(imgUrl(b.src))}" alt="${E(b.cap || '')}" loading="lazy" data-act="zoom">${b.cap ? `<figcaption>${E(b.cap)}</figcaption>` : ''}</figure>${del}</div>`;
   if(b.t === 'file') return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}<a class="wl-file" href="${E(imgUrl(b.src))}" target="_blank" rel="noopener noreferrer">📎 ${E(b.name || bText(b) || '파일')}${b.size ? `<small>${Math.max(1, Math.round(b.size / 1024)).toLocaleString()}KB</small>` : ''}</a>${del}</div>`;
   const dot = b.t === 'p' || b.t === 'quote' || b.t === 'callout' || b.t === 'code' ? '<span class="wl-dot none"></span>' : `<button type="button" class="wl-dot" data-act="done" tabindex="-1" aria-label="${b.k ? '끝냄 풀기' : '끝냄'}" title="${b.k ? '다시 할 일로' : '끝냈으면 누르기'}"></button>`;
-  const side = [nm === 'new' ? '<em class="new">새로</em>' : nm === 'chg' ? `<em class="chg" title="${E('앞글: ' + (x.diff.was.get(b.id) || ''))}">고침</em>` : '',
-    x.norm && days >= 5 ? `<em class="age${days >= 14 ? ' old' : ''}" title="${E(d0)} 부터 남아 있어요">${days + 1}일째</em>` : '',
+  const side = [x.norm && days >= 5 ? `<em class="age${days >= 14 ? ' old' : ''}" title="${E(d0)} 부터 남아 있어요">${days + 1}일째</em>` : '',
     st && x.norm && lv <= 1 ? `<button type="button" class="st s-${st}" data-act="st" tabindex="-1" title="누르면 상태를 골라요">${STS[st]}</button>` : ''].join('');
   return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}${kids ? '<button type="button" class="wl-fo" data-act="fold" tabindex="-1" aria-label="접기 · 펼치기" title="접기 · 펼치기"></button>' : '<span class="wl-fo"></span>'}${dot}<div class="wl-x" contenteditable="true" spellcheck="false" role="textbox" data-ph="${b.t === 'p' ? '적기' : '할 일 적기'}">${deco(b)}</div>${side ? `<span class="wl-bs">${side}</span>` : ''}${del}</div>`;
 }
 function ctxOf(p){
   const ss = sections(p.blocks), I = info(p), own = new Map(), tags = new Map();
   ss.forEach(s => { let t0 = '', st0 = '', lv0 = -1; s.items.forEach(b => { const t = tagOf(bText(b)), lv = b.lv || 0; if(lv0 < 0 || lv <= lv0){ t0 = t; st0 = stOf(b, s.type); lv0 = lv; } tags.set(b.id, t || t0); own.set(b.id, ['goalM', 'goalW', 'daily'].includes(s.type) ? '' : stOf(b, s.type) || st0); }); });
-  return {p, ss, diff:p.kind === 'memo' ? null : diffOf(p), age:p.kind === 'daily' ? ageMap(p) : new Map(), own, tagOf:tags, I};
+  return {p, ss, age:p.kind === 'daily' ? ageMap(p) : new Map(), own, tagOf:tags, I};
 }
 function secHtml(s, c){
   const items = s.items.filter(b => !(b.t === 'p' && isEmpty(b) && !S.fresh.has(b.id)));
@@ -818,7 +827,7 @@ const addSecBtn = () => '<button type="button" class="wl-addsec" data-act="addse
 function renderSide(){
   const el = document.getElementById('wlSide'); if(!el) return;
   const p = cur(); if(!p || !p.blocks){ el.innerHTML = ''; return; }
-  const d = p.kind === 'memo' ? null : diffOf(p), o = ordersOf(p), A = info(p), age = p.kind === 'daily' ? ageMap(p) : new Map();
+  const o = ordersOf(p), A = info(p), age = p.kind === 'daily' ? ageMap(p) : new Map();
   const parts = [];
   const go = (id, t, r, cls) => `<button type="button" class="wl-sl${cls ? ' ' + cls : ''}" data-go="${id}"><span>${t}</span>${r ? `<em>${r}</em>` : ''}</button>`;
   const ups = p.kind === 'daily' && p === dailies()[0] ? upcoming() : [];
@@ -827,14 +836,8 @@ function renderSide(){
     const wait = o.orders.filter(x => !x.done), sum = wait.reduce((a, x) => a + (+x.q.replace(/,/g, '') || 0), 0);
     parts.push(`<div class="wl-sc"><h4>발주 · 입고 <small>${wait.length}건${sum ? ' · ' + sum.toLocaleString() + 'ea' : ''}${inb.at ? ` · ${hm(inb.at)} 자동 확인` : ''}</small></h4><table class="wl-ot"><tbody>${o.orders.map(x => `<tr class="${x.done ? 'is-done' : ''}"><td><button type="button" class="wl-ock" data-odone="${x.id}" title="${x.done ? '아직 안 들어옴' : '들어왔으면 누르기'}" aria-label="입고"></button></td><td class="d">${x.day ? md(x.day) : ''}</td><td class="n" data-go="${x.id}">${x.v ? `<small>${E(x.v)}</small> ` : ''}${E(x.name)}${(z => z ? `<i class="k-${z.k}">${E(z.t)}</i>` : '')(x.done ? null : inbOf(x))}</td><td class="q">${E(x.q)}</td><td class="a">${x.day && !x.done ? Math.max(0, dayDiff(p.day === dailies()[0]?.day ? S.today : p.day, x.day)) + '일' : ''}</td></tr>`).join('')}</tbody></table></div>`);
   }
-  if(d){
-    const nw = A.lines.filter(l => d.st.get(l.id) === 'new'), ch = A.lines.filter(l => d.st.get(l.id) === 'chg');
-    if(nw.length || ch.length || d.gone.length) parts.push(`<div class="wl-sc"><h4>${md(d.day)} 글과 달라진 점</h4>
-      ${nw.length ? `<h5>새로 ${nw.length}</h5>${nw.slice(0, 12).map(l => go(l.id, E(l.t))).join('')}${nw.length > 12 ? `<p>외 ${nw.length - 12}</p>` : ''}` : ''}
-      ${ch.length ? `<h5>고침 ${ch.length}</h5>${ch.slice(0, 10).map(l => `<button type="button" class="wl-sl two" data-go="${l.id}"><s>${E(d.was.get(l.id) || '')}</s><span>${E(l.t)}</span></button>`).join('')}` : ''}
-      ${d.gone.length ? `<h5>빠짐 ${d.gone.length}</h5>${d.gone.slice(0, 12).map(l => `<div class="wl-sl gone"><span>${E(l.t)}</span><button type="button" data-back="${l.id}" title="이 글로 다시 가져오기">되살리기</button></div>`).join('')}${d.gone.length > 12 ? `<p>외 ${d.gone.length - 12}</p>` : ''}` : ''}</div>`);
-  }
-  const old = A.lines.filter(l => l.lv === 0 && !l.b.k && age.get(l.id) && dayDiff(p.day, age.get(l.id)) >= 13 && !['goalM', 'goalW', 'daily'].includes(l.sec)).sort((a, b) => age.get(a.id).localeCompare(age.get(b.id)));
+  // '앞 글과 달라진 점(새로 · 고침 · 빠짐)' 은 뺐다 — 2026-11-23 사장님 "이전과 달라진 점 없애"
+  const old = A.lines.filter(l => l.lv === 0 && !l.b.k && age.get(l.id) && dayDiff(p.day, age.get(l.id)) >= 13 && !NO_AGE.includes(l.sec)).sort((a, b) => age.get(a.id).localeCompare(age.get(b.id)));
   if(old.length) parts.push(`<div class="wl-sc"><h4>2주 넘게 남은 일 <small>${old.length}</small></h4>${old.slice(0, 10).map(l => go(l.id, E(l.t), `<b class="bad">${dayDiff(p.day, age.get(l.id)) + 1}일째</b>`)).join('')}</div>`);
   el.innerHTML = parts.length ? parts.join('') : '<div class="wl-sc mute">발주 줄([업체] 1104_상품 200ea)이나 날짜(1126 입고예정)를 적으면 여기에 저절로 모여요.</div>';
 }
@@ -1166,7 +1169,7 @@ function inbSum(){
 
 /* ============================================================ 전광판 ============================================================ */
 /* 오늘 업무 — 전광판 맨 앞 (2026-11-23 사장님 "오늘 업무가 제일 중요해. 그걸 먼저 보여줘") */
-const SIDE_SEC = ['goalM', 'goalW', 'daily', 'tomorrow', 'hold'];
+const SIDE_SEC = ['goalM', 'goalW', 'daily', 'pin', 'tomorrow', 'hold'];          // 루틴 · 꼭 챙길 것은 전광판 자기 칸에 있으니 '오늘 업무' 에서 뺀다
 function todayItems(p){
   const out = [];
   secOrder(p, sections(p.blocks)).filter(x => !SIDE_SEC.includes(x.type)).forEach(x => {
@@ -1192,9 +1195,9 @@ function todayWork(){
 function doneIn(p, id){
   const i = idx(p, id); if(i < 0) return;
   beforeEdit(p); if(S.cur === p.id) mark(p);
-  const bs = p.blocks, on = !bs[i].k, z = subEnd(bs, i);
-  for(let j = i; j < z; j++){ if(on) bs[j].k = 1; else delete bs[j].k; if(bs[j].st === 'done') delete bs[j].st; }
-  touch(p); renderBoard(); if(S.cur === p.id && S.view === 'page' && !S.find) renderPage();
+  setDone(p.blocks, i, !p.blocks[i].k, !isRtLine(p.blocks[i]));
+  touch(p); renderBoard(); logShow(p);
+  logDone(p, [id]);
 }
 function addToday(t){
   const p = todayPage(); if(!p || p.day !== S.today) return;
@@ -1202,10 +1205,11 @@ function addToday(t){
   const bs = p.blocks, n = nb({r:T(t)}); let h = bs.findIndex(b => isHead(b) && secType(b) === 'today');
   if(h < 0){ bs.unshift(nb({t:'h3', r:T('오늘 할 일')}), n); if(bs[2] && !isHead(bs[2]) && bs[2].t !== 'hr') bs.splice(2, 0, nb({t:'hr'})); }
   else{ let z = h + 1; while(z < bs.length && !isHead(bs[z]) && bs[z].t !== 'hr') z++; while(z > h + 1 && isEmpty(bs[z - 1])) bs.splice(--z, 1); bs.splice(z, 0, n); }
-  S.split.delete(p.id); touch(p); renderBoard(); if(S.cur === p.id && S.view === 'page' && !S.find) renderPage();
+  S.split.delete(p.id); touch(p); renderBoard(); logReveal(p) || logShow(p);
 }
 const routines = () => [...S.board.values()].filter(b => b.kind === 'routine').sort((a, b) => (b.hot - a.hot) || a.sort - b.sort);
-const pins = () => [...S.board.values()].filter(b => b.kind === 'pin' && !b.done_at).sort((a, b) => (b.hot - a.hot) || (a.due || '9999').localeCompare(b.due || '9999') || a.sort - b.sort);
+/* 꼭 챙길 것 — 지우기(×) 전까지 계속 고정 (2026-11-23 사장님 "꼭 해야할것은 지우기전까지 계속 고정"). 체크하면 줄만 긋고 아래로, 다시 누르면 풀림 */
+const pins = () => [...S.board.values()].filter(b => b.kind === 'pin').sort((a, b) => (!!a.done_at - !!b.done_at) || (b.hot - a.hot) || (a.due || '9999').localeCompare(b.due || '9999') || a.sort - b.sort);
 const nextWork = s => { let d = s; for(let i = 0; i < 14 && isOff(d); i++) d = addD(d, 1); return d; };
 const prevWork = s => { let d = s; for(let i = 0; i < 14 && isOff(d); i++) d = addD(d, -1); return d; };
 function isDue(it, day){         // 이 날이 이 루틴의 날인가 (쉬는 날이면 옮긴 날)
@@ -1243,17 +1247,18 @@ function renderBoard(){
   if((ae && ae.tagName === 'INPUT' && el.contains(ae) && ae.value) || (S.ptr && el.matches(':hover'))){ S.boardDefer = true; return; }
   if(!S.ready && !S.board.size && !S.pages.size){ el.hidden = true; return; }
   el.hidden = false;
+  syncLog();
   const rs = routines().map(it => [it, state(it)]), on = rs.filter(([, s]) => s.on), off = rs.filter(([, s]) => !s.on), done = on.filter(([, s]) => s.done).length, left = on.length - done;
   const late17 = new Date().getHours() >= 17;
   const ps = pins(), tw = todayWork(), tp = todayPage(), wl = todayLeft();
   const ctl = id => `<span class="wl-bc"><button type="button" data-bact="edit" data-bid="${id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="del" data-bid="${id}" title="지우기" aria-label="지우기">×</button></span>`;
   const rRow = ([it, s]) => `<div class="wl-r${s.done ? ' done' : ''}${s.late || (!s.done && late17) ? ' late' : ''}${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="check" data-bid="${it.id}" data-day="${s.day}" aria-pressed="${s.done}" aria-label="${E(it.title)} 체크"></button><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span>${(it.rule || {}).auto === 'in' ? `<small>${E(inb.rows ? inbSum() : inb.err ? '콰이디에어 · ERP 를 못 읽었어요 — ' + inb.err : '콰이디에어 · ERP 확인 중…')}</small>` : ''}${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${s.done && autoBy(it, s) ? `자동 확인 ${hm(autoBy(it, s))}` : s.late ? `<b class="bad">${md(s.day)}(${WK[dow(s.day)]}) 것 밀림</b>` : E([it.slot, (it.rule || {}).t === 'day' ? '' : ruleText(it.rule)].filter(Boolean).join(' · '))}</span>${dots(it)}${ctl(it.id)}</div>`;
-  const pRow = it => `<div class="wl-r pin${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="pindone" data-bid="${it.id}" aria-label="${E(it.title)} 끝냄" title="끝났으면 누르기"></button><button type="button" class="wl-rt" data-bact="${it.link && it.link.page ? 'golink' : 'edit'}" data-bid="${it.id}"><span>${E(it.title)}</span>${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${it.due ? dday(it.due) + ' ' + md(it.due) : ''}</span>${ctl(it.id)}</div>`;
+  const pRow = it => `<div class="wl-r pin${it.hot ? ' hot' : ''}${it.done_at ? ' done' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="pindone" data-bid="${it.id}" aria-pressed="${!!it.done_at}" aria-label="${E(it.title)} 끝냄" title="${it.done_at ? '다시 누르면 풀려요 · 지우려면 ×' : '끝났으면 누르기 (지우기 전까지 여기 남아요)'}"></button><button type="button" class="wl-rt" data-bact="${pinLineOf(it) ? 'golink' : 'edit'}" data-bid="${it.id}"><span>${E(it.title)}</span>${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${it.due && !it.done_at ? dday(it.due) + ' ' + md(it.due) : ''}</span>${ctl(it.id)}</div>`;
   const add = (k, ph) => `<form class="wl-ba" data-add="${k}"><input type="text" maxlength="200" placeholder="${ph}" aria-label="${ph}"></form>`;
   el.className = 'wl-board' + (S.boardFold ? ' is-fold' : '');
   el.innerHTML = `<div class="wl-bh"><b>전광판</b><span class="wl-bd">${+S.today.slice(5, 7)}월 ${+S.today.slice(8)}일 ${WK[dow(S.today)]}요일</span><span class="wl-bn${left || wl ? '' : ' ok'}">${wl ? `오늘 업무 <b>${wl}</b>` : tp && tp.day === S.today ? '오늘 업무 끝' : ''}${left ? `${wl ? ' · ' : ' '}루틴 <b>${left}</b>` : ''}${left || wl ? ' 남음' : ''}</span><span class="wl-sp"></span><button type="button" class="wl-bb" data-bact="tolog">업무일지로 ↓</button><button type="button" class="wl-bb" data-bact="tolst">라인시트로 ↓</button><button type="button" class="wl-bb" data-bact="fold">${S.boardFold ? '펼치기' : '접기'}</button></div>
     <div class="wl-bg">${tw}<section><h4>오늘 루틴 <small>${done}/${on.length}</small></h4>${on.map(rRow).join('') || '<p class="wl-bz">오늘 챙길 루틴이 없어요</p>'}${off.length ? `<details class="wl-off"${S.offOpen ? ' open' : ''}><summary>다른 날 루틴 ${off.length}</summary>${off.map(([it, s]) => `<div class="wl-r dim" data-bid="${it.id}"><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span></button><span class="wl-rm">${E(ruleText(it.rule))}${s.next ? ` · 다음 ${md(s.next)}(${WK[dow(s.next)]})` : ''}</span>${ctl(it.id)}</div>`).join('')}</details>` : ''}${add('routine', '＋ 루틴 — 적고 Enter')}</section>
-      <section><h4>꼭 챙길 것 <small>${ps.length || ''}</small></h4>${ps.map(pRow).join('') || '<p class="wl-bz">업무일지 줄 메뉴(⠿)에서 ‘전광판에 올리기’ 를 누르거나 아래에 적어요</p>'}${add('pin', '＋ 고정할 것 — 적고 Enter')}</section></div>`;
+      <section><h4>꼭 챙길 것 <small>${ps.filter(x => !x.done_at).length || ''}</small></h4>${ps.map(pRow).join('') || '<p class="wl-bz">업무일지 줄 메뉴(⠿)에서 ‘전광판에 올리기’ 를 누르거나 아래에 적어요</p>'}${add('pin', '＋ 고정할 것 — 적고 Enter')}</section></div>`;
   renderStrip(); badge(left);
 }
 /* 아래로 내리면 맨 위에 붙는 한 줄 */
@@ -1262,7 +1267,7 @@ function renderStrip(){
   const host = document.getElementById('viewDesign');
   if(!host) return;
   if(!el){ el = document.createElement('div'); el.id = 'wlStrip'; el.className = 'wl-strip'; el.hidden = true; host.appendChild(el); el.addEventListener('click', onBoardClick); }
-  const lt = leftToday(), ps = pins().filter(p => p.hot || (p.due && dayDiff(p.due, S.today) <= 3)).slice(0, 4);
+  const lt = leftToday(), ps = pins().filter(p => !p.done_at && (p.hot || (p.due && dayDiff(p.due, S.today) <= 3))).slice(0, 4);
   const wn = todayLeft(), tp = todayPage(), wt = wn ? `오늘 업무 ${wn}` : tp && tp.day === S.today ? '오늘 업무 끝' : '';
   el.innerHTML = `<div><b>${[wt, lt.length ? `루틴 ${lt.length}` : wt ? '' : '오늘 루틴 다 했어요'].filter(Boolean).join(' · ')}</b><span class="wl-sx">${lt.map(([it, s]) => `<button type="button" class="wl-s1" data-bact="check" data-bid="${it.id}" data-day="${s.day}" title="했으면 누르기"><i></i>${E(it.title)}</button>`).join('')}${ps.map(p => `<span class="wl-s2">📌 ${E(p.title)} ${p.due ? dday(p.due) : ''}</span>`).join('')}</span><button type="button" class="wl-bb" data-bact="tolog">업무일지로</button><button type="button" class="wl-bb" data-bact="totop">전광판</button></div>`;
   stripSync();
@@ -1292,21 +1297,22 @@ async function boardSave(id, patch, quiet){
   if('done' in patch){ opt.done_at = patch.done ? new Date().toISOString() : null; }
   if(patch.due === '') opt.due = null;
   S.board.set(id, opt); renderBoard();
-  try{ const j = await rpc('dlog_board_save', {p_id:id, p_patch:patch, p_who:me()}); if(j && j.item){ S.board.set(id, j.item); renderBoard(); cacheWrite(); } return true; }
+  try{ const j = await rpc('dlog_board_save', {p_id:id, p_patch:patch, p_who:me()}); if(j && j.item){ S.board.set(id, j.item); renderBoard(); cacheWrite(); logBoard(j.item, old, patch); } return true; }
   catch(e){ if(old) S.board.set(id, old); else S.board.delete(id); renderBoard(); say('저장하지 못했어요 — 인터넷을 확인해 주세요', 'err'); return false; }
 }
 async function boardCheck(id, day, on){
   const k = ckKey(id, day), old = S.checks.get(k);
-  S.checks.set(k, {item:id, day, done:on, who:me(), at:new Date().toISOString(), ver:old ? old.ver : 0}); renderBoard();
+  S.checks.set(k, {item:id, day, done:on, who:me(), at:new Date().toISOString(), ver:old ? old.ver : 0}); logCheck(id, day, on); renderBoard();
   try{ const j = await rpc('dlog_check', {p_item:id, p_day:day, p_on:on, p_who:me()}); if(j && j.check) S.checks.set(k, j.check); cacheWrite(); }
-  catch(e){ if(old) S.checks.set(k, old); else S.checks.delete(k); renderBoard(); say('체크를 저장하지 못했어요 — 다시 눌러 주세요', 'err'); }
+  catch(e){ if(old) S.checks.set(k, old); else S.checks.delete(k); logCheck(id, day, !!(old && old.done)); renderBoard(); say('체크를 저장하지 못했어요 — 다시 눌러 주세요', 'err'); }
 }
 async function boardDel(id){
   const it = S.board.get(id); if(!it) return;
   S.board.delete(id); renderBoard();
   try{ await rpc('dlog_del', {p_kind:'board', p_id:id, p_on:true, p_who:me()}); }
   catch(e){ S.board.set(id, it); renderBoard(); say('지우지 못했어요', 'err'); return; }
-  snack(`‘${it.title}’ 지웠어요`, async () => { S.board.set(id, it); renderBoard(); try{ await rpc('dlog_del', {p_kind:'board', p_id:id, p_on:false, p_who:me()}); }catch(e){ say('되살리지 못했어요', 'err'); } });
+  logUnlink(it);
+  snack(`‘${it.title}’ 지웠어요`, async () => { S.board.set(id, it); renderBoard(); try{ await rpc('dlog_del', {p_kind:'board', p_id:id, p_on:false, p_who:me()}); syncLog(new Set([id])); }catch(e){ say('되살리지 못했어요', 'err'); } });
 }
 function pinLine(b, p){
   const t = bText(b).replace(/\s+/g, ' ').trim(); if(!t) return;
@@ -1314,6 +1320,126 @@ function pinLine(b, p){
   if(dm && mmdd(dm[1] + dm[2])) due = `${p.day.slice(0, 4)}-${dm[1]}-${dm[2]}`;
   const id = uuid();
   boardSave(id, {kind:'pin', title:t.slice(0, 200), due, link:{page:p.id, line:b.o || b.id}, sort:Date.now() / 1000}).then(ok => { if(ok) snack('전광판에 올렸어요', () => boardDel(id)); });
+}
+/* ============================================================ 전광판 ↔ 업무일지 ============================================================
+   2026-11-23 사장님 "전광판이랑 하단 업무일지랑 동기화 — 전광판에서 수정하거나 추가해도 밑에 보이게"
+   · 오늘 업무 = 오늘 업무일지 줄 그대로 (원래부터 같은 줄)
+   · 루틴 = 오늘 업무일지 '데일리 체크' 구역 줄 하나 (줄 bd = 루틴 id). 원래 적혀 있던 줄은 글자로 찾아 잇는다
+   · 꼭 챙길 것 = 전광판에서 적은 것은 오늘 업무일지 '꼭 챙길 것' 구역 줄 (bd = 고정 id), 업무일지에서 올린 것은 그 줄 (link.line)
+   · 전광판에서 체크 · 이름 고침 · 추가 · 지움 → 업무일지 줄도. 업무일지에서 그 줄 끝냄/풀기 → 전광판도
+   · 둘이 다르면 전광판이 기준. 이은 id 는 글 meta.bd 에 적어 두어, 업무일지에서 지운 줄은 다시 만들지 않는다
+   · 다른 PC 가 방금(1분 안) 만든 것은 만든 PC 가 줄을 넣으니 기다린다 — 두 줄로 겹치지 않게 */
+const logPage = () => { const p = todayPage(); return p && p.day === S.today && p.blocks ? p : null; };
+const rtKey = s => norm(String(s || '').replace(/^\s*\([^)]{0,14}\)\s*/, '').split(AR)[0]);
+const rtText = it => (it.slot ? `(${it.slot}) ` : '') + String(it.title || '').trim();
+const isRtLine = b => !!(b && b.bd && (S.board.get(b.bd) || {}).kind === 'routine');
+function pinLineOf(it){           // 꼭 챙길 것과 이어진 업무일지 줄 — 새 글부터
+  if(!it || it.kind !== 'pin') return null;
+  const L = it.link && it.link.line;
+  for(const p of dailies()){ if(!p.blocks) continue; const b = p.blocks.find(x => x.bd === it.id || (L && (x.id === L || x.o === L))); if(b) return {p, b}; }
+  return null;
+}
+function logShow(p){ if(!p || S.cur !== p.id || S.view !== 'page' || S.find) return; if(editing() || S.ptr) S.defer = true; else renderPage(); }
+function logReveal(p){           // 전광판에서 더했는데 밑 업무일지가 다른 날을 보고 있으면 오늘 글로
+  if(!p || S.view !== 'page' || S.find || S.cur === p.id || editing()) return false;
+  S.cur = S.lastPage = p.id; S.month = p.day.slice(0, 7); S.sel = null; renderMain(); return true;
+}
+function logEdit(p, fn){ beforeEdit(p); if(S.cur === p.id) mark(p); fn(p.blocks, p); touch(p); logShow(p); }
+function secEndOf(bs, type, title){        // 그 구역 끝 자리 — 구역이 없으면 '내일 할 일' 앞에 새로
+  let h = bs.findIndex(b => isHead(b) && secType(b) === type);
+  if(h < 0){ h = bs.findIndex(b => isHead(b) && secType(b) === 'tomorrow'); if(h < 0) h = bs.length; bs.splice(h, 0, nb({t:'h3', r:T(title)})); }
+  let z = h + 1; while(z < bs.length && !isHead(bs[z]) && bs[z].t !== 'hr') z++;
+  const f = focusedId();
+  while(z > h + 1 && isEmpty(bs[z - 1]) && !S.fresh.has(bs[z - 1].id) && bs[z - 1].id !== f) bs.splice(--z, 1);
+  return z;
+}
+/* 오늘 업무일지를 전광판에 맞춘다 — 전광판을 그릴 때마다 (바뀐 게 없으면 아무것도 안 함). fresh = 이 PC 에서 방금 더하거나 고친 것. 더한 줄 수를 돌려준다 */
+function syncLog(fresh){
+  if(!S.ready) return 0;
+  const p = logPage(); if(!p) return 0;
+  if(!fresh && (editing() || S.ptr)){ S.boardDefer = true; return 0; }
+  fresh = fresh || new Set();
+  const bs = p.blocks, seen = new Set(Array.isArray((p.meta || {}).bd) ? p.meta.bd : []), n0 = seen.size, ops = [], push = [], now = Date.now();
+  const may = it => fresh.has(it.id) || (!seen.has(it.id) && it.created_at && now - Date.parse(it.created_at) > 60000);
+  // 루틴 ↔ '데일리 체크' 줄
+  const free = sections(bs).filter(s => s.type === 'daily').flatMap(s => s.items).filter(b => !b.bd && !isEmpty(b)), addR = [];
+  routines().forEach(it => {
+    let b = bs.find(x => x.bd === it.id);
+    if(!b){
+      const k = rtKey(it.title);
+      b = k ? free.find(x => { const q = rtKey(bText(x)); return q === k || (k.length >= 4 && q.length >= 4 && (q.includes(k) || k.includes(q))); }) : null;
+      if(b){ free.splice(free.indexOf(b), 1); const x = b; ops.push(() => { x.bd = it.id; }); }
+    }
+    const s = state(it);
+    if(!b){ if(s.on && s.day === S.today && may(it)){ addR.push(it); seen.add(it.id); } return; }
+    seen.add(it.id);
+    if(!s.on) return;
+    const c = S.checks.get(ckKey(it.id, s.day));
+    if(c){ if(!!b.k !== !!c.done){ const x = b; ops.push(() => { if(c.done) x.k = 1; else delete x.k; if(x.st === 'done') delete x.st; }); } }
+    else if(b.k) push.push([it.id, s.day]);           // 업무일지에만 체크돼 있으면 전광판에도
+  });
+  if(addR.length) ops.push(() => { let z = secEndOf(p.blocks, 'daily', '데일리 체크'); addR.forEach(it => { const c = S.checks.get(ckKey(it.id, S.today)); p.blocks.splice(z++, 0, nb(Object.assign({r:T(rtText(it)), bd:it.id}, c && c.done ? {k:1} : {}))); }); });
+  // 꼭 챙길 것 ↔ 줄
+  const addP = [];
+  pins().forEach(it => {
+    const L = it.link && it.link.line, b = bs.find(x => x.bd === it.id || (L && (x.id === L || x.o === L)));
+    if(!b){ if(!L && !it.done_at && may(it)){ addP.push(it); seen.add(it.id); } return; }
+    seen.add(it.id);
+    if(!!b.k !== !!it.done_at){ const x = b; ops.push(() => { const i = p.blocks.indexOf(x); if(i >= 0) setDone(p.blocks, i, !!it.done_at, true); }); }
+  });
+  if(addP.length) ops.push(() => { let z = secEndOf(p.blocks, 'pin', '꼭 챙길 것'); addP.forEach(it => p.blocks.splice(z++, 0, nb({r:T(String(it.title || '').trim()), bd:it.id}))); });
+  // 두 PC 가 같이 넣어 겹친 줄 — 뒤의 것을 뺀다 (아래 줄이 달린 줄은 그대로)
+  const got = new Set(), dup = new Set();
+  bs.forEach((b, i) => { if(!b.bd) return; if(got.has(b.bd)){ if(subEnd(bs, i) === i + 1) dup.add(b); } else got.add(b.bd); });
+  if(dup.size) ops.push(() => { p.blocks = p.blocks.filter(b => !dup.has(b)); });
+  if(push.length) setTimeout(() => push.forEach(([id, d]) => { if(!S.checks.has(ckKey(id, d))) boardCheck(id, d, true); }), 0);
+  if(!ops.length && seen.size === n0) return 0;
+  logEdit(p, () => { ops.forEach(f => f()); if(seen.size !== n0) p.meta = Object.assign({}, p.meta || {}, {bd:[...seen]}); });
+  return addR.length + addP.length;
+}
+/* 업무일지에서 끝냄 · 풀기 → 전광판 체크 */
+function logDone(p, ids){
+  if(!p || p.kind !== 'daily' || !p.blocks) return;
+  ids.forEach(id => {
+    const b = p.blocks.find(x => x.id === id); if(!b) return;
+    const on = !!b.k;
+    if(isRtLine(b)){ const it = S.board.get(b.bd), s = p.day === S.today ? state(it) : null, d = s && s.on ? s.day : p.day; if(checked(it, d) !== on) boardCheck(it.id, d, on); return; }
+    const pin = pins().find(x => x.id === b.bd || (x.link && x.link.line && (x.link.line === b.id || x.link.line === b.o)));
+    if(pin && !!pin.done_at !== on) boardSave(pin.id, {done:on});
+  });
+}
+/* 전광판 루틴 체크 → 그날 업무일지 줄 (밀린 날 것을 체크하면 오늘 글 줄도) */
+function logCheck(id, day, on){
+  const it = S.board.get(id); if(!it || it.kind !== 'routine') return;
+  dailies().forEach(p => {
+    if(!p.blocks || !(p.day === day || (p.day === S.today && lastDue(it, S.today) === day))) return;
+    const b = p.blocks.find(x => x.bd === id); if(!b || !!b.k === !!on) return;
+    logEdit(p, () => { if(on) b.k = 1; else delete b.k; if(b.st === 'done') delete b.st; });
+  });
+}
+/* 전광판에서 저장한 뒤 — 이름 · 끝냄 · 새로 더함을 업무일지에 */
+function logBoard(it, old, patch){
+  if(old && (old.title !== it.title || (old.slot || '') !== (it.slot || ''))) logRename(it);
+  if(it.kind === 'pin' && 'done' in patch){
+    const r = pinLineOf(it);
+    if(r && !!r.b.k !== !!it.done_at) logEdit(r.p, bs => { const i = bs.indexOf(r.b); if(i >= 0) setDone(bs, i, !!it.done_at, true); });
+  }
+  if(!old || 'rule' in patch){ if(syncLog(new Set([it.id]))) logReveal(logPage()); }
+}
+function logRename(it){           // 업무일지 줄 글자도 바꾼다 — 루틴 줄의 ⇒ 뒤 메모는 남긴다
+  if(it.kind === 'routine'){
+    const p = logPage(), b = p && p.blocks.find(x => x.bd === it.id); if(!b) return;
+    const t = bText(b), i = t.search(AR), nt = rtText(it) + (i > 0 ? ' ' + t.slice(i).trim() : '');
+    if(nt !== t) logEdit(p, () => { b.r = T(nt); });
+    return;
+  }
+  const r = pinLineOf(it), nt = String(it.title || '').trim();
+  if(r && nt && bText(r.b).replace(/\s+/g, ' ').trim() !== nt) logEdit(r.p, () => { r.b.r = T(nt); });
+}
+/* 전광판에서 지움 → 오늘 업무일지의 그 줄도 (아래 줄이 달려 있으면 줄은 두고 잇기만 끊는다) */
+function logUnlink(it){
+  const p = logPage(), b = p && p.blocks.find(x => x.bd === it.id); if(!b) return;
+  logEdit(p, bs => { const i = bs.indexOf(b); if(i < 0) return; if(subEnd(bs, i) > i + 1) delete b.bd; else bs.splice(i, 1); });
 }
 /* 루틴 · 고정 고치기 창 */
 function boardEdit(id, at){
@@ -1361,7 +1487,7 @@ function onBoardClick(e){
   if(a){
     const id = a.dataset.bid, k = a.dataset.bact;
     if(k === 'check'){ const d = a.dataset.day, it = S.board.get(id); return it && boardCheck(id, d, !checked(it, d)); }
-    if(k === 'pindone'){ const it = S.board.get(id); boardSave(id, {done:true}).then(ok => ok && snack(`‘${it.title}’ 끝냈어요`, () => boardSave(id, {done:false}))); return; }
+    if(k === 'pindone'){ const it = S.board.get(id); if(it) boardSave(id, {done:!it.done_at}); return; }          // 지우기 전까지 남는다 — 누를 때마다 끝냄 ↔ 풀기
     if(k === 'edit') return boardEdit(id, a);
     if(k === 'del') return boardDel(id);
     if(k === 'fold'){ S.boardFold = !S.boardFold; saveUi(); return renderBoard(); }
@@ -1371,7 +1497,7 @@ function onBoardClick(e){
     if(k === 'wdone'){ const p = S.pages.get(a.dataset.pid); if(p) doneIn(p, a.dataset.lid); return; }
     if(k === 'wstart'){ showCenter(); poll().then(() => newPage('daily', S.today)).then(() => toLog()); return; }
     if(k === 'wmore'){ S.twAll = !S.twAll; return renderBoard(); }
-    if(k === 'golink'){ const it = S.board.get(id), p = it && it.link && S.pages.get(it.link.page); if(!p) return boardEdit(id, a); const tgt = dailies().find(x => x.blocks && x.blocks.some(b => b.id === it.link.line || b.o === it.link.line)) || p; const b = (tgt.blocks || []).find(x => x.id === it.link.line || x.o === it.link.line); showCenter(); openPage(tgt.id, {line:b && b.id}); return; }
+    if(k === 'golink'){ const it = S.board.get(id), r = pinLineOf(it); if(!r) return boardEdit(id, a); showCenter(); openPage(r.p.id, {line:r.b.id}); return; }
   }
   const go = e.target.closest('[data-go][data-pid]');
   if(go){ showCenter(); openPage(go.dataset.pid, {line:go.dataset.go}); toLog(); }
@@ -1491,13 +1617,13 @@ function lineMenu(id, at){
     const m = e.target.closest('[data-m]'); if(!m) return;
     close();
     const k = m.dataset.m;
-    if(k === 'done') return many ? setProp(ids, x => { if(b.k) delete x.k; else x.k = 1; }) : toggleDone(id);
+    if(k === 'done') return many ? (setProp(ids, x => { if(b.k) delete x.k; else x.k = 1; }), logDone(p, ids)) : toggleDone(id);
     if(k === 'pin') return pinLine(b, p);
     if(k === 'tomorrow') return sendTomorrow(id);
     if(k === 'hist') return showHist(b);
     if(k === 'in' || k === 'out') return indent(ids, k === 'in' ? 1 : -1);
     if(k === 'toli') return setProp([id], x => { x.t = 'li'; });
-    if(k === 'dup') return edit(bs => { const i = bs.findIndex(x => x.id === id), z = subEnd(bs, i), c = bs.slice(i, z).map(x => Object.assign(clone(x), {id:bid()})); c.forEach(x => { delete x.o; delete x.d0; }); bs.splice(z, 0, ...c); return {focus:c[0].id, pos:'end'}; });
+    if(k === 'dup') return edit(bs => { const i = bs.findIndex(x => x.id === id), z = subEnd(bs, i), c = bs.slice(i, z).map(x => Object.assign(clone(x), {id:bid()})); c.forEach(x => { delete x.o; delete x.d0; delete x.bd; }); bs.splice(z, 0, ...c); return {focus:c[0].id, pos:'end'}; });
     if(k === 'photo') return pickFile(id);
     if(k === 'cp'){ const set = new Set(ids); if(!many){ const i = idx(p, id), z = h ? secEnd(p.blocks, i) : subEnd(p.blocks, i); p.blocks.slice(i, z).forEach(x => set.add(x.id)); } return copyText(pageText(p, set)); }
     if(k === 'del') return h ? delSec(id) : (removeLines(ids), S.sel = null);
@@ -1785,7 +1911,6 @@ function onClick(e){
   const fs = t.closest('[data-fst]'); if(fs){ S.fSt = S.fSt === fs.dataset.fst ? '' : fs.dataset.fst; S.fTag = ''; return renderPage(); }
   const ft = t.closest('[data-ftag]'); if(ft){ S.fTag = S.fTag === ft.dataset.ftag ? '' : ft.dataset.ftag; S.fSt = ''; return renderPage(); }
   const od = t.closest('[data-odone]'); if(od) return toggleDone(od.dataset.odone);
-  const bk = t.closest('[data-back]'); if(bk){ return bringBack(bk.dataset.back); }
   if(onOrdClick(e)) return;
   const c = t.closest('[data-act]'); if(!c) return;
   const l = c.closest('.wl-b'), id = l && l.dataset.id, k = c.dataset.act;
@@ -1817,15 +1942,6 @@ function onClick(e){
       if(x.dataset.x === 'ok' && d){ const p = cur(); beforeEdit(p); p.day = d; touch(p); S.caches.clear(); renderNav(); renderPage(); }
     });
   }
-}
-function bringBack(lid){         // 앞글에서 빠진 줄을 이 글로 다시
-  const p = cur(), q = prevOf(p); if(!q || !q.blocks) return;
-  const i = q.blocks.findIndex(b => b.id === lid); if(i < 0) return;
-  const z = subEnd(q.blocks, i), chunk = q.blocks.slice(i, z).map(b => Object.assign(clone(b), {id:bid(), o:b.o || b.id})), lv0 = chunk[0].lv || 0;
-  let head = ''; for(let j = i; j >= 0; j--) if(isHead(q.blocks[j])){ head = norm(bText(q.blocks[j])); break; }
-  chunk.forEach(b => { b.lv = (b.lv || 0) - lv0; });
-  edit(bs => { let h = head ? bs.findIndex(b => isHead(b) && norm(bText(b)) === head) : -1; let at = bs.length; if(h >= 0) at = secEnd(bs, h); while(at > 0 && (isEmpty(bs[at - 1]) || bs[at - 1].t === 'hr') && at - 1 > h) at--; bs.splice(at, 0, ...chunk); });
-  flash(chunk[0].id);
 }
 /* ── 글자 ── */
 function blockOf(x){ const l = x.closest('.wl-b'), p = cur(); return l && p && p.blocks ? p.blocks.find(b => b.id === l.dataset.id) : null; }
