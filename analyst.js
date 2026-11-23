@@ -5,8 +5,8 @@
        매출 · 주문 · 광고비 = 비공개 brightbeed-reports {채널}/{브랜드}/sales-index.json (직원용 사본 — 원가 · 순이익 없음. index.json 으로 바꾸지 말 것)
        공홈 상품 · 옵션 수량 = home/{브랜드}/products.json (판매 순위 패널과 같은 모델)
        노출 · 클릭 = 광고 시트 office/ad-sheets/{브랜드}.json (메타 07 · 13시, 어제까지)
-   · 질문 뜻은 먼저 아래 규칙(parse)이 풀고, 못 알아들은 말만 맥미니 /analyst/plan (구글 AI) 이 '무엇을 · 언제 · 어느 브랜드' 로 풀어 준다.
-     거기로 가는 것은 질문 글뿐 — 매출 · 광고 숫자는 보내지 않는다 (무료 등급은 학습에 쓰일 수 있음).
+   · 2026-11-23 저녁 사장님 "자동으로 그냥 내부 데이터만 분석해서 정리해주는 봇으로 대화하는건 어때" — 바깥 AI 를 아예 안 쓴다.
+     질문 뜻은 아래 규칙(parse)만으로 풀고, 열면 스스로 정리(brief)부터 보여 준다. 질문 글도 숫자도 회사 밖으로 안 나간다 — 바깥 AI 를 다시 붙이지 말 것.
    · 자료 통로는 index.html 의 window.AnalystData. 대화는 저장하지 않고 새로고침하면 비워진다. */
 (function (root) {
   'use strict';
@@ -56,25 +56,28 @@
   ];
   var HOME_RE = /공홈|자사몰|공식\s*홈(?:페이지)?|식스샵(?:\s*프로)?/g;
   var WHAT = [
-    ['why', /왜|이유|원인|때문|무엇\s*때문|뭐\s*때문|어째서|분해/g],
+    ['brief', /정리|브리핑|살펴\s*볼[가-힣\s]*|볼\s*것|볼\s*거|특이\s*사항|특이한[가-힣\s]*|이상한[가-힣\s]*|이상\s*있[가-힣]*|주의할[가-힣\s]*|챙길[가-힣\s]*|문제\s*(?:있|되는|인)[가-힣\s]*|체크할[가-힣\s]*/g],
+    ['why', /왜|이유|원인|때문|무엇\s*때문|뭐\s*때문|어째서|어쩌다|무슨\s*일|분해/g],
+    ['campaigns', /캠페인(?:별(?:로)?)?|소재(?:별(?:로)?)?|어떤\s*광고|무슨\s*광고|광고별(?:로)?/g],
     ['weekday', /요일(?:별(?:로)?)?/g],
     ['options', /옵션(?:별(?:로)?)?|색상(?:별(?:로)?)?|컬러(?:별(?:로)?)?|사이즈(?:별(?:로)?)?|색깔|무슨\s*색/g],
     ['daily', /일별(?:로)?|날짜\s*별(?:로)?|하루\s*하루|매일|추이|추세|흐름|그래프(?:로)?|차트(?:로)?|일자별(?:로)?/g],
     ['channels', /채널(?:별(?:로)?)?|판매처(?:별(?:로)?)?|플랫폼(?:별(?:로)?)?|몰별(?:로)?/g],
-    ['products', /상품(?:별(?:로)?)?|제품(?:별(?:로)?)?|품목(?:별(?:로)?)?|아이템|베스트(?:셀러)?|탑\s*\d+|top\s*\d+|순위|잘\s*(?:팔|나가|나간)[가-힣]*|많이\s*(?:팔|나가|나간)[가-힣]*|인기(?:\s*상품)?|안\s*팔[가-힣]*|덜\s*팔[가-힣]*|뜨는|뜬|급상승|식는|식은/ig],
-    ['ads', /클릭\s*률|클릭\s*율|ctr|노출(?:수)?|클릭(?:수)?|cpc|cpm|광고비|광고(?:\s*(?:성과|효율))?|roas|로아스|전환율?/ig],
-    ['sales', /판매\s*량|판매\s*수량|판매(?:액)?|매출(?:액)?|주문(?:\s*(?:수|건수))?|객단가|몇\s*개|팔렸[가-힣]*|팔린|팔았[가-힣]*|얼마(?:나)?|수량/g],
-    ['overview', /종합|전반|요약|분석|리포트|보고|성과|실적|현황|상황|어때[가-힣]*|어땠[가-힣]*|어떠[가-힣]*|어떻[가-힣]*/g]
+    ['products', /상품(?:별(?:로)?)?|제품(?:별(?:로)?)?|품목(?:별(?:로)?)?|아이템|물건|뭐가\s*(?:제일\s*|가장\s*)?(?:많이\s*)?(?:팔|나가|나갔)[가-힣]*|베스트(?:셀러)?|탑\s*\d+|top\s*\d+|순위|잘\s*(?:팔|나가|나간)[가-힣]*|많이\s*(?:팔|나가|나간)[가-힣]*|인기(?:\s*상품)?|안\s*팔[가-힣]*|덜\s*팔[가-힣]*|못\s*팔[가-힣]*|뜨는|뜬|급상승|식는|터진|대박[가-힣]*/ig],
+    ['ads', /클릭\s*률|클릭\s*율|ctr|노출(?:수)?|클릭(?:수)?|cpc|cpm|광고비|광고(?:\s*(?:성과|효율|성적))?|roas|로아스|전환율?|누르[가-힣]*|눌러[가-힣]*|눌렀[가-힣]*|눌렸[가-힣]*|누른|타깃|타겟|도달|반응[가-힣]*/ig],
+    ['sales', /판매\s*량|판매\s*수량|판매(?:액)?|매출(?:액)?|주문(?:\s*(?:수|건수))?|객단가|몇\s*개|팔렸[가-힣]*|팔린|팔았[가-힣]*|수량|장사|돈|벌었[가-힣]*|벌이|들어온\s*돈|나갔[가-힣]*|나간/g],
+    ['overview', /종합|전반|요약|분석|리포트|보고서?|성과|실적|현황|상황|성적|어때[가-힣]*|어땠[가-힣]*|어떠[가-힣]*|어떻[가-힣]*|잘\s*(?:되|돼|됐|나오|나왔|하고|했)[가-힣]*|괜찮[가-힣]*|좋았[가-힣]*|나빴[가-힣]*|별로[가-힣]*|주춤[가-힣]*|부진[가-힣]*/g]
   ];
   var ORDER = [
     ['worst', /안\s*팔[가-힣]*|덜\s*팔[가-힣]*|못\s*팔[가-힣]*|하위|꼴찌/],
-    ['down', /식는|식은|줄어든|줄은|떨어진\s*(?:상품|제품)|빠진\s*(?:상품|제품)|감소한?\s*(?:상품|제품)?/],
-    ['up', /뜨는|뜬|급상승|늘어난|오른\s*(?:상품|제품)|증가한?\s*(?:상품|제품)?/],
+    ['down', /식는|식은\s*(?:상품|제품)|줄어든|줄은|떨어진\s*(?:상품|제품)|빠진\s*(?:상품|제품)|감소한?\s*(?:상품|제품)?/],
+    ['up', /뜨는|뜬|급상승|터진|대박|늘어난|오른\s*(?:상품|제품)|증가한?\s*(?:상품|제품)?/],
     ['best', /잘\s*(?:팔|나가|나간)|많이\s*(?:팔|나가|나간)|베스트|인기|상위|탑|top|순위/i]
   ];
-  // 뜻이 없는 말 — 남은 글에서 지운다. 여기서도 남으면 AI 에게 물어본다
-  var FILL = /(?:그럼|그러면|그리고|그러니까|그거|이거|저거|그건|이건|그것|혹시|일단|우선|한번|한 번|다시|좀|조금|잠깐|제발|그냥|쫌|음|아니|네|응|어|자|오케이|ok|ㅋ+|ㅎ+|몇\s*일|며칠|기간(?:을|에|동안)?|동안|데이터(?:를)?|자료(?:를)?|숫자(?:를)?|결과(?:를)?|수치(?:를)?|비율(?:을)?|나눠서?|따로|같이|함께|각각|모두|다|것|거|게|걸|건|수|중에서?|중|때|쯤|정도|대비|비교(?:해서|해|하면|하여|한)?|차이(?:를)?|변화(?:를)?|보다|하고|또는|및|랑|이랑|와|과|알려\s*(?:줘|주세요|줄래|주라|달라)?|보여\s*(?:줘|주세요|줄래|주라|달라)?|말해\s*(?:줘|주세요)?|뽑아\s*(?:줘|주세요)?|찾아\s*(?:줘|주세요)?|정리(?:해|해서)?|확인(?:해|해서)?|계산(?:해)?|궁금(?:해|해요|합니다)?|해\s*(?:줘(?:요|봐)?|주세요|줄래|줄\s*수\s*있어|봐(?:요|줘)?|보자|달라)|줘(?:요)?|주세요|해|봐|볼래|볼까|보고\s*싶어|싶어|있어(?:요)?|없어(?:요)?|되나(?:요)?|돼(?:요)?|됐어|했어(?:요)?|했나(?:요)?|했지|하나(?:요)?|인가(?:요)?|이야|야|요|지|니|나|까|까지|부터|에서|에는|에|의|은|는|이|가|을|를|도|만|로|으로|씩|든|든지|별로|별|올랐[가-힣]*|오른|올라[가-힣]*|떨어졌[가-힣]*|떨어진|떨어져[가-힣]*|내려[가-힣]*|내린|늘었[가-힣]*|늘어[가-힣]*|줄었[가-힣]*|줄어[가-힣]*|빠졌[가-힣]*|빠진|많이|적게|제일|가장|잘|높은|낮은|좋은|나쁜|곳|브랜드(?:는|가|를|의)?|뭐(?:가|야|지|예요)?|무엇|무슨|어떤|어느|어디|누가|언제|얼마|몇|개|건|원|만원|순|순서|순으로|위|것들|들|요즘|최근|지금|현재|오늘도|이번엔|이번에는?|에도)/g;
+  // 뜻이 없는 말 — 남은 글에서 지운다. 여기서도 남으면 상품 이름인지 찾아보고, 아니면 빼고 봤다고 말한다
+  var FILL = /(?:그럼|그러면|그리고|그러니까|그거|이거|저거|그건|이건|그것|혹시|일단|우선|한번|한 번|다시|좀|조금|잠깐|제발|그냥|쫌|음|아니|네|응|어|자|오케이|ok|ㅋ+|ㅎ+|몇\s*일|며칠|기간(?:을|에|동안)?|동안|데이터(?:를)?|자료(?:를)?|숫자(?:를)?|결과(?:를)?|수치(?:를)?|비율(?:을)?|나눠서?|따로|같이|함께|각각|모두|다|것|거|게|걸|건|수|중에서?|중|때|쯤|정도|대비|비교(?:해서|해|하면|하여|한)?|차이(?:를)?|변화(?:를)?|보다|하고|또는|및|랑|이랑|와|과|알려\s*(?:줘|주세요|줄래|주라|달라)?|보여\s*(?:줘|주세요|줄래|주라|달라)?|말해\s*(?:줘|주세요)?|뽑아\s*(?:줘|주세요)?|찾아\s*(?:줘|주세요)?|정리(?:해|해서)?|확인(?:해|해서)?|계산(?:해)?|궁금(?:해|해요|합니다)?|해\s*(?:줘(?:요|봐)?|주세요|줄래|줄\s*수\s*있어|봐(?:요|줘)?|보자|달라)|줘(?:요)?|주세요|해|봐|볼래|볼까|보고\s*싶어|싶어|있어(?:요)?|없어(?:요)?|되나(?:요)?|돼(?:요)?|됐어|했어(?:요)?|했나(?:요)?|했지|하나(?:요)?|인가(?:요)?|이야|야|요|지|니|나|까|까지|부터|에서|에는|에|의|은|는|이|가|을|를|도|만|로|으로|씩|든|든지|별로|별|올랐[가-힣]*|오른|올라[가-힣]*|떨어졌[가-힣]*|떨어진|떨어져[가-힣]*|내려[가-힣]*|내린|늘었[가-힣]*|늘어[가-힣]*|줄었[가-힣]*|줄어[가-힣]*|빠졌[가-힣]*|빠진|많이|적게|제일|가장|잘|높은|낮은|좋은|나쁜|곳|브랜드(?:는|가|를|의)?|뭐(?:가|야|지|예요)?|무엇|무슨|어떤|어느|어디|누가|언제|얼마|몇|개|건|원|만원|순|순서|순으로|위|것들|들|요즘|최근|지금|현재|썼[가-힣]*|쓴|들었[가-힣]*|멈췄[가-힣]*|멈춘|끊겼[가-힣]*|안\s*해[가-힣]*|이렇게|그렇게|저렇게|너무|엄청|되게|완전|꽤|훨씬|더|돈|난|나는|날|된|되는|됐[가-힣]*|느낌|같은데|같은|같아|것\s*같|인데|은데|는데|던데|더라|듯|맞아|맞나|맞지|진짜|정말|사람들?|고객|손님|우리|저희|회사|쪽|부탁(?:해|드려)?|하자|해볼래|대해서?|관련(?:해서)?|대한|식은|식었[가-힣]*|정확히|자세히|간단히|간단하게|짧게|전체적으로|대체로|그중에?|거기서|여기서|이거에서|이번엔|궁금한데|원해|필요해|오늘도|이번엔|이번에는?|에도)/g;
 
+  var FULL = new RegExp('^(?:' + FILL.source + ')+$', 'i');
   function atom(y, m, d, today) {
     var yy = y || +today.slice(0, 4);
     if (!valid(yy, m, d)) return null;
@@ -209,6 +212,8 @@
     BR.forEach(function (b) { b[1].lastIndex = 0; if (b[1].test(rest)) { brands.push(b[0]); b[1].lastIndex = 0; rest = rest.replace(b[1], ' '); } });
     ALL_RE.lastIndex = 0;
     var all = ALL_RE.test(rest); rest = rest.replace(ALL_RE, ' ');
+    var brandRank = /(?:어느|어떤|무슨|제일|가장)[^.]*브랜드|브랜드\s*(?:순위|중|가운데|끼리)/.test(rest);
+    if (brandRank) { all = true; rest = rest.replace(/어느|어떤|무슨|브랜드\s*(?:순위|중|가운데|끼리)?/g, ' '); }
     var chan = '';
     CH.forEach(function (c) { c[1].lastIndex = 0; if (c[1].test(rest)) { chan = chan ? 'all' : c[0]; c[1].lastIndex = 0; rest = rest.replace(c[1], ' '); } });
     HOME_RE.lastIndex = 0;
@@ -222,13 +227,15 @@
     // 무엇을
     if (whats.length) {
       var has = function (k) { return whats.indexOf(k) >= 0; };
-      plan.what = has('why') ? 'why' : has('weekday') ? 'weekday' : has('options') ? 'options' : has('products') ? 'products' :
+      plan.what = has('brief') && !has('ads') && !has('sales') && !has('products') && !has('why') && !has('daily') ? 'brief' : has('why') ? 'why' : has('campaigns') ? 'campaigns' : has('ads') && has('products') && /상품|제품|품목|아이템/.test(src) ? 'campaigns' : brandRank && has('products') && !has('ads') ? 'sales' : has('weekday') ? 'weekday' : has('options') ? 'options' : has('products') ? 'products' :
         has('daily') ? 'daily' : has('channels') ? 'channels' : (has('ads') && has('sales')) ? 'overview' : has('ads') ? 'ads' : has('sales') ? 'sales' : 'overview';
       if (plan.what === 'daily' || plan.what === 'weekday') plan.by = has('ads') ? 'ads' : 'sales';
       if (plan.what === 'overview' && !has('ads') && !has('sales') && ctx && ctx.what && !brands.length && !ranges.length && !/종합|전반|요약|분석|리포트|보고/.test(text)) plan.what = ctx.what;
       // '왜 클릭률이' 는 광고 쪽 이유
       if (plan.what === 'why' && has('ads') && !has('sales')) plan.by = 'ads';
       if (has('sales')) plan.bySales = true;
+      if (plan.what === 'campaigns' && !has('campaigns')) plan.noItemCtr = true;
+      if (plan.what === 'brief' && (brands.length || chan) && ranges.length) plan.what = 'overview';
       hit.what = true;
       hit.strong = whats.some(function (k) { return k !== 'overview' && !(k === 'products' && !/상품|제품|품목|아이템|베스트|순위|팔|나가/.test(src)); });
     } else if (order) { plan.what = 'products'; hit.what = true; }
@@ -261,9 +268,9 @@
     rest = rest.replace(/\s+/g, ' ').trim();
     var left = rest.split(' ').map(function (w) {
       var p = w, k = 0;
-      // 낱말 끝에서부터 뜻 없는 말을 벗긴다
-      while (p && k++ < 4) { FILL.lastIndex = 0; var q = p.replace(FILL, ''); if (q === p) break; p = q; }
-      return p.replace(/[^0-9a-z가-힣]/ig, '') ? w : '';
+      // 낱말 전체가 뜻 없는 말(+조사)로만 이뤄졌으면 지운다 — 앞에서부터 맞춰 보며 되짚으니 '요즘' 이 '요'+'즘' 으로 깨지지 않는다
+      p = p.replace(/[^0-9a-z가-힣]/ig, '');
+      return p && !FULL.test(p) ? w : '';
     }).filter(Boolean).join(' ').trim();
     plan.unknown = left;
     plan.hit = hit;
@@ -278,6 +285,7 @@
     p.what = plan.what || (ctx.what && ctx.what !== 'chat' ? ctx.what : 'overview');
     p.brands = plan.brands || ctx.brands || [];
     p.channel = plan.channel || (ctx.channel || 'home');
+    if (p.what === 'brief' && !plan.brands) p.brands = [];
     if (plan.what && plan.what !== 'channels' && !plan.channel) p.channel = !plan.brands && (plan.what === ctx.what || plan.what === 'daily' || plan.what === 'why' || plan.what === 'sales') ? (ctx.channel || 'home') : 'home';
     if (plan.from) { p.from = plan.from; p.to = plan.to; p.label = plan.label || ''; }
     else if (ctx.from) { p.from = ctx.from; p.to = ctx.to; p.label = ctx.label || ''; }
@@ -286,10 +294,12 @@
     else if (!plan.from && ctx.cmpFrom) { p.cmpFrom = ctx.cmpFrom; p.cmpTo = ctx.cmpTo; p.cmpLabel = ctx.cmpLabel; }
     if (plan.product) p.product = plan.product;
     else if (ctx.product && !plan.brands && !plan.channel && (plan.what === 'options' || plan.what === 'daily' || !plan.what)) p.product = ctx.product;
+    if (plan.noItemCtr) p.noItemCtr = true;
     p.order = plan.order || ((!plan.what || plan.what === ctx.what) ? ctx.order : '') || '';
     p.by = plan.by || ((!plan.what) ? ctx.by : (ctx.what === 'ads' || ctx.by === 'ads') && (plan.what === 'daily' || plan.what === 'weekday') ? 'ads' : '') || '';
     if (p.what === 'why' && plan.what === 'why' && !plan.by && (ctx.what === 'ads' || (ctx.what === 'daily' && ctx.by === 'ads')) && !plan.bySales) p.by = 'ads';
     if (plan.cmpFrom && !plan.what && (ctx.what === 'daily' || ctx.what === 'weekday' || ctx.what === 'options')) p.what = ctx.by === 'ads' ? 'ads' : 'sales';
+    if (!plan.what && plan.brands && plan.brands.length > 1) p.what = 'overview';   // '코페리랑 아페티 비교'
     if (plan.cmpFrom && plan.from && !plan.what && ['why', 'daily', 'weekday', 'products', 'options', 'channels'].indexOf(p.what) >= 0) p.what = ctx.by === 'ads' ? 'ads' : 'overview';
     if (plan.top) p.top = plan.top;
     if (p.to > today) p.to = today;
@@ -438,6 +448,8 @@
       o.acmp = !!(o.ac && o.ap && !r.todayOnly && o.ac.n > 0 && o.ap.n > 0 && o.ap.imp > 0 && o.ac.imp > 0);
       // 증감은 날수가 다르면 하루 평균으로
       o.k = r.sameLen ? 1 : span(r.cf, r.ct) / span(r.pf, r.pt);
+      o.ka = o.acmp ? o.ac.n / o.ap.n : o.k;      // 광고 기록이 있는 날수 비
+      o.full = !!(o.acmp && o.ac.n === span(r.cf, r.ct) && o.ap.n === span(r.pf, r.pt));
       return o;
     }
 
@@ -445,7 +457,7 @@
     function decomp(o) {
       if (!o.cmp || !o.acmp) return null;
       var k = o.k, c = { imp: o.ac.imp, clk: o.ac.clk, ord: o.sc.orders, paid: o.sc.paid }, p = { imp: o.ap.imp * k, clk: o.ap.clk * k, ord: o.sp.orders * k, paid: o.sp.paid * k };
-      if (o.ac.n !== span1(o.ac) || [c.imp, c.clk, c.ord, c.paid, p.imp, p.clk, p.ord, p.paid].some(function (x) { return !(x > 0); })) return null;
+      if (!o.full || [c.imp, c.clk, c.ord, c.paid, p.imp, p.clk, p.ord, p.paid].some(function (x) { return !(x > 0); })) return null;
       var f = [
         { key: '광고 노출', a: p.imp, b: c.imp, fmt: big },
         { key: '클릭률', a: p.clk / p.imp, b: c.clk / c.imp, fmt: pct2 },
@@ -456,8 +468,6 @@
       f.forEach(function (x) { x.g = (x.b / x.a - 1) * 100; x.won = L * Math.log(x.b / x.a); });
       return { f: f, d: c.paid - p.paid };
     }
-    function span1(a) { return a.n; }
-
     return { nm: nm, order: order, pack: pack, compare: compare, decomp: decomp, adAgg: adAgg, saleAgg: saleAgg, qtyAgg: qtyAgg, prodRows: prodRows, model: model, idx: idx, sumArr: sumArr, chans: chans, covered: covered };
   }
 
@@ -629,7 +639,7 @@
         var o = live[0], a = o.a;
         out.push(P('클릭률 **' + pct2(a.ctr) + '**예요. ' + big(a.imp) + '번 보여서 ' + n0(a.clk) + '번 눌렸어요. 클릭 한 번에 ' + n0(a.cpc) + '원, 광고비는 ' + won(a.krw) + '이에요.'));
         if (o.acmp) {
-          var d = o.ac.ctr / o.ap.ctr - 1, k = o.k, gi = growth(o.ac.imp, o.ap.imp * k);
+          var d = o.ac.ctr / o.ap.ctr - 1, k = o.ka, gi = growth(o.ac.imp, o.ap.imp * k);
           out.push(P(cmpName(r) + ' ' + pct2(o.ap.ctr) + '에서 ' + (Math.abs(d) < 0.02 ? '거의 그대로예요' : (d > 0 ? '올랐어요' : '내려갔어요') + ' (' + gTxt(d * 100) + ')') + '. 노출은 ' + gTxt(gi) + ', 클릭은 ' + gTxt(growth(o.ac.clk, o.ap.clk * k)) + '예요.' + perDay(r)));
           if (d < -0.05 && gi > 5) out.push(P('노출을 늘리면서 덜 관심 있는 사람에게도 보여 클릭률이 내려갔을 수 있어요. 노출은 늘었는데 클릭이 그만큼 안 따라왔는지 일별로 보시면 좋아요.'));
           else if (d < -0.05) out.push(P('노출이 늘지 않았는데 클릭률이 내려가서, 소재가 식었는지부터 볼 만해요.'));
@@ -637,13 +647,13 @@
         if (ch === 'home' && o.s.paid && a.krw) out.push(P('공홈 매출 ÷ 광고비는 ' + Math.round(o.s.paid / a.krw * 100).toLocaleString('ko-KR') + '%예요.'));
         if (span(p.from, p.to) > 1) out.push(await dayChart(p, [o.b], 'ads'));
       } else {
-        out.push(P('모두 합쳐 클릭률 **' + pct2(T.c / T.i) + '**예요' + (T.pi ? ' (' + cmpName(r) + ' ' + pct2(T.pc / T.pi) + ')' : '') + '. ' + big(T.i) + '번 보여서 ' + n0(T.c) + '번 눌렸어요.'));
+        out.push(P('모두 합쳐 클릭률 **' + pct2(T.c / T.i) + '**예요' + (T.pi ? ' (' + cmpName(r) + ' ' + pct2(T.pc / T.pi) + ')' : '') + '. ' + big(T.i) + '번 보여서 ' + n0(T.c) + '번 눌렸어요. 광고비는 모두 ' + won(T.k) + '이에요.'));
         var ds = live.filter(function (o) { return o.acmp; }).map(function (o) { return { o: o, d: (o.ac.ctr / o.ap.ctr - 1) * 100 }; }).sort(function (a, b) { return a.d - b.d; });
         if (ds.length && ds[0].d < -2) out.push(P('가장 많이 떨어진 곳은 ' + ds[0].o.name + ' (' + pct2(ds[0].o.ap.ctr) + ' → ' + pct2(ds[0].o.ac.ctr) + ')예요.'));
         else if (ds.length) out.push(P('눈에 띄게 떨어진 곳은 없어요.'));
-        out.push({ t: 'table', cols: ['브랜드', '노출', '클릭', '클릭률', '앞 기간', '클릭당'], rows: live.map(function (o) {
+        out.push({ t: 'table', cols: ['브랜드', '노출', '클릭률', '앞 기간', '광고비'], rows: live.map(function (o) {
           var dd = o.acmp ? o.ac.ctr / o.ap.ctr - 1 : null;
-          return [{ v: o.name, bold: 1 }, { v: big(o.a.imp) }, { v: n0(o.a.clk) }, { v: pct2(o.a.ctr), low: dd != null && dd <= -0.1 }, { v: o.acmp ? pct2(o.ap.ctr) : '–' }, { v: o.a.cpc ? n0(o.a.cpc) + '원' : '–' }];
+          return [{ v: o.name, bold: 1 }, { v: big(o.a.imp), title: '클릭 ' + n0(o.a.clk) + '번' }, { v: pct2(o.a.ctr), low: dd != null && dd <= -0.1 }, { v: o.acmp ? pct2(o.ap.ctr) : '–' }, { v: won(o.a.krw), title: '클릭 한 번에 ' + n0(o.a.cpc) + '원' }];
         }) });
       }
       adNote(p, packs.filter(function (o) { return bs.length <= 2 || (o.a && o.a.n); }), out);
@@ -652,13 +662,68 @@
       return out;
     }
 
+    /* 캠페인별 클릭률 — 메타 리포트의 최근 7일 ↔ 30일 (캠페인은 날짜를 못 고름) */
+    async function campaigns(p, r) {
+      var bs = brandsOf(p), out = [{ t: 'h', s: who(p, bs) + ' 메타 광고 캠페인 · 최근 7일' }], rows = [];
+      for (var i = 0; i < bs.length; i++) {
+        var rep = null; try { rep = D.adReport ? await D.adReport(bs[i]) : null; } catch (e) { rep = null; }
+        var by = rep && rep.campaigns_by_period; if (!by || !Array.isArray(by.last_7d)) continue;
+        var m30 = {}; (by.last_30d || []).forEach(function (c) { m30[c.campaign_id] = c; });
+        by.last_7d.forEach(function (c) { if (!(Number(c.impressions) > 0)) return; var q = m30[c.campaign_id]; rows.push({ b: bs[i], n: c.name, imp: Number(c.impressions), v: Number(c.clicks) / Number(c.impressions), p: q && Number(q.impressions) > 0 ? Number(q.clicks) / Number(q.impressions) : null }); });
+      }
+      if (!rows.length) { out.push(P('최근 7일에 노출된 캠페인이 없어요.')); return out; }
+      var min = Math.max(1000, rows.reduce(function (s, x) { return s + x.imp; }, 0) * 0.01), big2 = rows.filter(function (x) { return x.imp >= min; }), list = (big2.length ? big2 : rows).sort(function (a, b) { return p.order === 'worst' || p.order === 'down' ? a.v - b.v : b.v - a.v; }), one = bs.length === 1;
+      if (p.noItemCtr) out.push(P('상품마다의 클릭률은 모으는 자료가 없어서 광고 캠페인으로 보여 드려요.'));
+      out.push(P((p.order === 'worst' || p.order === 'down' ? '클릭률이 가장 낮은 건 ' : '클릭률이 가장 높은 건 ') + '**' + list[0].n + '**' + (one ? '' : ' (' + C.nm(list[0].b) + ')') + ', ' + pct2(list[0].v) + '예요.'));
+      out.push({ t: 'table', cols: ['캠페인'].concat(one ? [] : ['브랜드'], ['노출', '최근 7일', '최근 30일']), rows: list.slice(0, 10).map(function (x) { return [{ v: x.n, name: 1, title: x.n }].concat(one ? [] : [{ v: C.nm(x.b) }], [{ v: big(x.imp) }, { v: pct2(x.v), bold: 1, low: x.p != null && x.v / x.p - 1 <= -0.1 }, { v: x.p == null ? '–' : pct2(x.p) }]); }) });
+      out.push(N('노출이 아주 적은 캠페인은 뺐어요. 캠페인은 날짜를 골라 볼 수 없어요.'));
+      return out;
+    }
+
+    /* 스스로 정리 — 어제 · 최근 7일을 훑어 살펴볼 것과 잘된 것만 (창을 열면 먼저 나온다) */
+    async function brief(p) {
+      var today = todayK(), y = add(today, -1), bs = brandsOf(p), out = [], chips = [], bad = [], good = [];
+      var w = { from: add(y, -6), to: y, channel: 'home', brands: p.brands || [] }, r = C.compare(w, today);
+      var packs = await Promise.all(bs.map(function (b) { return C.pack(b, 'home', r, {}); }));
+      var yd = await Promise.all(bs.map(async function (b) { return { a: await C.saleAgg(b, 'home', y, y), p: await C.saleAgg(b, 'home', add(y, -7), add(y, -7)), q: await C.qtyAgg(b, y, y), t: await C.saleAgg(b, 'home', today, today) }; }));
+      var err = packs.filter(function (o) { return o.s.err; }), live = packs.filter(function (o) { return !o.s.err && !o.s.none; });
+      out.push({ t: 'h', s: (bs.length === C.order.length ? '' : who(p, bs) + ' ') + '공홈 정리 · 어제와 최근 7일 (' + md(w.from) + '~' + md(y) + ')' });
+      if (!live.length) { out.push(P('자료를 지금 못 읽었어요. 잠시 뒤 다시 열어 주세요.')); return out; }
+      var Y = { q: 0, a: 0, p: 0, t: 0, ok: 1 }; yd.forEach(function (x) { Y.q += x.q.qty; Y.a += x.a.paid; Y.t += x.t.paid; if (x.a.first && x.a.first <= add(y, -7)) { Y.p += x.p.paid; Y.c = (Y.c || 0) + x.a.paid; } });
+      out.push(P('어제 ' + mdw(y) + ' **' + n0(Y.q) + '개**, **' + won(Y.a) + '** 팔렸어요.' + (Y.p ? ' 지난주 ' + wd(y) + '요일보다 ' + gTxt(growth(Y.c, Y.p)) + '예요.' : '') + (Y.t ? ' 오늘은 지금까지 ' + won(Y.t) + '이에요.' : '')));
+      var S = 0, Q = 0; live.forEach(function (o) { if (o.cmp) { S += o.sc.paid; Q += o.sp.paid; } });
+      if (Q) out.push(P('최근 7일은 **' + won(live.reduce(function (s, o) { return s + o.s.paid; }, 0)) + '**, 앞 7일보다 ' + gTxt(growth(S, Q)) + '예요.'));
+      live.forEach(function (o) {
+        if (o.cmp && (o.sp.paid >= 1000000 || o.sc.paid >= 1000000)) {
+          var g = growth(o.sc.paid, o.sp.paid), dc = C.decomp(o), d = o.sc.paid - o.sp.paid, m = dc ? dc.f.slice().sort(function (a, b) { return d >= 0 ? b.won - a.won : a.won - b.won; })[0] : null, why2 = m ? ' · 가장 큰 이유 ' + m.key + ' ' + gTxt(m.g) : '';
+          if (g != null && g <= -15) bad.push({ w: -d, s: '**' + o.name + '** 매출 ' + swon(d) + ' (' + gTxt(g) + ')' + why2, chip: [o.name + ' 왜', o.name + ' 최근 7일 매출 왜 줄었어?'] });
+          else if (g != null && g >= 15) good.push({ w: d, s: '**' + o.name + '** 매출 ' + swon(d) + ' (' + gTxt(g) + ')' + why2, chip: [o.name + ' 왜', o.name + ' 최근 7일 매출 왜 늘었어?'] });
+        }
+        if (o.acmp && o.ac.imp >= 20000) { var c = (o.ac.ctr / o.ap.ctr - 1) * 100; if (c <= -8) bad.push({ w: o.sc.paid * -c / 100, s: '**' + o.name + '** 클릭률 ' + pct2(o.ap.ctr) + ' → ' + pct2(o.ac.ctr), chip: [o.name + ' 클릭률', o.name + ' 최근 7일 클릭률 왜 떨어졌어?'] }); else if (c >= 8) good.push({ w: o.sc.paid * c / 100, s: '**' + o.name + '** 클릭률 ' + pct2(o.ap.ctr) + ' → ' + pct2(o.ac.ctr) }); }
+        if (o.a && o.a.last && o.a.last < add(y, -1) && o.a.last >= add(y, -20)) bad.push({ w: 1, s: '**' + o.name + '** 광고 기록이 ' + mdw(o.a.last) + '에서 멈춰 있어요' });
+      });
+      var x = await C.prodRows(bs, r.cf, r.ct, r.pf, r.pt), pr = x.rows.filter(function (v) { return v.pq != null; });
+      pr.filter(function (v) { return v.pq >= 20 && v.qty <= v.pq * 0.65; }).sort(function (a, b) { return a.dq - b.dq; }).slice(0, 3).forEach(function (v) { bad.push({ w: v.ppaid - v.paid, s: v.name + (bs.length > 1 ? ' (' + C.nm(v.b) + ')' : '') + ' ' + n0(v.pq) + ' → ' + n0(v.qty) + '개' }); });
+      pr.filter(function (v) { return v.qty >= 20 && v.qty >= v.pq * 1.4; }).sort(function (a, b) { return b.dq - a.dq; }).slice(0, 3).forEach(function (v) { good.push({ w: v.paid - v.ppaid, s: v.name + (bs.length > 1 ? ' (' + C.nm(v.b) + ')' : '') + ' ' + n0(v.pq) + ' → ' + n0(v.qty) + '개' }); });
+      var bw = function (a, b) { return b.w - a.w; };
+      bad.sort(bw); good.sort(bw);
+      if (bad.length) { out.push({ t: 'sub', s: '살펴볼 것' }); out.push({ t: 'list', items: bad.slice(0, 6).map(function (v) { return v.s; }) }); }
+      if (good.length) { out.push({ t: 'sub', s: '잘된 것' }); out.push({ t: 'list', items: good.slice(0, 5).map(function (v) { return v.s; }) }); }
+      if (!bad.length && !good.length) out.push(P('앞 7일과 크게 달라진 곳은 없어요.'));
+      if (err.length) out.push(N(err.map(function (o) { return o.name; }).join(' · ') + ' 자료는 지금 못 읽어서 빠졌어요.'));
+      bad.concat(good).forEach(function (v) { if (v.chip && chips.length < 4) chips.push(v.chip); });
+      var wh = bs.length === 1 ? C.nm(bs[0]) : '전체'; out.chips = chips.concat([['뜨는 상품', '최근 7일 ' + wh + ' 뜨는 상품'], ['줄어든 상품', '최근 7일 ' + wh + ' 줄어든 상품']]);
+      return out;
+    }
+
     /* 클릭률이 왜 바뀌었나 — 언제부터 · 노출과 같이 움직였나 · 어느 캠페인 (캠페인은 메타 리포트의 최근 7일 ↔ 30일) */
     async function adsWhy(p, r) {
       var bs = brandsOf(p);
       if (bs.length > 1 || r.todayOnly || (p.channel !== 'home' && p.channel !== 'all')) return ads(p, r);
       var o = await C.pack(bs[0], 'home', r, { qty: false }), out = [head(Object.assign({}, p, { channel: 'home' }), r, bs, '클릭률이 왜 바뀌었나')];
+      if (o.a && !o.a.n && !o.a.err) { out.push(P(o.a.last ? o.name + ' 광고 기록은 ' + mdw(o.a.last) + '이 마지막이에요. 그 뒤로는 노출 기록이 없어서 광고가 꺼져 있었던 것으로 보여요.' : o.name + '는 광고 기록이 없어요.')); return out; }
       if (!o.acmp) { out.push(P('비교할 앞 기간 광고 기록이 없어서 이유를 나눠 볼 수 없어요.')); adNote(p, [o], out); return out; }
-      var d = o.ac.ctr / o.ap.ctr - 1, gi = growth(o.ac.imp, o.ap.imp * o.k), gc = growth(o.ac.clk, o.ap.clk * o.k), w = Math.abs(d) < 0.02 ? '거의 그대로' : d > 0 ? '올랐' : '내려갔';
+      var d = o.ac.ctr / o.ap.ctr - 1, gi = growth(o.ac.imp, o.ap.imp * o.ka), gc = growth(o.ac.clk, o.ap.clk * o.ka), w = Math.abs(d) < 0.02 ? '거의 그대로' : d > 0 ? '올랐' : '내려갔';
       out.push(P('클릭률은 ' + pct2(o.ap.ctr) + ' → **' + pct2(o.ac.ctr) + '** (' + gTxt(d * 100) + ')로 ' + (w === '거의 그대로' ? '거의 그대로예요.' : w + '어요.') + ' 같은 동안 노출은 ' + gTxt(gi) + ', 클릭은 ' + gTxt(gc) + '예요.' + perDay(r)));
       if (d < -0.02 && gi > 5 && gc > -5) out.push(P('더 많은 사람에게 보여 주면서 누르는 비율이 낮아진 모양이에요. 클릭 자체는 줄지 않았어요.'));
       else if (d < -0.02 && gi > 5) out.push(P('노출을 늘렸는데 클릭은 오히려 줄었어요. 늘린 쪽 타깃이나 소재를 먼저 볼 만해요.'));
@@ -871,12 +936,14 @@
       return out;
     }
 
-    var FN = { overview: overview, sales: sales, ads: ads, products: products, options: options, daily: daily, weekday: weekday, why: why, channels: channels };
+    var FN = { overview: overview, sales: sales, ads: ads, products: products, options: options, daily: daily, weekday: weekday, why: why, channels: channels, campaigns: campaigns, brief: brief };
     async function run(p) {
-      var r = C.compare(p, todayK()), out;
+      var r = C.compare(p, todayK()), out, moved = '';
+      if (p.channel !== 'home' && p.channel !== 'all') { var bs0 = brandsOf(p), has = bs0.filter(function (b) { return C.chans(b, p.channel).length; }); if (!has.length) { moved = CHN[p.channel]; p.channel = 'home'; } else if (has.length < bs0.length && p.brands && p.brands.length) p.brands = has; }
       if (p.to < '2026-06-01') { out = [P('그때 기록은 없어요. 공홈 판매는 9월 6일부터, 광고 클릭률은 6월 1일부터 남아 있어요.')]; out.chips = [['지난주', '지난주 어땠어?'], ['이번 달', '이번 달 어땠어?']]; return out; }
       if (p.what === 'why' && p.by === 'ads') { out = await adsWhy(p, r); }
       else out = await (FN[p.what] || overview)(p, r);
+      if (moved) out.splice(1, 0, N(eun(who(p, brandsOf(p))) + ' ' + moved + ' 기록이 없어서 공홈으로 봤어요.'));
       if (!out.chips) out.chips = chipBase(p);
       return out;
     }
@@ -904,6 +971,7 @@
       '#anLog .me{align-self:flex-end;max-width:84%;padding:9px 13px;border-radius:14px 14px 4px 14px;background:#1f2329;color:#fff;font-size:14px;line-height:1.5;overflow-wrap:anywhere}',
       '#anLog .an{align-self:stretch;font-size:14px;line-height:1.6;min-width:0}#anLog .an p{margin:0 0 7px;overflow-wrap:anywhere}#anLog .an p b{font-weight:700}',
       '#anLog .an .h{margin:0 0 6px;font-size:12px;font-weight:600;color:#6b7280;line-height:1.45}#anLog .an .nt{margin:0 0 3px;font-size:12px;line-height:1.5;color:#6b7280}',
+      '#anLog .sb{margin:10px 0 3px;font-size:13px;font-weight:700}#anLog ul{margin:0 0 6px;padding:0 0 0 17px}#anLog li{margin:0 0 3px;overflow-wrap:anywhere}#anLog li b{font-weight:700}',
       '#anLog .tw{margin:4px 0 10px;overflow-x:auto;-webkit-overflow-scrolling:touch}#anLog table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}',
       '#anLog th{padding:6px 6px;text-align:right;font-weight:500;font-size:12px;color:#6b7280;border-bottom:1px solid var(--line-2,#d3cbb6);white-space:nowrap}#anLog td{padding:7px 6px;text-align:right;border-bottom:1px solid #f0efea;white-space:nowrap}',
       '#anLog th:first-child,#anLog td:first-child{text-align:left;padding-left:0}#anLog th:last-child,#anLog td:last-child{padding-right:0}#anLog td.nm{white-space:normal;min-width:132px;max-width:210px;overflow-wrap:anywhere;line-height:1.4}#anLog td.b{font-weight:700}#anLog td.low{color:#dc2626}',
@@ -926,7 +994,7 @@
     var box = el('section', { id: 'anBox', role: 'dialog', 'aria-label': '데이터분석관', hidden: '' });
     box.innerHTML = '<header class="an-top"><div><b>데이터분석관</b><span>공홈 판매 · 광고 클릭률 · 상품을 말로 물어보세요</span></div><div class="an-ic"><button type="button" id="anNew">새 대화</button><button type="button" id="anX" aria-label="닫기">✕</button></div></header><div id="anLog" role="log" aria-live="polite"></div><form id="anForm"><textarea id="anQ" rows="1" placeholder="예: 지난주 코페리 분석해줘" aria-label="질문" autocomplete="off" enterkeyhint="send" maxlength="300"></textarea><button id="anSend" type="submit">보내기</button></form>';
     host.appendChild(pill); host.appendChild(box);
-    var log = box.querySelector('#anLog'), q = box.querySelector('#anQ'), send = box.querySelector('#anSend'), A = null, ctx = null, said = [], busy = false, seq = 0;
+    var log = box.querySelector('#anLog'), q = box.querySelector('#anQ'), send = box.querySelector('#anSend'), A = null, ctx = null, lastChips = [], asked = false, busy = false, seq = 0;
 
     function el(t, at) { var e = document.createElement(t); Object.keys(at || {}).forEach(function (k) { e.setAttribute(k, at[k]); }); return e; }
     function txt(e, s) {   // **굵게** 만 알아듣는다. 나머지는 글자 그대로
@@ -1016,17 +1084,25 @@
         if (b.t === 'table') node.appendChild(table(b));
         else if (b.t === 'bars') node.appendChild(bars(b));
         else if (b.t === 'line') node.appendChild(line(b));
+        else if (b.t === 'list') { var ul = el('ul'); b.items.forEach(function (x) { ul.appendChild(txt(el('li'), x)); }); node.appendChild(ul); }
+        else if (b.t === 'sub') { var sb = el('div', { class: 'sb' }); sb.textContent = b.s; node.appendChild(sb); }
         else { var e = el(b.t === 'p' ? 'p' : 'div', { class: b.t === 'h' ? 'h' : b.t === 'note' ? 'nt' : '' }); node.appendChild(txt(e, b.s)); }
       });
       chips(node, out.chips);
     }
 
-    function hello() {
-      var n = bubble('an');
-      paint(n, Object.assign([{ t: 'p', s: '안녕하세요, 데이터분석관이에요. 기간이나 브랜드를 편하게 말씀해 주세요. 이어서 “왜?”, “그럼 야르는?”처럼 물으셔도 돼요.' },
-        { t: 'note', s: '숫자는 오피스 기록에서 계산해요. 공홈 판매는 9월 6일부터, 광고 클릭률은 6월 1일부터 있어요.' },
-        { t: 'note', s: '어려운 말은 구글 AI가 질문 글만 읽고 풀어요. 매출 · 광고 숫자는 보내지 않아요.' }],
-        { chips: [['지난주 어땠어?', '지난주 전체 브랜드 어땠어?'], ['클릭률 떨어진 곳', '지난주 전체 브랜드 클릭률'], ['많이 팔린 상품', '최근 7일 전체 많이 팔린 상품'], ['이번 달 코페리', '이번 달 코페리 분석해줘']] }));
+    /* 창을 열면 먼저 스스로 정리 — 그다음은 말로 이어 묻기 */
+    async function hello() {
+      var n = bubble('an'), my = seq; n.innerHTML = '<span class="wait"><i></i><i></i><i></i>오늘 볼 것을 정리하고 있어요</span>';
+      var foot = [{ t: 'note', s: '더 궁금한 건 “지난주 코페리 분석해줘”, “왜?”, “그럼 야르는?”처럼 편하게 물어보세요.' }, { t: 'note', s: '회사 기록만 읽어서 계산해요. 공홈 판매는 9월 6일부터, 광고 클릭률은 6월 1일부터 있어요.' }];
+      try {
+        if (!A) { if (!root.AnalystData) throw new Error('x'); A = Answer(root.AnalystData); }
+        var out = await A.run({ what: 'brief', brands: [], channel: 'home', from: add(todayK(), -7), to: add(todayK(), -1) });
+        if (my !== seq && !n.isConnected) return;
+        var c = out.chips; out = out.concat(foot); out.chips = c; paint(n, out); lastChips = c || [];
+      } catch (e) {
+        paint(n, Object.assign([{ t: 'p', s: '안녕하세요, 데이터분석관이에요. 정리할 자료를 지금 못 읽었어요. 기간이나 브랜드를 말씀해 주시면 다시 읽어 볼게요.' }], { chips: [['지난주 어땠어?', '지난주 전체 브랜드 어땠어?']] }));
+      }
     }
 
     var OUT = [
@@ -1037,11 +1113,20 @@
     var HI = /^(?:안녕(?:하세요)?|하이|hi|hello|헬로|ㅎㅇ|반가워요?)[\s!~.]*$/i, TY = /^(?:고마워요?|감사(?:합니다|해요)?|땡큐|thanks?|ㄳ|수고(?:했어|하셨어요|하세요)?)[\s!~.]*$/i;
     var HELP = /(?:뭐|무엇|어떤\s*거?|뭘)\s*(?:할\s*수\s*있|물어|해\s*줄\s*수)|도움말|사용법|어떻게\s*(?:써|사용|물어)|help/i;
 
-    function askBack(node, msg, list) { paint(node, Object.assign([{ t: 'p', s: msg }], { chips: list })); }
+    function askBack(node, msg, list) { paint(node, Object.assign([{ t: 'p', s: msg }], { chips: list })); lastChips = list || []; asked = true; }
+    // '2번' · '두 번째' · '응' — 방금 보여 준 단추를 말로 고르기
+    var NTH = { '첫': 1, '한': 1, '두': 2, '둘': 2, '세': 3, '셋': 3, '네': 4, '넷': 4, '다섯': 5 };
+    function pickChip(t) {
+      if (!lastChips.length) return null;
+      var m = /^(?:(\d)|(첫|한|두|둘|세|셋|네|넷|다섯))\s*(?:번째|번|째)(?:\s*(?:거|것|걸로|으로|요|이요))?$/.exec(t); if (m) return lastChips[(m[1] ? +m[1] : NTH[m[2]]) - 1] || null;
+      if (asked && /^(?:응|네|넵|예|그래|좋아|ㅇㅇ|ㅇㅋ|ok|오케이|그걸로)(?:요)?$/i.test(t)) return lastChips[0];
+      return lastChips.filter(function (c) { return c[0] === t; })[0] || null;
+    }
 
     async function ask(text, set) {
       text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 300);
       if (!text || busy) return;
+      if (!set) { var pc = pickChip(text.replace(/[.!?~\s]+$/, '')); if (pc) { set = pc[2]; if (!set) text = pc[1]; } }
       busy = true; send.disabled = true; var my = ++seq;
       var m = bubble('me'); m.textContent = text;
       var node = bubble('an'); node.innerHTML = '<span class="wait"><i></i><i></i><i></i>기록을 읽고 있어요</span>'; down();
@@ -1051,52 +1136,36 @@
         if (set && !set.what) set = Object.assign({ what: 'products' }, set);
         if (set) {   // 표 · 단추에서 고른 것 — 글을 다시 풀지 않는다
           var sp = merge(set, ctx, todayK()); sp.channel = 'home'; sp.sure = true; var so = await A.run(sp); if (!alive()) return;
-          paint(node, so); ctx = sp; said.push(text); delete ctx.sure; delete ctx.assumed; return;
+          paint(node, so); lastChips = so.chips || []; asked = false; ctx = sp; delete ctx.sure; delete ctx.assumed; return;
         }
         var today = todayK(), p = parse(text, ctx, today), bad = OUT.filter(function (o) { return o[0].test(text); })[0];
         if (HI.test(text)) return askBack(node, '안녕하세요. 어느 기간을 봐 드릴까요?', [['어제', '어제 전체 브랜드 어땠어?'], ['지난주', '지난주 전체 브랜드 어땠어?'], ['이번 달', '이번 달 전체 브랜드 어땠어?']]);
         if (TY.test(text)) return askBack(node, '네, 또 궁금한 게 있으면 말씀해 주세요.', ctx ? [['일별', '일별로 보여줘'], ['상품별', '상품별로']] : []);
-        if (HELP.test(text)) return askBack(node, '이런 걸 볼 수 있어요. 판매 수량 · 매출 · 주문, 광고 클릭률, 많이 팔린 상품 · 뜨는 상품 · 옵션, 일별 · 요일별, 판매처별, 그리고 왜 올랐고 떨어졌는지요.', [['코페리 지난주', '지난주 코페리 분석해줘'], ['클릭률', '지난주 전체 브랜드 클릭률'], ['뜨는 상품', '최근 7일 전체 뜨는 상품'], ['왜 바뀌었나', '지난주 전체 브랜드 매출 왜 바뀌었어?']]);
+        if (HELP.test(text)) return askBack(node, '이런 걸 볼 수 있어요. 판매 수량 · 매출 · 주문, 광고 클릭률, 많이 팔린 상품 · 뜨는 상품 · 옵션, 일별 · 요일별, 판매처별, 광고 캠페인, 그리고 왜 올랐고 떨어졌는지요. “정리해줘”라고 하시면 살펴볼 것부터 보여 드려요.', [['코페리 지난주', '지난주 코페리 분석해줘'], ['클릭률', '지난주 전체 브랜드 클릭률'], ['뜨는 상품', '최근 7일 전체 뜨는 상품'], ['왜 바뀌었나', '지난주 전체 브랜드 매출 왜 바뀌었어?']]);
         if (p.placeholder) return askBack(node, '어느 날부터 어느 날까지 볼까요? “11월 1일부터 15일까지”처럼 말씀해 주세요.', [['지난주', '지난주 ' + text.replace(/몇\s*일\s*부터|며칠\s*부터|몇\s*일\s*까지|며칠\s*까지/g, '')], ['최근 30일', '최근 30일 ' + text.replace(/몇\s*일\s*부터|며칠\s*부터|몇\s*일\s*까지|며칠\s*까지/g, '')], ['이번 달', '이번 달 ' + text.replace(/몇\s*일\s*부터|며칠\s*부터|몇\s*일\s*까지|며칠\s*까지/g, '')]]);
         if (bad) return askBack(node, bad[1], [['지난주 판매', '지난주 전체 브랜드 판매량'], ['광고 클릭률', '지난주 전체 브랜드 클릭률']]);
 
-        var known = p.hit.what || p.hit.brands || p.hit.range || p.hit.channel;
+        var known = p.hit.what || p.hit.brands || p.hit.range || p.hit.channel, skipped = '';
         if (p.unknown) {
-          // 1) 상품 이름인가  2) AI 에게 뜻만 물어본다  3) 알아들은 만큼만
-          var nmq = p.unknown.replace(/\s*(?:자세히|상세)\s*$/, '').trim(), bs = (p.brands && p.brands.length ? p.brands : A.core.order), hits = /[a-zA-ZÀ-ɏ]|자세히|상세|\d/.test(p.unknown) || p.hit.what ? await A.findProducts(nmq, bs) : [];
+          // 상품 이름인가 → 아니면 알아들은 만큼만
+          var nmq = p.unknown.replace(/\s*(?:자세히|상세)\s*$/, '').trim(), bs = (p.brands && p.brands.length ? p.brands : A.core.order), hits = nmq ? await A.findProducts(nmq, bs) : [];
           if (hits.length) { p.product = nmq; if (!p.what || p.what === 'sales' || p.what === 'overview') p.what = 'products'; }
-          else {
-            var ai = null; try { ai = await root.AnalystData.plan({ text: text, prev: ctx ? pub(ctx) : null, said: said.slice(-3) }); } catch (e) { ai = null; }
-            if (!alive()) return;
-            if (ai && ai.ok && ai.plan) {
-              var a = ai.plan;
-              if (a.what === 'chat') { said.push(text); return askBack(node, a.reply || '그건 제가 가진 자료로 답하기 어려워요. 판매 · 광고 쪽으로 물어봐 주세요.', [['지난주 어땠어?', '지난주 전체 브랜드 어땠어?'], ['광고 클릭률', '지난주 전체 브랜드 클릭률']]); }
-              // 규칙이 읽은 날짜 · 브랜드가 있으면 그쪽을 믿는다 (날짜 계산은 규칙이 더 정확)
-              p.what = p.hit.strong ? p.what : a.what; if (!p.hit.strong) p.order = '';
-              if (!p.hit.brands) p.brands = a.brands;
-              if (!p.hit.range && a.from && a.to) { p.from = a.from; p.to = a.to; p.label = ctx && ctx.from === a.from && ctx.to === a.to ? ctx.label : ''; if (a.cmpFrom) { p.cmpFrom = a.cmpFrom; p.cmpTo = a.cmpTo; } }
-              if (a.order) p.order = a.order; if (a.channel && !p.channel) p.channel = a.channel;
-              if (a.product && (a.what === 'products' || a.what === 'options' || a.what === 'daily')) { var h2 = await A.findProducts(a.product, p.brands && p.brands.length ? p.brands : A.core.order); if (h2.length) p.product = a.product; }
-              known = true;
-            }
-          }
+          else if (known) skipped = p.unknown;      // 못 알아들은 말은 빼고, 뺐다고 말한다
         }
         if (!known && !p.product && !p.what) return askBack(node, '제가 잘 못 알아들었어요. 기간 · 브랜드 · 보고 싶은 것을 말씀해 주세요. 예를 들면 “지난주 야르 클릭률”이요.', [['지난주 어땠어?', '지난주 전체 브랜드 어땠어?'], ['야르 클릭률', '지난주 야르 클릭률'], ['많이 팔린 상품', '최근 7일 전체 많이 팔린 상품']]);
 
         var plan = merge(p, ctx, today);
-        // AI 가 준 기간이 오늘 뒤면 자른다
         if (plan.cmpFrom && plan.cmpTo > today) plan.cmpTo = today;
         var out = await A.run(plan);
         if (!alive()) return;
-        paint(node, out); ctx = plan; said.push(text); if (said.length > 6) said.shift();
+        if (skipped) out.splice(out.length, 0, { t: 'note', s: '“' + skipped.slice(0, 40) + '”' + (bat(skipped) ? '은' : '는') + ' 못 알아들어서 빼고 봤어요.' });
+        paint(node, out); lastChips = out.chips || []; asked = false; if (plan.what !== 'brief') ctx = plan;
         if (out.ctxProduct) { ctx.product = out.ctxProduct; ctx.brands = [out.ctxBrand]; }
-        delete ctx.assumed;
+        if (ctx) delete ctx.assumed;
       } catch (e) {
         if (alive()) askBack(node, '자료를 읽다가 멈췄어요. 잠시 뒤 다시 물어봐 주세요. (' + String(e && e.message || e).slice(0, 80) + ')', [['다시 물어보기', text]]);
       } finally { if (alive()) { busy = false; send.disabled = false; } setTimeout(function () { down(); var a = m.getBoundingClientRect().top - log.getBoundingClientRect().top - 10; if (a < 0) log.scrollTop += a; }, 0); }
     }
-    function pub(c) { var o = {}; ['what', 'brands', 'from', 'to', 'cmpFrom', 'cmpTo', 'product', 'order', 'channel'].forEach(function (k) { if (c[k] != null && c[k] !== '') o[k] = c[k]; }); return o; }
-
     var small = window.matchMedia('(max-width:640px)'), scrollY0 = 0;
     function fit() { var v = window.visualViewport; if (box.hidden || !small.matches || !v) { box.style.height = ''; box.style.top = ''; return; } box.style.height = v.height + 'px'; box.style.top = v.offsetTop + 'px'; }
     function open(text) {
@@ -1109,7 +1178,7 @@
     function close() { box.hidden = true; pill.hidden = false; pill.setAttribute('aria-expanded', 'false'); document.documentElement.style.overflow = ''; if (small.matches) window.scrollTo(0, scrollY0); else pill.focus({ preventScroll: true }); fit(); }
     pill.onclick = function () { open(); };
     box.querySelector('#anX').onclick = close;
-    box.querySelector('#anNew').onclick = function () { seq++; busy = false; send.disabled = false; ctx = null; said = []; log.textContent = ''; hello(); if (!small.matches) q.focus(); };
+    box.querySelector('#anNew').onclick = function () { seq++; busy = false; send.disabled = false; ctx = null; lastChips = []; asked = false; log.textContent = ''; hello(); if (!small.matches) q.focus(); };
     box.querySelector('#anForm').addEventListener('submit', function (e) { e.preventDefault(); var t = q.value; if (!t.trim() || busy) return; q.value = ''; grow(); ask(t); });
     function grow() { q.style.height = 'auto'; q.style.height = Math.min(110, q.scrollHeight + 2) + 'px'; }
     q.addEventListener('input', grow);
