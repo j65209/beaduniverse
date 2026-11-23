@@ -2,6 +2,7 @@
    디자인팀 업무일지 · 전광판 (2026-11-23 사장님 "업무일지 노션에서 불러오기 → 자체 프로그램으로, 이전 기록 그대로,
    가독성 좋게 자동 정리, 까먹으면 안 되는 루틴은 상단 고정 전광판, 지우거나 수정 쉽게")
    · 저장 = Supabase dlog_pages · dlog_board · dlog_checks — anon 은 표를 못 읽고 열쇠 함수(dlog_*)로만 (MD팀 시트와 같은 열쇠, _mdxRpc)
+   · 발주 · 샘플(2026-11-23 노션 '발주 & 샘플' 달력) = 같은 표의 kind 'order' — 공장 · 상태 · 종류 · 끝나는 날은 meta
    · 글 = 납작한 줄 배열 blocks [{id, lv 들여쓰기, t 종류, r 글자조각, k 끝냄, bg 줄 색, st 손으로 고른 상태, o 이어받은 처음 줄, d0 처음 적은 날, src 사진}]
    · 저장 방식 = 0.7초 뒤 저절로 · ver 가 다르면 줄 단위 3방향 합치기 · 못 보낸 글은 이 PC 에 남겨 다시 보냄 · 지움은 전부 되살리기 가능
    · 보이는 꾸밈([업체] · 날짜 · 수량 · ⇒ 결과 · 새로 · n일째 · 상태)은 글자를 안 바꾸고 화면에서만 붙인다
@@ -39,15 +40,16 @@ const isOff = s => { const w = dow(s); return w === 0 || w === 6 || hol().has(s)
 const monOf = s => addD(s, -((dow(s) + 6) % 7));
 
 const KINDS = {daily:'업무일지', status:'진행상황', memo:'회의 · 메모'};
+const KIND_ALL = Object.assign({order:'발주 · 샘플'}, KINDS);
 const S = {
   ready:false, booting:null, err:'', max:0, today:ymd(new Date()),
   pages:new Map(), board:new Map(), checks:new Map(),
   cur:null, view:'page', kind:'all', month:'', group:'vendor',
   dirty:new Map(), saving:false, saveT:0, saveAt:0, fails:0, pollT:0, polling:false, defer:false,
-  undo:new Map(), sel:null, fTag:'', fSt:'', hideDone:false, navOpen:false, sideOpen:true, find:null, fresh:new Set(), split:new Map(), caches:new Map(), nt:null, moreBusy:false, openIds:{}
+  undo:new Map(), sel:null, fTag:'', fSt:'', hideDone:false, navOpen:false, sideOpen:true, find:null, fresh:new Set(), split:new Map(), caches:new Map(), nt:null, moreBusy:false, oMode:'cal', oFac:'', oKind:'', oWait:false, oMonth:'', lastPage:null
 };
-try{ Object.assign(S, (u => ({group:u.group || 'vendor', hideDone:!!u.hideDone, boardFold:!!u.boardFold}))(JSON.parse(localStorage.getItem(K.ui) || '{}') || {})); }catch(e){}
-const saveUi = () => { try{ localStorage.setItem(K.ui, JSON.stringify({group:S.group, hideDone:S.hideDone, boardFold:S.boardFold})); }catch(e){} };
+try{ Object.assign(S, (u => ({group:u.group || 'vendor', hideDone:!!u.hideDone, boardFold:!!u.boardFold, oMode:u.oMode || 'cal'}))(JSON.parse(localStorage.getItem(K.ui) || '{}') || {})); }catch(e){}
+const saveUi = () => { try{ localStorage.setItem(K.ui, JSON.stringify({group:S.group, hideDone:S.hideDone, boardFold:S.boardFold, oMode:S.oMode})); }catch(e){} };
 
 /* ============================================================ 글자 조각 ============================================================ */
 const MK = ['b', 'i', 's', 'u', 'c'];
@@ -190,7 +192,9 @@ function setPage(x){
   S.pages.set(x.id, p);
   return p;
 }
-const list = () => [...S.pages.values()].sort((a, b) => b.day.localeCompare(a.day) || String(b.ca || '').localeCompare(String(a.ca || '')));
+const byDay = (a, b) => b.day.localeCompare(a.day) || String(b.ca || '').localeCompare(String(a.ca || ''));
+const list = () => [...S.pages.values()].filter(p => p.kind !== 'order').sort(byDay);
+const orders = () => [...S.pages.values()].filter(p => p.kind === 'order').sort(byDay);
 const dailies = () => list().filter(p => p.kind === 'daily');
 const cur = () => S.cur ? S.pages.get(S.cur) : null;
 function prevOf(p){ if(!p) return null; return list().filter(x => x.kind === p.kind && x.id !== p.id && x.day < p.day)[0] || null; }
@@ -205,8 +209,9 @@ function cacheWrite(){
   try{
     const ps = list(), keep = new Set(ps.slice(0, 6).map(p => p.id));
     if(S.cur) keep.add(S.cur);
+    const od = orders().filter(p => p.day > addD(S.today, -75)); od.forEach(p => keep.add(p.id));
     localStorage.setItem(K.cache, JSON.stringify({at:Date.now(), today:S.today,
-      pages:ps.slice(0, 120).map(p => { const o = Object.assign({}, p); delete o._bv; if(!keep.has(p.id)) delete o.blocks; return o; }),
+      pages:ps.slice(0, 120).concat(od).map(p => { const o = Object.assign({}, p); delete o._bv; if(!keep.has(p.id)) delete o.blocks; return o; }),
       board:[...S.board.values()], checks:[...S.checks.values()].filter(c => c.day > addD(S.today, -21))}));
   }catch(e){ try{ localStorage.removeItem(K.cache); }catch(e2){} }
 }
@@ -264,7 +269,7 @@ const editing = () => { const a = document.activeElement; return !!(a && a.close
 function persistDirty(){
   try{
     const o = {};
-    S.dirty.forEach((d, id) => { const p = S.pages.get(id); if(p) o[id] = {base:d.base, bb:d.bb, bm:d.bm, isNew:d.isNew, page:{id, day:p.day, title:p.title, kind:p.kind, blocks:p.blocks, ca:p.ca, ver:p.ver, origin:p.origin}}; });
+    S.dirty.forEach((d, id) => { const p = S.pages.get(id); if(p) o[id] = {base:d.base, bb:d.bb, bm:d.bm, isNew:d.isNew, page:{id, day:p.day, title:p.title, kind:p.kind, meta:p.meta || {}, blocks:p.blocks, ca:p.ca, ver:p.ver, origin:p.origin}}; });
     if(Object.keys(o).length) localStorage.setItem(K.dirty, JSON.stringify(o)); else localStorage.removeItem(K.dirty);
   }catch(e){}
 }
@@ -281,13 +286,13 @@ function restoreDirty(){
 }
 let persistT = 0;
 function beforeEdit(p){
-  if(!S.dirty.has(p.id)) S.dirty.set(p.id, {base:p.ver, bb:clone(p.blocks || []), bm:{title:p.title, day:p.day, kind:p.kind}, seq:0});
+  if(!S.dirty.has(p.id)) S.dirty.set(p.id, {base:p.ver, bb:clone(p.blocks || []), bm:{title:p.title, day:p.day, kind:p.kind, meta:clone(p.meta || {})}, seq:0});
 }
 function touch(p){
   if(!p) return;
   const d = S.dirty.get(p.id) || (beforeEdit(p), S.dirty.get(p.id));
   d.seq++;
-  S.caches.delete(p.id);
+  S.caches.delete(p.id); S.actAt = Date.now();
   saveTag('saving');
   clearTimeout(persistT); persistT = setTimeout(persistDirty, 250);
   scheduleSave(SAVE_MS);
@@ -322,20 +327,22 @@ async function flush(){
   for(const [id, d] of [...S.dirty]){
     const p = S.pages.get(id);
     if(!p){ S.dirty.delete(id); continue; }
-    const seq = d.seq, sent = {blocks:clone(p.blocks || []), title:p.title, day:p.day, kind:p.kind};
+    const seq = d.seq, sent = {title:p.title, day:p.day, kind:p.kind, meta:clone(p.meta || {})};
+    if(p.blocks) sent.blocks = clone(p.blocks);   // 아직 안 받은 글이면 줄은 건드리지 않는다
     try{
       const j = await rpc('dlog_save', {p_id:id, p_base:d.base || 0, p_patch:sent, p_who:me()});
       if(j && j.ok){
         p.ver = j.ver; p._bv = j.ver; p.ua = j.ua; p.ub = me(); d.isNew = false;
         S.max = Math.max(S.max, 0);
         if(d.seq === seq) S.dirty.delete(id);
-        else{ d.base = j.ver; d.bb = sent.blocks; d.bm = {title:sent.title, day:sent.day, kind:sent.kind}; scheduleSave(SAVE_MS); }
+        else{ d.base = j.ver; if(sent.blocks) d.bb = sent.blocks; d.bm = {title:sent.title, day:sent.day, kind:sent.kind, meta:sent.meta}; scheduleSave(SAVE_MS); }
         S.fails = 0;
       }else if(j && j.conflict){
         const o = j.page;
-        p.blocks = merge3(d.bb, p.blocks || [], o.blocks || []);
+        p.blocks = p.blocks ? merge3(d.bb, p.blocks, o.blocks || []) : (o.blocks || []);
         ['title', 'day', 'kind'].forEach(f => { if(d.bm && p[f] === d.bm[f]) p[f] = o[f]; });
-        d.base = o.ver; d.bb = o.blocks; d.bm = {title:o.title, day:o.day, kind:o.kind}; d.seq++;
+        { const bm = (d.bm && d.bm.meta) || {}, mm = p.meta || {}, om = o.meta || {}, r = {}; new Set([...Object.keys(mm), ...Object.keys(om)]).forEach(k => { const v = same(mm[k], bm[k]) ? om[k] : mm[k]; if(v !== undefined) r[k] = v; }); p.meta = r; }
+        d.base = o.ver; d.bb = o.blocks; d.bm = {title:o.title, day:o.day, kind:o.kind, meta:o.meta || {}}; d.seq++;
         p.ver = o.ver;
         if(id === S.cur){ if(editing() || S.ptr) S.defer = true; else renderPage(); }
         scheduleSave(120);
@@ -402,6 +409,9 @@ function sections(blocks){
   }
   return out;
 }
+/* 보이는 차례 — 오늘 할 일 · 진행 중인 일 먼저, 데일리 체크 · 목표는 뒤로 (적힌 차례는 그대로) */
+const SEC_RANK = {today:0, hold:2, tomorrow:3, daily:4, goalW:5, goalM:6};
+const secOrder = (p, ss) => p.kind !== 'daily' ? ss : ss.map((s, i) => [s, i]).sort((a, b) => (SEC_RANK[a[0].type] ?? 1) - (SEC_RANK[b[0].type] ?? 1) || a[1] - b[1]).map(x => x[0]);
 const norm = s => String(s || '').toLowerCase().replace(/[\s.,·_\-~!?()\[\]{}"'“”‘’:;/\\⇒→=>★※…]+/g, '');
 function info(p){           // 글 하나를 한 번 훑어 둔 것 (고치면 버림)
   if(!p || !p.blocks) return null;
@@ -511,7 +521,7 @@ function ordersOf(p){
 /* ============================================================ 업무일지 만들기 · 고치기 ============================================================ */
 const nb = (o) => Object.assign({id:bid(), lv:0, t:'li', r:[]}, o);
 const BLANK = {
-  daily:() => [nb({t:'h3', r:T('월간목표')}), nb(), nb({t:'h3', r:T('주간목표')}), nb(), nb({t:'h3', r:T('데일리 체크')}), nb(), nb({t:'h3', r:T('오늘 할 일')}), nb(), nb({t:'h3', r:T('제품진행')}), nb(), nb({t:'h3', r:T('디자인')}), nb(), nb({t:'h3', r:T('기타')}), nb(), nb({t:'h3', r:T('내일 할 일')}), nb()],
+  daily:() => [nb({t:'h3', r:T('오늘 할 일')}), nb(), nb({t:'h3', r:T('제품진행')}), nb(), nb({t:'h3', r:T('디자인')}), nb(), nb({t:'h3', r:T('기타')}), nb(), nb({t:'h3', r:T('내일 할 일')}), nb(), nb({t:'h3', r:T('데일리 체크')}), nb(), nb({t:'h3', r:T('주간목표')}), nb(), nb({t:'h3', r:T('월간목표')}), nb()],
   status:() => [nb({t:'h3', r:T('샘플 투입 진행중')}), nb(), nb({t:'h3', r:T('샘플 예정건')}), nb(), nb({t:'h3', r:T('디벨롭건')}), nb(), nb({t:'h3', r:T('홀딩')}), nb()],
   memo:() => [nb({t:'h3', r:T('회의록')}), nb()]
 };
@@ -521,19 +531,16 @@ function carry(src){
   const live = items => { const r = []; let cut = -1; items.forEach(b => { const lv = b.lv || 0; if(cut >= 0 && lv > cut) return; cut = -1; if(b.k){ cut = lv; return; } r.push(b); }); while(r.length && isEmpty(r[r.length - 1])) r.pop(); return r; };
   const ss = sections(src.blocks), todo = [];
   ss.forEach(s => { if(s.type === 'today' || s.type === 'tomorrow') todo.push(...live(s.items).filter(b => !isEmpty(b))); });
-  const addToday = () => { out.push(nb({t:'h3', r:T('오늘 할 일')})); if(todo.length) todo.forEach(b => out.push(keep(b))); else out.push(nb()); };
-  let put = false;
+  const addHead = () => { out.push(nb({t:'h3', r:T('오늘 할 일')})); if(todo.length) todo.forEach(b => out.push(keep(b))); else out.push(nb()); };
+  addHead();
   ss.forEach(s => {
-    if(s.type === 'tomorrow') return;
-    if(s.type === 'today'){ if(!put){ addToday(); put = true; } return; }
-    if(!put && !['goalM', 'goalW', 'daily'].includes(s.type) && out.length){ addToday(); put = true; }
+    if(s.type === 'tomorrow' || s.type === 'today') return;
     const its = live(s.items);
     if(!s.head && !its.length) return;
     if(s.head) out.push(keep(s.head)); else if(out.length) out.push(nb({t:'hr'}));
     its.forEach(b => out.push(keep(b)));
     if(s.head && !its.length) out.push(nb());
   });
-  if(!put) addToday();
   out.push(nb({t:'h3', r:T('내일 할 일')}), nb());
   out.forEach(b => { if(isHead(b)){ delete b.d0; } Object.keys(b).forEach(k => b[k] === undefined && delete b[k]); });
   return out;
@@ -550,9 +557,9 @@ async function newPage(kind, day, opt){
     }
   }
   if(!blocks) blocks = BLANK[kind]();
-  const p = {id:uuid(), day, title, kind, blocks, ver:0, _bv:0, n:0, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()};
+  const p = {id:uuid(), day, title, kind, meta:{}, blocks, ver:0, _bv:0, n:0, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()};
   S.pages.set(p.id, p);
-  S.dirty.set(p.id, {base:0, bb:[], bm:{title, day, kind}, seq:1, isNew:true});
+  S.dirty.set(p.id, {base:0, bb:[], bm:{title, day, kind, meta:{}}, seq:1, isNew:true});
   S.caches.clear();
   persistDirty(); saveTag('saving'); scheduleSave(60);
   openPage(p.id);
@@ -577,7 +584,7 @@ function undo(redo){
   beforeEdit(p);
   (redo ? u.st : u.rd).push(JSON.stringify(p.blocks));
   p.blocks = JSON.parse(from.pop()); u.tag = '';
-  touch(p); renderPage();
+  touch(p); renderPage(); if(p.kind === 'order') sideSoon();
   if(f && xEl(f)) focusB(f, 'end');
 }
 const focusedId = () => { const a = document.activeElement, l = a && a.closest && a.closest('#wl .wl-b'); return l ? l.dataset.id : null; };
@@ -589,7 +596,7 @@ function edit(fn, o){           // 줄 구조를 바꾸는 모든 고침은 여�
   beforeEdit(p); mark(p);
   const r = fn(p.blocks, p);
   if(r === false){ const u = S.undo.get(p.id); if(u) u.st.pop(); return; }
-  touch(p); renderPage();
+  touch(p); renderPage(); if(p.kind === 'order') sideSoon();
   if(r && r.focus) focusB(r.focus, r.pos);
   else if(o.focus) focusB(o.focus, o.pos);
 }
@@ -671,14 +678,15 @@ function mount(){
 function renderAll(){
   if(!mount()) return;
   S.defer = false;
-  if(!S.cur || !S.pages.has(S.cur)) S.cur = (dailies()[0] || list()[0] || {}).id || null;
+  if(S.view !== 'order' && (!S.cur || !S.pages.has(S.cur) || S.pages.get(S.cur).kind === 'order')) S.cur = (S.lastPage && S.pages.has(S.lastPage) ? S.lastPage : (dailies()[0] || list()[0] || {}).id) || null;
+  if(S.view === 'order' && S.cur && (!S.pages.has(S.cur) || S.pages.get(S.cur).kind !== 'order')) S.cur = null;
   renderTop(); renderMain(); renderBoard();
 }
 function renderTop(){
   const el = document.getElementById('wlTop'); if(!el) return;
   if(el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
   const has = dailies().some(p => p.day === S.today), off = isOff(S.today);
-  const V = [['page', '일지'], ['over', '한눈에'], ['cal', '달력']];
+  const V = [['page', '일지'], ['over', '한눈에'], ['cal', '달력'], ['order', '발주 · 샘플']];
   el.innerHTML = `<b class="wl-name">📓 업무일지</b><span class="wl-save" data-s="">${S.saveAt ? `✓ 저장됨 ${hm(S.saveAt)}` : ''}</span>
     <span class="wl-sp"></span>
     <label class="wl-search"><span aria-hidden="true">🔍</span><input type="search" id="wlQ" placeholder="지난 기록 찾기 — 상품 · 업체 · 낱말" value="${E(S.find ? S.find.q : '')}" aria-label="지난 기록 찾기"></label>
@@ -698,6 +706,7 @@ function renderMain(){
   if(S.find){ el.className = 'wl-main one'; el.innerHTML = findHtml(); return; }
   if(S.view === 'cal'){ el.className = 'wl-main one'; el.innerHTML = calHtml(); return; }
   if(S.view === 'over'){ el.className = 'wl-main one'; el.innerHTML = overHtml(); return; }
+  if(S.view === 'order'){ el.className = 'wl-main one'; el.innerHTML = orderHtml(); renderOrd(); if(S.cur) renderPage(); return; }
   el.className = 'wl-main';
   el.innerHTML = `<aside class="wl-nav" id="wlNav"></aside><div class="wl-page" id="wlPage"></div><aside class="wl-side" id="wlSide"></aside>`;
   renderNav(); renderPage();
@@ -753,7 +762,7 @@ function secHtml(s, c){
   const items = s.items.filter(b => !(b.t === 'p' && isEmpty(b) && !S.fresh.has(b.id)));
   const base = Math.min(...items.map(b => b.lv || 0), 9), kids = new Set();
   s.items.forEach((b, i) => { const n = s.items[i + 1]; if(n && (n.lv || 0) > (b.lv || 0)) kids.add(b.id); });
-  const x = Object.assign({base:base === 9 ? 0 : base, kids, norm:!['goalM', 'goalW', 'daily'].includes(s.type)}, c);
+  const x = Object.assign({base:base === 9 ? 0 : base, kids, norm:c.p.kind !== 'order' && !['goalM', 'goalW', 'daily'].includes(s.type)}, c);
   let hide = -1, rows = '';
   items.forEach(b => { const lv = b.lv || 0; if(hide >= 0 && lv > hide) return; hide = -1; rows += lineHtml(b, s, x); if(b.f && kids.has(b.id)) hide = lv; });
   const real = s.items.filter(b => !isEmpty(b) && b.t !== 'hr'), dn = real.filter(b => b.k).length;
@@ -766,12 +775,12 @@ function secHtml(s, c){
 function renderPage(){
   const el = document.getElementById('wlPage'); if(!el) return;
   const p = cur();
-  if(!p){ el.innerHTML = '<div class="wl-empty"><b>글을 골라 주세요</b></div>'; return; }
+  if(!p){ el.innerHTML = S.view === 'order' ? '' : '<div class="wl-empty"><b>글을 골라 주세요</b></div>'; return; }
   if(!p.blocks){ el.innerHTML = '<div class="wl-skel"><i></i><i></i><i></i><i></i></div>'; loadBlocks([p.id]).then(() => { if(S.cur === p.id) renderPage(); }).catch(e => { el.innerHTML = `<div class="wl-empty"><b>글을 불러오지 못했어요</b><button type="button" class="wl-btn" data-act="reload">다시</button></div>`; }); return; }
   const prev = prevOf(p);
   if(prev && !prev.blocks && !prev._try){ prev._try = 1; loadBlocks([prev.id]).then(() => { S.caches.delete(p.id); if(S.cur === p.id && !editing()) renderPage(); }).catch(() => {}); }
   const c = ctxOf(p), seq = list(), i = seq.findIndex(x => x.id === p.id), nx = seq[i - 1], pv = seq[i + 1];
-  const vis = c.ss.filter(s => s.head || s.items.some(b => !isEmpty(b) || S.fresh.has(b.id)));
+  const vis = secOrder(p, c.ss).filter(s => s.head || s.items.some(b => !isEmpty(b) || S.fresh.has(b.id)));
   // 두 칸 나누기 — 글을 열 때 한 번 정하고 고치는 동안 자리를 안 바꾼다 (카드가 튀지 않게)
   const wide = el.clientWidth >= 860;
   let sp = S.split.get(p.id);
@@ -789,6 +798,7 @@ function renderPage(){
   const tot = c.I ? c.I.lines.length : 0, dn = c.I ? c.I.lines.filter(l => l.b.k).length : 0;
   if(S.fSt && !st[S.fSt]) S.fSt = ''; if(S.fTag && !tg.has(S.fTag)) S.fTag = '';
   const first = dailies()[0], needToday = p === first && p.day < S.today && !isOff(S.today), rest = needToday && c.I ? c.I.lines.filter(l => !l.b.k && !['goalM', 'goalW', 'daily'].includes(l.sec)).length : 0;
+  if(p.kind === 'order'){ el.innerHTML = orderPage(p, c, vis); return; }
   el.innerHTML = `${needToday ? `<div class="wl-today"><span><b>${md(S.today)} (${WK[dow(S.today)]})</b> 업무일지가 아직 없어요 — 남은 일 ${rest}줄을 이어받아 시작해요</span><button type="button" class="wl-btn pri" data-act="today">오늘 업무일지 시작</button></div>` : ''}<div class="wl-ph">
       <div class="wl-pd"><button type="button" class="wl-step" data-open="${pv ? pv.id : ''}"${pv ? '' : ' disabled'} title="이전 글" aria-label="이전 글">‹</button>
         <button type="button" class="wl-date" data-act="pickday" title="날짜 바꾸기"><b>${+p.day.slice(5, 7)}월 ${+p.day.slice(8)}일</b> <span>${WK[dow(p.day)]}요일</span>${p.day === S.today ? '<em>오늘</em>' : ''}</button>
@@ -810,10 +820,11 @@ function renderSide(){
   const d = p.kind === 'memo' ? null : diffOf(p), o = ordersOf(p), A = info(p), age = p.kind === 'daily' ? ageMap(p) : new Map();
   const parts = [];
   const go = (id, t, r, cls) => `<button type="button" class="wl-sl${cls ? ' ' + cls : ''}" data-go="${id}"><span>${t}</span>${r ? `<em>${r}</em>` : ''}</button>`;
-  if(o.due.length) parts.push(`<div class="wl-sc"><h4>다가오는 날짜</h4>${o.due.map(x => { const n = dayDiff(x.day, S.today); return go(x.id, E(x.t), `<b class="${n < 0 ? 'bad' : ''}">${n === 0 ? '오늘' : n > 0 ? 'D-' + n : -n + '일 지남'}</b> ${md(x.day)}`); }).join('')}</div>`);
+  const ups = p.kind === 'daily' && p === dailies()[0] ? upcoming() : [];
+  if(ups.length || o.due.length) parts.push(`<div class="wl-sc"><h4>입고 예정</h4>${ups.map(x => { const n = dayDiff(x.day, S.today); return `<button type="button" class="wl-sl up" data-open="${x.id}"><span>${md(x.day)} <small>${WK[dow(x.day)]}</small> ${E(oTitle(x))}<i>${E([oFac(x).join(' · '), oLines(x).slice(0, 2).join(' · ')].filter(Boolean).join(' — '))}</i></span><em>${n === 0 ? '오늘' : n > 0 ? 'D-' + n : -n + '일 전'}</em></button>`; }).join('')}${o.due.map(x => { const n = dayDiff(x.day, S.today); return go(x.id, E(x.t), `<b class="${n < 0 ? 'bad' : ''}">${n === 0 ? '오늘' : n > 0 ? 'D-' + n : -n + '일 지남'}</b> ${md(x.day)}`); }).join('')}</div>`);
   if(o.orders.length){
     const wait = o.orders.filter(x => !x.done), sum = wait.reduce((a, x) => a + (+x.q.replace(/,/g, '') || 0), 0);
-    parts.push(`<div class="wl-sc"><h4>발주 · 입고 기다림 <small>${wait.length}건${sum ? ' · ' + sum.toLocaleString() + 'ea' : ''}</small></h4><table class="wl-ot"><tbody>${o.orders.map(x => `<tr class="${x.done ? 'is-done' : ''}"><td><button type="button" class="wl-ock" data-odone="${x.id}" title="${x.done ? '아직 안 들어옴' : '들어왔으면 누르기'}" aria-label="입고"></button></td><td class="d">${x.day ? md(x.day) : ''}</td><td class="n" data-go="${x.id}">${x.v ? `<small>${E(x.v)}</small> ` : ''}${E(x.name)}</td><td class="q">${E(x.q)}</td><td class="a">${x.day && !x.done ? Math.max(0, dayDiff(p.day === dailies()[0]?.day ? S.today : p.day, x.day)) + '일' : ''}</td></tr>`).join('')}</tbody></table></div>`);
+    parts.push(`<div class="wl-sc"><h4>발주 · 입고 <small>${wait.length}건${sum ? ' · ' + sum.toLocaleString() + 'ea' : ''}${inb.at ? ` · ${hm(inb.at)} 자동 확인` : ''}</small></h4><table class="wl-ot"><tbody>${o.orders.map(x => `<tr class="${x.done ? 'is-done' : ''}"><td><button type="button" class="wl-ock" data-odone="${x.id}" title="${x.done ? '아직 안 들어옴' : '들어왔으면 누르기'}" aria-label="입고"></button></td><td class="d">${x.day ? md(x.day) : ''}</td><td class="n" data-go="${x.id}">${x.v ? `<small>${E(x.v)}</small> ` : ''}${E(x.name)}${(z => z ? `<i class="k-${z.k}">${E(z.t)}</i>` : '')(x.done ? null : inbOf(x))}</td><td class="q">${E(x.q)}</td><td class="a">${x.day && !x.done ? Math.max(0, dayDiff(p.day === dailies()[0]?.day ? S.today : p.day, x.day)) + '일' : ''}</td></tr>`).join('')}</tbody></table></div>`);
   }
   if(d){
     const nw = A.lines.filter(l => d.st.get(l.id) === 'new'), ch = A.lines.filter(l => d.st.get(l.id) === 'chg');
@@ -871,11 +882,12 @@ function calHtml(){
   const y = +S.month.slice(0, 4), m = +S.month.slice(5, 7), start = addD(`${S.month}-01`, -new Date(y, m - 1, 1).getDay()), by = new Map();
   list().forEach(x => { if(!by.has(x.day)) by.set(x.day, []); by.get(x.day).push(x); });
   const pins = [...S.board.values()].filter(b => b.kind === 'pin' && b.due && !b.done_at), due = dailies()[0] ? ordersOf(dailies()[0]).due : [];
+  const ords = orders().filter(x => x.day >= start && x.day <= addD(start, 41));
   let c = '';
   for(let i = 0; i < 42; i++){
     const s = addD(start, i), out = s.slice(0, 7) !== S.month;
     if(i >= 35 && out && addD(start, 35).slice(0, 7) !== S.month) break;
-    c += `<div class="wl-cd${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-cday="${s}"><b>${+s.slice(8)}</b>${(by.get(s) || []).map(x => `<button type="button" class="wl-ce" data-open="${x.id}">${E(x.title || '(제목 없음)')}${x.n ? `<small>${x.n}</small>` : ''}</button>`).join('')}${pins.filter(b => b.due === s).map(b => `<span class="wl-cp">📌 ${E(b.title)}</span>`).join('')}${due.filter(x => x.day === s).map(x => `<span class="wl-cp">${E(x.t)}</span>`).join('')}</div>`;
+    c += `<div class="wl-cd${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-cday="${s}"><b>${+s.slice(8)}</b>${(by.get(s) || []).map(x => `<button type="button" class="wl-ce" data-open="${x.id}">${E(x.title || '(제목 없음)')}${x.n ? `<small>${x.n}</small>` : ''}</button>`).join('')}${pins.filter(b => b.due === s).map(b => `<span class="wl-cp">📌 ${E(b.title)}</span>`).join('')}${due.filter(x => x.day === s).map(x => `<span class="wl-cp">${E(x.t)}</span>`).join('')}${ords.filter(x => x.day === s).map(x => `<button type="button" class="wl-co${arrDone(x) ? ' is-done' : ''}" data-open="${x.id}">${E(oTitle(x))}</button>`).join('')}</div>`;
   }
   return `<div class="wl-ob"><button type="button" class="wl-step" data-mon="-1" aria-label="지난달">‹</button><b class="wl-cm">${y}년 ${m}월</b><button type="button" class="wl-step" data-mon="1" aria-label="다음달">›</button></div><div class="wl-cal">${WK.map(w => `<em>${w}</em>`).join('')}${c}</div>`;
 }
@@ -899,14 +911,15 @@ function findHtml(){
   const f = S.find, n = f.rows.reduce((a, r) => a + (r.lines ? r.lines.length : 0), 0);
   let last = '';
   return `<div class="wl-ob"><b class="wl-cm">‘${E(f.q)}’</b><span class="wl-meta">${f.busy ? '찾는 중…' : f.err ? '찾지 못했어요 — 다시 해 주세요' : `${f.rows.length}개 글 · ${n}줄`}</span><span class="wl-sp"></span><button type="button" class="wl-btn sm" data-act="findoff">닫기</button></div>
-    <div class="wl-fr">${f.rows.map(r => { const ls = (r.lines || []).map(t => { const same = t.trim() === last; last = t.trim(); return `<button type="button" class="wl-fl1${same ? ' same' : ''}" data-open="${r.id}" data-find="${E(t)}">${hl(t, f.q)}</button>`; }).join(''); return `<div class="wl-fg"><button type="button" class="wl-fd" data-open="${r.id}"><b>${md(r.day)}</b> ${WK[dow(r.day)]} <span>${E(r.title)}</span></button><div>${ls || '<p class="wl-none">제목 · 여러 줄에 나뉘어 있어요</p>'}</div></div>`; }).join('') || (f.busy ? '' : '<p class="wl-none">없어요</p>')}</div>`;
+    <div class="wl-fr">${f.rows.map(r => { const ls = (r.lines || []).map(t => { const same = t.trim() === last; last = t.trim(); return `<button type="button" class="wl-fl1${same ? ' same' : ''}" data-open="${r.id}" data-find="${E(t)}">${hl(t, f.q)}</button>`; }).join(''); return `<div class="wl-fg"><button type="button" class="wl-fd" data-open="${r.id}"><b>${md(r.day)}</b> ${WK[dow(r.day)]} <span>${E(r.title)}${r.kind === 'order' ? ' · 발주 샘플' : ''}</span></button><div>${ls || '<p class="wl-none">제목 · 여러 줄에 나뉘어 있어요</p>'}</div></div>`; }).join('') || (f.busy ? '' : '<p class="wl-none">없어요</p>')}</div>`;
 }
 function openPage(id, opt){
   if(!id || !S.pages.has(id)) return;
   opt = opt || {};
   flushSoon();
-  S.cur = id; S.view = 'page'; S.sel = null; S.fTag = ''; S.fSt = ''; S.find = null; S.fresh.clear(); S.split.delete(id);
-  S.month = S.pages.get(id).day.slice(0, 7);
+  const isO = S.pages.get(id).kind === 'order';
+  S.cur = id; S.view = isO ? 'order' : 'page'; if(!isO) S.lastPage = id; S.sel = null; S.fTag = ''; S.fSt = ''; S.find = null; S.fresh.clear(); S.split.delete(id);
+  if(isO) S.oMonth = S.pages.get(id).day.slice(0, 7); else S.month = S.pages.get(id).day.slice(0, 7);
   renderTop(); renderMain();
   const q = document.getElementById('wlQ'); if(q) q.value = '';
   if(opt.line) flash(opt.line);
@@ -926,7 +939,270 @@ function flash(id){
 }
 const flushSoon = () => { if(S.dirty.size) scheduleSave(30); };
 
+/* ============================================================ 발주 · 샘플 (노션 '발주 & 샘플' 달력) ============================================================ */
+const OKN = {po:'발주', in:'입고', sreq:'샘플 요청', sin:'샘플 입고', ship:'발송', etc:'기타'};
+const OST = ['미입고', '파샬 입고', '국외발송완료', '국외입고완료', '국내입고완료', '입고 완료'];
+const okAuto = t => /휴무|휴일|연휴/.test(t) ? 'etc' : /재샘플|(샘플|원단)\s*(요청|투입|발주|주문)/.test(t) ? 'sreq' : /샘플.*(입고|도착)/.test(t) ? 'sin' : /발송|출고/.test(t) ? 'ship' : /입고|도착/.test(t) ? 'in' : /발주|주문/.test(t) ? 'po' : 'etc';
+const okOf = p => (p.meta && p.meta.ok) || okAuto(String(p.title || ''));
+const oTitle = p => String(p.title || '').replace(/^\s*\d{4}\s+/, '').trim() || OKN[okOf(p)];
+const oFac = p => (p.meta && p.meta.fac) || [];
+const oSt = p => (p.meta && p.meta.st) || [];
+const oLines = p => (p.blocks || []).filter(b => !isEmpty(b) && b.t !== 'hr' && !b.src).map(b => bText(b).replace(/\s+/g, ' ').trim());
+const arrDone = p => { const s = oSt(p); return s.some(x => /입고\s*완료|파샬/.test(x)) || (okOf(p) === 'ship' && s.some(x => /발송\s*완료/.test(x))); };
+const oWaits = p => oSt(p).includes('미입고') && !arrDone(p);
+/* 전광판 — 앞으로 30일 안에 들어올 것 + 지난 10일 안에 왔어야 하는데 '미입고' 인 것 */
+const upcoming = () => orders().filter(p => ['in', 'sin', 'ship'].includes(okOf(p)) && !arrDone(p) && ((p.day >= S.today && dayDiff(p.day, S.today) <= 30) || (p.day < S.today && dayDiff(S.today, p.day) <= 10 && oSt(p).includes('미입고')))).sort((a, b) => a.day.localeCompare(b.day) || a.title.localeCompare(b.title));
+const facList = () => { const c = new Map(); orders().forEach(p => oFac(p).forEach(f => c.set(f, (c.get(f) || 0) + 1))); return [...c].sort((a, b) => (a[0] === '그외') - (b[0] === '그외') || b[1] - a[1]); };
+function ordSet(p, patch){
+  beforeEdit(p);
+  p.meta = Object.assign({}, p.meta || {}, patch);
+  Object.keys(p.meta).forEach(k => { const v = p.meta[k]; if(v === '' || v == null || (Array.isArray(v) && !v.length)) delete p.meta[k]; });
+  touch(p);
+}
+function ordMove(p, day){          // 날짜 옮기기 — 제목 앞 MMDD 가 그 날짜였으면 같이 바꾼다
+  if(!day || day === p.day) return;
+  beforeEdit(p);
+  const old = p.day.slice(5, 7) + p.day.slice(8), now = day.slice(5, 7) + day.slice(8), end = (p.meta || {}).end;
+  if(String(p.title || '').startsWith(old)) p.title = now + p.title.slice(4);
+  if(end) p.meta = Object.assign({}, p.meta, {end:addD(end, dayDiff(day, p.day))});
+  p.day = day; touch(p);
+}
+function ordDone(id){
+  const p = S.pages.get(id); if(!p) return;
+  const was = clone(p.meta || {});
+  ordSet(p, {st:['입고 완료']}); renderBoard(); if(S.view === 'order'){ renderOrd(); if(S.cur === id) renderPage(); }
+  snack(`${md(p.day)} ${oTitle(p)} — 입고 완료`, () => { beforeEdit(p); p.meta = was; touch(p); renderBoard(); if(S.view === 'order'){ renderOrd(); if(S.cur === id) renderPage(); } });
+}
+function orderHtml(){ return '<div class="wl-ob" id="wlOb"></div><div class="wl-ow" id="wlOw"><div class="wl-om" id="wlOm"></div><aside class="wl-od"><div id="wlPage"></div></aside></div>'; }
+function renderOrd(){
+  const bar = document.getElementById('wlOb'), om = document.getElementById('wlOm'), ow = document.getElementById('wlOw'); if(!om) return;
+  const c = cur(), sel = c && c.kind === 'order' ? c.id : '';
+  ow.classList.toggle('has-d', !!sel);
+  if(!S.oMonth) S.oMonth = S.today.slice(0, 7);
+  const A = orders(), kinds = Object.keys(OKN).map(k => [k, A.filter(p => okOf(p) === k).length]).filter(x => x[1]), w = A.filter(oWaits).length;
+  const L = A.filter(p => (!S.oFac || oFac(p).includes(S.oFac)) && (!S.oKind || okOf(p) === S.oKind) && (!S.oWait || oWaits(p)));
+  const y = +S.oMonth.slice(0, 4), m = +S.oMonth.slice(5, 7);
+  bar.innerHTML = `<div class="wl-seg"><button type="button" class="${S.oMode === 'cal' ? 'on' : ''}" data-omode="cal">달력</button><button type="button" class="${S.oMode === 'list' ? 'on' : ''}" data-omode="list">목록</button></div>
+    ${S.oMode === 'cal' ? `<button type="button" class="wl-step" data-omon="-1" aria-label="지난달">‹</button><b class="wl-cm">${y}년 ${m}월</b><button type="button" class="wl-step" data-omon="1" aria-label="다음달">›</button>${S.oMonth !== S.today.slice(0, 7) ? '<button type="button" class="wl-btn sm" data-oact="now">이번 달</button>' : ''}` : `<span class="wl-meta">${L.length}건</span>`}
+    <span class="wl-sp"></span><button type="button" class="wl-btn pri" data-oact="new">＋ 새 일정</button>
+    <div class="wl-fl ord">${kinds.map(([k, n]) => `<button type="button" class="${S.oKind === k ? 'on' : ''}" data-okind="${k}">${OKN[k]} <b>${n}</b></button>`).join('')}<i></i>${facList().map(([f, n]) => `<button type="button" class="${S.oFac === f ? 'on' : ''}" data-ofac="${E(f)}">${E(f)} <b>${n}</b></button>`).join('')}<i></i><button type="button" class="${S.oWait ? 'on' : ''}" data-oact="wait">미입고만 <b>${w}</b></button></div>`;
+  const late = p => ['in', 'sin', 'ship'].includes(okOf(p)) && p.day < S.today && oWaits(p) && dayDiff(S.today, p.day) <= 30;
+  if(S.oMode === 'cal'){
+    const start = addD(`${S.oMonth}-01`, -new Date(y, m - 1, 1).getDay());
+    let h = '';
+    for(let i = 0; i < 42; i++){
+      const s = addD(start, i), out = s.slice(0, 7) !== S.oMonth;
+      if(i >= 35 && out && addD(start, 35).slice(0, 7) !== S.oMonth) break;
+      const xs = L.filter(p => p.day <= s && ((p.meta || {}).end || p.day) >= s).sort((a, b) => a.title.localeCompare(b.title));
+      h += `<div class="wl-cd o${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-oday="${s}"><b>${+s.slice(8)}</b>${xs.map(p => { const ls = oLines(p); return `<button type="button" class="wl-oe${arrDone(p) ? ' is-done' : ''}${late(p) ? ' late' : ''}${p.id === sel ? ' on' : ''}" draggable="true" data-oid="${p.id}"><strong>${E(oTitle(p))}${oSt(p).length ? `<em>${E(oSt(p).join(' · '))}</em>` : ''}</strong>${oFac(p).length ? `<small>${E(oFac(p).join(' · '))}</small>` : ''}${ls.slice(0, 2).map(t => `<span>${E(t)}</span>`).join('')}${ls.length > 2 ? `<span>외 ${ls.length - 2}</span>` : ''}</button>`; }).join('')}</div>`;
+    }
+    om.innerHTML = `<div class="wl-cal">${WK.map(x => `<em>${x}</em>`).join('')}${h}</div>`;
+  }else{
+    let mo = '', h = '';
+    L.forEach(p => {
+      const k = p.day.slice(0, 7);
+      if(k !== mo){ mo = k; h += `<tr class="mo"><td colspan="6">${k.slice(0, 4) === S.today.slice(0, 4) ? '' : k.slice(0, 4) + '년 '}${+k.slice(5)}월</td></tr>`; }
+      const n = dayDiff(p.day, S.today), st = oSt(p), opts = [...new Set([...OST, ...st])];
+      h += `<tr class="${arrDone(p) ? 'is-done' : ''}${late(p) ? ' late' : ''}${p.id === sel ? ' on' : ''}" data-oid="${p.id}"><td class="d">${md(p.day)}<small>${WK[dow(p.day)]}</small></td><td class="k">${OKN[okOf(p)]}</td><td class="t"><b>${E(oTitle(p))}</b>${oLines(p).map(t => `<span>${E(t)}</span>`).join('')}</td><td class="f">${E(oFac(p).join(', '))}</td><td class="s"><select data-om="lst" data-opid="${p.id}" aria-label="상태"><option value="">상태 없음</option>${opts.map(o => `<option value="${E(o)}"${st[st.length - 1] === o ? ' selected' : ''}>${E(o)}</option>`).join('')}</select></td><td class="a">${n === 0 ? '오늘' : n > 0 ? 'D-' + n : oWaits(p) ? `${-n}일` : ''}</td></tr>`;
+    });
+    om.innerHTML = h ? `<table class="wl-olt"><thead><tr><th>날짜</th><th>종류</th><th>내용</th><th>공장</th><th>상태</th><th></th></tr></thead><tbody>${h}</tbody></table>` : '<p class="wl-none">해당하는 일정이 없어요</p>';
+  }
+}
+/* 오른쪽 상세 — 줄 고치기는 업무일지와 같은 편집기 */
+function orderPage(p, c, vis){
+  const ok = okOf(p), st = oSt(p), fac = oFac(p), facs = [...new Set([...facList().map(x => x[0]), ...fac])], chip = (k, v, t, on) => `<button type="button" class="${on ? 'on' : ''}" data-oset="${k}" data-v="${E(v)}">${E(t)}</button>`;
+  return `<div class="wl-ph"><input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목 (예: 1126 입고예정)" aria-label="제목"><span class="wl-sp"></span><button type="button" class="wl-btn sm" data-act="undo" title="되돌리기 (Ctrl+Z)">되돌리기</button><button type="button" class="wl-btn sm" data-act="copy">복사</button><button type="button" class="wl-btn sm ico" data-act="pagemenu" aria-label="이 일정 메뉴">⋯</button><button type="button" class="wl-btn sm ico" data-oact="close" aria-label="닫기">×</button></div>
+    <dl class="wl-of"><dt>날짜</dt><dd><input type="date" data-om="day" value="${p.day}" aria-label="날짜"><i>~</i><input type="date" data-om="end" value="${E((p.meta || {}).end || '')}" aria-label="끝나는 날 (없어도 돼요)"></dd>
+      <dt>종류</dt><dd class="wl-chips sm">${Object.entries(OKN).map(([k, t]) => chip('ok', k, t, ok === k)).join('')}</dd>
+      <dt>공장</dt><dd class="wl-chips sm">${facs.map(f => chip('fac', f, f, fac.includes(f))).join('')}<button type="button" data-oact="facadd" aria-label="공장 더하기">＋</button></dd>
+      <dt>상태</dt><dd class="wl-chips sm">${[...new Set([...OST, ...st])].map(x => chip('st', x, x, st.includes(x))).join('')}</dd></dl>
+    <div class="wl-cols">${vis.map(s => secHtml(s, c)).join('') || '<button type="button" class="wl-addsec" data-act="addfirst">＋ 상품 · 수량 적기</button>'}</div>
+    <p class="wl-meta">${p.ub && p.ub !== 'notion' ? E(p.ub) + ' · ' : ''}${p.ua ? `${md(ymd(new Date(p.ua)))} ${hm(p.ua)} 수정` : ''}${p.origin === 'notion' ? ' · 노션에서 옮김' : ''}</p>`;
+}
+function openOrd(id){
+  if(!S.pages.has(id)) return;
+  flushSoon(); S.cur = id; S.sel = null; S.fresh.clear(); S.split.delete(id);
+  renderOrd(); renderPage();
+}
+function ordField(t){
+  const k = t.dataset.om;
+  if(k === 'lst'){ const p = S.pages.get(t.dataset.opid); if(!p) return; ordSet(p, {st:t.value ? [t.value] : []}); renderBoard(); if(S.cur === p.id) renderPage(); t.blur(); renderOrd(); return; }
+  const p = cur(); if(!p || p.kind !== 'order') return;
+  if(k === 'day' && t.value){ ordMove(p, t.value); S.oMonth = p.day.slice(0, 7); const i = document.getElementById('wlTitle'); if(i) i.value = p.title; }
+  if(k === 'end') ordSet(p, {end:t.value && t.value > p.day ? t.value : ''});
+  renderOrd(); renderBoard();
+}
+function newOrder(at, day){
+  const facs = facList().map(x => x[0]);
+  pop(at, `<label>날짜<input type="date" data-k="day" value="${day || S.today}"></label><div class="wl-pl">종류</div><div class="wl-chips sm" data-f="ok">${Object.entries(OKN).map(([k, t]) => `<button type="button" data-v="${k}" class="${k === 'in' ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div class="wl-pl">공장</div><div class="wl-chips sm" data-f="fac">${facs.map(f => `<button type="button" data-v="${E(f)}">${E(f)}</button>`).join('')}</div><input type="text" data-k="fac" maxlength="40" placeholder="새 공장이면 적기"><div class="wl-pf"><span class="wl-sp"></span><button type="button" class="wl-btn" data-x="no">닫기</button><button type="button" class="wl-btn pri" data-x="ok">만들기</button></div>`, 'form', (e, box, close) => {
+    const c = e.target.closest('.wl-chips button');
+    if(c){ if(c.parentNode.dataset.f === 'ok') $$('button', c.parentNode).forEach(b => b.classList.toggle('on', b === c)); else c.classList.toggle('on'); return; }
+    const x = e.target.closest('[data-x]'); if(!x) return;
+    if(x.dataset.x === 'no') return close();
+    const d = $('[data-k="day"]', box).value || S.today, ok = ($('[data-f="ok"] .on', box) || {dataset:{v:'in'}}).dataset.v, nf = $('[data-k="fac"]', box).value.trim(), fac = [...new Set([...$$('[data-f="fac"] .on', box).map(b => b.dataset.v), ...(nf ? [nf] : [])])];
+    close();
+    const name = {po:'발주', in:'입고예정', sreq:'샘플요청', sin:'샘플입고예정', ship:'발송예정', etc:''}[ok], title = `${d.slice(5, 7)}${d.slice(8)} ${name}`.trim(), b = nb(), meta = {ok};
+    if(fac.length) meta.fac = fac;
+    if(['po', 'in', 'sin'].includes(ok)) meta.st = ['미입고'];
+    const p = {id:uuid(), day:d, title, kind:'order', meta, blocks:[b], ver:0, _bv:0, n:0, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()};
+    S.pages.set(p.id, p); S.dirty.set(p.id, {base:0, bb:[], bm:{title, day:d, kind:'order', meta:clone(meta)}, seq:1, isNew:true});
+    persistDirty(); saveTag('saving'); scheduleSave(60);
+    S.oMonth = d.slice(0, 7); S.cur = p.id; S.fresh.clear(); S.fresh.add(b.id);
+    renderOrd(); renderPage(); renderBoard(); focusB(b.id);
+  });
+}
+function onOrdClick(e){
+  const t = e.target, q = s => t.closest(s);
+  let a;
+  if((a = q('[data-omode]'))){ S.oMode = a.dataset.omode; saveUi(); renderOrd(); return true; }
+  if((a = q('[data-omon]'))){ S.oMonth = ymd(new Date(+S.oMonth.slice(0, 4), +S.oMonth.slice(5, 7) - 1 + +a.dataset.omon, 1)).slice(0, 7); renderOrd(); return true; }
+  if((a = q('[data-okind]'))){ S.oKind = S.oKind === a.dataset.okind ? '' : a.dataset.okind; renderOrd(); return true; }
+  if((a = q('[data-ofac]'))){ S.oFac = S.oFac === a.dataset.ofac ? '' : a.dataset.ofac; renderOrd(); return true; }
+  if((a = q('[data-oset]'))){
+    const p = cur(); if(!p) return true;
+    const k = a.dataset.oset, v = a.dataset.v;
+    if(k === 'ok') ordSet(p, {ok:v});
+    if(k === 'st') ordSet(p, {st:oSt(p).includes(v) ? oSt(p).filter(x => x !== v) : [v]});
+    if(k === 'fac') ordSet(p, {fac:oFac(p).includes(v) ? oFac(p).filter(x => x !== v) : [...oFac(p), v]});
+    renderPage(); renderOrd(); renderBoard(); return true;
+  }
+  if((a = q('[data-oact]'))){
+    const k = a.dataset.oact;
+    if(k === 'wait'){ S.oWait = !S.oWait; renderOrd(); }
+    if(k === 'now'){ S.oMonth = S.today.slice(0, 7); renderOrd(); }
+    if(k === 'new') newOrder(a, S.oMonth === S.today.slice(0, 7) ? S.today : S.oMonth + '-01');
+    if(k === 'close'){ flushSoon(); S.cur = null; const pg = document.getElementById('wlPage'); if(pg) pg.innerHTML = ''; renderOrd(); }
+    if(k === 'facadd'){ const v = (prompt('공장 · 업체 이름') || '').trim().slice(0, 40), p = cur(); if(v && p){ ordSet(p, {fac:[...new Set([...oFac(p), v])]}); renderPage(); renderOrd(); } }
+    return true;
+  }
+  if((a = q('[data-oid]'))){ if(!q('select')) openOrd(a.dataset.oid); return true; }
+  if((a = q('[data-oday]'))){ newOrder(a, a.dataset.oday); return true; }
+  return false;
+}
+
+/* ============================================================ 입고 · 발송 자동 확인 ============================================================
+   업무일지의 발주 줄([업체] MMDD_상품 200ea)을 콰이디에어 발주(맥미니 /erp/po-match)와 재고 ERP 코페리(erp_rows 발주일 칸)에 맞춰 지금 어디까지 왔는지 적는다.
+   읽기만 — 재고 · 발주일은 절대 건드리지 않는다 (자동 입고 금지, 2026-11-23 사장님) */
+const inb = {at:0, busy:null, err:'', po:null, rows:null};
+const INB_P = [['2way', /투웨이|2\s*-?\s*way|2\s*웨이/], ['puppy', /퍼피|퍼퍼|puppy/], ['cordu', /코듀|cordu/], ['dot', /도트|dot/], ['firstq', /퍼스트\s*큐|퍼큐|first[\s-]*q/], ['cobal', /코발트니|코발티니|cobaltin/], ['bunny', /버니|bunny/], ['mori', /모리|mori/], ['you', /\byou\b|y\.\s*o\.\s*u/], ['strap', /스트랩|strap/], ['belt', /벨트|belt/], ['keyring', /키링|key\s*ring/], ['dump', /덤핑|dumping/], ['mush', /머쉬|mush/], ['luna', /루나|luna/], ['star', /스타|star/], ['backpack', /백팩|backpack/], ['nylon', /나일론|nylon/], ['shirring', /셔링|shirring/], ['vinta', /빈타|vinta/], ['buk', /버클리|buk?ley|buckl/], ['hobo', /보부|호보|hobo/], ['pouch', /파우치|pouch/], ['beanie', /비니|beanie/], ['cushion', /쿠션|cushion/], ['leopard', /호피|leopard/], ['air', /에어|air\b/], ['ribbon', /리본|ribbon/]];
+const INB_C = [['black', /블랙|black|\(b\)|\(bl\)/], ['white', /화이트|white|\(w\)/], ['brown', /브라운|brown|\(br\)/], ['gray', /그레이|gr[ae]y/], ['charcoal', /차콜|charcoal/], ['beige', /베이지|beige/], ['ivory', /아이보리|ivory/], ['mint', /민트|mint/], ['lime', /라임|lime/], ['silver', /실버|silver/], ['teal', /틸|팁\s*블루|teal/], ['blue', /블루|blue/], ['olive', /올리브|olive/], ['green', /그린|green/], ['red', /레드|\bred\b/], ['pink', /핑크|pink/], ['navy', /네이비|navy/], ['matte', /무광/], ['gloss', /유광/]];
+const inbKey = s => { const t = String(s || '').toLowerCase(), f = L => new Set(L.filter(x => x[1].test(t)).map(x => x[0])); return {p:f(INB_P), c:f(INB_C)}; };
+const setEq = (a, b) => a.size === b.size && [...a].every(x => b.has(x));
+async function inbLoad(force){
+  if(inb.busy) return inb.busy;
+  if(!force && inb.po && Date.now() - inb.at < 5 * 60000) return true;
+  inb.busy = (async () => {
+    try{
+      const base = await loadProxyBase(); if(!base) throw new Error('서버에 연결하지 못했어요');
+      const r = await fetch(`${base}/erp/po-match?cb=${Date.now()}`, {headers:{'X-Brightbeed-PIN':ghPin()}, cache:'no-cache'}), j = r.ok ? await r.json() : null;
+      if(!j || !Array.isArray(j.items)) throw new Error('콰이디에어 자료를 못 받았어요');
+      const gid = j.brands && j.brands.kop && j.brands.kop.gid; if(!gid) throw new Error('ERP 탭을 못 찾았어요');
+      const q = await fetch(`${SUPABASE_URL}/rest/v1/erp_rows?select=r,v&gid=eq.${encodeURIComponent(gid)}&deleted_at=is.null&order=r.asc&limit=1000`, {headers:_sbHeaders(), cache:'no-cache'}), rows = q.ok ? await q.json() : null;
+      if(!Array.isArray(rows) || rows.length < 10) throw new Error('ERP 를 못 읽었어요');
+      inb.po = j.items.filter(x => x.b === 'kop'); inb.kd = j.fetchedAt || 0;
+      inb.rows = rows.filter(x => Array.isArray(x.v) && String(x.v[1] || '').trim() && !/B\s*급|^지난|중복/.test(`${x.v[0] || ''} ${x.v[1]}`)).map(x => ({r:x.r, name:String(x.v[1]).trim(), opt:String(x.v[2] || '').trim(), l:x.v[11], n:String(x.v[13] || ''), k:inbKey(`${x.v[1]} ${x.v[2] || ''}`)}));
+      inb.at = Date.now(); inb.err = ''; inb.memo = new Map();
+      return true;
+    }catch(e){ inb.err = String(e && e.message || e); return false; }
+    finally{ inb.busy = null; }
+  })();
+  return inb.busy;
+}
+const inbShip = m => { const s = String(m || ''), a = [...s.matchAll(/(LCL|FCL|항공우편|항공|해운|우체국|준광(?:사업자)?|특송)?\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(LCL|준광(?:사업자)?|항공|우체국)?/gi)].pop(); return a ? `${a[2]}/${a[3]}${a[1] || a[4] ? ' ' + (a[1] || a[4]).toUpperCase() : ''}` : ''; };
+/* 발주 줄 하나 → {t 적을 말, k: in 들어옴 · ship 출고 · wh 창고 · make 제작 · ask 확인} */
+function inbOf(o){
+  if(!inb.rows) return null;
+  const key = `${o.day}|${o.name}`;
+  if(inb.memo.has(key)) return inb.memo.get(key);
+  const k = inbKey(o.name); let best = null, bs = 0;
+  if(k.p.size) inb.rows.forEach(x => {
+    if(![...k.p].every(v => x.k.p.has(v))) return;
+    const hit = [...k.c].filter(v => x.k.c.has(v)).length, miss = [...k.c].length - hit;
+    if(k.c.size && !hit) return;
+    const s = 10 - (x.k.p.size - k.p.size) * 3 + hit * 2 - miss * 2 - (x.k.c.size - hit) * .7;
+    if(s > bs){ bs = s; best = x; }
+  });
+  let out;
+  if(!best || bs < 8) out = {k:'ask', t:'ERP 에서 못 찾음'};
+  else{
+    const kd = inb.po.filter(i => i.row === best.r && o.day && dayDiff(i.date, o.day) >= -12 && dayDiff(i.date, o.day) <= 20).sort((a, b) => Math.abs(dayDiff(a.date, o.day)) - Math.abs(dayDiff(b.date, o.day)))[0];
+    const recv = kd && kd.recv && kd.recv.done ? kd.recv.at : '';
+    const nd = (best.n.match(/(20\d\d)[.\-](\d{1,2})[.\-](\d{1,2})/g) || []).map(x => x.replace(/\./g, '-').split('-').map((v, i) => i ? v.padStart(2, '0') : v).join('-')).find(x => o.day && Math.abs(dayDiff(x, o.day)) <= 20);
+    if(recv) out = {k:'in', t:`들어옴 ${md(ymd(new Date(recv)))}`};
+    else if(kd && kd.state === 'received') out = {k:'in', t:'들어옴'};
+    else if(kd && kd.status === '취소') out = {k:'ask', t:'콰이디 취소'};
+    else if(kd && /출고/.test(kd.status)) out = {k:'ship', t:`중국 출고 ${inbShip(kd.memo)}`.trim()};
+    else if(kd && kd.status === '전체입고') out = {k:'wh', t:'중국 창고 도착 · 출고 전'};
+    else if(kd && kd.status === '부분입고') out = {k:'wh', t:'중국 창고 일부 도착'};
+    else if(kd) out = {k:'make', t:'제작 중'};
+    else if(nd) out = {k:'make', t:`아직 안 들어옴 (ERP 발주 ${md(nd)})`};
+    else out = {k:'ask', t:'ERP 발주일 없음 — 들어왔는지 확인'};
+    out.row = best;
+  }
+  inb.memo.set(key, out);
+  return out;
+}
+/* 자동 체크 루틴 (rule.auto = 'in') — 오늘 할 날이고 아직 체크 기록이 없으면, 자료를 다 읽은 뒤 체크한다. 사람이 푼 날은 다시 안 건드림 */
+async function autoRoutines(){
+  const todo = routines().filter(it => (it.rule || {}).auto === 'in').map(it => [it, state(it)]).filter(([it, s]) => s.on && s.day && !S.checks.has(ckKey(it.id, s.day)));
+  if(!todo.length) return;
+  if(!await inbLoad(false)) return;
+  for(const [it, s] of todo){ try{ const j = await rpc('dlog_check', {p_item:it.id, p_day:s.day, p_on:true, p_who:'자동 확인'}); if(j && j.check) S.checks.set(ckKey(it.id, s.day), j.check); }catch(e){} }
+}
+async function inbTick(force){
+  const ok = await inbLoad(force);
+  if(ok) await autoRoutines();
+  if(S.ptr || editing()){ S.boardDefer = true; return; }
+  renderBoard(); if(S.view === 'page' && !S.find) renderSide();
+}
+function inbSum(){
+  const p = dailies()[0]; if(!p || !p.blocks || !inb.rows) return '';
+  const os = ordersOf(p).orders.filter(o => !o.done); if(!os.length) return '기다리는 발주 없음';
+  const c = {}; os.forEach(o => { const x = inbOf(o); if(x) c[x.k] = (c[x.k] || 0) + 1; });
+  return [`${os.length}건 확인`, c.in && `들어옴 ${c.in}`, c.ship && `출고 ${c.ship}`, c.wh && `중국 창고 ${c.wh}`, c.make && `아직 ${c.make}`, c.ask && `볼 것 ${c.ask}`].filter(Boolean).join(' · ');
+}
+
 /* ============================================================ 전광판 ============================================================ */
+/* 오늘 업무 — 전광판 맨 앞 (2026-11-23 사장님 "오늘 업무가 제일 중요해. 그걸 먼저 보여줘") */
+const SIDE_SEC = ['goalM', 'goalW', 'daily', 'tomorrow', 'hold'];
+function todayItems(p){
+  const out = [];
+  secOrder(p, sections(p.blocks)).filter(x => !SIDE_SEC.includes(x.type)).forEach(x => {
+    const its = x.items.filter(b => !isEmpty(b) && !b.src), base = Math.min(...its.map(b => b.lv || 0), 9);
+    its.filter(b => (b.lv || 0) === base).forEach(b => out.push({b, head:x.head ? bText(x.head) : '', type:x.type}));
+  });
+  return out;
+}
+const todayPage = () => dailies().find(x => x.day <= S.today && x.blocks) || null;
+const todayLeft = () => { const p = todayPage(); return p && p.day === S.today ? todayItems(p).filter(x => !x.b.k).length : 0; };
+function todayWork(){
+  const p = todayPage(); if(!p) return '';
+  const is = p.day === S.today, all = todayItems(p), left = all.filter(x => !x.b.k), done = all.filter(x => x.b.k), shown = S.twAll ? left.concat(done) : left.slice(0, 12), age = ageMap(p);
+  let h = '', last = null;
+  shown.forEach(x => {
+    if(x.head !== last && !x.b.k){ last = x.head; if(x.head) h += `<h5>${E(x.head)}</h5>`; }
+    const st = stOf(x.b, x.type), d0 = age.get(x.b.id), dd = d0 && !x.b.k ? dayDiff(p.day, d0) : 0;
+    h += `<div class="wl-r wk${x.b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-bact="wdone" data-pid="${p.id}" data-lid="${x.b.id}" aria-pressed="${!!x.b.k}" aria-label="끝냄" title="끝났으면 누르기"></button><button type="button" class="wl-rt" data-go="${x.b.id}" data-pid="${p.id}"><span>${E(bText(x.b))}</span></button><span class="wl-rm">${[dd >= 13 ? `<b class="bad">${dd + 1}일째</b>` : '', st && st !== 'done' ? (st === 'chk' ? `<b>${STS[st]}</b>` : STS[st]) : ''].filter(Boolean).join(' ')}</span></div>`;
+  });
+  const more = left.length + done.length - shown.length;
+  return `<section class="wl-tw"><h4>${is ? '오늘 업무' : `${md(p.day)} 업무일지에서 남은 일`} <small>${is ? `${done.length}/${all.length}` : left.length}</small></h4>${!is && !isOff(S.today) ? '<button type="button" class="wl-go" data-bact="wstart">오늘 업무일지 시작 — 남은 일 이어받기</button>' : ''}${h || '<p class="wl-bz">적힌 일이 없어요</p>'}${more > 0 || S.twAll ? `<button type="button" class="wl-off1" data-bact="wmore">${S.twAll ? '접기' : `외 ${more}개${done.length ? ` (끝낸 일 ${done.length})` : ''} 더 보기`}</button>` : ''}${is ? `<form class="wl-ba" data-add="today"><input type="text" maxlength="300" placeholder="＋ 오늘 할 일 — 적고 Enter" aria-label="오늘 할 일 더하기"></form>` : ''}</section>`;
+}
+function doneIn(p, id){
+  const i = idx(p, id); if(i < 0) return;
+  beforeEdit(p); if(S.cur === p.id) mark(p);
+  const bs = p.blocks, on = !bs[i].k, z = subEnd(bs, i);
+  for(let j = i; j < z; j++){ if(on) bs[j].k = 1; else delete bs[j].k; if(bs[j].st === 'done') delete bs[j].st; }
+  touch(p); renderBoard(); if(S.cur === p.id && S.view === 'page' && !S.find) renderPage();
+}
+function addToday(t){
+  const p = todayPage(); if(!p || p.day !== S.today) return;
+  beforeEdit(p); if(S.cur === p.id) mark(p);
+  const bs = p.blocks, n = nb({r:T(t)}); let h = bs.findIndex(b => isHead(b) && secType(b) === 'today');
+  if(h < 0){ bs.unshift(nb({t:'h3', r:T('오늘 할 일')}), n); if(bs[2] && !isHead(bs[2]) && bs[2].t !== 'hr') bs.splice(2, 0, nb({t:'hr'})); }
+  else{ let z = h + 1; while(z < bs.length && !isHead(bs[z]) && bs[z].t !== 'hr') z++; while(z > h + 1 && isEmpty(bs[z - 1])) bs.splice(--z, 1); bs.splice(z, 0, n); }
+  S.split.delete(p.id); touch(p); renderBoard(); if(S.cur === p.id && S.view === 'page' && !S.find) renderPage();
+}
 const routines = () => [...S.board.values()].filter(b => b.kind === 'routine').sort((a, b) => (b.hot - a.hot) || a.sort - b.sort);
 const pins = () => [...S.board.values()].filter(b => b.kind === 'pin' && !b.done_at).sort((a, b) => (b.hot - a.hot) || (a.due || '9999').localeCompare(b.due || '9999') || a.sort - b.sort);
 const nextWork = s => { let d = s; for(let i = 0; i < 14 && isOff(d); i++) d = addD(d, 1); return d; };
@@ -958,12 +1234,8 @@ function state(it){
 const ruleText = r => { r = r || {}; if(r.t === 'day') return r.we ? '매일' : '평일 매일'; if(r.t === 'week') return (r.wd || []).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(x => WK[x]).join('·') + '요일'; if(r.t === 'month') return '매월 ' + (r.dm || []).map(x => x === 'L' ? '말일' : x + '일').join(' · '); if(r.t === 'date') return r.d ? `${md(r.d)} 한 번` : '한 번'; return ''; };
 const dots = it => { const a = []; let d = addD(S.today, -1); for(let k = 0; k < 60 && a.length < 5; k++){ if(d < (it.start_on || '')) break; if(isDue(it, d)) a.unshift(checked(it, d)); d = addD(d, -1); } return a.length ? `<span class="wl-ds" title="지난 ${a.length}번 — ● 했음 ○ 안 함">${a.map(x => `<i class="${x ? 'on' : ''}"></i>`).join('')}</span>` : ''; };
 const dday = s => { const n = dayDiff(s, S.today); return n === 0 ? '<b class="dd now">오늘</b>' : n > 0 ? `<b class="dd${n <= 3 ? ' near' : ''}">D-${n}</b>` : `<b class="dd bad">${-n}일 지남</b>`; };
-function goals(){
-  const p = dailies().find(x => x.blocks && x.day <= S.today) || null; if(!p) return null;
-  const g = t => { const s = sections(p.blocks).find(x => x.type === t); return s ? s.items.filter(b => !isEmpty(b)) : []; };
-  return {p, m:g('goalM'), w:g('goalW')};
-}
 function leftToday(){ return routines().map(it => [it, state(it)]).filter(([, s]) => s.on && !s.done); }
+const autoBy = (it, s) => { const c = S.checks.get(ckKey(it.id, s.day)); return c && c.done && c.who === '자동 확인' ? c.at : ''; };
 function renderBoard(){
   const el = document.getElementById('wlBoard'); if(!el) return;
   const ae = document.activeElement;
@@ -972,17 +1244,15 @@ function renderBoard(){
   el.hidden = false;
   const rs = routines().map(it => [it, state(it)]), on = rs.filter(([, s]) => s.on), off = rs.filter(([, s]) => !s.on), done = on.filter(([, s]) => s.done).length, left = on.length - done;
   const late17 = new Date().getHours() >= 17;
-  const ps = pins(), g = goals();
+  const ps = pins(), tw = todayWork(), tp = todayPage(), wl = todayLeft();
   const ctl = id => `<span class="wl-bc"><button type="button" data-bact="edit" data-bid="${id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="del" data-bid="${id}" title="지우기" aria-label="지우기">×</button></span>`;
-  const rRow = ([it, s]) => `<div class="wl-r${s.done ? ' done' : ''}${s.late || (!s.done && late17) ? ' late' : ''}${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="check" data-bid="${it.id}" data-day="${s.day}" aria-pressed="${s.done}" aria-label="${E(it.title)} 체크"></button><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span>${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${s.late ? `<b class="bad">${md(s.day)}(${WK[dow(s.day)]}) 것 밀림</b>` : E([it.slot, (it.rule || {}).t === 'day' ? '' : ruleText(it.rule)].filter(Boolean).join(' · '))}</span>${dots(it)}${ctl(it.id)}</div>`;
+  const rRow = ([it, s]) => `<div class="wl-r${s.done ? ' done' : ''}${s.late || (!s.done && late17) ? ' late' : ''}${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="check" data-bid="${it.id}" data-day="${s.day}" aria-pressed="${s.done}" aria-label="${E(it.title)} 체크"></button><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span>${(it.rule || {}).auto === 'in' ? `<small>${E(inb.rows ? inbSum() : inb.err ? '콰이디에어 · ERP 를 못 읽었어요 — ' + inb.err : '콰이디에어 · ERP 확인 중…')}</small>` : ''}${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${s.done && autoBy(it, s) ? `자동 확인 ${hm(autoBy(it, s))}` : s.late ? `<b class="bad">${md(s.day)}(${WK[dow(s.day)]}) 것 밀림</b>` : E([it.slot, (it.rule || {}).t === 'day' ? '' : ruleText(it.rule)].filter(Boolean).join(' · '))}</span>${dots(it)}${ctl(it.id)}</div>`;
   const pRow = it => `<div class="wl-r pin${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="pindone" data-bid="${it.id}" aria-label="${E(it.title)} 끝냄" title="끝났으면 누르기"></button><button type="button" class="wl-rt" data-bact="${it.link && it.link.page ? 'golink' : 'edit'}" data-bid="${it.id}"><span>${E(it.title)}</span>${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${it.due ? dday(it.due) + ' ' + md(it.due) : ''}</span>${ctl(it.id)}</div>`;
-  const gRow = (b, p) => `<div class="wl-r goal${b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-gdone="${b.id}" data-pid="${p.id}" aria-label="목표 달성"></button><button type="button" class="wl-rt" data-go="${b.id}" data-pid="${p.id}"><span>${E(bText(b))}</span></button></div>`;
   const add = (k, ph) => `<form class="wl-ba" data-add="${k}"><input type="text" maxlength="200" placeholder="${ph}" aria-label="${ph}"></form>`;
   el.className = 'wl-board' + (S.boardFold ? ' is-fold' : '');
-  el.innerHTML = `<div class="wl-bh"><b>전광판</b><span class="wl-bd">${+S.today.slice(5, 7)}월 ${+S.today.slice(8)}일 ${WK[dow(S.today)]}요일</span><span class="wl-bn${left ? '' : ' ok'}">${on.length ? (left ? `오늘 루틴 <b>${left}</b>개 남음` : '오늘 루틴 다 했어요') : '오늘 루틴 없음'}</span><span class="wl-sp"></span><button type="button" class="wl-bb" data-bact="tolog">업무일지로 ↓</button><button type="button" class="wl-bb" data-bact="fold">${S.boardFold ? '펼치기' : '접기'}</button></div>
-    <div class="wl-bg"><section><h4>오늘 루틴 <small>${done}/${on.length}</small></h4>${on.map(rRow).join('') || '<p class="wl-bz">오늘 챙길 루틴이 없어요</p>'}${off.length ? `<details class="wl-off"${S.offOpen ? ' open' : ''}><summary>다른 날 루틴 ${off.length}</summary>${off.map(([it, s]) => `<div class="wl-r dim" data-bid="${it.id}"><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span></button><span class="wl-rm">${E(ruleText(it.rule))}${s.next ? ` · 다음 ${md(s.next)}(${WK[dow(s.next)]})` : ''}</span>${ctl(it.id)}</div>`).join('')}</details>` : ''}${add('routine', '＋ 루틴 — 적고 Enter')}</section>
-      <section><h4>꼭 챙길 것 <small>${ps.length || ''}</small></h4>${ps.map(pRow).join('') || '<p class="wl-bz">업무일지 줄 메뉴(⠿)에서 ‘전광판에 올리기’ 를 누르거나 아래에 적어요</p>'}${add('pin', '＋ 고정할 것 — 적고 Enter')}</section>
-      <section><h4>목표${g ? ` <small>${md(g.p.day)} 업무일지</small>` : ''}</h4>${g && g.w.length ? `<h5>이번 주</h5>${g.w.map(b => gRow(b, g.p)).join('')}` : ''}${g && g.m.length ? `<h5>이번 달</h5>${g.m.map(b => gRow(b, g.p)).join('')}` : ''}${!g || (!g.w.length && !g.m.length) ? '<p class="wl-bz">업무일지 ‘월간목표’ · ‘주간목표’ 가 여기 보여요</p>' : ''}</section></div>`;
+  el.innerHTML = `<div class="wl-bh"><b>전광판</b><span class="wl-bd">${+S.today.slice(5, 7)}월 ${+S.today.slice(8)}일 ${WK[dow(S.today)]}요일</span><span class="wl-bn${left || wl ? '' : ' ok'}">${wl ? `오늘 업무 <b>${wl}</b>` : tp && tp.day === S.today ? '오늘 업무 끝' : ''}${left ? `${wl ? ' · ' : ' '}루틴 <b>${left}</b>` : ''}${left || wl ? ' 남음' : ''}</span><span class="wl-sp"></span><button type="button" class="wl-bb" data-bact="tolog">업무일지로 ↓</button><button type="button" class="wl-bb" data-bact="fold">${S.boardFold ? '펼치기' : '접기'}</button></div>
+    <div class="wl-bg">${tw}<section><h4>오늘 루틴 <small>${done}/${on.length}</small></h4>${on.map(rRow).join('') || '<p class="wl-bz">오늘 챙길 루틴이 없어요</p>'}${off.length ? `<details class="wl-off"${S.offOpen ? ' open' : ''}><summary>다른 날 루틴 ${off.length}</summary>${off.map(([it, s]) => `<div class="wl-r dim" data-bid="${it.id}"><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span></button><span class="wl-rm">${E(ruleText(it.rule))}${s.next ? ` · 다음 ${md(s.next)}(${WK[dow(s.next)]})` : ''}</span>${ctl(it.id)}</div>`).join('')}</details>` : ''}${add('routine', '＋ 루틴 — 적고 Enter')}</section>
+      <section><h4>꼭 챙길 것 <small>${ps.length || ''}</small></h4>${ps.map(pRow).join('') || '<p class="wl-bz">업무일지 줄 메뉴(⠿)에서 ‘전광판에 올리기’ 를 누르거나 아래에 적어요</p>'}${add('pin', '＋ 고정할 것 — 적고 Enter')}</section></div>`;
   renderStrip(); badge(left);
 }
 /* 아래로 내리면 맨 위에 붙는 한 줄 */
@@ -992,7 +1262,8 @@ function renderStrip(){
   if(!host) return;
   if(!el){ el = document.createElement('div'); el.id = 'wlStrip'; el.className = 'wl-strip'; el.hidden = true; host.appendChild(el); el.addEventListener('click', onBoardClick); }
   const lt = leftToday(), ps = pins().filter(p => p.hot || (p.due && dayDiff(p.due, S.today) <= 3)).slice(0, 4);
-  el.innerHTML = `<div><b>${lt.length ? `오늘 루틴 ${lt.length}개 남음` : '오늘 루틴 다 했어요'}</b><span class="wl-sx">${lt.map(([it, s]) => `<button type="button" class="wl-s1" data-bact="check" data-bid="${it.id}" data-day="${s.day}" title="했으면 누르기"><i></i>${E(it.title)}</button>`).join('')}${ps.map(p => `<span class="wl-s2">📌 ${E(p.title)} ${p.due ? dday(p.due) : ''}</span>`).join('')}</span><button type="button" class="wl-bb" data-bact="tolog">업무일지로</button><button type="button" class="wl-bb" data-bact="totop">전광판</button></div>`;
+  const wn = todayLeft(), tp = todayPage(), wt = wn ? `오늘 업무 ${wn}` : tp && tp.day === S.today ? '오늘 업무 끝' : '';
+  el.innerHTML = `<div><b>${[wt, lt.length ? `루틴 ${lt.length}` : wt ? '' : '오늘 루틴 다 했어요'].filter(Boolean).join(' · ')}</b><span class="wl-sx">${lt.map(([it, s]) => `<button type="button" class="wl-s1" data-bact="check" data-bid="${it.id}" data-day="${s.day}" title="했으면 누르기"><i></i>${E(it.title)}</button>`).join('')}${ps.map(p => `<span class="wl-s2">📌 ${E(p.title)} ${p.due ? dday(p.due) : ''}</span>`).join('')}</span><button type="button" class="wl-bb" data-bact="tolog">업무일지로</button><button type="button" class="wl-bb" data-bact="totop">전광판</button></div>`;
   stripSync();
 }
 function stripSync(){
@@ -1009,7 +1280,6 @@ function stripSync(){
 }
 function badge(n){
   try{
-    if(document.documentElement.classList.contains('solo-design')){ const base = document.title.replace(/^\(\d+\)\s*/, ''); document.title = n ? `(${n}) ${base}` : base; }
     const b = document.getElementById('designBtn');
     // 2026-11-23 사장님 "디자인팀탭에 오늘 루틴 2 안뜨게해줘" — 홈 '디자인팀' 카드 배지는 안 붙인다(남아 있으면 지움)
     if(b){ const x = b.querySelector('.wl-home'); if(x) x.remove(); }
@@ -1053,7 +1323,7 @@ function boardEdit(id, at){
       <div class="wl-chips sm" data-f="wd"${r.t === 'week' ? '' : ' hidden'}>${[1, 2, 3, 4, 5, 6, 0].map(w => `<button type="button" data-v="${w}" class="${(r.wd || []).includes(w) ? 'on' : ''}">${WK[w]}</button>`).join('')}</div>
       <div data-f="dm"${r.t === 'month' ? '' : ' hidden'}><input type="text" data-k="dm" value="${E((r.dm || []).map(x => x === 'L' ? '말일' : x).join(', '))}" placeholder="예: 1, 15, 말일"></div>
       <div data-f="d"${r.t === 'date' ? '' : ' hidden'}><input type="date" data-k="d" value="${E(r.d || '')}"></div>
-      <div class="wl-pl">시간대 <small>(안 적어도 돼요)</small></div><div class="wl-chips sm" data-f="slot">${['출근 직후', '오전', '점심 후', '오후', '퇴근 전'].map(t => `<button type="button" data-v="${t}" class="${it.slot === t ? 'on' : ''}">${t}</button>`).join('')}</div><input type="text" data-k="slot" maxlength="40" value="${E(it.slot)}" placeholder="직접 적기 (예: 3시)">`
+      <div class="wl-pl">저절로 체크</div><div class="wl-chips sm" data-f="auto"><button type="button" data-v="" class="${r.auto ? '' : 'on'}">안 함</button><button type="button" data-v="in" class="${r.auto === 'in' ? 'on' : ''}">입고 · 발송 확인 (콰이디에어 · ERP)</button></div><div class="wl-pl">시간대 <small>(안 적어도 돼요)</small></div><div class="wl-chips sm" data-f="slot">${['출근 직후', '오전', '점심 후', '오후', '퇴근 전'].map(t => `<button type="button" data-v="${t}" class="${it.slot === t ? 'on' : ''}">${t}</button>`).join('')}</div><input type="text" data-k="slot" maxlength="40" value="${E(it.slot)}" placeholder="직접 적기 (예: 3시)">`
     : `<label>날짜 <small>(있으면 D-day 로 보여요)</small><input type="date" data-k="due" value="${E(it.due || '')}"></label>`}
     <label>메모<textarea data-k="memo" rows="2" maxlength="2000" placeholder="안 적어도 돼요">${E(it.memo)}</textarea></label>
     <label class="wl-hot"><input type="checkbox" data-k="hot"${it.hot ? ' checked' : ''}> 중요 — 맨 위에 굵게</label>
@@ -1063,6 +1333,7 @@ function boardEdit(id, at){
     if(c){
       const f = c.parentNode.dataset.f;
       if(f === 'wd') c.classList.toggle('on');
+      else if(f === 'auto') $$('button', c.parentNode).forEach(b => b.classList.toggle('on', b === c));
       else if(f === 'slot'){ const on = !c.classList.contains('on'); $$('button', c.parentNode).forEach(b => b.classList.remove('on')); c.classList.toggle('on', on); $('[data-k="slot"]', box).value = on ? c.dataset.v : ''; }
       else{ $$('button', c.parentNode).forEach(b => b.classList.toggle('on', b === c)); ['wd', 'dm', 'd'].forEach(k => { const x = $(`[data-f="${k}"]`, box); if(x) x.hidden = {week:'wd', month:'dm', date:'d'}[c.dataset.v] !== k; }); }
       return;
@@ -1078,9 +1349,10 @@ function boardEdit(id, at){
       if(t === 'week'){ rule.wd = $$('[data-f="wd"] .on', box).map(b => +b.dataset.v); if(!rule.wd.length){ say('요일을 하나 이상 골라 주세요', 'err'); return; } }
       if(t === 'month'){ rule.dm = $('[data-k="dm"]', box).value.split(/[,\s]+/).map(s => /말/.test(s) ? 'L' : parseInt(s, 10)).filter(v => v === 'L' || (v >= 1 && v <= 31)); if(!rule.dm.length){ say('며칠인지 적어 주세요 (예: 1, 15, 말일)', 'err'); return; } }
       if(t === 'date'){ rule.d = $('[data-k="d"]', box).value; if(!rule.d){ say('날짜를 골라 주세요', 'err'); return; } }
+      { const au = ($('[data-f="auto"] .on', box) || {dataset:{v:''}}).dataset.v; if(au) rule.auto = au; }
       patch.rule = rule; patch.slot = $('[data-k="slot"]', box).value.trim();
     }else patch.due = $('[data-k="due"]', box).value || '';
-    close(); boardSave(id, patch);
+    close(); boardSave(id, patch).then(() => { if(isR && patch.rule.auto) inbTick(true); });
   });
 }
 function onBoardClick(e){
@@ -1092,15 +1364,18 @@ function onBoardClick(e){
     if(k === 'edit') return boardEdit(id, a);
     if(k === 'del') return boardDel(id);
     if(k === 'fold'){ S.boardFold = !S.boardFold; saveUi(); return renderBoard(); }
-    if(k === 'tolog'){ const w = document.getElementById('wl'); if(w){ showCenter(); setTimeout(() => { const v = document.getElementById('viewDesign'), off = parseFloat(getComputedStyle(v).getPropertyValue('--wlb')) || 44, tb = $('.topbar'); scrollTo({top:w.getBoundingClientRect().top + scrollY - Math.max(44, off) - (tb ? tb.offsetHeight : 0) - 10, behavior:'smooth'}); }, 30); } return; }
+    if(k === 'tolog'){ showCenter(); return toLog(); }
     if(k === 'totop') return scrollTo({top:0, behavior:'smooth'});
+    if(k === 'wdone'){ const p = S.pages.get(a.dataset.pid); if(p) doneIn(p, a.dataset.lid); return; }
+    if(k === 'wstart'){ showCenter(); poll().then(() => newPage('daily', S.today)).then(() => toLog()); return; }
+    if(k === 'wmore'){ S.twAll = !S.twAll; return renderBoard(); }
     if(k === 'golink'){ const it = S.board.get(id), p = it && it.link && S.pages.get(it.link.page); if(!p) return boardEdit(id, a); const tgt = dailies().find(x => x.blocks && x.blocks.some(b => b.id === it.link.line || b.o === it.link.line)) || p; const b = (tgt.blocks || []).find(x => x.id === it.link.line || x.o === it.link.line); showCenter(); openPage(tgt.id, {line:b && b.id}); return; }
   }
-  const g = e.target.closest('[data-gdone]');
-  if(g){ const p = S.pages.get(g.dataset.pid), b = p && (p.blocks || []).find(x => x.id === g.dataset.gdone); if(b){ beforeEdit(p); if(b.k) delete b.k; else b.k = 1; touch(p); renderBoard(); if(S.cur === p.id) renderPage(); } return; }
   const go = e.target.closest('[data-go][data-pid]');
-  if(go){ showCenter(); openPage(go.dataset.pid, {line:go.dataset.go}); }
+  if(go){ showCenter(); openPage(go.dataset.pid, {line:go.dataset.go}); toLog(); }
 }
+function toLog(){ setTimeout(() => { const w = document.getElementById('wl'), v = document.getElementById('viewDesign'); if(!w || !v) return; const off = parseFloat(getComputedStyle(v).getPropertyValue('--wlb')) || 44, tb = $('.topbar'); scrollTo({top:w.getBoundingClientRect().top + scrollY - Math.max(44, off) - (tb ? tb.offsetHeight : 0) - 10, behavior:'smooth'}); }, 40); }
+function goOrders(){ showCenter(); flushSoon(); S.view = 'order'; S.find = null; S.cur = null; S.oMonth = S.today.slice(0, 7); renderTop(); renderMain(); }
 const showCenter = () => { try{ if(_dsgCurTab !== 'center') dsgSwitchTab('center'); }catch(e){} };
 function bindBoard(el){
   el.addEventListener('click', onBoardClick);
@@ -1110,6 +1385,7 @@ function bindBoard(el){
     e.preventDefault();
     const i = $('input', f), t = i.value.trim(); if(!t) return;
     const kind = f.dataset.add, id = uuid(); i.value = ''; i.blur();
+    if(kind === 'today') return addToday(t);
     boardSave(id, Object.assign({kind, title:t, sort:Date.now() / 1000}, kind === 'routine' ? {rule:{t:'day'}} : {})).then(ok => { if(ok){ const row = $(`#wlBoard .wl-r[data-bid="${id}"] .wl-rt`); if(row) boardEdit(id, row); } });
   });
   el.addEventListener('focusout', () => setTimeout(settle, 60));
@@ -1251,10 +1527,10 @@ function moveSec(id, dir){
 function pageMenu(at){
   const p = cur(); if(!p) return;
   const B = (k, t) => `<button type="button" data-m="${k}"><span>${t}</span></button>`;
-  pop(at, B('dup', '이 글을 복사해 새 글로') + B('sec', '＋ 구역 추가') + B('photo', '사진 · 파일 넣기') + B('redo', '다시 하기 (Ctrl Shift Z)') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '노션 원본 보기') : '') + B('del', '이 글 지우기'), 'menu', (e, box, close) => {
+  pop(at, B('dup', p.kind === 'order' ? '똑같은 일정 하나 더' : '이 글을 복사해 새 글로') + (p.kind === 'order' ? '' : B('sec', '＋ 구역 추가')) + B('photo', '사진 · 파일 넣기') + B('redo', '다시 하기 (Ctrl Shift Z)') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '노션 원본 보기') : '') + B('del', '이 글 지우기'), 'menu', (e, box, close) => {
     const m = e.target.closest('[data-m]'); if(!m) return; close();
     const k = m.dataset.m;
-    if(k === 'dup'){ const n = {id:uuid(), day:S.today, title:p.title, kind:p.kind === 'daily' && dailies().some(x => x.day === S.today) ? 'memo' : p.kind, blocks:carryPlain(p), ver:0, _bv:0, n:p.n, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()}; S.pages.set(n.id, n); S.dirty.set(n.id, {base:0, bb:[], bm:{}, seq:1, isNew:true}); scheduleSave(60); openPage(n.id); return; }
+    if(k === 'dup'){ const n = {id:uuid(), day:p.kind === 'order' ? p.day : S.today, title:p.title, kind:p.kind === 'daily' && dailies().some(x => x.day === S.today) ? 'memo' : p.kind, meta:clone(p.meta || {}), blocks:carryPlain(p), ver:0, _bv:0, n:p.n, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()}; S.pages.set(n.id, n); S.dirty.set(n.id, {base:0, bb:[], bm:{}, seq:1, isNew:true}); scheduleSave(60); openPage(n.id); return; }
     if(k === 'sec') return addSec();
     if(k === 'photo') return pickFile(null);
     if(k === 'redo') return undo(true);
@@ -1382,6 +1658,7 @@ function bindLog(w){
   w.addEventListener('paste', onPaste);
   w.addEventListener('change', e => {
     const p = cur(); if(!p) return;
+    if(e.target.dataset && e.target.dataset.om){ return ordField(e.target); }
     if(e.target.id === 'wlKind'){ beforeEdit(p); p.kind = e.target.value; touch(p); S.caches.clear(); renderNav(); renderPage(); }
   });
   w.addEventListener('focusout', e => {
@@ -1407,10 +1684,13 @@ function bindLog(w){
   document.addEventListener('mouseup', () => { down = null; });
   // 끌어서 옮기기
   w.addEventListener('dragstart', e => {
+    const oe = e.target.closest && e.target.closest('.wl-oe[data-oid]');
+    if(oe){ S.dragOrd = oe.dataset.oid; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ''); return; }
     const g = e.target.closest && e.target.closest('.wl-grip'); if(!g){ return; }
     const l = g.closest('.wl-b'); S.dragLine = l.dataset.id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ''); try{ e.dataTransfer.setDragImage(l, 10, 10); }catch(x){} setTimeout(() => l.classList.add('is-drag'), 0);
   });
   w.addEventListener('dragover', e => {
+    if(S.dragOrd){ const cd = e.target.closest('[data-oday]'); if(cd){ e.preventDefault(); $$('.wl-cd.over', w).forEach(x => x !== cd && x.classList.remove('over')); cd.classList.add('over'); } return; }
     const fs = e.dataTransfer && [...e.dataTransfer.types].includes('Files');
     if(!S.dragLine && !fs) return;
     const l = e.target.closest('.wl-b'); if(!l && !fs) return;
@@ -1419,23 +1699,26 @@ function bindLog(w){
     if(l){ const r = l.getBoundingClientRect(); l.classList.add(e.clientY > r.top + r.height / 2 ? 'dr-b' : 'dr-a'); }
   });
   w.addEventListener('drop', e => {
+    if(S.dragOrd){ const cd = e.target.closest('[data-oday]'), p = S.pages.get(S.dragOrd); S.dragOrd = null; if(cd && p){ e.preventDefault(); const was = p.day; ordMove(p, cd.dataset.oday); renderOrd(); renderBoard(); if(S.cur === p.id) renderPage(); if(p.day !== was) snack(`${md(was)} → ${md(p.day)} 로 옮겼어요`, () => { ordMove(p, was); renderOrd(); renderBoard(); if(S.cur === p.id) renderPage(); }); } return; }
     const l = e.target.closest('.wl-b'), fs = e.dataTransfer && e.dataTransfer.files;
     $$('.wl-b.dr-a,.wl-b.dr-b', w).forEach(x => x.classList.remove('dr-a', 'dr-b'));
-    if(fs && fs.length && S.view === 'page' && !S.find){ e.preventDefault(); e.stopPropagation(); return addFiles([...fs], l ? l.dataset.id : null); }
+    if(fs && fs.length && (S.view === 'page' || (S.view === 'order' && cur())) && !S.find){ e.preventDefault(); e.stopPropagation(); return addFiles([...fs], l ? l.dataset.id : null); }
     if(!S.dragLine || !l || l.dataset.id === S.dragLine) return;
     e.preventDefault(); e.stopPropagation();
     const r = l.getBoundingClientRect(); dropLine(S.dragLine, l.dataset.id, e.clientY > r.top + r.height / 2);
   });
-  document.addEventListener('dragend', () => { S.dragLine = null; $$('#wl .is-drag,#wl .dr-a,#wl .dr-b').forEach(x => x.classList.remove('is-drag', 'dr-a', 'dr-b')); });
+  document.addEventListener('dragend', () => { S.dragLine = null; S.dragOrd = null; $$('#wl .wl-cd.over').forEach(x => x.classList.remove('over')); $$('#wl .is-drag,#wl .dr-a,#wl .dr-b').forEach(x => x.classList.remove('is-drag', 'dr-a', 'dr-b')); });
   document.addEventListener('selectionchange', barSync);
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape'){ if(document.getElementById('wlPop')){ closePop(); e.stopPropagation(); return; } if(document.getElementById('wlModal')){ closeModal(); return; } const lb = $('.wl-lb'); if(lb){ lb.remove(); return; } if(S.sel) clearSel(); }
-    if(S.sel && !editing()) selKey(e);
+    if(S.sel && !editing()) return selKey(e);
+    // 체크 · 지우기처럼 글자 칸 밖에서 한 일도 Ctrl+Z 로 (오피스 공용 되돌리기보다 먼저 — 업무일지는 자체 되돌리기)
+    if((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z') && !e.isComposing && !e.altKey && !editing() && visible() && Date.now() - (S.actAt || 0) < 60000){ const a = document.activeElement, u = S.cur && S.undo.get(S.cur); if(u && (e.shiftKey ? u.rd : u.st).length && (!a || a === document.body || a.closest('#wl, #wlBoard'))){ e.preventDefault(); e.stopPropagation(); undo(e.shiftKey); } }
   }, true);
   document.addEventListener('copy', e => { if(S.sel && !editing() && cur()){ e.preventDefault(); e.clipboardData.setData('text/plain', pageText(cur(), S.sel.ids)); } });
 }
-let sideT = 0; const sideSoon = () => { clearTimeout(sideT); sideT = setTimeout(() => { if(S.ptr) return sideSoon(); if(S.view === 'page' && !S.find) renderSide(); renderBoard(); }, 500); };
-function refreshLabels(){ if(S.view === 'page' && !S.find && !editing()) renderPage(); }
+let sideT = 0; const sideSoon = () => { clearTimeout(sideT); sideT = setTimeout(() => { if(S.ptr) return sideSoon(); if(S.view === 'page' && !S.find) renderSide(); if(S.view === 'order' && !S.find) renderOrd(); renderBoard(); }, 500); };
+function refreshLabels(){ if(S.find || editing()) return; if(S.view === 'page') renderPage(); if(S.view === 'order'){ renderOrd(); if(S.cur) renderPage(); } }
 function dropLine(id, to, after){
   edit(bs => {
     const i = bs.findIndex(b => b.id === id); if(i < 0) return false;
@@ -1479,10 +1762,10 @@ function selKey(e){
 function onClick(e){
   const t = e.target;
   const a = t.closest('.wl-x a');
-  if(a){ const u = a.dataset.a || a.getAttribute('href') || ''; if(u.startsWith('wl:')){ e.preventDefault(); openPage(u.slice(3)); } else if(/^https?:/.test(u) && !(t.closest('.wl-x') === document.activeElement && !e.metaKey && !e.ctrlKey && getSelection().toString())){ e.preventDefault(); window.open(u, '_blank', 'noopener,noreferrer'); } return; }
+  if(a){ const u = a.dataset.a || a.getAttribute('href') || ''; if(/3e97c7ff13de806a955ecd791aa242c2/.test(u)){ e.preventDefault(); return goOrders(); } if(u.startsWith('wl:')){ e.preventDefault(); openPage(u.slice(3)); } else if(/^https?:/.test(u) && !(t.closest('.wl-x') === document.activeElement && !e.metaKey && !e.ctrlKey && getSelection().toString())){ e.preventDefault(); window.open(u, '_blank', 'noopener,noreferrer'); } return; }
   const o = t.closest('[data-open]'); if(o && o.dataset.open){ return openPage(o.dataset.open, {find:o.dataset.find}); }
   const go = t.closest('[data-go]'); if(go){ if(go.dataset.pid && go.dataset.pid !== S.cur || S.view !== 'page') return openPage(go.dataset.pid || S.cur, {line:go.dataset.go}); return flash(go.dataset.go); }
-  const v = t.closest('[data-view]'); if(v){ S.view = v.dataset.view; S.find = null; const q = document.getElementById('wlQ'); if(q) q.value = ''; renderTop(); return renderMain(); }
+  const v = t.closest('[data-view]'); if(v){ flushSoon(); S.view = v.dataset.view; S.find = null; const q = document.getElementById('wlQ'); if(q) q.value = ''; if(S.view === 'order'){ const c = cur(); if(!c || c.kind !== 'order') S.cur = null; } else{ const c = cur(); if(!c || c.kind === 'order') S.cur = (S.lastPage && S.pages.has(S.lastPage) ? S.lastPage : (dailies()[0] || list()[0] || {}).id) || null; } renderTop(); return renderMain(); }
   const gr = t.closest('[data-group]'); if(gr){ S.group = gr.dataset.group; saveUi(); return renderMain(); }
   const mo = t.closest('[data-mon]'); if(mo){ const y = +S.month.slice(0, 4), m = +S.month.slice(5, 7) - 1 + +mo.dataset.mon, d = new Date(y, m, 1); S.month = ymd(d).slice(0, 7); return S.view === 'cal' ? renderMain() : renderNav(); }
   const kd = t.closest('[data-kind]'); if(kd){ S.kind = kd.dataset.kind; return renderNav(); }
@@ -1492,6 +1775,7 @@ function onClick(e){
   const ft = t.closest('[data-ftag]'); if(ft){ S.fTag = S.fTag === ft.dataset.ftag ? '' : ft.dataset.ftag; S.fSt = ''; return renderPage(); }
   const od = t.closest('[data-odone]'); if(od) return toggleDone(od.dataset.odone);
   const bk = t.closest('[data-back]'); if(bk){ return bringBack(bk.dataset.back); }
+  if(onOrdClick(e)) return;
   const c = t.closest('[data-act]'); if(!c) return;
   const l = c.closest('.wl-b'), id = l && l.dataset.id, k = c.dataset.act;
   if(k === 'done') return toggleDone(id);
@@ -1503,6 +1787,7 @@ function onClick(e){
   if(k === 'zoom') return lightbox(c.src);
   if(k === 'addline') return addLine(c.dataset.sec);
   if(k === 'addsec') return addSec();
+  if(k === 'addfirst') return edit(bs => { const n = nb(); bs.push(n); S.fresh.add(n.id); return {focus:n.id}; });
   if(k === 'today'){ return poll().then(() => newPage('daily', S.today)); }
   if(k === 'new') return newMenu(c);
   if(k === 'more') return moreMenu(c);
@@ -1537,7 +1822,7 @@ function bringBack(lid){         // 앞글에서 빠진 줄을 이 글로 다시
 function blockOf(x){ const l = x.closest('.wl-b'), p = cur(); return l && p && p.blocks ? p.blocks.find(b => b.id === l.dataset.id) : null; }
 function onInput(e){
   if(e.target.id === 'wlQ'){ return findRun(e.target.value); }
-  if(e.target.id === 'wlTitle'){ const p = cur(); if(!p) return; beforeEdit(p); p.title = e.target.value; touch(p); return; }
+  if(e.target.id === 'wlTitle'){ const p = cur(); if(!p) return; beforeEdit(p); p.title = e.target.value; touch(p); if(p.kind === 'order') S.lineDirty = true; return; }
   const x = e.target.closest('.wl-x'); if(!x) return;
   const b = blockOf(x), p = cur(); if(!b) return;
   beforeEdit(p); mark(p, 'type:' + b.id);
@@ -1633,7 +1918,7 @@ function atEdge(x, up){
 function onPaste(e){
   const x = e.target.closest && e.target.closest('.wl-x');
   const fs = [...((e.clipboardData || {}).files || [])];
-  if(fs.length && S.view === 'page' && cur() && !e.target.closest('input,textarea')){ e.preventDefault(); e.stopPropagation(); return addFiles(fs, focusedId()); }
+  if(fs.length && (S.view === 'page' || S.view === 'order') && cur() && !e.target.closest('input,textarea')){ e.preventDefault(); e.stopPropagation(); return addFiles(fs, focusedId()); }
   if(!x) return;
   e.preventDefault(); e.stopPropagation();
   const txt = String(e.clipboardData.getData('text/plain') || '').replace(/\r/g, ''), b = blockOf(x), s = selIn(x) || [0, 0]; if(!b || !txt) return;
@@ -1797,14 +2082,17 @@ async function init(){
     addEventListener('online', () => { if(S.dirty.size) flush(); else poll(); });
     addEventListener('pagehide', () => { if(S.dirty.size){ persistDirty(); flush(); } });
     addEventListener('beforeunload', e => { if(S.dirty.size){ persistDirty(); flush(); e.preventDefault(); e.returnValue = ''; } });
-    setInterval(poll, POLL_MS);
-    setInterval(() => { if(visible() && !editing()) renderBoard(); }, 60000);
+    let pollAt = 0;
+    setInterval(() => { const live = window.OfficeLive && window.OfficeLive.ok(); if(live && Date.now() - pollAt < 60000) return; pollAt = Date.now(); poll(); }, POLL_MS);   // 알림선이 이어져 있으면 1분에 한 번만 확인
+    if(window.OfficeLive) window.OfficeLive.on(['dlog_pages', 'dlog_board', 'dlog_checks'], () => poll());
+    setInterval(() => { if(!visible() || document.hidden) return; if(Date.now() - inb.at > 5 * 60000) inbTick(true); else if(!editing()) renderBoard(); }, 60000);
   }
   const was = S.ready;
   await boot();
   if(!editing() && !S.ptr) renderAll(); else S.defer = true;
   if(S.dirty.size) scheduleSave(100);
   if(!S.ready && S.err) setTimeout(() => { if(!S.ready && visible()) init(); }, 10000);
+  if(S.ready) inbTick(false);
   if(!was && S.ready) setTimeout(() => notionCheck(false), 2500);
 }
 /* 오피스 홈 카드의 '오늘 루틴 n' — 디자인팀 명단 PC 에서만 */
@@ -1817,7 +2105,8 @@ async function homeBadge(){
     const j = await rpc('dlog_boot', {p_recent:0});
     S.board = new Map((j.board || []).map(b => [b.id, b])); S.checks = new Map((j.checks || []).map(c => [ckKey(c.item, c.day), c])); S.today = j.today || S.today;
     badge(leftToday().length);
+    await autoRoutines(); badge(leftToday().length);
   }catch(e){}
 }
-window.WL = {ready:true, init, homeBadge, stripSync, _:{S, merge3, carry, sections, ntBlocks, ntPage, isDue, state, parseX, deco, diffOf, ageMap, ordersOf, stOf, segNorm, newPage, openPage, notionCheck, flush, poll, renderAll}};
+window.WL = {ready:true, init, homeBadge, stripSync, _:{S, inb, inbOf, inbTick, upcoming, todayItems, ordersOf2:ordersOf, merge3, carry, sections, ntBlocks, ntPage, isDue, state, parseX, deco, diffOf, ageMap, ordersOf, stOf, segNorm, newPage, openPage, notionCheck, flush, poll, renderAll}};
 })();
