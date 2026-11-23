@@ -5867,6 +5867,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 홈 '실시간 재고' 폴더 통째로 숨김 (사장님 2026-11-13: 브랜드별 카드 "나중에 필요하면 부를게" → 시트 링크는 업무용 툴로 합침).
      시트 링크는 업무용 툴 맨 앞 '재고 구글시트' 카드. 브랜드 카드 HTML 은 그대로 두었다 — 다시 보이려면 이 줄만 지운다 ===== */
   .sub-modules-sixstock{display:none!important}
+  /* ===== 업무용 툴 '재고 구글시트' 카드 숨김 (사장님 2026-11-23 "나중에 혹시 필요하면 다시 부르겠어. 안보이게해줘").
+     카드 HTML(.m-erpmaster) · 기밀 PC 규칙(data-secret-card)은 그대로 — 다시 보이려면 이 줄만 지운다 ===== */
+  .sub-module.m-erpmaster{display:none!important}
 
   /* ===== 전략팀 월간 손익 메인보드 (.sb-*) — 시트처럼 칸마다 자동 값(흐리게) 위에 직접 입력 ===== */
   .sb{display:flex;flex-direction:column;gap:12px}
@@ -44927,7 +44930,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const section = el.closest('.sub-modules-section');
       if(!section) return;
       const n = Array.from(section.querySelectorAll('.sub-modules > .sub-module'))
-        .filter(c=>!c.hidden).length;
+        .filter(c=>!c.hidden && getComputedStyle(c).display!=='none').length;   // CSS 로 숨긴 카드(재고 구글시트 등)도 빼고 센다
       el.textContent = n;
     });
   }
