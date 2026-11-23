@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>/* 아이폰은 글씨 16px 미만 입력 칸을 누르면 화면을 자동 확대함 → iOS 에서만 끔 (손가락으로 확대는 계속 가능) */
 try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}   /* 아이폰에서 혼자 열린 화면 — 맨 위 흐림 막기 (.ios-top) */
-try{if(/[?&]app=design(&|$)/.test(location.search))document.documentElement.classList.add('solo-design')}catch(e){}   /* 디자인팀 새 탭 (홈 카드 → openDesignPage) — 위 막대 없이 디자인팀만 */
+try{var m=/[?&]app=(design|md)(&|$)/.exec(location.search);if(m)document.documentElement.classList.add('solo-app','solo-'+m[1])}catch(e){}   /* 디자인팀 · MD팀 새 탭 (홈 카드 → openSoloPage) — 위 막대 없이 그 팀만 */
 if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){var _vp=document.querySelector('meta[name=viewport]');if(_vp)_vp.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';}</script>
 <title>Bead Universe Co., Ltd. · Office</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -12619,11 +12619,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     #viewDesign .lsb-cols:not(.is-hold){gap:10px}
   }
   /* ===== 디자인팀 새 탭 (2026-11-23 사용자 "디자인팀 탭 누르면 erp처럼 동일하게 새로운 탭으로 들어가서 크게") — 주소 ?app=design#design (openDesignPage).
-     오피스 위 막대 · 홈 버튼 없이 디자인팀만 창 가득. 다른 화면으로 가면 html.solo-design 이 빠져 보통 오피스로 돌아감 (_soloDesignExit) ===== */
-  html.solo-design .topbar{display:none}
-  html.solo-design #viewDesign .view-head .btn-back{display:none}
-  html.solo-design .container{padding-top:14px}
-  html.ios-solo.solo-design .container{padding-top:24px}
+     오피스 위 막대 · 홈 버튼 없이 디자인팀만 창 가득. 다른 화면으로 가면 html.solo-* 가 빠져 보통 오피스로 돌아감 (_soloExit) ===== */
+  html.solo-app .topbar{display:none}
+  html.solo-design #viewDesign .view-head .btn-back,html.solo-md #viewMd .view-head .btn-back{display:none}
+  html.solo-app .container{padding-top:14px}
+  html.ios-solo.solo-app .container{padding-top:24px}
+  /* MD팀 새 탭 (2026-11-23 사장님 "md팀도 디자인팀처럼 새로운탭으로 열어줘. 동일하게") — 주소 ?app=md#md (openMdPage). 위 막대가 없는 만큼 MD팀 시트를 더 길게 */
+  html.solo-md #viewMd .mdx-box{height:max(520px,calc(100vh - 130px));height:max(520px,calc(100dvh - 130px))}
 
   /* ===== 홈 정리 (2026-11-20 사장님 "메인화면 깔끔하게 · 강조할 숫자는 강조 · 자주 쓰는 것 우선 · 숨김은 깔끔하게") =====
      블록 사이 간격 16px 통일. 팀 카드 · 업무용 툴 · 관리자 전용 카드는 한때 줄였다가 같은 날 저녁 사장님 지시로 원래 크기로 되돌림 (다시 줄이지 말 것)
@@ -12936,7 +12938,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
       <section class="hero hero-md">
         <div class="hero-eyebrow">MD</div>
-        <button class="btn-neon btn-md" id="mdBtn" onclick="triggerMd()">
+        <button class="btn-neon btn-md" id="mdBtn" onclick="openMdPage()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
           <span id="mdBtnLabel">MD팀</span>
         </button>
@@ -22427,7 +22429,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       history.replaceState({view:'viewHome'},'',location.pathname+location.search);
       id='viewHome';
     }
-    if(id!=='viewDesign' && typeof _soloDesignExit==='function') _soloDesignExit();   // 디자인팀 새 탭에서 다른 화면으로 → 보통 오피스
+    if(typeof _soloExit==='function') _soloExit(id);   // 디자인팀 · MD팀 새 탭에서 다른 화면으로 → 보통 오피스
     VIEW_IDS.forEach(v=>{
       const el=document.getElementById(v);
       if(!el)return;
@@ -22698,28 +22700,36 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      회사 주소(beaduniverse.kr/office/)도 입구 loader 가 ?app= 을 그대로 두니 따로 입구 파일이 필요 없다. 팝업이 막히면 예전처럼 이 창 안에서 */
   function openDesignPage(){
     if(!designHasAccess()){ toast('디자인팀 전용 화면입니다','err'); return; }
-    if(document.documentElement.classList.contains('solo-design')){ triggerDesign(); return; }   // 이미 디자인팀 탭 안
-    if(isTouchPhone()){ triggerDesign(); return; }   // 휴대폰은 새 탭 없이 이 창에서 (빈 새 창이 흰 화면으로 멈춤)
-    const url=location.origin+location.pathname+'?app=design#design';
-    let w=null;
-    try{ w=window.open('','bead-design'); }catch(e){ w=null; }
-    if(!w){ triggerDesign(); return; }
-    let open=false;
-    try{ open=w.location.href!=='about:blank'&&w.location.pathname===location.pathname&&/[?&]app=design(&|$)/.test(w.location.search); }catch(e){ open=false; }
-    if(!open){ try{ w.location.href=url; }catch(e){ triggerDesign(); return; } }   // 새 창 · 그 창이 다른 곳으로 갔으면 디자인팀으로
-    try{ w.focus(); }catch(e){}
+    openSoloPage('design',triggerDesign);
   }
   window.openDesignPage=openDesignPage;
-  // 디자인팀 탭에서 다른 화면(홈 · 알림 눌러 업무일지 등)으로 가면 보통 오피스로 — 위 막대를 되살리고 주소의 ?app=design 을 뺀다
-  function _soloDesignExit(){
-    const h=document.documentElement;
-    if(!h.classList.contains('solo-design')) return;
-    h.classList.remove('solo-design');
-    document.title=_soloDesignTitle0;
-    try{ const q=location.search.replace(/([?&])app=design(&|$)/,(m,a,b)=>b?a:'').replace(/[?&]$/,''); history.replaceState(history.state,'',location.pathname+q+location.hash); }catch(e){}
+  // 홈 'MD팀' 카드 = 브라우저 새 탭 (2026-11-23 사장님 "md팀도 디자인팀처럼 새로운탭으로 열어줘. 동일하게") — 창 이름 'bead-md', 주소 ?app=md#md
+  function openMdPage(){ openSoloPage('md',triggerMd); }
+  window.openMdPage=openMdPage;
+  // app = 주소 ?app= · #해시 · 창 이름(bead-app) · html 클래스(solo-app), inPlace = 새 탭을 못 쓸 때 이 창에서 열기
+  function openSoloPage(app,inPlace){
+    if(document.documentElement.classList.contains('solo-'+app)){ inPlace(); return; }   // 이미 그 팀 탭 안
+    if(isTouchPhone()){ inPlace(); return; }   // 휴대폰은 새 탭 없이 이 창에서 (빈 새 창이 흰 화면으로 멈춤)
+    const url=location.origin+location.pathname+'?app='+app+'#'+app, re=new RegExp('[?&]app='+app+'(&|$)');
+    let w=null;
+    try{ w=window.open('','bead-'+app); }catch(e){ w=null; }
+    if(!w){ inPlace(); return; }
+    let open=false;
+    try{ open=w.location.href!=='about:blank'&&w.location.pathname===location.pathname&&re.test(w.location.search); }catch(e){ open=false; }
+    if(!open){ try{ w.location.href=url; }catch(e){ inPlace(); return; } }   // 새 창 · 그 창이 다른 곳으로 갔으면 그 팀으로
+    try{ w.focus(); }catch(e){}
   }
-  const _soloDesignTitle0=document.title;
-  if(document.documentElement.classList.contains('solo-design')) document.title='디자인팀 · Bead Universe';
+  // 디자인팀 · MD팀 탭에서 다른 화면(홈 · 알림 눌러 업무일지 등)으로 가면 보통 오피스로 — 위 막대를 되살리고 주소의 ?app= 을 뺀다
+  const SOLO_VIEW={design:'viewDesign',md:'viewMd'}, SOLO_TITLE={design:'디자인팀 · Bead Universe',md:'MD팀 · Bead Universe'};
+  function _soloExit(id){
+    const h=document.documentElement, app=Object.keys(SOLO_VIEW).find(k=>h.classList.contains('solo-'+k));
+    if(!app || SOLO_VIEW[app]===id) return;
+    h.classList.remove('solo-app','solo-'+app);
+    document.title=_soloTitle0;
+    try{ const q=location.search.replace(new RegExp('([?&])app='+app+'(&|$)'),(m,a,b)=>b?a:'').replace(/[?&]$/,''); history.replaceState(history.state,'',location.pathname+q+location.hash); }catch(e){}
+  }
+  const _soloTitle0=document.title;
+  Object.keys(SOLO_TITLE).forEach(k=>{ if(document.documentElement.classList.contains('solo-'+k)) document.title=SOLO_TITLE[k]; });
   function triggerStock(){ showView('viewStock'); }
   // 홈 실시간 재고 카드 — 브랜드를 주면 그 브랜드만 펼쳐서 바로 보여준다 (ERP MASTER)
   function triggerSixStock(brand){ if(typeof _erpStockFocus!=='undefined') _erpStockFocus = brand || null; showView('viewSixStock'); }
