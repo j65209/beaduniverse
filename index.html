@@ -34542,7 +34542,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 삭제 목록 받기 — 20초 안에 다시 부르면 건너뜀. 바뀌었으면 true. 실패하면 마지막으로 받은 목록을 그대로 쓴다
   function _lgbLoadDels(){
     if(_lgbDelsP) return _lgbDelsP;
-    if(_lgbDelsAt && Date.now()-_lgbDelsAt<20000) return Promise.resolve(false);
+    // 실시간 알림선이 이어져 있으면 지운 줄은 신호로 바로 받으니(bbLiveBoot 가 _lgbDelsAt=1 로) 정기 확인은 5분에 한 번 — 통신량
+    const gap=(_lgbDelsOk && window.OfficeLive && window.OfficeLive.ok()) ? 5*60*1000 : 20000;
+    if(_lgbDelsAt && Date.now()-_lgbDelsAt<gap) return Promise.resolve(false);
     const gen=_lgbDelsGen;
     // 전광판은 출고 20일까지만 보이니 그보다 넉넉히 60일 안에 삭제한 것만
     const since=new Date(Date.now()-60*864e5).toISOString();
