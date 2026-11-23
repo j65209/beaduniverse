@@ -7,13 +7,14 @@
    · 저장 방식 = 0.7초 뒤 저절로 · ver 가 다르면 줄 단위 3방향 합치기 · 못 보낸 글은 이 PC 에 남겨 다시 보냄 · 지움은 전부 되살리기 가능
    · 보이는 꾸밈([업체] · 날짜 · 수량 · ⇒ 결과 · 새로 · n일째 · 상태)은 글자를 안 바꾸고 화면에서만 붙인다
    index.html 은 #wlBoard(전광판) · #wl(업무일지) 자리만 두고 이 파일을 불러온다. 쓰는 전역: _mdxRpc · toast · SUPABASE_URL · SUPABASE_KEY · loadProxyBase · ghPin · _dslHol · designHasAccess
+   · 2026-11-23 노션과 연결 끊음 (사장님 "데이터 이전을 완료헀으면 노션이랑 연결 끊어") — 노션을 읽거나 부르는 코드는 없다. 옛 글의 원본은 dlog_pages.src
    ============================================================ */
 (function(){
 'use strict';
 if(window.WL && window.WL.ready) return;
 
 const BUCKET = 'design-log', SAVE_MS = 700, POLL_MS = 8000, RECENT = 30, MORE = 60;
-const K = {cache:'wl_cache_v1', dirty:'wl_dirty_v1', ui:'wl_ui_v1', lost:'wl_lost_v1', ntSkip:'wl_nt_skip_v1'};
+const K = {cache:'wl_cache_v1', dirty:'wl_dirty_v1', ui:'wl_ui_v1', lost:'wl_lost_v1'};
 const ESC = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ESC[c]);
 const $ = (s, r) => (r || document).querySelector(s);
@@ -46,7 +47,7 @@ const S = {
   pages:new Map(), board:new Map(), checks:new Map(),
   cur:null, view:'page', kind:'all', month:'', group:'vendor',
   dirty:new Map(), saving:false, saveT:0, saveAt:0, fails:0, pollT:0, polling:false, defer:false,
-  undo:new Map(), sel:null, fTag:'', fSt:'', hideDone:false, navOpen:false, sideOpen:true, find:null, fresh:new Set(), split:new Map(), caches:new Map(), nt:null, moreBusy:false, oMode:'cal', oFac:'', oKind:'', oWait:false, oMonth:'', lastPage:null
+  undo:new Map(), sel:null, fTag:'', fSt:'', hideDone:false, navOpen:false, sideOpen:true, find:null, fresh:new Set(), split:new Map(), caches:new Map(), moreBusy:false, oMode:'cal', oFac:'', oKind:'', oWait:false, oMonth:'', lastPage:null
 };
 try{ Object.assign(S, (u => ({group:u.group || 'vendor', hideDone:!!u.hideDone, boardFold:!!u.boardFold, oMode:u.oMode || 'cal'}))(JSON.parse(localStorage.getItem(K.ui) || '{}') || {})); }catch(e){}
 const saveUi = () => { try{ localStorage.setItem(K.ui, JSON.stringify({group:S.group, hideDone:S.hideDone, boardFold:S.boardFold, oMode:S.oMode})); }catch(e){} };
@@ -671,7 +672,7 @@ function sendTomorrow(id){
 function mount(){
   const w = document.getElementById('wl'), bd = document.getElementById('wlBoard');
   if(!w) return false;
-  if(!w._on){ w._on = true; w.innerHTML = '<div class="wl-top" id="wlTop"></div><div class="wl-nt" id="wlNt" hidden></div><div class="wl-main" id="wlMain"></div>'; bindLog(w); }
+  if(!w._on){ w._on = true; w.innerHTML = '<div class="wl-top" id="wlTop"></div><div class="wl-main" id="wlMain"></div>'; bindLog(w); }
   if(bd && !bd._on){ bd._on = true; bindBoard(bd); }
   return true;
 }
@@ -693,7 +694,7 @@ function renderTop(){
     <div class="wl-seg" role="tablist">${V.map(([k, t]) => `<button type="button" role="tab" aria-selected="${S.view === k}" class="${S.view === k && !S.find ? 'on' : ''}" data-view="${k}">${t}</button>`).join('')}</div>
     <button type="button" class="wl-btn pri" data-act="today">${has ? '오늘로' : '＋ 오늘 업무일지'}</button>
     <button type="button" class="wl-btn" data-act="new">＋ 새 글</button>
-    <button type="button" class="wl-btn ico" data-act="more" aria-label="더 보기" title="지운 글 · 노션에서 가져오기">⋯</button>`;
+    <button type="button" class="wl-btn ico" data-act="more" aria-label="더 보기" title="지운 글 · 단축키">⋯</button>`;
 }
 function renderMain(){
   const el = document.getElementById('wlMain'); if(!el) return;
@@ -1250,7 +1251,7 @@ function renderBoard(){
   const pRow = it => `<div class="wl-r pin${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="pindone" data-bid="${it.id}" aria-label="${E(it.title)} 끝냄" title="끝났으면 누르기"></button><button type="button" class="wl-rt" data-bact="${it.link && it.link.page ? 'golink' : 'edit'}" data-bid="${it.id}"><span>${E(it.title)}</span>${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${it.due ? dday(it.due) + ' ' + md(it.due) : ''}</span>${ctl(it.id)}</div>`;
   const add = (k, ph) => `<form class="wl-ba" data-add="${k}"><input type="text" maxlength="200" placeholder="${ph}" aria-label="${ph}"></form>`;
   el.className = 'wl-board' + (S.boardFold ? ' is-fold' : '');
-  el.innerHTML = `<div class="wl-bh"><b>전광판</b><span class="wl-bd">${+S.today.slice(5, 7)}월 ${+S.today.slice(8)}일 ${WK[dow(S.today)]}요일</span><span class="wl-bn${left || wl ? '' : ' ok'}">${wl ? `오늘 업무 <b>${wl}</b>` : tp && tp.day === S.today ? '오늘 업무 끝' : ''}${left ? `${wl ? ' · ' : ' '}루틴 <b>${left}</b>` : ''}${left || wl ? ' 남음' : ''}</span><span class="wl-sp"></span><button type="button" class="wl-bb" data-bact="tolog">업무일지로 ↓</button><button type="button" class="wl-bb" data-bact="fold">${S.boardFold ? '펼치기' : '접기'}</button></div>
+  el.innerHTML = `<div class="wl-bh"><b>전광판</b><span class="wl-bd">${+S.today.slice(5, 7)}월 ${+S.today.slice(8)}일 ${WK[dow(S.today)]}요일</span><span class="wl-bn${left || wl ? '' : ' ok'}">${wl ? `오늘 업무 <b>${wl}</b>` : tp && tp.day === S.today ? '오늘 업무 끝' : ''}${left ? `${wl ? ' · ' : ' '}루틴 <b>${left}</b>` : ''}${left || wl ? ' 남음' : ''}</span><span class="wl-sp"></span><button type="button" class="wl-bb" data-bact="tolog">업무일지로 ↓</button><button type="button" class="wl-bb" data-bact="tolst">라인시트로 ↓</button><button type="button" class="wl-bb" data-bact="fold">${S.boardFold ? '펼치기' : '접기'}</button></div>
     <div class="wl-bg">${tw}<section><h4>오늘 루틴 <small>${done}/${on.length}</small></h4>${on.map(rRow).join('') || '<p class="wl-bz">오늘 챙길 루틴이 없어요</p>'}${off.length ? `<details class="wl-off"${S.offOpen ? ' open' : ''}><summary>다른 날 루틴 ${off.length}</summary>${off.map(([it, s]) => `<div class="wl-r dim" data-bid="${it.id}"><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span></button><span class="wl-rm">${E(ruleText(it.rule))}${s.next ? ` · 다음 ${md(s.next)}(${WK[dow(s.next)]})` : ''}</span>${ctl(it.id)}</div>`).join('')}</details>` : ''}${add('routine', '＋ 루틴 — 적고 Enter')}</section>
       <section><h4>꼭 챙길 것 <small>${ps.length || ''}</small></h4>${ps.map(pRow).join('') || '<p class="wl-bz">업무일지 줄 메뉴(⠿)에서 ‘전광판에 올리기’ 를 누르거나 아래에 적어요</p>'}${add('pin', '＋ 고정할 것 — 적고 Enter')}</section></div>`;
   renderStrip(); badge(left);
@@ -1365,6 +1366,7 @@ function onBoardClick(e){
     if(k === 'del') return boardDel(id);
     if(k === 'fold'){ S.boardFold = !S.boardFold; saveUi(); return renderBoard(); }
     if(k === 'tolog'){ showCenter(); return toLog(); }
+    if(k === 'tolst'){ showCenter(); return toLog('lst'); }
     if(k === 'totop') return scrollTo({top:0, behavior:'smooth'});
     if(k === 'wdone'){ const p = S.pages.get(a.dataset.pid); if(p) doneIn(p, a.dataset.lid); return; }
     if(k === 'wstart'){ showCenter(); poll().then(() => newPage('daily', S.today)).then(() => toLog()); return; }
@@ -1374,7 +1376,7 @@ function onBoardClick(e){
   const go = e.target.closest('[data-go][data-pid]');
   if(go){ showCenter(); openPage(go.dataset.pid, {line:go.dataset.go}); toLog(); }
 }
-function toLog(){ setTimeout(() => { const w = document.getElementById('wl'), v = document.getElementById('viewDesign'); if(!w || !v) return; const off = parseFloat(getComputedStyle(v).getPropertyValue('--wlb')) || 44, tb = $('.topbar'); scrollTo({top:w.getBoundingClientRect().top + scrollY - Math.max(44, off) - (tb ? tb.offsetHeight : 0) - 10, behavior:'smooth'}); }, 40); }
+function toLog(id){ setTimeout(() => { const w = document.getElementById(id || 'wl'), v = document.getElementById('viewDesign'); if(!w || !v) return; const off = parseFloat(getComputedStyle(v).getPropertyValue('--wlb')) || 44, tb = $('.topbar'); scrollTo({top:w.getBoundingClientRect().top + scrollY - Math.max(44, off) - (tb ? tb.offsetHeight : 0) - 10, behavior:'smooth'}); }, 40); }
 function goOrders(){ showCenter(); flushSoon(); S.view = 'order'; S.find = null; S.cur = null; S.oMonth = S.today.slice(0, 7); renderTop(); renderMain(); }
 const showCenter = () => { try{ if(_dsgCurTab !== 'center') dsgSwitchTab('center'); }catch(e){} };
 function bindBoard(el){
@@ -1527,7 +1529,7 @@ function moveSec(id, dir){
 function pageMenu(at){
   const p = cur(); if(!p) return;
   const B = (k, t) => `<button type="button" data-m="${k}"><span>${t}</span></button>`;
-  pop(at, B('dup', p.kind === 'order' ? '똑같은 일정 하나 더' : '이 글을 복사해 새 글로') + (p.kind === 'order' ? '' : B('sec', '＋ 구역 추가')) + B('photo', '사진 · 파일 넣기') + B('redo', '다시 하기 (Ctrl Shift Z)') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '노션 원본 보기') : '') + B('del', '이 글 지우기'), 'menu', (e, box, close) => {
+  pop(at, B('dup', p.kind === 'order' ? '똑같은 일정 하나 더' : '이 글을 복사해 새 글로') + (p.kind === 'order' ? '' : B('sec', '＋ 구역 추가')) + B('photo', '사진 · 파일 넣기') + B('redo', '다시 하기 (Ctrl Shift Z)') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '옮기기 전 원본 보기') : '') + B('del', '이 글 지우기'), 'menu', (e, box, close) => {
     const m = e.target.closest('[data-m]'); if(!m) return; close();
     const k = m.dataset.m;
     if(k === 'dup'){ const n = {id:uuid(), day:p.kind === 'order' ? p.day : S.today, title:p.title, kind:p.kind === 'daily' && dailies().some(x => x.day === S.today) ? 'memo' : p.kind, meta:clone(p.meta || {}), blocks:carryPlain(p), ver:0, _bv:0, n:p.n, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()}; S.pages.set(n.id, n); S.dirty.set(n.id, {base:0, bb:[], bm:{}, seq:1, isNew:true}); scheduleSave(60); openPage(n.id); return; }
@@ -1579,9 +1581,19 @@ async function versions(p){
     if(e.target.closest('[data-x="back"]') && snap){ closeModal(); openPage(p.id); const c = cur(); beforeEdit(c); mark(c); c.blocks = clone(snap.blocks); touch(c); renderPage(); snack('지난 버전으로 되돌렸어요', () => undo()); }
   });
 }
+/* 옮기기 전 원본(저장소에 같이 넣어 둔 노션 글 그대로) — 노션에 연결하지 않고 우리 저장소에서만 읽는다 */
+function srcHtml(bs, lv){
+  return (bs || []).map(b => {
+    const t = (b.rich || []).map(x => x.t).join('') || b.text || b.caption || '', kids = srcHtml(b.children, /^(columns|column|h\d)$/.test(b.type) ? lv : lv + 1);
+    if(b.type === 'divider') return '<hr>';
+    if(/^h\d$/.test(b.type)) return `<h4>${E(t)}</h4>${kids}`;
+    if(b.type === 'image') return `<div style="--lv:${lv}">(사진)</div>`;
+    return (t ? `<div class="${b.checked ? 'is-done' : ''}" style="--lv:${lv}">${b.type === 'p' ? '' : b.type === 'todo' ? (b.checked ? '✓ ' : '☐ ') : b.type === 'toggle' ? '▸ ' : '• '}${E(t)}</div>` : '') + kids;
+  }).join('');
+}
 async function showSrc(p){
-  const m = modal(`${md(p.day)} ${p.title} — 노션 원본`, '<p class="wl-none">불러오는 중…</p>');
-  try{ const s = await rpc('dlog_src', {p_id:p.id}); $('.wl-mc2', m).innerHTML = s && s.blocks && typeof _ntBlocks === 'function' ? `<div class="nt-doc">${_ntBlocks(s.blocks)}</div>` : '<p class="wl-none">원본이 없어요</p>'; }
+  const m = modal(`${md(p.day)} ${p.title} — 옮기기 전 원본`, '<p class="wl-none">불러오는 중…</p>');
+  try{ const s = await rpc('dlog_src', {p_id:p.id}); $('.wl-mc2', m).innerHTML = s && s.blocks ? `<div class="wl-read">${srcHtml(s.blocks, 0)}</div>` : '<p class="wl-none">원본이 없어요</p>'; }
   catch(e){ $('.wl-mc2', m).innerHTML = '<p class="wl-none">불러오지 못했어요</p>'; }
 }
 function newMenu(at){
@@ -1593,10 +1605,9 @@ function newMenu(at){
   });
 }
 function moreMenu(at){
-  pop(at, `<button type="button" data-m="trash"><span>지운 글 · 지운 전광판</span></button><button type="button" data-m="nt"><span>노션에서 가져오기</span></button><button type="button" data-m="reload"><span>새로 불러오기</span></button><button type="button" data-m="help"><span>단축키</span></button>`, 'menu', (e, box, close) => {
+  pop(at, `<button type="button" data-m="trash"><span>지운 글 · 지운 전광판</span></button><button type="button" data-m="reload"><span>새로 불러오기</span></button><button type="button" data-m="help"><span>단축키</span></button>`, 'menu', (e, box, close) => {
     const m = e.target.closest('[data-m]'); if(!m) return; close();
     if(m.dataset.m === 'trash') return trash();
-    if(m.dataset.m === 'nt') return notionCheck(true);
     if(m.dataset.m === 'reload') return boot().then(renderAll);
     modal('단축키', `<div class="wl-keys">${[['Enter', '아래에 새 줄'], ['Shift Enter', '줄 안에서 줄바꿈'], ['Tab · Shift Tab', '들여쓰기 · 내어쓰기'], ['Ctrl Enter', '끝냄 · 다시 할 일로'], ['Alt ↑ ↓', '줄 옮기기'], ['Ctrl Z · Ctrl Shift Z', '되돌리기 · 다시 하기'], ['Ctrl B', '굵게 (글자를 고른 뒤)'], ['여러 줄 끌기', '여러 줄 고르기 → Del 지우기 · Tab 들여쓰기 · Ctrl C 복사'], ['## + 빈칸', '구역 제목'], ['[] + 빈칸', '체크칸']].map(([a, b]) => `<div><kbd>${a}</kbd><span>${b}</span></div>`).join('')}</div>`);
   });
@@ -1762,7 +1773,7 @@ function selKey(e){
 function onClick(e){
   const t = e.target;
   const a = t.closest('.wl-x a');
-  if(a){ const u = a.dataset.a || a.getAttribute('href') || ''; if(/3e97c7ff13de806a955ecd791aa242c2/.test(u)){ e.preventDefault(); return goOrders(); } if(u.startsWith('wl:')){ e.preventDefault(); openPage(u.slice(3)); } else if(/^https?:/.test(u) && !(t.closest('.wl-x') === document.activeElement && !e.metaKey && !e.ctrlKey && getSelection().toString())){ e.preventDefault(); window.open(u, '_blank', 'noopener,noreferrer'); } return; }
+  if(a){ const u = a.dataset.a || a.getAttribute('href') || ''; if(u === 'wl:orders'){ e.preventDefault(); return goOrders(); } if(u.startsWith('wl:')){ e.preventDefault(); openPage(u.slice(3)); } else if(/^https?:/.test(u) && !(t.closest('.wl-x') === document.activeElement && !e.metaKey && !e.ctrlKey && getSelection().toString())){ e.preventDefault(); window.open(u, '_blank', 'noopener,noreferrer'); } return; }
   const o = t.closest('[data-open]'); if(o && o.dataset.open){ return openPage(o.dataset.open, {find:o.dataset.find}); }
   const go = t.closest('[data-go]'); if(go){ if(go.dataset.pid && go.dataset.pid !== S.cur || S.view !== 'page') return openPage(go.dataset.pid || S.cur, {line:go.dataset.go}); return flash(go.dataset.go); }
   const v = t.closest('[data-view]'); if(v){ flushSoon(); S.view = v.dataset.view; S.find = null; const q = document.getElementById('wlQ'); if(q) q.value = ''; if(S.view === 'order'){ const c = cur(); if(!c || c.kind !== 'order') S.cur = null; } else{ const c = cur(); if(!c || c.kind === 'order') S.cur = (S.lastPage && S.pages.has(S.lastPage) ? S.lastPage : (dailies()[0] || list()[0] || {}).id) || null; } renderTop(); return renderMain(); }
@@ -1799,8 +1810,6 @@ function onClick(e){
   if(k === 'navall'){ S.navAll = true; return renderNav(); }
   if(k === 'reload'){ return boot().then(renderAll); }
   if(k === 'findoff'){ S.find = null; const q = document.getElementById('wlQ'); if(q) q.value = ''; renderTop(); return renderMain(); }
-  if(k === 'ntimport') return notionImport();
-  if(k === 'ntskip'){ try{ localStorage.setItem(K.ntSkip, S.nt ? S.nt.sig : ''); }catch(x){} S.nt = null; return renderNt(); }
   if(k === 'pickday'){
     pop(c, `<div class="wl-pt">이 글의 날짜</div><input type="date" id="wlDayIn" value="${cur().day}"><div class="wl-pf"><button type="button" class="wl-btn" data-x="no">닫기</button><button type="button" class="wl-btn pri" data-x="ok">바꾸기</button></div>`, 'form', (ev, box, close) => {
       const x = ev.target.closest('[data-x]'); if(!x) return;
@@ -1983,89 +1992,6 @@ function barSync(){
 }
 function hideBar(){ const el = document.getElementById('wlBar'); if(el) el.hidden = true; }
 
-/* ============================================================ 노션에서 옮기기 ============================================================ */
-const dash = h => { h = String(h || '').replace(/-/g, ''); return h.length === 32 ? `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}` : ''; };
-function ntBlocks(blocks, known){
-  const out = [];
-  const link = a => { const s = String(a || ''); if(/^https?:/i.test(s)) return s; const m = s.match(/[?&]p=([0-9a-f]{32})/) || s.match(/\/p\/([0-9a-f]{32})/); if(!m) return ''; const id = dash(m[1]); return known && known.has(id) ? 'wl:' + id : 'https://app.notion.com' + (s[0] === '/' ? s : '/' + s); };
-  const segs = r => segNorm((r || []).map(n => { const o = {t:n.t}; MK.forEach(k => { if(n[k]) o[k] = 1; }); if(n.h) o.h = n.h; if(n.a){ const u = link(n.a); if(u) o.a = u; } return o; }));
-  const add = (b, o) => { const x = nb(o); if(b.color && b.color !== 'default_background' && b.color !== 'default') x.bg = b.color; out.push(x); return x; };
-  (function walk(list, lv){
-    (list || []).forEach((b, i) => {
-      const t = b.type, r = segs(b.rich), txt = segText(r).trim(), next = list[i + 1];
-      if(t === 'columns'){ (b.children || []).forEach((c, k) => { if(k) out.push(nb({t:'hr'})); walk(c.children, lv); }); return; }
-      if(t === 'column'){ walk(b.children, lv); return; }
-      if(t === 'divider'){ out.push(nb({t:'hr'})); return; }
-      if(t === 'h1' || t === 'h2' || t === 'h3'){ add(b, {t:'h3', lv:0, r}); walk(b.children, 0); return; }
-      if(t === 'image'){ add(b, {t:'img', lv, src:b.src || '', cap:b.caption || undefined}); return; }
-      if(t === 'file' || t === 'bookmark' || t === 'subpage'){ const u = link(b.href); add(b, {t:'li', lv, r:u ? [{t:txt || u, a:u}] : T(txt || t)}); return; }
-      if(t === 'code'){ add(b, {t:'code', lv, r:T(b.text || '')}); return; }
-      if(t === 'table'){ add(b, {t:'p', lv, r:T(b.name || '표')}); (b.rows || []).forEach(row => add(b, {t:'li', lv, r:T((row.cells || []).map(c => (c && c.text) || '').filter(Boolean).join(' · '))})); return; }
-      // 본문 한 줄이 아래 글머리들의 제목 노릇을 하면 구역 제목으로 (제품진행 · 디자인 · 기타 · 서치필요)
-      if(t === 'p' && lv === 0 && txt && txt.length <= 24 && !r.some(s => s.a) && !AR.test(txt) && ((b.children || []).some(c => c.type === 'bullet' || c.type === 'todo' || c.type === 'toggle') || (next && ['bullet', 'todo', 'toggle', 'number'].includes(next.type)))){ add(b, {t:'h3', lv:0, r:segNorm(r.map(s => ({t:s.t, h:s.h})))}); walk(b.children, 0); return; }
-      const ty = t === 'todo' ? 'todo' : t === 'p' ? 'p' : t === 'quote' ? 'quote' : t === 'callout' ? 'callout' : 'li';
-      const x = add(b, {t:ty, lv, r});
-      if(b.checked) x.k = 1;
-      walk(b.children, lv + 1);
-    });
-  })(blocks, 0);
-  while(out.length && out[0].t === 'p' && isEmpty(out[0])) out.shift();
-  while(out.length && out[out.length - 1].t === 'p' && isEmpty(out[out.length - 1])) out.pop();
-  out.forEach(b => Object.keys(b).forEach(k => b[k] === undefined && delete b[k]));
-  return out;
-}
-function ntPage(e, known){
-  const title = String(e.title || '').trim(), t = title || '(제목 없음)';
-  return {id:dash(e.id), day:/^\d{4}-\d{2}-\d{2}/.test(e.date || '') ? e.date.slice(0, 10) : String(e.edited || '').slice(0, 10) || S.today, title:t,
-    kind:/진행상황/.test(t) ? 'status' : /^(업무일지|시호)/.test(t) || /업무일지/.test(t) ? 'daily' : 'memo', blocks:ntBlocks(e.blocks, known), src:{id:e.id, title:e.title, date:e.date, edited:e.edited, blocks:e.blocks}, edited:e.edited || '', created:e.edited ? e.edited.replace(' ', 'T') + ':00+09:00' : undefined};
-}
-async function notionDoc(force){
-  let url = ''; try{ url = (_dcState && _dcState.calUrl) || localStorage.getItem('brightbeed_dc_cal_url_v1') || ''; }catch(e){}
-  if(!url){ const r = await fetch(`${SUPABASE_URL}/rest/v1/design_center_settings?select=value&key=eq.notion_calendar_url`, {headers:_sbHeaders(), cache:'no-cache'}); url = r.ok ? ((await r.json())[0] || {}).value || '' : ''; }
-  if(!url) throw new Error('노션 주소가 없어요');
-  const base = await loadProxyBase(); if(!base) throw new Error('서버에 연결하지 못했어요');
-  const r = await fetch(`${base}/nt/page?url=${encodeURIComponent(url)}&expand=1${force ? '&refresh=1' : ''}&cb=${Date.now()}`, {headers:{'X-Brightbeed-PIN':ghPin()}, cache:'no-cache'});
-  const j = await r.json().catch(() => null);
-  if(!r.ok || !j || j.ok !== true) throw new Error((j && (j.detail || j.error)) || 'HTTP ' + r.status);
-  return (j.blocks || []).flatMap(b => b.entries || []).filter(e => !e.error);
-}
-/* 노션에 새로 적힌 글이 있으면 위에 한 줄로 알린다 (옮기는 동안만 쓸 장치) */
-async function notionCheck(loud){
-  try{
-    if(loud) say('노션을 살펴보는 중…');
-    const es = await notionDoc(loud), fresh = es.filter(e => { const p = S.pages.get(dash(e.id)); return !p ? !S.ntKnown || !S.ntKnown.has(dash(e.id)) : p.se !== e.edited; });
-    const gone = new Set();
-    if(fresh.some(e => !S.pages.has(dash(e.id)))){ try{ const t = await rpc('dlog_trash', {}); (t.pages || []).forEach(p => gone.add(p.id)); }catch(e){} }
-    const list2 = fresh.filter(e => !gone.has(dash(e.id)));
-    const sig = list2.map(e => e.id + e.edited).sort().join('|');
-    let skip = ''; try{ skip = localStorage.getItem(K.ntSkip) || ''; }catch(e){}
-    S.nt = list2.length && (loud || sig !== skip) ? {entries:list2, all:es, sig} : null;
-    renderNt();
-    if(loud && !S.nt) say('노션에 새로 적힌 글이 없어요 — 모두 옮겨져 있어요');
-  }catch(e){ if(loud) say('노션을 읽지 못했어요: ' + (e.message || e), 'err'); }
-}
-function renderNt(){
-  const el = document.getElementById('wlNt'); if(!el) return;
-  el.hidden = !S.nt;
-  if(!S.nt) return;
-  const n = S.nt.entries.length;
-  el.innerHTML = `<span>노션에 새로 적힌 글 <b>${n}개</b> — ${E(S.nt.entries.slice(0, 4).map(e => `${md(String(e.date || e.edited).slice(0, 10))} ${e.title}`).join(', '))}${n > 4 ? ' …' : ''}</span><span class="wl-sp"></span><button type="button" class="wl-btn pri sm" data-act="ntimport">가져오기</button><button type="button" class="wl-btn sm" data-act="ntskip">나중에</button>`;
-}
-async function notionImport(){
-  const nt = S.nt; if(!nt) return;
-  S.nt = null; renderNt(); say('옮기는 중…');
-  const known = new Set(nt.all.map(e => dash(e.id)));
-  let a = 0, u = 0, held = [];
-  try{
-    const ps = nt.entries.map(e => ntPage(e, known));
-    for(let i = 0; i < ps.length; i += 8){ const j = await rpc('dlog_import', {p_pages:ps.slice(i, i + 8)}); a += j.new; u += j.updated; held = held.concat(j.held || []); }
-    try{ localStorage.setItem(K.ntSkip, nt.sig); }catch(e){}
-    await boot(); S.caches.clear(); renderAll();
-    say(`노션에서 옮겼어요 — 새 글 ${a}개${u ? ` · 고친 글 ${u}개` : ''}`);
-    if(held.length) modal('오피스에서 이미 고친 글', `<p>아래 글은 오피스에서 고쳐서 노션 내용으로 덮지 않았어요. 노션에만 있는 줄은 직접 옮겨 주세요.</p>${held.map(h => `<div class="wl-tr"><b>${md(h.day)} ${E(h.title)}</b></div>`).join('')}`);
-  }catch(e){ say('옮기지 못했어요: ' + (e.message || e), 'err'); }
-}
-
 /* ============================================================ 시작 ============================================================ */
 let inited = false;
 async function init(){
@@ -2073,7 +1999,6 @@ async function init(){
   if(!mount()) return;
   if(!inited){
     inited = true;
-    try{ const m = JSON.parse(localStorage.getItem('brightbeed_dc_mirror_doc_v1') || '{}'); if(m && m.calUrl){ delete m.calUrl; localStorage.setItem('brightbeed_dc_mirror_doc_v1', JSON.stringify(m)); } }catch(e){}   // 옛 노션 업무일지 사본 치우기
     if(cacheRead()) renderAll(); else renderMain();
     restoreDirty();
     try{ if(typeof _dslLoadHol === 'function') _dslLoadHol().then(() => renderBoard()).catch(() => {}); }catch(e){}
@@ -2093,7 +2018,6 @@ async function init(){
   if(S.dirty.size) scheduleSave(100);
   if(!S.ready && S.err) setTimeout(() => { if(!S.ready && visible()) init(); }, 10000);
   if(S.ready) inbTick(false);
-  if(!was && S.ready) setTimeout(() => notionCheck(false), 2500);
 }
 /* 오피스 홈 카드의 '오늘 루틴 n' — 디자인팀 명단 PC 에서만 */
 let homeAt = 0;
@@ -2108,5 +2032,5 @@ async function homeBadge(){
     await autoRoutines(); badge(leftToday().length);
   }catch(e){}
 }
-window.WL = {ready:true, init, homeBadge, stripSync, _:{S, inb, inbOf, inbTick, upcoming, todayItems, ordersOf2:ordersOf, merge3, carry, sections, ntBlocks, ntPage, isDue, state, parseX, deco, diffOf, ageMap, ordersOf, stOf, segNorm, newPage, openPage, notionCheck, flush, poll, renderAll}};
+window.WL = {ready:true, init, homeBadge, stripSync, _:{S, inb, inbOf, inbTick, upcoming, todayItems, ordersOf2:ordersOf, merge3, carry, sections, isDue, state, parseX, deco, diffOf, ageMap, ordersOf, stOf, segNorm, newPage, openPage, flush, poll, renderAll}};
 })();
