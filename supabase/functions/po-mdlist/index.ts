@@ -452,9 +452,9 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
     // 머리글 (비었을 때만)
     TRAIL.forEach((h, i) => P.cells.push({ r: 1, p: tc + i, v: h, blank: true, hdr: true }));
     for (const [r, ls] of byRow) {
-      const act = ls.filter((x) => x.kind !== 'cancelled');
+      const act = ls.filter((x) => x.kind === 'item');
       if (!act.length) {
-        // 취소된 발주뿐 — 안 적는다. 예전에 우리가 그 발주로 적어 둔 칸이면 비운다
+        // 취소 · 샘플 · 부자재 발주뿐 — '최근 발주'로 안 적는다. 예전에 우리가 그 발주로 적어 둔 칸이면 비운다
         const cur = ((ti.rows.find((x) => x.r === r) || { v: [] as string[] }).v[tc + 3]) || '';
         if (cur && ls.some((x) => x.sn === cur)) P.cells.push(...trailCells(r, null));
         for (const L of ls) mdOf.set(L.sn, { tk: t.tk, r, how: 'cancelled' });
