@@ -278,6 +278,8 @@ function rowScore(L: Line, row: TabRow): number {
   if (L.feat.offer && row.offer) s += L.feat.offer === row.offer ? 2 : -3;
   const pc = L.phrase ? compact(L.phrase) : '';
   if (pc.length >= 3 && (pc === row.nameC || (row.memoC && row.memoC.includes(pc)))) s += 2;
+  // 재고 ERP 이름(옵션 포함)이 줄 상품명과 같음 — 같은 사진 · 같은 1688 상품의 색만 다른 줄(Coffs 블랙 / 화이트)을 가른다
+  if (L.erp && row.nameC && compact(`${L.erp.n} ${L.erp.o}`) === row.nameC) s += 2;
   const cc = compact(L.cs);
   if (cc && row.optC && cc === row.optC) s += 1;
   return strong && s >= 4 ? s : 0;
