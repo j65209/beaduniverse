@@ -74,7 +74,7 @@
   .icon-btn.spin svg { animation: spin 1s linear infinite }
   @keyframes spin { to { transform: rotate(360deg) } }
 
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 16px 16px 60px }
+  .wrap { max-width: none; margin: 0; padding: 12px 10px 40px }   /* 11-23 사장님 "사이드 공백 좀 적게" — 폭 제한 없이, 좌우 10px */
 
   /* ── 거르기 ── */
   .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px }
@@ -101,15 +101,15 @@
 
   /* ── 달력 ── */
   .months { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 8px; margin-bottom: 6px }
-  .mbtn { flex: none; width: 74px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 6px 6px 7px; text-align: left }
+  .mbtn { flex: 1 0 74px; min-width: 74px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 6px 6px 7px; text-align: left }
   .mbtn[aria-pressed="true"] { border-color: var(--p); box-shadow: 0 0 0 1px var(--p) inset }
   .mbtn .y { display: block; font-size: 10.5px; color: var(--t3); line-height: 1.1 }
   .mbtn .m { font-weight: 800; font-size: 14px }
   .mbtn .c { display: block; font-size: 11px; color: var(--t2); margin-top: 1px }
   .mbtn .meter { display: block; height: 4px; border-radius: 2px; background: #eef1f5; margin-top: 4px; overflow: hidden }
   .mbtn .meter i { display: block; height: 100%; background: var(--p) }
-  .cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; align-items: start }
-  .cal { padding: 10px }
+  .cal-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 10px; align-items: start }
+  .cal { padding: 8px }
   .cal-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 10px }
   .cal-head h2 { margin: 0; font-size: 17px; letter-spacing: -.3px }
   .cal-head .nav { display: flex; gap: 6px }
@@ -124,8 +124,8 @@
   .day.today { border-color: var(--text) }
   .day .cnt { font-size: 11px; font-weight: 800; color: var(--p); white-space: nowrap }
   .day .cnt i { font-style: normal }
-  .day .cities { display: flex; flex-direction: column; gap: 2px; min-width: 0 }
-  .day .city { font-size: 11px; line-height: 15px; border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--p-bg); color: var(--p) }
+  .day .cities { display: flex; flex-wrap: wrap; gap: 2px; min-width: 0 }   /* 11-23 "최대한 캘린더에서 많이 보이게" — 도시 전부 */
+  .day .city { font-size: 11px; line-height: 15px; border-radius: 4px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; background: var(--p-bg); color: var(--p) }
   .day .city.f { background: var(--f-bg); color: var(--f) }
   .day .more { font-size: 10.5px; color: var(--t3) }
   .day.has { cursor: pointer }
@@ -176,14 +176,6 @@
   .li .w { color: var(--t3); font-size: 12px; white-space: nowrap }
 
   /* ── 정보 ── */
-  .info { margin-top: 22px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px }
-  .info h4 { margin: 0 0 8px; font-size: 14px }
-  .info table { border-collapse: collapse; width: 100%; font-size: 12.5px }
-  .info th, .info td { border-bottom: 1px solid var(--line); padding: 6px 6px; text-align: right; white-space: nowrap }
-  .info th:first-child, .info td:first-child { text-align: left; white-space: normal }
-  .info thead th { color: var(--t3); font-weight: 700 }
-  .info ul { margin: 0; padding-left: 18px; color: var(--t2); font-size: 12.5px }
-  .info li { margin: 3px 0 }
 
   /* ── 창 ── */
   .modal { position: fixed; inset: 0; z-index: 100; background: rgba(15, 23, 42, .42); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto }
@@ -253,14 +245,16 @@
   @media (max-width: 920px) {
     .cal-wrap { grid-template-columns: 1fr }
     .side { position: static; max-height: none }
-    .info { grid-template-columns: 1fr }
   }
   @media (max-width: 640px) {
     .top { padding: 8px 12px; gap: 6px }
     .ttl small { display: none }
-    .wrap { padding: 12px 16px 50px }
-    .day { min-height: 54px; padding: 4px }
-    .day .cities { display: none }
+    .wrap { padding: 10px 6px 40px }
+    .cal { padding: 5px }
+    .side { padding: 10px }
+    .day { min-height: 54px; padding: 3px; border-radius: 7px }
+    .day .cities { gap: 1px }
+    .day .city { font-size: 9.5px; line-height: 13px; padding: 0 2px; border-radius: 3px; text-overflow: clip; width: 100% }
     .day .dn { flex-wrap: wrap; row-gap: 4px }
     .day .cnt { flex-basis: 100%; text-align: right; font-size: 12.5px }
     .day .cnt i { display: none }
@@ -268,7 +262,7 @@
     .ttl span { overflow: hidden; text-overflow: ellipsis }
     .grow { display: none }
     .pill { max-width: 40vw }
-    .dow, .grid { gap: 3px }
+    .dow, .grid { gap: 2px }
     .hm { grid-template-columns: 34px repeat(31, minmax(0, 1fr)); gap: 1px }
     .hm .dh { visibility: hidden }
     .hm button { height: 14px; border-radius: 2px }
@@ -351,19 +345,6 @@
   <section id="viewPlaces" hidden></section>
   <section id="viewNew" class="panel" hidden></section>
 
-  <section class="panel info">
-    <div>
-      <h4>대한항공 편 마일 공제 (편도 · 평수기 기준)</h4>
-      <table>
-        <thead><tr><th>지역</th><th>프레스티지</th><th>일등석</th><th>왕복 프레스티지</th></tr></thead>
-        <tbody id="zoneRows"></tbody>
-      </table>
-      <ul style="margin-top:8px">
-        <li>성수기에는 1.5배 공제돼요. 세금 · 유류할증료는 따로 내요.</li>
-        <li>공제표는 대한항공 공식 홈페이지에서 최종 확인하세요 (바뀔 수 있어요).</li>
-      </ul>
-    </div>
-  </section>
 </main>
 
 <div class="modal" id="placeModal" hidden><div class="sheet" id="placeSheet" role="dialog" aria-modal="true"></div></div>
@@ -701,7 +682,6 @@
       const c = k === 'all' ? seen.size : (per[k] || 0);
       return `<button type="button" class="chip" data-region="${k}" aria-pressed="${S.region === k}">${esc(n)}<b>${c}</b></button>`;
     }).join('');
-    $('zoneRows').innerHTML = Object.values(ZONES).map(z => `<tr><td>${esc(z.name)}</td><td class="num">${won(z.O)}</td><td class="num">${won(z.A)}</td><td class="num">${won(z.O * 2)}</td></tr>`).join('');
   }
 
   function r2Info() {   // 로마일 수집 (맥미니 ke-roamile) — 묶음 28개
@@ -804,14 +784,14 @@
       cls.push('has', n >= 6 ? 'lv3' : n >= 3 ? 'lv2' : 'lv1');
       if (S.day === k) cls.push('sel');
       const anyNew = [...pm.values()].some(a => a.some(isNew));
-      const chips = ps.slice(0, 3).map(p => {
+      const chips = ps.map(p => {
         const onlyF = pm.get(p.code).every(s => s.c === 'A');
         const q = rtInfo(p.code, k, S.dir).state === 'unk';   // 짝이 되는 편 아직 확인 전 — 테두리만
         return `<span class="city${onlyF ? ' f' : ''}${q ? ' q' : ''}"${q ? ' title="돌아오는 편 아직 확인 전"' : ''}>${esc(p.city)}</span>`;
       }).join('');
       cells.push(`<button type="button" class="${cls.join(' ')}" data-day="${k}" aria-label="${esc(fmtLong(k))} ${n}곳">` +
         `<div class="dn"><span>${d}</span>${anyNew ? '<span class="nw" title="새로 열림"></span>' : ''}<span class="cnt num">${n}<i>곳</i></span></div>` +
-        `<div class="cities">${chips}${n > 3 ? `<span class="more">+${n - 3}곳</span>` : ''}</div></button>`);
+        `<div class="cities">${chips}</div></button>`);
     }
     $('calGrid').innerHTML = cells.join('');
   }
