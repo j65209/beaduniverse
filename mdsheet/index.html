@@ -5252,6 +5252,19 @@
     const s = S.st[S.cur];   // 받다가 실패한 탭은 30초 뒤 다시
     if (S.cur && !S.busy[S.cur] && s && s.k === 'err' && Date.now() - s.at > RETRY_MS) loadSheet(S.cur);
   }
+  // 다른 사람이 고친 칸 · 함수 · 서식 · 탭 숨기기가 저장되면 바로 (실시간 알림선 office-live.js, 2026-11-23) — 끊기면 8초 확인으로
+  let liveOn = false;
+  function liveBoot() {
+    if (liveOn || !window.OfficeLive) return;
+    liveOn = true;
+    OfficeLive.on(['mdx_rows', 'mdx_ofx', 'mdx_tabs'], () => {
+      if (!shown() || !S.tabsOk) return;
+      if (S.pollBusy) { setTimeout(() => { if (shown()) poll(); }, 700); return; }
+      S.pollAt = 0;
+      return poll();
+    });
+  }
+  if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
   setInterval(tick, 2000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(tick, 300); });
   let rzT = 0;
@@ -5301,5 +5314,6 @@
   })();
 })();
 </script>
+<script src="../office-live.js?v=1" defer></script><!-- 실시간 알림선 (office-live.js) -->
 </body>
 </html>

@@ -4424,7 +4424,7 @@
     const m = c && c.model;
     tip = c && c.direct ? `오피스 저장소가 ${isFinite(age) ? agoMs(age) : '오래'} 맞춰지지 않아 이 탭은 구글시트를 바로 읽어 보여 주는 중 (${hhmm(c.at)})`
       : c && c.stored ? `이 브라우저에 저장해 둔 ${hhmm(c.at)} 자료를 먼저 보여 주는 중 — 새 자료가 오면 바로 바뀌어요`
-      : cut ? `구글시트와 끊긴 탭 — 오피스 저장소가 원본이에요. 자동 차감 · 고친 값이 여기에 바로 적히고, 화면은 ${POLL_MS / 1000}초마다 바뀐 줄만 받아요`
+      : cut ? `구글시트와 끊긴 탭 — 오피스 저장소가 원본이에요. 자동 차감 · 고친 값이 여기에 바로 적히고, 다른 직원 화면에도 바로 보여요 (연결이 끊기면 ${POLL_MS / 1000}초마다 확인)`
       : `오피스 저장소에서 읽음 — 맥미니가 구글시트와 맞추고(재고 탭 1분 · 오늘 주문 탭 2분 · 지난 탭 15분마다), 화면은 ${POLL_MS / 1000}초마다 바뀐 줄만 받아요`
         + (isFinite(age) ? `\n이 탭을 시트와 마지막으로 맞춘 때: ${agoMs(age)}` : '');
     st.title = tip + (m && m.masked ? `\n주문자 이름 등 개인정보 ${m.masked.toLocaleString('ko-KR')}칸은 가려서 보여 줌` : '')
@@ -4814,6 +4814,21 @@
     const bc = new BroadcastChannel('bead-erp');
     bc.onmessage = () => { if (!shown() || !S.tabsOk) return; S.pollAt = 0; Promise.resolve(poll()).catch(() => {}); if (LG.open) logLive(); };
   } catch (e) { /* 옛 브라우저 — 8초 확인으로 */ }
+  // 다른 사람이 고친 칸 · 자동 차감 · 입고가 저장되면 바로 (실시간 알림선 office-live.js, 2026-11-23) — 끊기면 8초 확인으로
+  let liveOn = false;
+  function liveBoot() {
+    if (liveOn || !window.OfficeLive) return;
+    liveOn = true;
+    OfficeLive.on(['erp_rows', 'erp_tabs', 'erp_map'], () => {
+      if (!shown() || !S.tabsOk) return;
+      if (S.pollBusy) { setTimeout(() => { if (shown()) poll(); }, 700); return; }   // 묻는 중에 또 바뀌었으면 한 번 더
+      S.pollAt = 0;
+      const p = poll();
+      if (LG.open) logLive();
+      return p;
+    });
+  }
+  if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
 
   document.addEventListener('keydown', e => {
     if (M.open) { if (e.key === 'Escape') { e.preventDefault(); closeMap(); } return; }   // 매핑 창이 떠 있으면 그 창만
@@ -4904,6 +4919,7 @@
   })();
 })();
 </script>
+<script src="../office-live.js?v=1" defer></script><!-- 실시간 알림선 (office-live.js) -->
 <script src="../erp-alert.js?v=1" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
 </body>
 </html>

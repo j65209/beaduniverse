@@ -22048,11 +22048,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     //  2026-09-22 박시호 카드 안 뜬 근본 이유가 이 sync 재실행 부재 + 재렌더 부재였음.)
     if(typeof syncStaffAddedFromRemote==='function'){
       syncStaffAddedFromRemote().catch(()=>{});
-      setInterval(()=>syncStaffAddedFromRemote().catch(()=>{}), 60000);
+      setInterval(()=>{ if(_bbLiveRelax('staffAdded')) syncStaffAddedFromRemote().catch(()=>{}); }, 60000);
     }
     if(typeof _staffAddedInitRealtime==='function') _staffAddedInitRealtime();
     syncFromRemote();
     startPolling();
+    // 실시간 알림선 (office-live.js 는 defer — 아직이면 문서를 다 읽은 뒤)
+    if(window.OfficeLive) bbLiveBoot(); else { window.addEventListener('load', bbLiveBoot, {once:true}); setTimeout(bbLiveBoot, 5000); }
     // 벤더 데이터 백그라운드 첫 로드 — 사용자가 벤더 뷰에 들어오지 않아도 폴링이 즉시 살아남
     if(typeof gcCalEnsureLoaded==='function') gcCalEnsureLoaded();
     if(typeof vMarginEnsureLoaded==='function') vMarginEnsureLoaded();
@@ -22063,7 +22065,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 업무일지 숨김 명단 로드 → 홈 카드 즉시 반영, 이후 30초 주기 재동기화
     if(typeof syncDiaryHiddenFromRemote==='function'){
       syncDiaryHiddenFromRemote().finally(()=>{ if(typeof _diaryApplyHomeVisibility==='function') _diaryApplyHomeVisibility(); });
-      setInterval(()=>syncDiaryHiddenFromRemote().catch(()=>{}), 30000);
+      setInterval(()=>{ if(_bbLiveRelax('diaryHidden')) syncDiaryHiddenFromRemote().catch(()=>{}); }, 30000);
     }
     // 출금 요청 실시간 알림 — 대표 PC 는 벤더 뷰에 안 들어와도 알림을 받아야 함
     if(typeof _wrInitRealtime==='function') _wrInitRealtime();
@@ -23553,6 +23555,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       .then(r=>{ const n=+((r.headers.get('content-range')||'').split('/')[1]||0); const t=document.getElementById('modelsTag'); if(t){ t.textContent=n?('새 지원 '+n):'NEW'; t.classList.toggle('is-hot',n>0); } }).catch(()=>{});
     }catch(_){} };
     setTimeout(run,1500); setInterval(()=>{ if(!document.hidden) run(); },120000);
+    window.addEventListener('load',()=>{ try{ if(window.OfficeLive) window.OfficeLive.on(['model_applicants'],run); }catch(_){} },{once:true});
   })();
   /* 꿀꿀집 마케팅 회사 — sns/ 별도 페이지 (@ggul.ggul.zip 인스타·스레드 연결 · 업로드 현황 · 게시물별 분석, 서버는 Supabase 엣지 함수 sns). 카드는 '관리자 전용' 폴더 — 관리자 PIN 이면서 SNS_OWNER(전승훈)일 때만 보임 (snsRefreshAccess) */
   function openSnsPage(){ openToolPage('sns'); }   // 오피스 안 화면 (TOOL_PAGES) — 관리 화면은 주소 sns/?manage=1
@@ -35259,6 +35262,79 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof syncMdEventsFromRemote==='function') syncMdEventsFromRemote().catch(()=>{});
   }
 
+  /* ===== 실시간 알림선 연결 (office-live.js · 2026-11-23 사장님 "바로바로 작성하면 … 직원들이 실시간으로 볼 수 있게") =====
+     저장소 표가 바뀌면 '어느 표'라는 신호만 오고, 여기서 그 화면의 원래 '다시 읽기'를 부른다 — 입력 중 보류 · 못 보낸 값 지킴 같은
+     안전장치는 각 함수에 있는 것을 그대로 쓴다. 신호가 끊겨도 정기 확인이 돌아서 늦어질 뿐 빠지지 않는다.
+     새 저장 표를 만들면: DB 트리거 zz_office_live + 아래 표 이름 한 줄. 업무일지 · 출금 · 고정비 · 대표 캘린더 · 금고는 이미 자기 실시간이 있어 여기 없음. */
+  const _bbLiveFresh={};            // 깃허브 파일: 이 시각까지는 캐시 말고 원본을 읽는다
+  const _bbLiveAt={};
+  // 정기 확인을 지금 할지 — 알림선이 이어져 있으면 5분에 한 번, 끊겨 있으면 예전 주기대로 매번
+  function _bbLiveRelax(key){
+    const on=!!(window.OfficeLive && window.OfficeLive.ok());
+    if(on && Date.now()-(_bbLiveAt[key]||0)<5*60*1000) return false;
+    _bbLiveAt[key]=Date.now();
+    return true;
+  }
+  // 깃허브에 저장하는 화면 중 남도 바로 봐야 하는 것 — 저장이 끝나면 다른 화면에 알린다 (업무일지 백업처럼 뒤에서 도는 저장은 뺀다)
+  const _BB_LIVE_GH=[
+    ['md-events', /\/contents\/data\/md-events\.json/],
+    ['notice',    /\/contents\/office\/notice\.json/],
+    ['board',     /\/contents\/strategy\/month-board\.json/],
+    ['ad-sheets', /\/contents\/office\/ad-sheets\//]
+  ];
+  function _bbLiveGhSaved(apiUrl){
+    try{
+      const hit=_BB_LIVE_GH.find(([,re])=>re.test(String(apiUrl)));
+      if(hit && window.OfficeLive) window.OfficeLive.send('gh:'+hit[0]);
+    }catch(e){}
+  }
+  function _bbLiveShown(id){ const v=document.getElementById(id); return !!v && !v.hidden; }
+  let _bbLiveBooted=false;
+  function bbLiveBoot(){
+    if(_bbLiveBooted || !window.OfficeLive) return;
+    _bbLiveBooted=true;
+    const L=window.OfficeLive, call=(f,...a)=>{ try{ return Promise.resolve(f(...a)).catch(()=>{}); }catch(e){} };
+    // 인사 · 연차
+    L.on(['staff_added'], ()=>call(syncStaffAddedFromRemote));
+    L.on(['staff_dept_overrides','staff_titles'], ()=>call(syncDeptOverridesFromRemote));
+    L.on(['staff_phones'], ()=>call(syncStaffPhonesFromRemote));
+    L.on(['staff_diary_hidden'], ()=>call(syncDiaryHiddenFromRemote));
+    L.on(['staff_hidden','staff_resigned','leave_entries','leave_overrides','leave_baseline_deletes','leave_comp_requests','leave_cycles'], ()=>call(syncLeaveFromRemote));
+    // 출고 전광판 — 지운 줄 · 되살린 줄
+    L.on(['lg_board_deletes'], ()=>{ if(_lgbDelsAt){ _lgbDelsAt=1; return call(()=>_lgbLoadDels().then(ch=>{ if(ch) _lgbPaint(); })); } });
+    // 홈 입고 현황 (모아 입고 · ERP 에서 직접 올린 입고) — 홈을 보고 있을 때만
+    L.on(['erp_rows'], ()=>{ if(_bbLiveShown('viewHome') && Date.now()-_rcvHome.at>15000) return call(rcvHomeLoad); });
+    // CS 기록 · 개선 요청
+    L.on(['cs_issues','cs_requests','cs_daily_notes','cs_sales_qty'], ()=>{ if(_bbLiveShown('viewCs') && _csi.loaded && _csi.tab!=='work') return call(csiLoad,false); });
+    // 원천세 (입력 중이면 그 함수가 알아서 미룬다)
+    L.on(['wht_forms'], ()=>{ if(_whtState.watching) return call(_whtCheckRemote); });
+    // 디자인팀 견적서 · 매칭보드 · 라인시트
+    L.on(['design_quotes'], ()=>{ if(_bbLiveShown('viewDesign') && _qt.loaded && designHasAccess()) return call(qtLoad); });
+    L.on(['design_tpl_docs'], ()=>{
+      if(!_bbLiveShown('viewDesign') || !_tpl.open) return;
+      const ae=document.activeElement;
+      if(ae && ae.closest && ae.closest('#tplStage')) return;   // 고치는 중엔 받지 않는다 (다음에 열 때)
+      const kind=_tpl.open.kind, sig=()=>JSON.stringify((_tpl.docs[kind]||[]).map(d=>[d.id,d.updated_at])), was=sig();
+      return call(()=>_tplLoad(kind,true).then(()=>{ if(was!==sig()){ _tpl.sig=''; _tplRender(); } }));
+    });
+    // 기획전 계산기 · 배지 문구 · 화면 글자 · 에이전트 이름
+    L.on(['app_kv'], ()=>{
+      call(uePull);
+      if(typeof loadAgentsMini==='function') call(loadAgentsMini);
+    });
+    // 메일로 들어온 기획전
+    L.on(['md_mail_events'], ()=>{ if(_bbLiveShown('viewMd')) return call(mdAutoLoad,true); });
+    // 깃허브 파일
+    L.on(['gh:md-events'], ()=>{ _bbLiveFresh['md-events']=Date.now()+6*60*1000; return call(syncMdEventsFromRemote); });
+    L.on(['gh:notice'], ()=>call(syncNoticeFromRemote));
+    L.on(['gh:board'], ()=>{ if(_bbLiveShown('viewStrategy') && _sb.ready && !_sbEditing()) return call(()=>_sbLoadDoc().then(()=>{ if(!_sbEditing()) _sbRender(); })); });
+    L.on(['gh:ad-sheets'], ()=>{
+      const id=_adsh.brand;
+      if(!id || !_bbLiveShown('viewMarketing') || document.querySelector('#adshDaily input:focus')) return;
+      return call(()=>_adshLoad(id).then(()=>{ if(_adsh.brand===id && !document.querySelector('#adshDaily input:focus')) _adshRefresh(); }));
+    });
+  }
+
   /* === 자동 폴링 (60초마다 + 탭 활성화 시 즉시) === */
   let _po_pollTimer = null;
 
@@ -35269,7 +35345,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(typeof syncSalesPptFromRemote==='function') syncSalesPptFromRemote().catch(()=>{});
     if(typeof syncSalesArchiveFromRemote==='function') syncSalesArchiveFromRemote().catch(()=>{});
     if(typeof syncNoticeFromRemote==='function') syncNoticeFromRemote().catch(()=>{});
-    if(typeof syncLeaveFromRemote==='function') syncLeaveFromRemote().catch(()=>{});
+    if(typeof syncLeaveFromRemote==='function' && _bbLiveRelax('leave')) syncLeaveFromRemote().catch(()=>{});
     if(typeof syncCsFromRemote==='function') syncCsFromRemote().catch(()=>{});
     if(typeof syncMdEventsFromRemote==='function') syncMdEventsFromRemote().catch(()=>{});
     // 벤더사 데이터 자동 갱신 — 성공 후 10분 게이트 / 실패 후 5분 재시도 (탭이 hidden일 땐 폴링 자체가 멈춤)
@@ -36247,6 +36323,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(r.ok){
       let newSha=null;
       try{ const j=await r.json(); newSha=(j && j.content && j.content.sha) || null }catch(e){}
+      _bbLiveGhSaved(apiUrl);
       return {ok:true, sha:newSha};
     }
     if(r.status===409) return {ok:false,reason:'conflict'};
@@ -43818,6 +43895,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   async function fetchMdEventsFromRemote(){
+    // 실시간 알림을 받은 뒤 5분은 raw(5분 캐시) 대신 저장소 원본을 읽는다 — 캐시의 옛 파일이 방금 받은 새 일정을 되돌리지 않게
+    if(Date.now()<(_bbLiveFresh['md-events']||0)){
+      const f=await ghGetFile(MD_EVENTS_API);
+      if(f.error || f.sha===null || !f.text) return null;
+      try{ const d=JSON.parse(f.text); return (d && Array.isArray(d.events)) ? d : null; }catch(e){ return null }
+    }
     try{
       const r=await fetch(`${MD_EVENTS_RAW}?cb=${Date.now()}`,{cache:'no-cache'});
       if(r.status===404) return {empty:true};
@@ -55939,6 +56022,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <div id="darcBody" class="darc-groups"></div>
   </div>
 </div>
+<script src="office-live.js?v=1" defer></script><!-- 실시간 알림선 (office-live.js) -->
 <script src="erp-alert.js?v=1" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
 </body>
 </html>

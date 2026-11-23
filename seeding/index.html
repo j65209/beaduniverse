@@ -984,6 +984,10 @@
   }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { poll(); pollLoop(); } });
   window.addEventListener('focus', () => poll());
+  // 다른 사람이 고치면 바로 (실시간 알림선 ../office-live.js, 2026-11-23) — 끊기면 4초 확인 그대로
+  let liveOn = false;
+  function liveBoot() { if (liveOn || !window.OfficeLive) return; liveOn = true; OfficeLive.on(['seeding_rows', 'seeding_tabs'], () => poll()); }
+  if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
 
   /* ══════════════════════ 잠금 · 편집자 이름 ══════════════════════ */
   function isUnlocked() {
@@ -4555,5 +4559,6 @@
   else { $('lock').hidden = false; setTimeout(() => $('lockPin').focus(), 60); }
 })();
 </script>
+<script src="../office-live.js?v=1" defer></script>
 </body>
 </html>

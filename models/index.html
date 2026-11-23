@@ -378,6 +378,11 @@ document.addEventListener('keydown', (e) => {
 
 load();
 setInterval(() => { if (!document.hidden) load(); }, 60000);
+// 새 지원 · 다른 사람이 바꾼 상태가 들어오면 바로 (실시간 알림선 ../office-live.js, 2026-11-23)
+let liveOn = false;
+function liveBoot() { if (liveOn || !window.OfficeLive) return; liveOn = true; OfficeLive.on(['model_applicants'], () => load()); }
+if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
 </script>
+<script src="../office-live.js?v=1" defer></script>
 </body>
 </html>
