@@ -18148,10 +18148,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* ===== 브랜드 리포트 (viewBrandReport, #report) — 기간 분석 =====
      2026-11-16 사장님 요청 "일일 브랜드 리포트 퀄리티 · 기간 설정 · 심층 분석" — 어제 하루만 보던 화면을 기간 분석으로 바꿈.
      데이터는 이미 쌓이는 것을 읽기만 한다 (새 수집기 없음):
-     · 채널별 일별 실결제 · 주문 · 광고비 — 비공개 brightbeed-reports {채널}/{브랜드}/index.json (_stratGet · 프록시)
+     · 채널별 일별 실결제 · 주문 · 광고비 — 비공개 brightbeed-reports {채널}/{브랜드}/sales-index.json (_stratGet · 프록시)
          전략팀 일일 보고서와 같은 값: 결제일(KST), 취소 · 환불 · 반품(요청 · 보류 포함)을 뺀 실결제(배송비 포함) · 주문 수.
          공홈 home/{브랜드} (맥미니 home-live 30분) · 플랫폼은 PLATFORM_SECTIONS 경로 (코페리 에이블리만 처음 경로 ably).
-         원가 · 순이익(cost · net) 칸은 전략팀 전용이라 여기서 쓰지 않는다.
+         sales-index.json = 수집기가 index.json 을 올릴 때마다 같이 쓰는 직원용 사본 (날짜 · 주문 · 실결제 · 광고비 · 진행 중 시각만,
+         sixshop-collector src/reports-repo.ts staffIndexFor). 원가 · 순이익 · 수수료가 든 index.json 은 전략팀(대표 2명) 전용이라
+         여기서는 받지도 않는다 (2026-11-23 사장님 "막아줘") — index.json 으로 되돌리지 말 것.
      · 공홈 상품별 판매 — home/{브랜드}/products.json (판매 순위 패널과 같은 _pixLoadIdx 모델 · 같은 이름 · 코드끼리 묶음)
      · 사진 · 링크 · 재고 — /sx/pro-stock (_pixLoadCat). 상품을 누르면 제품 분석 창(paOpen)이 이 기간으로 열린다.
      · 리오더 · 급상승 — /sx/report?brand=X (맥미니 brand_report.py 30분, 어제까지 판매 속도와 지금 재고라 기간과 무관)
@@ -18308,7 +18310,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!force && cur && Date.now()-cur.at<(cur.err?BREP_ERR_RETRY:BREP_TTL)) return Promise.resolve(cur);
     const p=(async()=>{
       try{
-        const j=await _stratGet(path+'/index.json');
+        const j=await _stratGet(path+'/sales-index.json');   // 직원용 사본 — 순이익 · 원가 없음 (index.json 은 전략팀 전용)
         if(!j || !Array.isArray(j.days)) _brep.idx[path]={at:Date.now(), none:true, rows:new Map(), dates:[]};
         else{
           const rows=new Map();
