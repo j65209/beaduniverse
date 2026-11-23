@@ -344,6 +344,25 @@
   /* ── 고치기 (표 칸 누르기 · 상세 창 값 누르기 → 오피스 저장소에 바로) ── */
   .d-hint{margin-top:9px;font-size:11.5px;line-height:1.45;color:var(--text-4)}
   .d-hint.no{color:var(--warn)}
+  /* 줄 다루기 (2026-11-23 — 줄 복사 · 붙여넣기 · 지우기 · 메인 미발매 → Product List 옮기기) */
+  .d-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .d-acts[hidden]{display:none}
+  .d-acts button{height:28px;padding:0 10px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--text-2);font-size:12px;font-weight:600}
+  .d-acts button.mv{background:var(--info);border-color:var(--info);color:#fff}
+  .d-acts button.del{color:var(--danger)}
+  @media (hover:hover){ .d-acts button:hover{border-color:#cbd5e1;background:#f8fafc} .d-acts button.mv:hover{background:#1d4ed8;border-color:#1d4ed8} }
+  .rmenu{position:fixed;z-index:85;min-width:230px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 44px rgba(15,23,42,.2);font-size:13px}
+  .rmenu[hidden]{display:none}
+  .rmenu .rh{padding:6px 10px 5px;font-size:11.5px;color:var(--text-4)}
+  .rmenu button{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border-radius:6px;text-align:left;color:var(--text);font-size:13px}
+  .rmenu button kbd{margin-left:auto;font:inherit;font-size:11px;color:var(--text-4)}
+  .rmenu button.mv{color:var(--info);font-weight:700}
+  .rmenu button.del{color:var(--danger)}
+  .rmenu button:disabled{color:var(--text-4);cursor:default}
+  @media (hover:hover){ .rmenu button:not(:disabled):hover{background:#f1f5f9} }
+  .rmenu hr{border:0;border-top:1px solid var(--line-2);margin:4px 2px}
+  .tbl tbody tr.rsel td.rn{background:#dbeafe;color:var(--info);font-weight:700}
+  .nr-from{margin-top:8px;padding:7px 9px;border-radius:7px;background:#eff6ff;color:#1e40af;font-size:12px;line-height:1.45}
   .dl dd.ed-ok{cursor:text;position:relative;padding-right:52px}
   @media (hover:hover){
     .dl dd.ed-ok:hover{background:#f6f9ff;box-shadow:inset 0 0 0 1px #c7d7fe;border-radius:6px}
@@ -651,6 +670,7 @@
       <div class="d-title" id="dTitle"></div>
       <div class="d-sub" id="dSub"></div>
       <div class="d-hint" id="dHint"></div>
+      <div class="d-acts" id="dActs" hidden></div>
     </div>
     <div class="dbody"><dl class="dl" id="dList"></dl></div>
   </aside>
@@ -663,6 +683,7 @@
 <div class="pal" id="pal" hidden></div>
 <div class="tmenu" id="tmenu" hidden></div>
 <div class="dlg" id="dlg" hidden></div>
+<div class="rmenu" id="rmenu" role="menu" hidden></div>
 <script>
 (function () {
   'use strict';
@@ -1870,7 +1891,8 @@
     }
     const d = {cols, rows: outRows, banner: side ? [] : banner, keyIdx, kpis, cat: side ? null : cat, sec: meta.sec, side: !!side, caption, capLines, lastR, ghosts, recent,
       capBg: tab && hi >= 0 ? (firsts.filter(k => k < hi).map(k => { const c = rows[k].cells.find(x => x.t); return c && (gfBase(tab.gid, rows[k].r, c.p) || {}).bg; }).find(Boolean) || '') : '',
-      gid: tab ? tab.gid : '', headR: hi >= 0 ? rows[hi].r : 0, hid, nHid: hid.size ? outRows.filter(r => hid.has(r.r)).length : 0, nShow: kRows.length, hcol: (gfT && gfT.hc) || NOHID};
+      gid: tab ? tab.gid : '', headR: hi >= 0 ? rows[hi].r : 0, hid, nHid: hid.size ? outRows.filter(r => hid.has(r.r)).length : 0, nShow: kRows.length, hcol: (gfT && gfT.hc) || NOHID,
+      head};   // head = 열(p) → 머리글 (가린 열도) — 줄 복사 · 옮기기에서 머리글 이름으로 칸을 맞춘다
     fitCols(d);
     return d;
   }
@@ -2305,7 +2327,7 @@
   // 행 번호 = 지금 보이는 순서대로 1, 2, 3 … (2026-11-20 사장님 "행 번호가 마음대로인데 행은 그냥 1번부터 다 기재" — 걸러 보기 · 정렬해도 위에서부터 1번).
   // 함수 주소(E5 등)는 여전히 시트 줄 번호(row.r)라 그 번호는 마우스를 올리면 보인다.
   function rowHtml(row, vr, i) {
-    const cls = ((S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? 'on' : '') + (row.lv ? ' lv-' + row.lv : '') + (row.sub ? ' sub' : '') + (vr.hid && vr.hid.has(row.r) ? ' hrow' : '')).trim();
+    const cls = ((S.sel && S.sel.gid === S.cur && S.sel.r === row.r ? 'on' : '') + (row.lv ? ' lv-' + row.lv : '') + (row.sub ? ' sub' : '') + (vr.hid && vr.hid.has(row.r) ? ' hrow' : '') + (S.rowSel && S.rowSel.gid === S.cur && S.rowSel.set.has(row.r) ? ' rsel' : '')).trim();
     let s = `<tr data-r="${row.r}"${cls ? ` class="${cls}"` : ''}>`;
     if (vr.showRn) s += `<td class="rn sk${vr.stickN ? '' : ' skl'}" style="left:0" title="${i + 1}번 줄 (함수 주소는 ${row.r}행) — 누르면 이 줄 전체 보기${row.lv === 'low' ? ' · 품절 임박' : row.lv === 'out' ? ' · 품절' : ''}">${i + 1}</td>`;
     for (let k = 0; k < vr.cols.length; k++) s += cellHtml(row, vr.cols[k], vr.posOf[k]);
@@ -2716,7 +2738,7 @@
   function openTab(gid) {
     if (!gid) return;
     if (S.cur && S.cur !== gid) { S.pos[S.cur] = {t: grid.scrollTop, l: grid.scrollLeft}; closeDetail(); }
-    if (S.cur !== gid) { setHmin(false); S.stick.clear(); if (CE.x) commitCell(0, 0, true); S.cell = null; }
+    if (S.cur !== gid) { setHmin(false); S.stick.clear(); if (CE.x) commitCell(0, 0, true); S.cell = null; S.cell2 = null; S.rng = null; S.rowSel = null; closeRmenu(); }
     S.cur = gid;
     hideMsg();
     const t = tabOf(gid);
@@ -2808,6 +2830,7 @@
       if (k.length === 1) { e.preventDefault(); pickCell(c.r, c.p, {edit: true, text: k}); return; }
       return;
     }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return; }   // 줄 지우기 · 옮기기 뒤 (고른 칸 없이도)
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveSel(e.key === 'ArrowDown' ? 1 : -1); }
     else if (e.key === 'Escape') closeDetail();
   });
@@ -2818,8 +2841,10 @@
     const tr = rn.closest('tr[data-r]');
     if (!tr) return;
     if (CE.x) commitCell(0, 0, true);
-    setCell(null);
     const r = +tr.dataset.r;
+    // PC: 행 번호 = 그 줄 전체 고르기 (Ctrl+C = 줄 복사 · 오른쪽 클릭 = 줄 메뉴), Shift+행 번호 = 여러 줄 (2026-11-23)
+    if (cellMode() && e.shiftKey && S.rowSel && S.rowSel.gid === S.cur) { selectRows(S.rowSel.a, r); renderActsNow(); return; }
+    if (cellMode()) selectRows(r, r); else setCell(null);
     if (S.sel && S.sel.r === r && !$('detail').hidden) closeDetail(); else openDetail(r, false);
   });
   /* '이전 N회' 에 마우스 → 발주 · 입고 전부 (오피스 물류팀 발주서의 '이전 발주' 팝업과 같은 방식 — 휴대폰은 줄을 눌러 상세 창에서) */
@@ -2899,6 +2924,7 @@
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}</dd>` : '')
       + d.cols.map(c => { const fx = secretOk() ? (ofxGet(info, r, c.p) || fxText(info, r, c.p)) : ''; const nt = [d.headR ? noteOf(S.cur, d.headR, c.p) : '', noteOf(S.cur, r, c.p)].filter(Boolean).join('\n'); return `<dt>${esc(c.name)}${nt ? `<small class="dnt">메모: ${esc(nt)}</small>` : ''}</dt><dd data-p="${c.p}"${c.type === 'num' ? ' class="r"' : ''}>${detailVal(c, row.byP[c.p])}${fx ? `<div class="fxv"><b>ƒx</b>${esc(fx)}</div>` : ''}</dd>`; }).join('');
     markEditable();
+    renderActs(r);   // 줄 복사 · 붙여넣기 · 옮기기 · 지우기 단추
     const det = $('detail'), was = det.hidden;
     det.hidden = false;
     app.classList.add('has-detail');
@@ -2907,6 +2933,7 @@
     reanchor();
   }
   function closeDetail() {
+    $('dActs').hidden = true;
     $('detail').hidden = true;
     $('dscrim').hidden = true;
     app.classList.remove('has-detail');
@@ -3661,6 +3688,7 @@
     if (prev) { const t = cellTd(prev.r, prev.p); if (t) t.classList.remove('csel'); }
     if (S.cell) { const t = cellTd(r, p); if (t) t.classList.add('csel'); }
     if (S.cell2 || S.rng) { S.cell2 = null; paintRng(); }
+    if (S.rowSel) { S.rowSel = null; grid.querySelectorAll('tbody tr.rsel').forEach(tr => tr.classList.remove('rsel')); }   // 행 번호로 고른 줄 표시
     fmtBar();
   }
   // 고른 칸이 보이게 (아래 · 위는 showRow, 옆은 고정 칸을 피해서)
@@ -4295,6 +4323,7 @@
     const st = UNDO.get(S.cur);
     if (!st || !st.length) { toast('되돌릴 게 없어요 (이 화면에서 이 탭에 한 일만 되돌려요)', true); return; }
     const e = st.pop();
+    if (e.rows) { undoRows(e, st); return; }   // 줄 지우기 · 붙여넣기 · 옮기기
     if (e.fmt) {   // 서식
       const m = new Map(e.fmt.map(c => [`${c.r}:${c.p}`, c.f]));
       fmtApply((f, x) => { const o = m.get(`${x.r}:${x.p}`), bs = o ? null : gfBase(S.cur, x.r, x.p); return o ? Object.assign({}, o) : bs ? {b: bs.b, fg: bs.fg, bg: bs.bg} : {}; }, `되돌리기 (${e.label})`, e.fmt.map(c => ({r: c.r, p: c.p})), true);
@@ -4320,11 +4349,14 @@
   }
   const gridKeys = () => document.activeElement === grid && !CE.x && S.cell && S.cell.gid === S.cur && cellMode();
   document.addEventListener('copy', e => {
+    if (CLIP_FORCE != null && e.clipboardData) { e.clipboardData.setData('text/plain', CLIP_FORCE); e.preventDefault(); CLIP_FORCE = null; return; }   // 줄 메뉴 · 단추의 '줄 복사'
     if (!gridKeys() || !e.clipboardData) return;
     const tsv = selTsv();
     if (!tsv) return;
     e.clipboardData.setData('text/plain', tsv);
     e.preventDefault();
+    const rs = fullRows();   // 줄 전체(보이는 칸 모두)를 고른 복사 = 줄 복사 — 다른 탭에서 붙이면 머리글 이름으로 맞춰 맨 아래 새 줄로
+    if (rs.length) { ROWCLIP = makeClip(S.cur, rs, tsv); toast(`줄 복사 · ${rs.length}줄 — 다른 탭에서 Ctrl+V 하면 맨 아래 새 줄로 들어가요`); renderActsNow(); return; }
     toast(`복사 · ${rngCells().length}칸`);
   });
   document.addEventListener('cut', e => {
@@ -4336,9 +4368,11 @@
     clearSel('잘라내기');
   });
   document.addEventListener('paste', e => {
-    if (!gridKeys()) return;
+    if (document.activeElement !== grid || CE.x || !cellMode()) return;
     const text = e.clipboardData && e.clipboardData.getData('text/plain');
     if (text == null) return;
+    if (ROWCLIP && clipSame(text, ROWCLIP.tsv)) { e.preventDefault(); pasteRows(ROWCLIP); return; }   // 이 화면에서 복사한 줄 → 맨 아래 새 줄로 (칸을 안 골라도)
+    if (!gridKeys()) return;
     e.preventDefault();
     pasteText(text);
   });
@@ -4433,23 +4467,31 @@
     const t = tabOf(S.cur), b = t ? bookOf(t.book) : null, d = curData(), info = tabInfo(S.cur);
     return !!(t && b && b.edit && canEdit() && d && !d.side && (vstate().part || 0) === 0 && d.cols.length && !t.meta.raw && !(info && !isCut(S.cur) && (info.fx_ro || info.fx_deny)));
   }
-  function openNewRow() {
+  // opt (줄 옮기기) = {vals: Map(열 → 값) 미리 채울 값, from: {gid, r, name, label} 옮겨 오는 줄 — 저장하면 그 줄은 원래 탭에서 빠진다}
+  function openNewRow(opt) {
     if (!canAddRow()) return;
+    opt = opt && opt.vals ? opt : null;
     const d = curData(), t = tabOf(S.cur), info = tabInfo(S.cur), ent = S.cache.get(S.cur);
     const r = d.rows.reduce((m, x) => Math.max(m, x.r), d.lastR || 0) + 1;
     const raw = ent && ent.rows && ent.rows.get(r), cur = p => raw && raw.v[p] != null ? String(raw.v[p]) : '';
+    const val = p => opt && opt.vals.has(p) ? String(opt.vals.get(p)) : cur(p);
     closeDetail();
     S.sel = null;
     const fields = d.cols.map(c => {
       const fx = fxText(info, r, c.p);
       if (fx) return `<dt>${esc(c.name)}</dt><dd><span class="nr-auto">자동 계산${fxGuard(fx, S.cur) ? '' : ` · ${esc(fx)}`}</span></dd>`;   // 기밀 명단 밖엔 가린 칸을 쓰는 함수는 안 보임
-      if (c.type === 'check') return `<dt>${esc(c.name)}</dt><dd><label><input type="checkbox" class="nr-ck" data-p="${c.p}"${cur(c.p) === 'TRUE' ? ' checked' : ''}> 체크</label></dd>`;
-      return `<dt>${esc(c.name)}</dt><dd><input class="nr-in" data-p="${c.p}" value="${esc(cur(c.p))}" spellcheck="false" autocomplete="off"${c.key ? ' data-key="1"' : ''}></dd>`;
+      if (c.type === 'check') return `<dt>${esc(c.name)}</dt><dd><label><input type="checkbox" class="nr-ck" data-p="${c.p}"${val(c.p) === 'TRUE' ? ' checked' : ''}> 체크</label></dd>`;
+      return `<dt>${esc(c.name)}</dt><dd><input class="nr-in" data-p="${c.p}" value="${esc(val(c.p))}" spellcheck="false" autocomplete="off"${c.key ? ' data-key="1"' : ''}></dd>`;
     }).join('');
+    // 표에 안 보이는 칸(기밀 명단 밖의 가린 칸 등)에 맞춘 값 — 보여 주지 않고 함께 적는다
+    const shown = new Set(d.cols.map(c => c.p));
+    const carry = opt ? [...opt.vals].filter(([p, v]) => !shown.has(p) && String(v) !== '' && !fxText(info, r, p)) : [];
+    const from = opt && opt.from;
     $('dCap').textContent = `${(bookOf(t.book) || {}).title || ''} › ${t.name}`;
-    $('dTitle').textContent = '새 줄';
-    $('dSub').textContent = `시트 ${r}행에 적어요 · 수식 칸은 시트가 자동으로 계산`;
-    $('dHint').innerHTML = '<div class="nr-bar"><button type="button" class="nr-save">저장</button><button type="button" class="nr-cancel">취소</button></div>';
+    $('dTitle').textContent = from ? `${t.name}로 옮기기` : '새 줄';
+    $('dSub').textContent = from ? `${from.name} › ${from.label} → 시트 ${r}행 · 수식 칸은 자동 계산` : `시트 ${r}행에 적어요 · 수식 칸은 시트가 자동으로 계산`;
+    $('dHint').innerHTML = (from ? `<div class="nr-from">${esc(from.name)}에서 가져온 값을 채워 뒀어요${carry.length ? ` (안 보이는 칸 ${carry.length}개도 함께)` : ''}. 상품명 등을 고쳐 저장하면 ${esc(from.name)}에서는 빠져요 · 되돌리기 Ctrl+Z</div>` : '')
+      + '<div class="nr-bar"><button type="button" class="nr-save">저장</button><button type="button" class="nr-cancel">취소</button></div>';
     $('dHint').classList.remove('no');
     $('dList').innerHTML = fields;
     const det = $('detail');
@@ -4458,8 +4500,8 @@
     $('dscrim').hidden = !narrow.matches;
     det.querySelector('.dbody').scrollTop = 0;
     const first = $('dList').querySelector('.nr-in[data-key]') || $('dList').querySelector('.nr-in');
-    if (first) first.focus();
-    S.newRow = {gid: S.cur, r};
+    if (first) { first.focus(); if (from) first.select(); }
+    S.newRow = {gid: S.cur, r, from: from || null, carry};
     $('dHint').querySelector('.nr-cancel').onclick = () => { S.newRow = null; closeDetail(); };
     $('dHint').querySelector('.nr-save').onclick = () => saveNewRow();
   }
@@ -4471,6 +4513,7 @@
     const edits = [];
     $('dList').querySelectorAll('.nr-in[data-p]').forEach(el => { const p = +el.dataset.p, v = el.value; if (v !== cur(p)) edits.push({r: nr.r, c: p + 1, v, old: cur(p)}); });
     $('dList').querySelectorAll('.nr-ck[data-p]').forEach(el => { const p = +el.dataset.p, v = el.checked ? 'TRUE' : 'FALSE'; if (v !== (cur(p) || 'FALSE')) edits.push({r: nr.r, c: p + 1, v, old: null}); });
+    (nr.carry || []).forEach(([p, v]) => { if (String(v) !== cur(p)) edits.push({r: nr.r, c: p + 1, v: String(v), old: cur(p)}); });   // 옮기기 — 안 보이는 칸 값
     if (!edits.length) { toast('적은 칸이 없어요', true); return; }
     if (edits.some(e => /^=/.test(String(e.v).trim()))) { toast('새 줄에는 함수를 못 넣어요 — 저장한 뒤 그 칸을 눌러 넣어 주세요', true); return; }
     const btn = $('dHint').querySelector('.nr-save');
@@ -4493,8 +4536,19 @@
       edits.forEach(e => logEdit({book: t.book, name: t.name, sc: e.c, r: nr.r}, e.old, e.v, !bad.some(b => b.c === e.c), (bad.find(b => b.c === e.c) || {}).error));
       S.newRow = null;
       ofxSyncSoon(nr.gid);
-      if (bad.length) toast(`새 줄을 적었지만 ${bad.length}칸은 못 적었어요 (${editErr(bad[0].error || 'error')})`, true);
-      else toast(`새 줄을 적었어요 · 시트 ${nr.r}행`);
+      let msg = bad.length ? `새 줄을 적었지만 ${bad.length}칸은 못 적었어요 (${editErr(bad[0].error || 'error')})` : `새 줄을 적었어요 · 시트 ${nr.r}행`, err = !!bad.length;
+      if (nr.from) {   // 옮기기 — 새 줄을 적은 뒤에만 원래 탭에서 뺀다
+        try {
+          await deleteRows(nr.from.gid, [nr.from.r], {noUndo: true});
+          pushUndo(nr.gid, {label: '옮기기', rows: {add: [nr.r], other: {gid: nr.from.gid, del: [nr.from.r]}}});
+          S.moveBack = {to: nr.gid, from: nr.from.gid, name: nr.from.name};
+          msg = `${t.name} ${nr.r}행에 넣고 ${nr.from.name}에서 뺐어요 · 되돌리기 Ctrl+Z` + (bad.length ? ` (못 적은 칸 ${bad.length}개)` : '');
+        } catch (er) {
+          msg = `${t.name} ${nr.r}행엔 넣었지만 ${nr.from.name}에서 못 뺐어요 (${rowErr(er)}) — ${nr.from.name}에서 그 줄을 지워 주세요`;
+          err = true;
+        }
+      }
+      toast(msg, err);
       openDetail(nr.r, true);
     } catch (e) {
       btn.disabled = false;
@@ -4710,6 +4764,308 @@
   });
   document.addEventListener('pointerdown', e => { if (!TM.hidden && !e.target.closest('#tmenu')) TM.hidden = true; }, true);
   $('nav').addEventListener('scroll', () => { TM.hidden = true; }, {passive: true});
+  /* ── 줄 다루기 — 복사 · 붙여넣기 · 지우기 · 메인 미발매 → Product List 옮기기 (2026-11-23 전수빈 님
+     "메인 미발매는 샘플 받고 메인 발주한 것 리스트 — 상품이 올라가면 그대로 복사해서 Product List 에 복붙해서 상품명 적고, 메인 미발매에선 사라지고. 열 복붙을 엄청 자주 해") ──
+     PC: 행 번호 누르기 = 그 줄 전체 고르기 (Shift+행 번호 = 여러 줄), 오른쪽 클릭 = 줄 메뉴. 상세 창(휴대폰 포함)에도 같은 단추.
+     줄 복사 = Ctrl+C(줄 전체를 골랐을 때) → 붙여넣기(Ctrl+V · 메뉴)는 늘 '맨 아래 새 줄'로: 같은 탭이면 칸 그대로, 다른 탭이면 머리글 이름으로 맞춘다
+     (위안 = ￥, 제품촬영 (누끼) = 제품 촬영, 업데이트 날짜 = 오늘, 카테고리는 반지 → Ring 처럼). 수식 칸은 건너뜀 (시트가 계산).
+     줄 지우기 = 오피스가 원본인 시트만, 저장소 deleted_at (mdx_row_delete — 값은 남아 Ctrl+Z · mdx_history 로 되살림). 옮기기 = 새 줄을 적은 뒤에만 원래 줄을 뺀다 */
+  let ROWCLIP = null, CLIP_FORCE = null;   // ROWCLIP = {gid, book, name, head, rows: [{r, v}], tsv}
+  const HEAD_ALIAS = {'위안': '￥', '¥': '￥', '위안화': '￥', 'cny': '￥', '제품촬영누끼': '제품촬영'};
+  const hkey = s => { const k = norm(s).toLowerCase().replace(/[()\[\]{}·.:\/]/g, ''); return HEAD_ALIAS[k] || k; };
+  const CAT_EN = [[/키링|헤어|핀|집게|폰|acc/i, 'ACC'], [/귀걸이|이어링/, 'Earring'], [/목걸이|네크리스/, 'Necklace'], [/팔찌|브레이슬릿/, 'Bracelet'], [/반지|링$/, 'Ring']];   // 앞에서부터 — 키링 · 이어링이 '링' 보다 먼저
+  const todayStr = () => { const d = new Date(); return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}`; };   // Product List '업데이트 날짜' 모양
+  const isPendTab = t => !!t && /미발매/.test(t.name);
+  const plTab = t => t ? S.tabs.find(x => x.book === t.book && /^product\s*list$/i.test(String(x.name).trim())) || null : null;
+  const ROW_ERR = {
+    not_cut: '줄 지우기 · 붙여넣기는 오피스가 원본인 시트(MD 시트 5개)에서만 돼요',
+    bad_rows: '줄 위치를 찾지 못했어요 — 새로 불러온 뒤 다시 해 주세요',
+    unknown_tab: '탭을 찾지 못했어요 — 새로 불러온 뒤 다시 해 주세요',
+  };
+  const rowErr = e => { const m = (e && e.message) || String(e); return ROW_ERR[m] || editErr(m); };
+  function rowOpsWhy(gid) {   // '' = 이 탭에서 줄을 넣고 · 지울 수 있음
+    const t = tabOf(gid), b = t && bookOf(t.book);
+    if (!canEdit()) return NO_EDIT;
+    if (!t || !b || !isCut(gid)) return RO_BOOK;
+    if (/TOP\s*10/i.test(t.name)) return '판매원본에서 자동으로 계산하는 탭이라 고치지 않아요';
+    if (gid === S.cur) { const d = curData(); if (!d || d.side || (vstate().part || 0) !== 0) return '옆 표(집계)는 줄을 다룰 수 없어요'; }
+    return '';
+  }
+  const orderRows = rs => { const vr = S.vr; if (!vr) return rs; const pos = new Map(vr.list.map((x, i) => [x.r, i])); return rs.slice().sort((a, b) => (pos.has(a) ? pos.get(a) : 1e9) - (pos.has(b) ? pos.get(b) : 1e9)); };
+  function selRows(r) {   // r 줄이 고른 줄 · 범위 안이면 그 줄들 모두 (보이는 순서), 아니면 r 하나
+    if (S.rowSel && S.rowSel.gid === S.cur && S.rowSel.set.has(r)) return orderRows([...S.rowSel.set]);
+    if (S.cell && S.cell.gid === S.cur && S.cell2) { const rs = [...new Set(rngCells().map(x => x.r))]; if (rs.includes(r)) return rs; }
+    return [r];
+  }
+  function fullRows() {   // 고른 범위가 보이는 칸 전체인 줄들 (줄 복사) — 아니면 []
+    const vr = S.vr;
+    if (!vr || vr.cols.length < 2 || !S.cell || S.cell.gid !== S.cur) return [];
+    const cs = rngCells();
+    return new Set(cs.map(x => x.p)).size >= vr.cols.length ? [...new Set(cs.map(x => x.r))] : [];
+  }
+  function selectRows(ra, rb) {   // 행 번호 — ra ~ rb 줄 전체를 범위로 (ra = Shift 의 기준 줄)
+    const vr = S.vr;
+    if (!vr || !vr.cols.length) return;
+    const ia = vr.list.findIndex(x => x.r === ra), ib = vr.list.findIndex(x => x.r === rb);
+    if (ia < 0 || ib < 0) return;
+    const p0 = vr.cols[0].p, p1 = vr.cols[vr.cols.length - 1].p;
+    setCell(ra, p0);
+    S.cell2 = rb === ra && p1 === p0 ? null : {r: rb, p: p1};
+    paintRng();
+    S.rowSel = {gid: S.cur, a: ra, set: new Set(vr.list.slice(Math.min(ia, ib), Math.max(ia, ib) + 1).map(x => x.r))};
+    grid.querySelectorAll('tbody tr[data-r]').forEach(tr => tr.classList.toggle('rsel', S.rowSel.set.has(+tr.dataset.r)));
+    if (document.activeElement !== grid) grid.focus({preventScroll: true});
+  }
+  grid.addEventListener('mousedown', e => { if (e.shiftKey && e.button === 0 && e.target.closest && e.target.closest('tbody td.rn')) e.preventDefault(); });   // Shift+행 번호 = 글자 고르기 말고 여러 줄
+  function rowsTsv(rs) {   // 보이는 칸 → 엑셀 · 구글시트에 붙는 글
+    const d = curData(), cols = (S.vr && S.vr.cols) || (d ? d.cols : []);
+    if (!d) return '';
+    const byR = new Map(d.rows.map(x => [x.r, x]));
+    const q = v => /[\t\n"]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    return rs.map(r => cols.map(c => { const row = byR.get(r), cell = row && row.byP[c.p]; return q(!cell ? rawOf(S.cur, r, c.p) : cell.cb && !cell.t ? (cell.cb === 2 ? 'TRUE' : 'FALSE') : String(cell.t == null ? '' : cell.t)); }).join('\t')).join('\n');
+  }
+  function makeClip(gid, rs, tsv) {
+    const t = tabOf(gid), d = curData(), ent = S.cache.get(gid);
+    return {gid, book: t.book, name: t.name, head: Array.from((d && d.head) || [], h => h || ''),
+      rows: rs.map(r => { const x = ent && ent.rows && ent.rows.get(r); return {r, v: x && x.v ? x.v.map(y => y == null ? '' : String(y)) : []}; }),
+      tsv: tsv != null ? tsv : rowsTsv(rs)};
+  }
+  const clipSame = (a, b) => String(a || '').replace(/\r\n?/g, '\n').trim() === String(b || '').replace(/\r\n?/g, '\n').trim();
+  function copyRows(rs) {
+    if (!rs.length || !curData()) return;
+    const tsv = rowsTsv(rs);
+    ROWCLIP = makeClip(S.cur, rs, tsv);
+    CLIP_FORCE = tsv;   // 메뉴 · 단추에서 — copy 이벤트를 일으켜 클립보드에도 (엑셀 · 구글시트에 붙일 수 있게)
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    if (CLIP_FORCE != null) { CLIP_FORCE = null; try { navigator.clipboard.writeText(tsv).catch(() => {}); } catch (e) { /* 이 화면 안에선 그래도 붙여넣기 됨 */ } }
+    toast(`줄 복사 · ${rs.length}줄 — 붙일 탭에서 Ctrl+V 또는 오른쪽 클릭 '붙여넣기' (맨 아래 새 줄로)`);
+    renderActsNow();
+  }
+  // 복사한 줄 하나(v) → 붙일 탭 칸 [p → 값] — 같은 모양이면 칸 그대로, 아니면 머리글 이름으로
+  function mapRow(clip, v, dHead, same) {
+    const m = new Map(), H = Array.from(dHead || [], h => h || '');
+    const sameHead = same || (clip.head.length === H.length && clip.head.every((h, i) => hkey(h) === hkey(H[i])));
+    if (sameHead) { v.forEach((x, p) => { if (String(x) !== '') m.set(p, String(x)); }); return m; }
+    const src = new Map();
+    clip.head.forEach((h, p) => { const k = hkey(h); if (k && !src.has(k)) src.set(k, p); });
+    const cat0 = !src.has('카테고리') && /^\d*$/.test(norm(clip.head[0] || '')) ? 0 : src.get('카테고리');   // 주얼리 MD 메인 미발매 — 맨 앞 칸 머리글이 '1' 인 카테고리 칸
+    H.forEach((h, p) => {
+      const k = hkey(h);
+      if (!k) return;
+      if (k === '카테고리') {
+        const x = cat0 != null ? String(v[cat0] || '').trim() : '';
+        if (x) { const en = CAT_EN.find(([re]) => re.test(x)); m.set(p, en ? en[1] : x); }
+        return;
+      }
+      if (src.has(k)) { const x = v[src.get(k)]; if (x != null && String(x) !== '') m.set(p, String(x)); return; }
+      if (/^(업데이트날짜|업데이트일|등록일|등록날짜)$/.test(k)) m.set(p, todayStr());   // 옮긴 날 = 오늘
+    });
+    return m;
+  }
+  // 맨 아래 새 줄들 — 끊은 시트: 칸마다 mdx_cell_edit (새 줄 창과 같은 길). 돌려줌 maps 와 같은 순서 [{r, n, err} | {skip}]
+  async function appendRows(gid, maps) {
+    const d = curData(), info = tabInfo(gid), ent = S.cache.get(gid), head = (d && d.head) || [];
+    const pii = new Set((info && info.pii_cols) || []);
+    let r = d.rows.reduce((m, x) => Math.max(m, x.r), d.lastR || 0);
+    const out = [];
+    const job = E.q.then(async () => {
+      for (const m of maps) {
+        const nr = r + 1;
+        const cells = [...m].filter(([p, v]) => String(v) !== '' && p >= 0 && p <= 255 && !fxText(info, nr, p) && !pii.has(p) && !piiCol(head[p] || ''));
+        if (!cells.length) { out.push({skip: true}); continue; }
+        r = nr;
+        let dv = null, err = null;
+        for (const [p, v] of cells) {
+          try { const x = await mdx('mdx_cell_edit', {p_tk: gid, p_r: r, p_p: p, p_new: String(v), p_row: null, p_who: whoAmI() || null}); if (x && Array.isArray(x.v)) { dv = x.v; bumpRows(gid, x); } }
+          catch (e) { err = e; break; }
+        }
+        if (dv && ent && ent.rows) { ent.rows.set(r, {r, v: dv.map(y => y == null ? '' : String(y)), src: 'office', edited_by: whoAmI() || null, edited_at: new Date().toISOString()}); markDirty(gid, r); }
+        out.push({r, n: cells.length, err, wrote: !!dv});
+        if (err) break;
+      }
+    });
+    E.q = job.catch(() => {});
+    await job;
+    rerender(gid);
+    return out;
+  }
+  async function pasteRows(clip) {
+    closeRmenu();
+    const gid = S.cur, t = tabOf(gid), d = curData();
+    const why = rowOpsWhy(gid) || (!canAddRow() ? '이 탭은 새 줄을 넣을 수 없어요' : '');
+    if (why) { toast(why, true); return; }
+    if (clip.rows.length > 200) { toast('한 번에 200줄까지 붙여 넣을 수 있어요 — 나눠서 해 주세요', true); return; }
+    const same = clip.gid === gid;
+    const maps = clip.rows.map(x => mapRow(clip, x.v, d.head, same));
+    if (!maps.some(m => m.size)) { toast(`붙일 칸이 없어요 — ${clip.name}와(과) 머리글 이름이 같은 칸이 없어요`, true); return; }
+    toast(`줄 붙여넣는 중 · ${maps.filter(m => m.size).length}줄…`);
+    const res = await appendRows(gid, maps), ok = res.filter(x => x.r && !x.err), bad = res.find(x => x.err);
+    const made = res.filter(x => x.r && x.wrote).map(x => x.r);
+    if (made.length) pushUndo(gid, {label: '줄 붙여넣기', rows: {add: made}});
+    if (ok.length) { const last = ok[ok.length - 1].r; showRow(last); if (cellMode()) selectRows(ok[0].r, last); }
+    toast(`줄 붙여넣기 · ${ok.length}줄${ok.length ? ` (시트 ${ok[0].r}${ok.length > 1 ? `~${ok[ok.length - 1].r}` : ''}행)` : ''}${same ? '' : ` · ${clip.name}에서 머리글이 같은 칸만`}${bad ? ` · 못 씀 (${rowErr(bad.err)})` : ''} · 되돌리기 Ctrl+Z`, !!bad);
+  }
+  async function deleteRows(gid, rs, opt) {
+    opt = opt || {};
+    rs = [...new Set(rs)].filter(r => r > 0);
+    if (!rs.length) return null;
+    const why = rowOpsWhy(gid);
+    if (why) throw new Error('fx:' + why);
+    const ent = S.cache.get(gid), keep = new Map();
+    if (ent && ent.rows) rs.forEach(r => { const x = ent.rows.get(r); if (x) { keep.set(r, x); ent.rows.delete(r); } });
+    if (gid === S.cur) { if (S.sel && rs.includes(S.sel.r)) closeDetail(); if (S.cell && rs.includes(S.cell.r)) setCell(null); }
+    if (keep.size) rerender(gid);   // 화면 먼저
+    let j;
+    try { j = await mdx('mdx_row_delete', {p_tk: gid, p_rows: rs, p_who: whoAmI() || null, p_restore: false}); }
+    catch (e) { if (ent && ent.rows && keep.size) { keep.forEach((x, r) => ent.rows.set(r, x)); rerender(gid); } throw e; }
+    bumpRows(gid, j);
+    if (!opt.noUndo) pushUndo(gid, {label: opt.label || '줄 지우기', rows: {del: rs.slice()}});
+    return j;
+  }
+  async function restoreRows(gid, rs) {
+    const j = await mdx('mdx_row_delete', {p_tk: gid, p_rows: rs, p_who: whoAmI() || null, p_restore: true});
+    const ent = S.cache.get(gid);
+    if (ent && ent.rows) {
+      (j.rows || []).forEach(x => { if (!x.d) ent.rows.set(x.r, {r: x.r, v: (x.v || []).map(y => y == null ? '' : String(y)), src: 'office', edited_by: whoAmI() || null, edited_at: new Date().toISOString()}); });
+      rerender(gid);
+    }
+    bumpRows(gid, j);
+    return j;
+  }
+  async function undoRows(e) {
+    const x = e.rows, gid = S.cur, o = x.other;
+    let miss = 0;
+    try {
+      if (x.add && x.add.length) await deleteRows(gid, x.add, {noUndo: true});
+      if (x.del && x.del.length) { const j = await restoreRows(gid, x.del); miss += x.del.length - (+j.n || 0); }
+      if (o && o.add && o.add.length) await deleteRows(o.gid, o.add, {noUndo: true});
+      if (o && o.del && o.del.length) { const j = await restoreRows(o.gid, o.del); miss += o.del.length - (+j.n || 0); }
+      if (o && S.moveBack && S.moveBack.from === o.gid) S.moveBack = null;
+      toast(`되돌리기 (${e.label})${o ? ` · ${(tabOf(o.gid) || {}).name || ''}도 원래대로` : ''}${miss ? ` · ${miss}줄은 그사이 그 자리에 새 줄이 들어가 못 되살렸어요` : ''}`, !!miss);
+    } catch (er) { toast(`되돌리지 못했어요 (${rowErr(er)})`, true); }
+  }
+  async function delRowsUi(rs) {
+    try { await deleteRows(S.cur, rs, {label: '줄 지우기'}); toast(`${rs.length}줄 지웠어요 · 되돌리기 Ctrl+Z`); }
+    catch (e) { toast(`줄을 지우지 못했어요 (${rowErr(e)})`, true); }
+  }
+  // 옮길 탭(Product List)을 열고 그 탭 줄이 최신이 될 때까지 (맨 아래 줄 번호를 맞게 잡으려고)
+  async function waitTab(gid) {
+    for (let i = 0; i < 3; i++) {
+      if (S.cur !== gid) return false;
+      if (S.busy[gid]) { try { await S.busy[gid]; } catch (e) { /* 아래에서 다시 */ } }
+      const c = S.cache.get(gid), t = tabOf(gid);
+      if (c && c.data && !c.stored && !(t && t.info && c.rowsVer < +t.info.rows_ver)) return S.cur === gid;
+      await loadSheet(gid);
+    }
+    return false;
+  }
+  async function moveRows(rs) {
+    const src = S.cur, st = tabOf(src), tgt = plTab(st), d = curData();
+    if (!tgt) { toast('같은 시트에 Product List 탭이 없어요', true); return; }
+    const why = rowOpsWhy(src) || rowOpsWhy(tgt.gid);
+    if (why) { toast(why, true); return; }
+    rs = rs.filter(r => d.rows.some(x => x.r === r));
+    if (!rs.length) return;
+    if (rs.length > 100) { toast('한 번에 100줄까지 옮길 수 있어요', true); return; }
+    const clip = makeClip(src, rs);
+    const key = d.keyIdx >= 0 ? d.cols[d.keyIdx] : null;
+    const label = r => { const row = d.rows.find(x => x.r === r); return (key && row && catVal(row, key.p)) || `상품명 없는 줄 (시트 ${r}행)`; };
+    openTab(tgt.gid);
+    if (!(await waitTab(tgt.gid))) { if (S.cur === tgt.gid) toast(`${tgt.name}을(를) 아직 못 불러왔어요 — 잠시 뒤 다시 해 주세요`, true); return; }
+    if ((vstate().part || 0) !== 0) { vstate().part = 0; renderHead(); renderGrid({keep: true}); }
+    if (!canAddRow()) { toast(`${tgt.name}에 새 줄을 넣을 수 없어요`, true); return; }
+    const maps = clip.rows.map(x => mapRow(clip, x.v, curData().head, false));
+    if (rs.length === 1) { openNewRow({vals: maps[0], from: {gid: src, r: rs[0], name: st.name, label: label(rs[0])}}); return; }   // 한 줄 = 상품명을 적는 창
+    // 여러 줄 = 창 없이 바로 (상품명은 표에서 고치기)
+    toast(`${rs.length}줄 옮기는 중…`);
+    const res = await appendRows(tgt.gid, maps);
+    const okI = [], made = [];
+    res.forEach((x, i) => { if (x.r && !x.err) okI.push(i); if (x.r && x.wrote) made.push(x.r); });
+    const moved = okI.map(i => rs[i]), bad = res.find(x => x.err);
+    let gone = false;
+    if (moved.length) { try { await deleteRows(src, moved, {noUndo: true}); gone = true; } catch (e) { toast(`${tgt.name}엔 넣었지만 ${st.name}에서 못 뺐어요 (${rowErr(e)}) — ${st.name}에서 그 줄들을 지워 주세요`, true); } }
+    if (made.length) pushUndo(tgt.gid, {label: '옮기기', rows: {add: made, other: gone ? {gid: src, del: moved} : null}});
+    if (gone) S.moveBack = {to: tgt.gid, from: src, name: st.name};
+    const ok = okI.map(i => res[i].r);
+    if (ok.length) { showRow(ok[ok.length - 1]); if (cellMode()) selectRows(ok[0], ok[ok.length - 1]); }
+    if (gone || !moved.length) toast(`${tgt.name}로 ${moved.length}줄 옮겼어요${ok.length ? ` (시트 ${ok[0]}~${ok[ok.length - 1]}행)` : ''}${bad ? ` · ${rs.length - moved.length}줄은 못 옮김 (${rowErr(bad.err)})` : ''} · 상품명은 표에서 고쳐 주세요 · 되돌리기 Ctrl+Z`, !!bad);
+  }
+  function armed(btn, text) {   // 지우기 — 한 번 더 눌러야 (팝업 없이)
+    if (btn.dataset.armed && Date.now() - +btn.dataset.armed < 5000) return true;
+    btn.dataset.armed = Date.now();
+    btn.textContent = text;
+    return false;
+  }
+  function rowAct(act, rs) {
+    if (act === 'copy') copyRows(rs);
+    else if (act === 'paste') { if (ROWCLIP) pasteRows(ROWCLIP); }
+    else if (act === 'move') moveRows(rs);
+    else if (act === 'del') delRowsUi(rs);
+    else if (act === 'back' && S.moveBack) openTab(S.moveBack.from);
+  }
+  // 상세 창 단추 (휴대폰도)
+  function renderActs(r) {
+    const box = $('dActs'), t = tabOf(S.cur), d = curData();
+    if (!box) return;
+    if (!t || !d || d.side || r == null) { box.hidden = true; return; }
+    const why = rowOpsWhy(S.cur), pl = isPendTab(t) ? plTab(t) : null, rs = selRows(r), n = rs.length, nn = n > 1 ? ` (${n}줄)` : '';
+    box._rs = rs;
+    box.innerHTML = (pl && !why ? `<button type="button" class="mv" data-act="move" title="저장하면 ${esc(t.name)}에서는 빠져요">${esc(pl.name)}로 옮기기${nn}</button>` : '')
+      + `<button type="button" data-act="copy">줄 복사${nn}</button>`
+      + (ROWCLIP && !why && canAddRow() ? `<button type="button" data-act="paste" title="${esc(ROWCLIP.name)}에서 복사한 줄 — 이 탭 맨 아래 새 줄로">붙여넣기 (${ROWCLIP.rows.length}줄)</button>` : '')
+      + (!why ? `<button type="button" class="del" data-act="del">줄 지우기${nn}</button>` : '')
+      + (S.moveBack && S.moveBack.to === S.cur && tabOf(S.moveBack.from) ? `<button type="button" data-act="back">← ${esc(S.moveBack.name)}로</button>` : '');
+    box.hidden = false;
+  }
+  const renderActsNow = () => { if (S.sel && S.sel.gid === S.cur && !$('detail').hidden && !S.newRow) renderActs(S.sel.r); };
+  $('dActs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const rs = $('dActs')._rs || (S.sel ? [S.sel.r] : []);
+    if (b.dataset.act === 'del' && !armed(b, `정말 지울까요? 한 번 더 (${rs.length}줄)`)) return;
+    rowAct(b.dataset.act, rs);
+  });
+  // 오른쪽 클릭 메뉴 (PC)
+  const rmenu = $('rmenu');
+  function closeRmenu() { const m = $('rmenu'); if (m && !m.hidden) m.hidden = true; }   // openTab 이 먼저 부를 수 있어 const 말고 바로 찾는다
+  function openRmenu(x, y, rs) {
+    const t = tabOf(S.cur), why = rowOpsWhy(S.cur), pl = isPendTab(t) ? plTab(t) : null, n = rs.length, clipN = ROWCLIP ? ROWCLIP.rows.length : 0;
+    const dis = w => w ? ` disabled title="${esc(w)}"` : '';
+    rmenu.innerHTML = `<div class="rh">${n}줄 고름 · ${esc(t.name)}</div>`
+      + (pl ? `<button type="button" class="mv" data-act="move"${dis(why)}>${esc(pl.name)}로 옮기기${n > 1 ? ` (${n}줄)` : ''}</button><hr>` : '')
+      + `<button type="button" data-act="copy">줄 복사${n > 1 ? ` (${n}줄)` : ''}<kbd>Ctrl+C</kbd></button>`
+      + `<button type="button" data-act="paste"${dis(why || (!clipN ? '먼저 줄을 복사하세요 (행 번호를 누르고 Ctrl+C)' : '') || (!canAddRow() ? '이 탭은 새 줄을 넣을 수 없어요' : ''))}>복사한 줄 붙여넣기${clipN ? ` · ${clipN}줄 맨 아래로` : ''}<kbd>Ctrl+V</kbd></button>`
+      + `<hr><button type="button" class="del" data-act="del"${dis(why)}>줄 지우기${n > 1 ? ` (${n}줄)` : ''}</button>`;
+    rmenu._rs = rs;
+    rmenu.hidden = false;
+    const w = rmenu.offsetWidth, h = rmenu.offsetHeight;
+    rmenu.style.left = Math.max(6, Math.min(x, innerWidth - w - 6)) + 'px';
+    rmenu.style.top = Math.max(6, y + h > innerHeight - 6 ? y - h : y) + 'px';
+  }
+  rmenu.addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b || b.disabled) return;
+    const rs = rmenu._rs || [];
+    if (b.dataset.act === 'del' && !armed(b, `정말 지울까요? 한 번 더 누르기 (${rs.length}줄)`)) return;
+    closeRmenu();
+    rowAct(b.dataset.act, rs);
+  });
+  grid.addEventListener('contextmenu', e => {
+    const tr = e.target.closest && e.target.closest('tbody tr[data-r]');
+    if (!tr || !cellMode() || CE.x || e.target.closest('a')) return;   // 고치는 중 · 링크는 브라우저 메뉴 그대로
+    const d = curData();
+    if (!d || d.side) return;
+    e.preventDefault();
+    const r = +tr.dataset.r;
+    let rs = selRows(r);
+    if (!(S.rowSel && S.rowSel.gid === S.cur && S.rowSel.set.has(r)) && rs.length < 2) { selectRows(r, r); rs = [r]; }   // 고른 줄 밖을 누르면 그 줄 전체를 고른다
+    openRmenu(e.clientX, e.clientY, rs);
+  });
+  document.addEventListener('mousedown', e => { if (rmenu && !rmenu.hidden && !(e.target.closest && e.target.closest('#rmenu'))) closeRmenu(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRmenu(); });
+  grid.addEventListener('scroll', closeRmenu, {passive: true});
+  window.addEventListener('blur', closeRmenu);
 
   /* ── 읽기 · 상태 ── 저장소에서 그 탭 줄을 받는다 — 처음 · 10분마다 · 저장본이 오래됐으면 전체, 그 사이엔 바뀐 줄(ver)만 */
   function loadSheet(gid, opt) {
