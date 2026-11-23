@@ -227,6 +227,7 @@
   .tag.seats { background: var(--text); color: #fff }
   .fl .mi { color: var(--t2); font-size: 12px }
   .tag.ke { background: #eef1f5; color: var(--t2) }
+  .rt .rd.long { white-space: normal }   /* 스카이팀 보기 — 돌아오는 편이 길어 줄을 바꾼다 */
 
   .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 6px 0 14px }
   .stat { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px }
@@ -315,6 +316,10 @@
       <button type="button" data-dir="out" aria-pressed="true">가는 편 · 한국 출발</button>
       <button type="button" data-dir="in" aria-pressed="false">오는 편 · 한국 도착</button>
     </div>
+    <div class="seg" id="skySeg" role="group" aria-label="항공사" hidden>
+      <button type="button" data-sky="" aria-pressed="true">전체</button>
+      <button type="button" data-sky="1" aria-pressed="false">스카이팀</button>
+    </div>
     <div class="seg" id="tabSeg" role="group" aria-label="보기">
       <button type="button" data-tab="cal" aria-pressed="true">달력</button>
       <button type="button" data-tab="places" aria-pressed="false">나라별</button>
@@ -348,7 +353,7 @@
 
   <section class="panel info">
     <div>
-      <h4>마일 공제 (편도 · 평수기 기준)</h4>
+      <h4>대한항공 편 마일 공제 (편도 · 평수기 기준)</h4>
       <table>
         <thead><tr><th>지역</th><th>프레스티지</th><th>일등석</th><th>왕복 프레스티지</th></tr></thead>
         <tbody id="zoneRows"></tbody>
@@ -401,18 +406,21 @@
   const LS = { cab: 'ml_cabins_v2', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1', fresh: 'ml_fresh_v1' };
   const NEW_MS = 72 * 3600e3;
   // 2석 기준 (2026-11-22 사장님 "로마일 · 스카이팀도 · 직항만 · 무조건 2명") — 로마일이 확인한 남은 좌석 2석 이상만 (자료 d.r2)
-  const R2_GROUPS = 28;           // 대한항공 13달 × 가는 편 · 오는 편 + 스카이팀 2
+  const R2_GROUPS = 54;           // 대한항공 13달 × 가는 편 · 오는 편 + 스카이팀 직항 2 + 스카이팀 경유 13달 × 2
   // 왕복 (2026-11-22 사장님 "출발날짜 +2~5일 돌아오는 프레스티지 좌석이 있는지 · 왕복 프레스티지가 필요") — 가는 날 + RT[0]~RT[1]일에 오는 편
   const RT = [2, 5];
 
   const S = {
-    data: null, status: null, seats: [], routes: new Map(), places: new Map(),
+    data: null, status: null, seats: [], via: [], all: [], routes: new Map(), places: new Map(),
     cabins: new Set((lsGet(LS.cab) || 'OA').split('').filter(c => c === 'O' || c === 'A')),
     dir: lsGet(LS.dir) === 'in' ? 'in' : 'out',
     region: REGION_NAME[lsGet(LS.region)] ? lsGet(LS.region) : 'all',
     tab: ['cal', 'places', 'new'].includes(lsGet(LS.tab)) ? lsGet(LS.tab) : 'cal',
     rt: true,   // 왕복만 — '편도 전체'는 없앰 (11-22 사장님 "왕복만 보이게")
     fresh: 0,   // 확인 시각 거르기는 없앰 (11-22 사장님 "2명 기준 · 2석 이상 · 확인 시각 이런 거 없애줘")
+    // 스카이팀 보기 (2026-11-23 사장님 "네, 넣어줘" · "스카이팀 최대한 많은 비행기표들 보고싶어" · "왕복 데이터는 기존 동일하게"):
+    // 스카이팀 직항 + 경유편까지, 가는 편 · 오는 편 중 하나라도 스카이팀인 왕복만. '전체'는 직항만 그대로 (경유편은 안 섞는다). 열 때는 늘 '전체'.
+    sky: false,
     src: 'ke',                  // 'r2' = 로마일 2석 자료, 'ke' = 대한항공 공개 현황(좌석 수 모름)
     q: '', month: null, day: null, loading: false,
     modal: null,   // {place, pickOut, pickIn}
@@ -463,7 +471,7 @@
       if (!S.places.has(r.p)) S.places.set(r.p, { code: r.p, city: r.city, country: r.country, region: r.region, zone: r.zone, routes: [], sort: S.places.size });
       S.places.get(r.p).routes.push(r);
     }
-    S.seats = [];
+    S.seats = []; S.via = [];
     const r2 = d.r2 && Array.isArray(d.r2.seats) ? d.r2 : null;
     S.src = r2 ? 'r2' : 'ke';
     if (r2) {
@@ -473,9 +481,9 @@
       const keIdx = new Set((d.seats || []).map(a => a[0] + '|' + a[1] + '|' + a[2] + '|' + a[3] + '|' + a[5]));
       const scan = d.scan || {};
       // [범위, 출발, 도착, 날짜, 편명, 시각, 등급 O/A, 좌석 수, 항공사, 좌석 타입, 마일, 확인 시각, 처음 본 때, 새로 열림, 출발 도시, 도착 도시]
-      for (const a of r2.seats) {
+      const add = (a, list) => {
         const out = !!HUBS[a[1]];
-        if (!out && !HUBS[a[2]]) continue;
+        if (!out && !HUBS[a[2]]) return;
         const code = out ? a[2] : a[1];
         const r = S.routes.get(a[1] + '-' + a[2]);
         let p = r ? r.p : code;
@@ -490,9 +498,14 @@
             else if (!a[11] || Date.parse(at) > Date.parse(a[11])) ke = { st: 'closed', at };
           }
         }
-        S.seats.push({ scope: a[0], o: a[1], d: a[2], date: a[3], fn: a[4], t: a[5], c: a[6], n: a[7], al: a[8], st: a[9], mi: a[10],
-          obs: a[11], first: a[12], opened: !!a[13], p, dir: out ? 'out' : 'in', hub: out ? a[1] : a[2], ke });
-      }
+        // 경유편: a[16] 소요 분, a[17] 구간 [[편명, 출발, 도착, 출발 시각, 도착 시각]…]
+        const segs = Array.isArray(a[17]) && a[17].length > 1 ? a[17] : null;
+        list.push({ scope: a[0], o: a[1], d: a[2], date: a[3], fn: a[4], t: a[5], c: a[6], n: a[7], al: a[8], st: a[9], mi: a[10],
+          obs: a[11], first: a[12], opened: !!a[13], p, dir: out ? 'out' : 'in', hub: out ? a[1] : a[2], ke,
+          segs, dur: segs ? a[16] : null, arr: segs ? segs[segs.length - 1][4] : null });
+      };
+      for (const a of r2.seats) add(a, S.seats);
+      for (const a of r2.via || []) add(a, S.via);
     } else {
       for (const a of d.seats || []) {
         const r = S.routes.get(a[0] + '-' + a[1]);
@@ -501,6 +514,7 @@
         S.seats.push({ o: a[0], d: a[1], date: a[2], fn: a[3], t: a[4], c: a[5], first: a[6], opened: !!a[7], p: r.p, dir: out ? 'out' : 'in', hub: out ? a[0] : a[1] });
       }
     }
+    S.all = S.seats.concat(S.via);
     S.today = d.today; S.last = addDays(d.today, 360);
     if (!S.month || S.month < S.today.slice(0, 7) || S.month > S.last.slice(0, 7)) S.month = S.today.slice(0, 7);
   }
@@ -515,8 +529,52 @@
     const dir = opts.dir || S.dir;
     // 왕복만 (항상): 가는 편은 2~5일 뒤 오는 편, 오는 편은 2~5일 전 가는 편이 있거나 아직 확인 전인 것만 ('없음'으로 확인된 것만 뺀다)
     const rt = opts.rt != null ? opts.rt : S.rt;
-    return S.seats.filter(s => s.dir === dir && seatOk(s) && placeOk(S.places.get(s.p), opts.ignoreRegion) && (!rt || rtInfo(s.p, s.date, dir).state !== 'no'));
+    return pool().filter(s => s.dir === dir && seatOk(s) && placeOk(S.places.get(s.p), opts.ignoreRegion) &&
+      (skyOn() ? skyShow(s, rt) : !rt || rtInfo(s.p, s.date, dir).state !== 'no'));
   }
+  /* ── 스카이팀 보기 ── */
+  const skyOn = () => S.sky && S.src === 'r2';
+  const pool = () => skyOn() ? S.all : S.seats;
+  const isSky = s => s.scope === 'skyteam' || s.scope === 'skyvia';
+  // 스카이팀 편은 왕복 짝이 있거나 아직 확인 전이면, 대한항공 편은 스카이팀 짝이 실제로 있을 때만
+  const skyShow = (s, rt) => isSky(s) ? (!rt || rtSeat(s).state !== 'no') : rtSeat(s).state === 'ok';
+  // 경유편은 도착이 하루 넘게 걸리기도 해서, 돌아오는 편은 도착한 뒤에 뜨는 것만 (둘 다 그 도시 현지 시각)
+  const pairOk = (o, i) => !o.arr || o.arr < i.date + 'T' + (i.t || '24:00');
+  // 편 하나의 왕복 짝 — 2~5일 규칙은 전체 보기와 같고, 둘 중 하나라도 스카이팀이어야 한다
+  function rtSeat(s) {
+    const R = retIndex();
+    if (R.memo.has(s)) return R.memo.get(s);
+    const want = s.dir === 'out' ? 'in' : 'out', p = S.places.get(s.p), byDate = R.idx[want].get(s.p), hits = [], unk = [];
+    for (let n = RT[0]; n <= RT[1]; n++) {
+      const k = addDays(s.date, s.dir === 'out' ? n : -n);
+      const a = ((byDate && byDate.get(k)) || []).filter(x => (isSky(s) || isSky(x)) && (s.dir === 'out' ? pairOk(s, x) : pairOk(x, s)));
+      if (a.length) hits.push({ date: k, n, list: a });
+      else if (s.dir === 'in' && k < S.today) continue;
+      else if (k > S.last || !p || !monthChecked(p, k.slice(0, 7), want)) unk.push(k);
+    }
+    const r = { hits, unk, state: hits.length ? 'ok' : unk.length ? 'unk' : 'no' };
+    R.memo.set(s, r);
+    return r;
+  }
+  // 그 도시 · 그날 편들의 짝을 한데 모은다
+  function rtSky(code, date, dir) {
+    const R = retIndex(), key = 'sky|' + dir + '|' + code + '|' + date;
+    if (R.memo.has(key)) return R.memo.get(key);
+    const own = (R.idx[dir].get(code) && R.idx[dir].get(code).get(date)) || [], by = new Map(), unk = new Set();
+    for (const s of own) {
+      const x = rtSeat(s);
+      for (const h of x.hits) { if (!by.has(h.date)) by.set(h.date, { date: h.date, n: h.n, set: new Set() }); h.list.forEach(i => by.get(h.date).set.add(i)); }
+      if (isSky(s)) x.unk.forEach(k => unk.add(k));
+    }
+    const hits = [...by.values()].map(h => ({ date: h.date, n: h.n, list: [...h.set] })).sort((x, y) => x.date.localeCompare(y.date));
+    const r = { hits, unk: [...unk], state: hits.length ? 'ok' : unk.size ? 'unk' : 'no' };
+    R.memo.set(key, r);
+    return r;
+  }
+  const cityOf = code => { const p = S.places.get(code); return (p && p.city) || code; };
+  const fnTxt = s => String(s.fn || '').replace(/\+/g, ' + ');
+  const durTxt = m => m ? `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}` : '';
+  const viaTxt = s => s.segs ? `${s.segs.slice(0, -1).map(x => cityOf(x[2])).join(' · ')} 경유` : '';
   // 확인 시각 (로마일 자료만) — '6시간 안' · '24시간 안'을 고르면 그보다 오래된 건 뺀다 (흐리게는 안 함 — 11-22 사장님 "흐리게 안 해도 되는데 자주 체크해줘")
   const within = (s, h) => !s.obs || Date.now() - Date.parse(s.obs) < h * 3600e3;
   const keClosed = s => !!(s.ke && s.ke.st === 'closed');   // 로마일 뒤에 대한항공 공개 현황이 닫힘으로 봄
@@ -526,16 +584,16 @@
   let RI = null;   // { seats, cab, idx: { out, in }: 도시 → 날짜 → 좌석들, memo }
   function retIndex() {
     const cab = [...S.cabins].sort().join('') + '|' + S.fresh;
-    if (RI && RI.seats === S.seats && RI.cab === cab && RI.data === S.data) return RI;
+    if (RI && RI.seats === pool() && RI.cab === cab && RI.data === S.data) return RI;
     const idx = { out: new Map(), in: new Map() };
-    for (const s of S.seats) {
+    for (const s of pool()) {
       if (!seatOk(s)) continue;
       const m = idx[s.dir];
       let p = m.get(s.p); if (!p) m.set(s.p, p = new Map());
       let a = p.get(s.date); if (!a) p.set(s.date, a = []);
       a.push(s);
     }
-    RI = { seats: S.seats, cab, data: S.data, idx, memo: new Map() };
+    RI = { seats: pool(), cab, data: S.data, idx, memo: new Map() };
     return RI;
   }
   // 그 도시 노선이 그 달을 다 읽었나 (안 읽었으면 '없음'이 아니라 '확인 전') — want = 찾는 편 방향 (in 오는 편 / out 가는 편)
@@ -544,7 +602,7 @@
     if (S.src === 'r2') {   // 로마일: 그 달 대한항공 묶음 + 스카이팀 묶음을 읽었나
       const g = (S.data.r2 && S.data.r2.groups) || {};
       const ok = k => !!(g[k] && g[k].at);
-      return ok('koreanair|' + want + '|' + ym) && ok('skyteam|' + want + '|all');
+      return ok('koreanair|' + want + '|' + ym) && ok('skyteam|' + want + '|all') && (!skyOn() || ok('skyvia|' + want + '|' + ym));
     }
     const scan = (S.data && S.data.scan) || {};
     const rs = p.routes.filter(r => (want === 'in' ? !HUBS[r.o] && HUBS[r.d] : HUBS[r.o] && !HUBS[r.d]) && r.enabled !== false && r.active !== false);
@@ -554,6 +612,7 @@
   // dir = 보고 있는 편 방향 — 가는 편이면 2~5일 뒤 오는 편, 오는 편이면 2~5일 전 가는 편을 찾는다
   function rtInfo(code, date, dir) {
     dir = dir || 'out';
+    if (skyOn()) return rtSky(code, date, dir);
     const want = dir === 'out' ? 'in' : 'out';
     const R = retIndex(), key = dir + '|' + code + '|' + date;
     if (R.memo.has(key)) return R.memo.get(key);
@@ -580,8 +639,9 @@
     if (r.state === 'ok') {
       return `<div class="rt ok">${head}${r.hits.map(h => {
         const fl = [...new Map(h.list.map(s => [s.o + s.fn, s])).values()]
-          .map(s => `${esc(s.fn)} ${esc(s.t || '')}${s.n ? ' ' + s.n + '석' : ''}${s.hub === 'GMP' ? ' 김포' : ''}${S.cabins.size > 1 && s.c === 'A' ? ' 일등석' : ''}`).join(' · ');
-        return `<span class="rd"><b>${esc(fmtD(h.date))}</b> ${h.n}박<small>${fl}</small></span>`;
+          .sort((a, b) => skyOn() ? (a.segs ? 1 : 0) - (b.segs ? 1 : 0) || (a.t || '').localeCompare(b.t || '') : 0)
+          .map(s => `${skyOn() && isSky(s) ? esc(s.al) + ' ' : ''}${esc(fnTxt(s))} ${esc(s.t || '')}${s.n ? ' ' + s.n + '석' : ''}${s.segs ? ' ' + esc(viaTxt(s)) : ''}${s.hub === 'GMP' ? ' 김포' : ''}${S.cabins.size > 1 && s.c === 'A' ? ' 일등석' : ''}`).join(' · ');
+        return `<span class="rd${skyOn() ? ' long' : ''}"><b>${esc(fmtD(h.date))}</b> ${h.n}박<small>${fl}</small></span>`;
       }).join('')}</div>`;
     }
     if (r.state === 'unk') return `<div class="rt unk">${head}<b>아직 확인 전</b></div>`;
@@ -628,6 +688,8 @@
     document.querySelectorAll('#cabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.cabins.has(b.dataset.cab))));
     document.querySelectorAll('#dirSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.dir === b.dataset.dir)));
     document.querySelectorAll('#tabSeg button').forEach(b => b.setAttribute('aria-pressed', String(S.tab === b.dataset.tab)));
+    $('skySeg').hidden = S.src !== 'r2';
+    document.querySelectorAll('#skySeg button').forEach(b => b.setAttribute('aria-pressed', String(skyOn() === (b.dataset.sky === '1'))));
     const nNew = filtered({ ignoreRegion: true, rt: false }).filter(isNew).length;
     $('newBadge').hidden = !nNew; $('newBadge').textContent = nNew > 99 ? '99+' : nNew;
     // 지역 칩 — 칩마다 좌석 있는 곳 수 (왕복만이면 왕복 되는 곳)
@@ -695,7 +757,7 @@
     $('summary').innerHTML =
       `<span><strong class="num">${places.size}</strong>곳</span>` +
       `<span><strong class="num">${dates.size}</strong>일</span>` +
-      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} ${S.src === 'r2' ? '· 대한항공 + 스카이팀 직항' : '보너스 좌석'}` +
+      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} ${skyOn() ? '· 스카이팀 직항 + 경유' : S.src === 'r2' ? '· 대한항공 + 스카이팀 직항' : '보너스 좌석'}` +
       ' · 앞으로 361일' +
       (S.cabins.size > 1 ? ` · 프레스티지 ${won(nP)}편 · 일등석 ${won(nF)}편` : '') + '</span>';
   }
@@ -756,7 +818,7 @@
   function flightRows(arr, showHub) {
     const byFn = new Map();
     for (const s of arr) { const k = s.o + s.fn; if (!byFn.has(k)) byFn.set(k, []); byFn.get(k).push(s); }
-    return [...byFn.values()].sort((a, b) => (a[0].t || '').localeCompare(b[0].t || '')).map(g => {
+    return [...byFn.values()].sort((a, b) => (a[0].segs ? 1 : 0) - (b[0].segs ? 1 : 0) || (a[0].t || '').localeCompare(b[0].t || '')).map(g => {
       const s = g[0];
       const cabs = g.map(x => x.c).sort((a, b) => (a === 'O' ? -1 : 1)).map(c => `<span class="tag ${c}">${CAB[c]}</span>`).join('');
       const hub = showHub || s.hub === 'GMP' ? `<span class="tag hub">${HUBS[s.hub]}${s.dir === 'out' ? ' 출발' : ' 도착'}</span>` : '';
@@ -764,15 +826,18 @@
       const n = Math.max(0, ...g.map(x => x.n || 0));
       const seats = n ? `<span class="tag seats">${n >= 9 ? '9석+' : n + '석'}</span>` : '';
       const al = s.al && s.al !== '대한항공' ? `<span class="tag hub">${esc(s.al)}</span>` : '';
+      const via = s.segs ? `<span class="tag hub">${esc(viaTxt(s))}</span><span class="mi num">${esc(durTxt(s.dur))}</span>` : '';
       const mi = s.mi ? `<span class="mi num">${won(s.mi)}마일</span>` : '';
       const kx = g.find(x => x.ke && x.ke.st === 'open');
       const keTag = kx ? `<span class="tag ke" title="대한항공 공개 현황에서도 이 편 보너스 좌석이 열려 있어요 · ${esc(hm(kx.ke.at))}">대한항공 ✓</span>` : '';
-      return `<div class="fl"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t || '')}</span>${cabs}${seats}${al}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}${mi}</div>`;
+      return `<div class="fl"><b class="num">${esc(fnTxt(s))}</b><span class="num">${esc(s.t || '')}</span>${cabs}${seats}${al}${via}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}${mi}</div>`;
     }).join('');
   }
-  function milesLine(p) {
-    const z = ZONES[p.zone];
-    return [...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])}마일`).join(' · ') + ' <span style="color:var(--t3)">(평수기)</span>';
+  // 공제표는 대한항공 편 값 — 스카이팀 편만 있으면 안 보이고, 섞여 있으면 '대한항공'을 붙인다 (11-23)
+  function milesLine(p, arr) {
+    const z = ZONES[p.zone], sky = arr.some(isSky);
+    if (sky && arr.every(isSky)) return '';
+    return (sky || skyOn() ? '대한항공 ' : '') + [...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])}마일`).join(' · ') + ' <span style="color:var(--t3)">(평수기)</span>';
   }
   function renderDay() {
     const el = $('dayPanel');
@@ -796,14 +861,14 @@
       ps.map(p => `<div class="pc"><div class="pc-h"><b>${esc(p.city)}</b><span>${esc(p.country)}</span></div>` +
         flightRows(pm.get(p.code)) +
         rtLine(p.code, S.day, S.dir) +
-        `<div class="miles">${milesLine(p)}</div>` +
+        (ml => ml && `<div class="miles">${ml}</div>`)(milesLine(p, pm.get(p.code))) +
         `<div style="margin-top:6px"><button class="link" type="button" data-place="${p.code}" data-pick="${S.dir === 'out' ? S.day : ''}">${S.dir === 'out' ? '오는 편 날짜 보기 →' : '이 도시 1년 보기 →'}</button></div></div>`).join('');
   }
 
   function renderPlaces() {
     const el = $('viewPlaces');
     const months = monthsList();
-    const out = filtered({ dir: 'out', rt: false }), inn = filtered({ dir: 'in' });
+    const out = filtered({ dir: 'out', rt: false }), inn = filtered({ dir: 'in', rt: skyOn() ? false : null });   // 스카이팀 보기는 오는 편도 전부 셈
     const stat = new Map();
     const get = c => { if (!stat.has(c)) stat.set(c, { outD: new Set(), inD: new Set(), rtD: new Set(), months: new Set(), next: null, nextRt: null }); return stat.get(c); };
     for (const s of out) {
@@ -817,10 +882,11 @@
       if (rk === 'all' || (S.region !== 'all' && S.region !== rk)) continue;
       const ps = [...S.places.values()].filter(p => p.region === rk && matchQ(p)).sort((a, b) => a.sort - b.sort);
       if (!ps.length) continue;
+      if (skyOn() && !ps.some(p => { const x = stat.get(p.code); return x && (S.dir === 'out' ? x.outD.size : x.inD.size); })) continue;
       const withSeats = ps.filter(p => { const x = stat.get(p.code); return x && (S.dir === 'out' ? x.outD.size : x.inD.size); });
       const without = ps.filter(p => !withSeats.includes(p));
       const z = ZONES[ps[0].zone];
-      html.push(`<div class="rgn"><h3>${esc(rn)} <small>${withSeats.length}곳 가능 · 프레스티지 편도 ${won(z.O)}마일~</small></h3>`);
+      html.push(`<div class="rgn"><h3>${esc(rn)} <small>${withSeats.length}곳 가능${skyOn() ? '' : ` · 프레스티지 편도 ${won(z.O)}마일~`}</small></h3>`);
       if (withSeats.length) {
         html.push('<div class="cards">' + withSeats.map(p => {
           const x = stat.get(p.code), mine = S.dir === 'out' ? x.outD : x.inD, other = S.dir === 'out' ? x.inD : x.outD;
@@ -835,7 +901,7 @@
             `<div class="spark" aria-hidden="true">${sp}</div></button>`;
         }).join('') + '</div>');
       }
-      if (without.length) {
+      if (without.length && !skyOn()) {
         const scan = (S.data && S.data.scan) || {};
         const names = without.map(p => {
           if (S.src === 'r2') return esc(p.city);   // 로마일에 없는 도시도 여기 (2석 확인 못 함)
@@ -861,7 +927,7 @@
     el.innerHTML = '<div class="list">' + list.slice(0, 300).map(s => {
       const p = S.places.get(s.p);
       return `<div class="li"><div class="d num">${esc(fmtD(s.date))}</div>` +
-        `<div><b>${esc(p.city)}</b> <span style="color:var(--t3)">${esc(p.country)}</span><div class="fl" style="margin-top:2px"><b class="num">${esc(s.fn)}</b><span class="num">${esc(s.t)}</span><span class="tag ${s.c}">${CAB[s.c]}</span>${s.hub === 'GMP' ? '<span class="tag hub">김포</span>' : ''}<button class="link" type="button" data-place="${p.code}" data-pick="${s.dir === 'out' ? s.date : ''}">1년 보기</button></div></div>` +
+        `<div><b>${esc(p.city)}</b> <span style="color:var(--t3)">${esc(p.country)}</span><div class="fl" style="margin-top:2px"><b class="num">${esc(fnTxt(s))}</b><span class="num">${esc(s.t)}</span><span class="tag ${s.c}">${CAB[s.c]}</span>${s.segs ? `<span class="tag hub">${esc(viaTxt(s))}</span>` : ''}${s.hub === 'GMP' ? '<span class="tag hub">김포</span>' : ''}<button class="link" type="button" data-place="${p.code}" data-pick="${s.dir === 'out' ? s.date : ''}">1년 보기</button></div></div>` +
         `<div class="w">${esc(rel(s.first))} 열림</div></div>`;
     }).join('') + '</div>';
   }
@@ -878,7 +944,7 @@
     if ($('placeModal').hidden && $('statusModal').hidden) document.body.style.overflow = '';
   }
   function heat(dir, p) {
-    const list = S.seats.filter(s => s.p === p.code && s.dir === dir && seatOk(s));
+    const list = pool().filter(s => s.p === p.code && s.dir === dir && seatOk(s) && (!skyOn() || skyShow(s, false)));
     const by = new Map();
     for (const s of list) { const v = by.get(s.date) || ''; if (!v.includes(s.c)) by.set(s.date, (v + s.c).split('').sort((a, b) => (a === 'O' ? -1 : 1)).join('')); }
     const months = monthsList(), md = S.modal;
@@ -909,6 +975,7 @@
     if (!p) return;
     const z = ZONES[p.zone];
     const outH = heat('out', p), inH = heat('in', p);
+    const mine = pool().filter(s => s.p === p.code && seatOk(s)), mixSky = mine.some(isSky), onlySky = mixSky && mine.every(isSky);
     const hubsOut = [...new Set(p.routes.filter(r => HUBS[r.o]).map(r => HUBS[r.o]))].join(' · ');
     let pickBox = '';
     if (md.pickOut) {
@@ -924,12 +991,12 @@
     }
     let selBox = '';
     if (md.sel) {
-      const arr = S.seats.filter(s => s.p === p.code && s.dir === md.sel.dir && s.date === md.sel.date && seatOk(s));
+      const arr = pool().filter(s => s.p === p.code && s.dir === md.sel.dir && s.date === md.sel.date && seatOk(s) && (!skyOn() || skyShow(s, false)));
       selBox = `<div class="pc" style="margin:-4px 0 14px"><div class="pc-h"><b>${esc(fmtLong(md.sel.date))}</b><span>${md.sel.dir === 'out' ? '가는 편' : '오는 편'}</span></div>${arr.length ? flightRows(arr, true) : '<div class="fl" style="color:var(--t3)">이날은 보너스 좌석 없음</div>'}</div>`;
     }
     $('placeSheet').innerHTML =
       `<div class="sheet-h"><div><h2>${esc(p.city)} <span style="color:var(--t3);font-weight:600;font-size:15px">${esc(p.country)} · ${esc(p.code)}</span></h2>` +
-      `<div class="sub">${esc(ZONES[p.zone].name)} · ${[...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])} · 왕복 ${won(z[c] * 2)}마일`).join(' / ')} (평수기) · ${esc(hubsOut || '인천')} 출발</div></div>` +
+      `<div class="sub">${esc(ZONES[p.zone].name)} · ${onlySky ? '' : (mixSky ? '대한항공 ' : '') + [...S.cabins].sort().reverse().map(c => `${CAB[c]} 편도 ${won(z[c])} · 왕복 ${won(z[c] * 2)}마일`).join(' / ') + ' (평수기) · '}${esc(hubsOut || '인천')} 출발</div></div>` +
       `<button class="x-btn" type="button" data-close="placeModal" aria-label="닫기">×</button></div>` +
       `<div class="legend">${S.cabins.has('O') ? '<span><i style="background:var(--p)"></i>프레스티지</span>' : ''}${S.cabins.has('A') ? '<span><i style="background:var(--f)"></i>일등석</span>' : ''}${S.cabins.size > 1 ? '<span><i style="background:linear-gradient(135deg,var(--p) 50%,var(--f) 50%)"></i>둘 다</span>' : ''}<span><i style="background:#eef1f5"></i>없음</span></div>` +
       pickBox + selBox +
@@ -950,11 +1017,11 @@
     const r2box = S.data && S.data.r2 ?
       `<h4 style="margin:6px 0">로마일 (맥미니 <code>ke-roamile</code>, 30분마다)</h4><div class="stat-grid">` +
       `<div class="stat"><div class="k">읽은 묶음</div><div class="v num">${R.done} / ${R2_GROUPS}</div><div class="progress"><i style="width:${Math.floor(R.done / R2_GROUPS * 100)}%"></i></div></div>` +
-      `<div class="stat"><div class="k">좌석</div><div class="v num">${won((S.data.r2.seats || []).length)}</div></div>` +
+      `<div class="stat"><div class="k">좌석</div><div class="v num">${won((S.data.r2.seats || []).length + (S.data.r2.via || []).length)}</div></div>` +
       `<div class="stat"><div class="k">마지막 수집</div><div class="v">${esc(rel(R.st.last_run_at))}</div></div>` +
       `<div class="stat"><div class="k">마지막 성공</div><div class="v">${esc(rel(R.st.last_ok_at))}</div></div></div>` +
       (R.st.last_error ? `<div class="notice">${esc(R.st.last_error)}</div>` : '') +
-      `<div style="font-size:12px;color:var(--t3);margin:-6px 0 14px">로마일(roamile.com) 공개 검색에서 '좌석 수 2' · 직항 · 비즈니스/일등석을 읽어요. 대한항공은 달마다, 스카이팀은 한 번에. 이번 달 · 다음 달 30분, 셋째 달 3시간, 스카이팀 2시간, 그 뒤 12시간마다 다시 읽어요. 대한항공 교차 확인은 가까운 3달 후보를 2시간마다 봐요.</div>` +
+      `<div style="font-size:12px;color:var(--t3);margin:-6px 0 14px">로마일(roamile.com) 공개 검색에서 '좌석 수 2' · 직항 · 비즈니스/일등석을 읽어요 (스카이팀은 경유도). 대한항공 · 스카이팀 경유는 달마다, 스카이팀 직항은 한 번에. 이번 달 · 다음 달 30분, 셋째 달 3시간, 스카이팀 직항 2시간 · 경유 가까운 3달 4시간, 그 뒤 12시간마다 다시 읽어요. 대한항공 교차 확인은 가까운 3달 후보를 2시간마다 봐요.</div>` +
       `<h4 style="margin:6px 0">대한항공 공개 현황 (좌석 수 모름 · 참고용)</h4>` : '';
     $('statusSheet').innerHTML =
       `<div class="sheet-h"><div><h2>수집 상태</h2><div class="sub">맥미니 수집기 두 개가 30분마다 돌아요</div></div><button class="x-btn" type="button" data-close="statusModal" aria-label="닫기">×</button></div>` +
@@ -997,6 +1064,16 @@
     lsSet(LS.cab, [...S.cabins].join('')); renderAll();
   });
   $('dirSeg').addEventListener('click', e => { const b = e.target.closest('button[data-dir]'); if (!b) return; S.dir = b.dataset.dir; S.day = null; lsSet(LS.dir, S.dir); renderAll(); });
+  $('skySeg').addEventListener('click', e => {
+    const b = e.target.closest('button[data-sky]'); if (!b) return;
+    S.sky = b.dataset.sky === '1'; S.day = null;
+    if (skyOn()) {   // 고른 지역 · 달에 스카이팀이 없으면 있는 곳으로
+      if (!filtered().length) S.region = 'all';
+      const ms = filtered().map(s => s.date.slice(0, 7)).sort();
+      if (ms.length && !ms.includes(S.month)) S.month = ms.find(k => k >= S.month) || ms[0];
+    }
+    renderAll();
+  });
   $('tabSeg').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (!b) return; S.tab = b.dataset.tab; lsSet(LS.tab, S.tab); renderAll(); });
   $('regionChips').addEventListener('click', e => { const b = e.target.closest('button[data-region]'); if (!b) return; S.region = b.dataset.region; S.day = null; lsSet(LS.region, S.region); renderAll(); });
   $('monthStrip').addEventListener('click', e => { const b = e.target.closest('button[data-month]'); if (!b) return; S.month = b.dataset.month; S.day = null; renderAll(); });
