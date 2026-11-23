@@ -13641,6 +13641,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
+    <!-- ============ 전광판 (2026-11-23 사장님 "까먹으면 안되는 중요한 루틴 체크 상단에 고정 전광판") — design/worklog.js renderBoard() ============ -->
+    <section class="wl-board" id="wlBoard" aria-label="디자인팀 전광판" hidden></section>
+
     <!-- ============ 탭 바 (디자인센터 · 견적서 · 매칭보드) ============
          2026-10-26 디자인센터를 메인(기본) 화면으로 올렸고,
          2026-10-27 디자인팀(디자인 보드 + 작업 보드)은 디자인센터 맨 아래로 합쳤다(관리자가 모두에게 숨길 수 있음). -->
@@ -13657,7 +13660,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </button>
     </div>
 
-    <!-- ============ 디자인센터 (노션 미러: 업무일지 · 콰이디 업무 공유) ============ -->
+    <!-- ============ 디자인센터 (라인시트 · 업무일지 · 노션 미러: 콰이디 업무 공유) ============ -->
     <div class="dsg-pane" data-pane="coferry" hidden>
       <!-- 라인시트 — 디자인센터 맨 위 (2026-11-20). 시즌 칩 = 탭, 칸 바로 고치기 · 칸 색 · 굵게 · 사진. 편집 칸은 lstInit() 이 이 카드로 옮겨 붙인다 -->
       <section class="lst" id="lst" aria-label="COFERRY 라인시트">
@@ -13679,29 +13682,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="lsb-next"><span class="lsb-next-l">다음 일정</span><div class="lsb-ticker" id="lsbTicker" tabindex="0" aria-label="다가오는 샘플·발주 일정 (선택하면 멈춤)"><div class="lsb-track" id="lsbTrack"></div></div></div>
         <div class="lsb-cols" id="lsbCols"></div>
       </section>
-      <div class="dc-notion-card">
-        <div class="dc-notion-head">
-          <span class="dc-notion-title">📓 업무일지</span>
-          <span class="dc-notion-stamp" id="dcCalStamp"></span>
-          <span class="dc-notion-url" id="dcCalUrlShow"></span>
-          <div class="dc-notion-actions">
-            <button class="dc-btn-ghost" id="dcCalReloadBtn" onclick="dcCalReload()" hidden title="노션에서 다시 가져오기">🔄 새로고침</button>
-            <button class="dc-btn-ghost" id="dcCalOpenBtn" onclick="dcCalOpenNew()" hidden title="노션에서 열기">↗ 노션</button>
-            <button class="dc-btn-ghost" id="dcCalEditBtn" onclick="dcCalEdit()" hidden title="업무일지 링크 편집(마스터)">⚙ 링크</button>
-          </div>
-        </div>
-        <div class="dc-notion-frame">
-          <div class="dc-notion-body" id="dcCalBody"></div>
-          <div class="dc-notion-empty" id="dcCalEmpty">
-            <div class="dc-notion-empty-icon">📓</div>
-            <div class="dc-notion-empty-title">업무일지 링크가 아직 등록되지 않았어요</div>
-            <div class="dc-notion-empty-sub">
-              마스터로 로그인 후 우측 상단 <b>⚙ 링크</b> 버튼을 눌러<br/>
-              업무일지 노션 URL을 넣어주세요.
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- 업무일지 — 2026-11-23 노션 미러 → 오피스 자체 프로그램 (design/worklog.js · worklog.css, 저장소 dlog_*). 사장님 "노션에서 불러오기로 쓰는데 자체 프로그램으로 변경하자" -->
+      <section class="wl" id="wl" aria-label="디자인팀 업무일지"></section>
 
       <div class="dc-notion-card" id="dcNotionCard" data-collapsed="1">
         <div class="dc-notion-head">
@@ -28714,7 +28696,37 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(_dcCurTabIsCoferry()) _dcRefreshMirrors(false);
     });
   }
+  /* 디자인팀 업무일지 · 전광판 (design/worklog.js · worklog.css) — 디자인팀 화면에 들어올 때(홈 배지는 명단 PC 에서만) 한 번 불러온다 */
+  const WL_VER = '20261123a';
+  let _wlLoading = null;
+  function _wlLoad(){
+    if(window.WL && window.WL.ready) return Promise.resolve(window.WL);
+    if(_wlLoading) return _wlLoading;
+    _wlLoading = new Promise((ok, no) => {
+      if(!document.getElementById('wlCss')){ const l = document.createElement('link'); l.id = 'wlCss'; l.rel = 'stylesheet'; l.href = 'design/worklog.css?v=' + WL_VER; document.head.appendChild(l); }
+      const s = document.createElement('script');
+      s.src = 'design/worklog.js?v=' + WL_VER;
+      s.onload = () => ok(window.WL);
+      s.onerror = () => { _wlLoading = null; s.remove(); no(new Error('worklog load')); };
+      document.head.appendChild(s);
+    });
+    return _wlLoading;
+  }
+  function wlInit(){
+    if(!designHasAccess()) return;
+    _wlLoad().then(w => w.init()).catch(() => {
+      const el = document.getElementById('wl');
+      if(el && !el.firstChild) el.innerHTML = '<div style="padding:40px 16px;text-align:center;font-size:13px;color:#78716c">업무일지를 불러오지 못했어요 — <button type="button" class="mb-btn" onclick="wlInit()">다시 불러오기</button></div>';
+    });
+  }
+  // 홈 '디자인팀' 카드의 '오늘 루틴 n' — 박시호 · 대표 2명 PC 에서만
+  function wlHomeBadge(){ if(designHasAccess() && !document.getElementById('viewHome')?.hidden) _wlLoad().then(w => w.homeBadge()).catch(() => {}); }
+  window.wlInit = wlInit; window.wlHomeBadge = wlHomeBadge;
+  setTimeout(wlHomeBadge, 4000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) wlHomeBadge(); });
+
   function dcInit(){
+    wlInit();
     _dcLoadLocal();
     // 마스터에게만 편집 버튼 노출
     const master = (typeof isMaster==='function' && isMaster());
