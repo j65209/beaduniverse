@@ -186,6 +186,9 @@
   .parts button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
   /* 매핑 요청 (2026-11-23 사장님 "만약 의문이 되는거 있으면 erp에서 매핑 요청해줘") — 재고 탭 맨 위, 색은 빨강 하나만 */
   .asks{margin-top:12px;border:1px solid #fecaca;border-radius:10px;background:#fff;overflow:hidden}
+  .mapdlg .mpick[data-gat]{cursor:pointer}
+  .mapdlg .mpick.gon{background:#eff6ff}
+  .mapdlg .gneed{color:#dc2626;font-weight:700}
   .asks .ah{display:flex;align-items:baseline;gap:8px;padding:9px 13px 8px;font-size:13px;font-weight:800}
   .asks .ah em{font-style:normal;color:#dc2626}
   .asks .ah small{min-width:0;font-size:12px;font-weight:400;color:var(--text-3)}
@@ -2392,13 +2395,13 @@
       pt.innerHTML = all.parts.map((x, i) => `<button type="button" class="${(v.part || 0) === i ? 'on' : ''}" data-part="${i}" title="${esc(x.caption || '')}">${esc(label(x, i))}</button>`).join('');
       pt.hidden = false;
     } else { pt.innerHTML = ''; pt.hidden = true; }
-    const ak = $('asks'), asks = m && m.sec === 'stock' && d && !d.side ? S.ask[S.cur] || [] : [];
+    const ak = $('asks'), asks = m && m.sec === 'stock' && d && !d.side ? askGroups(S.ask[S.cur] || []) : [];
     if (asks.length) {
       const cap = narrow.matches ? 1 : 3, show = S.askOpen ? asks : asks.slice(0, cap);
       const now = a => (a.cur || []).length ? `지금은 ${a.cur.map(x => `${mapLabel(x.name, x.opt)} ${x.per}개`).join(' + ')}만 빠져요` : '지금은 어느 줄에서도 안 빠져요';
       ak.innerHTML = `<div class="ah"><span>매핑 요청 <em>${asks.length}</em></span><small>식스샵프로 옵션이 어느 재고에서 몇 개씩 빠져야 하는지 확인해 주세요</small></div>`
-        + `<ul>${show.map(a => `<li><div class="tx"><b>${esc(a.in_name)}</b>${a.in_opt ? `<span>${esc(a.in_opt)}</span>` : ''}<small>${esc(a.why)} · ${esc(now(a))}</small></div>`
-          + `<button type="button" class="mapb" data-ask="${esc(a.k)}">매핑하기</button>${a.kind === 'doubt' ? `<button type="button" class="askok" data-askok="${esc(a.k)}">이대로 맞아요</button>` : ''}</li>`).join('')}</ul>`
+        + `<ul>${show.map(g => { const a = g[0], n = g.length; return `<li><div class="tx"><b>${esc(a.in_name)}</b><span>${n > 1 ? `조합 ${n}개` : esc(a.in_opt)}</span><small>${esc(a.why)} · ${esc(n > 1 ? '고를 것마다 한 번만 정하면 조합 전부에 들어가요' : now(a))}</small></div>`
+          + `<button type="button" class="mapb" data-ask="${esc(a.k)}">매핑하기</button>${g.every(x => x.kind === 'doubt') ? `<button type="button" class="askok" data-askok="${esc(a.k)}">이대로 맞아요</button>` : ''}</li>`; }).join('')}</ul>`
         + (asks.length > cap ? `<button type="button" class="askmore">${S.askOpen ? '접기' : `나머지 ${asks.length - cap}개 보기`}</button>` : '');
       ak.hidden = false;
     } else { ak.hidden = true; ak.innerHTML = ''; }
@@ -2478,9 +2481,10 @@
     if (b.dataset.ask) { openAsk(b.dataset.ask); return; }
     if (b.dataset.askok && !b.disabled) {
       b.disabled = true;
+      const grp = askGroups(S.ask[S.cur] || []).find(g => g[0].k === b.dataset.askok) || [];
       try {
-        await sbRpc('erp_ask_done', {p_k: b.dataset.askok, p_state: 'ok', p_who: whoAmI() || null});
-        dropAsk(b.dataset.askok);
+        for (const x of grp) { await sbRpc('erp_ask_done', {p_k: x.k, p_state: 'ok', p_who: whoAmI() || null}); }
+        grp.forEach(x => dropAsk(x.k));
         toast('이대로 두었어요 — 이름이 바뀌면 다시 물어봐요');
       } catch (err) { b.disabled = false; toast(editErr((err && err.message) || String(err)), true); }
     }
@@ -2518,7 +2522,7 @@
     const oldItem = it => (it.sec === 'home' || it.sec === 'plato') && it.tabs.every(t => t.info ? cutTab(t.gid) : !!t.cutHint);
     const live = list.filter(it => !oldItem(it)), old = list.filter(oldItem);
     S.nav = live.concat(old);
-    const nAsk = it => it.sec === 'stock' ? it.tabs.reduce((n, t) => n + (S.ask[t.gid] || []).length, 0) : 0;
+    const nAsk = it => it.sec === 'stock' ? it.tabs.reduce((n, t) => n + askGroups(S.ask[t.gid] || []).length, 0) : 0;   // 조합 옵션은 묶어서 한 개로
     const item = it => {
       // 재고 탭 이름의 날짜('11.20코페리송장출력')는 구글시트를 끊은 날에 멈춰 있다 — 끊은 재고 탭은 날짜를 안 붙인다 (실시간)
       const on = it.tabs.some(t => t.gid === S.cur), d = it.sec === 'stock' && cutTab(it.tabs[0].gid) ? '' : it.tabs[0].meta.date;
@@ -3327,7 +3331,7 @@
      · 시트에 쓰기 직전 구글시트 CSV 를 새로 읽어 줄을 상품명 · 옵션으로 다시 찾고(맨 위 ⚠️ 배너가 생기고 지워지면 줄 번호가 하나씩 밀린다),
        칸마다 전 값이 같을 때만 쓴다(브리지 old). 고른 줄은 같은 요청 맨 앞에 상품명 칸을 같은 값으로 써서 '그 줄이 맞는지' 확인하고, 숫자가 그사이 바뀌었으면 지금 값에서 다시 더한다.
      · ⚠ 줄은 지우지 않고 비운다 — 브리지(Apps Script)는 칸 쓰기만 하고, 줄 번호가 안 밀려 다른 자동 작업과도 안 부딪힌다. 시트에 빈 빨간 줄이 남음(지워도 됨). 합계 같은 수식 칸은 그대로. */
-  const M = {open: false, gid: '', r: 0, mode: 'send', picks: [], q: '', save: true, deduct: 0, cat: '', count: '', busy: false, msg: '', msgKind: '', src: null, ask: null};
+  const M = {open: false, gid: '', r: 0, mode: 'send', picks: [], q: '', save: true, deduct: 0, cat: '', count: '', busy: false, msg: '', msgKind: '', src: null, ask: null, group: null};
   const CH_NAMES = ['식스샵', '에이블리', '지그재그', '29cm', '스마트스토어', '쿠팡', 'W컨셉', '오늘의집', 'EQL'];
   const NOT_STOCK = /^\s*⚠|안\s*셈|묶음\s*→\s*낱개|^\s*세트\s*·/;   // 재고 줄이 아닌 줄 (임시 · 중복 · 묶음 · 세트 표시)
   const mapKey = s => String(s || '').toLowerCase().replace(/\[[^\]]*\]/g, ' ').replace(/\bring\b/g, '').replace(/[^a-z0-9가-힣]/g, '');
@@ -3382,7 +3386,7 @@
     closeEditor();
     const cands = mapCands(d, src), sets = cands.filter(c => c.s === 100), strong = cands.filter(c => c.s >= 90);
     const pre = sets.length >= 2 ? sets : strong.length === 1 ? strong : [];
-    Object.assign(M, {open: true, gid: S.cur, r, src, cands, ask: null, mode: 'send', q: '', save: true, deduct: src.deduct, cat: '', count: '', busy: false, msg: '', msgKind: '',
+    Object.assign(M, {open: true, gid: S.cur, r, src, cands, ask: null, group: null, mode: 'send', q: '', save: true, deduct: src.deduct, cat: '', count: '', busy: false, msg: '', msgKind: '',
       picks: pre.map(c => ({r: c.r, name: c.name, opt: c.opt, L: c.L, per: 1}))});
     $('mscrim').hidden = false;
     $('mapdlg').hidden = false;
@@ -3409,14 +3413,58 @@
     if (!picks.size) (a.cur || []).forEach(c => { const rw = c.gid === S.cur && rows.find(x => x.r === c.r); if (rw && cellT(rw, src.mc.name).trim() === c.name) add(rw, c.per); });
     return {picks: [...picks.values()], miss: parts.length > 1 && picks.size ? miss : []};
   }
+  /* 조합 옵션 묶기 (2026-11-23 식스에이 CH SET — 1+1 Event 5 × 1+1 Ring 5 = 25개가 한꺼번에 안 이어짐) —
+     같은 상품의 요청이 둘 이상이고 옵션이 '칸: 값 / 칸: 값' 꼴이면 한 줄로 묶고, 고를 것(값)마다 재고 줄을 한 번만 정해 조합 전부의 규칙을 만든다 */
+  const askSegs = o => String(o || '').split(/\s*[\/|]\s*/).map(x => x.replace(/^[^:：]{1,24}[:：]\s*/, '').trim()).filter(x => x && !/구매|할인|단품|없음|선택/.test(x) && !/^(set|세트)$/i.test(x));
+  function askGroups(list) {
+    const by = new Map();
+    list.forEach(a => { const multi = (String(a.in_opt).match(/[^:\/|]{1,24}:/g) || []).length >= 2 && askSegs(a.in_opt).length >= 2; const key = multi ? `${a.brand}|${a.in_name}` : a.k; if (!by.has(key)) by.set(key, []); by.get(key).push(a); });
+    return [...by.values()];
+  }
+  const chKey = s => String(s || '').toLowerCase().replace(/\[[^\]]*\]/g, ' ').replace(/\b\d+\s*(pcs|ea)\b|\d+\s*개/g, ' ').replace(/\b(ring|open|necklace|bracelet|s925|silver925|925|v\d+(\.\d+)*)\b/g, ' ').replace(/[^a-z0-9가-힣]/g, '');
+  const chPer = s => { const m = String(s).match(/(\d+)\s*(?:pcs|ea|개)/i); return m ? Math.max(1, Math.min(20, +m[1])) : 1; };
+  const headLen = (a, b) => { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; };
+  function choiceCands(d, mc, t) {   // 고를 것 하나 → 비슷한 재고 줄 (가까운 순)
+    const p = chKey(t), ws = mapWords(t), out = [];
+    d.rows.forEach(rw => {
+      const n = cellT(rw, mc.name).trim();
+      if (rw.past || !n || NOT_STOCK.test(cellT(rw, mc.cat))) return;
+      const o = cellT(rw, mc.opt).trim(), nk = chKey(n), ok = chKey(dropLab(o)), nok = chKey(n + ' ' + o);
+      let s = 0, why = '';
+      if (p && (p === nok || p === ok || (p === nk && !o))) { s = 100; why = '같은 이름'; }
+      else if (p && p === nk) { s = 80; why = '같은 상품'; }
+      else if (p.length >= 2 && (nk.startsWith(p) || ok.startsWith(p))) { s = 70; why = '이름이 이걸로 시작'; }
+      else if (p.length >= 5 && headLen(p, nk) >= 5) { s = 65; why = '철자가 비슷'; }
+      else if (p.length >= 4 && (nk.includes(p) || ok.includes(p))) { s = 55; why = '이름에 들어 있음'; }
+      else { let k = 0; mapWords(n + ' ' + o).forEach(w => { if (ws.has(w)) k++; }); if (k) { s = Math.min(50, 20 * k); why = '비슷한 이름'; } }
+      if (s) out.push({r: rw.r, name: n, opt: o, L: cellT(rw, mc.stock), s, why});
+    });
+    return out.sort((a, b) => b.s - a.s || a.r - b.r);
+  }
+  function openAskGroup(d, mc, g) {
+    const seen = new Map();
+    g.forEach(a => askSegs(a.in_opt).forEach(t => { const key = t.toLowerCase(); if (!seen.has(key)) seen.set(key, {t, key, per: chPer(t), pick: null}); }));
+    const ch = [...seen.values()];
+    ch.forEach(c => {
+      const cs = choiceCands(d, mc, c.t), top = cs.filter(x => x.s === cs[0].s && x.s >= 65);
+      if (top.length === 1) c.pick = top[0];
+    });
+    const src = {r: 0, mc, name: g[0].in_name, opt: `조합 ${g.length}개`, ch: [], sold: 0, L: '', deduct: 0};
+    Object.assign(M, {open: true, gid: S.cur, r: 0, src, cands: [], ask: g[0], group: {asks: g, ch, at: Math.max(0, ch.findIndex(c => !c.pick))}, mode: 'send', q: '', save: true, deduct: 0, cat: '', count: '', busy: false, msg: '', msgKind: '', picks: []});
+    $('mscrim').hidden = false;
+    $('mapdlg').hidden = false;
+    renderMap();
+  }
   function openAsk(k) {
     const d = curData(), a = (S.ask[S.cur] || []).find(x => x.k === k);
     if (!d || d.sec !== 'stock' || d.side || !a) return;
     const mc = mapCols(d);
     if (!mc.cat || !mc.name) return;
     closeEditor();
+    const grp = askGroups(S.ask[S.cur] || []).find(g => g.some(x => x.k === k)) || [a];
+    if (grp.length > 1) { openAskGroup(d, mc, grp); return; }
     const src = {r: 0, mc, name: a.in_name, opt: a.in_opt, ch: [], sold: 0, L: '', deduct: 0}, ap = askPicks(d, src, a);
-    Object.assign(M, {open: true, gid: S.cur, r: 0, src, cands: mapCands(d, src), ask: a, mode: 'send', q: '', save: true, deduct: 0, cat: '', count: '', busy: false,
+    Object.assign(M, {open: true, gid: S.cur, r: 0, src, cands: mapCands(d, src), ask: a, group: null, mode: 'send', q: '', save: true, deduct: 0, cat: '', count: '', busy: false,
       msg: ap.miss.length ? `${ap.miss.map(x => `‘${x}’`).join(' · ')} 재고 줄은 못 찾았어요 — 위에서 찾아 더해 주세요` : '', msgKind: 'err', picks: ap.picks});
     $('mscrim').hidden = false;
     $('mapdlg').hidden = false;
@@ -3434,12 +3482,40 @@
     return out.filter(x => { const k = x.toLowerCase(); return seen.has(k) ? false : !!seen.add(k); });
   }
   async function applyAsk() {
-    const a = M.ask, d = curData(), who = whoAmI() || null;
-    if (!M.picks.length || !d) return;
+    const a = M.ask, d = curData(), who = whoAmI() || null, G = M.group;
+    const used = G ? G.ch.map(c => c.pick) : M.picks;
+    if (!used.length || used.some(x => !x) || !d) return;
     if (M.gid !== S.cur) { setMapMsg('탭이 바뀌었어요 — 다시 열어 주세요', 'err'); return; }
-    for (const p of M.picks) {   // 규칙은 상품명 · 옵션으로 줄을 찾는다 — 같은 이름 줄이 둘이면 어느 줄인지 못 정함
+    for (const p of used) {   // 규칙은 상품명 · 옵션으로 줄을 찾는다 — 같은 이름 줄이 둘이면 어느 줄인지 못 정함
       const same = d.rows.filter(rw => !rw.past && !NOT_STOCK.test(cellT(rw, M.src.mc.cat)) && cellT(rw, M.src.mc.name).trim() === p.name && cellT(rw, M.src.mc.opt).trim() === p.opt);
       if (same.length !== 1) { setMapMsg(same.length ? `'${mapLabel(p.name, p.opt)}' 줄이 여러 개라 정할 수 없어요` : `'${mapLabel(p.name, p.opt)}' 줄이 그사이 바뀌었어요 — 다시 열어 주세요`, 'err'); return; }
+    }
+    if (G) {   // 조합마다: 고른 것들의 합 (같은 줄이면 더함)
+      M.busy = true;
+      const byKey = new Map(G.ch.map(c => [c.key, c]));
+      let n = 0;
+      try {
+        for (const x of G.asks) {
+          setMapMsg(`매핑 저장 중… ${n + 1}/${G.asks.length}`, 'busy');
+          const sum = new Map();
+          askSegs(x.in_opt).forEach(t => { const c = byKey.get(t.toLowerCase()), k = `${c.pick.name}\n${c.pick.opt}`, e = sum.get(k) || {name: c.pick.name, opt: c.pick.opt, per: 0}; e.per += c.per; sum.set(k, e); });
+          for (const o of askForms(x.in_opt)) await sbRpc('erp_map_set', {p_brand: x.brand, p_in_name: x.in_name, p_in_opt: o, p_targets: [...sum.values()], p_gid: M.gid, p_r: null, p_who: who});
+          await sbRpc('erp_ask_done', {p_k: x.k, p_state: 'done', p_who: who}).catch(() => {});
+          n++;
+        }
+        M.busy = false;
+        const ks = G.asks.map(x => x.k);
+        closeMap();
+        ks.forEach(dropAsk);
+        toast(`매핑됨 · ${a.in_name} 조합 ${n}개 · 다음 주문부터`);
+      } catch (e) {
+        M.busy = false;
+        const m = (e && e.message) || String(e);
+        G.asks.slice(0, n).forEach(x => dropAsk(x.k));   // 여기까지는 저장됨
+        G.asks = G.asks.slice(n);
+        setMapMsg(`${/[가-힣]/.test(m) ? m : editErr(m)}${n ? ` (${n}개는 저장됨 — 다시 누르면 나머지 ${G.asks.length}개)` : ''}`, 'err');
+      }
+      return;
     }
     M.busy = true;
     setMapMsg('매핑 저장 중…', 'busy');
@@ -3460,7 +3536,7 @@
   function closeMap() {
     if (M.busy) return;
     M.open = false;
-    M.ask = null;
+    M.ask = M.group = null;
     $('mscrim').hidden = true;
     $('mapdlg').hidden = true;
     $('mapdlg').innerHTML = '';
@@ -3488,6 +3564,13 @@
       lines.push(M.count !== '' ? `남은 재고 ${esc(src.L || '빈칸')} → <span class="up">${esc(M.count)}</span> (이 숫자부터 팔리면 빠짐)` : `남은 재고는 그대로 (${esc(src.L || '빈칸')}) — 세어서 적으면 그때부터 빠져요`);
       return lines.map(x => `<div>· ${x}</div>`).join('');
     }
+    if (M.group) {
+      const G = M.group, left = G.ch.filter(c => !c.pick).length;
+      if (left) return `<div>· 아직 안 고른 것 ${left}개 — 다 고르면 조합 ${G.asks.length}개에 한 번에 저장돼요</div>`;
+      const x = G.asks[0], by = new Map(G.ch.map(c => [c.key, c])), sum = new Map();
+      askSegs(x.in_opt).forEach(t => { const c = by.get(t.toLowerCase()), k = mapLabel(c.pick.name, c.pick.opt); sum.set(k, (sum.get(k) || 0) + c.per); });
+      return `<div>· 예) <b>${esc(x.in_opt)}</b> → ${[...sum].map(([k, n]) => `${esc(k)} <span class="dn">${n}개</span>`).join(' + ')}</div><div>· 조합 ${G.asks.length}개 전부 다음 주문부터 이렇게 빠져요 (지금 남은 재고는 안 바뀌어요)</div>`;
+    }
     if (!M.picks.length) return '<div>재고 줄을 하나 이상 골라 주세요</div>';
     if (M.ask) return M.picks.map(p => `<b>${esc(mapLabel(p.name, p.opt))}</b> — 주문 1개당 <span class="dn">${p.per}개</span> 빠짐`).concat([`다음 주문부터 <b>${esc(mapLabel(src.name, src.opt))}</b> 은(는) 위 줄에서 자동으로 빠져요 (지금 남은 재고는 안 바뀌어요)`]).map(x => `<div>· ${x}</div>`).join('');
     M.picks.forEach(p => {
@@ -3511,11 +3594,19 @@
     const rowBtn = c => `<button type="button" class="mrow${picked.has(c.r) ? ' on' : ''}" data-pick="${c.r}"><span class="bx">${picked.has(c.r) ? '✓' : ''}</span>`
       + `<span class="tx"><b>${esc(c.name)}${c.why ? `<span class="why">${esc(c.why)}</span>` : ''}</b><small>${esc(c.opt || '옵션 없음')} · ${c.r}행</small></span>`
       + `<span class="lq">남은 ${c.L === '' ? '빈칸' : esc(c.L)}</span></button>`;
-    const facts = M.ask ? [M.ask.why, (M.ask.cur || []).length ? `지금은 ${M.ask.cur.map(x => `${mapLabel(x.name, x.opt)} ${x.per}개`).join(' + ')}` : '지금은 어느 줄에서도 안 빠짐'] : [`오늘 판매 ${fmt(src.sold)}개${src.ch.length ? ` (${src.ch.map(x => `${x.c.name} ${fmt(x.n)}`).join(' · ')})` : ''}`, `남은 재고 ${src.L === '' ? '빈칸' : src.L}`];
+    const facts = M.group ? [M.ask.why] : M.ask ? [M.ask.why, (M.ask.cur || []).length ? `지금은 ${M.ask.cur.map(x => `${mapLabel(x.name, x.opt)} ${x.per}개`).join(' + ')}` : '지금은 어느 줄에서도 안 빠짐'] : [`오늘 판매 ${fmt(src.sold)}개${src.ch.length ? ` (${src.ch.map(x => `${x.c.name} ${fmt(x.n)}`).join(' · ')})` : ''}`, `남은 재고 ${src.L === '' ? '빈칸' : src.L}`];
     let body = `<div class="msrc"><div class="cap">${M.ask ? '매핑 요청' : '재고 줄에 없던 주문 이름'} · ${esc(t ? (t.meta && t.meta.sec === 'stock' ? t.meta.label + ' 재고' : t.name) : '')}${M.ask ? '' : ` ${src.r}행`}</div><div class="nm">${esc(src.name)}</div><div class="op">${esc(src.opt || '옵션 없음')}</div>`
       + `<div class="facts">${facts.map(f => `<span class="fact">${esc(f)}</span>`).join('')}</div></div>`
       + (M.ask ? '' : `<div class="mnone">ERP 에 없는 새 상품이면 여기서 등록하지 않아요 — 식스샵프로에 등록하거나 판매중으로 바꾸면 30분 안에 새롬이 이 ⚠ 줄을 그 상품 줄로 바꿔요.</div>`);
-    if (M.mode === 'send') {
+    if (M.group) {
+      const G = M.group, d = curData(), c = G.ch[G.at], cs = c ? choiceCands(d, src.mc, c.t).slice(0, 8) : [], found = M.q.trim() ? mapRowsFor(M.q) : [], on = c && c.pick ? c.pick.r : 0;
+      const gBtn = x => `<button type="button" class="mrow${x.r === on ? ' on' : ''}" data-gpick="${x.r}"><span class="bx">${x.r === on ? '✓' : ''}</span><span class="tx"><b>${esc(x.name)}${x.why ? `<span class="why">${esc(x.why)}</span>` : ''}</b><small>${esc(x.opt || '옵션 없음')} · ${x.r}행</small></span><span class="lq">남은 ${x.L === '' ? '빈칸' : esc(x.L)}</span></button>`;
+      body += `<div class="msec">고를 것마다 빠질 재고 줄 · 1개당 개수</div><div class="mlist">${G.ch.map((x, i) => `<div class="mpick${i === G.at ? ' gon' : ''}" data-gat="${i}"><span class="tx"><b>${esc(x.t)}</b><small>${x.pick ? `→ ${esc(mapLabel(x.pick.name, x.pick.opt))} · ${x.pick.r}행` : '<span class="gneed">아직 안 골랐어요</span>'}</small></span>`
+        + `<span class="step"><button type="button" data-gper="${i}" data-d="-1" aria-label="하나 줄이기">−</button><span>×${x.per}</span><button type="button" data-gper="${i}" data-d="1" aria-label="하나 늘리기">+</button></span></div>`).join('')}</div>`
+        + (c ? `<div class="msec">‘${esc(c.t)}’ 는 어느 줄?</div><div class="mlist">${cs.length ? cs.map(gBtn).join('') : '<div class="mnone">비슷한 줄을 못 찾았어요 — 아래에서 찾아 주세요</div>'}</div>`
+          + `<input class="mfind" type="search" placeholder="다른 줄 찾기 — 상품명 · 옵션 (띄어 쓴 낱말 모두)" value="${esc(M.q)}" autocomplete="off" spellcheck="false">`
+          + (M.q.trim() ? `<div class="mlist">${found.length ? found.map(x => gBtn(Object.assign({why: ''}, x))).join('') : '<div class="mnone">맞는 재고 줄이 없어요</div>'}</div>` : '') : '');
+    } else if (M.mode === 'send') {
       const cands = M.cands.filter(c => c.s >= 40).slice(0, 8), found = M.q.trim() ? mapRowsFor(M.q) : [];
       body += `<div class="msec">추천</div><div class="mlist">${cands.length ? cands.map(rowBtn).join('') : '<div class="mnone">비슷한 줄을 못 찾았어요 — 아래에서 찾아 주세요</div>'}</div>`
         + `<div class="msec">다른 줄 찾기</div><input class="mfind" type="search" placeholder="상품명 · 옵션 (띄어 쓴 낱말 모두)" value="${esc(M.q)}" autocomplete="off" spellcheck="false">`
@@ -3532,10 +3623,10 @@
         + `<div class="mfield"><label for="mCnt">남은 재고 (센 수량)</label><input id="mCnt" type="number" step="1" value="${esc(M.count)}" placeholder="비우면 그대로"><small>정말 새로 나온 상품일 때만 — 이름은 그대로 두고 ⚠ 만 지워 보통 재고 줄이 돼요. 이미 있는 상품이면 '있는 재고 줄로 보내기'.</small></div>`;
     }
     body += `<div class="mprev">${mapPreview()}</div>` + (M.msg ? `<div class="mmsg ${M.msgKind}">${esc(M.msg)}</div>` : '');
-    const ready = M.mode === 'new' ? !!M.cat.trim() : M.picks.length > 0;
+    const ready = M.group ? M.group.ch.length > 0 && M.group.ch.every(c => c.pick) : M.mode === 'new' ? !!M.cat.trim() : M.picks.length > 0;
     dlg.innerHTML = `<div class="mh"><div><h2 id="mTitle">매핑하기</h2><p>${M.ask ? '이 옵션이 팔리면 어느 재고 줄에서 몇 개씩 뺄지 정해요' : `재고 줄에 없던 주문 이름을 어느 재고 줄에서 뺄지 정해요 · ${cutTab(M.gid) ? 'ERP 에 바로 적혀요' : '구글시트와 오피스 저장소에 바로 적혀요'}`}</p></div>`
       + `<button type="button" class="mx" aria-label="닫기">✕</button></div><div class="mb">${body}</div>`
-      + `<div class="mf"><button type="button" class="mcancel">취소</button><button type="button" class="mgo"${ready && !M.busy ? '' : ' disabled'}>${M.busy ? '쓰는 중…' : M.mode === 'new' ? '새 상품으로 등록' : `매핑하기${M.picks.length ? ` (${M.picks.length}줄)` : ''}`}</button></div>`;
+      + `<div class="mf"><button type="button" class="mcancel">취소</button><button type="button" class="mgo"${ready && !M.busy ? '' : ' disabled'}>${M.busy ? '쓰는 중…' : M.mode === 'new' ? '새 상품으로 등록' : `매핑하기${M.group ? ` (조합 ${M.group.asks.length}개)` : M.picks.length ? ` (${M.picks.length}줄)` : ''}`}</button></div>`;
     dlg.querySelector('.mb').scrollTop = scroll;
     if (focusQ) { const f = dlg.querySelector('.mfind'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }
   }
@@ -3543,9 +3634,17 @@
   $('mapdlg').addEventListener('click', e => {
     if (M.busy) return;
     const b = e.target.closest('button');
+    const ga = !b && M.group && e.target.closest('[data-gat]');
+    if (ga) { M.group.at = +ga.dataset.gat; M.q = ''; renderMap(); return; }   // 고를 것 줄을 누르면 그것의 재고 줄 고르기
     if (!b) return;
     if (b.classList.contains('mx') || b.classList.contains('mcancel')) { closeMap(); return; }
     if (b.classList.contains('mgo')) { applyMap(); return; }
+    if (b.dataset.gpick && M.group) {
+      const r = +b.dataset.gpick, d = curData(), row = d && d.rows.find(x => x.r === r), c = M.group.ch[M.group.at];
+      if (row && c) { c.pick = {r, name: cellT(row, M.src.mc.name).trim(), opt: cellT(row, M.src.mc.opt).trim(), L: cellT(row, M.src.mc.stock)}; const nx = M.group.ch.findIndex(x => !x.pick); if (nx >= 0) M.group.at = nx; M.q = ''; M.msg = ''; renderMap(); }
+      return;
+    }
+    if (b.dataset.gper && M.group) { const c = M.group.ch[+b.dataset.gper]; c.per = Math.max(1, Math.min(20, c.per + (+b.dataset.d))); renderMap(); return; }
     if (b.dataset.mode) { M.mode = b.dataset.mode; M.msg = ''; renderMap(); return; }
     if (b.dataset.pick) {
       const r = +b.dataset.pick, i = M.picks.findIndex(p => p.r === r);
@@ -3571,7 +3670,8 @@
     if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('mfind')) {   // 찾기에서 Enter = 첫 결과 고르기
       e.preventDefault();
       const first = mapRowsFor(M.q).find(c => !M.picks.some(p => p.r === c.r));
-      if (first) { M.picks.push(Object.assign({per: 1}, first)); M.q = ''; renderMap(); }
+      if (first && M.group) { const c = M.group.ch[M.group.at]; if (c) { c.pick = first; M.q = ''; const nx = M.group.ch.findIndex(x => !x.pick); if (nx >= 0) M.group.at = nx; renderMap(); } }
+      else if (first) { M.picks.push(Object.assign({per: 1}, first)); M.q = ''; renderMap(); }
     }
   });
   function setMapMsg(t, kind) { M.msg = t; M.msgKind = kind || ''; renderMap(); }
