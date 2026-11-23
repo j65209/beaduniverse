@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>/* 아이폰은 글씨 16px 미만 입력 칸을 누르면 화면을 자동 확대함 → iOS 에서만 끔 (손가락으로 확대는 계속 가능) */
+try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}   /* 아이폰에서 혼자 열린 화면 — 맨 위 흐림 막기 (.ios-top) */
 if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){var _vp=document.querySelector('meta[name=viewport]');if(_vp)_vp.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';}</script>
 <title>Bead Universe Co., Ltd. · Office</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -12558,6 +12559,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     #viewHome .hero-agents-eyebrow{font-size:10px;letter-spacing:.14em}
     #viewHome .hero-agents-sub{font-size:11.5px}
   }
+  /* 아이폰 맨 위 흐림 막기 (2026-11-23 사장님 "아이폰으로 봤을때 위가 흐려" → "싹다 흐리지않게") — 아이폰 사파리는 화면 맨 위에 흐림 효과를 덮고,
+     화면에 고정된(position:fixed) 단색 막대가 맨 위에 닿아 있을 때만 단색으로 바꾼다 (ERP 에서 확인). 머리줄(.topbar)도 12px 내린다 */
+  .ios-top{display:none}
+  @media (max-width:1000px) and (min-height:521px){
+    html.ios-solo .ios-top{display:block;position:fixed;top:0;left:0;right:0;z-index:11;height:12px;background:var(--bg-1)}
+    html.ios-solo .topbar{border-top:12px solid var(--bg-1)}
+    html.ios-solo .mds-prio-bar{top:64px}
+  }
+  @media (max-width:1000px){ #viewMarketing .mkt-nav{background:#fefcf5;backdrop-filter:none;-webkit-backdrop-filter:none} }   /* 휴대폰: 비치는 바로가기 줄 → 단색 */
 </style>
 </head>
 <body>
@@ -12577,6 +12587,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
 <!-- 본문 -->
 <div class="app" id="app">
+  <i class="ios-top" aria-hidden="true"></i>
   <header class="topbar">
     <div class="brand">
       <div id="diaryMeBadge" class="diary-me-badge diary-me-badge-topbar" hidden>

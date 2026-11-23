@@ -561,9 +561,18 @@
   }
   .loading-overlay.show { display:flex }
   .loading-overlay .spinner { width:36px; height:36px; border-width:4px }
+  /* 아이폰 맨 위 흐림 막기 (2026-11-23 사장님 "아이폰으로 봤을때 위가 흐려" → "싹다 흐리지않게") — 아이폰 사파리는 화면 맨 위에 흐림 효과를 덮고,
+     화면에 고정된(position:fixed) 단색 막대가 맨 위에 닿아 있을 때만 단색으로 바꾼다 (ERP 에서 확인). */
+  .ios-top{display:none}
+  @media (max-width:1000px) and (min-height:521px){
+    html.ios-solo .ios-top{display:block;position:fixed;top:0;left:0;right:0;z-index:40;height:calc(env(safe-area-inset-top,0px) + 12px);background:var(--bg)}
+    html.ios-solo body{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
+  }
 </style>
+<script>/* 아이폰에서 혼자 열린 화면 (오피스 안 iframe 아님) */try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}</script>
 </head>
 <body>
+<div class="ios-top" aria-hidden="true"></div>
 <div class="wrap">
   <header class="top">
     <div class="brand-title">

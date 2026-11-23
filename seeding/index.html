@@ -525,7 +525,37 @@
     .fin{font-size:16px}
   }
   @media (pointer:coarse){ .tb{height:38px;min-width:38px} }
+  /* 휴대폰 · 태블릿 맨 위 막대를 또렷하게 (2026-11-23 사장님 "상품찾기 최상단 흐리다고 — 안 흐리게" → "싹다 흐리지않게", ERP 와 똑같이) —
+     찾기 칸은 흰 바탕 + 진한 테두리 + 검정 굵은 글씨, 메뉴 단추도 검정 */
+  @media (max-width:1000px),(max-height:520px){
+    .bar{background:#fff;border-bottom:1px solid #94a3b8}
+    .find,.find:focus-within{background:#fff;border:2px solid #0f172a}
+    .find:focus-within{border-color:var(--info);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+    .find svg{width:18px;height:18px;color:#0f172a;stroke-width:2.8}
+    .find input{font-weight:600;color:#0f172a}
+    .find input::placeholder{color:#0f172a;-webkit-text-fill-color:#0f172a;font-weight:600;opacity:1}
+    .qx{color:#0f172a;font-size:14px;font-weight:700}
+    .bar .ib{color:#0f172a}
+    .bar .ib svg{stroke-width:2.5}
+  }
+  @media (max-width:720px){ .bar{height:54px} .find{height:40px} .bar .menu{width:40px;height:40px} .bar .menu svg{width:22px;height:22px} }
+  /* 아이폰 맨 위 흐림 막기 (2026-11-23 사장님 "아이폰으로 봤을때 위가 흐려" → "싹다 흐리지않게") — 아이폰 사파리는 화면 맨 위에 흐림 효과를 덮고,
+     화면에 고정된(position:fixed) 단색 막대가 맨 위에 닿아 있을 때만 단색으로 바꾼다 (ERP 에서 확인). */
+  :root{--top-in:0px;--bar-h:58px}
+  html.ios-solo{--top-in:calc(env(safe-area-inset-top,0px) + 14px)}
+  @media (max-width:1000px){
+    html.ios-solo .bar{position:fixed;top:0;left:0;right:0;z-index:30;height:calc(var(--bar-h) + var(--top-in));padding-top:var(--top-in)}
+    html.ios-solo .main{padding-top:calc(var(--bar-h) + var(--top-in))}
+    html.ios-solo .side{padding-top:var(--top-in)}
+  }
+  @media (max-width:1000px) and (max-height:520px){ html.ios-solo{--bar-h:52px;--top-in:env(safe-area-inset-top,0px)} }
+  @media (max-width:720px){ html.ios-solo{--bar-h:54px} }
+  /* 아래쪽도 같은 까닭으로 — 사파리 아래 막대가 합계 줄을 흐리지 않게 아래 끝에 단색 띠 */
+  .ios-bot{display:none}
+  html.ios-solo .ios-bot{display:block;position:fixed;left:0;right:0;bottom:0;z-index:30;height:calc(env(safe-area-inset-bottom,0px) + 6px);background:#f1f5f9}
+  html.ios-solo .app{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 6px)}
 </style>
+<script>/* 아이폰에서 혼자 열린 화면 (오피스 안 iframe 아님) */try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}</script>
 </head>
 <body>
 <div class="lock" id="lock" hidden>
@@ -538,6 +568,7 @@
     <button type="submit">들어가기</button>
   </form>
 </div>
+<div class="ios-bot" aria-hidden="true"></div>
 <div class="app" id="app">
   <aside class="side" aria-label="메뉴">
     <div class="side-top">
