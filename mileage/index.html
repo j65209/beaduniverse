@@ -387,7 +387,9 @@
   const LS = { cab: 'ml_cabins_v2', dir: 'ml_dir_v1', region: 'ml_region_v1', tab: 'ml_tab_v1', rt: 'ml_rt_v1', fresh: 'ml_fresh_v1' };
   const NEW_MS = 72 * 3600e3;
   // 2석 기준 (2026-11-22 사장님 "로마일 · 스카이팀도 · 직항만 · 무조건 2명") — 로마일이 확인한 남은 좌석 2석 이상만 (자료 d.r2)
-  const R2_GROUPS = 54;           // 대한항공 13달 × 가는 편 · 오는 편 + 스카이팀 직항 2 + 스카이팀 경유 13달 × 2
+  // 스카이팀 경유편 — 11-23 넣었다가 같은 날 사장님 "직항만 표시해줘"로 끔. 되살리려면 이 값 · 수집기 roamile.py VIA_ON 을 같이 true
+  const VIA_ON = false;
+  const R2_GROUPS = VIA_ON ? 54 : 28;   // 대한항공 13달 × 가는 편 · 오는 편 + 스카이팀 직항 2 (+ 경유 13달 × 2)
   // 왕복 (2026-11-22 사장님 "출발날짜 +2~5일 돌아오는 프레스티지 좌석이 있는지 · 왕복 프레스티지가 필요") — 가는 날 + RT[0]~RT[1]일에 오는 편
   const RT = [2, 5];
 
@@ -400,7 +402,7 @@
     rt: true,   // 왕복만 — '편도 전체'는 없앰 (11-22 사장님 "왕복만 보이게")
     fresh: 0,   // 확인 시각 거르기는 없앰 (11-22 사장님 "2명 기준 · 2석 이상 · 확인 시각 이런 거 없애줘")
     // 스카이팀 보기 (2026-11-23 사장님 "네, 넣어줘" · "스카이팀 최대한 많은 비행기표들 보고싶어" · "왕복 데이터는 기존 동일하게"):
-    // 스카이팀 직항 + 경유편까지, 가는 편 · 오는 편 중 하나라도 스카이팀인 왕복만. '전체'는 직항만 그대로 (경유편은 안 섞는다). 열 때는 늘 '전체'.
+    // 스카이팀 직항, 가는 편 · 오는 편 중 하나라도 스카이팀인 왕복만 (11-23 "직항만 표시해줘" — 경유편은 VIA_ON 일 때만). 열 때는 늘 '전체'.
     sky: false,
     src: 'ke',                  // 'r2' = 로마일 2석 자료, 'ke' = 대한항공 공개 현황(좌석 수 모름)
     q: '', month: null, day: null, loading: false,
@@ -486,7 +488,7 @@
           segs, dur: segs ? a[16] : null, arr: segs ? segs[segs.length - 1][4] : null });
       };
       for (const a of r2.seats) add(a, S.seats);
-      for (const a of r2.via || []) add(a, S.via);
+      if (VIA_ON) for (const a of r2.via || []) add(a, S.via);
     } else {
       for (const a of d.seats || []) {
         const r = S.routes.get(a[0] + '-' + a[1]);
@@ -583,7 +585,7 @@
     if (S.src === 'r2') {   // 로마일: 그 달 대한항공 묶음 + 스카이팀 묶음을 읽었나
       const g = (S.data.r2 && S.data.r2.groups) || {};
       const ok = k => !!(g[k] && g[k].at);
-      return ok('koreanair|' + want + '|' + ym) && ok('skyteam|' + want + '|all') && (!skyOn() || ok('skyvia|' + want + '|' + ym));
+      return ok('koreanair|' + want + '|' + ym) && ok('skyteam|' + want + '|all') && (!skyOn() || !VIA_ON || ok('skyvia|' + want + '|' + ym));
     }
     const scan = (S.data && S.data.scan) || {};
     const rs = p.routes.filter(r => (want === 'in' ? !HUBS[r.o] && HUBS[r.d] : HUBS[r.o] && !HUBS[r.d]) && r.enabled !== false && r.active !== false);
@@ -686,8 +688,9 @@
 
   function r2Info() {   // 로마일 수집 (맥미니 ke-roamile) — 묶음 28개
     const r2 = (S.data && S.data.r2) || {}, g = r2.groups || {}, st = r2.state || {};
-    const done = Object.values(g).filter(x => x && x.at).length;
-    return { st, done, fails: Object.entries(g).filter(([, x]) => x && x.ok === false) };
+    const mine = Object.entries(g).filter(([k]) => VIA_ON || !k.startsWith('skyvia|'));
+    const done = mine.filter(([, x]) => x && x.at).length;
+    return { st, done, fails: mine.filter(([, x]) => x && x.ok === false) };
   }
   function statusInfo() {
     if (S.src === 'r2') {
@@ -737,7 +740,7 @@
     $('summary').innerHTML =
       `<span><strong class="num">${places.size}</strong>곳</span>` +
       `<span><strong class="num">${dates.size}</strong>일</span>` +
-      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} ${skyOn() ? '· 스카이팀 직항 + 경유' : S.src === 'r2' ? '· 대한항공 + 스카이팀 직항' : '보너스 좌석'}` +
+      `<span>${esc(S.dir === 'out' ? '한국 출발' : '한국 도착')} · ${esc(cabTxt)} ${skyOn() ? (VIA_ON ? '· 스카이팀 직항 + 경유' : '· 스카이팀 직항') : S.src === 'r2' ? '· 대한항공 + 스카이팀 직항' : '보너스 좌석'}` +
       ' · 앞으로 361일' +
       (S.cabins.size > 1 ? ` · 프레스티지 ${won(nP)}편 · 일등석 ${won(nF)}편` : '') + '</span>';
   }
@@ -997,11 +1000,11 @@
     const r2box = S.data && S.data.r2 ?
       `<h4 style="margin:6px 0">로마일 (맥미니 <code>ke-roamile</code>, 30분마다)</h4><div class="stat-grid">` +
       `<div class="stat"><div class="k">읽은 묶음</div><div class="v num">${R.done} / ${R2_GROUPS}</div><div class="progress"><i style="width:${Math.floor(R.done / R2_GROUPS * 100)}%"></i></div></div>` +
-      `<div class="stat"><div class="k">좌석</div><div class="v num">${won((S.data.r2.seats || []).length + (S.data.r2.via || []).length)}</div></div>` +
+      `<div class="stat"><div class="k">좌석</div><div class="v num">${won((S.data.r2.seats || []).length + (VIA_ON ? (S.data.r2.via || []).length : 0))}</div></div>` +
       `<div class="stat"><div class="k">마지막 수집</div><div class="v">${esc(rel(R.st.last_run_at))}</div></div>` +
       `<div class="stat"><div class="k">마지막 성공</div><div class="v">${esc(rel(R.st.last_ok_at))}</div></div></div>` +
       (R.st.last_error ? `<div class="notice">${esc(R.st.last_error)}</div>` : '') +
-      `<div style="font-size:12px;color:var(--t3);margin:-6px 0 14px">로마일(roamile.com) 공개 검색에서 '좌석 수 2' · 직항 · 비즈니스/일등석을 읽어요 (스카이팀은 경유도). 대한항공 · 스카이팀 경유는 달마다, 스카이팀 직항은 한 번에. 이번 달 · 다음 달 30분, 셋째 달 3시간, 스카이팀 직항 2시간 · 경유 가까운 3달 4시간, 그 뒤 12시간마다 다시 읽어요. 대한항공 교차 확인은 가까운 3달 후보를 2시간마다 봐요.</div>` +
+      `<div style="font-size:12px;color:var(--t3);margin:-6px 0 14px">로마일(roamile.com) 공개 검색에서 '좌석 수 2' · 직항 · 비즈니스/일등석을 읽어요. 대한항공은 달마다, 스카이팀은 한 번에. 이번 달 · 다음 달 30분, 셋째 달 3시간, 스카이팀 2시간, 그 뒤 12시간마다 다시 읽어요. 대한항공 교차 확인은 가까운 3달 후보를 2시간마다 봐요.</div>` +
       `<h4 style="margin:6px 0">대한항공 공개 현황 (좌석 수 모름 · 참고용)</h4>` : '';
     $('statusSheet').innerHTML =
       `<div class="sheet-h"><div><h2>수집 상태</h2><div class="sub">맥미니 수집기 두 개가 30분마다 돌아요</div></div><button class="x-btn" type="button" data-close="statusModal" aria-label="닫기">×</button></div>` +
