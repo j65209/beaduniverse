@@ -59,7 +59,7 @@
          기밀 명단 밖은 이 표에 보이는 칸만 함수에 쓸 수 있다 — 가린 칸 · 다른 탭 · 줄 전체 · 이름 · INDIRECT · OFFSET · IMPORT… 는 막음 (fxGuard).
        · 새 줄: 제목 줄 '＋ 새 줄' — 마지막 줄 다음 줄에 적고, 그 줄의 수식(공급가 · 마진율 등)은 시트가 자동으로 계산.
        · MD 시트 아래쪽 '수식만 남은 빈 줄'은 표 · 개수에서 빼고, TOP 10 처럼 한 탭에 표가 여럿이면 '공홈 · 일별' 단추로 나눈다.
-       · 탭 삭제 (2026-11-23): 제목 줄 '탭 삭제' · 왼쪽 메뉴 탭에 오른쪽 버튼 — MD 시트 5개만, 지운 탭은 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살린다. */
+       · 탭 삭제 (2026-11-23): 제목 줄 '탭 삭제' · 왼쪽 메뉴 탭에 오른쪽 버튼 — 메뉴에 보이는 시트 모두(구글이 원본인 발주 리스트는 오피스에서만 사라짐), 지운 탭은 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살린다. */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -2465,12 +2465,13 @@
     }
     let grp = null;
     for (const b of S.books) {
+      const tabs = S.tabs.filter(t => t.book === b.book);
+      if (!tabs.length) continue;   // 탭을 다 지운 시트
       if (b.grp !== grp) {
         if (SHOW_ERP_LINK && grp === '재고 · 발주') h += erpItem();
         grp = b.grp;
         h += `<div class="nav-gt">${esc(grp || '기타')}</div>`;
       }
-      const tabs = S.tabs.filter(t => t.book === b.book);
       tabs.forEach(t => list.push({key: t.gid, tabs: [t]}));
       const off = isFolded(b.book) && !tabs.some(t => t.gid === S.cur);
       h += `<div class="nav-grp${isFolded(b.book) ? ' off' : ''}"><button type="button" class="nav-sec" data-fold="${esc(b.book)}" title="${esc((b.descr || b.title) + (off ? ' — 누르면 펴기' : ' — 누르면 접기'))}">${CHEV}<i class="bd" style="background:${BOOK_COLOR[b.book] || '#64748b'}"></i><span class="bn">${esc(b.title)}</span><em>${tabs.length || ''}</em></button>`;
@@ -4412,15 +4413,16 @@
   $('addRow').addEventListener('click', openNewRow);
 
   /* ── 탭 삭제 · 되살리기 (2026-11-23 사장님 "엠디탭 시트에 탭 삭제 기능 넣어줘") ──
-     · 제목 줄 '탭 삭제' · 왼쪽 메뉴 탭에 오른쪽 버튼(안드로이드는 길게 누르기) → 확인 창. 관리자 · MD팀만, MD 시트 5개만
-       (나머지 시트는 아직 구글이 원본이라 지워도 맥미니 맞춤이 되살린다 — DB 도 거절).
+     · 제목 줄 '탭 삭제' · 왼쪽 메뉴 탭에 오른쪽 버튼(안드로이드는 길게 누르기) → 확인 창. 관리자 · MD팀만, 메뉴에 보이는 시트 모두.
+       구글이 원본인 시트(발주 리스트)는 오피스에서만 사라지고 구글시트는 그대로 (같은 날 사장님 "재고 및 발주 발주리스트, 최하단에 있는 탭도") —
+       맥미니 맞춤(mdx_sync_tabs)은 오피스에서 지운 탭을 되살리지 않는다. 탭을 다 지운 시트는 메뉴에서 빠진다.
      · 지우기 = 저장소 mdx_tab_delete — deleted_at 만 적고 줄 · 함수 · 서식은 그대로 → 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살리면(mdx_tab_restore) 그대로.
        기록 mdx_history op tab_delete · tab_restore. 다른 PC 는 8초 안에 메뉴에서 빠진다(mdx_poll).
-     · 못 지우는 탭 (DB 가 막음): 자동 업무(원가 보고서 · 가격 감시 · 기획전)가 읽는 탭 = mdx_tabs.keep · 다른 탭 함수가 읽는 탭 · 시트에 하나 남은 탭 */
+     · 못 지우는 탭 (DB 가 막음): 자동 업무(원가 보고서 · 가격 감시 · 기획전)가 읽는 탭 = mdx_tabs.keep · 다른 탭 함수가 읽는 탭 · 시트에 하나 남은 탭 (뒤의 둘은 저장소가 원본인 시트만) */
   const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
   const DLG = $('dlg'), TM = $('tmenu');
-  const canDelTab = t => { const b = t && bookOf(t.book); return !!(b && b.edit && isCut(t.gid) && canEdit()); };
-  const TAB_ERR = {unknown_tab: '그사이 다른 곳에서 바뀐 탭이에요 — 목록을 새로 받았어요', read_only_book: '이 시트는 아직 구글시트가 원본이라 오피스에서 탭을 못 지워요', name_taken: '같은 이름의 탭이 있어서 되살릴 수 없어요'};
+  const canDelTab = t => !!(t && bookOf(t.book) && canEdit());
+  const TAB_ERR = {unknown_tab: '그사이 다른 곳에서 바뀐 탭이에요 — 목록을 새로 받았어요', name_taken: '같은 이름의 탭이 있어서 되살릴 수 없어요'};
   const tabErr = e => { const m = (e && e.message) || String(e); return TAB_ERR[m] || (/^(timeout|network)$/.test(m) ? '인터넷 연결을 확인하고 다시 해 주세요' : `하지 못했어요 (${m})`); };
   const refreshTabs = () => Promise.resolve(S.tabsBusy).catch(() => {}).then(() => loadTabs()).catch(() => {});   // 받던 목록(바뀌기 전 것)이 있으면 끝난 뒤 다시
   const delBtn = document.createElement('button');
@@ -4478,7 +4480,7 @@
     }
     if (no !== dlgNo) return;   // 그사이 닫음
     if (!j || !j.ok) { noDel(t, j || {}); return; }
-    openDlg(`'${t.name}' 탭을 지울까요?`, `${(bookOf(t.book) || {}).title || ''} · 내용 ${fmt(j.n || 0)}줄. 모든 PC 에서 사라지고, 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살릴 수 있어요.`,
+    openDlg(`'${t.name}' 탭을 지울까요?`, `${(bookOf(t.book) || {}).title || ''} · 내용 ${fmt(j.n || 0)}줄. ${j.src === 'google' ? '모든 PC 의 오피스 메뉴에서 사라지고 구글시트는 그대로예요.' : '모든 PC 에서 사라져요.'} 왼쪽 메뉴 맨 아래 '지운 탭'에서 되살릴 수 있어요.`,
       [['취소', 'no', closeDlg], ['삭제', 'del', el => delTab(t, el)]]);
   }
   async function delTab(t, el) {
