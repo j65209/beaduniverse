@@ -184,6 +184,30 @@
   .parts button{height:28px;padding:0 12px;border-radius:7px;font-size:12.5px;color:var(--text-3);white-space:nowrap}
   .parts button:hover{color:var(--text)}
   .parts button.on{background:#fff;color:var(--text);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.12)}
+  /* 매핑 요청 (2026-11-23 사장님 "만약 의문이 되는거 있으면 erp에서 매핑 요청해줘") — 재고 탭 맨 위, 색은 빨강 하나만 */
+  .asks{margin-top:12px;border:1px solid #fecaca;border-radius:10px;background:#fff;overflow:hidden}
+  .asks .ah{display:flex;align-items:baseline;gap:8px;padding:9px 13px 8px;font-size:13px;font-weight:800}
+  .asks .ah em{font-style:normal;color:#dc2626}
+  .asks .ah small{min-width:0;font-size:12px;font-weight:400;color:var(--text-3)}
+  .asks ul{margin:0;padding:0;list-style:none}
+  .asks li{display:flex;align-items:center;gap:8px;padding:7px 13px;border-top:1px solid var(--line)}
+  .asks .tx{flex:1;min-width:0;font-size:13px;line-height:1.5;word-break:break-word}
+  .asks .tx b{font-weight:700}
+  .asks .tx span{margin-left:6px;color:var(--text-2)}
+  .asks .tx small{display:block;font-size:12px;color:var(--text-3)}
+  .asks .mapb{flex:none;height:28px;padding:0 12px;font-size:12.5px}
+  .asks .askok{flex:none;height:28px;padding:0 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;color:var(--text-2);white-space:nowrap}
+  .asks .askok:hover{background:#f1f4f8;color:var(--text)}
+  .asks .askmore{display:block;width:100%;height:34px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-2)}
+  .nav-item .na{flex:none;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+  @media (max-width:720px){
+    .asks{margin-top:8px}
+    .asks .ah{padding:8px 11px 7px}
+    .asks .ah small{display:none}
+    .asks li{flex-wrap:wrap;padding:8px 11px}
+    .asks .tx{flex:1 0 100%}
+    .asks .mapb,.asks .askok{height:34px;padding:0 14px;font-size:13px}
+  }
   .alert{margin-top:12px;display:flex;gap:10px;padding:10px 13px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12.5px;line-height:1.6}
   .alert svg{flex:none;width:17px;height:17px;margin-top:1px;color:#d97706}
   .alert ul{margin:0;padding:0;list-style:none}
@@ -886,6 +910,7 @@
     </header>
     <section class="head">
       <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="mstrip" id="mstrip"></div><div class="tools"><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
+      <div class="asks" id="asks" hidden></div>
       <div class="alert" id="alert" hidden></div>
       <div class="kpis" id="kpis"></div>
       <div class="chips" id="chips" hidden></div>
@@ -1067,6 +1092,7 @@
     pollMax: 0, pollAt: 0, pollBusy: false, pollErr: 0,   // 저장소에서 마지막으로 본 바뀜 번호 · 시각
     synced: {}, skew: 0,  // gid → 맥미니가 시트와 마지막으로 맞춘 시각 · 서버 시계 - 이 PC 시계
     pro: {}, proBusy: {}, // gid → {ver, at, map: {시트행: [on|sold|off, 판매중 수, 품절 수, 판매중지 수, 세트로만]}} 식스샵프로 상태
+    ask: {}, askSig: '', askAt: 0, askBusy: false, askOpen: false,   // gid → 매핑 요청 (맥미니 link-watch 가 올린 erp_ask)
     cost: {}, costVer: 0, costAt: 0, costBusy: false,   // gid → {줄: 단가} (기밀 명단 PC 에서만 받음)
     terms: [], hlRe: null, list: [], sel: null,
     pick: null, opt: null,   // 찾기에서 고른 제품명 {name} · 옵션 {ks: Set(optKey), t} — 이 탭에서만 (다른 탭으로 가면 지움)
@@ -1173,7 +1199,7 @@
     }
   }
   // 저장소에 쓰는 함수는 이름(whoAmI)이 있어야 부른다 — 수정 로그에 이름 없는 줄이 생기지 않게 (NO_WHO 주석)
-  const WRITE_RPC = /^erp_(cell_edit|cells_set|fmt_set|map_set|map_off|row_add)$/;
+  const WRITE_RPC = /^erp_(cell_edit|cells_set|fmt_set|map_set|map_off|row_add|ask_done)$/;
   const sbRpc = (fn, body) => WRITE_RPC.test(fn) && !whoAmI() ? Promise.reject(new Error(NO_WHO))
     : sbFetch(`rpc/${fn}`, {method: 'POST', body: JSON.stringify(body || {})});
 
@@ -1249,6 +1275,7 @@
         if (g === S.cur && (!cur || cur.stale)) loadPro(g);
       }
       loadCost();   // 10분마다 바뀐 단가만
+      loadAsk();
     } catch (e) {
       S.pollErr++;
     } finally {
@@ -1311,6 +1338,28 @@
       }
       if (tabs[S.cur]) { renderHead(); softRender(); }
     }).catch(() => { S.costAt = Date.now() - COST_MS + 60e3; }).finally(() => { S.costBusy = false; });   // 못 받으면 1분 뒤 다시
+  }
+
+  // 매핑 요청 — 열린 것만 (5분마다 · 저장되면 바로), 탭마다 나눠 메뉴 숫자 · 재고 탭 맨 위에
+  function loadAsk(force) {
+    if (S.askBusy || (!force && Date.now() - S.askAt < 5 * 60e3)) return;
+    S.askBusy = true;
+    S.askAt = Date.now();
+    sbFetch('erp_ask?select=k,gid,brand,in_name,in_opt,kind,why,cur&state=eq.open&order=first_at.asc,k.asc&limit=500').then(rows => {
+      const list = Array.isArray(rows) ? rows : [], sig = JSON.stringify(list);
+      if (sig === S.askSig) return;
+      S.askSig = sig;
+      S.ask = {};
+      list.forEach(x => (S.ask[x.gid] || (S.ask[x.gid] = [])).push(x));
+      renderNav();
+      renderHead();
+    }).catch(() => { S.askAt = Date.now() - 4 * 60e3; }).finally(() => { S.askBusy = false; });
+  }
+  function dropAsk(k) {   // 처리한 요청은 바로 화면에서 뺀다 (저장소는 erp_ask_done)
+    Object.keys(S.ask).forEach(g => { S.ask[g] = S.ask[g].filter(x => x.k !== k); });
+    S.askSig = '';
+    renderNav();
+    renderHead();
   }
 
   /* ── 한 탭 줄 받기 — erp_rows (줄 = 시트 한 줄, v = 칸 표시값). 처음 · 10분마다 전체, 그 사이엔 바뀐 줄(ver)만 ── */
@@ -2343,6 +2392,16 @@
       pt.innerHTML = all.parts.map((x, i) => `<button type="button" class="${(v.part || 0) === i ? 'on' : ''}" data-part="${i}" title="${esc(x.caption || '')}">${esc(label(x, i))}</button>`).join('');
       pt.hidden = false;
     } else { pt.innerHTML = ''; pt.hidden = true; }
+    const ak = $('asks'), asks = m && m.sec === 'stock' && d && !d.side ? S.ask[S.cur] || [] : [];
+    if (asks.length) {
+      const cap = narrow.matches ? 1 : 3, show = S.askOpen ? asks : asks.slice(0, cap);
+      const now = a => (a.cur || []).length ? `지금은 ${a.cur.map(x => `${mapLabel(x.name, x.opt)} ${x.per}개`).join(' + ')}만 빠져요` : '지금은 어느 줄에서도 안 빠져요';
+      ak.innerHTML = `<div class="ah"><span>매핑 요청 <em>${asks.length}</em></span><small>식스샵프로 옵션이 어느 재고에서 몇 개씩 빠져야 하는지 확인해 주세요</small></div>`
+        + `<ul>${show.map(a => `<li><div class="tx"><b>${esc(a.in_name)}</b>${a.in_opt ? `<span>${esc(a.in_opt)}</span>` : ''}<small>${esc(a.why)} · ${esc(now(a))}</small></div>`
+          + `<button type="button" class="mapb" data-ask="${esc(a.k)}">매핑하기</button>${a.kind === 'doubt' ? `<button type="button" class="askok" data-askok="${esc(a.k)}">이대로 맞아요</button>` : ''}</li>`).join('')}</ul>`
+        + (asks.length > cap ? `<button type="button" class="askmore">${S.askOpen ? '접기' : `나머지 ${asks.length - cap}개 보기`}</button>` : '');
+      ak.hidden = false;
+    } else { ak.hidden = true; ak.innerHTML = ''; }
     const al = $('alert');
     if (d && d.banner.length) {
       const lines = d.banner.join('\n').split(/\s*▶\s*|\n|\s+\|\s+/).map(s => s.replace(/^⚠️?\s*/, '').trim()).filter(Boolean);
@@ -2411,6 +2470,21 @@
     renderGrid({pos: {t: 0, l: grid.scrollLeft}});
   });
   $('dates').addEventListener('click', e => { const b = e.target.closest('button[data-gid]'); if (b) openTab(b.dataset.gid); });
+  $('asks').addEventListener('click', async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    e.stopPropagation();
+    if (b.classList.contains('askmore')) { S.askOpen = !S.askOpen; renderHead(); return; }
+    if (b.dataset.ask) { openAsk(b.dataset.ask); return; }
+    if (b.dataset.askok && !b.disabled) {
+      b.disabled = true;
+      try {
+        await sbRpc('erp_ask_done', {p_k: b.dataset.askok, p_state: 'ok', p_who: whoAmI() || null});
+        dropAsk(b.dataset.askok);
+        toast('이대로 두었어요 — 이름이 바뀌면 다시 물어봐요');
+      } catch (err) { b.disabled = false; toast(editErr((err && err.message) || String(err)), true); }
+    }
+  });
   $('alert').addEventListener('click', () => { if (compactMQ.matches) { S.alertOpen = !S.alertOpen; renderHead(); } });
   // 휴대폰: 접힌 위쪽은 제목 줄을 누르면 편다
   document.querySelector('.head').addEventListener('click', e => { if (app.classList.contains('hmin') && !e.target.closest('button,a')) setHmin(false); });
@@ -2444,10 +2518,11 @@
     const oldItem = it => (it.sec === 'home' || it.sec === 'plato') && it.tabs.every(t => t.info ? cutTab(t.gid) : !!t.cutHint);
     const live = list.filter(it => !oldItem(it)), old = list.filter(oldItem);
     S.nav = live.concat(old);
+    const nAsk = it => it.sec === 'stock' ? it.tabs.reduce((n, t) => n + (S.ask[t.gid] || []).length, 0) : 0;
     const item = it => {
       // 재고 탭 이름의 날짜('11.20코페리송장출력')는 구글시트를 끊은 날에 멈춰 있다 — 끊은 재고 탭은 날짜를 안 붙인다 (실시간)
       const on = it.tabs.some(t => t.gid === S.cur), d = it.sec === 'stock' && cutTab(it.tabs[0].gid) ? '' : it.tabs[0].meta.date;
-      return `<button type="button" class="nav-item${on ? ' on' : ''}" data-gid="${it.tabs[0].gid}"><i class="dot"${it.brand ? ` style="background:${it.brand.color}"` : ''}></i><span class="nm">${esc(it.label)}</span>${d ? `<span class="nd">${esc(d)}</span>` : ''}</button>`;
+      return `<button type="button" class="nav-item${on ? ' on' : ''}" data-gid="${it.tabs[0].gid}"><i class="dot"${it.brand ? ` style="background:${it.brand.color}"` : ''}></i><span class="nm">${esc(it.label)}</span>${d ? `<span class="nd">${esc(d)}</span>` : ''}${nAsk(it) ? `<span class="na" title="매핑 요청 ${nAsk(it)}개">${nAsk(it)}</span>` : ''}</button>`;
     };
     let h = '', sec = '';
     for (const it of live) {
@@ -2619,6 +2694,7 @@
     if (tt && tt.info && (!c || c.stored || c.direct || c.rowsVer < +tt.info.rows_ver || Date.now() - (S.fullAt[gid] || 0) > FULL_MS)) loadSheet(gid);
     if (!S.pro[gid] || S.pro[gid].stale) loadPro(gid);   // 식스샵프로 상태 (재고 탭만)
     loadCost();   // 단가 (기밀 명단 · 재고 탭만)
+    loadAsk();
     paintStatus();
   }
 
@@ -3251,7 +3327,7 @@
      · 시트에 쓰기 직전 구글시트 CSV 를 새로 읽어 줄을 상품명 · 옵션으로 다시 찾고(맨 위 ⚠️ 배너가 생기고 지워지면 줄 번호가 하나씩 밀린다),
        칸마다 전 값이 같을 때만 쓴다(브리지 old). 고른 줄은 같은 요청 맨 앞에 상품명 칸을 같은 값으로 써서 '그 줄이 맞는지' 확인하고, 숫자가 그사이 바뀌었으면 지금 값에서 다시 더한다.
      · ⚠ 줄은 지우지 않고 비운다 — 브리지(Apps Script)는 칸 쓰기만 하고, 줄 번호가 안 밀려 다른 자동 작업과도 안 부딪힌다. 시트에 빈 빨간 줄이 남음(지워도 됨). 합계 같은 수식 칸은 그대로. */
-  const M = {open: false, gid: '', r: 0, mode: 'send', picks: [], q: '', save: true, deduct: 0, cat: '', count: '', busy: false, msg: '', msgKind: '', src: null};
+  const M = {open: false, gid: '', r: 0, mode: 'send', picks: [], q: '', save: true, deduct: 0, cat: '', count: '', busy: false, msg: '', msgKind: '', src: null, ask: null};
   const CH_NAMES = ['식스샵', '에이블리', '지그재그', '29cm', '스마트스토어', '쿠팡', 'W컨셉', '오늘의집', 'EQL'];
   const NOT_STOCK = /^\s*⚠|안\s*셈|묶음\s*→\s*낱개|^\s*세트\s*·/;   // 재고 줄이 아닌 줄 (임시 · 중복 · 묶음 · 세트 표시)
   const mapKey = s => String(s || '').toLowerCase().replace(/\[[^\]]*\]/g, ' ').replace(/\bring\b/g, '').replace(/[^a-z0-9가-힣]/g, '');
@@ -3306,7 +3382,7 @@
     closeEditor();
     const cands = mapCands(d, src), sets = cands.filter(c => c.s === 100), strong = cands.filter(c => c.s >= 90);
     const pre = sets.length >= 2 ? sets : strong.length === 1 ? strong : [];
-    Object.assign(M, {open: true, gid: S.cur, r, src, cands, mode: 'send', q: '', save: true, deduct: src.deduct, cat: '', count: '', busy: false, msg: '', msgKind: '',
+    Object.assign(M, {open: true, gid: S.cur, r, src, cands, ask: null, mode: 'send', q: '', save: true, deduct: src.deduct, cat: '', count: '', busy: false, msg: '', msgKind: '',
       picks: pre.map(c => ({r: c.r, name: c.name, opt: c.opt, L: c.L, per: 1}))});
     $('mscrim').hidden = false;
     $('mapdlg').hidden = false;
@@ -3314,9 +3390,77 @@
     const go = $('mapdlg').querySelector('.mgo');
     if (go && !go.disabled) go.focus(); else { const f = $('mapdlg').querySelector('.mfind'); if (f && !narrow.matches) f.focus(); }
   }
+  /* 매핑 요청 (2026-11-23 사장님 "만약 의문이 되는거 있으면 erp에서 매핑 요청해줘") — 맥미니 link-watch 가 판매중 옵션을 팔리기 전에 보고
+     재고 줄로 안 이어지거나 두 개짜리인데 1개만 빠지는 것을 erp_ask 에 올린다. 같은 매핑 창을 쓰되 ⚠ 줄이 없으니 규칙(erp_map)만 저장한다.
+     미리 골라 두는 줄 = 옵션에 '+ · /' 로 적힌 상품마다 맞는 줄 (같은 것이 두 번이면 ×2) — 하나라도 못 찾으면 지금 빠지는 줄만 골라 둔다 */
+  function askPicks(d, src, a) {
+    const rows = d.rows.filter(rw => !rw.past && cellT(rw, src.mc.name).trim() && !NOT_STOCK.test(cellT(rw, src.mc.cat)));
+    const keys = rows.map(rw => ({rw, nk: mapKey(cellT(rw, src.mc.name)), ok: mapKey(dropLab(cellT(rw, src.mc.opt))), nok: mapKey(cellT(rw, src.mc.name) + ' ' + cellT(rw, src.mc.opt))}));
+    const parts = src.opt.split(/\s*[+\/|]\s*/).map(x => dropLab(x).replace(/[\s\-_]*(set|세트)\s*$/i, '')).filter(x => !/구매|할인|단품|없음|선택/.test(x)).map(t => ({t: t.replace(/^[\s\-]+/, '').trim(), p: mapKey(t)})).filter(x => x.p.length >= 3 && x.p !== 'set');
+    const picks = new Map(), add = (rw, per) => { const x = picks.get(rw.r) || {r: rw.r, name: cellT(rw, src.mc.name).trim(), opt: cellT(rw, src.mc.opt).trim(), L: cellT(rw, src.mc.stock), per: 0}; x.per += per; picks.set(rw.r, x); };
+    const miss = [];
+    if (parts.length > 1) parts.forEach(({t, p}) => {
+      let hit = keys.filter(k => p === k.nk || p === k.ok || p === k.nok);
+      if (!hit.length && p.length >= 5) hit = keys.filter(k => k.nk.endsWith(p));   // 'Gleam cross' → 'N - Gleam cross'
+      if (!hit.length && p.length >= 5) hit = keys.filter(k => k.nk.length >= 5 && p.endsWith(k.nk));
+      if (hit.length > 1) { const now = hit.filter(k => (a.cur || []).some(c => c.gid === S.cur && c.r === k.rw.r)); if (now.length === 1) hit = now; }   // 여럿이면 지금 빠지는 줄
+      if (hit.length === 1) add(hit[0].rw, 1); else miss.push(t);
+    });
+    if (!picks.size) (a.cur || []).forEach(c => { const rw = c.gid === S.cur && rows.find(x => x.r === c.r); if (rw && cellT(rw, src.mc.name).trim() === c.name) add(rw, c.per); });
+    return {picks: [...picks.values()], miss: parts.length > 1 && picks.size ? miss : []};
+  }
+  function openAsk(k) {
+    const d = curData(), a = (S.ask[S.cur] || []).find(x => x.k === k);
+    if (!d || d.sec !== 'stock' || d.side || !a) return;
+    const mc = mapCols(d);
+    if (!mc.cat || !mc.name) return;
+    closeEditor();
+    const src = {r: 0, mc, name: a.in_name, opt: a.in_opt, ch: [], sold: 0, L: '', deduct: 0}, ap = askPicks(d, src, a);
+    Object.assign(M, {open: true, gid: S.cur, r: 0, src, cands: mapCands(d, src), ask: a, mode: 'send', q: '', save: true, deduct: 0, cat: '', count: '', busy: false,
+      msg: ap.miss.length ? `${ap.miss.map(x => `‘${x}’`).join(' · ')} 재고 줄은 못 찾았어요 — 위에서 찾아 더해 주세요` : '', msgKind: 'err', picks: ap.picks});
+    $('mscrim').hidden = false;
+    $('mapdlg').hidden = false;
+    renderMap();
+    const go = $('mapdlg').querySelector('.mgo');
+    if (go && !go.disabled) go.focus();
+  }
+  // 주문은 같은 옵션을 여러 꼴로 보낸다 ('Color: 은' · '옵션: 은' · '은', 여러 칸은 ' / ' · ' | ') — 규칙은 글자 그대로 맞춰 보니 다 저장
+  function askForms(o) {
+    const out = [o], m = o.match(/^([^:+\/|]{1,24}):\s*(.+)$/);
+    if (m && !/[\/|]\s*[^:\/|]{1,24}:/.test(m[2])) out.push(m[2], `옵션: ${m[2]}`, `option: ${m[2]}`);
+    else if (/ \/ /.test(o)) out.push(o.replace(/ \/ /g, ' | '));
+    else if (/ \| /.test(o)) out.push(o.replace(/ \| /g, ' / '));
+    const seen = new Set();
+    return out.filter(x => { const k = x.toLowerCase(); return seen.has(k) ? false : !!seen.add(k); });
+  }
+  async function applyAsk() {
+    const a = M.ask, d = curData(), who = whoAmI() || null;
+    if (!M.picks.length || !d) return;
+    if (M.gid !== S.cur) { setMapMsg('탭이 바뀌었어요 — 다시 열어 주세요', 'err'); return; }
+    for (const p of M.picks) {   // 규칙은 상품명 · 옵션으로 줄을 찾는다 — 같은 이름 줄이 둘이면 어느 줄인지 못 정함
+      const same = d.rows.filter(rw => !rw.past && !NOT_STOCK.test(cellT(rw, M.src.mc.cat)) && cellT(rw, M.src.mc.name).trim() === p.name && cellT(rw, M.src.mc.opt).trim() === p.opt);
+      if (same.length !== 1) { setMapMsg(same.length ? `'${mapLabel(p.name, p.opt)}' 줄이 여러 개라 정할 수 없어요` : `'${mapLabel(p.name, p.opt)}' 줄이 그사이 바뀌었어요 — 다시 열어 주세요`, 'err'); return; }
+    }
+    M.busy = true;
+    setMapMsg('매핑 저장 중…', 'busy');
+    try {
+      const tg = M.picks.map(p => ({name: p.name, opt: p.opt, per: p.per})), head = `매핑됨 · ${mapLabel(a.in_name, a.in_opt)} → ${M.picks.map(p => `${mapLabel(p.name, p.opt)} ×${p.per}`).join(' + ')}`;
+      for (const o of askForms(a.in_opt)) await sbRpc('erp_map_set', {p_brand: a.brand, p_in_name: a.in_name, p_in_opt: o, p_targets: tg, p_gid: M.gid, p_r: null, p_who: who});
+      await sbRpc('erp_ask_done', {p_k: a.k, p_state: 'done', p_who: who}).catch(() => {});   // 못 적어도 규칙은 들어감 — 30분 안에 저절로 닫힘
+      M.busy = false;
+      closeMap();
+      dropAsk(a.k);
+      toast(head + ' · 다음 주문부터');
+    } catch (e) {
+      M.busy = false;
+      const m = (e && e.message) || String(e);
+      setMapMsg(/[가-힣]/.test(m) ? m : editErr(m), 'err');
+    }
+  }
   function closeMap() {
     if (M.busy) return;
     M.open = false;
+    M.ask = null;
     $('mscrim').hidden = true;
     $('mapdlg').hidden = true;
     $('mapdlg').innerHTML = '';
@@ -3345,6 +3489,7 @@
       return lines.map(x => `<div>· ${x}</div>`).join('');
     }
     if (!M.picks.length) return '<div>재고 줄을 하나 이상 골라 주세요</div>';
+    if (M.ask) return M.picks.map(p => `<b>${esc(mapLabel(p.name, p.opt))}</b> — 주문 1개당 <span class="dn">${p.per}개</span> 빠짐`).concat([`다음 주문부터 <b>${esc(mapLabel(src.name, src.opt))}</b> 은(는) 위 줄에서 자동으로 빠져요 (지금 남은 재고는 안 바뀌어요)`]).map(x => `<div>· ${x}</div>`).join('');
     M.picks.forEach(p => {
       const row = rowOf(p.r), parts = [];
       src.ch.forEach(x => { const cur = row ? numOf(cellT(row, x.c)) || 0 : 0; parts.push(`${esc(x.c.name)} ${fmt(cur)} → <span class="up">${fmt(cur + x.n * p.per)}</span>`); });
@@ -3366,10 +3511,10 @@
     const rowBtn = c => `<button type="button" class="mrow${picked.has(c.r) ? ' on' : ''}" data-pick="${c.r}"><span class="bx">${picked.has(c.r) ? '✓' : ''}</span>`
       + `<span class="tx"><b>${esc(c.name)}${c.why ? `<span class="why">${esc(c.why)}</span>` : ''}</b><small>${esc(c.opt || '옵션 없음')} · ${c.r}행</small></span>`
       + `<span class="lq">남은 ${c.L === '' ? '빈칸' : esc(c.L)}</span></button>`;
-    const facts = [`오늘 판매 ${fmt(src.sold)}개${src.ch.length ? ` (${src.ch.map(x => `${x.c.name} ${fmt(x.n)}`).join(' · ')})` : ''}`, `남은 재고 ${src.L === '' ? '빈칸' : src.L}`];
-    let body = `<div class="msrc"><div class="cap">재고 줄에 없던 주문 이름 · ${esc(t ? (t.meta && t.meta.sec === 'stock' ? t.meta.label + ' 재고' : t.name) : '')} ${src.r}행</div><div class="nm">${esc(src.name)}</div><div class="op">${esc(src.opt || '옵션 없음')}</div>`
+    const facts = M.ask ? [M.ask.why, (M.ask.cur || []).length ? `지금은 ${M.ask.cur.map(x => `${mapLabel(x.name, x.opt)} ${x.per}개`).join(' + ')}` : '지금은 어느 줄에서도 안 빠짐'] : [`오늘 판매 ${fmt(src.sold)}개${src.ch.length ? ` (${src.ch.map(x => `${x.c.name} ${fmt(x.n)}`).join(' · ')})` : ''}`, `남은 재고 ${src.L === '' ? '빈칸' : src.L}`];
+    let body = `<div class="msrc"><div class="cap">${M.ask ? '매핑 요청' : '재고 줄에 없던 주문 이름'} · ${esc(t ? (t.meta && t.meta.sec === 'stock' ? t.meta.label + ' 재고' : t.name) : '')}${M.ask ? '' : ` ${src.r}행`}</div><div class="nm">${esc(src.name)}</div><div class="op">${esc(src.opt || '옵션 없음')}</div>`
       + `<div class="facts">${facts.map(f => `<span class="fact">${esc(f)}</span>`).join('')}</div></div>`
-      + `<div class="mnone">ERP 에 없는 새 상품이면 여기서 등록하지 않아요 — 식스샵프로에 등록하거나 판매중으로 바꾸면 30분 안에 새롬이 이 ⚠ 줄을 그 상품 줄로 바꿔요.</div>`;
+      + (M.ask ? '' : `<div class="mnone">ERP 에 없는 새 상품이면 여기서 등록하지 않아요 — 식스샵프로에 등록하거나 판매중으로 바꾸면 30분 안에 새롬이 이 ⚠ 줄을 그 상품 줄로 바꿔요.</div>`);
     if (M.mode === 'send') {
       const cands = M.cands.filter(c => c.s >= 40).slice(0, 8), found = M.q.trim() ? mapRowsFor(M.q) : [];
       body += `<div class="msec">추천</div><div class="mlist">${cands.length ? cands.map(rowBtn).join('') : '<div class="mnone">비슷한 줄을 못 찾았어요 — 아래에서 찾아 주세요</div>'}</div>`
@@ -3378,9 +3523,9 @@
         + `<div class="msec">고른 줄 · 주문 1개당 개수</div><div class="mlist">${M.picks.length ? M.picks.map(p => `<div class="mpick"><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.opt || '옵션 없음')} · ${p.r}행</small></span>`
           + `<span class="step"><button type="button" data-per="${p.r}" data-d="-1" aria-label="하나 줄이기">−</button><span>×${p.per}</span><button type="button" data-per="${p.r}" data-d="1" aria-label="하나 늘리기">+</button></span>`
           + `<button type="button" class="mdel" data-del="${p.r}" aria-label="빼기">✕</button></div>`).join('') : '<div class="mnone">아직 고른 줄이 없어요 — 위에서 누르면 들어가요</div>'}</div>`
-        + `<div class="mfield"><label for="mDed">남은 재고에서 뺄 주문 수</label><input id="mDed" type="number" min="0" step="1" value="${M.deduct}">`
+        + (M.ask ? '' : `<div class="mfield"><label for="mDed">남은 재고에서 뺄 주문 수</label><input id="mDed" type="number" min="0" step="1" value="${M.deduct}">`
         + `<small>고른 줄마다 이 수 × 개수만큼 남은 재고에서 빠져요. 기본값 = ${src.L !== '' && (numOf(src.L) || 0) < 0 ? `⚠ 줄에서 이미 빠진 ${fmt(-numOf(src.L))}개 (그동안 팔린 것)` : '오늘 판매 (⚠ 줄은 남은 재고가 빈칸이라 어디서도 안 빠졌음)'} — 그 전 날 팔린 것까지 빼려면 늘려 주세요.</small></div>`
-        + `<label class="mchk"><input type="checkbox" id="mSave"${M.save ? ' checked' : ''}><span><b>다음 주문부터도 이 줄로 빼기</b> (매핑 저장) — 같은 이름 · 옵션 주문이 오면 자동 차감이 고른 줄에서 뺍니다. 끄면 이번 한 번만 옮겨요.</span></label>`;
+        + `<label class="mchk"><input type="checkbox" id="mSave"${M.save ? ' checked' : ''}><span><b>다음 주문부터도 이 줄로 빼기</b> (매핑 저장) — 같은 이름 · 옵션 주문이 오면 자동 차감이 고른 줄에서 뺍니다. 끄면 이번 한 번만 옮겨요.</span></label>`);
     } else {
       const cats = (() => { const d = curData(), m = new Map(); if (d && src.mc.cat) d.rows.forEach(rw => { const v = cellT(rw, src.mc.cat).trim(); if (v && !NOT_STOCK.test(v)) m.set(v, (m.get(v) || 0) + 1); }); return [...m.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]); })();
       body += `<div class="mfield"><label for="mCat">카테고리</label><input id="mCat" type="text" list="mCats" value="${esc(M.cat)}" placeholder="예: ${esc(cats[0] || '반지')}" autocomplete="off"><datalist id="mCats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></div>`
@@ -3388,7 +3533,7 @@
     }
     body += `<div class="mprev">${mapPreview()}</div>` + (M.msg ? `<div class="mmsg ${M.msgKind}">${esc(M.msg)}</div>` : '');
     const ready = M.mode === 'new' ? !!M.cat.trim() : M.picks.length > 0;
-    dlg.innerHTML = `<div class="mh"><div><h2 id="mTitle">매핑하기</h2><p>재고 줄에 없던 주문 이름을 어느 재고 줄에서 뺄지 정해요 · ${cutTab(M.gid) ? 'ERP 에 바로 적혀요' : '구글시트와 오피스 저장소에 바로 적혀요'}</p></div>`
+    dlg.innerHTML = `<div class="mh"><div><h2 id="mTitle">매핑하기</h2><p>${M.ask ? '이 옵션이 팔리면 어느 재고 줄에서 몇 개씩 뺄지 정해요' : `재고 줄에 없던 주문 이름을 어느 재고 줄에서 뺄지 정해요 · ${cutTab(M.gid) ? 'ERP 에 바로 적혀요' : '구글시트와 오피스 저장소에 바로 적혀요'}`}</p></div>`
       + `<button type="button" class="mx" aria-label="닫기">✕</button></div><div class="mb">${body}</div>`
       + `<div class="mf"><button type="button" class="mcancel">취소</button><button type="button" class="mgo"${ready && !M.busy ? '' : ' disabled'}>${M.busy ? '쓰는 중…' : M.mode === 'new' ? '새 상품으로 등록' : `매핑하기${M.picks.length ? ` (${M.picks.length}줄)` : ''}`}</button></div>`;
     dlg.querySelector('.mb').scrollTop = scroll;
@@ -3470,6 +3615,7 @@
   }
   async function applyMap() {
     if (M.busy || !M.open) return;
+    if (M.ask) return applyAsk();
     const src = M.src, t = tabOf(M.gid), mc = src.mc, brand = mapBrand(M.gid);
     if (!t || M.gid !== S.cur) { setMapMsg('탭이 바뀌었어요 — 다시 열어 주세요', 'err'); return; }
     if (M.mode === 'send' && !M.picks.length) return;
@@ -5178,6 +5324,7 @@
   function liveBoot() {
     if (liveOn || !window.OfficeLive) return;
     liveOn = true;
+    OfficeLive.on(['erp_ask'], () => { if (shown()) loadAsk(true); });   // 매핑 요청이 생기거나 처리되면 바로
     OfficeLive.on(['erp_rows', 'erp_tabs', 'erp_map'], () => {
       if (!shown() || !S.tabsOk) return;
       if (S.pollBusy) { setTimeout(() => { if (shown()) poll(); }, 700); return; }   // 묻는 중에 또 바뀌었으면 한 번 더
