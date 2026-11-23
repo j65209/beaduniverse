@@ -492,6 +492,7 @@
   .tmenu svg{width:14px;height:14px}
   .tmenu button.hd{color:var(--text)}
   .tmenu button.hd:hover{background:#f1f5f9}
+  .tmenu .tm-sep{height:1px;margin:4px 6px;background:var(--line)}
   .nav-item.gone .nm{color:var(--side-mute)}
   .nav-item.gone .rv{flex:none;font-size:11px;color:#a5b4fc}
   /* 탭 숨김 (2026-11-23 사장님 "탭 삭제말고 숨김처리") — 숨긴 탭은 메뉴 맨 아래 '숨긴 탭'에 흐리게 */
@@ -4620,7 +4621,7 @@
     if (err) { closeDlg(); toast(tabErr(err), true); refreshTabs(); return; }
     if (!j || !j.ok) { noDel(t, j || {}); return; }
     closeDlg();
-    const same = S.tabs.filter(x => x.book === t.book), i = same.findIndex(x => x.gid === gid), next = same[i + 1] || same[i - 1];
+    const same = S.tabs.filter(x => x.book === t.book && (x.gid === gid || !tabHid(x))), i = same.findIndex(x => x.gid === gid), next = same[i + 1] || same[i - 1];   // 옆 탭 = 숨기지 않은 탭
     S.tabs = S.tabs.filter(x => x.gid !== gid);
     S.gone = [{tk: gid, book: t.book, name: t.name, at: new Date().toISOString(), by: whoAmI() || null}].concat((S.gone || []).filter(x => x.tk !== gid));
     if (S.cur === gid) openTab(next ? next.gid : pickTab(null, null)); else renderNav();   // 지운 탭을 보고 있었으면 옆 탭으로
@@ -4648,7 +4649,8 @@
     e.preventDefault();
     TM.innerHTML = `<div class="tm-t">${esc(t.name)}</div>` + (tabHid(t)
       ? `<button type="button" class="hd" data-show="${esc(t.gid)}">${ICON_EYE}다시 보이기</button>`
-      : `<button type="button" class="hd" data-hide="${esc(t.gid)}">${ICON_EYE_OFF}탭 숨기기</button>`);   // 2026-11-23 '탭 삭제' 대신
+      : `<button type="button" class="hd" data-hide="${esc(t.gid)}">${ICON_EYE_OFF}탭 숨기기</button>`)
+      + (canDelTab(t) ? `<div class="tm-sep"></div><button type="button" data-del="${esc(t.gid)}">${ICON_TRASH}탭 삭제</button>` : '');   // 2026-11-23 사장님 "삭제도 같이" — 숨기기 아래 빨간 '탭 삭제' (확인 창 · '지운 탭'에서 되살리기)
     TM.hidden = false;
     TM.style.left = Math.max(8, Math.min(e.clientX, innerWidth - TM.offsetWidth - 8)) + 'px';
     TM.style.top = Math.max(8, Math.min(e.clientY, innerHeight - TM.offsetHeight - 8)) + 'px';
