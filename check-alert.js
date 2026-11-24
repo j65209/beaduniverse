@@ -1,15 +1,18 @@
-/* 확인 필요 알림 — 전승훈 전용 (2026-11-24 사장님 "확인 필요한것들 비드오피스에 있는 모든것들은 다 알림으로 띄워줘. 전승훈에게")
+/* 확인 필요 알림 — 전승훈 (CS 이미지 확인은 CS팀) (2026-11-24 사장님 "확인 필요한것들 비드오피스에 있는 모든것들은 다 알림으로 띄워줘. 전승훈에게")
    오피스 곳곳의 '확인 필요'(재고 ERP · 발주 · 신상 · 리오더 · 승인 · CS · 디자인 · MD · 자동 업무)를 한곳에 모아 종 모양 숫자 + 뜨는 알림 + 크롬 알림으로.
    · 읽기만 한다 — 원래 화면이 쓰는 통로(프록시 · 저장소 함수)를 그대로 읽고, 원래 화면과 같은 기준으로 고른다. 저장하는 것은 '확인했어요'(app_kv check_ack) 하나.
    · 두 번 보고 띄운다 — 처음 보이면 기억만, 70초 뒤 다시 읽어도 그대로인 것만 (모든 경보는 두 번 보고)
    · 하나하나 = 새로 생기면 한 번 뜸. 많은 것(카톡 불량 사진 등)은 한 줄로 묶음. 하루 첫 화면에서 남은 것을 한 번 정리해 띄움
    · '확인했어요' = 그 건만 목록에서 내림(PC · 휴대폰 같이). 내용이 바뀌거나 새로 생기면 다시. 원래 화면에서 해결되면 저절로 빠짐
    · 이미 자기 알림이 있는 것(ERP 문제 = erp-alert.js, 재고 미기재 = stock-blank.js, 발주 매칭 · 발주 브랜드 = index.html 발주 확인 필요 알림(#poAlert, 그 자리에서 브랜드 고르기), 출금 요청 = 크롬 알림)은 목록에만 넣고 또 띄우지 않는다
-   보이는 조건 = '나는' 이름이 전승훈 (이 이름은 관리자 PIN 화면에서만 고를 수 있다 — secretOk · designHasAccess 와 같은 판정). 새 '확인 필요'가 생기면 SRC 에 한 줄 더한다. index.html 이 맨 끝에서 부른다 */
+   보이는 조건 = '나는' 이름이 전승훈 (이 이름은 관리자 PIN 화면에서만 고를 수 있다 — secretOk · designHasAccess 와 같은 판정). 새 '확인 필요'가 생기면 SRC 에 한 줄 더한다.
+   · 카톡 이미지(영상) 확인 필요만 CS팀에게 (같은 날 사장님 "cs에서 뜨는 이미지 확인이 필요한건 전승훈한테 안뜨고 cs부서에 있는 사람한테 뜨게 해줘") — SRC 의 to:'cs'.
+     CS팀 = 인사팀 명단에서 팀이 C/S 인 지금 직원(이름을 코드에 적지 않는다 — 사람이 바뀌면 인사팀만 고치면 따라간다). CS팀 새 탭(?app=cs)에서도 뜬다. index.html 이 맨 끝에서 부른다 */
 (function () {
 'use strict';
 try { if (window.parent !== window) return; } catch (e) { return; }
-if (/[?&](app|embed)=/.test(location.search)) return;
+const CSAPP = /[?&]app=cs(&|$)/.test(location.search);          // CS팀 새 탭 — CS팀 알림만
+if (/[?&]embed=/.test(location.search) || (/[?&]app=/.test(location.search) && !CSAPP)) return;
 if (window.BBCheck) return;
 
 const OWNER = '전승훈';
@@ -30,7 +33,10 @@ const n = v => Number(v || 0).toLocaleString('ko-KR');
 const cut = (s, l) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > l ? s.slice(0, l - 1) + '…' : s; };
 // 짧은 열쇠 — '확인했어요' 기록에는 상품 이름 · 글 내용을 남기지 않는다
 const hash = str => { let a = 0xdeadbeef, b = 0x41c6ce57; for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); a = Math.imul(a ^ c, 2654435761); b = Math.imul(b ^ c, 1597334677); } a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909); b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909); return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36); };
-const mine = () => ls('brightbeed_unlocked') === '1' && String(ls('brightbeed_diary_me') || '').trim() === OWNER;
+const me = () => ls('brightbeed_unlocked') === '1' ? String(ls('brightbeed_diary_me') || '').trim() : '';
+const inCs = nm => { try { return activeStaff().some(s => s.name === nm && s.team === 'C/S'); } catch (e) { return false; } };
+const role = () => { const nm = me(); return !nm ? '' : nm === OWNER ? (CSAPP ? '' : 'me') : inCs(nm) ? 'cs' : ''; };          // me = 전승훈, cs = CS팀, '' = 안 뜸
+const mine = () => !!role();
 const say = (m, t) => { try { toast(m, t || 'ok'); } catch (e) {} };
 
 /* ── 읽는 통로 ── */
@@ -89,7 +95,8 @@ const SRC = [
     return c.map(x => ({k: 'comp:' + x.id, a: '승인 · 출금', t: `대체휴무 승인 대기 — ${x.staff_name}`, b: [x.work_date && md(x.work_date) + ' 근무', x.days && x.days + '일', x.reason].filter(Boolean).join(' · '), at: x.requested_at, go: 'comp'}))
       .concat(w.map(x => ({k: 'wd:' + x.id, a: '승인 · 출금', t: `출금 요청 — ${x.requested_by || '벤더팀'}`, b: `${(x.rows || []).length}건`, at: x.requested_at, q: 1, go: 'vendor'})));
   }},
-  {id: 'kko', nm: '카카오톡 상담', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && (r.managerCall || r.photos > 0 || r.videos > 0)).map(r => ({k: `kko:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — ${r.managerCall ? '고객이 직원을 불렀어요' : r.photos > 0 ? '이미지 확인 필요' : '영상 확인 필요'}`, b: [r.nick, r.photos > 0 ? `사진 ${r.photos}장` : r.videos > 0 ? `영상 ${r.videos}개` : ''].filter(Boolean).join(' · '), sig: r.managerCall ? 'call' : 'media', at: r.lastAt, hot: !!r.managerCall, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},
+  {id: 'kko', nm: '카카오톡 상담', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && r.managerCall).map(r => ({k: `kko:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — 고객이 직원을 불렀어요`, b: r.nick || '', sig: 'call', at: r.lastAt, hot: 1, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},
+  {id: 'kkoimg', to: 'cs', nm: '카카오톡 이미지', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && (r.photos > 0 || r.videos > 0) && !(typeof KKO_HIDE !== 'undefined' && KKO_HIDE.has(r.brand))).map(r => ({k: `kkoimg:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — ${r.photos > 0 ? '이미지' : '영상'} 확인 필요`, b: [r.nick, r.photos > 0 && `사진 ${r.photos}장`, r.videos > 0 && `영상 ${r.videos}개`, r.managerCall && '직원 호출'].filter(Boolean).join(' · '), sig: `${r.photos || 0}/${r.videos || 0}`, at: r.lastAt, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},          // 사진이 더 오면(sig) 다시 뜸, 직원이 답하면 저절로 빠짐
   {id: 'faq', nm: '카카오 답변 자료', ev: 60, async run() { const c = (await px('/cs/kakao-faq')).checks || []; return c.length ? [{k: 'faq', a: 'CS팀', t: `카카오 답변 자료 확인 필요 ${c.length}건`, b: '알려 주시면 에이전트 답에 고쳐 넣어요', list: c.map(x => `${BR[x.brand] ? '[' + BR[x.brand] + '] ' : ''}${x.text}`), sig: hash(c.map(x => x.text).join('|')), go: 'faq'}] : []; }},
   {id: 'kdf', nm: '카톡 불량 사진', ev: 60, async run() {
     const xs = (await px('/cs/kakao-defects', {arr: 'items'})).items.filter(x => x.needsCheck), t = today();
@@ -152,7 +159,8 @@ S.first = Object.keys(S.seen).length > 0;
 SRC.forEach(s => { S.src[s.id] = {items: null, at: 0, next: 0, err: '', busy: false, fails: 0}; });
 const full = x => x.k + '#' + (x.sig || '');
 const isAck = x => !!S.ack[hash(full(x))];
-const all = () => SRC.flatMap(s => S.src[s.id].items || []);
+const mySrc = () => { const r = role(); return r ? SRC.filter(s => (s.to || 'me') === r) : []; };
+const all = () => mySrc().flatMap(s => S.src[s.id].items || []);
 const todo = () => all().filter(x => !isAck(x));
 const saveSeen = () => ls(LS.seen, JSON.stringify(S.seen));
 function saveAck() { try { kvSet('check_ack', LS.ack, Object.assign({}, S.ack)); } catch (e) { ls(LS.ack, JSON.stringify(S.ack)); } }
@@ -195,12 +203,22 @@ function look(s, xs) {
 }
 /* ── 띄우기 ── */
 function announce() {
-  const xs = (S.pend || []).filter(x => !isAck(x)); S.pend = [];
+  const xs = (S.pend || []).filter(x => !isAck(x) && !opened(x)); S.pend = [];
   if (!xs.length || !mine()) return;
-  if (!S.first) { S.first = true; summary(null); ls(LS.day, today()); notify(null, todo()); return; }          // 이 기기에서 처음 — 하나씩 대신 한 장으로
-  if (xs.length > most()) { summary(xs); notify(xs.length > 3 ? null : xs, xs.length > 3 ? xs : null); return; }
-  xs.forEach(x => popItem(x)); notify(xs);
+  if (!S.first) { S.first = true; summary(null); ls(LS.day, today()); notify(null, todo()); post({sum: todo()}); return; }          // 이 기기에서 처음 — 하나씩 대신 한 장으로
+  if (xs.length > most()) { summary(xs); notify(xs.length > 3 ? null : xs, xs.length > 3 ? xs : null); post({sum: xs}); return; }
+  xs.forEach(x => popItem(x)); notify(xs); post({pop: xs});
 }
+/* CS팀은 오피스 탭이 둘(홈 + CS팀 새 탭) — 어느 탭이 띄워도 보고 있는 탭에 보이고, 한 곳에서 닫으면 같이 닫힌다 (크롬 알림은 먼저 띄운 탭만) */
+let BC = null; try { BC = new BroadcastChannel('bb-chk'); } catch (e) {}
+function post(m) { if (BC && role() === 'cs') try { BC.postMessage(m); } catch (e) {} }
+if (BC) BC.onmessage = e => {
+  const m = (e && e.data) || {}; if (role() !== 'cs') return;
+  if (m.sum) { S.first = true; summary(m.sum); }
+  if (m.pop) m.pop.forEach(x => popItem(x));
+  if (m.shut) S.pops.filter(p => m.shut === '*' ? !p.x : p.x && full(p.x) === m.shut).forEach(drop);
+};
+const shut = p => { drop(p); post({shut: p.x ? full(p.x) : '*'}); };
 function notify(xs, sum) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const fire = (title, body, tag, x) => { try { const no = new Notification(title, {body, tag, icon: 'assets/icon-192.png?v=2', requireInteraction: !!(x && x.hot)}); no.onclick = () => { window.focus(); no.close(); if (x) go(x); else openPanel(true); }; } catch (e) {} };
@@ -210,8 +228,8 @@ function notify(xs, sum) {
 /* 하루 첫 화면 — 남은 것을 한 번 정리해 띄운다 */
 function daily() {
   if (ls(LS.day) === today() || S.pops.length || !S.first || !todo().some(x => (S.seen[full(x)] || {}).ok)) return;
-  if (SRC.filter(s => S.src[s.id].items).length < SRC.length * .7) return;          // 아직 덜 읽음
-  ls(LS.day, today()); summary(null); notify(null, todo());
+  const my = mySrc(); if (my.filter(s => S.src[s.id].items).length < my.length * .7) return;          // 아직 덜 읽음
+  ls(LS.day, today()); summary(null); notify(null, todo()); post({sum: todo()});
 }
 function wrap() {
   let w = $('#bbChkPops'); if (w) return w;
@@ -219,14 +237,14 @@ function wrap() {
   w.addEventListener('click', e => {
     const c = e.target.closest('.bc-pop'), a = e.target.closest('[data-c]'); if (!c || !a) return;
     const p = S.pops.find(x => x.el === c), k = a.dataset.c; if (!p) return;
-    if (k === 'go') { drop(p); go(p.x); }
-    if (k === 'ack') setAck([p.x], true);
-    if (k === 'all') { drop(p); openPanel(true); }
-    if (k === 'x') drop(p);
+    if (k === 'go') { shut(p); go(p.x); }
+    if (k === 'ack') { shut(p); setAck([p.x], true); }
+    if (k === 'all') { shut(p); openPanel(true); }
+    if (k === 'x') shut(p);
   });
   return w;
 }
-const phone = () => innerWidth <= 600, most = () => phone() ? 1 : 3;          // 한 번에 띄우는 장 수 — 나머지는 종 목록에
+const phone = () => innerWidth <= 600, solo = () => document.documentElement.classList.contains('solo-cs'), most = () => phone() || solo() ? 1 : 3;          // 한 번에 띄우는 장 수 — 나머지는 종 목록에
 const drop = p => { p.el.remove(); S.pops = S.pops.filter(x => x !== p); };
 const closePops = fs => { S.pops.filter(p => p.x && fs.includes(full(p.x))).forEach(drop); };
 const closeGone = () => { const live = new Set(all().map(full)); S.pops.filter(p => p.x && S.src[p.x.src] && S.src[p.x.src].items && !live.has(full(p.x))).forEach(drop); };
@@ -237,7 +255,9 @@ function card(html, x, sum) {
   const el = document.createElement('div'); el.className = 'bc-pop' + (x && x.hot ? ' hot' : ''); el.innerHTML = html;
   wrap().appendChild(el); S.pops.push({el, x});
 }
-function popItem(x) { card(`<header><em>${E(x.a)}</em><button type="button" data-c="x" aria-label="닫기">×</button></header><b>${E(x.t)}</b>${x.b ? `<p>${E(cut(x.b, 140))}</p>` : ''}<footer><button type="button" class="pri" data-c="go">보기</button><button type="button" data-c="ack">확인했어요</button></footer>`, x); }
+const opened = x => { try { return role() === 'cs' && x.go === 'kko' && !!_kko.chat && _kko.chat.key === x.arg && !document.hidden; } catch (e) { return false; } };          // 이미 그 채팅방을 열어 보고 있음
+const dropOpened = () => { if (S.pops.length) S.pops.filter(p => p.x && opened(p.x)).forEach(shut); };
+function popItem(x) { if (S.pops.some(p => p.x && full(p.x) === full(x)) || opened(x)) return; card(`<header><em>${E(x.a)}</em><button type="button" data-c="x" aria-label="닫기">×</button></header><b>${E(x.t)}</b>${x.b ? `<p>${E(cut(x.b, 140))}</p>` : ''}<footer><button type="button" class="pri" data-c="go">보기</button><button type="button" data-c="ack">확인했어요</button></footer>`, x); }
 function summary(xs) {
   const L = xs || todo(), by = AREAS.map(a => [a, L.filter(x => x.a === a)]).filter(x => x[1].length); if (!L.length) return;
   card(`<header><em>${xs ? '새로 확인할 것' : '확인할 것'}</em><button type="button" data-c="x" aria-label="닫기">×</button></header><b>확인 필요 ${L.length}건</b><ul>${by.map(([a, v]) => `<li><span>${E(a)}</span><i>${E(cut(v[0].t, 30))}${v.length > 1 ? ` 외 ${v.length - 1}` : ''}</i></li>`).join('')}</ul><footer><button type="button" class="pri" data-c="all">모두 보기</button></footer>`, null, true);
@@ -278,7 +298,7 @@ function draw() {
   let el = $('#bbChkPanel');
   if (!ok || !S.open) { if (el) el.remove(); const sh = $('#bbChkShade'); if (sh) sh.remove(); S.drawn = ''; return; }
   css(); place();
-  const L = todo(), A = all().filter(isAck), bad = SRC.filter(s => S.src[s.id].err && S.src[s.id].fails > 1), wait = SRC.filter(s => !S.src[s.id].items && !S.src[s.id].err).length;
+  const L = todo(), A = all().filter(isAck), bad = mySrc().filter(s => S.src[s.id].err && S.src[s.id].fails > 1), wait = mySrc().filter(s => !S.src[s.id].items && !S.src[s.id].err).length;
   const np = 'Notification' in window && Notification.permission === 'default';
   const html = `<header><b>확인 필요 <i>${L.length}</i></b><span></span>${L.length > 1 ? '<button type="button" class="bc-t" data-c="ackall">모두 확인</button>' : ''}<button type="button" class="bc-x" data-c="close" aria-label="닫기">×</button></header>
     ${np ? '<button type="button" class="bc-np" data-c="perm">크롬 알림도 켜기 — 다른 창을 보고 있어도 떠요</button>' : ''}
@@ -368,14 +388,15 @@ function tick() {
     }
   }
   const now = Date.now(), slow = document.hidden ? 2 : 1;
-  for (const s of SRC) { if (S.running >= 3) break; const c = S.src[s.id]; if (!c.busy && now >= (c.at && slow > 1 ? c.next + s.ev * MIN : c.next)) runSrc(s); }
+  for (const s of mySrc()) { if (S.running >= 3) break; const c = S.src[s.id]; if (!c.busy && now >= (c.at && slow > 1 ? c.next + s.ev * MIN : c.next)) runSrc(s); }
   daily(); bell(true);
+  dropOpened();
   if (S.pops.length) place();
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.open) openPanel(false); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(tick, 300); });
 addEventListener('resize', place);
-document.addEventListener('click', () => { if (S.pops.length) setTimeout(place, 60); });
+document.addEventListener('click', () => { if (S.pops.length) setTimeout(() => { dropOpened(); place(); }, 60); });
 addEventListener('storage', e => { if (e.key === LS.seen) S.seen = jget(LS.seen); });
 setInterval(tick, 10e3);
 setTimeout(tick, 4000);          // 오피스 첫 화면을 먼저 그린 뒤
