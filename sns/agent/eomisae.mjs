@@ -1,7 +1,9 @@
 // 꿀꿀집 카드뉴스 제작 에이전트 — 어미새 세일 정보 모으기 (Node 18+, 의존성 없음)
 //
-//   node eomisae.mjs [--out 파일] [--history 파일] [--days 2] [--detail 10] [--urgent] [--ids fs:123,os:456] [--match "다이소|daiso"]
+//   node eomisae.mjs [--out 파일] [--history 파일] [--days 2] [--detail 10] [--urgent] [--ids fs:123,os:456] [--match "다이소|daiso"] [--theme auto|fashion|food|living|top]
 //
+// --theme : 정기 시간대 주제 (2026-11-24 사장님 "하루에 4번을 식품, 리빙, 패션 …") — 그 주제 글을 먼저 자세히 읽고 theme:true 를 붙인다.
+//           auto 는 한국 시각으로 정한다: ~09시 패션 · 10~13시 식품 · 14~18시 리빙(생활 · 뷰티 · 건강 · 디지털) · 19시~ TOP(섞어서 인기순)
 // --ids   : 긴급 지시로 콕 집은 글 — 날짜 · 이미 쓴 글과 상관없이 맨 앞에 넣는다 (hints PICK, 끝났으면 ended:true, 예전에 썼으면 used_before:true)
 // --match : 긴급 지시의 주제 — 제목이 맞는 글을 먼저 자세히 읽고 match:true 를 붙인다 (정규식, 대소문자 무시)
 //
@@ -32,6 +34,23 @@ const DETAIL = Math.max(1, Math.min(30, Number(args.detail ?? 10))); // 자세�
 const PICK = [...new Set(String(args.ids ?? '').split(',').map((s) => s.trim()).filter((s) => /^[a-z]{1,10}:\d{1,12}$/.test(s)))].slice(0, 5);
 let MATCH = null;
 try { if (args.match && args.match !== '1') MATCH = new RegExp(String(args.match).slice(0, 200), 'i'); } catch { MATCH = null; }
+
+// 시간대 주제 — 어미새는 게시판 · 머리말로만 갈리니(패션 / 그 밖) 식품은 제목 낱말로 본다. 어디까지나 읽는 순서용 힌트다(고를 땐 실제 상품을 본다).
+const THEME_LABEL = { fashion: '패션', food: '식품 · 장보기', living: '리빙 · 뷰티 · 디지털', top: '오늘의 TOP' };
+const FOOD = /라면|커피|삼겹|목살|우삼겹|고기|한우|갈비|닭|계란|달걀|쌀|햇반|즉석밥|흰밥|백미밥|현미|잡곡|과자|쿠키|초코|빵|떡|만두|피자|치킨|음료|콜라|사이다|탄산|우유|두유|주스|생수|김치|찌개|반찬|소스|참치|과일|사과|감귤|딸기|토마토|고구마|어묵|돈까스|파스타|국수|칼국수|견과|아몬드|요거트|아이스크림|스낵|젤리|간식|소시지|핫도그|스팸|새우|연어|고등어|냉동|밀키트|도시락|짜파게티|호빵|치아바타|샌드위치|두부|육포|치즈|누룽지|오뚜기|농심|비비고|풀무원|오리온|동원|더미식|양념|라멘|에너지바|시리얼|켈로그|버거킹|맥도날드|써브웨이|스타벅스|이디야|배달의민족|도시락김|광천김|케이크|빙수/;
+function kstHour() { return new Date(Date.now() + 9 * 3_600_000).getUTCHours(); }
+const autoTheme = (h) => (h < 10 ? 'fashion' : h < 14 ? 'food' : h < 19 ? 'living' : 'top');
+// 주제에 가까울수록 작은 수 (top 은 모두 같다)
+function themeTier(x, theme) {
+  const fashion = x.board === 'os' || /^패션/.test(x.category);
+  const other = x.board === 'rt' || /^기타/.test(x.category);
+  const food = !fashion && FOOD.test(x.title);
+  if (theme === 'fashion') return fashion ? 0 : other ? 2 : 1;
+  if (theme === 'food') return food ? 0 : fashion ? 3 : other ? 1 : 2;
+  if (theme === 'living') return fashion ? 3 : food ? 2 : other ? 0 : 1;
+  return 0;
+}
+const THEME = !args.theme || URGENT_MODE ? null : args.theme === 'auto' ? autoTheme(kstHour()) : (THEME_LABEL[args.theme] ? args.theme : null);
 
 let last = 0;
 async function get(path) {
@@ -175,6 +194,9 @@ async function main() {
   // 정기: 점수순 · 긴급: 최신순(글 번호가 클수록 최근)
   if (URGENT_MODE) fresh.sort((a, b) => Number(b.id) - Number(a.id));
   else fresh.sort((a, b) => score(b) - score(a));
+  // 조회 · 댓글 점수 순위 — 주제로 줄을 바꿔도 '제일 핫했던'(HOT)은 전체 순위로만 붙인다
+  const hotRank = new Map(fresh.map((x, i) => [`${x.board}:${x.id}`, i + 1]));
+  if (THEME && THEME !== 'top') fresh.sort((a, b) => themeTier(a, THEME) - themeTier(b, THEME));
   // 주제 지시: 제목이 맞는 글을 앞으로 (안정 정렬이라 그 안의 순서는 그대로)
   if (MATCH) fresh.sort((a, b) => Number(MATCH.test(b.title)) - Number(MATCH.test(a.title)));
   for (const [i, x] of fresh.slice(0, DETAIL).entries()) {
@@ -184,9 +206,10 @@ async function main() {
       const age = d.posted_at ? (Date.now() - Date.parse(d.posted_at)) / 3_600_000 : null;
       const hints = [];
       if (age != null && age <= 12) hints.push('NEW');      // 올라온 지 12시간 안 → '지금 바로 뜬 특가'
-      if (!URGENT_MODE && i < 3) hints.push('HOT');          // 점수 상위 3 → '어제 제일 핫했던'
+      const rank = URGENT_MODE ? i + 1 : hotRank.get(`${x.board}:${x.id}`) ?? i + 1;
+      if (!URGENT_MODE && rank <= 3) hints.push('HOT');      // 점수 상위 3 (전체 순위) → '어제 제일 핫했던'
       if (URGENT.test(`${d.title}\n${d.notes}\n${d.body}`)) hints.push('URGENT'); // 마감 · 수량 · 재입고 단서 → '긴급 특가'
-      items.push({ ...d, rank: i + 1, age_h: age == null ? null : Math.round(age * 10) / 10, hints, score: Math.round(score(d) * 10) / 10, ...(MATCH && MATCH.test(d.title) ? { match: true } : {}) });
+      items.push({ ...d, rank, age_h: age == null ? null : Math.round(age * 10) / 10, hints, score: Math.round(score(d) * 10) / 10, ...(MATCH && MATCH.test(d.title) ? { match: true } : {}), ...(THEME && THEME !== 'top' && themeTier(d, THEME) === 0 ? { theme: true } : {}) });
     } catch (e) { errors.push(`${x.url}: ${e.message}`); }
   }
   const out = {
@@ -194,6 +217,7 @@ async function main() {
     mode: URGENT_MODE ? 'urgent' : 'regular',
     ...(PICK.length ? { picked: PICK } : {}),
     ...(MATCH ? { match: String(args.match) } : {}),
+    ...(THEME ? { theme: THEME, theme_label: THEME_LABEL[THEME], theme_items: items.filter((x) => x.theme).length } : {}),
     collected_at: new Date().toISOString(),
     days: [...days],
     boards: BOARDS.map((b) => `${BASE}/${b.id}`),
@@ -209,7 +233,7 @@ async function main() {
   if (!items.length) process.exitCode = 2;
 }
 
-export { parseList, parseDetail, hostLabel, BOARDS };
+export { parseList, parseDetail, hostLabel, BOARDS, themeTier, autoTheme };
 
 // 직접 실행할 때만 수집 (시험에서 import 하면 파서만 쓴다)
 if (process.argv[1] && import.meta.url === new URL('file:///' + process.argv[1].replace(/\\/g, '/').replace(/^\/+/, '')).href) {
