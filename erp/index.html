@@ -2694,7 +2694,8 @@
     const list = m && m.sec === 'stock' && d && !d.side ? d.rows.filter(r => r.blankStk) : [];
     const cap = narrow.matches ? 2 : 5, show = S.blankOpen ? list : list.slice(0, cap);
     const sig = S.cur + '|' + show.map(r => r.r).join(',') + '|' + list.length + '|' + (S.blankOpen ? 1 : 0);
-    if (!list.length) { bk.hidden = true; bk.innerHTML = ''; bk.dataset.sig = ''; return; }
+    if (!list.length) { bk.hidden = true; bk.innerHTML = ''; bk.dataset.sig = ''; bk.dataset.gid = ''; return; }
+    bk.dataset.gid = S.cur;   // 오피스 공용 '재고 미기재' 알림(stock-blank.js)은 이 탭 빈칸을 띠에 맡기고 뺀다
     if (bk.dataset.sig === sig && !bk.hidden) return;
     const typed = {}, fr = document.activeElement && bk.contains(document.activeElement) ? document.activeElement.dataset.r : null;
     bk.querySelectorAll('.bk-in').forEach(x => { if (x.value) typed[x.dataset.r] = x.value; });
@@ -7140,6 +7141,7 @@
 </script>
 <script src="../office-live.js?v=1" defer></script><!-- 실시간 알림선 (office-live.js) -->
 <script src="../erp-alert.js?v=1" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
+<script src="../stock-blank.js?v=1" defer></script><!-- 재고 미기재 알림 — 김성군 · 지희선 · 대표 2명 (stock-blank.js) -->
 <script src="../office-thumb.js?v=1" defer></script><!-- 작은 사진에 마우스 → 크게 (office-thumb.js) -->
 </body>
 </html>
