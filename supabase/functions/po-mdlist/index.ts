@@ -484,7 +484,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       if (t.cols.cny >= 0 && use.price != null && use.price > 0) P.cells.push({ r, p: t.cols.cny, v: use.priceTxt || String(use.price), blank: true });
       // 우리가 넣은 줄의 이름이 메모 찌꺼기('KASSEL【 】' · '9 /1')면 재고 ERP 상품명으로 (사람이 고친 이름은 그대로, 2026-11-24 "다들 연결 시켜줘")
       if (ours.has(`${t.tk}#${r}`)) {
-        const e = act.slice().reverse().find((x) => x.erp && x.erp.ok && x.erp.b === b), cell = clean(((ti.rows.find((x) => x.r === r) || { v: [] as string[] }).v[t.cols.name]) || '');
+        const e = [...act, use].reverse().find((x) => x.erp && x.erp.ok && x.erp.b === b), cell = clean(((ti.rows.find((x) => x.r === r) || { v: [] as string[] }).v[t.cols.name]) || '');
         const junk = !/[A-Za-z가-힣]{3,}/.test(cell) || /【\s*】|（\s*\d*\s*）|에어\s*\d*번|\d+월\s*\d+일/.test(cell) || ls.some((x) => clean(x.memo.replace(/[一-鿿]+/g, ' ')).slice(0, 40) === cell);
         const want = e ? clean(`${e.erp!.n} ${e.erp!.o}`) : '';
         if (want && junk && want !== cell) P.cells.push({ r, p: t.cols.name, v: want });
