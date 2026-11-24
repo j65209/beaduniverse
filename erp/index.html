@@ -235,11 +235,20 @@
   .asks .askok{flex:none;height:28px;padding:0 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;color:var(--text-2);white-space:nowrap}
   .asks .askok:hover{background:#f1f4f8;color:var(--text)}
   .asks .askmore{display:block;width:100%;height:34px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-2)}
+  /* 남은 재고 빈칸 알림 띠 (2026-11-24 사장님 "재고 빈칸은 다 알림 띠워서 수정할 수 있게") — 매핑 요청 띠와 같은 모양 + 줄마다 숫자 칸 */
+  .blanks .bk-in{flex:none;width:92px;height:28px;padding:0 9px;border:1px solid #fca5a5;border-radius:6px;font:inherit;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;background:#fff}
+  .blanks .bk-in:focus{outline:2px solid rgba(220,38,38,.25);border-color:#dc2626}
+  .blanks .bk-in:disabled{background:#f8fafc;color:var(--text-3)}
+  .blanks .bk-go{flex:none;height:28px;padding:0 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;color:var(--text-2);white-space:nowrap}
+  .blanks .bk-go:hover{background:#f1f4f8;color:var(--text)}
   .nav-item .na{flex:none;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
   @media (max-width:720px){
     .asks{margin-top:8px}
     .asks .ah{padding:8px 11px 7px}
     .asks .ah small{display:none}
+    .blanks li{flex-wrap:wrap;row-gap:6px}
+    .blanks .tx{flex-basis:100%}
+    .blanks .bk-in{flex:1;width:auto;min-width:0}
     .asks li{flex-wrap:wrap;padding:8px 11px}
     .asks .tx{flex:1 0 100%}
     .asks .mapb,.asks .askok{height:34px;padding:0 14px;font-size:13px}
@@ -445,6 +454,8 @@
   .tbl tbody tr.pin1 td.rn{box-shadow:inset 4px 0 0 #b91c1c}
   .tbl tbody tr.pin2 td.rn{box-shadow:inset 4px 0 0 #d97706}
   .tbl tbody tr.pin3 td.rn{box-shadow:inset 4px 0 0 #2563eb}
+  .tbl tbody tr.pin4 td.rn{box-shadow:inset 4px 0 0 #dc2626}
+  .tbl tbody td.stk-blank{background:#fef2f2;box-shadow:inset 0 0 0 1px #fca5a5}   /* 남은 재고 빈칸 — 눌러서 바로 적을 칸 */
   .tbl tbody tr.pin2 td:not(.fill){background:#fffbeb}
   .tbl tbody tr.pin3 td:not(.fill){background:#eff6ff}   /* 휴대폰은 행 번호 칸이 없어 띠 대신 바탕색으로도 */
   .tbl tbody tr.pin-end td{border-bottom-color:#64748b}
@@ -1025,6 +1036,7 @@
     <section class="head">
       <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="mstrip" id="mstrip"></div><div class="tools"><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="cfReset" hidden title="머리글 ▾ 에서 걸어 둔 필터를 모두 지우고 전부 보기">필터 지우기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
       <div class="asks" id="asks" hidden></div>
+      <div class="asks blanks" id="blanks" hidden></div>
       <div class="alert" id="alert" hidden></div>
       <div class="kpis" id="kpis"></div>
       <div class="chips" id="chips" hidden></div>
@@ -1144,7 +1156,8 @@
   const costPo = c => (c && c.p ? `최근 발주 ${c.p.d}${c.p.q ? ` · ${c.p.q.toLocaleString('ko-KR')}개` : ''} · ${cny(c.p.c)}` : '');
   const PAST_R0 = 1e6;   // 지난 상품 줄 번호 (시트 줄과 안 겹치게 — buildAll _past)
   const PAST_WHY = 'ERP 에 줄이 없는 지난 상품이라 여기서 고칠 수 없어요 — 다시 팔려면 식스샵프로에서 판매 상태를 바꿔 주세요 (ERP 에서는 상품 줄을 따로 추가하지 않아요)';
-  const PIN_WHY = {1: '재고 0 이하인데 식스샵프로 판매중 — 품절 처리하거나 재고 확인', 2: '매핑 확인 필요 — 카테고리 칸 [⚠ 매핑하기]로 어느 재고 줄에서 뺄지 정해 주세요', 3: '리오더 시급 — 발주 필요'};   // 맨 위로 올린 까닭 (buildAll pin)
+  const PIN_RANK = {1: 1, 2: 2, 4: 3, 3: 4};   // 맨 위 차례: 판매중인데 0 → 매핑 → 재고 빈칸 → 리오더 시급
+  const PIN_WHY = {1:'재고 0 이하인데 식스샵프로 판매중 — 품절 처리하거나 재고 확인', 2: '매핑 확인 필요 — 카테고리 칸 [⚠ 매핑하기]로 어느 재고 줄에서 뺄지 정해 주세요', 3: '리오더 시급 — 발주 필요', 4: '남은 재고 빈칸 — 실제 재고를 세어 적어 주세요 (빈칸이면 송장이 나가도 안 빠지고 식스샵엔 품절로 보여요)'};   // 맨 위로 올린 까닭 (buildAll pin)
   const PRO_WHY = '식스샵프로 상태는 여기서 못 바꿔요 — 식스샵 관리자나 오피스 홈 [상품 상태](관리자)에서 바꾸면 5분 안에 따라와요';
   // 브랜드 점 색 = 오피스 '실시간 재고' 브랜드 색
   const BRANDS = [
@@ -1217,7 +1230,9 @@
     synced: {}, skew: 0,  // gid → 맥미니가 시트와 마지막으로 맞춘 시각 · 서버 시계 - 이 PC 시계
     pro: {}, proBusy: {}, // gid → {ver, at, map: {시트행: [on|sold|off, 판매중 수, 품절 수, 판매중지 수, 세트로만]}} 식스샵프로 상태
     ask: {}, askSig: '', askAt: 0, askBusy: false, askOpen: false,   // gid → 매핑 요청 (맥미니 link-watch 가 올린 erp_ask)
+    blankOpen: false,                                                  // 남은 재고 빈칸 알림 띠 — 전부 펼침
     warn: {}, warnSig: '', warnAt: 0, warnBusy: false, warnT: 0,       // gid → ⚠ 매핑 확인 필요 줄 수 (loadWarn, 메뉴 빨간 숫자)
+    blankN: {},                                                        // gid → 남은 재고 빈칸 줄 수 (loadWarn, 메뉴 빨간 숫자)
     cost: {}, costVer: 0, costAt: 0, costBusy: false,   // gid → {줄: 단가} (기밀 명단 PC 에서만 받음)
     terms: [], hlRe: null, list: [], sel: null,
     pick: null, opt: null,   // 찾기에서 고른 제품명 {name} · 옵션 {ks: Set(optKey), t} — 이 탭에서만 (다른 탭으로 가면 지움)
@@ -1507,15 +1522,30 @@
       if (force && !S.warnT) S.warnT = setTimeout(() => { S.warnT = 0; loadWarn(true); }, Math.max(wait, 1500));
       return;
     }
+    // 재고 탭만 (주문 원본 탭까지 훑지 않게)
+    const gids = (S.tabs || []).filter(t => (t.meta || classify(t.name)).sec === 'stock').map(t => t.gid);
+    if (!gids.length) return;
     S.warnBusy = true;
     S.warnAt = Date.now();
-    sbFetch(`erp_rows?select=gid,r&deleted_at=is.null&v->>0=${encodeURIComponent('like.*⚠*')}&limit=2000`).then(rows => {
-      const m = {};
-      (Array.isArray(rows) ? rows : []).forEach(x => { m[x.gid] = (m[x.gid] || 0) + 1; });
-      const sig = JSON.stringify(m);
+    const inG = `gid=in.(${gids.map(encodeURIComponent).join(',')})`;
+    Promise.all([
+      sbFetch(`erp_rows?select=gid,r&deleted_at=is.null&${inG}&v->>0=${encodeURIComponent('like.*⚠*')}&limit=2000`),
+      // 남은 재고 빈칸 (2026-11-24 사장님 "재고 빈칸은 다 알림 띠워서") — 재고 탭 7개 모두 남은 재고 = 12번째 칸(v[11]), 상품명 있는 줄만.
+      // 묶음 · 중복(안 셈) · ⚠ 임시 · 세트 표시 줄은 여기서 뺀다 (표의 '남은 재고 빈칸' 카드와 같은 규칙 — buildAll blankStk)
+      sbFetch(`erp_rows?select=gid,r,c:v->>0,n:v->>1&deleted_at=is.null&${inG}&v->>1=neq.&or=(v->>11.eq.,v->>11.is.null)&limit=3000`),
+    ]).then(([wr, br]) => {
+      const m = {}, b = {};
+      (Array.isArray(wr) ? wr : []).forEach(x => { m[x.gid] = (m[x.gid] || 0) + 1; });
+      (Array.isArray(br) ? br : []).forEach(x => {
+        const c = String(x.c || ''), n = String(x.n || '').trim();
+        if (!n || n === '상품명' || /^\s*⚠|안\s*셈|묶음\s*→\s*낱개|^\s*세트\s*·/.test(c)) return;
+        b[x.gid] = (b[x.gid] || 0) + 1;
+      });
+      const sig = JSON.stringify([m, b]);
       if (sig === S.warnSig) return;
       S.warnSig = sig;
       S.warn = m;
+      S.blankN = b;
       renderNav();
     }).catch(() => { S.warnAt = Date.now() - 4 * 60e3; }).finally(() => { S.warnBusy = false; });
   }
@@ -1806,7 +1836,13 @@
       const ovs = row => !!row.item && row.lv === 'out' && !!row.pro && row.pro[0] === 'on';
       const needMap = row => counted(row) && !!cCatS && /^⚠/.test(val(row, cCatS));
       const urgent = row => counted(row) && !!cAlert && /^리오더/.test(val(row, cAlert));
-      outRows.forEach(row => { row.pin = ovs(row) ? 1 : needMap(row) ? 2 : urgent(row) ? 3 : 0; });
+      // 남은 재고 빈칸 = 아직 안 센 줄 (신상 자동 등록 · 품절 줄) — 송장이 나가도 안 빠지고 식스샵엔 품절로 보인다 → 맨 위 알림 띠에서 바로 적기
+      // (2026-11-24 사장님 "재고 빈칸은 다 알림 띠워서 수정할 수 있게 해야지"). ⚠ 임시 줄 · 세트 표시 줄은 재고 줄이 아니라 뺀다
+      const blankStk = row => !!cStock && isItem(row) && val(row, cStock) === '' && !(cCatS && /^\s*⚠|^\s*세트\s*·/.test(val(row, cCatS)));
+      outRows.forEach(row => {
+        row.pin = ovs(row) ? 1 : needMap(row) ? 2 : blankStk(row) ? 4 : urgent(row) ? 3 : 0;
+        row.blankStk = row.pin === 4 ? {p: cStock.p, nm: cName ? val(row, cName).trim() : '', opt: cOpt ? val(row, cOpt).trim() : '', cat: cCatS ? val(row, cCatS).trim() : ''} : null;
+      });
       kpis.push({id: '', label: '품목', val: cnt(isItem)});
       if (proInfo) kpis.push({id: 'ovs', label: '재고 없는데 판매중', tone: 'red', val: cnt(ovs), pred: ovs});
       if (cnt(needMap)) kpis.push({id: 'map', label: '매핑 확인 필요', tone: 'red', val: cnt(needMap), pred: needMap});
@@ -1814,8 +1850,8 @@
         const low = row => row.lv === 'low', out = row => row.lv === 'out';
         kpis.push({id: 'low', label: `품절 임박 · ${LOW_STOCK}개 이하`, tone: 'red', val: cnt(low), pred: low});
         kpis.push({id: 'zero', label: '품절 · 0 이하', tone: 'red', val: cnt(out), pred: out});
-        const blank = row => isItem(row) && val(row, cStock) === '';
-        if (cnt(blank)) kpis.push({id: 'blank', label: '남은 재고 빈칸', val: cnt(blank), pred: blank});
+        const blank = row => !!row.blankStk;
+        if (cnt(blank)) kpis.push({id: 'blank', label: '남은 재고 빈칸', tone: 'red', val: cnt(blank), pred: blank});
       }
       if (cSum) {
         const sold = row => counted(row) && (numOf(val(row, cSum)) || 0) > 0;
@@ -2234,6 +2270,7 @@
       else if (col.stock && row.item) inner = '<span class="blank">빈칸</span>';   // 남은 재고 빈칸 = 세어서 적을 줄
     }
     if (col.stock && row.redStk) { cls += ' stk-red'; title = (title ? title + '\n' : '') + `식스샵프로 판매중인데 남은 재고 ${LOW_STOCK}개 이하`; }
+    if (col.stock && row.blankStk) { cls += ' stk-blank'; if (!inner) inner = '<span class="blank">빈칸</span>'; title = (title ? title + '\n' : '') + PIN_WHY[4]; }
     if (col.cost && !row.past) { const s = esc(costText(row.cost)); inner = s && (row.cost.t || row.cost.a) ? `<span class="cost-m">${s}</span>` : s; title = row.item || row.cost ? [costWhy(row.cost), costPo(row.cost)].filter(Boolean).join('\n') : ''; }
     if (col.price) { inner = esc(priceText(row.pro)); if (row.pro && typeof row.pro[5] === 'number') title = '식스샵프로 판매가 — 이 줄로 이어지는 낱개 옵션' + (row.pro[6] !== undefined && row.pro[6] !== row.pro[5] ? ' (옵션마다 다름)' : ''); }
     if (col.pro && row.pro) { inner = proBadge(row.pro, row.pin === 1); title = row.past ? `식스샵프로 ${PRO_LABEL[row.pro[0]]} — 옵션 ${row.past.n}개 · ERP 에 줄 없음 · ${row.past.info}` : proText(row.pro) + (row.pin === 1 ? '\n⚠ ' + PIN_WHY[1] : ''); }
@@ -2303,7 +2340,7 @@
         });
       }
     } else if (rows.some(r => r.pin)) {   // 정렬 안 했을 때 — 재고 없는데 판매중 → 매핑 확인 → 리오더 시급 순으로 맨 위 (나머지는 시트 순서)
-      rows = rows.slice().sort((a, b) => (a.pin || 9) - (b.pin || 9) || a.r - b.r);
+      rows = rows.slice().sort((a, b) => (PIN_RANK[a.pin] || 9) - (PIN_RANK[b.pin] || 9) || a.r - b.r);
       let last = -1;
       rows.forEach((r, i) => { if (r.pin) last = i; });
       rows.forEach((r, i) => { r.pinEnd = i === last; });
@@ -2578,6 +2615,7 @@
         + (asks.length > cap ? `<button type="button" class="askmore">${S.askOpen ? '접기' : `나머지 ${asks.length - cap}개 보기`}</button>` : '');
       ak.hidden = false;
     } else { ak.hidden = true; ak.innerHTML = ''; }
+    renderBlanks(m, d);
     const al = $('alert');
     if (d && d.banner.length) {
       const lines = d.banner.join('\n').split(/\s*▶\s*|\n|\s+\|\s+/).map(s => s.replace(/^⚠️?\s*/, '').trim()).filter(Boolean);
@@ -2647,6 +2685,60 @@
     renderGrid({pos: {t: 0, l: grid.scrollLeft}});
   });
   $('dates').addEventListener('click', e => { const b = e.target.closest('button[data-gid]'); if (b) openTab(b.dataset.gid); });
+  /* ── 남은 재고 빈칸 알림 띠 (2026-11-24 사장님 "재고 빈칸은 다 알림 띠워서 수정할 수 있게 해야지") ──
+     재고 탭 맨 위에 빈칸 줄마다 [숫자 칸][저장][보기]. 저장 = 표에서 칸을 고칠 때와 같은 길(writeCell → 되돌리기 · 수정 로그 · 그사이 바뀌면 덮어쓸지 묻기).
+     자동 갱신(8초 · 실시간)으로 머리가 자주 다시 그려지므로 줄 목록이 그대로면 띠는 건드리지 않는다 — 치던 숫자 · 커서가 안 날아가게.
+     목록이 바뀌면(하나 저장됨) 다른 줄에 쳐 둔 숫자는 옮겨 담는다. */
+  function renderBlanks(m, d) {
+    const bk = $('blanks');
+    const list = m && m.sec === 'stock' && d && !d.side ? d.rows.filter(r => r.blankStk) : [];
+    const cap = narrow.matches ? 2 : 5, show = S.blankOpen ? list : list.slice(0, cap);
+    const sig = S.cur + '|' + show.map(r => r.r).join(',') + '|' + list.length + '|' + (S.blankOpen ? 1 : 0);
+    if (!list.length) { bk.hidden = true; bk.innerHTML = ''; bk.dataset.sig = ''; return; }
+    if (bk.dataset.sig === sig && !bk.hidden) return;
+    const typed = {}, fr = document.activeElement && bk.contains(document.activeElement) ? document.activeElement.dataset.r : null;
+    bk.querySelectorAll('.bk-in').forEach(x => { if (x.value) typed[x.dataset.r] = x.value; });
+    bk.innerHTML = `<div class="ah"><span>남은 재고 빈칸 <em>${list.length}</em></span><small>실제 재고를 세어 적어 주세요 — 빈칸이면 송장이 나가도 안 빠지고 식스샵엔 품절로 보여요</small></div>`
+      + `<ul>${show.map(r => { const b = r.blankStk; return `<li><div class="tx"><b>${esc(b.nm || `${r.r}행`)}</b>${b.opt ? `<span>${esc(b.opt)}</span>` : ''}<small>${r.r}행${b.cat ? ' · ' + esc(b.cat) : ''}</small></div>`
+        + `<input class="bk-in" data-r="${r.r}" type="text" inputmode="numeric" autocomplete="off" placeholder="재고 수" aria-label="${esc(b.nm)} 남은 재고" value="${esc(typed[r.r] || '')}">`
+        + `<button type="button" class="mapb" data-bk="${r.r}">저장</button><button type="button" class="bk-go" data-bkgo="${r.r}" title="표에서 이 줄 보기">보기</button></li>`; }).join('')}</ul>`
+      + (list.length > cap ? `<button type="button" class="askmore" data-bkmore="1">${S.blankOpen ? '접기' : `나머지 ${list.length - cap}개 보기`}</button>` : '');
+    bk.dataset.sig = sig;
+    bk.hidden = false;
+    if (fr) { const x = bk.querySelector(`.bk-in[data-r="${fr}"]`); if (x) x.focus({preventScroll: true}); }
+  }
+  async function saveBlank(r) {
+    const bk = $('blanks'), inp = bk.querySelector(`.bk-in[data-r="${r}"]`), btn = bk.querySelector(`button[data-bk="${r}"]`);
+    if (!inp || inp.disabled) return;
+    const raw = inp.value.trim().replace(/[,\s]/g, '').replace(/개$/, '');
+    if (!/^\d{1,6}$/.test(raw)) { toast('남은 재고는 0 이상 숫자로 적어 주세요', true); inp.focus(); return; }
+    const d = curData(), row = d && d.rows.find(x => x.r === r && x.blankStk);
+    if (!row) { renderHead(); return; }
+    const x = editCtx(S.cur, r, row.blankStk.p), why = roWhy(x);
+    if (why) { toast(why, true); return; }
+    inp.disabled = true;
+    if (btn) btn.disabled = true;
+    S.stick.add(r);   // 걸러 보는 중이어도 고친 줄은 그대로 보이게 (표에서 칸을 고칠 때와 같이)
+    try {
+      // 저장하는 동안 이 줄은 띠에서 빠진다(빈칸이 아니게 됨) — 그사이 바뀌었으면 묻는 창은 표의 그 칸에
+      const res = await afterWrite(x, raw, '', writeCell(x, raw, '', ''), () => (inp.isConnected ? inp : null) || cellTd(r, x.p));
+      if (!res || !res.ok) { inp.disabled = false; if (btn) btn.disabled = false; }
+    } catch (e) { inp.disabled = false; if (btn) btn.disabled = false; inp.focus(); }
+  }
+  $('blanks').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    e.stopPropagation();
+    if (b.dataset.bkmore) { S.blankOpen = !S.blankOpen; renderHead(); return; }
+    if (b.dataset.bk) { saveBlank(+b.dataset.bk); return; }
+    if (b.dataset.bkgo) { const r = +b.dataset.bkgo; showRow(r); openDetail(r, true); }
+  });
+  $('blanks').addEventListener('keydown', e => {
+    const inp = e.target.closest('.bk-in');
+    if (!inp || e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    saveBlank(+inp.dataset.r);
+  });
   $('asks').addEventListener('click', async e => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -2701,12 +2793,14 @@
     S.nav = live.concat(old);
     const nAsk = it => it.sec === 'stock' ? it.tabs.reduce((n, t) => n + askGroups(S.ask[t.gid] || []).length, 0) : 0;   // 조합 옵션은 묶어서 한 개로
     const nWarn = it => it.sec === 'stock' ? +(S.warn[it.tabs[0].gid] || 0) : 0;   // 메뉴가 여는 (최신) 재고 탭의 ⚠ 줄 (loadWarn)
-    // 빨간 원 숫자 = 매핑이 필요한 것 = ⚠ 매핑 확인 필요 줄 + 매핑 요청 (2026-11-24 사장님 "빨간원형 만들어줘")
+    const nBlank = it => it.sec === 'stock' ? +((S.blankN || {})[it.tabs[0].gid] || 0) : 0;   // 남은 재고 빈칸 줄 (loadWarn)
+    // 빨간 원 숫자 = 사람이 고쳐야 할 것 = ⚠ 매핑 확인 필요 줄 + 매핑 요청 + 남은 재고 빈칸
+    // (2026-11-24 사장님 "빨간원형 만들어줘" · "재고 빈칸은 다 알림 띠워서 수정할 수 있게 해야지")
     const badge = it => {
-      const w = nWarn(it), a = nAsk(it), n = w + a;
+      const w = nWarn(it), a = nAsk(it), bl = nBlank(it), n = w + a + bl;
       if (!n) return '';
-      const tip = `매핑 필요 ${n}개` + (w && a ? ` (⚠ 매핑 확인 필요 줄 ${w} · 매핑 요청 ${a})` : w ? ' (⚠ 매핑 확인 필요 줄)' : ' (매핑 요청)');
-      return `<span class="na" title="${esc(tip)}">${n > 99 ? '99+' : n}</span>`;
+      const parts = [w ? `⚠ 매핑 확인 필요 줄 ${w}` : '', a ? `매핑 요청 ${a}` : '', bl ? `남은 재고 빈칸 ${bl}` : ''].filter(Boolean);
+      return `<span class="na" title="${esc(`확인 필요 ${n}개 — ${parts.join(' · ')}`)}">${n > 99 ? '99+' : n}</span>`;
     };
     const item = it => {
       // 재고 탭 이름의 날짜('11.20코페리송장출력')는 구글시트를 끊은 날에 멈춰 있다 — 끊은 재고 탭은 날짜를 안 붙인다 (실시간)
