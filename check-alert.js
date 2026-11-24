@@ -4,7 +4,7 @@
    · 두 번 보고 띄운다 — 처음 보이면 기억만, 70초 뒤 다시 읽어도 그대로인 것만 (모든 경보는 두 번 보고)
    · 하나하나 = 새로 생기면 한 번 뜸. 많은 것(카톡 불량 사진 등)은 한 줄로 묶음. 하루 첫 화면에서 남은 것을 한 번 정리해 띄움
    · '확인했어요' = 그 건만 목록에서 내림(PC · 휴대폰 같이). 내용이 바뀌거나 새로 생기면 다시. 원래 화면에서 해결되면 저절로 빠짐
-   · 이미 자기 알림이 있는 것(ERP 문제 = erp-alert.js, 재고 미기재 = stock-blank.js, 출금 요청 = 크롬 알림)은 목록에만 넣고 또 띄우지 않는다
+   · 이미 자기 알림이 있는 것(ERP 문제 = erp-alert.js, 재고 미기재 = stock-blank.js, 발주 매칭 · 발주 브랜드 = index.html 발주 확인 필요 알림(#poAlert, 그 자리에서 브랜드 고르기), 출금 요청 = 크롬 알림)은 목록에만 넣고 또 띄우지 않는다
    보이는 조건 = '나는' 이름이 전승훈 (이 이름은 관리자 PIN 화면에서만 고를 수 있다 — secretOk · designHasAccess 와 같은 판정). 새 '확인 필요'가 생기면 SRC 에 한 줄 더한다. index.html 이 맨 끝에서 부른다 */
 (function () {
 'use strict';
@@ -77,10 +77,10 @@ const SRC = [
   }},
   {id: 'audit', nm: '재고 검수', ev: 5, run: async () => ((await px('/erp/audit')).issues || []).filter(x => x.level === 'alert').map(x => ({k: 'au:' + (x.key || x.text), a: '재고 ERP', t: '재고 검수 — 확인 필요', b: x.text, go: 'erp'}))},
   {id: 'poa', nm: '발주 검수', ev: 5, run: async () => ((await px('/erp/po-audit')).issues || []).filter(x => x.level === 'alert').map(x => ({k: 'poa:' + (x.key || x.text), a: '발주', t: '발주 검수 — 확인 필요', b: x.text, go: 'pom'}))},
-  {id: 'pom', nm: '발주 매칭', ev: 5, run: async () => (await px('/erp/po-match', {arr: 'items'})).items.filter(_pomNeedsCheck).map(it => ({k: 'pom:' + it.sn, a: '발주', t: `발주 ${it.sn} — ERP 줄 확인`, b: [it.date, it.n ? _pomName(it) : (it.cands || []).map(_pomName).slice(0, 3).join(' / ') || '행 못 찾음', it.planQty || it.qty ? n(it.planQty || it.qty) + '개' : '', it.why || (it.recv && it.recv.why) || ''].filter(Boolean).join(' · '), go: 'pom'}))},
+  {id: 'pom', nm: '발주 매칭', ev: 5, run: async () => (await px('/erp/po-match', {arr: 'items'})).items.filter(_pomNeedsCheck).map(it => ({k: 'pom:' + it.sn, a: '발주', t: `발주 ${it.sn} — ERP 줄 확인`, b: [it.date, it.n ? _pomName(it) : (it.cands || []).map(_pomName).slice(0, 3).join(' / ') || '행 못 찾음', it.planQty || it.qty ? n(it.planQty || it.qty) + '개' : '', it.why || (it.recv && it.recv.why) || ''].filter(Boolean).join(' · '), q: 1, go: 'pom'}))},   // 띄우기는 #poAlert
   {id: 'pmd', nm: 'MD 발주 브랜드', ev: 30, async run() {
     const xs = ((await pmdRpc('po_md_panel', {p_days: 150})).items || []).filter(_pmdNeed).sort((a, b) => String(b.d).localeCompare(String(a.d)) || String(b.sn).localeCompare(String(a.sn)));
-    return xs.length ? [{k: 'pmd', a: '발주', t: `발주 브랜드 확인 필요 ${n(xs.length)}건`, b: `가장 최근 ${xs[0].d} · ${xs[0].sn}`, list: xs.slice(0, 40).map(x => `${x.d} · ${x.sn} · ${x.q != null ? n(x.q) + '개 · ' : ''}${cut(x.memo || '메모 없음', 50)}`), sig: xs[0].sn, go: 'pmd'}] : [];
+    return xs.length ? [{k: 'pmd', a: '발주', t: `발주 브랜드 확인 필요 ${n(xs.length)}건`, b: `가장 최근 ${xs[0].d} · ${xs[0].sn}`, list: xs.slice(0, 40).map(x => `${x.d} · ${x.sn} · ${x.q != null ? n(x.q) + '개 · ' : ''}${cut(x.memo || '메모 없음', 50)}`), sig: xs[0].sn, q: 1, go: 'pmd'}] : [];   // 띄우기는 #poAlert (그 자리에서 고름)
   }},
   {id: 'np', nm: '식스샵프로 신상', ev: 10, run: async () => ((await px('/erp/new-products')).recent || []).filter(x => ['hold', 'fail', 'cut'].includes(x.st) || x.lost).map(x => ({k: 'np:' + x.vid, a: '신상', t: `신상 ${x.label || ''} — ${x.name}`, b: [x.opt, x.why || (x.lost ? 'ERP 줄과 안 이어짐 — 상품명 · 옵션이 바뀌었는지 확인' : {hold: '확인 필요', fail: '못 넣음', cut: '시트 끊김'}[x.st])].filter(Boolean).join(' · '), sig: x.lost ? 'lost' : x.st, hot: x.st === 'fail', go: 'erp'}))},
   {id: 'reo', nm: '리오더 경보', ev: 5, run: async () => ((await px('/erp/reorder', {arr: 'items'})).items).map(x => ({k: `reo:${x.b}|${x.n}|${x.o}`, a: '리오더', t: `${BR[x.b] || x.b} ${x.n}`, b: [String(x.o || ''), x.stock <= 0 ? `재고 ${n(x.stock)} — 품절` : `재고 ${n(x.stock)} · 약 ${x.days}일치`].filter(Boolean).join(' · '), sig: x.sev, hot: x.stock <= 0, at: x.since, go: 'reo'}))},
