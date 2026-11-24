@@ -105,7 +105,7 @@ function act(k) {
 }
 /* ── 언제 ── */
 const typing = () => { const a = document.activeElement; return !!a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable); };
-const busy = () => { const m = document.getElementById('diarySetupModal'); return typing() || !!(m && !m.hidden); };          // 글 쓰는 중 · 이름 고르는 중
+const busy = () => { const m = document.getElementById('diarySetupModal'); return typing() || !!(m && !m.hidden) || !!document.getElementById('notifCall'); };          // 글 쓰는 중 · 이름 고르는 중 · 확인 요청 창(notif-call.js)이 떠 있음
 function tick() {
   const p = perm();
   if (p === 'granted') {
