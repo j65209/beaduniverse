@@ -1698,7 +1698,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .trk-ev time{display:block;min-width:0}
   }
 
-  /* ===== 물류팀 출고 전광판 (2026-11-17) — 콰이디에어 출고완료 신청서를 메모 속 출고일 · 방식으로 묶어 보여 준다.
+  /* ===== 물류팀 출고 전광판 (2026-11-17) — 콰이디에어 출고완료 신청서를 메모 속 출고일 · 방식과 함께 신청서마다 한 줄로 (2026-11-24, 그 전엔 출고일 · 방식으로 묶음).
      사용자 요청: 움직이는 효과 없음 (흐르는 글자 · 깜박임 · 반짝임 없이 고정 화면) ===== */
   .lgb{
     margin:0 0 18px;overflow:hidden;
@@ -1735,7 +1735,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-m-jg{color:#c084fc;border-color:rgba(192,132,252,.5);background:rgba(192,132,252,.1)}
   .lgb-m-ec{color:#4ade80;border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.08)}
   .lgb-m-none{color:#6b7280;border-style:dashed;background:transparent;font-weight:600}
-  .lgb-msub{display:none}   /* 휴대폰 · 태블릿에서만 방식 아래에 '박스 · 품목 수' */
+  .lgb-msub{display:none}   /* 휴대폰 · 태블릿에서만 방식 아래에 '박스 · 품목 수' · 신청서번호 */
   .lgb-goods{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}
   .lgb-thumb{width:32px;height:32px;border-radius:5px;object-fit:cover;background:#1f2430;border:1px solid #2a3040;flex:none;cursor:zoom-in}
   /* 사진은 칸 폭만큼 채우고 넘치는 것만 '+N 더보기' (_lgbFitThumbs 가 hidden 으로 정리) */
@@ -1747,7 +1747,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-ords{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;min-width:0}
   .lgb-ord{font:500 11.5px/1 'JetBrains Mono',ui-monospace,monospace;color:#d1d5db;background:#151922;border:1px solid #2a3040;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
   .lgb-ord:hover{border-color:#fbbf24;color:#fde68a}
-  .lgb-ord-more{font-size:11px;color:#8b93a1;align-self:center}
   .lgb-box{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;color:#fde68a;white-space:nowrap}
   .lgb-foot{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:8px 18px 12px;border-top:1px solid #1d212a}
   .lgb-foot button{font:600 12px var(--sans);color:#d1d5db;background:transparent;border:1px solid #2a3040;border-radius:6px;padding:6px 14px;cursor:pointer}
@@ -1781,7 +1780,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .lgb{margin:0 8px 12px;border-radius:12px}
   }
   /* 900px 이하(휴대폰 · 태블릿) — 한 출고를 한 줄에 (2026-11-17 요청: 웬만하면 두 번째 줄로 안 내려가게).
-     [출고일 / 며칠 전] [방식 / 박스 · 품목 수] [사진 — 남는 폭만큼, 넘치면 +N]. 신청서번호는 아래 표에서 (폭이 모자라 뺌) */
+     [출고일 / 며칠 전] [방식 / 박스 · 품목 수 / 신청서번호] [사진 — 남는 폭만큼, 넘치면 +N] */
   @media (max-width:900px){
     .lgb-head{padding:11px 14px 10px;align-items:center;gap:4px 8px}
     .lgb-sub-l{display:none}
@@ -1796,6 +1795,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .lgb-method{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px}
     .lgb-m{font-size:11px;padding:2px 6px}
     .lgb-msub{display:block;font-size:10px;color:#9ca3af;white-space:nowrap}
+    .lgb-mord{font:500 9.5px/1 'JetBrains Mono',ui-monospace,monospace;color:#8b93a1}
     .lgb-box,.lgb-cnt,.lgb-ords{display:none}
     .lgb-goods{flex:1 1 auto;gap:4px}
     .lgb-thumb{width:30px;height:30px}
@@ -36365,7 +36365,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
         const key=date ? date+'|'+method : 'nd|'+(o.order_date||'')+'|'+method;
         let g=groups.get(key);
         if(!g){ g={key, date, method, sortKey:date||o.order_date||'', orders:new Map(), items:[], boxes:[]}; groups.set(key,g); }
-        // 신청서별로도 품목 · 박스를 따로 들고 있는다 — 줄 삭제는 '줄 키 + 신청서' 단위 (_lgbPart)
+        // 신청서별로도 품목 · 박스를 따로 들고 있는다 — 판의 한 줄 · 줄 삭제는 '줄 키 + 신청서' 단위 (_lgbSplit)
         const ok=o._brand+':'+o.ord_no;
         let og=g.orders.get(ok);
         if(!og){ og={ord_no:String(o.ord_no||''), date:o.order_date||'', items:[], boxes:[]}; g.orders.set(ok,og); }
@@ -36375,26 +36375,22 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     }
     return [...groups.values()].sort((a,b)=>String(b.sortKey).localeCompare(String(a.sortKey)) || (b.date?1:0)-(a.date?1:0));
   }
-  // 한 줄에서 keep(신청서 키) 가 참인 신청서만 남긴 모습 — 남는 품목이 없으면 null
-  function _lgbPart(g, keep){
-    const orders=new Map(), items=[], boxes=[];
-    for(const [ok,o] of g.orders){
-      if(!keep(ok)) continue;
-      orders.set(ok,o); items.push(...o.items); boxes.push(...o.boxes);
-    }
-    return items.length ? {key:g.key, date:g.date, method:g.method, sortKey:g.sortKey, orders, items, boxes} : null;
+  // 출고 단위 하나를 신청서마다 한 줄로 (2026-11-24 "날짜가 같아도 신청서 번호가 다른건 분리해줘").
+  // key(출고일|방식) 는 그대로 두고 — 삭제 기록 · 서버 발주 매칭(lgb_board.py)이 이 키를 쓴다 — 화면의 줄은 rid(key + 신청서) 로 가른다
+  function _lgbSplit(g){
+    return [...g.orders].map(([ok,o])=>({key:g.key, ok, rid:g.key+'#'+ok, ord:o, date:g.date, method:g.method, sortKey:g.sortKey, items:o.items, boxes:o.boxes}));
   }
 
   /* ── 줄 삭제 (2026-11-19 요청: "삭제 버튼 만들어줘. 언제 삭제했는지 시간도") — Supabase lg_board_deletes ──
      · 콰이디에어 신청서 · 아래 발주 내역 표는 그대로 두고 전광판에서만 뺀다.
      · 한 번 삭제 = 한 행 {row_key: 줄 키, orders: ['계정:신청서번호'], snap: 삭제할 때 모습, deleted_at: 서버 시각, deleted_by: 업무일지 이름}.
-       숨기는 단위는 '줄 키 + 신청서' — 삭제한 뒤 같은 출고일 · 방식으로 새 신청서가 붙으면 그 신청서만 다시 보인다.
+       판의 한 줄 = '줄 키 + 신청서' 하나라 한 번 삭제 = 신청서 한 장 (2026-11-24 전 기록은 여러 장일 수 있다 — 되살릴 때 나눈다).
      · 되살리기 = restored_at · restored_by 를 채운다 (행은 지우지 않음, DB 에 삭제 정책 없음 · 바뀐 내용은 row_history).
      · 삭제한 시각 · 사람은 판 아래 [삭제한 줄 N개] 에서 본다. 60초 폴링(renderKDOrders)마다 같이 받아 다른 기기와 1분 안에 맞춘다. */
   const _LGB_DEL_COLS='id,row_key,orders,deleted_at,deleted_by';
   const _LGB_TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
   let _lgbDels=[], _lgbDelsSig='', _lgbDelsAt=0, _lgbDelsOk=false, _lgbDelsP=null, _lgbDelsGen=0, _lgbShowDels=false;
-  let _lgbView=[];               // 지금 판에 보이는 줄 (삭제 버튼이 찾는다)
+  let _lgbView=[], _lgbDelView=[];   // 지금 판에 보이는 줄 · 삭제한 줄 (삭제 · 되살리기 버튼이 찾는다)
   const _lgbBusy=new Set();      // 저장 중인 줄 — 두 번 눌러도 한 번만
   function _lgbMe(){ try{ return (localStorage.getItem('brightbeed_diary_me')||'').trim().slice(0,40); }catch(e){ return ''; } }
   // Supabase 시각은 소수점 아래가 6자리까지라('…47.07008+00:00') 3자리로 맞춰 읽는다 (사파리 대비)
@@ -36437,22 +36433,23 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       .finally(()=>{ clearTimeout(timer); _lgbDelsAt=Date.now(); _lgbDelsP=null; });
     return _lgbDelsP;
   }
-  // 숨길 '줄 키 + 신청서' 와 줄마다 가장 최근 삭제 기록
+  // 숨길 줄(rid) → 가장 최근 삭제 기록
   function _lgbHidden(){
-    const set=new Set(), last=new Map();
+    const last=new Map();
     for(const d of _lgbDels){
       if(!d || d.restored_at) continue;
-      for(const ok of (d.orders||[])) set.add(d.row_key+'\u0001'+ok);
-      const p=last.get(d.row_key);
-      if(!p || _lgbMs(d.deleted_at)>_lgbMs(p.deleted_at)) last.set(d.row_key,d);
+      for(const ok of (d.orders||[])){
+        const rid=d.row_key+'#'+ok, p=last.get(rid);
+        if(!p || _lgbMs(d.deleted_at)>_lgbMs(p.deleted_at)) last.set(rid,d);
+      }
     }
-    return {set, last};
+    return last;
   }
   const _LGB_LIMIT=8;
   const _LGB_CLS={'우체국항공':'airpost','에어':'air','에어요청':'air','에어발송':'air','일반우체국':'post','우체국':'post','LCL':'lcl','준광':'jg','전자상사업자':'ec'};
   const _LGB_WD=['일','월','화','수','목','금','토'];
   let _lgbRows=[], _lgbFetchedAt=0, _lgbExpanded=false, _lgbLastHTML='';
-  const _lgbOpenGoods=new Set();   // 품목 사진을 다 펼친 줄 (g.key)
+  const _lgbOpenGoods=new Set();   // 품목 사진을 다 펼친 줄 (g.rid)
   function _lgbMd(iso){ const p=String(iso||'').split('-'); return p.length===3 ? p[1]+'.'+p[2] : ''; }
   // 출고 후 20일이 지나면 판에서 뺀다 (2026-11-17 요청). 출고일이 메모에 없는 건은 신청일 기준
   const _LGB_KEEP_DAYS=20;
@@ -36620,20 +36617,17 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   function _lgbPaint(){
     const box=document.getElementById('lgBoard');
     if(!box) return;
-    if(!_lgbRows.length){ box.hidden=true; _lgbLastHTML=''; _lgbView=[]; return; }
+    if(!_lgbRows.length){ box.hidden=true; _lgbLastHTML=''; _lgbView=[]; _lgbDelView=[]; return; }
     const inWin=_lgbRows.filter(g=>{ const n=_lgbDaysAgo(g.sortKey); return n!=null && n<=_LGB_KEEP_DAYS; });
-    // 삭제한 신청서를 뺀 줄(판) · 삭제한 부분(판 아래 '삭제한 줄')으로 나눈다
-    const {set:hid, last}=_lgbHidden();
+    // 신청서마다 한 줄 — 삭제하지 않은 줄(판) · 삭제한 줄(판 아래 '삭제한 줄')으로 나눈다
+    const hid=_lgbHidden();
     const rows=[], dels=[];
-    for(const g of inWin){
-      if(!hid.size){ rows.push(g); continue; }
-      const v=_lgbPart(g, ok=>!hid.has(g.key+'\u0001'+ok));
-      const h=_lgbPart(g, ok=>hid.has(g.key+'\u0001'+ok));
-      if(v) rows.push(v);
-      if(h){ h.del=last.get(g.key)||{}; dels.push(h); }
+    for(const g of inWin) for(const r of _lgbSplit(g)){
+      const del=hid.get(r.rid);
+      if(del){ r.del=del; dels.push(r); } else rows.push(r);
     }
     dels.sort((a,b)=>_lgbMs(b.del.deleted_at)-_lgbMs(a.del.deleted_at));
-    _lgbView=rows;
+    _lgbView=rows; _lgbDelView=dels;
     if(!dels.length) _lgbShowDels=false;
     if(!box._lgbBound){
       box._lgbBound=true;
@@ -36703,7 +36697,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   }
   // 판 한 줄. del(삭제 기록)이 있으면 '삭제한 줄' 목록용 — 끝 칸이 삭제 버튼 대신 삭제한 시각 · 사람 · 되살리기
   function _lgbRowHTML(g, del){
-    const ords=[...g.orders.values()];
+    const o=g.ord;
     let dateCell;
     if(g.date){
       const [y,mo,d]=g.date.split('-').map(Number);
@@ -36712,7 +36706,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       dateCell=`<b>${_lgbMd(g.date)}</b><i>${_LGB_WD[new Date(y,mo-1,d).getDay()]}</i>${tag}`;
     }else{
       // 콰이디에어가 메모에 출고일을 안 적은 신청서 — 다른 줄과 같은 한 줄 모양으로, 신청일을 회색으로 (2026-11-19 "11.04는 쟤 왜저래")
-      const od=(ords[0]&&ords[0].date)||g.sortKey||'';
+      const od=o.date||g.sortKey||'';
       const [y,mo,d]=String(od).split('-').map(Number);
       const wd=(y&&mo&&d) ? `<i>${_LGB_WD[new Date(y,mo-1,d).getDay()]}</i>` : '';
       dateCell=`<span class="lgb-nd" title="콰이디에어 메모에 출고일이 없어 신청일을 보여 줍니다"><b>${_lgbMd(od)||'—'}</b>${wd}<em class="lgb-new">신청일</em></span>`;
@@ -36722,44 +36716,45 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     for(const it of g.items){ const u=it.image_url; if(u && !seen.has(u)){ seen.add(u); imgs.push(u); } }
     // 사진은 전부 그려 두고 _lgbFitThumbs 가 칸 폭에 맞춰 넘치는 것만 숨긴다 ('+N 더보기' 를 누르면 그 줄만 전부)
     const thumbs=imgs.map(u=>`<img class="lgb-thumb" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(u)}" alt="" onerror="this.style.visibility='hidden'">`).join('');
-    const moreBtn=imgs.length>1 ? `<button type="button" class="lgb-more" data-key="${escapeHTML((del?'del:':'')+g.key)}" hidden></button>` : '';
-    const chips=ords.slice(0,4).map(o=>`<button type="button" class="lgb-ord" data-ord="${escapeHTML(o.ord_no)}" title="신청서 ${escapeHTML(o.ord_no)} · 신청 ${escapeHTML(o.date)} — 누르면 아래 표에서 찾기">${escapeHTML(o.ord_no)}</button>`).join('')
-      + (ords.length>4?`<span class="lgb-ord-more">+${ords.length-4}</span>`:'');
+    const moreBtn=imgs.length>1 ? `<button type="button" class="lgb-more" data-key="${escapeHTML((del?'del:':'')+g.rid)}" hidden></button>` : '';
+    const chips=`<button type="button" class="lgb-ord" data-ord="${escapeHTML(o.ord_no)}" title="신청서 ${escapeHTML(o.ord_no)} · 신청 ${escapeHTML(o.date)} — 누르면 아래 표에서 찾기">${escapeHTML(o.ord_no)}</button>`;
     const bt=_lgbBoxText(g.boxes);
     const boxShort=bt.split('·').length>2 ? `${new Set(g.boxes).size}박스` : bt;
     const boxCell=boxShort!==bt ? `<span title="${escapeHTML(bt)}">${escapeHTML(boxShort)}</span>` : escapeHTML(bt);
     // 휴대폰 · 태블릿은 한 줄에 담으려고 방식 아래에 '박스 · 품목 수' 를 작게 (데스크톱은 숨김)
     const msub=[boxShort, g.items.length+'품목'].filter(Boolean).join(' · ');
+    // 같은 날 같은 방식이어도 신청서마다 줄이 갈리니 휴지통을 누르기 전에 어느 신청서인지 보이게 번호도 작게
+    const mord=o.ord_no ? `<span class="lgb-msub lgb-mord">${escapeHTML(o.ord_no)}</span>` : '';
     let act;
     if(del){
       const by=del.deleted_by?String(del.deleted_by):'';
-      const en=_lgbErpNote(g.key);
+      const en=_lgbErpNote(g.key, g.ok);
       act=`<div class="lgb-delinfo"><span class="lgb-delat" title="${escapeHTML(_lgbWhenFull(del.deleted_at))} 삭제${by?' · '+escapeHTML(by):''}"><b>${escapeHTML(_lgbWhen(del.deleted_at))}</b><em>${by?escapeHTML(by)+' · ':''}삭제</em>${en?`<em class="lgb-erp${en.warn?' warn':''}" title="${escapeHTML(en.tip)}">${escapeHTML(en.text)}</em>`:''}</span>`
-        +`<button type="button" class="lgb-restore" data-key="${escapeHTML(g.key)}" title="이 줄을 전광판에 다시 보이게">되살리기</button></div>`;
+        +`<button type="button" class="lgb-restore" data-key="${escapeHTML(g.rid)}" title="이 줄을 전광판에 다시 보이게">되살리기</button></div>`;
     }else{
-      act=`<div class="lgb-act"><button type="button" class="lgb-x" data-key="${escapeHTML(g.key)}" title="전광판에서 삭제" aria-label="이 줄을 전광판에서 삭제">${_LGB_TRASH}</button></div>`;
+      act=`<div class="lgb-act"><button type="button" class="lgb-x" data-key="${escapeHTML(g.rid)}" title="전광판에서 삭제" aria-label="이 줄을 전광판에서 삭제">${_LGB_TRASH}</button></div>`;
     }
-    return `<div class="lgb-row lgb-grid${del?' is-del':''}"><div class="lgb-date">${dateCell}</div><div class="lgb-method">${methodCell}<span class="lgb-msub">${escapeHTML(msub)}</span></div><div class="lgb-box">${boxCell}</div><div class="lgb-cnt">${g.items.length}품목</div><div class="lgb-goods">${thumbs}${moreBtn}</div><div class="lgb-ords">${chips}</div>${act}</div>`;
+    return `<div class="lgb-row lgb-grid${del?' is-del':''}"><div class="lgb-date">${dateCell}</div><div class="lgb-method">${methodCell}<span class="lgb-msub">${escapeHTML(msub)}</span>${mord}</div><div class="lgb-box">${boxCell}</div><div class="lgb-cnt">${g.items.length}품목</div><div class="lgb-goods">${thumbs}${moreBtn}</div><div class="lgb-ords">${chips}</div>${act}</div>`;
   }
   function lgbToggleAll(){ _lgbExpanded=!_lgbExpanded; _lgbPaint(); }
   function lgbToggleDels(){ _lgbShowDels=!_lgbShowDels; _lgbPaint(); }
-  // 🗑 — 이 줄(지금 보이는 신청서들)을 전광판에서 뺀다. 삭제한 시각은 서버 시각(deleted_at default now())
-  async function lgbDelete(key, btn){
-    const g=_lgbView.find(x=>x.key===key);
-    if(!g || _lgbBusy.has(key)) return;
-    const ords=[...g.orders.values()].map(o=>o.ord_no);
+  // 🗑 — 이 줄(신청서 한 장의 그 출고)을 전광판에서 뺀다. 삭제한 시각은 서버 시각(deleted_at default now())
+  async function lgbDelete(rid, btn){
+    const g=_lgbView.find(x=>x.rid===rid);
+    if(!g || _lgbBusy.has(rid)) return;
+    const ords=[g.ord.ord_no];
     const what=[g.date?_lgbMd(g.date)+' 출고':'출고일 미기재', g.method||'방식 미기재', g.items.length+'품목'].join(' · ');
     if(!confirm(`출고 전광판에서 이 줄을 삭제할까요? (입고 확인)\n\n${what}\n신청서 ${ords.join(', ')}\n\nERP '발주일' 칸에서 이 출고로 다 들어온 발주의 줄을 몇 분 안에 지워요 — 일부만 들어온 발주는 남은 물건이 올 때까지 그대로, 발주 수량은 안 건드려요.\n콰이디에어 신청서와 아래 발주 내역 표는 그대로예요.\n삭제한 시각은 판 아래 '삭제한 줄'에 남고, 거기서 되살리면 지운 발주일 줄도 다시 들어가요.`)) return;
-    _lgbBusy.add(key);
+    _lgbBusy.add(rid);
     if(btn) btn.disabled=true;
     try{
       const imgs=[...new Set(g.items.map(it=>it.image_url).filter(Boolean))].slice(0,6);
-      const body={row_key:key, orders:[...g.orders.keys()], deleted_by:_lgbMe()||null,
+      const body={row_key:g.key, orders:[g.ok], deleted_by:_lgbMe()||null,
         snap:{date:g.date||null, method:g.method||'', sort:g.sortKey||'', items:g.items.length, boxes:_lgbBoxText(g.boxes), ords, imgs}};
       const r=await fetch(`${SUPABASE_URL}/rest/v1/lg_board_deletes?select=${_LGB_DEL_COLS}`,{method:'POST', headers:_sbHeaders({'Prefer':'return=representation'}), body:JSON.stringify(body)});
       if(!r.ok) throw new Error('HTTP '+r.status);
       const a=await r.json().catch(()=>null);
-      const rec=(Array.isArray(a)&&a[0]) || {row_key:key, orders:body.orders, deleted_by:body.deleted_by, deleted_at:new Date().toISOString()};
+      const rec=(Array.isArray(a)&&a[0]) || {row_key:g.key, orders:body.orders, deleted_by:body.deleted_by, deleted_at:new Date().toISOString()};
       _lgbDelsGen++;
       _lgbDels=[rec, ..._lgbDels]; _lgbDelsSig='';
       _lgbPaint();
@@ -36768,19 +36763,39 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     }catch(e){
       if(btn) btn.disabled=false;
       toast('삭제하지 못했어요 — 다시 시도해 주세요 ('+(e.message||e)+')','err');
-    }finally{ _lgbBusy.delete(key); }
+    }finally{ _lgbBusy.delete(rid); }
   }
-  // 되살리기 — 이 줄 키로 삭제한 기록을 모두 (다른 기기에서 같은 줄을 또 삭제했어도 한 번에)
-  async function lgbRestore(key, btn){
-    const bk='r:'+key;
-    if(_lgbBusy.has(bk)) return;
+  // 되살리기 — 이 줄(줄 키 + 신청서)을 삭제한 기록을 모두 (다른 기기에서 같은 줄을 또 삭제했어도 한 번에).
+  // 한 기록에 신청서가 여럿이면(2026-11-24 전 화면에서 삭제) 나머지 신청서를 같은 시각 · 사람으로 새 기록에 먼저 옮긴 뒤 되살린다 — 나머지는 계속 삭제된 채
+  async function lgbRestore(rid, btn){
+    const g=_lgbDelView.find(x=>x.rid===rid);
+    const bk='r:'+rid;
+    if(!g || _lgbBusy.has(bk)) return;
     _lgbBusy.add(bk);
     if(btn) btn.disabled=true;
     try{
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/lg_board_deletes?row_key=eq.${encodeURIComponent(key)}&restored_at=is.null`,{method:'PATCH', headers:_sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({restored_at:new Date().toISOString(), restored_by:_lgbMe()||null})});
-      if(!r.ok) throw new Error('HTTP '+r.status);
+      const base=`${SUPABASE_URL}/rest/v1/lg_board_deletes`;
+      const at=`row_key=eq.${encodeURIComponent(g.key)}&orders=cs.${encodeURIComponent('{"'+g.ok+'"}')}&restored_at=is.null`;
+      const q=await fetch(`${base}?select=row_key,orders,snap,deleted_at,deleted_by,id&${at}`,{headers:_sbHeaders(), cache:'no-store'});
+      if(!q.ok) throw new Error('HTTP '+q.status);
+      const recs=await q.json();
+      const moved=[];
+      for(const d of recs){
+        const rest=(d.orders||[]).filter(x=>x!==g.ok);
+        if(!rest.length) continue;
+        const r=await fetch(`${base}?select=${_LGB_DEL_COLS}`,{method:'POST', headers:_sbHeaders({'Prefer':'return=representation'}), body:JSON.stringify({
+          row_key:d.row_key, orders:rest, deleted_at:d.deleted_at, deleted_by:d.deleted_by, snap:{...(d.snap||{}), ords:rest.map(x=>x.slice(x.indexOf(':')+1))}})});
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const a=await r.json().catch(()=>null);
+        if(Array.isArray(a)&&a[0]) moved.push(a[0]);
+      }
+      const ids=recs.map(d=>d.id);
+      if(ids.length){
+        const r=await fetch(`${base}?id=in.(${ids.join(',')})&restored_at=is.null`,{method:'PATCH', headers:_sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify({restored_at:new Date().toISOString(), restored_by:_lgbMe()||null})});
+        if(!r.ok) throw new Error('HTTP '+r.status);
+      }
       _lgbDelsGen++;
-      _lgbDels=_lgbDels.filter(d=>d.row_key!==key); _lgbDelsSig='';
+      _lgbDels=[...moved, ..._lgbDels.filter(d=>!ids.includes(d.id) && !(d.row_key===g.key && (d.orders||[]).length===1 && d.orders[0]===g.ok))]; _lgbDelsSig='';
       _lgbPaint();
       toast('전광판에 다시 보이게 했어요 — 지웠던 발주일 줄은 몇 분 안에 다시 들어가요','ok');
       _lgbKickErp();
@@ -36798,13 +36813,13 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       [60e3,120e3].forEach(ms=>setTimeout(()=>{ if(typeof pomLoad==='function') pomLoad(true).then(()=>_lgbPaint()).catch(()=>{}); }, ms));
     }).catch(()=>{});
   }
-  // '삭제한 줄' 한 줄의 재고 마스터 발주일 줄 상태 — 발주 매칭 결과(recvDels: 휴지통 한 번마다 판매번호 상태 수)를 줄 키로 모은다
-  function _lgbErpNote(rowKey){
+  // '삭제한 줄' 한 줄의 재고 마스터 발주일 줄 상태 — 발주 매칭 결과(recvDels: 휴지통 한 번마다 판매번호 상태 수)를 줄 키 + 신청서로 모은다
+  function _lgbErpNote(rowKey, ok){
     const d=window._pomState&&window._pomState.data;
     if(!d||!Array.isArray(d.recvDels)) return null;
     const c={};
     let hit=false;
-    d.recvDels.forEach(x=>{ if(x.rowKey!==rowKey) return; hit=true; Object.entries(x.counts||{}).forEach(([k,v])=>{ c[k]=(c[k]||0)+v; }); });
+    d.recvDels.forEach(x=>{ if(x.rowKey!==rowKey || !(x.orders||[]).includes(ok)) return; hit=true; Object.entries(x.counts||{}).forEach(([k,v])=>{ c[k]=(c[k]||0)+v; }); });
     if(!hit) return null;
     const parts=[];
     if(c.removed) parts.push(`발주일 ${c.removed}줄 지움`);
