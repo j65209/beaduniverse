@@ -11,7 +11,7 @@
 //   POST {action:'sender', sender:{nm,tel,zip,addr,detail}}  보내는 분 기본값 저장
 //   POST {action:'book', item:{…}, kind?, batch_id?, by?}     예약 접수 (건별 · 파일 한 줄씩)
 //   POST {action:'cancel', id, by?}                예약 취소 (접수 1분쯤 뒤부터 됨 · 자체 출력 · 집화 · CJ 출력 뒤엔 안 됨)
-//   POST {action:'track', invc_no}                 운송장 추적 (단계 · 시각 · 지점만, 이름 · 전화는 버림)
+//   POST {action:'track', invc_no, prod_only?}     운송장 추적 (단계 · 시각 · 지점만, 이름 · 전화는 버림) — 맥미니 cs-track.ts 가 prod_only 로 부름
 //   POST {action:'list', limit?, q?}               최근 접수 기록 (전화는 가림)
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -216,7 +216,7 @@ async function cancel(cfg: Cfg, id: number, by?: string) {
   }
   await dropTokenIf(j);
   const msg = String(j.RESULT_DETAIL || '');
-  const hint = /존재\s*하지\s*않/.test(msg) ? ' — 접수 직후엔 CJ 에 아직 안 올라가 있어요. 1분쯤 뒤 다시 눌러 주세요. 자체 출력 · 집화 · CJ 출력이 끝난 건은 취소가 안 돼요.' : '';
+  const hint = /존재\s*하지\s*않/.test(msg) ? ' — 접수가 CJ 에 반영되기 전이에요 (보통 1분, 길면 10분쯤). 조금 뒤 다시 눌러 주세요. 자체 출력 · 집화 · CJ 출력이 끝난 건은 취소가 안 돼요.' : '';
   return { ok: false, detail: `CJ 취소 실패: ${msg || '알 수 없음'}${hint}` };
 }
 
@@ -271,6 +271,8 @@ Deno.serve(async (req) => {
       case 'cancel':
         return json(await cancel(cfg, Number(body.id), body.by));
       case 'track':
+        // prod_only: 맥미니 운송장 조회(cs-track.ts)가 부를 때 — 개발 서버엔 실제 운송장이 없으니 CJ 를 부르지 않고 바로 알려 준다 (그쪽은 공개 조회로 넘어감)
+        if (body.prod_only && cfg.env !== 'prod') return json({ ok: false, env: cfg.env, error: '대한통운 API 가 아직 개발 서버예요 (운영 승인 전)' });
         return json(await track(cfg, body.invc_no));
       case 'list':
         return json({ ok: true, env: cfg.env, rows: await list(Number(body.limit), String(body.q || '')) });
