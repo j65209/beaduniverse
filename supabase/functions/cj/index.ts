@@ -247,7 +247,7 @@ const clampN = (v: unknown, lo: number, hi: number, d: number) => { const n = Nu
 function cleanPrint(p: Record<string, unknown> = {}) {
   const b = (k: string, d: boolean) => (typeof p[k] === 'boolean' ? (p[k] as boolean) : d);
   return {
-    w: clampN(p.w, 40, 220, 100), h: clampN(p.h, 40, 220, 150), orient: p.orient === 'l' ? 'l' : 'p',
+    w: clampN(p.w, 40, 220, 123), h: clampN(p.h, 40, 220, 100), orient: p.orient === 'l' ? 'l' : 'p',
     mt: clampN(p.mt, -20, 20, 0), ml: clampN(p.ml, -20, 20, 0), pad: clampN(p.pad, 0, 15, 3),
     scale: clampN(p.scale, 60, 150, 100), bc: p.bc === 'ITF' ? 'ITF' : 'CODE128', bch: clampN(p.bch, 6, 30, 14),
     mask_nm: b('mask_nm', true), mask_tel: b('mask_tel', true), show_goods: b('show_goods', true), show_memo: b('show_memo', true),
