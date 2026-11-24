@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>주간 회의록 · 비드유니버스</title>
+<script src="../office-undo.js?v=1" data-skip="weekly_meetings\?columns="></script><!-- 어디서든 되돌리기 (office-undo.js) — 그 주 줄이 저절로 생기는 것만 뺌 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<script>
+  /* 오피스 안 화면(iframe, index.html 의 TOOL_PAGES 'weekly')으로 열렸으면 '← 오피스' 는 그 화면을 닫고(bbToolClose),
+     '마케팅 회의록' 탭은 그 자리에서 바꿔 끼운다(bbToolSwap). 혼자 열면 이 페이지의 잠금 화면에서 오피스 접속 코드를 받는다. (meeting/ 과 같은 방식) */
+  (function () {
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    window.__wkmInOffice = inOffice;
+    function plain(e) { return !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button); }
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) {
+        a.href = home;
+        if (inOffice) a.addEventListener('click', function (e) {
+          if (!plain(e)) return;
+          e.preventDefault();
+          try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
+        });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('a[data-swap]'), function (a) {
+        a.href = inOffice ? home + '#' + a.dataset.swap : home + a.dataset.swap + '/';   // 회사 주소 입구에선 <base> 가 깃허브라 지금 주소 기준으로
+        if (!inOffice) return;
+        a.addEventListener('click', function (e) {
+          if (!plain(e)) return;
+          e.preventDefault();
+          try { window.parent.bbToolSwap(a.dataset.swap); }
+          catch (err) { window.parent.location.hash = a.dataset.swap; window.parent.location.reload(); }   // 배포 전부터 열려 있던 오피스
+        });
+      });
+    });
+  })();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  /* 주간 회의록 — 오피스 업무용 툴 (2026-11-24 사장님 "마케팅 회의록 옆에 주간 회의록 만들어줘. 지금 마케팅 회의록 오늘 내용들 그대로 주간회의록으로 이동시켜줘")
+     · 모양은 마케팅 회의록(meeting/) 그대로 — 달 ‹ 11월 › + 주차 탭. 주차 이름도 같게(그 주 수요일이 든 달의 N번째)
+     · 주마다 글 두 칸(회의 메모 · 결정 · 할 일), 누구나 · 바로 저장. 인스타 주소 칸 · 마감은 없음
+     · 저장 = 오피스 슈퍼베이스 weekly_meetings (주마다 한 줄, day = 그 주 수요일). 지우기는 deleted_at 만.
+       0.7초 뒤 저장 · 두 사람이 동시에 고치면 줄 단위로 합침(merge3) · 아직 못 보낸 글은 이 브라우저에 적어 두었다가(wkm_draft_v1) 다시 보냄 */
+  :root {
+    --bg: #f5f6f8; --panel: #fff; --line: #e5e7eb; --line2: #cfd4dc; --text: #1f2329; --t2: #4b5563; --t3: #8b93a1;
+    --red: #dc2626; --soft: #f1f3f6;
+    --top: 52px; --wkh: 56px; --r: 12px;
+    --font: Pretendard, -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  }
+  * { box-sizing: border-box }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased }
+  button, input, textarea { font-family: inherit; font-size: inherit; color: inherit }
+  [hidden] { display: none !important }
+  svg { flex: none }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--text); outline-offset: 1px }
+
+  /* ── 상단 ── */
+  .top { position: sticky; top: 0; z-index: 30; min-height: var(--top); display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
+  .back { color: var(--t2); text-decoration: none; font-weight: 600; font-size: 13px; white-space: nowrap; padding: 6px 8px; border-radius: 8px }
+  .back:hover { background: var(--soft) }
+  .back i { font-style: normal }
+  .ttl { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--soft); flex: none }
+  .ttl b, .ttl a { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 600; letter-spacing: -.2px; white-space: nowrap; text-decoration: none; color: var(--t2) }
+  .ttl b { background: #fff; color: var(--text); font-weight: 800; box-shadow: 0 1px 3px rgba(15, 23, 42, .13) }
+  .ttl a:hover { color: var(--text) }
+  .top-r { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none }
+  .save-st { font-size: 12px; color: var(--t3); white-space: nowrap }
+  .save-st.err { color: var(--red); font-weight: 600; cursor: pointer }
+  .btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-weight: 600; font-size: 13px;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; color: var(--text) }
+  .btn:hover { border-color: var(--line2); background: #fafbfc }
+  .btn.pri { background: var(--text); border-color: var(--text); color: #fff }
+  .btn.pri:hover { background: #000; border-color: #000 }
+  .btn.sm { height: 28px; padding: 0 10px; font-size: 12px }
+  .btn.ico { width: 32px; padding: 0 }
+  .btn svg { width: 16px; height: 16px }
+
+  /* ── 주차 고르기 ── */
+  .weeks { position: sticky; top: var(--top); z-index: 25; min-height: var(--wkh); display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
+  .wk-m { display: flex; align-items: center; gap: 4px; flex: none }
+  .wk-m b { min-width: 54px; text-align: center; font-size: 18px; font-weight: 800; letter-spacing: -.4px; white-space: nowrap }
+  .wk-t { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; padding: 1px }
+  .wk-t::-webkit-scrollbar { display: none }
+  .wk { flex: none; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: #fff; cursor: pointer; white-space: nowrap }
+  .wk:hover { border-color: var(--line2) }
+  .wk b { font-weight: 700; font-size: 14.5px }
+  .wk span { font-size: 12.5px; color: var(--t3); font-weight: 500 }
+  .wk i { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--t2); background: var(--soft); border-radius: 6px; padding: 2px 6px }
+  .wk.on { background: var(--text); border-color: var(--text); color: #fff }
+  .wk.on span { color: rgba(255, 255, 255, .72) }
+  .wk.on i { background: rgba(255, 255, 255, .18); color: #fff }
+
+  /* ── 회의 글 ── */
+  .main { min-width: 0; padding: 14px 16px 40px }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start }
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px }
+  .note label { font-weight: 800; font-size: 14.5px; display: flex; align-items: center; gap: 6px }
+  .note label .s { font-weight: 500; color: var(--t3); font-size: 12px }
+  .note textarea { width: 100%; min-height: 420px; border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; outline: none; resize: none; background: #fafbfc;
+    font-size: 14.5px; line-height: 1.65; overflow: hidden }
+  .note textarea:hover { border-color: var(--line) }
+  .note textarea:focus { border-color: var(--text); background: #fff }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 500; background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(15, 23, 42, .25); max-width: calc(100vw - 32px) }
+  .toast.err { background: var(--red) }
+  .lock { position: fixed; inset: 0; z-index: 400; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px }
+  .lock-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 26px; width: min(340px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: center }
+  .lock-box input { height: 42px; border: 1px solid var(--line); border-radius: 10px; text-align: center; font-size: 18px; letter-spacing: 4px; outline: none }
+  .lock-box input:focus { border-color: var(--text) }
+  .lock-box .err { color: var(--red); font-size: 12.5px; min-height: 18px }
+  .muted { color: var(--t3) }
+
+  /* ── 휴대폰 ── */
+  @media (max-width: 860px) {
+    :root { --wkh: 0px }
+    .top { padding: 8px 10px; gap: 6px }
+    .back { padding: 6px 4px }
+    .back i { display: none }
+    .ttl b, .ttl a { padding: 0 9px; font-size: 13px }
+    .weeks { position: static; padding: 8px 10px; gap: 8px; flex-wrap: wrap }   /* 한 달 주차가 한눈에 — 달은 윗줄, 주차는 아랫줄 */
+    .wk-t { order: 3; flex: none; width: 100% }
+    #wkNow { margin-left: auto }
+    .wk { flex: 1 0 60px; flex-direction: column; gap: 0; height: 50px; padding: 0 4px; justify-content: center; position: relative }
+    .wk span { font-size: 11px }
+    .wk i { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; padding: 0; border-radius: 50%; font-size: 0; background: var(--text) }
+    .wk.on i { background: #fff }
+    .main { padding: 12px 10px 40px }
+    .notes { grid-template-columns: 1fr }
+    .note textarea { min-height: 240px; font-size: 16px }   /* 아이폰이 칸을 누를 때 화면을 키우지 않게 16px */
+    .save-st { display: none }
+    .save-st.err { display: inline }
+    #copyBtn span { display: none }
+    #copyBtn { width: 32px; padding: 0 }
+  }
+</style>
+</head>
+<body>
+<div class="lock" id="lock" hidden>
+  <form class="lock-box" id="lockForm" autocomplete="off">
+    <b style="font-size:16px">주간 회의록</b>
+    <span class="muted" style="font-size:13px">오피스 접속 코드를 넣어 주세요</span>
+    <input id="lockPin" type="password" inputmode="numeric" aria-label="접속 코드">
+    <div class="err" id="lockErr"></div>
+    <button class="btn pri" type="submit" style="height:40px">열기</button>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <a class="back" href="../" aria-label="오피스로">← <i>오피스</i></a>
+    <nav class="ttl" aria-label="회의록 고르기"><a href="../meeting/" data-swap="meeting">마케팅 회의록</a><b aria-current="page">주간 회의록</b></nav>
+    <div class="top-r">
+      <span class="save-st" id="saveSt"></span>
+      <button class="btn" id="copyBtn" type="button" aria-label="회의록 글로 복사" title="회의록 글로 복사 (카톡에 붙여넣기)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>글로 복사</span></button>
+    </div>
+  </header>
+  <nav class="weeks" aria-label="주차 고르기">
+    <div class="wk-m">
+      <button class="btn ico" id="mPrev" type="button" aria-label="지난달" title="지난달"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <b id="mName"></b>
+      <button class="btn ico" id="mNext" type="button" aria-label="다음 달" title="다음 달"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="wk-t" id="wkTabs"></div>
+    <button class="btn sm" id="wkNow" type="button" hidden>이번 주</button>
+  </nav>
+  <main class="main" id="main">
+    <div class="notes">
+      <div class="note"><label for="mNotes">회의 메모 <span class="s">누구나 · 바로 저장</span></label>
+        <textarea id="mNotes" placeholder="오늘 나온 이야기, 참고할 점…" maxlength="50000"></textarea></div>
+      <div class="note"><label for="mDec">결정 · 할 일</label>
+        <textarea id="mDec" placeholder="- 이름: 할 일" maxlength="50000"></textarea></div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ══════════════════════ 설정 ══════════════════════ */
+  const SB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+  // 잠금 — 오피스 index.html 의 PIN_VIEWER · PIN_MASTER 해시 (마케팅 회의록 · 시딩 마스터 · 피드 시뮬레이터와 같음, 바꾸면 같이)
+  const PIN_HASH = {
+    ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf: 'viewer',
+    '61bac9d4e564d8096a969a0af7ec131066991620a2807be2b6b889cf8b24193e': 'master',
+  };
+  const AUTH_VERSION = '4', MASTER_PIN_VER = '1';
+  const T = 'weekly_meetings', DRAFT_KEY = 'wkm_draft_v1';
+  const POLL_MS = 8000, POLL_LIVE_MS = 60000;   // 실시간 알림선이 이어져 있으면 1분에 한 번만
+  const KEY_DOW = 3;                            // 주 이름표 = 그 주 수요일 (마케팅 회의록과 같은 주차가 되게)
+
+  /* ══════════════════════ 도우미 ══════════════════════ */
+  const $ = id => document.getElementById(id);
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* 저장 못 해도 화면은 그대로 */ } };
+  let toastT = 0;
+  function toast(msg, err) {
+    const t = $('toast');
+    t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, err ? 4200 : 2400);
+  }
+  const ME = () => (lsGet('brightbeed_diary_me') || lsGet('mtg_me_v1') || lsGet('seed_me_v1') || lsGet('feed_me_v1') || '').trim().slice(0, 40) || null;
+  async function rest(path, opt) {
+    opt = opt || {};
+    const r = await fetch(SB_URL + '/rest/v1/' + path, Object.assign({}, opt, {
+      headers: Object.assign({apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json'}, opt.headers || {}),
+      cache: 'no-store',
+    }));
+    const txt = await r.text();
+    if (!r.ok) { const e = new Error('HTTP ' + r.status + ' ' + txt.slice(0, 160)); e.status = r.status; throw e; }
+    return txt ? JSON.parse(txt) : null;
+  }
+  const RET = {Prefer: 'return=representation'};
+
+  /* ══════════════════════ 주차 ══════════════════════
+     주 이름표 = 그 주 수요일 날짜('2026-11-25'). 그 달의 첫째 수요일이 1주차 (마케팅 회의록 meeting/ 과 같음) */
+  const DAY = 86400e3;
+  const iso = ms => new Date(ms).toISOString().slice(0, 10);
+  const utc = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(utc(s));
+  const todayKST = () => iso(Date.now() + 9 * 3600e3);
+  function weekOf(day) { const t = utc(day), dow = new Date(t).getUTCDay(); return iso(t - ((dow + 6) % 7) * DAY + (KEY_DOW - 1) * DAY); }
+  const thisWeek = () => weekOf(todayKST());
+  const monthOf = wk => wk.slice(0, 7);
+  const weekNo = wk => Math.ceil(+wk.slice(8, 10) / 7);
+  const weekName = wk => `${+wk.slice(5, 7)}월 ${weekNo(wk)}주차`;
+  function weeksOf(month) {
+    const [y, m] = month.split('-').map(Number), out = [];
+    for (let t = Date.UTC(y, m - 1, 1); new Date(t).getUTCMonth() === m - 1; t += DAY) if (new Date(t).getUTCDay() === KEY_DOW) out.push(iso(t));
+    return out;
+  }
+  function addMonth(month, n) { const [y, m] = month.split('-').map(Number); return iso(Date.UTC(y, m - 1 + n, 1)).slice(0, 7); }
+  const md = s => `${+s.slice(5, 7)}/${+s.slice(8, 10)}`;
+  const range = wk => `${md(iso(utc(wk) - 2 * DAY))}~${md(iso(utc(wk) + 2 * DAY))}`;   // 월 ~ 금
+
+  /* ══════════════════════ 상태 · 불러오기 ══════════════════════ */
+  const S = {rows: new Map(), wk: null, month: null, cur: ''};   // rows = 주(수요일) → 저장소 줄
+  const later = (a, b) => !b || (a || '') > (b || '');
+  const rowOf = wk => S.rows.get(wk) || null;
+  function takeRow(r) {   // 더 새 줄일 때만
+    if (later(r.updated_at, S.cur)) S.cur = r.updated_at;
+    const wk = isDay(r.day) ? weekOf(r.day) : '', old = S.rows.get(wk);
+    if (!wk || (old && old.id === r.id && !later(r.updated_at, old.updated_at))) return false;
+    if (r.deleted_at) { if (!old || old.id !== r.id) return false; S.rows.delete(wk); return true; }
+    S.rows.set(wk, r);
+    return true;
+  }
+  async function loadAll() {
+    for (let off = 0; ; off += 1000) {   // 저장소가 한 번에 1,000줄까지만 줘서 나눠 받는다
+      const r = await rest(`${T}?deleted_at=is.null&select=*&order=id.asc&limit=1000&offset=${off}`) || [];
+      r.forEach(takeRow);
+      if (r.length < 1000) return;
+    }
+  }
+  // 겹쳐 읽기(1분) — 먼저 시작해 늦게 끝난 저장도 놓치지 않게
+  const since = t => (t ? new Date(Date.parse(t) - 60000).toISOString() : '1970-01-01T00:00:00Z');
+  let polling = null, pollT = 0;
+  function poll() {
+    if (polling) return polling;
+    polling = (async () => {
+      const rs = await rest(`${T}?updated_at=gt.${encodeURIComponent(since(S.cur))}&select=*&order=updated_at.asc&limit=1000`) || [];
+      rs.forEach(r => { if (takeRow(r)) syncFields(r); });
+    })().catch(e => console.warn('poll', e)).finally(() => { polling = null; });
+    return polling;
+  }
+  function pollLoop() {
+    clearTimeout(pollT);
+    const live = !!(window.OfficeLive && OfficeLive.ok && OfficeLive.ok());
+    pollT = setTimeout(async () => { if (document.visibilityState !== 'hidden') await poll(); pollLoop(); }, live ? POLL_LIVE_MS : POLL_MS);
+  }
+  // 다른 사람이 고치면 바로 (실시간 알림선 ../office-live.js) — 끊기면 8초 확인 그대로
+  let liveOn = false;
+  function liveBoot() { if (liveOn || !window.OfficeLive) return; liveOn = true; OfficeLive.on([T], () => poll()); }
+
+  // 그 주에 처음 적을 때 줄을 만든다. 두 사람이 동시에 만들어도 저장소가 한 주 한 줄만 받으므로(weekly_meetings_day_one) 있던 줄을 쓴다
+  const making = new Map();
+  function ensureRow(wk) {
+    const r0 = rowOf(wk);
+    if (r0) return Promise.resolve(r0);
+    if (making.has(wk)) return making.get(wk);
+    const p = (async () => {
+      let row = null;
+      try {
+        const r = await rest(`${T}?columns=day,created_by,updated_by`, {method: 'POST', headers: RET, body: JSON.stringify({day: wk, created_by: ME(), updated_by: ME()})});
+        row = r && r[0];
+      } catch (e) { if (e.status !== 409) throw e; }
+      if (!row) { const r = await rest(`${T}?day=eq.${wk}&deleted_at=is.null&select=*&limit=1`); row = r && r[0]; }
+      if (!row) throw new Error('저장소가 답을 안 했어요');
+      takeRow(row);
+      return row;
+    })().finally(() => making.delete(wk));
+    making.set(wk, p);
+    return p;
+  }
+
+  /* ══════════════════════ 주차 탭 ══════════════════════ */
+  function renderWeeks() {
+    const now = thisWeek(), y = S.month.slice(0, 4);
+    $('mName').textContent = (y !== todayKST().slice(0, 4) ? y.slice(2) + '년 ' : '') + (+S.month.slice(5, 7)) + '월';
+    $('wkTabs').innerHTML = weeksOf(S.month).map(w => `<button type="button" class="wk${w === S.wk ? ' on' : ''}" data-w="${w}"${w === S.wk ? ' aria-current="true"' : ''}><b>${weekNo(w)}주차</b><span>${range(w)}</span>${w === now ? '<i>이번 주</i>' : ''}</button>`).join('');
+    $('wkNow').hidden = S.wk === now && S.month === monthOf(now);
+  }
+  function showTab() { const b = $('wkTabs').querySelector('.wk.on'); if (b) { const box = $('wkTabs'); box.scrollLeft = Math.max(0, b.offsetLeft - box.offsetLeft - 12); } }
+  $('wkTabs').addEventListener('click', e => { const b = e.target.closest('.wk'); if (b) pickWeek(b.dataset.w); });
+  $('mPrev').addEventListener('click', () => { S.month = addMonth(S.month, -1); renderWeeks(); showTab(); });
+  $('mNext').addEventListener('click', () => { S.month = addMonth(S.month, 1); renderWeeks(); showTab(); });
+  $('wkNow').addEventListener('click', () => pickWeek(thisWeek()));
+  function pickWeek(wk) {
+    const changed = S.wk !== wk;
+    S.wk = wk; S.month = monthOf(wk);
+    if (changed) { flush(); paintText(); }
+    renderWeeks(); showTab();
+  }
+
+  /* ══════════════════════ 회의 글 ══════════════════════
+     0.7초 뒤 저절로 저장. 주마다 따로 들고 있어서(EST) 저장하는 사이 다른 주로 옮겨도 글이 섞이거나 빠지지 않는다.
+     아직 못 보낸 글은 이 브라우저에도 적어 둔다(DRAFT_KEY) — 저장 전에 창이 닫혀도 다음에 열 때 이어서 저장 */
+  const FEL = {notes: 'mNotes', decisions: 'mDec'};
+  const EST = new Map();   // 주 → {wk, base, val, dirty, saving, again, timer, retryT, fail}
+  const isDirty = e => Object.keys(e.dirty).length > 0;
+  function est(wk) {
+    let e = EST.get(wk);
+    if (!e) {
+      const m = rowOf(wk) || {}, t = {notes: m.notes || '', decisions: m.decisions || ''};
+      e = {wk, base: Object.assign({}, t), val: Object.assign({}, t), dirty: {}, saving: false, again: false, timer: 0, retryT: 0, fail: 0};
+      EST.set(wk, e);
+    }
+    return e;
+  }
+  function drafts() { try { return JSON.parse(lsGet(DRAFT_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function keepDraft(e) {
+    const d = drafts();
+    if (isDirty(e)) { d[e.wk] = {base: {}, val: {}}; Object.keys(e.dirty).forEach(f => { d[e.wk].base[f] = e.base[f]; d[e.wk].val[f] = e.val[f]; }); }
+    else if (d[e.wk]) delete d[e.wk];
+    else return;
+    lsSet(DRAFT_KEY, Object.keys(d).length ? JSON.stringify(d) : null);
+  }
+  function restoreDrafts() {
+    const d = drafts();
+    Object.keys(d).filter(isDay).forEach(wk => {
+      const e = est(wk), x = d[wk] || {};
+      Object.keys(FEL).forEach(f => { if (x.val && typeof x.val[f] === 'string') { e.base[f] = (x.base && x.base[f]) || ''; e.val[f] = x.val[f]; e.dirty[f] = true; } });
+      if (isDirty(e)) saveText(e);
+    });
+  }
+  function setField(f, v) {
+    const el = $(FEL[f]);
+    if (el.value === (v || '')) return;
+    const focused = document.activeElement === el, a = el.selectionStart, b = el.selectionEnd;
+    el.value = v || '';
+    if (focused && a != null) { try { el.setSelectionRange(Math.min(a, el.value.length), Math.min(b, el.value.length)); } catch (e) { /* noop */ } }
+    autoGrow(el);
+  }
+  function paintText() { const e = est(S.wk); Object.keys(FEL).forEach(f => { $(FEL[f]).value = e.val[f]; autoGrow($(FEL[f])); }); setSt(isDirty(e) ? 'saving' : ''); }
+  function syncFields(r) {   // 다른 PC 에서 고친 것 — 내가 고치는 중인 칸은 그대로 두고 저장할 때 합친다
+    const wk = isDay(r.day) ? weekOf(r.day) : '', e = EST.get(wk);
+    if (!e || r.deleted_at) return;
+    Object.keys(FEL).forEach(f => { if (e.dirty[f]) return; e.base[f] = r[f] || ''; e.val[f] = r[f] || ''; if (S.wk === wk) setField(f, r[f]); });
+  }
+  function merge3(base, mine, theirs) {
+    base = base || ''; mine = mine || ''; theirs = theirs || '';
+    if (mine === theirs || theirs === base) return mine;
+    if (mine === base) return theirs;
+    const B = base.split('\n'), M = mine.split('\n'), Th = theirs.split('\n');
+    const cnt = a => { const m = new Map(); a.forEach(x => m.set(x, (m.get(x) || 0) + 1)); return m; };
+    const cB = cnt(B), cM = cnt(M), cT = cnt(Th);
+    const del = new Map(); cB.forEach((n, x) => { const d = n - (cM.get(x) || 0); if (d > 0) del.set(x, d); });
+    const out = [];
+    for (const x of Th) { const d = del.get(x); if (d && (cT.get(x) || 0) <= (cB.get(x) || 0)) { del.set(x, d - 1); continue; } out.push(x); }
+    const add = new Map(); cM.forEach((n, x) => { const d = n - Math.max(cB.get(x) || 0, cT.get(x) || 0); if (d > 0) add.set(x, d); });
+    let at = -1;
+    for (const x of M) {
+      const a = add.get(x);
+      if (a) {
+        let j = at + 1;
+        while (j < out.length && !cB.has(out[j]) && !cM.has(out[j])) j++;   // 그쪽이 새로 넣은 줄 다음에
+        out.splice(j, 0, x); at = j; add.set(x, a - 1); continue;
+      }
+      const j = out.indexOf(x, at + 1);
+      if (j >= 0) at = j;
+    }
+    return out.join('\n');
+  }
+  Object.keys(FEL).forEach(f => {
+    const el = $(FEL[f]);
+    el.addEventListener('input', () => {
+      const e = est(S.wk);
+      e.val[f] = el.value; e.dirty[f] = true;
+      keepDraft(e);
+      setSt('saving'); autoGrow(el);
+      clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 700);
+    });
+    el.addEventListener('blur', () => { const e = est(S.wk); if (isDirty(e)) saveText(e); });
+  });
+  async function saveText(e) {
+    clearTimeout(e.timer); clearTimeout(e.retryT);
+    if (e.saving) { e.again = true; return; }
+    const fs = Object.keys(e.dirty);
+    if (!fs.length) return;
+    e.saving = true;
+    if (S.wk === e.wk) setSt('saving');
+    let ok = false;
+    try {
+      let srv = await ensureRow(e.wk);
+      for (let tries = 0; tries < 4 && !ok; tries++) {
+        const body = {updated_by: ME()}, sent = {};
+        fs.forEach(f => { sent[f] = e.val[f]; body[f] = merge3(e.base[f], sent[f], srv[f]).slice(0, 50000); });
+        const r = await rest(`${T}?id=eq.${srv.id}&updated_at=eq.${encodeURIComponent(srv.updated_at)}`, {method: 'PATCH', headers: RET, body: JSON.stringify(body)});
+        if (r && r.length) {
+          const row = r[0];
+          takeRow(row);
+          fs.forEach(f => {
+            if (e.val[f] === sent[f]) { delete e.dirty[f]; e.base[f] = e.val[f] = row[f] || ''; if (S.wk === e.wk) setField(f, row[f]); }
+            else e.base[f] = sent[f];   // 보내는 사이 더 적음 — 다음 저장은 '보낸 글' 기준으로 합친다
+          });
+          ok = true;
+        } else {
+          // 그사이 다른 사람이 저장함 → 새로 받아서 다시 합침
+          const fresh = await rest(`${T}?day=eq.${e.wk}&deleted_at=is.null&select=*&limit=1`);
+          if (!fresh || !fresh.length) { S.rows.delete(e.wk); srv = await ensureRow(e.wk); } else { takeRow(fresh[0]); srv = fresh[0]; }
+        }
+      }
+      if (!ok) throw new Error('다른 사람과 동시에 고치는 중이에요');
+      e.fail = 0;
+      keepDraft(e);
+      if (S.wk === e.wk) setSt(isDirty(e) ? 'saving' : 'ok');
+    } catch (err) {
+      console.warn('save', err);
+      if (S.wk === e.wk) setSt('err');
+      e.fail = Math.min(e.fail + 1, 5);
+      e.retryT = setTimeout(() => saveText(e), Math.min(2000 * 2 ** (e.fail - 1), 30000));
+    } finally {
+      e.saving = false;
+      if (ok && (e.again || isDirty(e))) { clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 400); }
+      e.again = false;
+    }
+  }
+  function flush() { EST.forEach(e => { if (isDirty(e)) saveText(e); }); }
+  function setSt(k) {
+    const el = $('saveSt');
+    el.className = 'save-st' + (k === 'err' ? ' err' : '');
+    el.textContent = k === 'saving' ? '저장 중…' : k === 'err' ? '저장 안 됨 · 누르면 다시' : k === 'ok' ? '저장됨' : '';
+  }
+  $('saveSt').addEventListener('click', () => { if ($('saveSt').classList.contains('err')) saveText(est(S.wk)); });
+  function autoGrow(el) { const y = scrollY; el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; if (scrollY !== y) scrollTo(0, y); }
+  window.addEventListener('resize', () => Object.keys(FEL).forEach(f => autoGrow($(FEL[f]))));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); else if (S.wk) poll(); });
+  window.addEventListener('pagehide', flush);
+  window.addEventListener('beforeunload', ev => { if ([...EST.values()].some(isDirty)) { flush(); ev.preventDefault(); ev.returnValue = ''; } });
+
+  /* ══════════════════════ 글로 복사 ══════════════════════ */
+  $('copyBtn').addEventListener('click', async () => {
+    const e = est(S.wk), notes = e.val.notes.trim(), dec = e.val.decisions.trim();
+    const out = [`[${weekName(S.wk)} · ${range(S.wk)}] 주간 회의`];
+    if (notes) out.push('', '■ 회의 메모', notes);
+    if (dec) out.push('', '■ 결정 · 할 일', dec);
+    const txt = out.join('\n');
+    try { await navigator.clipboard.writeText(txt); toast('복사했어요 — 카톡에 붙여 넣으면 돼요'); }
+    catch (err) {
+      const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('복사했어요'); } catch (er) { toast('복사하지 못했어요', true); }
+      ta.remove();
+    }
+  });
+
+  /* ══════════════════════ 잠금 · 시작 ══════════════════════ */
+  function isUnlocked() {
+    if (window.__wkmInOffice) return true;
+    return lsGet('brightbeed_unlocked') === '1' && lsGet('brightbeed_auth_ver') === AUTH_VERSION
+      && !(lsGet('brightbeed_role') === 'master' && lsGet('brightbeed_master_ver') !== MASTER_PIN_VER);
+  }
+  async function sha256hex(s) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  $('lockForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const v = $('lockPin').value.trim();
+    let role = null;
+    try { role = PIN_HASH[await sha256hex(v)] || null; } catch (err) { role = null; }
+    if (!role) { $('lockErr').textContent = '접속 코드가 올바르지 않아요'; $('lockPin').value = ''; $('lockPin').focus(); return; }
+    lsSet('brightbeed_unlocked', '1'); lsSet('brightbeed_role', role); lsSet('brightbeed_auth_ver', AUTH_VERSION);
+    if (role === 'master') lsSet('brightbeed_master_ver', MASTER_PIN_VER);
+    $('lock').hidden = true;
+    start();
+  });
+
+  async function start() {
+    $('app').hidden = false;
+    const want = (location.hash || '').slice(1);
+    S.wk = isDay(want) ? weekOf(want) : thisWeek();
+    S.month = monthOf(S.wk);
+    renderWeeks(); showTab();
+    // 못 불러온 채로 적으면 빈 글로 덮을 수 있으니, 다 읽을 때까지 칸을 잠가 둔다
+    Object.values(FEL).forEach(id => { $(id).disabled = true; });
+    for (let n = 0; ; n++) {
+      try { await loadAll(); break; }
+      catch (e) { console.warn('load', e); if (n === 0) toast('회의록을 못 불러왔어요 — 다시 해 볼게요', true); await new Promise(r => setTimeout(r, Math.min(2000 * (n + 1), 15000))); }
+    }
+    Object.values(FEL).forEach(id => { $(id).disabled = false; });
+    EST.clear();
+    restoreDrafts();
+    paintText();
+    pollLoop();
+    if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
+  }
+  window.__wkmTest = {merge3, weekOf, weeksOf, weekName, range};   // 확인용
+  if (isUnlocked()) start(); else { $('lock').hidden = false; setTimeout(() => $('lockPin').focus(), 50); }
+})();
+</script>
+<script src="../office-live.js?v=1" defer></script>
+</body>
+</html>

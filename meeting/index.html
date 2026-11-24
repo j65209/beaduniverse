@@ -26,6 +26,17 @@
           try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
         });
       });
+      // 맨 위 '주간 회의록' 탭 — 오피스 안에선 그 자리에서 바꿔 끼운다 (bbToolSwap)
+      Array.prototype.forEach.call(document.querySelectorAll('a[data-swap]'), function (a) {
+        a.href = inOffice ? home + '#' + a.dataset.swap : home + a.dataset.swap + '/';   // 회사 주소 입구에선 <base> 가 깃허브라 지금 주소 기준으로
+        if (!inOffice) return;
+        a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          try { window.parent.bbToolSwap(a.dataset.swap); }
+          catch (err) { window.parent.location.hash = a.dataset.swap; window.parent.location.reload(); }   // 배포 전부터 열려 있던 오피스
+        });
+      });
     });
   })();
 </script>
@@ -37,14 +48,16 @@
      사장님 요청 ②: "매주 수요일 · 오후2시까지 · 각각 브랜드별로 벤치마킹 or 래퍼런스 인스타그램 주소 넣기 / 좌측 목록은 지워주고 상단에서 날짜 11월 1주차 2주차 이런식으로 /
      배지 선택 가능하게 · 중복안되게 · 사람마다"
      사장님 요청 ③: "다들 인스타그램 주소 기재할때 어떤 브랜드 래퍼런스 주소인지 선택하게 하는거라" → 사람이 브랜드를 맡는 게 아니라 주소마다 브랜드를 고른다
+     사장님 요청 ④: "벤치마킹 or 레퍼런스 같이 합쳐줘 버튼" → 둘 중 고르기 없음, '벤치마킹 · 레퍼런스' 한 칸 (카드의 종류 배지도 없음). 저장소 tag 는 옛 줄에만 있고 새 줄은 비움
+     사장님 요청 ⑤: "마케팅 회의록 옆에 주간 회의록 만들어줘" → weekly/ (맨 위 탭으로 오감)
      · 맨 위 = 달 ‹ 11월 › + 주차 탭 (그 달의 첫째 수요일 = 1주차). 회의 줄(mkt_meetings)은 그 주에 처음 무언가 넣을 때 저절로 생긴다 (수요일 하루에 한 줄)
      · 안내 띠 = 매주 수요일 오후 2시까지 + 남은 시간 · 아직 안 넣은 사람 · 브랜드별 개수(누르면 그 브랜드 주소만 보기)
-     · 사람마다 세로 칸(디자인팀 · 마케팅팀 · MD팀 순): 브랜드 배지 하나 고르기 → [벤치마킹 | 레퍼런스] → 주소 붙여넣기.
-       브랜드를 안 고르고 주소부터 넣으면 "어떤 브랜드 레퍼런스예요?" 를 묻고, 배지를 누르는 순간 저장. 저장 뒤엔 배지 선택이 풀려 다음 주소도 다시 고른다
-     · 카드의 브랜드 · 벤치마킹/레퍼런스 배지를 누르면 나중에도 바꿀 수 있다
+     · 사람마다 세로 칸(디자인팀 · 마케팅팀 · MD팀 순): 브랜드 배지 하나 고르기 → '벤치마킹 · 레퍼런스' 주소 붙여넣기.
+       브랜드를 안 고르고 주소부터 넣으면 "이 주소는 어떤 브랜드예요?" 를 묻고, 배지를 누르는 순간 저장. 저장 뒤엔 배지 선택이 풀려 다음 주소도 다시 고른다
+     · 카드의 브랜드 배지를 누르면 나중에도 바꿀 수 있다
      · 주소 = 한 주에 같은 계정 · 게시물은 한 번만, 사람이 달라도 (mkt_meeting_links_one). 또 넣으면 빨간 안내만 뜨고 안 들어감. 다른 주에 나왔던 것은 회색 안내
      · 마우스를 올리면 인스타 미리보기(휴대폰은 누르면)
-     · 저장 = 오피스 슈퍼베이스 mkt_meetings · mkt_meeting_links(주소 한 줄씩, brand · tag). 지우기는 deleted_at 만 */
+     · 저장 = 오피스 슈퍼베이스 mkt_meetings · mkt_meeting_links(주소 한 줄씩, brand). 지우기는 deleted_at 만 */
   :root {
     --bg: #f5f6f8; --panel: #fff; --line: #e5e7eb; --line2: #cfd4dc; --text: #1f2329; --t2: #4b5563; --t3: #8b93a1;
     --red: #dc2626; --red-t: #fef2f2; --soft: #f1f3f6;
@@ -63,8 +76,11 @@
   .top { position: sticky; top: 0; z-index: 30; min-height: var(--top); display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
   .back { color: var(--t2); text-decoration: none; font-weight: 600; font-size: 13px; white-space: nowrap; padding: 6px 8px; border-radius: 8px }
   .back:hover { background: var(--soft) }
-  .ttl { font-weight: 800; font-size: 15px; letter-spacing: -.2px; white-space: nowrap; display: flex; align-items: center; gap: 8px }
-  .ttl svg { width: 20px; height: 20px }
+  .back i { font-style: normal }
+  .ttl { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; background: var(--soft); flex: none }
+  .ttl b, .ttl a { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 600; letter-spacing: -.2px; white-space: nowrap; text-decoration: none; color: var(--t2) }
+  .ttl b { background: #fff; color: var(--text); font-weight: 800; box-shadow: 0 1px 3px rgba(15, 23, 42, .13) }
+  .ttl a:hover { color: var(--text) }
   .top-r { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none }
   .save-st { font-size: 12px; color: var(--t3); white-space: nowrap }
   .save-st.err { color: var(--red); font-weight: 600; cursor: pointer }
@@ -137,7 +153,7 @@
   .col-h .ct { margin-left: auto; font-size: 12px; color: var(--t3); font-weight: 600; white-space: nowrap }
   .col-h .ct.w { color: var(--red); font-weight: 700 }
 
-  /* 주소 넣기 — 브랜드 배지 → 벤치마킹/레퍼런스 → 주소 */
+  /* 주소 넣기 — 브랜드 배지 → '벤치마킹 · 레퍼런스' 주소 */
   .ent { padding: 0 10px 10px }
   .ask { font-size: 12.5px; font-weight: 600; color: var(--t2); padding: 0 2px 6px }
   .ent.need .ask { color: var(--red); font-weight: 700 }
@@ -146,9 +162,7 @@
   .bd:hover { border-color: var(--text) }
   .bd.on { background: var(--text); border-color: var(--text); color: #fff }
   .ent.need .bds { margin: 0 -4px 8px; padding: 4px; border-radius: 12px; box-shadow: 0 0 0 1.5px var(--red) }
-  .seg { display: flex; gap: 3px; background: var(--soft); border-radius: 9px; padding: 3px; margin-bottom: 6px }
-  .seg button { flex: 1; height: 28px; border: 0; border-radius: 7px; background: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--t2) }
-  .seg button.on { background: #fff; color: var(--text); font-weight: 700; box-shadow: 0 1px 3px rgba(15, 23, 42, .13) }
+  .kindb { display: block; width: 100%; height: 34px; border: 0; border-radius: 9px; background: var(--soft); padding: 0 10px; margin-bottom: 6px; cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--text) }
   .add-in { display: flex; gap: 6px }
   .add-in input { flex: 1; min-width: 0; height: 36px; border: 1px solid var(--line2); border-radius: 8px; padding: 0 10px; outline: none; background: #fff; font-size: 13px }
   .add-in input::placeholder { color: var(--t3) }
@@ -169,11 +183,8 @@
   .lk-s { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 11.5px; color: var(--t3); margin-top: 5px; min-width: 0 }
   .lk-s span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
   .bb { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line2); background: #fff; color: var(--text); font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap }
-  .bb:hover, .tg:hover { border-color: var(--t3) }
+  .bb:hover { border-color: var(--t3) }
   .bb.none { color: var(--red); border-style: dashed; border-color: var(--red) }
-  .tg { flex: none; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--soft); color: var(--t2); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap }
-  .tg.ref { background: #fff }
-  .tg.none { background: #fff; color: var(--t3); border-style: dashed; border-color: var(--line2) }
   .lk-m { font-size: 12.5px; color: var(--t2); margin-top: 5px; white-space: pre-wrap; word-break: break-word }
   .lk-me { width: 100%; margin-top: 5px; border: 1px solid var(--text); border-radius: 7px; padding: 5px 7px; font-size: 12.5px; outline: none; resize: vertical; min-height: 34px; background: #fff }
   .lk-p { font-size: 11.5px; color: var(--t3); margin-top: 4px }
@@ -253,6 +264,10 @@
   @media (max-width: 860px) {
     :root { --colw: min(84vw, 310px); --wkh: 0px }
     .top { padding: 8px 10px; gap: 6px }
+    .back { padding: 6px 4px }
+    .back i, #memBtn span { display: none }
+    #memBtn { padding: 0 8px }
+    .ttl b, .ttl a { padding: 0 9px; font-size: 13px }
     .weeks { position: static; padding: 8px 10px; gap: 8px; flex-wrap: wrap }   /* 한 달 주차가 한눈에 — 달은 윗줄, 주차는 아랫줄 */
     .wk-t { order: 3; flex: none; width: 100% }
     #wkNow { margin-left: auto }
@@ -265,8 +280,7 @@
     .due { margin-left: 0; text-align: left; width: 100% }
     .notes { grid-template-columns: 1fr }
     .add-in input { font-size: 16px; height: 40px }   /* 아이폰이 칸을 누를 때 화면을 키우지 않게 16px */
-    .add-in .btn, .seg button { height: 40px }
-    .seg button { height: 34px }
+    .add-in .btn { height: 40px }
     .bd { height: 34px }
     .lk-me, .note textarea, .addp input, .addp select { font-size: 16px }
     .save-st { display: none }
@@ -287,11 +301,11 @@
 
 <div id="app" hidden>
   <header class="top">
-    <a class="back" href="../">← 오피스</a>
-    <div class="ttl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg><span>마케팅 회의록</span></div>
+    <a class="back" href="../" aria-label="오피스로">← <i>오피스</i></a>
+    <nav class="ttl" aria-label="회의록 고르기"><b aria-current="page">마케팅 회의록</b><a href="../weekly/" data-swap="weekly">주간 회의록</a></nav>
     <div class="top-r">
       <span class="save-st" id="saveSt"></span>
-      <button class="btn" id="memBtn" type="button">참여자 <b id="memN"></b></button>
+      <button class="btn" id="memBtn" type="button" aria-label="참여자"><span>참여자</span> <b id="memN"></b></button>
       <button class="btn ico" id="moreBtn" type="button" aria-label="더보기" title="더보기">
         <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
       </button>
@@ -385,8 +399,6 @@
   const bName = k => (BMAP[k] ? BMAP[k].name : k || '브랜드 없음');
   const bRank = k => { const i = BRANDS.findIndex(b => b.k === k); return i < 0 ? 99 : i; };
   const bDot = k => `<i class="dot" style="background:${BMAP[k] ? BMAP[k].dot : '#cbd5e1'}"></i>`;
-  const TAGS = [['bench', '벤치마킹'], ['ref', '레퍼런스']];
-  const TAG_NAME = {bench: '벤치마킹', ref: '레퍼런스'};
 
   // 팀 (칸 순서 = 사장님 말씀 순서: 디자인팀 → 마케팅팀 → 엠디팀)
   const TEAMS = [
@@ -572,8 +584,8 @@
     filter: null,          // 이 브랜드 주소만 보기 (안내 띠에서 고름)
     curM: '', curL: '',    // 마지막으로 받은 updated_at
   };
-  const drafts = new Map();   // 사람 → {text, brand, tag, ask, warn:[글]} (칸 입력 · 고른 브랜드 · 브랜드 묻는 중 · 중복 안내)
-  const draftOf = p => { if (!drafts.has(p)) drafts.set(p, {text: '', brand: null, tag: 'bench', ask: false, warn: []}); return drafts.get(p); };
+  const drafts = new Map();   // 사람 → {text, brand, ask, warn:[글]} (칸 입력 · 고른 브랜드 · 브랜드 묻는 중 · 중복 안내)
+  const draftOf = p => { if (!drafts.has(p)) drafts.set(p, {text: '', brand: null, ask: false, warn: []}); return drafts.get(p); };
   let editMemo = null;        // 메모 고치는 주소 id
   let boardPending = false;
 
@@ -943,9 +955,9 @@
       <div class="col-h"><span class="av">${esc(c.name.slice(-2))}</span><span class="nm">${esc(c.name)}</span>${c.off ? '<span class="muted" style="font-size:11px">(참여자 아님)</span>' : ''}
         <span class="ct${ct === '못 넣음' ? ' w' : ''}">${ct}</span></div>
       <div class="ent${d.ask ? ' need' : ''}">
-        <div class="ask">${d.ask ? '이 주소는 어떤 브랜드 레퍼런스예요?' : '어떤 브랜드 레퍼런스예요?'}</div>
+        <div class="ask">${d.ask ? '이 주소는 어떤 브랜드예요?' : '어떤 브랜드예요?'}</div>
         <div class="bds" role="radiogroup" aria-label="${esc(c.name)} 브랜드 고르기">${BRANDS.map(b => `<button type="button" class="bd${d.brand === b.k ? ' on' : ''}" role="radio" aria-checked="${d.brand === b.k}" data-act="brand" data-b="${b.k}">${bDot(b.k)}${esc(b.name)}</button>`).join('')}</div>
-        <div class="seg" role="group" aria-label="종류">${TAGS.map(([t, n]) => `<button type="button" data-act="seg" data-t="${t}" class="${d.tag === t ? 'on' : ''}" aria-pressed="${d.tag === t}">${n}</button>`).join('')}</div>
+        <button type="button" class="kindb" data-act="kind">벤치마킹 · 레퍼런스</button>
         <form class="add-in" data-p="${esc(c.name)}"><input type="text" inputmode="url" enterkeyhint="done" autocomplete="off" autocapitalize="off" placeholder="인스타 주소 · @아이디" value="${esc(d.text)}" aria-label="${esc(c.name)} 주소 넣기"><button class="btn" type="submit">넣기</button></form>
         ${warn}
       </div>
@@ -972,7 +984,7 @@
     return `<div class="lk k-${esc(l.kind)}" data-id="${esc(l.id)}">
       <div class="lk-ic">${ICON[l.kind] || ICON.link}</div>
       <div class="lk-b"><div class="lk-t">${esc(linkTitle(l))}</div>
-        <div class="lk-s"><button type="button" class="bb${BMAP[l.brand] ? '' : ' none'}" data-act="cbrand" title="누르면 브랜드 바꾸기">${BMAP[l.brand] ? bDot(l.brand) : ''}${esc(BMAP[l.brand] ? bName(l.brand) : '브랜드 고르기')}</button><button type="button" class="tg ${l.tag === 'ref' ? 'ref' : l.tag === 'bench' ? '' : 'none'}" data-act="tag" title="누르면 벤치마킹 ↔ 레퍼런스">${TAG_NAME[l.tag] || '종류'}</button>${note ? `<span>${esc(note)}</span>` : ''}</div>${memo}${p}</div>
+        <div class="lk-s"><button type="button" class="bb${BMAP[l.brand] ? '' : ' none'}" data-act="cbrand" title="누르면 브랜드 바꾸기">${BMAP[l.brand] ? bDot(l.brand) : ''}${esc(BMAP[l.brand] ? bName(l.brand) : '브랜드 고르기')}</button>${note ? `<span>${esc(note)}</span>` : ''}</div>${memo}${p}</div>
       <div class="lk-a">
         <a href="${esc(l.url)}" target="_blank" rel="noopener" title="새 탭으로 열기" aria-label="새 탭으로 열기">${ICON.open}</a>
         <button type="button" data-act="memo" title="메모" aria-label="메모">${ICON.edit}</button>
@@ -1030,7 +1042,7 @@
       const m = await ensureMeeting(wk), {ok, warn} = sift(parsed, person, m.id);
       if (ok.length) {
         const base = Date.now();
-        const rows = ok.map((p, i) => ({meeting_id: m.id, person, brand, tag: d.tag, url: p.url, kind: p.kind, ig_user: p.ig_user, ig_code: p.ig_code, memo: '', pos: base + i, created_by: ME()}));
+        const rows = ok.map((p, i) => ({meeting_id: m.id, person, brand, url: p.url, kind: p.kind, ig_user: p.ig_user, ig_code: p.ig_code, memo: '', pos: base + i, created_by: ME()}));
         const r = await rest(T_L, {method: 'POST', headers: RET, body: JSON.stringify(rows)});
         (r || []).forEach(x => { S.links.set(x.id, x); if (later(x.updated_at, S.curL)) S.curL = x.updated_at; });
       }
@@ -1075,12 +1087,11 @@
     if (act) {
       const a = act.dataset.act, col = act.closest('.col'), person = col ? col.dataset.p : '';
       if (a === 'brand') { pickBrand(person, act.dataset.b); return; }
-      if (a === 'seg') { draftOf(person).tag = act.dataset.t; renderBoard(true); focusAdd(person); return; }
+      if (a === 'kind') { const i = col.querySelector('.add-in input'); if (i) i.focus(); return; }
       if (a === 'okwarn') { draftOf(person).warn = []; renderBoard(true); return; }
       const card = act.closest('.lk'); if (!card) return;
       const l = S.links.get(card.dataset.id); if (!l) return;
-      if (a === 'tag') setTag(l);
-      else if (a === 'cbrand') { e.stopPropagation(); brandMenu(act, l); }
+      if (a === 'cbrand') { e.stopPropagation(); brandMenu(act, l); }
       else if (a === 'memo') { editMemo = l.id; renderBoard(true); const t = board.querySelector(`.lk-me[data-id="${cssEsc(l.id)}"]`); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
       else if (a === 'del') delLink(l);
       return;
@@ -1108,10 +1119,6 @@
     const v = t.value.trim().slice(0, 2000);
     if (v === (l.memo || '')) { renderBoard(true); return; }
     try { await patchLink(l, {memo: v}); } catch (e) { toast('메모를 저장하지 못했어요: ' + e.message, true); }
-    renderBoard(true);
-  }
-  async function setTag(l) {
-    try { await patchLink(l, {tag: l.tag === 'bench' ? 'ref' : 'bench'}); } catch (e) { toast('바꾸지 못했어요: ' + e.message, true); }
     renderBoard(true);
   }
   // 카드의 브랜드 배지 → 다른 브랜드로 바꾸기
@@ -1289,7 +1296,7 @@
     TEAMS.forEach(t => cols.filter(c => c.team === t.k).forEach(c => {
       const ls = all.filter(l => l.person === c.name).sort((a, b) => bRank(a.brand) - bRank(b.brand) || b.pos - a.pos);
       out.push('', `■ ${t.name} ${c.name} (${ls.length})`);
-      ls.forEach(l => out.push(`- [${bName(l.brand)}] ${TAG_NAME[l.tag] ? TAG_NAME[l.tag] + ' ' : ''}${l.url}${l.memo ? '  ' + l.memo.replace(/\n/g, ' ') : ''}`));
+      ls.forEach(l => out.push(`- [${bName(l.brand)}] ${l.url}${l.memo ? '  ' + l.memo.replace(/\n/g, ' ') : ''}`));
     }));
     const e = est(S.wk), notes = e.val.notes.trim(), dec = e.val.decisions.trim();
     if (notes) out.push('', '■ 회의 메모', notes);

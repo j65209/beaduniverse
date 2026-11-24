@@ -6156,6 +6156,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-feed .sub-module-tag{color:#a21caf;border-color:rgba(192,38,211,.5);border-style:solid}
   .sub-module.m-meeting {--m-color:#2563eb;--m-border:rgba(37,99,235,.42)}
   .sub-module.m-meeting .sub-module-tag{color:#1d4ed8;border-color:rgba(37,99,235,.5);border-style:solid}
+  .sub-module.m-weekly {--m-color:#0f766e;--m-border:rgba(15,118,110,.42)}
+  .sub-module.m-weekly .sub-module-tag{color:#0f766e;border-color:rgba(15,118,110,.5);border-style:solid}
   /* .sub-module 의 display:flex 가 hidden 속성을 덮어쓰므로 명시 (권한 카드 숨김: 대표 전용 금고 등) */
   .sub-module[hidden]{display:none}
 
@@ -12915,11 +12917,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== ERP전산팀(erp/) · 시딩 마스터(seeding/) — MD팀 시트 창처럼 가장자리에서 살짝 띄운 둥근 창 (2026-11-20 사용자 "MD팀처럼 erp도 좌/우 여백 조금만,
      erp 디자인과 동일한 서식들도"). 상단 바 아래를 꽉 채우던 iframe 둘레에 오피스 바탕색 여백 + 둥근 테두리. VOC 전산 · MD팀 시트는 이미 이 모양 ===== */
-  #viewErp,#viewSeeding,#viewFeed,#viewMeeting,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
-  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMeeting > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  #viewErp,#viewSeeding,#viewFeed,#viewMeeting,#viewWeekly,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
+  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
   @media (max-width:720px){
-    #viewErp,#viewSeeding,#viewFeed,#viewMeeting,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
-    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMeeting > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
+    #viewErp,#viewSeeding,#viewFeed,#viewMeeting,#viewWeekly,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
+    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
   }
 
   /* ===== 물류팀 다듬기 (2026-11-20 사용자 "모서리 자연스럽게 둥글게 · 텍스트 위치 최적화") — 틀 모서리를 위 출고 전광판(14px)에 맞추고,
@@ -13494,6 +13496,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-icon">📝</div>
           <div class="sub-module-title">마케팅 회의록</div>
           <div class="sub-module-sub">매주 수요일 오후 2시까지 — 브랜드를 골라 벤치마킹 · 레퍼런스 인스타 주소 넣기</div>
+          <div class="sub-module-tag">NEW</div>
+        </div>
+        <!-- 주간 회의록 = weekly/ (2026-11-24 사장님 "마케팅 회의록 옆에 주간 회의록 만들어줘") — 주차마다 회의 메모 · 결정 두 칸, 전 직원. 저장 = 슈퍼베이스 weekly_meetings.
+             data-next-to = 자주 쓰는 순으로 카드가 옮겨 다녀도 늘 마케팅 회의록 바로 옆 (homeTidy) -->
+        <div class="sub-module m-weekly" data-next-to="m-meeting" onclick="openWeeklyPage()">
+          <div class="sub-module-icon">🗓️</div>
+          <div class="sub-module-title">주간 회의록</div>
+          <div class="sub-module-sub">주차마다 회의 메모 · 결정 · 할 일 — 누구나 적고 바로 저장</div>
           <div class="sub-module-tag">NEW</div>
         </div>
         <!-- 시딩 마스터 = 자체 저장 엑셀식 프로그램 (seeding/, 2026-11-20 — 구글시트 'x시딩 및 시호님시딩' 에서 옮김, 전 직원, 따로 앱으로도 설치) -->
@@ -16837,6 +16847,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <div class="view view-tool" id="viewSeeding" hidden></div>
   <div class="view view-tool" id="viewFeed" hidden></div>
   <div class="view view-tool" id="viewMeeting" hidden></div>
+  <div class="view view-tool" id="viewWeekly" hidden></div>
   <div class="view view-tool" id="viewMileage" hidden></div>
 
   </main>
@@ -24082,8 +24093,8 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewMeeting','viewMileage'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewMeeting:'meeting',viewMileage:'mileage'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewMeeting','viewWeekly','viewMileage'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewMeeting:'meeting',viewWeekly:'weekly',viewMileage:'mileage'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -24933,6 +24944,8 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     feed:{view:'viewFeed',path:'feed/',title:'인스타 피드 시뮬레이터',keep:true,bridge:false},
     // 마케팅 회의록(meeting/, 업무용 툴 카드, 2026-11-24) — 사람별 세로 칸에 인스타 링크 · 미리보기 · 중복 경고. 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links
     meeting:{view:'viewMeeting',path:'meeting/',title:'마케팅 회의록',keep:true,bridge:false},
+    // 주간 회의록(weekly/, 마케팅 회의록 바로 옆 카드, 2026-11-24) — 주차마다 글 두 칸. 저장 = 슈퍼베이스 weekly_meetings
+    weekly:{view:'viewWeekly',path:'weekly/',title:'주간 회의록',keep:true,bridge:false},
     // 마일리지 항공권(mileage/, 옛 이름 마일리지 캘린더 — 11-22 사장님 "마일리지 항공권으로 네이밍 변경", '관리자 전용' 폴더, 2026-11-22) — 대표 전용 금고와 같은 판정 (관리자 PIN + 전승훈 · 전수빈)
     mileage:{view:'viewMileage',path:'mileage/',title:'마일리지 항공권',keep:false,bridge:false,
       access(){ try{ return execHasAccess(); }catch(e){ return true; } }},
@@ -25090,6 +25103,14 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     setTimeout(()=>{ if(el&&!el.hidden&&toolKeyOf(history.state&&history.state.view)===key) home(); },450);
   }
   window.bbToolClose=bbToolClose;
+  // 도구 화면 안의 탭(마케팅 회의록 ↔ 주간 회의록) — 기록을 쌓지 않고 바꿔 끼운다 ('← 오피스' 는 그대로 홈으로)
+  function bbToolSwap(key){
+    const t=TOOL_PAGES[key]; if(!t) return;
+    if(!toolKeyOf(history.state&&history.state.view)){ openToolPage(key); return; }
+    history.replaceState({view:t.view},'','#'+VIEW_HASH[t.view]);
+    applyView(t.view);
+  }
+  window.bbToolSwap=bbToolSwap;
   function openToolPage(key){
     const t=TOOL_PAGES[key]; if(!t) return;
     if(t.access&&!t.access()){ toast('관리자 전용 화면입니다','err'); return; }   // 기록(#sns)을 남기기 전에 막는다
@@ -25265,6 +25286,9 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   /* 마케팅 회의록 — meeting/ (디자인 · 마케팅 · MD팀 사람별 칸 · 인스타 미리보기 · 중복 계정 경고) */
   function openMeetingPage(){ openToolPage('meeting'); }
   window.openMeetingPage=openMeetingPage;
+  /* 주간 회의록 — weekly/ (주차마다 회의 메모 · 결정 두 칸, 전 직원) */
+  function openWeeklyPage(){ openToolPage('weekly'); }
+  window.openWeeklyPage=openWeeklyPage;
   window.openFeedPage=openFeedPage;
   /* 마일리지 항공권 — mileage/ (2026-11-22 사장님 "대표만 사용 할 수 있는 앱 · 30분마다 대한항공 마일리지로 예약 가능한 프레스티지, 일등석 가능한 나라 전부 캘린더로").
      자료 = 로마일 2석 이상(맥미니 ke-roamile) + 대한항공 공개 현황 교차 확인(맥미니 ke-award) → Supabase ke_r2_* · ke_award_*. 카드는 '관리자 전용' 폴더 — execHasAccess 일 때만 (execRefreshAccess) */
@@ -48226,6 +48250,8 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       // 점수는 정수로 묶어서 비교 — 한두 번 차이로 자리가 뒤바뀌지 않게, 같으면 원래 순서
       const sc=el=>Math.floor(score(u,keyOf(el),now));
       items.sort((a,b)=>(sc(b)-sc(a)) || (+a.dataset.ord - +b.dataset.ord)).forEach(el=>host.appendChild(el));
+      // 짝 카드 — 늘 그 카드 바로 옆 (주간 회의록 = 마케팅 회의록 옆)
+      items.forEach(el=>{ const to=el.dataset.nextTo, t=to && items.find(x=>x!==el && x.classList.contains(to)); if(t) t.after(el); });
     }
     function fixGroup(host, sel){
       let saved=null;
