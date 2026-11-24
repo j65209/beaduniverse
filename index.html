@@ -5865,6 +5865,26 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .hcc-row:hover{background:rgba(212,175,55,.06);border-color:rgba(212,175,55,.35)}
   .hcc-row-date{font-family:var(--mono);font-size:11.5px;color:var(--text-1);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
   .hcc-row-date.today{color:#854d0e;font-weight:700}
+  /* 오늘 · 내일 강조 (2026-11-24 사장님 "내일은 강조, 오늘은 더 강조해줘") — 왼쪽 띠는 inset 그림자라 칸 위치가 안 밀린다 */
+  .hcc-row.is-tomorrow{
+    background:rgba(212,175,55,.08);border-color:rgba(212,175,55,.45);
+    box-shadow:inset 3px 0 0 rgba(212,175,55,.75);
+  }
+  .hcc-row.is-tomorrow:hover{background:rgba(212,175,55,.13)}
+  .hcc-row-date.tomorrow{color:#854d0e;font-weight:800}
+  .hcc-row.is-tomorrow .hcc-row-title{font-weight:700}
+  .hcc-row.is-today{
+    background:linear-gradient(90deg,rgba(212,175,55,.30),rgba(212,175,55,.14));
+    border-color:#c9a227;
+    box-shadow:inset 5px 0 0 #b8901f,0 2px 10px rgba(184,144,31,.22);
+  }
+  .hcc-row.is-today:hover{background:linear-gradient(90deg,rgba(212,175,55,.36),rgba(212,175,55,.18));border-color:#b8901f}
+  .hcc-row-date.today{
+    justify-self:start;padding:2px 9px;border-radius:999px;
+    background:linear-gradient(135deg,#d4af37,#b8901f);color:#fff;font-weight:800;
+  }
+  .hcc-row-date.today .hcc-row-time{color:rgba(255,255,255,.9)}
+  .hcc-row.is-today .hcc-row-title{font-weight:800;font-size:13.5px;color:#422006}
   .hcc-row-time{font-family:var(--mono);font-size:11px;color:var(--text-2);font-weight:500;margin-left:4px}
   .hcc-row-cat{
     padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:600;
@@ -48504,14 +48524,17 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     card.hidden = false;
     const events = cecLoad();
     const today = _cecTodayStr();
+    const _tm = new Date(); _tm.setDate(_tm.getDate() + 1);
+    const tomorrow = `${_tm.getFullYear()}-${String(_tm.getMonth()+1).padStart(2,'0')}-${String(_tm.getDate()).padStart(2,'0')}`;
     const upcoming = events
       .filter(e => (e.date||'') >= today)
       .sort(_cecCmpDatetime);
     const meta = document.getElementById('homeCeoCalMeta');
     const todayCount = upcoming.filter(e => e.date === today).length;
+    const tomorrowCount = upcoming.filter(e => e.date === tomorrow).length;
     if(meta){
       if(!upcoming.length) meta.textContent = '앞으로 예정된 일정 없음';
-      else meta.textContent = `오늘 ${todayCount}건 · 예정 ${upcoming.length}건`;
+      else meta.textContent = `오늘 ${todayCount}건${tomorrowCount ? ` · 내일 ${tomorrowCount}건` : ''} · 예정 ${upcoming.length}건`;
     }
     const list = document.getElementById('homeCeoCalList');
     if(!list) return;
@@ -48525,12 +48548,15 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     list.innerHTML = shown.map(ev=>{
       const cat = CEC_CATS[ev.category] || CEC_CATS.etc;
       const color = _cecColor(ev);
+      /* 오늘 = 가장 강하게, 내일 = 강조 (2026-11-24 사장님 "내일은 강조, 오늘은 더 강조해줘") */
       const isToday = ev.date === today;
-      const dateLabel = isToday ? '오늘' : _cecFmtDate(ev.date);
-      const dateCls = 'hcc-row-date' + (isToday ? ' today' : '');
+      const isTomorrow = ev.date === tomorrow;
+      const dateLabel = isToday ? '오늘' : isTomorrow ? '내일' : _cecFmtDate(ev.date);
+      const dateCls = 'hcc-row-date' + (isToday ? ' today' : isTomorrow ? ' tomorrow' : '');
+      const rowCls = 'hcc-row' + (isToday ? ' is-today' : isTomorrow ? ' is-tomorrow' : '');
       const timeHtml = ev.time ? `<span class="hcc-row-time">${_cecEsc(ev.time)}</span>` : '';
       const catLabel = ev.createdBy ? `${cat.label} · ${ev.createdBy}` : cat.label;
-      return `<div class="hcc-row" onclick="cecOpenEditModal('${ev.id}')">
+      return `<div class="${rowCls}" onclick="cecOpenEditModal('${ev.id}')">
         <div class="${dateCls}">${_cecEsc(dateLabel)}${timeHtml}</div>
         <span class="hcc-row-cat" style="--cev-c:${color}">${_cecEsc(catLabel)}</span>
         <div class="hcc-row-title">${_cecEsc(ev.title || '(제목 없음)')}</div>
