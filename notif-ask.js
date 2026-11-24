@@ -5,6 +5,8 @@
    · 안 누름(default) = [알림 허용] → 크롬이 묻는 창에서 '허용'. 차단(denied) = 코드로는 못 풀어서 주소창에서 푸는 법을 그림으로, 풀면 저절로 알아챈다.
    · 허용되면 시험 알림을 한 번 띄우고 보이는지 묻는다 — 안 보이면 윈도우(맥) 알림 켜는 법.
    · [나중에] = 1시간 뒤 다시. 글을 쓰는 중이면 다 쓸 때까지 기다렸다 띄운다. 탭이 여럿이어도 한 곳에서 끝내면 같이 닫힌다.
+   · 다시 띄우기 = 서버에서 notif_calls 에 kind 'ask' 한 줄(notif-call.js 가 받아 BBNotifAsk.again 을 부름) — [나중에]를 눌렀어도 바로 다시, 아직 안 고른 PC 는 크롬의 허용 · 차단 창을 바로 띄운다
+     (사장님 "알림신청 허용 거부 다시 띄워"). 크롬이 여러 번 무시하면 스스로 막으므로 한 번 부를 때 한 번만.
    · '보여요 · 안 보여요' 답은 업무일지 알림 진단 칸(brightbeed_notif_diag_v1)에 적어 notif-state.js 가 올린다(여기서는 서버에 아무것도 안 보냄). index.html 이 맨 끝에서 부른다 */
 (function () {
 'use strict';
@@ -19,7 +21,7 @@ const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;
 const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
 const me = () => ls('brightbeed_unlocked') === '1' ? String(ls('brightbeed_diary_me') || '').trim() : '';
 const perm = () => { try { return Notification.permission; } catch (e) { return 'granted'; } };
-let el = null, step = '', tried = false, back = null;
+let el = null, step = '', tried = false, back = null, auto = false;
 
 /* ── 그림 ── */
 const LOCK = '<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="6" r="2.2"/><path d="M10.5 6H17M3 6h1.5"/><circle cx="13" cy="14" r="2.2"/><path d="M3 14h7.5M15.5 14H17"/></svg>';
@@ -116,13 +118,17 @@ function tick() {
   if (!me()) { hide(); return; }
   if (el) { if (p === 'denied' && (step === 'ask' || (step === 'wait' && tried))) show('denied'); if (p === 'default' && step === 'denied') show('ask'); return; }
   if (document.hidden || Date.now() < (+ls(KEY) || 0) || busy()) return;
-  show(p === 'denied' ? 'denied' : 'ask');
+  if (p === 'denied') { auto = false; return show('denied'); }
+  if (auto) { auto = false; return void ask(); }          // 다시 띄우기 — 크롬 창을 바로
+  show('ask');
 }
+/* 다시 띄우기 — [나중에]를 풀고 지금 띄운다. 이미 '보여요'라고 한 PC 는 그대로 둔다 */
+function again() { ls(KEY, '0'); auto = perm() === 'default'; hide(); setTimeout(tick, 300); }
 document.addEventListener('keydown', e => { if (e.key !== 'Escape' || !el) return; e.stopPropagation(); later(); }, true);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(tick, 400); });
 addEventListener('storage', e => { if (el && ((e.key === KEY && Date.now() < (+ls(KEY) || 0)) || (e.key === OK && ls(OK)))) hide(); });
 try { navigator.permissions.query({name: 'notifications'}).then(p => { p.addEventListener('change', () => setTimeout(tick, 100)); }).catch(() => {}); } catch (e) { /* 옛 브라우저 */ }
 setInterval(tick, 10e3);
 setTimeout(tick, 5000);          // 오피스 첫 화면을 먼저 그린 뒤
-window.BBNotifAsk = {tick, show, state: () => ({step, perm: perm()})};
+window.BBNotifAsk = {tick, show, again, state: () => ({step, perm: perm()})};
 })();

@@ -3,6 +3,7 @@
    · 보내기 = 서버(Supabase notif_calls 에 한 줄 — targets 에 이름들). 화면에서는 못 보낸다.
    · 받기 = 1분마다 + 실시간 알림선(OfficeLive)으로 바로. 내 이름 앞으로 온 것 가운데 아직 안 누른 것만(notif_call_open).
    · 기록 = 창이 뜨면 '봤음', [확인]을 누르면 '확인' (notif_call_mark). 누가 눌렀는지는 서버에서 watch 열쇠로만 읽는다 — 직원 화면에서는 못 본다.
+   · kind 'ask' = [확인] 창 대신 알림 허용 창(notif-ask.js)을 다시 띄운다 — PC 마다 한 번 (사장님 "알림신청 허용 거부 다시 띄워").
    · 글을 쓰는 중이면 창은 뜨되 글 칸을 빼앗지 않는다. 바깥을 눌러도 안 닫히고, Esc 는 10분 뒤 다시. 휴대폰에서도 뜬다. index.html 이 맨 끝에서 부른다 */
 (function () {
 'use strict';
@@ -22,12 +23,13 @@ async function rpc(fn, body) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
-const mark = ack => rpc('notif_call_mark', {p_id: call.id, p_name: me(), p_ack: ack, p_os: os(), p_host: location.host, p_perm: perm(), p_via: via});
+const mark = (ack, id) => rpc('notif_call_mark', {p_id: id || call.id, p_name: me(), p_ack: ack, p_os: os(), p_host: location.host, p_perm: perm(), p_via: via});
 async function pull() {
   const nm = me(); if (!nm || busy || sending || typeof SUPABASE_URL === 'undefined' || typeof _sbHeaders !== 'function') return;
   busy = true;
   try {
-    const xs = await rpc('notif_call_open', {p_name: nm}), x = (Array.isArray(xs) && xs[0]) || null;
+    const all = await rpc('notif_call_open', {p_name: nm}), xs = Array.isArray(all) ? all : [], x = xs.find(c => c.kind !== 'ask') || null;
+    xs.filter(c => c.kind === 'ask').forEach(c => { if (x || ls('bb_call_' + c.id) || !window.BBNotifAsk) return; ls('bb_call_' + c.id, '1'); mark(false, c.id).catch(() => { /* noop */ }); window.BBNotifAsk.again(); });          // [확인] 창이 먼저
     if (!x) { call = null; hide(); } else { if (!call || call.id !== x.id) { call = x; via = 'card'; rest = 0; hide(); } draw(); }
   } catch (e) { /* 다음 차례에 다시 */ }
   busy = false;
