@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <title>마케팅 회의록 · 비드유니버스</title>
-<script src="../office-undo.js?v=1"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
+<script src="../office-undo.js?v=1" data-skip="mkt_meetings\?columns="></script><!-- 어디서든 되돌리기 (office-undo.js) — 그 주 줄이 저절로 생기는 것만 뺌 -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
 <script>
@@ -32,86 +32,84 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
 <style>
   /* 마케팅 회의록 — 오피스 업무용 툴 (2026-11-24)
-     사장님 요청: "업무용툴에 마케팅 회의록 만들어주고 / 인스타그램 피드나 릴스나 계정 주소 넣으면 마우스오버로 볼 수 있게 /
+     사장님 요청 ①: "업무용툴에 마케팅 회의록 만들어주고 / 인스타그램 피드나 릴스나 계정 주소 넣으면 마우스오버로 볼 수 있게 /
      디자인팀 · 마케팅팀 · 엠디팀 참여하고 각각 이름으로 세로로 만들어줘서 각자 링크 넣을 수 있게 / 중복되는 계정주소가 있으면 경고문"
-     · 왼쪽 = 회의 목록 (날짜순, 휴대폰은 위 '회의 목록' 단추로 서랍)
-     · 가운데 = 고른 회의: 날짜 · 제목 · 참여자 → 중복 경고 띠 → 사람마다 세로 칸(디자인팀 · 마케팅팀 · MD팀 순) → 회의 메모 · 결정 · 할 일
-     · 칸에 인스타 주소(계정 · 피드 · 릴스 · 스토리)나 아무 링크를 붙여 넣으면 바로 저장. 마우스를 올리면 인스타 미리보기(휴대폰은 누르면)
-     · 같은 계정 · 같은 게시물이 이 회의에 또 있으면 빨간 경고, 다른 회의에 나왔던 것이면 회색 안내
-     · 저장 = 오피스 슈퍼베이스 mkt_meetings(회의 한 줄) · mkt_meeting_links(링크 한 줄씩 — 서로 덮어쓰지 않음). 지우기는 deleted_at 만 */
+     사장님 요청 ②: "매주 수요일 · 오후2시까지 · 각각 브랜드별로 벤치마킹 or 래퍼런스 인스타그램 주소 넣기 / 좌측 목록은 지워주고 상단에서 날짜 11월 1주차 2주차 이런식으로 /
+     배지 선택 가능하게 · 중복안되게 · 사람마다"
+     · 맨 위 = 달 ‹ 11월 › + 주차 탭 (그 달의 첫째 수요일 = 1주차). 회의 줄(mkt_meetings)은 그 주에 처음 무언가 넣을 때 저절로 생긴다 (수요일 하루에 한 줄)
+     · 안내 띠 = 매주 수요일 오후 2시까지 + 남은 시간 · 아직 안 넣은 사람 · 브랜드 배지 현황
+     · 사람마다 세로 칸(디자인팀 · 마케팅팀 · MD팀 순): 브랜드 배지 고르기 → 배지마다 [벤치마킹 | 레퍼런스] + 주소 칸
+     · 배지 = 한 주에 한 브랜드는 한 사람 (저장소 유일 조건 mkt_meeting_brands_one). 다른 사람이 고른 배지는 흐리게 · 누르면 누가 골랐는지
+     · 주소 = 한 주에 같은 계정 · 게시물은 한 번만 (mkt_meeting_links_one). 또 넣으면 빨간 안내만 뜨고 안 들어감. 다른 주에 나왔던 것은 회색 안내
+     · 마우스를 올리면 인스타 미리보기(휴대폰은 누르면)
+     · 저장 = 오피스 슈퍼베이스 mkt_meetings · mkt_meeting_brands(배지 한 줄씩) · mkt_meeting_links(주소 한 줄씩). 지우기는 deleted_at 만 */
   :root {
-    --bg: #f3f5f8; --panel: #fff; --line: #e5e7eb; --line2: #d5dae2; --text: #0f172a; --t2: #475569; --t3: #94a3b8;
-    --acc: #2563eb; --acc-d: #1d4ed8; --acc-t: rgba(37, 99, 235, .10); --red: #e11d48; --red-t: rgba(225, 29, 72, .08);
-    --amber: #b45309; --amber-t: rgba(245, 158, 11, .12); --ok: #16a34a;
-    --top: 56px; --r: 12px; --colw: 276px;
+    --bg: #f5f6f8; --panel: #fff; --line: #e5e7eb; --line2: #cfd4dc; --text: #1f2329; --t2: #4b5563; --t3: #8b93a1;
+    --red: #dc2626; --red-t: #fef2f2; --soft: #f1f3f6;
+    --top: 52px; --wkh: 56px; --r: 12px; --colw: 218px;
     --font: Pretendard, -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
   }
   * { box-sizing: border-box }
   html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased }
   button, input, textarea, select { font-family: inherit; font-size: inherit; color: inherit }
-  a { color: var(--acc-d) }
+  a { color: var(--text) }
   [hidden] { display: none !important }
   svg { flex: none }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--text); outline-offset: 1px }
 
   /* ── 상단 ── */
-  .top { position: sticky; top: 0; z-index: 30; min-height: var(--top); display: flex; align-items: center; gap: 10px; padding: 8px 16px;
-    background: rgba(255, 255, 255, .94); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--line) }
+  .top { position: sticky; top: 0; z-index: 30; min-height: var(--top); display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
   .back { color: var(--t2); text-decoration: none; font-weight: 600; font-size: 13px; white-space: nowrap; padding: 6px 8px; border-radius: 8px }
-  .back:hover { background: var(--bg) }
+  .back:hover { background: var(--soft) }
   .ttl { font-weight: 800; font-size: 15px; letter-spacing: -.2px; white-space: nowrap; display: flex; align-items: center; gap: 8px }
-  .ttl svg { width: 20px; height: 20px; color: var(--acc) }
+  .ttl svg { width: 20px; height: 20px }
   .top-r { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none }
   .save-st { font-size: 12px; color: var(--t3); white-space: nowrap }
   .save-st.err { color: var(--red); font-weight: 600; cursor: pointer }
   .btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-weight: 600; font-size: 13px;
     cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; color: var(--text) }
   .btn:hover { border-color: var(--line2); background: #fafbfc }
-  .btn.pri { background: var(--acc); border-color: var(--acc); color: #fff }
-  .btn.pri:hover { background: var(--acc-d); border-color: var(--acc-d) }
-  .btn.danger { color: var(--red) }
+  .btn.pri { background: var(--text); border-color: var(--text); color: #fff }
+  .btn.pri:hover { background: #000; border-color: #000 }
   .btn.sm { height: 28px; padding: 0 10px; font-size: 12px }
   .btn.ico { width: 32px; padding: 0 }
   .btn svg { width: 16px; height: 16px }
   .btn:disabled { opacity: .45; cursor: default }
-  .only-narrow { display: none }
-
-  /* ── 틀 ── */
-  .wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: calc(100vh - var(--top)) }
-  .side { border-right: 1px solid var(--line); background: #fbfcfd; padding: 12px; position: sticky; top: var(--top); height: calc(100vh - var(--top)); overflow: auto }
-  .side-h { display: flex; align-items: center; gap: 6px; margin-bottom: 8px }
-  .side-h input { flex: 1; min-width: 0; height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; outline: none; background: #fff }
-  .side-h input:focus { border-color: var(--acc) }
-  .mi { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: none; border-radius: 10px; padding: 8px 10px; cursor: pointer; margin-bottom: 2px }
-  .mi:hover { background: #f1f4f8 }
-  .mi.on { background: var(--acc-t); border-color: rgba(37, 99, 235, .28) }
-  .mi .d { font-size: 11.5px; color: var(--t3); font-weight: 600 }
-  .mi.on .d { color: var(--acc) }
-  .mi .t { font-weight: 700; font-size: 13.5px; line-height: 1.3; margin-top: 1px; word-break: break-all }
-  .mi .n { font-size: 11.5px; color: var(--t2); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap }
-  .mi .n .w { color: var(--red); font-weight: 700 }
-  .side-empty { color: var(--t3); font-size: 12.5px; padding: 12px 4px }
-  .main { min-width: 0; padding: 16px 18px 40px }
-
-  /* ── 회의 머리 ── */
-  .mhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px }
-  .mhead input[type=date] { height: 36px; border: 1px solid var(--line); border-radius: 9px; padding: 0 10px; background: #fff; outline: none; font-weight: 600 }
-  .mhead .tt { flex: 1; min-width: 200px; height: 36px; border: 1px solid transparent; border-radius: 9px; padding: 0 10px; background: transparent;
-    font-size: 19px; font-weight: 800; letter-spacing: -.3px; outline: none }
-  .mhead .tt:hover { border-color: var(--line) }
-  .mhead input:focus { border-color: var(--acc); background: #fff }
-  .mh-r { display: flex; gap: 6px; align-items: center }
   .menu { position: absolute; z-index: 60; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(15, 23, 42, .14);
     padding: 4px; min-width: 190px }
   .menu button { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; background: none; padding: 8px 10px; border-radius: 7px; cursor: pointer; text-align: left; font-size: 13px }
-  .menu button:hover { background: #f1f4f8 }
-  .menu button.danger { color: var(--red) }
+  .menu button:hover { background: var(--soft) }
+  .menu svg { width: 16px; height: 16px }
 
-  /* ── 중복 경고 띠 ── */
-  .dupbar { border: 1px solid rgba(225, 29, 72, .35); background: var(--red-t); color: #9f1239; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px }
-  .dupbar b { font-weight: 800 }
-  .dupbar ul { margin: 6px 0 0; padding-left: 18px }
-  .dupbar li { margin: 2px 0 }
-  .dupbar .k { font-weight: 700 }
+  /* ── 주차 고르기 ── */
+  .weeks { position: sticky; top: var(--top); z-index: 25; min-height: var(--wkh); display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
+  .wk-m { display: flex; align-items: center; gap: 4px; flex: none }
+  .wk-m b { min-width: 54px; text-align: center; font-size: 18px; font-weight: 800; letter-spacing: -.4px; white-space: nowrap }
+  .wk-t { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; padding: 1px }
+  .wk-t::-webkit-scrollbar { display: none }
+  .wk { flex: none; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: #fff; cursor: pointer; white-space: nowrap }
+  .wk:hover { border-color: var(--line2) }
+  .wk b { font-weight: 700; font-size: 14.5px }
+  .wk span { font-size: 12.5px; color: var(--t3); font-weight: 500 }
+  .wk i { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--t2); background: var(--soft); border-radius: 6px; padding: 2px 6px }
+  .wk.on { background: var(--text); border-color: var(--text); color: #fff }
+  .wk.on span { color: rgba(255, 255, 255, .72) }
+  .wk.on i { background: rgba(255, 255, 255, .18); color: #fff }
+
+  .main { min-width: 0; padding: 14px 16px 40px }
+
+  /* ── 안내 띠 ── */
+  .rule { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px }
+  .rule-1 { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap }
+  .rule-1 b { font-size: 16px; font-weight: 800; letter-spacing: -.3px }
+  .rule-1 .how { color: var(--t2); font-size: 13.5px }
+  .due { margin-left: auto; font-size: 13px; color: var(--t2); font-weight: 600; text-align: right }
+  .due .red { color: var(--red); font-weight: 700 }
+  .bstrip { display: flex; flex-wrap: wrap; gap: 6px }
+  .bst { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--soft); font-size: 12.5px; white-space: nowrap }
+  .bst b { font-weight: 700 }
+  .bst.free { background: none; box-shadow: inset 0 0 0 1px var(--line); color: var(--t3) }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block }
 
   /* ── 사람별 세로 칸 ── */
   .board-w { position: relative }
@@ -122,50 +120,73 @@
   .bnav.l { left: -6px } .bnav.r { right: -6px }
   @media (hover: none) { .bnav { display: none } }
   .board { display: flex; gap: 14px; overflow-x: auto; padding: 2px 2px 12px; align-items: flex-start; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch }
-  .team { flex: none; display: flex; flex-direction: column; gap: 8px; scroll-snap-align: start }
-  .team-h { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; color: var(--tc); padding: 0 4px }
-  .team-h .bar { width: 4px; height: 16px; border-radius: 3px; background: var(--tc) }
+  .team { flex: var(--n) 0 auto; display: flex; flex-direction: column; gap: 8px; scroll-snap-align: start }
+  .team-h { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; padding: 0 4px }
   .team-h .n { font-weight: 600; color: var(--t3); font-size: 12px }
   .cols { display: flex; gap: 10px; align-items: flex-start }
-  .col { width: var(--colw); flex: none; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--tc); border-radius: var(--r);
+  .col { flex: 1 0 var(--colw); width: var(--colw); max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
     display: flex; flex-direction: column; scroll-snap-align: start }
-  .col-h { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px }
-  .av { width: 28px; height: 28px; border-radius: 50%; background: var(--tt); color: var(--tc); display: grid; place-items: center; font-weight: 800; font-size: 12.5px; flex: none }
-  .col-h .nm { font-weight: 800; font-size: 14px }
-  .col-h .ct { margin-left: auto; font-size: 12px; color: var(--t3); font-weight: 600 }
-  .col-h .ct.w { color: var(--red) }
-  .add { padding: 0 10px 8px }
+  .col-h { display: flex; align-items: center; gap: 8px; padding: 11px 12px 9px }
+  .av { width: 28px; height: 28px; border-radius: 50%; background: var(--soft); color: var(--t2); display: grid; place-items: center; font-weight: 700; font-size: 11.5px; flex: none }
+  .col-h .nm { font-weight: 800; font-size: 14.5px }
+  .col-h .ct { margin-left: auto; font-size: 12px; color: var(--t3); font-weight: 600; white-space: nowrap }
+  .col-h .ct.w { color: var(--red); font-weight: 700 }
+
+  /* 브랜드 배지 */
+  .bds { padding: 0 10px 10px; display: flex; flex-wrap: wrap; gap: 5px }
+  .bds .ask { width: 100%; font-size: 12.5px; font-weight: 600; color: var(--t2); padding: 0 2px 3px }
+  .bd { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line2); background: #fff; cursor: pointer; font-size: 12.5px; font-weight: 600; white-space: nowrap }
+  .bd:hover { border-color: var(--t3) }
+  .bd.on { background: var(--text); border-color: var(--text); color: #fff }
+  .bd.on .x { opacity: .6; font-size: 13px; line-height: 1; margin-right: -2px }
+  .bd.on:hover .x { opacity: 1 }
+  .bd.free .plus { color: var(--t3); font-weight: 500; margin-left: -1px }
+  .bd.off { border-color: var(--line); background: var(--soft); color: var(--t3); cursor: not-allowed; font-weight: 500 }
+  .bd.off .dot { opacity: .35 }
+  .bd.off s { text-decoration: none }
+  .bd.off em { font-style: normal; font-size: 11.5px }
+  .bd.more { border-style: dashed; color: var(--t2) }
+
+  /* 배지마다 주소 칸 */
+  .bs { border-top: 1px solid var(--line); padding: 10px 10px 10px }
+  .bs-h { display: flex; align-items: center; gap: 6px; padding: 0 2px 8px; font-size: 13.5px }
+  .bs-h b { font-weight: 800 }
+  .bs-h .n { color: var(--t3); font-weight: 600; font-size: 12px }
+  .bs-h .off { color: var(--t3); font-size: 11.5px; margin-left: auto }
+  .seg { display: flex; gap: 3px; background: var(--soft); border-radius: 9px; padding: 3px; margin-bottom: 6px }
+  .seg button { flex: 1; height: 28px; border: 0; border-radius: 7px; background: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--t2) }
+  .seg button.on { background: #fff; color: var(--text); font-weight: 700; box-shadow: 0 1px 3px rgba(15, 23, 42, .13) }
   .add-in { display: flex; gap: 6px }
-  .add-in input { flex: 1; min-width: 0; height: 34px; border: 1px dashed var(--line2); border-radius: 8px; padding: 0 10px; outline: none; background: #fbfcfd; font-size: 13px }
-  .add-in input:focus { border-style: solid; border-color: var(--tc); background: #fff }
-  .add-in .btn { height: 34px; padding: 0 10px }
-  .add-warn { margin-top: 6px; border: 1px solid rgba(225, 29, 72, .35); background: var(--red-t); border-radius: 9px; padding: 8px 10px; font-size: 12.5px; color: #9f1239 }
-  .add-warn .r { display: flex; gap: 6px; margin-top: 6px }
-  .add-hint { font-size: 11.5px; color: var(--t3); margin-top: 5px; padding: 0 2px }
-  .lks { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px }
-  .col-empty { color: var(--t3); font-size: 12px; text-align: center; padding: 14px 6px 16px; border: 1px dashed var(--line); border-radius: 9px }
+  .add-in input { flex: 1; min-width: 0; height: 36px; border: 1px solid var(--line2); border-radius: 8px; padding: 0 10px; outline: none; background: #fff; font-size: 13px }
+  .add-in input::placeholder { color: var(--t3) }
+  .add-in input:focus { border-color: var(--text) }
+  .add-in .btn { height: 36px; padding: 0 11px }
+  .add-warn { position: relative; margin-top: 6px; border: 1px solid rgba(220, 38, 38, .35); background: var(--red-t); border-radius: 9px; padding: 8px 28px 8px 10px; font-size: 12.5px; color: #991b1b; line-height: 1.5; word-break: break-word }
+  .add-warn button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; background: none; color: inherit; cursor: pointer; font-size: 16px; line-height: 1 }
+  .lks { display: flex; flex-direction: column; gap: 6px; margin-top: 8px }
+  .lks:empty { display: none }
 
   .lk { position: relative; display: flex; gap: 9px; align-items: flex-start; border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 9px; background: #fff;
     cursor: pointer; transition: border-color .12s, box-shadow .12s }
   .lk:hover, .lk.pv-on { border-color: var(--line2); box-shadow: 0 2px 8px rgba(15, 23, 42, .07) }
-  .lk.dup { border-color: rgba(225, 29, 72, .55); background: #fff8f9 }
-  .lk-ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; color: #fff;
-    background: linear-gradient(135deg, #f58529, #dd2a7b 55%, #8134af) }
-  .lk-ic svg { width: 17px; height: 17px }
-  .lk.k-link .lk-ic { background: #e2e8f0; color: var(--t2) }
+  .lk-ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; background: var(--soft); color: var(--t2) }
+  .lk-ic svg { width: 16px; height: 16px }
   .lk-b { flex: 1; min-width: 0 }
   .lk-t { font-weight: 700; font-size: 13.5px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-  .lk-s { font-size: 11.5px; color: var(--t3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px }
-  .lk-m { font-size: 12.5px; color: var(--t2); margin-top: 4px; white-space: pre-wrap; word-break: break-word }
-  .lk-me { width: 100%; margin-top: 5px; border: 1px solid var(--acc); border-radius: 7px; padding: 5px 7px; font-size: 12.5px; outline: none; resize: vertical; min-height: 34px; background: #fff }
-  .lk-w { font-size: 11.5px; font-weight: 700; color: var(--red); margin-top: 4px }
-  .lk-p { font-size: 11.5px; color: var(--t3); margin-top: 3px }
-  .lk-p.amb { color: var(--amber) }
+  .lk-s { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--t3); margin-top: 4px; min-width: 0 }
+  .lk-s span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
+  .tg { flex: none; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--text); background: var(--text); color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap }
+  .tg.ref { background: #fff; color: var(--text); border-color: var(--line2) }
+  .tg.none { background: #fff; color: var(--t3); border-style: dashed; border-color: var(--line2) }
+  .lk-m { font-size: 12.5px; color: var(--t2); margin-top: 5px; white-space: pre-wrap; word-break: break-word }
+  .lk-me { width: 100%; margin-top: 5px; border: 1px solid var(--text); border-radius: 7px; padding: 5px 7px; font-size: 12.5px; outline: none; resize: vertical; min-height: 34px; background: #fff }
+  .lk-p { font-size: 11.5px; color: var(--t3); margin-top: 4px }
+  .lk-p.amb { color: var(--red) }
   .lk-a { position: absolute; top: 5px; right: 5px; display: flex; gap: 1px; padding: 2px; border-radius: 8px; background: #fff;
     box-shadow: 0 1px 4px rgba(15, 23, 42, .12); opacity: 0; pointer-events: none; transition: opacity .12s }
   .lk:hover .lk-a, .lk:focus-within .lk-a { opacity: 1; pointer-events: auto }
   .lk-a button, .lk-a a { width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--t2); display: grid; place-items: center; cursor: pointer; padding: 0 }
-  .lk-a button:hover, .lk-a a:hover { background: #f1f4f8; color: var(--text) }
+  .lk-a button:hover, .lk-a a:hover { background: var(--soft); color: var(--text) }
   .lk-a button.del:hover { color: var(--red) }
   .lk-a svg { width: 14px; height: 14px }
   @media (hover: none) {
@@ -175,18 +196,14 @@
   }
 
   /* ── 회의 메모 ── */
-  .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px }
   .note { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px }
   .note label { font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 6px }
   .note label .s { font-weight: 500; color: var(--t3); font-size: 12px }
-  .note textarea { width: 100%; min-height: 140px; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; outline: none; resize: none; background: #fbfcfd;
+  .note textarea { width: 100%; min-height: 140px; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; outline: none; resize: none; background: #fafbfc;
     font-size: 13.5px; line-height: 1.6; overflow: hidden }
   .note textarea:hover { border-color: var(--line) }
-  .note textarea:focus { border-color: var(--acc); background: #fff }
-
-  .empty { max-width: 420px; margin: 70px auto; text-align: center; color: var(--t2) }
-  .empty b { display: block; font-size: 17px; color: var(--text); margin-bottom: 6px }
-  .empty .btn { margin-top: 14px; height: 40px; padding: 0 18px }
+  .note textarea:focus { border-color: var(--text); background: #fff }
 
   /* ── 인스타 미리보기 (마우스 올리면 · 휴대폰은 누르면 아래에서) ── */
   .pv { position: fixed; z-index: 200; width: 360px; background: #fff; border: 1px solid var(--line2); border-radius: 14px; box-shadow: 0 18px 50px rgba(15, 23, 42, .22);
@@ -195,11 +212,11 @@
   .pv-h b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
   .pv-h a { font-weight: 700; text-decoration: none; white-space: nowrap }
   .pv-h button { border: 0; background: none; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; color: var(--t2); font-size: 18px; line-height: 1 }
-  .pv-h button:hover { background: #f1f4f8 }
+  .pv-h button:hover { background: var(--soft) }
   .pv-b { position: relative; flex: 1; min-height: 0; background: #fafafa }
   .pv-b iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff }
   .pv-spin { position: absolute; inset: 0; display: grid; place-items: center; color: var(--t3); font-size: 12.5px; pointer-events: none }
-  .pv-spin i { width: 26px; height: 26px; border: 3px solid #e5e7eb; border-top-color: #dd2a7b; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 8px; display: block }
+  .pv-spin i { width: 26px; height: 26px; border: 3px solid #e5e7eb; border-top-color: var(--t2); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 8px; display: block }
   @keyframes spin { to { transform: rotate(360deg) } }
   .pv-f { font-size: 11px; color: var(--t3); padding: 6px 10px; border-top: 1px solid var(--line) }
   .pv.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: 100%; height: 82vh !important; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom) }
@@ -211,19 +228,18 @@
   .dlg-card h3 { margin: 0 0 4px; font-size: 16px }
   .dlg-card .sub { color: var(--t3); font-size: 12.5px; margin-bottom: 12px }
   .mg { margin-bottom: 12px }
-  .mg-h { font-weight: 800; font-size: 12.5px; color: var(--tc); margin-bottom: 6px; display: flex; align-items: center; gap: 6px }
-  .mg-h .bar { width: 4px; height: 13px; border-radius: 3px; background: var(--tc) }
+  .mg-h { font-weight: 800; font-size: 12.5px; margin-bottom: 6px }
   .pills { display: flex; flex-wrap: wrap; gap: 6px }
   .pill { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); cursor: pointer; font-weight: 600; font-size: 13px; user-select: none; background: #fff }
   .pill input { display: none }
-  .pill.on { background: var(--tt); border-color: var(--tc); color: var(--tc) }
+  .pill.on { border-color: var(--text) }
   .pill .ck { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--line2); display: grid; place-items: center }
-  .pill.on .ck { background: var(--tc); border-color: var(--tc) }
+  .pill.on .ck { background: var(--text); border-color: var(--text) }
   .pill.on .ck::after { content: ''; width: 7px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px) }
   .addp { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap }
   .addp input, .addp select { height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; outline: none; background: #fff }
   .addp input { flex: 1; min-width: 120px }
-  .addp input:focus, .addp select:focus { border-color: var(--acc) }
+  .addp input:focus, .addp select:focus { border-color: var(--text) }
   .dlg-f { display: flex; justify-content: flex-end; gap: 6px; margin-top: 14px }
 
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 500; background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 10px;
@@ -233,24 +249,30 @@
   .lock { position: fixed; inset: 0; z-index: 400; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px }
   .lock-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 26px; width: min(340px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: center }
   .lock-box input { height: 42px; border: 1px solid var(--line); border-radius: 10px; text-align: center; font-size: 18px; letter-spacing: 4px; outline: none }
-  .lock-box input:focus { border-color: var(--acc) }
+  .lock-box input:focus { border-color: var(--text) }
   .lock-box .err { color: var(--red); font-size: 12.5px; min-height: 18px }
   .muted { color: var(--t3) }
 
   /* ── 휴대폰 ── */
   @media (max-width: 860px) {
-    :root { --colw: min(82vw, 300px) }
-    .wrap { grid-template-columns: 1fr }
-    .side { position: fixed; z-index: 80; top: 0; left: 0; bottom: 0; width: min(300px, 86vw); height: auto; transform: translateX(-102%); transition: transform .2s;
-      box-shadow: 0 0 40px rgba(15, 23, 42, .25); padding-top: calc(12px + env(safe-area-inset-top)) }
-    body.side-open .side { transform: none }
-    .side-veil { position: fixed; inset: 0; z-index: 79; background: rgba(15, 23, 42, .3) }
-    .only-narrow { display: inline-flex }
-    .main { padding: 12px 10px 40px }
+    :root { --colw: min(84vw, 310px); --wkh: 0px }
     .top { padding: 8px 10px; gap: 6px }
-    .ttl span { display: none }
-    .mhead .tt { font-size: 17px; min-width: 0; flex-basis: 100% ; order: -1 }
+    .weeks { position: static; padding: 8px 10px; gap: 8px; flex-wrap: wrap }   /* 한 달 주차가 한눈에 — 달은 윗줄, 주차는 아랫줄 */
+    .wk-t { order: 3; flex: none; width: 100% }
+    #wkNow { margin-left: auto }
+    .wk { flex: 1 0 60px; flex-direction: column; gap: 0; height: 50px; padding: 0 4px; justify-content: center; position: relative }
+    .wk span { font-size: 11.5px }
+    .wk i { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; padding: 0; border-radius: 50%; font-size: 0; background: var(--text) }
+    .wk.on i { background: #fff }
+    .main { padding: 12px 10px 40px }
+    .col { flex: none; max-width: none }
+    .due { margin-left: 0; text-align: left; width: 100% }
     .notes { grid-template-columns: 1fr }
+    .add-in input { font-size: 16px; height: 40px }   /* 아이폰이 칸을 누를 때 화면을 키우지 않게 16px */
+    .add-in .btn, .seg button { height: 40px }
+    .seg button { height: 34px }
+    .bd { height: 34px }
+    .lk-me, .note textarea, .addp input, .addp select { font-size: 16px }
     .save-st { display: none }
     .save-st.err { display: inline }
   }
@@ -270,55 +292,45 @@
 <div id="app" hidden>
   <header class="top">
     <a class="back" href="../">← 오피스</a>
-    <button class="btn ico only-narrow" id="sideBtn" type="button" aria-label="회의 목록" title="회의 목록">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-    </button>
     <div class="ttl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg><span>마케팅 회의록</span></div>
     <div class="top-r">
       <span class="save-st" id="saveSt"></span>
-      <button class="btn pri" id="newBtn" type="button">＋ 새 회의</button>
+      <button class="btn" id="memBtn" type="button">참여자 <b id="memN"></b></button>
+      <button class="btn ico" id="moreBtn" type="button" aria-label="더보기" title="더보기">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+      </button>
     </div>
   </header>
-  <div class="wrap">
-    <aside class="side" id="side">
-      <div class="side-h"><input id="q" type="search" placeholder="회의 · 계정 찾기" aria-label="회의 찾기"></div>
-      <div id="mlist"></div>
-    </aside>
-    <main class="main" id="main">
-      <div class="empty" id="empty" hidden>
-        <b>아직 회의록이 없어요</b>
-        디자인팀 · 마케팅팀 · MD팀이 각자 칸에 인스타 링크를 넣는 회의록을 만들어요.
-        <div><button class="btn pri" type="button" id="emptyNew">＋ 첫 회의 만들기</button></div>
+  <nav class="weeks" aria-label="주차 고르기">
+    <div class="wk-m">
+      <button class="btn ico" id="mPrev" type="button" aria-label="지난달" title="지난달"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <b id="mName"></b>
+      <button class="btn ico" id="mNext" type="button" aria-label="다음 달" title="다음 달"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="wk-t" id="wkTabs"></div>
+    <button class="btn sm" id="wkNow" type="button" hidden>이번 주</button>
+  </nav>
+  <main class="main" id="main">
+    <section class="rule">
+      <div class="rule-1">
+        <b>매주 수요일 오후 2시까지</b>
+        <span class="how">브랜드 배지를 고르고, 브랜드마다 벤치마킹 · 레퍼런스 인스타 주소 넣기</span>
+        <span class="due" id="due"></span>
       </div>
-      <section id="mtg" hidden>
-        <div class="mhead">
-          <input type="date" id="mDay" aria-label="회의 날짜">
-          <input class="tt" id="mTitle" placeholder="회의 제목" aria-label="회의 제목" maxlength="200">
-          <div class="mh-r">
-            <button class="btn" id="memBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3 3-4.6 5.5-4.6s4.7 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.6c2.4-.3 4.3 1 5 3.9"/></svg>
-              참여자 <b id="memN"></b>
-            </button>
-            <button class="btn ico" id="moreBtn" type="button" aria-label="더보기" title="더보기">
-              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="dupbar" id="dupBar" hidden></div>
-        <div class="board-w">
-          <button class="bnav l" id="bnavL" type="button" aria-label="왼쪽 칸 보기" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
-          <div class="board" id="board"></div>
-          <button class="bnav r" id="bnavR" type="button" aria-label="오른쪽 칸 보기" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
-        </div>
-        <div class="notes">
-          <div class="note"><label for="mNotes">회의 메모 <span class="s">누구나 · 바로 저장</span></label>
-            <textarea id="mNotes" placeholder="오늘 나온 이야기, 참고할 점…" maxlength="50000"></textarea></div>
-          <div class="note"><label for="mDec">결정 · 할 일</label>
-            <textarea id="mDec" placeholder="- 박시호: 릴스 레퍼런스 3개 시안&#10;- 김수민: 다음 주 협업 계정 연락" maxlength="50000"></textarea></div>
-        </div>
-      </section>
-    </main>
-  </div>
+      <div class="bstrip" id="bstrip"></div>
+    </section>
+    <div class="board-w">
+      <button class="bnav l" id="bnavL" type="button" aria-label="왼쪽 칸 보기" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="board" id="board"></div>
+      <button class="bnav r" id="bnavR" type="button" aria-label="오른쪽 칸 보기" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="notes">
+      <div class="note"><label for="mNotes">회의 메모 <span class="s">누구나 · 바로 저장</span></label>
+        <textarea id="mNotes" placeholder="오늘 나온 이야기, 참고할 점…" maxlength="50000"></textarea></div>
+      <div class="note"><label for="mDec">결정 · 할 일</label>
+        <textarea id="mDec" placeholder="- 이름: 할 일" maxlength="50000"></textarea></div>
+    </div>
+  </main>
 </div>
 
 <div class="pv" id="pv" hidden>
@@ -327,12 +339,11 @@
   <div class="pv-f">안 보이면 비공개 계정이거나 인스타가 막은 거예요 — 위 '인스타에서 열기'</div>
 </div>
 <div class="pv-veil" id="pvVeil" hidden></div>
-<div class="side-veil" id="sideVeil" hidden></div>
 
 <div class="dlg" id="memDlg" hidden>
   <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="memTtl">
     <h3 id="memTtl">참여자</h3>
-    <div class="sub">고른 사람마다 세로 칸이 생겨요. 빼도 그 사람이 넣은 링크는 그대로 남아요.</div>
+    <div class="sub">고른 사람마다 세로 칸이 생겨요. 빼도 그 사람이 넣은 주소는 그대로 남아요.</div>
     <div id="memBody"></div>
     <div class="addp">
       <input id="pName" placeholder="이름 추가 (손님 · 외부)" maxlength="40">
@@ -358,16 +369,34 @@
     '61bac9d4e564d8096a969a0af7ec131066991620a2807be2b6b889cf8b24193e': 'master',
   };
   const AUTH_VERSION = '4', MASTER_PIN_VER = '1';
-  const T_M = 'mkt_meetings', T_L = 'mkt_meeting_links';
-  const LS = {sel: 'mtg_sel_v1', me: 'mtg_me_v1'};
-  const POLL_MS = 8000;
+  const T_M = 'mkt_meetings', T_B = 'mkt_meeting_brands', T_L = 'mkt_meeting_links';
+  const LS = {me: 'mtg_me_v1'};
+  const POLL_MS = 8000, POLL_LIVE_MS = 60000;   // 실시간 알림선이 이어져 있으면 1분에 한 번만
+  // 회의 = 매주 수요일, 마감 = 그날 오후 2시 (사장님 11-24 "매주 수요일 · 오후2시까지"). 바꾸려면 이 두 줄
+  const MEET_DOW = 3, DUE_HOUR = 14;
+
+  // 브랜드 배지 (오피스 MD_BRANDS · 인스타 피드 시뮬레이터와 같은 키 · 이름 · 점 색, 클리어타입은 중단이라 뺌)
+  const BRANDS = [
+    {k: '6a', name: '식스에이', dot: '#22d3ee'},
+    {k: 'yar', name: '야르', dot: '#a78bfa'},
+    {k: 'pp', name: '프로덕트피알', dot: '#f59e0b'},
+    {k: 'akoi', name: '아코이하우스', dot: '#f472b6'},
+    {k: 'kop', name: '코페리', dot: '#818cf8'},
+    {k: 'apt', name: '아페티', dot: '#fb7185'},
+    {k: 'koz', name: '코즈미', dot: '#14b8a6'},
+  ];
+  const BMAP = Object.fromEntries(BRANDS.map(b => [b.k, b]));
+  const bName = k => (BMAP[k] ? BMAP[k].name : k || '배지 없음');
+  const bDot = k => `<i class="dot" style="background:${BMAP[k] ? BMAP[k].dot : '#cbd5e1'}"></i>`;
+  const TAGS = [['bench', '벤치마킹'], ['ref', '레퍼런스']];
+  const TAG_NAME = {bench: '벤치마킹', ref: '레퍼런스'};
 
   // 팀 (칸 순서 = 사장님 말씀 순서: 디자인팀 → 마케팅팀 → 엠디팀)
   const TEAMS = [
-    {k: 'design', name: '디자인팀', c: '#db2777', t: 'rgba(219,39,119,.10)'},
-    {k: 'mkt', name: '마케팅팀', c: '#2563eb', t: 'rgba(37,99,235,.10)'},
-    {k: 'md', name: 'MD팀', c: '#0d9488', t: 'rgba(13,148,136,.10)'},
-    {k: 'etc', name: '함께한 사람', c: '#64748b', t: 'rgba(100,116,139,.12)'},
+    {k: 'design', name: '디자인팀'},
+    {k: 'mkt', name: '마케팅팀'},
+    {k: 'md', name: 'MD팀'},
+    {k: 'etc', name: '함께한 사람'},
   ];
   const TMAP = Object.fromEntries(TEAMS.map(t => [t.k, t]));
   // 오피스 index.html STAFF 중 회의 팀만 (color: 마케팅 mkt · 디자인 design · 엠디 md2). 새 직원(staff_added) · 부서 이동(staff_dept_overrides) ·
@@ -391,7 +420,6 @@
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z"/></svg>',
     del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
-    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
   };
   const KIND_NAME = {account: '계정', post: '피드', reel: '릴스', story: '스토리', link: '링크'};
 
@@ -402,14 +430,8 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
   const pad2 = n => String(n).padStart(2, '0');
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const cssEsc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
   const WD = ['일', '월', '화', '수', '목', '금', '토'];
-  function todayKST() { const d = new Date(Date.now() + 9 * 3600e3); return d.toISOString().slice(0, 10); }
-  function dayLabel(s) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); if (!m) return '';
-    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-    return `${+m[2]}/${+m[3]} (${WD[d.getUTCDay()]})`;
-  }
-  const shortDay = s => { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(s || ''); return m ? `${+m[1]}/${+m[2]}` : ''; };
   let toastT = 0;
   function toast(msg, err) {
     const t = $('toast');
@@ -425,10 +447,40 @@
       cache: 'no-store',
     }));
     const txt = await r.text();
-    if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + txt.slice(0, 160));
+    if (!r.ok) { const e = new Error('HTTP ' + r.status + ' ' + txt.slice(0, 160)); e.status = r.status; throw e; }
     return txt ? JSON.parse(txt) : null;
   }
   const RET = {Prefer: 'return=representation'};
+
+  /* ══════════════════════ 주차 ══════════════════════
+     주 이름표 = 그 주 수요일 날짜('2026-11-25'). 그 달의 첫째 수요일이 1주차 → N주차 = N번째 수요일 (월이 헷갈리지 않게 수요일이 든 달로) */
+  const DAY = 86400e3;
+  const iso = ms => new Date(ms).toISOString().slice(0, 10);
+  const utc = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+  const isDay = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(utc(s));
+  const todayKST = () => iso(Date.now() + 9 * 3600e3);
+  // 그 날짜가 든 주(월~일)의 수요일
+  function weekOf(day) { const t = utc(day), dow = new Date(t).getUTCDay(); return iso(t - ((dow + 6) % 7) * DAY + (MEET_DOW - 1) * DAY); }
+  const thisWeek = () => weekOf(todayKST());
+  const monthOf = wk => wk.slice(0, 7);
+  const weekNo = wk => Math.ceil(+wk.slice(8, 10) / 7);
+  const weekName = wk => `${+wk.slice(5, 7)}월 ${weekNo(wk)}주차`;
+  function weeksOf(month) {
+    const [y, m] = month.split('-').map(Number), out = [];
+    for (let t = Date.UTC(y, m - 1, 1); new Date(t).getUTCMonth() === m - 1; t += DAY) if (new Date(t).getUTCDay() === MEET_DOW) out.push(iso(t));
+    return out;
+  }
+  function addMonth(month, n) { const [y, m] = month.split('-').map(Number); return iso(Date.UTC(y, m - 1 + n, 1)).slice(0, 7); }
+  const md = s => `${+s.slice(5, 7)}/${+s.slice(8, 10)}`;
+  const mdw = s => `${md(s)} (${WD[new Date(utc(s)).getUTCDay()]})`;
+  const dueMs = wk => Date.parse(`${wk}T${pad2(DUE_HOUR)}:00:00+09:00`);
+  const dueTxt = `오후 ${DUE_HOUR > 12 ? DUE_HOUR - 12 : DUE_HOUR}시`;
+  function leftTxt(ms) {
+    const min = Math.max(1, Math.ceil(ms / 60000)), d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), mm = min % 60;
+    if (d) return `${d}일${h ? ` ${h}시간` : ''} 남음`;
+    if (h) return `${h}시간${mm ? ` ${mm}분` : ''} 남음`;
+    return `${mm}분 남음`;
+  }
 
   /* ══════════════════════ 인스타 주소 읽기 ══════════════════════
      계정  instagram.com/아이디 · @아이디 · 아이디(점 없는 글자만)
@@ -516,15 +568,18 @@
   /* ══════════════════════ 상태 ══════════════════════ */
   const S = {
     meetings: new Map(),   // id → 저장소 줄 (지운 건 뺌)
-    links: new Map(),      // id → 저장소 줄 (지운 건 뺌)
-    sel: null,
+    badges: new Map(),     // id → 배지 줄 {meeting_id, brand, person}
+    links: new Map(),      // id → 주소 줄 (지운 건 뺌)
+    wk: null,              // 고른 주 (그 주 수요일 날짜)
+    month: null,           // 탭에 보이는 달 '2026-11'
     staff: null,           // {design:[이름], mkt:[], md:[]}
-    curM: '', curL: '',    // 마지막으로 받은 updated_at
-    q: '',
+    curM: '', curB: '', curL: '',    // 마지막으로 받은 updated_at
   };
-  const E = {base: null, dirty: {}, saving: false, again: false, timer: 0, retryT: 0};   // 고른 회의의 글 칸 저장 상태
-  const drafts = new Map();   // 사람 → {text, warn:[{p, who}]} (칸 입력 · 중복 경고)
-  let editMemo = null;        // 메모 고치는 링크 id
+  const drafts = new Map();   // 사람|브랜드 → {text, tag, warn:[글]} (칸 입력 · 중복 안내)
+  const dkey = (p, b) => p + '|' + b;
+  const draftOf = (p, b) => { const k = dkey(p, b); if (!drafts.has(k)) drafts.set(k, {text: '', tag: 'bench', warn: []}); return drafts.get(k); };
+  const pickOpen = new Set(); // 배지 목록을 펼쳐 둔 사람
+  let editMemo = null;        // 메모 고치는 주소 id
   let boardPending = false;
 
   /* ══════════════════════ 직원 명단 ══════════════════════ */
@@ -545,14 +600,15 @@
     order.forEach(n => { const t = COLOR_TEAM[col.get(n)]; if (t && !EXCLUDE.has(n) && !out[t].includes(n)) out[t].push(n); });
     S.staff = out;
   }
-  function defaultMembers() {
+  // 새 주의 참여자 = 직원 명단 세 팀 + 지난 회의에 직접 넣은 사람(손님 · 대표). 지난 회의에서 뺀 직원은 계속 빠져 있게
+  function defaultMembers(wk) {
     const st = S.staff || {design: [], mkt: [], md: []};
+    const last = [...S.meetings.values()].filter(m => m.day < wk).sort((a, b) => b.day.localeCompare(a.day))[0];
+    const lastMem = last && Array.isArray(last.members) ? last.members.filter(m => m && m.name) : [];
     const list = [];
     ['design', 'mkt', 'md'].forEach(t => st[t].forEach(n => list.push({name: n, team: t})));
-    // 지난 회의에서 직접 넣은 사람(손님 · 대표)도 이어서
-    const last = sortedMeetings()[0];
-    if (last && Array.isArray(last.members)) last.members.forEach(m => { if (m && m.name && !EXCLUDE.has(m.name) && !list.some(x => x.name === m.name) && !isStaffName(m.name)) list.push({name: m.name, team: m.team || 'etc'}); });
-    return list;
+    lastMem.forEach(m => { if (!EXCLUDE.has(m.name) && !list.some(x => x.name === m.name) && !isStaffName(m.name)) list.push({name: m.name, team: m.team || 'etc'}); });
+    return memberOrder(list);
   }
   function isStaffName(n) { const st = S.staff; return !!st && (st.design.includes(n) || st.mkt.includes(n) || st.md.includes(n)); }
   function teamOfName(n) {
@@ -560,176 +616,199 @@
     if (st) for (const t of ['design', 'mkt', 'md']) if (st[t].includes(n)) return t;
     return 'etc';
   }
+  function memberOrder(list) {   // 팀 순서 → 직원 명단 순서 → 넣은 순서
+    const st = S.staff || {design: [], mkt: [], md: []};
+    const rank = x => { const ti = TEAMS.findIndex(t => t.k === x.team); const arr = x.team === 'etc' ? ETC_DEFAULT : (st[x.team] || []); const i = arr.indexOf(x.name); return ti * 1000 + (i < 0 ? 500 : i); };
+    return list.map((x, i) => ({x, i})).sort((a, b) => rank(a.x) - rank(b.x) || a.i - b.i).map(o => o.x);
+  }
 
-  /* ══════════════════════ 불러오기 · 정기 확인 ══════════════════════ */
-  function sortedMeetings() {
-    return [...S.meetings.values()].sort((a, b) => (b.day || '').localeCompare(a.day || '') || (b.created_at || '').localeCompare(a.created_at || ''));
-  }
-  function linksOf(mid) { return [...S.links.values()].filter(l => l.meeting_id === mid); }
-  const later = (a, b) => !b || (a || '') > (b || '');
-
-  async function loadAll() {
-    const [ms, ls] = await Promise.all([
-      rest(`${T_M}?deleted_at=is.null&select=*&order=day.desc,created_at.desc&limit=2000`),
-      rest(`${T_L}?deleted_at=is.null&select=*&order=pos.desc&limit=20000`),
-    ]);
-    S.meetings.clear(); S.links.clear();
-    (ms || []).forEach(r => { S.meetings.set(r.id, r); if (later(r.updated_at, S.curM)) S.curM = r.updated_at; });
-    (ls || []).forEach(r => { S.links.set(r.id, r); if (later(r.updated_at, S.curL)) S.curL = r.updated_at; });
-  }
-  // 겹쳐 읽기(1분) — 먼저 시작해 늦게 끝난 저장도 놓치지 않게. 같은 줄은 updated_at 이 늦은 쪽만
-  function since(t) { if (!t) return '1970-01-01T00:00:00Z'; return new Date(Date.parse(t) - 60000).toISOString(); }
-  let polling = false, pollT = 0;
-  async function poll() {
-    if (polling) return;
-    polling = true;
-    try {
-      const [ms, ls] = await Promise.all([
-        rest(`${T_M}?updated_at=gt.${encodeURIComponent(since(S.curM))}&select=*&order=updated_at.asc&limit=1000`),
-        rest(`${T_L}?updated_at=gt.${encodeURIComponent(since(S.curL))}&select=*&order=updated_at.asc&limit=5000`),
-      ]);
-      let chM = false, chL = false;
-      (ms || []).forEach(r => { if (later(r.updated_at, S.curM)) S.curM = r.updated_at; if (applyMeeting(r)) chM = true; });
-      (ls || []).forEach(r => { if (later(r.updated_at, S.curL)) S.curL = r.updated_at; if (applyLink(r)) chL = true; });
-      if (chM || chL) {
-        if ((S.sel && !S.meetings.has(S.sel)) || (!S.sel && S.meetings.size)) pickMeeting((sortedMeetings()[0] || {}).id || null);
-        else { renderList(); renderBoard(); }
-      }
-    } catch (e) { console.warn('poll', e); }
-    finally { polling = false; }
-  }
-  function applyMeeting(r) {
-    const old = S.meetings.get(r.id);
-    if (old && !later(r.updated_at, old.updated_at)) return false;
-    if (r.deleted_at) { if (!old) return false; S.meetings.delete(r.id); return true; }
-    S.meetings.set(r.id, r);
-    if (r.id === S.sel) syncFields(r);
-    return true;
-  }
-  function applyLink(r) {
-    const old = S.links.get(r.id);
-    if (old && !later(r.updated_at, old.updated_at)) return false;
-    if (r.deleted_at) { if (!old) return false; S.links.delete(r.id); return true; }
-    S.links.set(r.id, r);
-    return true;
-  }
-  function pollLoop() {
-    clearTimeout(pollT);
-    pollT = setTimeout(async () => { if (document.visibilityState !== 'hidden') await poll(); pollLoop(); }, POLL_MS);
-  }
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') { if (Object.keys(E.dirty).length) saveMeeting(); }
-    else poll();
-  });
-  // 다른 사람이 고치면 바로 (실시간 알림선 ../office-live.js) — 끊기면 8초 확인 그대로
-  let liveOn = false;
-  function liveBoot() { if (liveOn || !window.OfficeLive) return; liveOn = true; OfficeLive.on([T_M, T_L], () => poll()); }
-
-  /* ══════════════════════ 회의 목록 ══════════════════════ */
-  function meetingStats(mid) {
-    const ls = linksOf(mid), groups = new Map();
-    ls.forEach(l => { const k = dupKey(l); groups.set(k, (groups.get(k) || 0) + 1); });
-    let dup = 0; groups.forEach(n => { if (n > 1) dup++; });
-    return {n: ls.length, dup};
-  }
-  function renderList() {
-    const box = $('mlist'), q = S.q.trim().toLowerCase().replace(/^@/, '');
-    let list = sortedMeetings();
-    if (q) list = list.filter(m => (m.title || '').toLowerCase().includes(q) || dayLabel(m.day).includes(q)
-      || linksOf(m.id).some(l => (l.url || '').toLowerCase().includes(q) || (l.memo || '').toLowerCase().includes(q) || (l.person || '').includes(q)));
-    if (!list.length) { box.innerHTML = `<div class="side-empty">${q ? '찾는 회의가 없어요' : '회의가 아직 없어요'}</div>`; return; }
-    box.innerHTML = list.map(m => {
-      const st = meetingStats(m.id);
-      return `<button type="button" class="mi${m.id === S.sel ? ' on' : ''}" data-id="${esc(m.id)}">
-        <div class="d">${esc(dayLabel(m.day))}</div>
-        <div class="t">${esc(m.title || '제목 없는 회의')}</div>
-        <div class="n"><span>링크 ${st.n}</span>${st.dup ? `<span class="w">⚠ 중복 ${st.dup}</span>` : ''}</div>
-      </button>`;
-    }).join('');
-  }
-  $('mlist').addEventListener('click', e => {
-    const b = e.target.closest('.mi'); if (!b) return;
-    pickMeeting(b.dataset.id);
-    closeSide();
-  });
-  $('q').addEventListener('input', e => { S.q = e.target.value; renderList(); });
-
-  function pickMeeting(id) {
-    if (S.sel && S.sel !== id && Object.keys(E.dirty).length) saveMeeting();
-    S.sel = id && S.meetings.has(id) ? id : null;
-    if (S.sel) lsSet(LS.sel, S.sel);
-    drafts.clear(); editMemo = null; hidePreview();
-    const m = S.sel ? S.meetings.get(S.sel) : null;
-    $('empty').hidden = S.meetings.size > 0;
-    $('mtg').hidden = !m;
-    if (m) {
-      E.base = Object.assign({}, m); E.dirty = {};
-      ['mDay', 'mTitle', 'mNotes', 'mDec'].forEach(fid => { $(fid).value = m[FMAP[fid]] || ''; });
-      autoGrow($('mNotes')); autoGrow($('mDec'));
+  /* ══════════════════════ 그 주 회의 줄 ══════════════════════ */
+  function meetingOf(wk) {
+    let near = null;
+    for (const m of S.meetings.values()) {
+      if (m.day === wk) return m;
+      if (!near && isDay(m.day) && weekOf(m.day) === wk) near = m;   // 수요일이 아닌 날로 만들어진 옛 줄
     }
-    renderList();
-    renderBoard(true);
+    return near;
   }
+  const cur = () => meetingOf(S.wk);
+  const linksOf = mid => (mid ? [...S.links.values()].filter(l => l.meeting_id === mid) : []);
+  const badgesOf = mid => (mid ? [...S.badges.values()].filter(b => b.meeting_id === mid) : []);
+  const ownerOf = (mid, brand) => badgesOf(mid).find(b => b.brand === brand) || null;
 
-  /* ══════════════════════ 회의 만들기 · 지우기 ══════════════════════ */
-  async function newMeeting() {
-    const btn = $('newBtn'); btn.disabled = true;
-    try {
-      if (Object.keys(E.dirty).length) await saveMeeting();
+  // 그 주에 처음 무언가 넣을 때 회의 줄을 만든다. 두 사람이 동시에 만들어도 저장소가 하루 한 줄만 받으므로(mkt_meetings_day_one) 있던 줄을 쓴다
+  const making = new Map();
+  function ensureMeeting(wk) {
+    const m = meetingOf(wk);
+    if (m) return Promise.resolve(m);
+    if (making.has(wk)) return making.get(wk);
+    const p = (async () => {
       if (!S.staff) await loadStaff();
-      const day = todayKST();
-      const sameDay = [...S.meetings.values()].filter(x => x.day === day).length;
-      const body = {day, title: `${shortDay(day)} 마케팅 회의${sameDay ? ` (${sameDay + 1})` : ''}`, members: defaultMembers(), created_by: ME(), updated_by: ME()};
-      const r = await rest(T_M, {method: 'POST', headers: RET, body: JSON.stringify(body)});
-      const row = r && r[0];
+      const body = {day: wk, title: `${weekName(wk)} 마케팅 회의`, members: defaultMembers(wk), created_by: ME(), updated_by: ME()};
+      let row = null;
+      try {
+        const r = await rest(`${T_M}?columns=day,title,members,created_by,updated_by`, {method: 'POST', headers: RET, body: JSON.stringify(body)});
+        row = r && r[0];
+      } catch (e) {
+        if (e.status !== 409) throw e;
+      }
+      if (!row) { const r = await rest(`${T_M}?day=eq.${wk}&deleted_at=is.null&select=*&limit=1`); row = r && r[0]; }
       if (!row) throw new Error('저장소가 답을 안 했어요');
       S.meetings.set(row.id, row);
       if (later(row.updated_at, S.curM)) S.curM = row.updated_at;
-      pickMeeting(row.id);
-      toast('새 회의를 만들었어요');
-      setTimeout(() => { const f = document.querySelector('.add-in input'); if (f && matchMedia('(pointer:fine)').matches) f.focus(); }, 60);
-    } catch (e) {
-      console.warn('new', e);
-      toast('회의를 만들지 못했어요: ' + e.message, true);
-    } finally { btn.disabled = false; }
-  }
-  $('newBtn').addEventListener('click', newMeeting);
-  $('emptyNew').addEventListener('click', newMeeting);
-
-  async function deleteMeeting() {
-    const m = S.meetings.get(S.sel); if (!m) return;
-    try {
-      const r = await rest(`${T_M}?id=eq.${m.id}`, {method: 'PATCH', headers: RET, body: JSON.stringify({deleted_at: new Date().toISOString(), updated_by: ME()})});
-      S.meetings.delete(m.id);
-      if (r && r[0] && later(r[0].updated_at, S.curM)) S.curM = r[0].updated_at;
-      E.dirty = {};
-      pickMeeting((sortedMeetings()[0] || {}).id || null);
-      toast('회의를 지웠어요 — 되돌리려면 Ctrl+Z (왼쪽 아래 되돌리기)');
-    } catch (e) { toast('지우지 못했어요: ' + e.message, true); }
+      return row;
+    })().finally(() => making.delete(wk));
+    making.set(wk, p);
+    return p;
   }
 
-  /* ══════════════════════ 회의 글 칸 (날짜 · 제목 · 메모 · 결정) ══════════════════════
-     0.7초 뒤 저절로 저장. 같은 회의를 두 사람이 동시에 고치면 줄 단위로 합친다(내가 넣은 줄 · 그쪽이 넣은 줄 둘 다 남김). */
-  const FMAP = {mDay: 'day', mTitle: 'title', mNotes: 'notes', mDec: 'decisions'};
-  const FEL = {day: 'mDay', title: 'mTitle', notes: 'mNotes', decisions: 'mDec'};
-  const fieldVal = f => $(FEL[f]).value;
+  /* ══════════════════════ 불러오기 · 정기 확인 ══════════════════════ */
+  const later = (a, b) => !b || (a || '') > (b || '');
+  async function page(path) {   // 저장소가 한 번에 1,000줄까지만 줘서 나눠 받는다
+    const out = [];
+    for (let off = 0; ; off += 1000) {
+      const r = await rest(`${path}&order=id.asc&limit=1000&offset=${off}`) || [];
+      out.push(...r);
+      if (r.length < 1000) return out;
+    }
+  }
+  async function loadAll() {
+    const [ms, bs, ls] = await Promise.all([
+      page(`${T_M}?deleted_at=is.null&select=*`), page(`${T_B}?deleted_at=is.null&select=*`), page(`${T_L}?deleted_at=is.null&select=*`),
+    ]);
+    S.meetings.clear(); S.badges.clear(); S.links.clear();
+    ms.forEach(r => { S.meetings.set(r.id, r); if (later(r.updated_at, S.curM)) S.curM = r.updated_at; });
+    bs.forEach(r => { S.badges.set(r.id, r); if (later(r.updated_at, S.curB)) S.curB = r.updated_at; });
+    ls.forEach(r => { S.links.set(r.id, r); if (later(r.updated_at, S.curL)) S.curL = r.updated_at; });
+  }
+  // 겹쳐 읽기(1분) — 먼저 시작해 늦게 끝난 저장도 놓치지 않게. 같은 줄은 updated_at 이 늦은 쪽만
+  function since(t) { if (!t) return '1970-01-01T00:00:00Z'; return new Date(Date.parse(t) - 60000).toISOString(); }
+  function applyRow(map, r) {
+    const old = map.get(r.id);
+    if (old && !later(r.updated_at, old.updated_at)) return false;
+    if (r.deleted_at) { if (!old) return false; map.delete(r.id); return true; }
+    map.set(r.id, r);
+    return true;
+  }
+  let polling = null, pollT = 0;
+  function poll() {
+    if (polling) return polling;
+    polling = pollOnce().catch(e => console.warn('poll', e)).finally(() => { polling = null; });
+    return polling;
+  }
+  async function pollOnce() {
+    const mid = (cur() || {}).id, t0 = Date.now();
+    const [ms, bs, ls, aliveB, aliveL] = await Promise.all([
+      rest(`${T_M}?updated_at=gt.${encodeURIComponent(since(S.curM))}&select=*&order=updated_at.asc&limit=1000`),
+      rest(`${T_B}?updated_at=gt.${encodeURIComponent(since(S.curB))}&select=*&order=updated_at.asc&limit=1000`),
+      rest(`${T_L}?updated_at=gt.${encodeURIComponent(since(S.curL))}&select=*&order=updated_at.asc&limit=1000`),
+      // 되돌리기(office-undo)는 넣은 줄을 아예 지우므로, 지금 보는 주는 남아 있는 줄 번호도 맞춘다
+      mid ? rest(`${T_B}?meeting_id=eq.${mid}&deleted_at=is.null&select=id&limit=1000`) : null,
+      mid ? rest(`${T_L}?meeting_id=eq.${mid}&deleted_at=is.null&select=id&limit=1000`) : null,
+    ]);
+    let ch = false;
+    (ms || []).forEach(r => { if (later(r.updated_at, S.curM)) S.curM = r.updated_at; if (applyRow(S.meetings, r)) { ch = true; syncFields(r); } });
+    (bs || []).forEach(r => { if (later(r.updated_at, S.curB)) S.curB = r.updated_at; if (applyRow(S.badges, r)) ch = true; });
+    (ls || []).forEach(r => { if (later(r.updated_at, S.curL)) S.curL = r.updated_at; if (applyRow(S.links, r)) ch = true; });
+    const prune = (map, alive) => {
+      if (!alive || alive.length >= 1000) return;
+      const ids = new Set(alive.map(x => x.id));
+      [...map.values()].forEach(r => { if (r.meeting_id === mid && !ids.has(r.id) && Date.parse(r.updated_at) < t0 - 15000) { map.delete(r.id); ch = true; } });
+    };
+    prune(S.badges, aliveB); prune(S.links, aliveL);
+    if (ch) renderAll();
+  }
+  function pollLoop() {
+    clearTimeout(pollT);
+    const live = !!(window.OfficeLive && OfficeLive.ok && OfficeLive.ok());
+    pollT = setTimeout(async () => { if (document.visibilityState !== 'hidden') await poll(); pollLoop(); }, live ? POLL_LIVE_MS : POLL_MS);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') EST.forEach(e => { if (Object.keys(e.dirty).length) saveText(e); });
+    else { poll(); paintDue(); }
+  });
+  // 다른 사람이 고치면 바로 (실시간 알림선 ../office-live.js) — 끊기면 8초 확인 그대로
+  let liveOn = false;
+  function liveBoot() { if (liveOn || !window.OfficeLive) return; liveOn = true; OfficeLive.on([T_M, T_B, T_L], () => poll()); }
+
+  /* ══════════════════════ 주차 탭 ══════════════════════ */
+  function renderWeeks() {
+    const now = thisWeek(), y = S.month.slice(0, 4);
+    $('mName').textContent = (y !== todayKST().slice(0, 4) ? y.slice(2) + '년 ' : '') + (+S.month.slice(5, 7)) + '월';
+    $('wkTabs').innerHTML = weeksOf(S.month).map(w => `<button type="button" class="wk${w === S.wk ? ' on' : ''}" data-w="${w}"${w === S.wk ? ' aria-current="true"' : ''}><b>${weekNo(w)}주차</b><span>${mdw(w)}</span>${w === now ? '<i>이번 주</i>' : ''}</button>`).join('');
+    $('wkNow').hidden = S.wk === now && S.month === monthOf(now);
+  }
+  function showTab() { const b = $('wkTabs').querySelector('.wk.on'); if (b) { const box = $('wkTabs'); box.scrollLeft = Math.max(0, b.offsetLeft - box.offsetLeft - 12); } }
+  $('wkTabs').addEventListener('click', e => { const b = e.target.closest('.wk'); if (b) pickWeek(b.dataset.w); });
+  $('mPrev').addEventListener('click', () => { S.month = addMonth(S.month, -1); renderWeeks(); showTab(); });
+  $('mNext').addEventListener('click', () => { S.month = addMonth(S.month, 1); renderWeeks(); showTab(); });
+  $('wkNow').addEventListener('click', () => pickWeek(thisWeek()));
+
+  function pickWeek(wk) {
+    const changed = S.wk !== wk;
+    S.wk = wk; S.month = monthOf(wk);
+    if (changed) { EST.forEach(e => { if (Object.keys(e.dirty).length) saveText(e); }); drafts.clear(); pickOpen.clear(); editMemo = null; hidePreview(); paintText(); }
+    renderAll(true);
+    showTab();
+  }
+  function renderAll(force) { renderWeeks(); paintDue(); paintStrip(); renderBoard(force); paintMemN(); }
+
+  /* ══════════════════════ 안내 띠 ══════════════════════ */
+  // 아직 안 넣은 사람 = 참여자 중 이번 주 주소가 하나도 없는 사람
+  function missing(m) {
+    const has = new Set(linksOf(m.id).map(l => l.person));
+    return (Array.isArray(m.members) ? m.members : []).filter(x => x && x.name && !has.has(x.name)).map(x => x.name);
+  }
+  function paintDue() {
+    if (!S.wk) return;
+    const m = cur(), left = dueMs(S.wk) - Date.now(), miss = m ? missing(m) : [];
+    let h = `${mdw(S.wk)} ${dueTxt}`;
+    if (left > 0) {
+      h += left < 3 * 3600e3 ? ` · <span class="red">${leftTxt(left)}</span>` : ` · ${leftTxt(left)}`;
+      if (miss.length) h += ` · 아직 ${miss.length}명`;
+    } else {
+      h += ' 마감';
+      if (miss.length) h += ` · <span class="red">못 넣은 사람 ${miss.map(esc).join(', ')}</span>`;
+    }
+    $('due').innerHTML = h;
+  }
+  function paintStrip() {
+    const m = cur(), bs = m ? badgesOf(m.id) : [], ls = m ? linksOf(m.id) : [];
+    $('bstrip').innerHTML = BRANDS.map(b => {
+      const own = bs.find(x => x.brand === b.k), n = ls.filter(l => l.brand === b.k).length;
+      return own ? `<span class="bst">${bDot(b.k)}<b>${esc(b.name)}</b>${esc(own.person)}${n ? ` · ${n}` : ''}</span>`
+        : `<span class="bst free">${bDot(b.k)}${esc(b.name)}</span>`;
+    }).join('');
+  }
+  setInterval(() => { if (document.visibilityState !== 'hidden' && S.wk) paintDue(); }, 30000);
+
+  /* ══════════════════════ 회의 메모 · 결정 ══════════════════════
+     0.7초 뒤 저절로 저장. 주마다 따로 들고 있어서(EST) 저장하는 사이 다른 주로 옮겨도 글이 섞이거나 빠지지 않는다.
+     같은 회의를 두 사람이 동시에 고치면 줄 단위로 합친다(내가 넣은 줄 · 그쪽이 넣은 줄 둘 다 남김). */
+  const FEL = {notes: 'mNotes', decisions: 'mDec'};
+  const EST = new Map();   // 주 → {wk, base, val, dirty, saving, again, timer, retryT}
+  function est(wk) {
+    let e = EST.get(wk);
+    if (!e) {
+      const m = meetingOf(wk) || {};
+      e = {wk, base: {notes: m.notes || '', decisions: m.decisions || ''}, val: {notes: m.notes || '', decisions: m.decisions || ''}, dirty: {}, saving: false, again: false, timer: 0, retryT: 0};
+      EST.set(wk, e);
+    }
+    return e;
+  }
   function setField(f, v) {
     const el = $(FEL[f]);
     if (el.value === (v || '')) return;
-    const focused = document.activeElement === el;
-    const a = el.selectionStart, b = el.selectionEnd;
+    const focused = document.activeElement === el, a = el.selectionStart, b = el.selectionEnd;
     el.value = v || '';
-    if (focused && a != null && f !== 'day') { try { el.setSelectionRange(Math.min(a, el.value.length), Math.min(b, el.value.length)); } catch (e) { /* noop */ } }
-    if (el.tagName === 'TEXTAREA') autoGrow(el);
+    if (focused && a != null) { try { el.setSelectionRange(Math.min(a, el.value.length), Math.min(b, el.value.length)); } catch (e) { /* noop */ } }
+    autoGrow(el);
   }
+  function paintText() { const e = est(S.wk); Object.keys(FEL).forEach(f => { $(FEL[f]).value = e.val[f]; autoGrow($(FEL[f])); }); setSt(Object.keys(e.dirty).length ? 'saving' : ''); }
   function syncFields(r) {   // 다른 PC 에서 고친 것 — 내가 고치는 중인 칸은 그대로 두고 저장할 때 합친다
-    for (const f of Object.keys(FEL)) {
-      if (E.dirty[f]) continue;
-      E.base[f] = r[f];
-      setField(f, r[f]);
-    }
-    E.base.updated_at = r.updated_at;
-    paintMemN();
+    const wk = isDay(r.day) ? weekOf(r.day) : '', e = EST.get(wk);
+    if (!e || r.deleted_at) return;
+    Object.keys(FEL).forEach(f => { if (e.dirty[f]) return; e.base[f] = r[f] || ''; e.val[f] = r[f] || ''; if (S.wk === wk) setField(f, r[f]); });
   }
   function merge3(base, mine, theirs) {
     base = base || ''; mine = mine || ''; theirs = theirs || '';
@@ -755,78 +834,56 @@
     }
     return out.join('\n');
   }
-  function markDirty(f) {
-    if (!S.sel) return;
-    E.dirty[f] = true;
-    setSt('saving');
-    clearTimeout(E.timer);
-    E.timer = setTimeout(saveMeeting, 700);
-  }
-  Object.keys(FMAP).forEach(fid => {
-    const el = $(fid);
-    el.addEventListener('input', () => { markDirty(FMAP[fid]); if (el.tagName === 'TEXTAREA') autoGrow(el); if (fid === 'mTitle') renderListSoon(); });
-    if (fid === 'mDay') el.addEventListener('change', () => markDirty('day'));
-    el.addEventListener('blur', () => { if (Object.keys(E.dirty).length) { clearTimeout(E.timer); saveMeeting(); } });
+  Object.keys(FEL).forEach(f => {
+    const el = $(FEL[f]);
+    el.addEventListener('input', () => {
+      const e = est(S.wk);
+      e.val[f] = el.value; e.dirty[f] = true;
+      setSt('saving'); autoGrow(el);
+      clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 700);
+    });
+    el.addEventListener('blur', () => { const e = est(S.wk); if (Object.keys(e.dirty).length) saveText(e); });
   });
-  let rlT = 0;
-  function renderListSoon() {
-    clearTimeout(rlT);
-    rlT = setTimeout(() => { const m = S.meetings.get(S.sel); if (m) { const tmp = Object.assign({}, m, {title: $('mTitle').value}); S.meetings.set(m.id, tmp); renderList(); S.meetings.set(m.id, m); } }, 250);
-  }
-  async function saveMeeting() {
-    clearTimeout(E.timer);
-    if (E.saving) { E.again = true; return; }
-    const id = S.sel;
-    const fs = Object.keys(E.dirty);
-    if (!id || !fs.length) return;
-    E.saving = true;
-    setSt('saving');
+  async function saveText(e) {
+    clearTimeout(e.timer); clearTimeout(e.retryT);
+    if (e.saving) { e.again = true; return; }
+    const fs = Object.keys(e.dirty);
+    if (!fs.length) return;
+    e.saving = true;
+    if (S.wk === e.wk) setSt('saving');
     let ok = false;
     try {
+      let srv = await ensureMeeting(e.wk);
       for (let tries = 0; tries < 4 && !ok; tries++) {
-        const srv = S.meetings.get(id);
-        if (!srv) throw new Error('지워진 회의예요');
+        srv = S.meetings.get(srv.id) || srv;
         const body = {updated_by: ME()}, sent = {};
-        for (const f of fs) {
-          const mine = fieldVal(f);
-          sent[f] = mine;
-          if (f === 'day') { if (/^\d{4}-\d{2}-\d{2}$/.test(mine)) body.day = mine; }
-          else if (f === 'title') body.title = mine.slice(0, 200);
-          else body[f] = merge3(E.base[f], mine, srv[f]);
-        }
-        const r = await rest(`${T_M}?id=eq.${id}&updated_at=eq.${encodeURIComponent(srv.updated_at)}`, {method: 'PATCH', headers: RET, body: JSON.stringify(body)});
+        fs.forEach(f => { sent[f] = e.val[f]; body[f] = merge3(e.base[f], sent[f], srv[f]); });
+        const r = await rest(`${T_M}?id=eq.${srv.id}&updated_at=eq.${encodeURIComponent(srv.updated_at)}`, {method: 'PATCH', headers: RET, body: JSON.stringify(body)});
         if (r && r.length) {
           const row = r[0];
-          S.meetings.set(id, row);
+          S.meetings.set(row.id, row);
           if (later(row.updated_at, S.curM)) S.curM = row.updated_at;
-          if (S.sel === id) {
-            const nb = Object.assign({}, row);
-            for (const f of fs) {
-              if (fieldVal(f) === sent[f]) { delete E.dirty[f]; setField(f, row[f]); }
-              else nb[f] = sent[f];   // 보내는 사이 더 적음 — 다음 저장은 '보낸 글' 기준으로 합친다
-            }
-            for (const f of Object.keys(FEL)) if (!fs.includes(f)) nb[f] = E.dirty[f] ? E.base[f] : row[f];
-            E.base = nb;
-          }
+          fs.forEach(f => {
+            if (e.val[f] === sent[f]) { delete e.dirty[f]; e.base[f] = e.val[f] = row[f] || ''; if (S.wk === e.wk) setField(f, row[f]); }
+            else e.base[f] = sent[f];   // 보내는 사이 더 적음 — 다음 저장은 '보낸 글' 기준으로 합친다
+          });
           ok = true;
         } else {
           // 그사이 다른 사람이 저장함 → 새로 받아서 다시 합침
-          const fresh = await rest(`${T_M}?id=eq.${id}&select=*`);
+          const fresh = await rest(`${T_M}?id=eq.${srv.id}&deleted_at=is.null&select=*`);
           if (!fresh || !fresh.length) throw new Error('회의를 찾지 못했어요');
-          S.meetings.set(id, fresh[0]);
+          S.meetings.set(fresh[0].id, fresh[0]); srv = fresh[0];
         }
       }
       if (!ok) throw new Error('다른 사람과 동시에 고치는 중이에요');
-      setSt(Object.keys(E.dirty).length ? 'saving' : 'ok');
-      renderList();
-    } catch (e) {
-      console.warn('save', e);
-      setSt('err');
-      clearTimeout(E.retryT);
-      E.retryT = setTimeout(saveMeeting, 5000);
+      if (S.wk === e.wk) setSt(Object.keys(e.dirty).length ? 'saving' : 'ok');
+    } catch (err) {
+      console.warn('save', err);
+      if (S.wk === e.wk) setSt('err');
+      e.retryT = setTimeout(() => saveText(e), 5000);
     } finally {
-      E.saving = false;
-      if (E.again || (ok && Object.keys(E.dirty).length)) { E.again = false; clearTimeout(E.timer); E.timer = setTimeout(saveMeeting, 400); }
+      e.saving = false;
+      if (e.again || (ok && Object.keys(e.dirty).length)) { e.again = false; clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 400); }
     }
   }
   function setSt(k) {
@@ -834,57 +891,49 @@
     el.className = 'save-st' + (k === 'err' ? ' err' : '');
     el.textContent = k === 'saving' ? '저장 중…' : k === 'err' ? '저장 안 됨 · 누르면 다시' : k === 'ok' ? '저장됨' : '';
   }
-  $('saveSt').addEventListener('click', () => { if ($('saveSt').classList.contains('err')) saveMeeting(); });
+  $('saveSt').addEventListener('click', () => { if ($('saveSt').classList.contains('err')) saveText(est(S.wk)); });
   function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.max(140, el.scrollHeight + 2) + 'px'; }
 
   /* ══════════════════════ 사람별 세로 칸 ══════════════════════ */
   function columnsOf(m) {
-    const mem = Array.isArray(m.members) ? m.members.filter(x => x && x.name) : [];
+    const mem = (m && Array.isArray(m.members) ? m.members.filter(x => x && x.name) : defaultMembers(S.wk));
     const cols = mem.map(x => ({name: x.name, team: TMAP[x.team] ? x.team : teamOfName(x.name), off: false}));
-    // 참여자에서 뺐어도 링크가 남아 있는 사람은 칸을 보여 줌 (링크가 안 숨게)
-    linksOf(m.id).forEach(l => { if (!cols.some(c => c.name === l.person)) cols.push({name: l.person, team: teamOfName(l.person), off: true}); });
+    if (!m) return cols;
+    // 참여자에서 뺐어도 주소 · 배지가 남아 있는 사람은 칸을 보여 줌 (안 숨게)
+    linksOf(m.id).concat(badgesOf(m.id)).forEach(l => { if (!cols.some(c => c.name === l.person)) cols.push({name: l.person, team: teamOfName(l.person), off: true}); });
     return cols;
   }
-  function analyze(mid) {
-    const mine = linksOf(mid), groups = new Map(), accts = new Map();
-    mine.forEach(l => {
-      const k = dupKey(l);
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k).push(l);
-      if (l.kind === 'account' || l.kind === 'story') { if (!accts.has(l.ig_user)) accts.set(l.ig_user, []); accts.get(l.ig_user).push(l); }
-    });
-    // 다른 회의에 나왔던 것
-    const other = new Map();
+  function analyze(m) {
+    const accts = new Map(), other = new Map(), mid = m ? m.id : null;
+    linksOf(mid).forEach(l => { if (l.kind === 'account' || l.kind === 'story') { if (!accts.has(l.ig_user)) accts.set(l.ig_user, []); accts.get(l.ig_user).push(l); } });
+    // 다른 주에 나왔던 것
     S.links.forEach(l => {
       if (l.meeting_id === mid) return;
-      const m = S.meetings.get(l.meeting_id); if (!m) return;
+      const om = S.meetings.get(l.meeting_id); if (!om) return;
       const k = dupKey(l);
       if (!other.has(k)) other.set(k, []);
-      other.get(k).push({m, person: l.person});
+      other.get(k).push({m: om, person: l.person});
     });
-    return {groups, accts, other};
+    return {accts, other};
   }
   function renderBoard(force) {
-    const box = $('board'), m = S.meetings.get(S.sel);
-    paintMemN();
-    if (!m) { box.innerHTML = ''; $('dupBar').hidden = true; return; }
+    const box = $('board'), m = cur();
     // 칸 안에 적는 중이면 다 적은 뒤에 다시 그림 (적던 글자 · 커서 지키기)
     const ae = document.activeElement;
-    if (!force && ae && box.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) { boardPending = true; paintDupBar(analyze(m.id)); return; }
+    if (!force && ae && box.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) { boardPending = true; return; }
     boardPending = false;
-    const A = analyze(m.id), cols = columnsOf(m);
-    const ls = linksOf(m.id).sort((a, b) => b.pos - a.pos);
+    const A = analyze(m), cols = columnsOf(m), mid = m ? m.id : null;
+    const ls = linksOf(mid).sort((a, b) => b.pos - a.pos), bs = badgesOf(mid);
     const html = [];
     TEAMS.forEach(t => {
       const tc = cols.filter(c => c.team === t.k);
       if (!tc.length) return;
-      html.push(`<div class="team" style="--tc:${t.c};--tt:${t.t}"><div class="team-h"><span class="bar"></span>${esc(t.name)}<span class="n">${tc.length}명</span></div><div class="cols">`);
-      tc.forEach(c => html.push(colHtml(c, ls.filter(l => l.person === c.name), A)));
+      html.push(`<div class="team" style="--n:${tc.length}"><div class="team-h">${esc(t.name)}<span class="n">${tc.length}명</span></div><div class="cols">`);
+      tc.forEach(c => html.push(colHtml(c, ls.filter(l => l.person === c.name), bs, A, !!m)));
       html.push('</div></div>');
     });
-    if (!cols.length) html.push('<div class="col-empty" style="width:100%">참여자가 없어요 — 위 <b>참여자</b> 단추로 사람을 골라 주세요</div>');
+    if (!cols.length) html.push('<div class="muted" style="padding:24px">참여자가 없어요 — 위 <b>참여자</b> 단추로 사람을 골라 주세요</div>');
     box.innerHTML = html.join('');
-    paintDupBar(A);
     paintNav();
   }
   function paintNav() {
@@ -895,47 +944,64 @@
   $('bnavL').addEventListener('click', () => $('board').scrollBy({left: -Math.round($('board').clientWidth * .8), behavior: 'smooth'}));
   $('bnavR').addEventListener('click', () => $('board').scrollBy({left: Math.round($('board').clientWidth * .8), behavior: 'smooth'}));
   window.addEventListener('resize', () => paintNav());
-  function colHtml(c, ls, A) {
-    const d = drafts.get(c.name) || {text: '', warn: []};
-    const dupN = ls.filter(l => (A.groups.get(dupKey(l)) || []).length > 1).length;
-    const warn = d.warn && d.warn.length ? `<div class="add-warn">⚠ <b>중복 계정 · 주소</b>${d.warn.map(w => `<div>${esc(keyLabel(dupKey(w.p)))} — 이미 <b>${esc(w.who.join(' · '))}</b>님 칸에 있어요</div>`).join('')}
-      <div class="r"><button class="btn sm" type="button" data-act="force" data-p="${esc(c.name)}">그래도 넣기</button><button class="btn sm" type="button" data-act="drop" data-p="${esc(c.name)}">넣지 않기</button></div></div>` : '';
+
+  function colHtml(c, ls, bs, A, hasRow) {
+    const mine = bs.filter(b => b.person === c.name).map(b => b.brand);
+    const late = hasRow && Date.now() > dueMs(S.wk);
+    const ct = ls.length ? `${ls.length}개` : late && !c.off ? '못 넣음' : '';
+    // 배지 — 고른 것은 검정, 비어 있는 것은 흰색, 다른 사람이 고른 것은 흐리게. 하나라도 고르면 고른 것만 보이고 [＋ 배지] 로 다시 펼친다
+    const open = !mine.length || pickOpen.has(c.name);
+    const chips = BRANDS.map(b => {
+      const own = bs.find(x => x.brand === b.k);
+      if (own && own.person === c.name) return `<button type="button" class="bd on" data-act="badge" data-b="${b.k}" aria-pressed="true" title="누르면 배지를 빼요">${bDot(b.k)}${esc(b.name)}<span class="x">×</span></button>`;
+      if (!open) return '';
+      if (own) return `<button type="button" class="bd off" data-act="badge" data-b="${b.k}" aria-disabled="true" title="${esc(own.person)}님이 골랐어요">${bDot(b.k)}${esc(b.name)}<em>${esc(own.person)}</em></button>`;
+      return `<button type="button" class="bd free" data-act="badge" data-b="${b.k}" aria-pressed="false"><span class="plus">＋</span>${esc(b.name)}</button>`;
+    });
+    const sel = chips.filter(x => x.includes('bd on')), rest2 = chips.filter(x => x && !x.includes('bd on'));
+    if (mine.length && mine.length < BRANDS.length) rest2.push(`<button type="button" class="bd more" data-act="pick" aria-expanded="${open}">${open ? '접기' : '＋ 배지'}</button>`);
+    const secs = BRANDS.map(b => b.k).filter(k => mine.includes(k) || ls.some(l => l.brand === k));
+    const known = new Set(secs);
+    const loose = ls.filter(l => !known.has(l.brand));
     return `<div class="col" data-p="${esc(c.name)}">
       <div class="col-h"><span class="av">${esc(c.name.slice(-2))}</span><span class="nm">${esc(c.name)}</span>${c.off ? '<span class="muted" style="font-size:11px">(참여자 아님)</span>' : ''}
-        <span class="ct${dupN ? ' w' : ''}">${dupN ? `⚠ ${dupN} · ` : ''}${ls.length}개</span></div>
-      <div class="add">
-        <form class="add-in" data-p="${esc(c.name)}"><input type="text" inputmode="url" enterkeyhint="done" autocomplete="off" placeholder="인스타 주소 · @아이디 붙여넣기" value="${esc(d.text)}" aria-label="${esc(c.name)} 칸에 링크 넣기"><button class="btn" type="submit">넣기</button></form>
-        ${warn}
-      </div>
-      <div class="lks">${ls.length ? ls.map(l => linkHtml(l, A)).join('') : '<div class="col-empty">계정 · 피드 · 릴스 주소를 넣어 주세요</div>'}</div>
+        <span class="ct${ct === '못 넣음' ? ' w' : ''}">${ct}</span></div>
+      <div class="bds">${mine.length ? '' : '<div class="ask">브랜드 배지를 골라 주세요</div>'}${sel.join('')}${rest2.join('')}</div>
+      ${secs.map(k => secHtml(c, k, mine.includes(k), ls.filter(l => l.brand === k), A)).join('')}
+      ${loose.length ? `<section class="bs"><div class="bs-h"><b>배지 없음</b><span class="n">${loose.length}</span></div><div class="lks">${loose.map(l => linkHtml(l, A)).join('')}</div></section>` : ''}
     </div>`;
   }
+  function secHtml(c, k, on, ls, A) {
+    const d = draftOf(c.name, k);
+    const warn = d.warn.length ? `<div class="add-warn" role="alert">${d.warn.map(w => `<div>${w}</div>`).join('')}<button type="button" data-act="okwarn" data-b="${k}" aria-label="닫기">×</button></div>` : '';
+    return `<section class="bs" data-b="${k}">
+      <div class="bs-h">${bDot(k)}<b>${esc(bName(k))}</b><span class="n">${ls.length || ''}</span>${on ? '' : '<span class="off">배지 빠짐</span>'}</div>
+      ${on ? `<div class="seg" role="group" aria-label="${esc(bName(k))} 종류">${TAGS.map(([t, n]) => `<button type="button" data-act="seg" data-b="${k}" data-t="${t}" class="${d.tag === t ? 'on' : ''}" aria-pressed="${d.tag === t}">${n}</button>`).join('')}</div>
+      <form class="add-in" data-p="${esc(c.name)}" data-b="${k}"><input type="text" inputmode="url" enterkeyhint="done" autocomplete="off" autocapitalize="off" placeholder="인스타 주소 · @아이디" value="${esc(d.text)}" aria-label="${esc(c.name)} ${esc(bName(k))} 주소 넣기"><button class="btn" type="submit">넣기</button></form>${warn}` : ''}
+      <div class="lks">${ls.map(l => linkHtml(l, A)).join('')}</div>
+    </section>`;
+  }
   function linkHtml(l, A) {
-    const k = dupKey(l), same = (A.groups.get(k) || []).filter(x => x.id !== l.id);
-    let w = '';
-    if (same.length) {
-      const who = [...new Set(same.map(x => x.person))];
-      w = `<div class="lk-w">⚠ 중복 — ${who.map(n => n === l.person ? '이 칸에 또' : esc(n) + '님 칸에도').join(' · ')} 있어요</div>`;
-    }
     let p = '';
-    if (!same.length && (l.kind === 'post' || l.kind === 'reel') && l.ig_user && A.accts.has(l.ig_user)) {
-      const who = [...new Set(A.accts.get(l.ig_user).map(x => x.person))];
-      p = `<div class="lk-p amb">같은 계정 @${esc(l.ig_user)} 을 ${esc(who.join(' · '))}님이 넣었어요</div>`;
+    if ((l.kind === 'post' || l.kind === 'reel') && l.ig_user && A.accts.has(l.ig_user)) {
+      const who = [...new Set(A.accts.get(l.ig_user).map(x => x.person))].filter(n => n !== l.person);
+      if (who.length) p = `<div class="lk-p amb">같은 계정 @${esc(l.ig_user)} — ${esc(who.join(' · '))}님이 넣었어요</div>`;
     }
-    const prev = A.other.get(k);
+    const prev = A.other.get(dupKey(l));
     if (prev && prev.length) {
-      const seen = [], uniq = [];
-      prev.sort((a, b) => (b.m.day || '').localeCompare(a.m.day || '')).forEach(x => { const s = x.m.id + x.person; if (!seen.includes(s)) { seen.push(s); uniq.push(x); } });
-      const shown = uniq.slice(0, 2).map(x => `${shortDay(x.m.day)} ${esc(x.person)}`).join(', ');
-      p += `<div class="lk-p">↺ 다른 회의에도 나왔어요 · ${shown}${uniq.length > 2 ? ` 외 ${uniq.length - 2}` : ''}</div>`;
+      const seen = new Set(), uniq = [];
+      prev.sort((a, b) => (b.m.day || '').localeCompare(a.m.day || '')).forEach(x => { const s = x.m.id + x.person; if (!seen.has(s)) { seen.add(s); uniq.push(x); } });
+      p += `<div class="lk-p">↺ ${uniq.slice(0, 2).map(x => `${weekName(weekOf(x.m.day))} ${esc(x.person)}`).join(', ')}${uniq.length > 2 ? ` 외 ${uniq.length - 2}` : ''} 에도 나왔어요</div>`;
     }
-    const by = l.created_by && l.created_by !== l.person ? ` · ${esc(l.created_by)} 넣음` : '';
+    const late = Date.parse(l.created_at) > dueMs(S.wk) ? ' · 마감 뒤' : '';
+    const by = l.created_by && l.created_by !== l.person ? ` · ${l.created_by} 넣음` : '';
     const memo = editMemo === l.id
       ? `<textarea class="lk-me" data-id="${esc(l.id)}" maxlength="2000" placeholder="메모 (Enter 저장 · Esc 취소)">${esc(l.memo || '')}</textarea>`
       : (l.memo ? `<div class="lk-m">${esc(l.memo)}</div>` : '');
-    return `<div class="lk k-${esc(l.kind)}${same.length ? ' dup' : ''}" data-id="${esc(l.id)}">
+    return `<div class="lk k-${esc(l.kind)}" data-id="${esc(l.id)}">
       <div class="lk-ic">${ICON[l.kind] || ICON.link}</div>
-      <div class="lk-b"><div class="lk-t">${esc(linkTitle(l))}</div><div class="lk-s">${esc(KIND_NAME[l.kind] || '링크')} · ${esc(linkSub(l))}${by}</div>${memo}${w}${p}</div>
+      <div class="lk-b"><div class="lk-t">${esc(linkTitle(l))}</div>
+        <div class="lk-s"><button type="button" class="tg ${l.tag === 'ref' ? 'ref' : l.tag === 'bench' ? '' : 'none'}" data-act="tag" title="누르면 벤치마킹 ↔ 레퍼런스">${TAG_NAME[l.tag] || '종류'}</button><span>${esc(KIND_NAME[l.kind] || '링크')}${esc(late + by)}</span></div>${memo}${p}</div>
       <div class="lk-a">
         <a href="${esc(l.url)}" target="_blank" rel="noopener" title="새 탭으로 열기" aria-label="새 탭으로 열기">${ICON.open}</a>
         <button type="button" data-act="memo" title="메모" aria-label="메모">${ICON.edit}</button>
@@ -943,99 +1009,119 @@
       </div>
     </div>`;
   }
-  function paintDupBar(A) {
-    const bar = $('dupBar'), rows = [];
-    A.groups.forEach((arr, k) => {
-      if (arr.length < 2) return;
-      const who = arr.map(x => x.person);
-      const cnt = new Map(); who.forEach(n => cnt.set(n, (cnt.get(n) || 0) + 1));
-      rows.push(`<li><span class="k">${esc(keyLabel(k))}</span> — ${[...cnt].map(([n, c]) => esc(n) + (c > 1 ? ` ${c}번` : '')).join(' · ')}</li>`);
-    });
-    bar.hidden = !rows.length;
-    if (rows.length) bar.innerHTML = `⚠ <b>중복된 계정 · 게시물 ${rows.length}건</b> — 같은 주소가 여러 칸에 있어요. 한 사람만 남겨 주세요<ul>${rows.join('')}</ul>`;
-  }
   function paintMemN() {
-    const m = S.meetings.get(S.sel);
-    $('memN').textContent = m && Array.isArray(m.members) ? m.members.length + '명' : '';
+    const m = cur(), n = m && Array.isArray(m.members) ? m.members.length : defaultMembers(S.wk).length;
+    $('memN').textContent = n + '명';
   }
 
-  /* ── 링크 넣기 ── */
-  function findDup(p, mid, extra) {
-    const k = dupKey(p);
-    const who = linksOf(mid).concat(extra || []).filter(l => dupKey(l) === k).map(l => l.person);
-    return who.length ? [...new Set(who)] : null;
+  /* ── 배지 고르기 · 빼기 ── */
+  const busy = new Set();
+  async function toggleBadge(person, brand) {
+    const wk = S.wk, key = wk + dkey(person, brand);
+    if (busy.has(key)) return;
+    const m0 = cur(), own0 = m0 ? ownerOf(m0.id, brand) : null;
+    if (own0 && own0.person !== person) { toast(`${bName(brand)} — ${own0.person}님이 고른 배지예요`, true); return; }
+    busy.add(key);
+    try {
+      if (own0) {
+        const n = linksOf(m0.id).filter(l => l.person === person && l.brand === brand).length;
+        if (n) { toast(`${bName(brand)} 주소 ${n}개를 먼저 지워야 배지를 뺄 수 있어요`, true); return; }
+        const r = await rest(`${T_B}?id=eq.${own0.id}`, {method: 'PATCH', headers: RET, body: JSON.stringify({deleted_at: new Date().toISOString()})});
+        S.badges.delete(own0.id);
+        if (r && r[0] && later(r[0].updated_at, S.curB)) S.curB = r[0].updated_at;
+      } else {
+        const m = await ensureMeeting(wk);
+        const r = await rest(T_B, {method: 'POST', headers: RET, body: JSON.stringify({meeting_id: m.id, brand, person, created_by: ME()})});
+        (r || []).forEach(x => { S.badges.set(x.id, x); if (later(x.updated_at, S.curB)) S.curB = x.updated_at; });
+      }
+      if (S.wk !== wk) return;
+      pickOpen.delete(person);
+      renderAll(true);
+      if (!own0 && matchMedia('(pointer:fine)').matches) focusAdd(person, brand);
+    } catch (e) {
+      if (e.status === 409) {   // 방금 다른 사람이 먼저 고름 (저장소가 한 브랜드 한 사람만 받음)
+        await poll();
+        const m = meetingOf(wk), own = m ? ownerOf(m.id, brand) : null;
+        toast(own && own.person !== person ? `${bName(brand)} — 방금 ${own.person}님이 골랐어요` : '방금 바뀌었어요 — 다시 골라 주세요', true);
+        renderAll(true);
+      } else { console.warn('badge', e); toast('배지를 저장하지 못했어요: ' + e.message, true); }
+    } finally { busy.delete(key); }
   }
-  async function addLinks(person, text, force) {
-    const m = S.meetings.get(S.sel); if (!m) return;
+  function focusAdd(person, brand) {
+    const i = document.querySelector(`.add-in[data-p="${cssEsc(person)}"][data-b="${cssEsc(brand)}"] input`);
+    if (i) i.focus({preventScroll: true});
+  }
+
+  /* ── 주소 넣기 (같은 주에 같은 계정 · 게시물 · 주소는 한 번만) ── */
+  function findDup(p, mid, extra) { const k = dupKey(p); return linksOf(mid).concat(extra || []).find(l => dupKey(l) === k) || null; }
+  const dupMsg = (p, hit, person) => `<b>${esc(keyLabel(dupKey(p)))}</b> — ${hit.person === person ? '이미 이 칸에' : `${esc(hit.person)}님이 이미`} 넣었어요${hit.brand ? ` (${esc(bName(hit.brand))})` : ''}`;
+  async function addLinks(person, brand, text, retry) {
+    const wk = S.wk, key = 'add' + wk + dkey(person, brand);
+    if (busy.has(key) && !retry) return;
     const parts = String(text || '').split(/[\s,]+/).filter(Boolean);
     const parsed = parts.map(parseLink).filter(Boolean);
-    if (!parsed.length) { if (parts.length) toast('인스타 주소나 링크 모양이 아니에요', true); return false; }
-    const ok = [], warn = [];
-    parsed.forEach(p => {
-      const pp = Object.assign({person}, p);
-      const who = force ? null : findDup(pp, m.id, ok);
-      if (who) warn.push({p: pp, who}); else ok.push(pp);
-    });
-    const d = drafts.get(person) || {text: '', warn: []};
-    d.text = ''; d.warn = force ? [] : warn;
-    drafts.set(person, d);
-    if (ok.length) {
-      const base = Date.now();
-      const rows = ok.map((p, i) => ({meeting_id: m.id, person, url: p.url, kind: p.kind, ig_user: p.ig_user, ig_code: p.ig_code, memo: '', pos: base + i, created_by: ME()}));
-      try {
+    if (!parsed.length) { if (parts.length) toast('인스타 주소나 링크 모양이 아니에요', true); return; }
+    busy.add(key);
+    const d = draftOf(person, brand);
+    let again = false;
+    try {
+      const m = await ensureMeeting(wk);
+      const ok = [], warn = [];
+      parsed.forEach(p => {
+        const pp = Object.assign({person, brand}, p), hit = findDup(pp, m.id, ok);
+        if (hit) warn.push(dupMsg(pp, hit, person)); else ok.push(pp);
+      });
+      if (ok.length) {
+        const base = Date.now();
+        const rows = ok.map((p, i) => ({meeting_id: m.id, person, brand, tag: d.tag, url: p.url, kind: p.kind, ig_user: p.ig_user, ig_code: p.ig_code, memo: '', pos: base + i, created_by: ME()}));
         const r = await rest(T_L, {method: 'POST', headers: RET, body: JSON.stringify(rows)});
         (r || []).forEach(x => { S.links.set(x.id, x); if (later(x.updated_at, S.curL)) S.curL = x.updated_at; });
-        if (!warn.length) toast(ok.length > 1 ? `${ok.length}개 넣었어요` : '넣었어요');
-      } catch (e) {
+      }
+      d.text = ''; d.warn = warn;
+      if (ok.length && !warn.length) toast(ok.length > 1 ? `${ok.length}개 넣었어요` : '넣었어요');
+    } catch (e) {
+      if (e.status === 409 && !retry) { await poll(); again = true; }   // 방금 다른 사람이 같은 주소를 넣음 → 새로 받아 다시 가름
+      else {
         console.warn('add', e);
         d.text = parts.join(' ');
-        toast('저장하지 못했어요: ' + e.message, true);
+        if (e.status === 409) d.warn = ['이미 들어 있는 주소예요 — 다른 주소를 넣어 주세요'];
+        else toast('저장하지 못했어요: ' + e.message, true);
       }
-    }
-    renderBoard(true);
-    renderList();
-    const inp = document.querySelector(`.add-in[data-p="${cssEsc(person)}"] input`);
-    if (inp && matchMedia('(pointer:fine)').matches) inp.focus();
-    return true;
+    } finally { busy.delete(key); }
+    if (again) return addLinks(person, brand, text, true);
+    if (S.wk !== wk) return;
+    renderAll(true);
+    if (matchMedia('(pointer:fine)').matches) focusAdd(person, brand);
   }
-  const cssEsc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
 
   const board = $('board');
   board.addEventListener('submit', e => {
     const f = e.target.closest('.add-in'); if (!f) return;
     e.preventDefault();
-    const inp = f.querySelector('input');
-    addLinks(f.dataset.p, inp.value);
+    addLinks(f.dataset.p, f.dataset.b, f.querySelector('input').value);
   });
-  board.addEventListener('input', e => {
-    const f = e.target.closest('.add-in'); if (!f) return;
-    const d = drafts.get(f.dataset.p) || {text: '', warn: []};
-    d.text = e.target.value; drafts.set(f.dataset.p, d);
-  });
+  board.addEventListener('input', e => { const f = e.target.closest('.add-in'); if (f) draftOf(f.dataset.p, f.dataset.b).text = e.target.value; });
   // 붙여 넣으면 바로 넣기 (주소가 맞을 때만)
   board.addEventListener('paste', e => {
     const f = e.target.closest('.add-in'); if (!f) return;
     setTimeout(() => {
       const v = e.target.value.trim(), parts = v.split(/[\s,]+/).filter(Boolean);
-      if (parts.length && parts.every(x => parseLink(x))) addLinks(f.dataset.p, v);
+      if (parts.length && parts.every(x => parseLink(x))) addLinks(f.dataset.p, f.dataset.b, v);
     }, 0);
   });
   board.addEventListener('focusout', () => { setTimeout(() => { if (boardPending && !board.contains(document.activeElement)) renderBoard(); }, 0); });
   board.addEventListener('click', e => {
     const act = e.target.closest('[data-act]');
     if (act) {
-      const a = act.dataset.act;
-      if (a === 'force' || a === 'drop') {
-        const person = act.dataset.p, d = drafts.get(person);
-        const items = d && d.warn ? d.warn : [];
-        if (d) d.warn = [];
-        if (a === 'force' && items.length) addLinks(person, items.map(w => w.p.url).join(' '), true);
-        else renderBoard(true);
-        return;
-      }
+      const a = act.dataset.act, col = act.closest('.col'), person = col ? col.dataset.p : '';
+      if (a === 'badge') { toggleBadge(person, act.dataset.b); return; }
+      if (a === 'pick') { if (pickOpen.has(person)) pickOpen.delete(person); else pickOpen.add(person); renderBoard(true); return; }
+      if (a === 'seg') { draftOf(person, act.dataset.b).tag = act.dataset.t; renderBoard(true); if (matchMedia('(pointer:fine)').matches) focusAdd(person, act.dataset.b); return; }
+      if (a === 'okwarn') { draftOf(person, act.dataset.b).warn = []; renderBoard(true); return; }
       const card = act.closest('.lk'); if (!card) return;
       const l = S.links.get(card.dataset.id); if (!l) return;
-      if (a === 'memo') { editMemo = l.id; renderBoard(true); const t = board.querySelector(`.lk-me[data-id="${cssEsc(l.id)}"]`); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
+      if (a === 'tag') setTag(l);
+      else if (a === 'memo') { editMemo = l.id; renderBoard(true); const t = board.querySelector(`.lk-me[data-id="${cssEsc(l.id)}"]`); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
       else if (a === 'del') delLink(l);
       return;
     }
@@ -1048,29 +1134,30 @@
   board.addEventListener('keydown', e => {
     const t = e.target.closest('.lk-me'); if (!t) return;
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); saveMemo(t); }
-    else if (e.key === 'Escape') { editMemo = null; renderBoard(true); }
+    else if (e.key === 'Escape') { t._done = true; editMemo = null; renderBoard(true); }
   });
   board.addEventListener('focusout', e => { const t = e.target.closest && e.target.closest('.lk-me'); if (t) saveMemo(t); });
+  async function patchLink(l, body) {
+    const r = await rest(`${T_L}?id=eq.${l.id}`, {method: 'PATCH', headers: RET, body: JSON.stringify(body)});
+    if (r && r[0]) { if (r[0].deleted_at) S.links.delete(l.id); else S.links.set(l.id, r[0]); if (later(r[0].updated_at, S.curL)) S.curL = r[0].updated_at; }
+  }
   async function saveMemo(t) {
     if (t._done) return; t._done = true;
     const l = S.links.get(t.dataset.id); editMemo = null;
     if (!l) { renderBoard(true); return; }
     const v = t.value.trim().slice(0, 2000);
     if (v === (l.memo || '')) { renderBoard(true); return; }
-    try {
-      const r = await rest(`${T_L}?id=eq.${l.id}`, {method: 'PATCH', headers: RET, body: JSON.stringify({memo: v})});
-      if (r && r[0]) { S.links.set(l.id, r[0]); if (later(r[0].updated_at, S.curL)) S.curL = r[0].updated_at; }
-    } catch (e) { toast('메모를 저장하지 못했어요: ' + e.message, true); }
+    try { await patchLink(l, {memo: v}); } catch (e) { toast('메모를 저장하지 못했어요: ' + e.message, true); }
+    renderBoard(true);
+  }
+  async function setTag(l) {
+    try { await patchLink(l, {tag: l.tag === 'bench' ? 'ref' : 'bench'}); } catch (e) { toast('바꾸지 못했어요: ' + e.message, true); }
     renderBoard(true);
   }
   async function delLink(l) {
     hidePreview();
-    try {
-      const r = await rest(`${T_L}?id=eq.${l.id}`, {method: 'PATCH', headers: RET, body: JSON.stringify({deleted_at: new Date().toISOString()})});
-      S.links.delete(l.id);
-      if (r && r[0] && later(r[0].updated_at, S.curL)) S.curL = r[0].updated_at;
-      renderBoard(true); renderList();
-    } catch (e) { toast('지우지 못했어요: ' + e.message, true); }
+    try { await patchLink(l, {deleted_at: new Date().toISOString()}); S.links.delete(l.id); renderAll(true); }
+    catch (e) { toast('지우지 못했어요: ' + e.message, true); }
   }
 
   /* ══════════════════════ 인스타 미리보기 ══════════════════════
@@ -1151,56 +1238,44 @@
     paintMembers();
     $('memDlg').hidden = false;
   }
+  const membersNow = () => { const m = cur(); return (m && Array.isArray(m.members) ? m.members : defaultMembers(S.wk)).filter(x => x && x.name).slice(); };
   function paintMembers() {
-    const m = S.meetings.get(S.sel); if (!m) return;
-    const mem = Array.isArray(m.members) ? m.members : [];
-    const on = new Set(mem.map(x => x.name));
+    const mem = membersNow(), on = new Set(mem.map(x => x.name));
     const st = S.staff || {design: [], mkt: [], md: []};
+    $('memTtl').textContent = `${weekName(S.wk)} 참여자`;
     $('memBody').innerHTML = TEAMS.map(t => {
       const names = (t.k === 'etc' ? ETC_DEFAULT.slice() : st[t.k].slice());
       mem.forEach(x => { if ((TMAP[x.team] ? x.team : teamOfName(x.name)) === t.k && !names.includes(x.name)) names.push(x.name); });
       if (!names.length) return '';
-      return `<div class="mg" style="--tc:${t.c};--tt:${t.t}"><div class="mg-h"><span class="bar"></span>${esc(t.name)}</div><div class="pills">${
+      return `<div class="mg"><div class="mg-h">${esc(t.name)}</div><div class="pills">${
         names.map(n => `<label class="pill${on.has(n) ? ' on' : ''}" data-n="${esc(n)}" data-t="${t.k}"><input type="checkbox"${on.has(n) ? ' checked' : ''}><span class="ck"></span>${esc(n)}</label>`).join('')
       }</div></div>`;
     }).join('');
   }
   async function setMembers(next) {
-    const m = S.meetings.get(S.sel); if (!m) return;
     try {
+      const m = await ensureMeeting(S.wk);
       const r = await rest(`${T_M}?id=eq.${m.id}`, {method: 'PATCH', headers: RET, body: JSON.stringify({members: next, updated_by: ME()})});
-      if (r && r[0]) {
-        const row = r[0];
-        S.meetings.set(m.id, row);
-        if (later(row.updated_at, S.curM)) S.curM = row.updated_at;
-        if (E.base) { E.base.members = row.members; }
-      }
+      if (r && r[0]) { S.meetings.set(m.id, r[0]); if (later(r[0].updated_at, S.curM)) S.curM = r[0].updated_at; }
     } catch (e) { toast('참여자를 저장하지 못했어요: ' + e.message, true); }
-    paintMembers(); renderBoard(true);
-  }
-  function memberOrder(list) {   // 팀 순서 → 직원 명단 순서 → 넣은 순서
-    const st = S.staff || {design: [], mkt: [], md: []};
-    const rank = x => { const ti = TEAMS.findIndex(t => t.k === x.team); const arr = x.team === 'etc' ? ETC_DEFAULT : (st[x.team] || []); const i = arr.indexOf(x.name); return ti * 1000 + (i < 0 ? 500 : i); };
-    return list.map((x, i) => ({x, i})).sort((a, b) => rank(a.x) - rank(b.x) || a.i - b.i).map(o => o.x);
+    paintMembers(); renderAll(true);
   }
   $('memBody').addEventListener('click', e => {
     const p = e.target.closest('.pill'); if (!p) return;
     e.preventDefault();
-    const m = S.meetings.get(S.sel); if (!m) return;
-    const mem = (Array.isArray(m.members) ? m.members : []).slice(), n = p.dataset.n;
+    const m = cur(), mem = membersNow(), n = p.dataset.n;
     const i = mem.findIndex(x => x.name === n);
     if (i >= 0) {
-      const cnt = linksOf(m.id).filter(l => l.person === n).length;
+      const cnt = m ? linksOf(m.id).filter(l => l.person === n).length : 0;
       mem.splice(i, 1);
-      if (cnt) toast(`${n}님 링크 ${cnt}개는 칸에 그대로 남아요`);
+      if (cnt) toast(`${n}님 주소 ${cnt}개는 칸에 그대로 남아요`);
     } else mem.push({name: n, team: p.dataset.t});
     setMembers(memberOrder(mem));
   });
   $('pAdd').addEventListener('click', () => {
     const n = $('pName').value.trim().slice(0, 40), t = $('pTeam').value;
     if (!n) { $('pName').focus(); return; }
-    const m = S.meetings.get(S.sel); if (!m) return;
-    const mem = (Array.isArray(m.members) ? m.members : []).slice();
+    const mem = membersNow();
     if (mem.some(x => x.name === n)) { toast('이미 있는 이름이에요', true); return; }
     mem.push({name: n, team: t});
     $('pName').value = '';
@@ -1211,7 +1286,7 @@
   $('memClose').addEventListener('click', () => { $('memDlg').hidden = true; });
   $('memDlg').addEventListener('click', e => { if (e.target === $('memDlg')) $('memDlg').hidden = true; });
 
-  /* ══════════════════════ 더보기 (복사 · 지우기) ══════════════════════ */
+  /* ══════════════════════ 더보기 (글로 복사) ══════════════════════ */
   let menuEl = null;
   function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
   $('moreBtn').addEventListener('click', e => {
@@ -1220,20 +1295,11 @@
     const r = $('moreBtn').getBoundingClientRect();
     menuEl = document.createElement('div');
     menuEl.className = 'menu';
-    menuEl.innerHTML = `<button type="button" data-m="copy">${ICON.copy} 회의록 글로 복사 (카톡에 붙여넣기)</button>
-      <button type="button" class="danger" data-m="del">${ICON.trash} 이 회의 지우기</button>`;
+    menuEl.innerHTML = `<button type="button" data-m="copy">${ICON.copy} 회의록 글로 복사 (카톡에 붙여넣기)</button>`;
     document.body.appendChild(menuEl);
     menuEl.style.top = (r.bottom + scrollY + 6) + 'px';
     menuEl.style.left = Math.max(8, r.right + scrollX - menuEl.offsetWidth) + 'px';
-    menuEl.addEventListener('click', ev => {
-      const b = ev.target.closest('[data-m]'); if (!b) return;
-      ev.stopPropagation();
-      if (b.dataset.m === 'copy') { closeMenu(); copyText(); }
-      else if (b.dataset.m === 'del') {
-        if (!b.dataset.sure) { b.dataset.sure = '1'; b.innerHTML = `${ICON.trash} 한 번 더 누르면 지워요`; return; }
-        closeMenu(); deleteMeeting();
-      }
-    });
+    menuEl.addEventListener('click', ev => { if (!ev.target.closest('[data-m]')) return; ev.stopPropagation(); closeMenu(); copyText(); });
   });
   document.addEventListener('click', e => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); });
   document.addEventListener('keydown', e => {
@@ -1241,32 +1307,31 @@
     if (menuEl) closeMenu();
     else if (!$('memDlg').hidden) $('memDlg').hidden = true;
     else if (!pv.hidden) hidePreview();
-    else if (document.body.classList.contains('side-open')) closeSide();
   });
   async function copyText() {
-    const m = S.meetings.get(S.sel); if (!m) return;
-    const A = analyze(m.id), cols = columnsOf(m), out = [`[${dayLabel(m.day)}] ${m.title || '마케팅 회의'}`];
+    const m = cur(), cols = columnsOf(m), all = m ? linksOf(m.id) : [], bs = m ? badgesOf(m.id) : [];
+    const out = [`[${weekName(S.wk)} · ${mdw(S.wk)}] 마케팅 회의`];
     TEAMS.forEach(t => cols.filter(c => c.team === t.k).forEach(c => {
-      const ls = linksOf(m.id).filter(l => l.person === c.name).sort((a, b) => b.pos - a.pos);
+      const ls = all.filter(l => l.person === c.name).sort((a, b) => b.pos - a.pos), mine = bs.filter(b => b.person === c.name).map(b => b.brand);
       out.push('', `■ ${t.name} ${c.name} (${ls.length})`);
-      ls.forEach(l => out.push(`- ${l.url}${l.memo ? '  ' + l.memo.replace(/\n/g, ' ') : ''}${(A.groups.get(dupKey(l)) || []).length > 1 ? '  ⚠중복' : ''}`));
+      const keys = BRANDS.map(b => b.k).filter(k => mine.includes(k) || ls.some(l => l.brand === k));
+      keys.concat(ls.some(l => !keys.includes(l.brand)) ? [null] : []).forEach(k => {
+        const arr = ls.filter(l => (k ? l.brand === k : !keys.includes(l.brand)));
+        out.push(`[${bName(k)}]`);
+        arr.forEach(l => out.push(`- ${TAG_NAME[l.tag] ? TAG_NAME[l.tag] + ' ' : ''}${l.url}${l.memo ? '  ' + l.memo.replace(/\n/g, ' ') : ''}`));
+      });
     }));
-    const notes = fieldVal('notes').trim(), dec = fieldVal('decisions').trim();
+    const e = est(S.wk), notes = e.val.notes.trim(), dec = e.val.decisions.trim();
     if (notes) out.push('', '■ 회의 메모', notes);
     if (dec) out.push('', '■ 결정 · 할 일', dec);
     const txt = out.join('\n');
     try { await navigator.clipboard.writeText(txt); toast('복사했어요 — 카톡에 붙여 넣으면 돼요'); }
-    catch (e) {
+    catch (err) {
       const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
       try { document.execCommand('copy'); toast('복사했어요'); } catch (er) { toast('복사하지 못했어요', true); }
       ta.remove();
     }
   }
-
-  /* ── 휴대폰 회의 목록 서랍 ── */
-  function closeSide() { document.body.classList.remove('side-open'); $('sideVeil').hidden = true; }
-  $('sideBtn').addEventListener('click', () => { document.body.classList.add('side-open'); $('sideVeil').hidden = false; });
-  $('sideVeil').addEventListener('click', closeSide);
 
   /* ══════════════════════ 잠금 · 시작 ══════════════════════ */
   function isUnlocked() {
@@ -1290,17 +1355,26 @@
     start();
   });
 
+
   async function start() {
     $('app').hidden = false;
+    const want = (location.hash || '').slice(1);
+    S.wk = isDay(want) ? weekOf(want) : thisWeek();
+    S.month = monthOf(S.wk);
+    renderWeeks();
     try { await Promise.all([loadAll(), loadStaff()]); }
     catch (e) { toast('회의록을 못 불러왔어요: ' + e.message, true); }
-    const want = (location.hash || '').slice(1);
-    const id = S.meetings.has(want) ? want : S.meetings.has(lsGet(LS.sel)) ? lsGet(LS.sel) : (sortedMeetings()[0] || {}).id || null;
-    pickMeeting(id);
+    EST.clear();
+    paintText();
+    renderAll(true);
+    showTab();
+    // 휴대폰에서는 내 칸부터 보이게 (업무일지 '나는' 이름)
+    const mine = matchMedia('(max-width: 860px)').matches && ME() ? document.querySelector(`.col[data-p="${cssEsc(ME())}"]`) : null;
+    if (mine) $('board').scrollLeft = Math.max(0, mine.getBoundingClientRect().left - $('board').getBoundingClientRect().left - 2);
     pollLoop();
     if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
   }
-  window.__mtgTest = {parseLink, dupKey, merge3};   // 확인용
+  window.__mtgTest = {parseLink, dupKey, merge3, weekOf, weeksOf, weekName};   // 확인용
   if (isUnlocked()) start(); else { $('lock').hidden = false; setTimeout(() => $('lockPin').focus(), 50); }
 })();
 </script>
