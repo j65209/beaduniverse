@@ -1,5 +1,8 @@
 /* 확인 필요 알림 — 전승훈 (CS 이미지 확인은 CS팀) (2026-11-24 사장님 "확인 필요한것들 비드오피스에 있는 모든것들은 다 알림으로 띄워줘. 전승훈에게")
-   오피스 곳곳의 '확인 필요'(재고 ERP · 발주 · 신상 · 리오더 · 승인 · CS · 디자인 · MD · 자동 업무)를 한곳에 모아 종 모양 숫자 + 뜨는 알림 + 크롬 알림으로.
+   → 같은 날 "알림에 확인 필요는 cs팀은 안뜨게해주고 … 띄워달라는거는 재고 erp나 매핑이 안되거나 재고가 안되거나 그런걸 좀 말해달라고" →
+   전승훈에게는 재고 ERP · 매핑 · 재고 쪽만: ERP 알림 · 매핑 요청 · ⚠ 줄 · 재고 미기재 · 재고 없는데 판매중 · 마이너스 재고 · 재고/발주 검수 · 발주 매칭 · 신상 · 리오더 · 재고 쪽 자동 업무.
+   CS팀 · 디자인팀 · MD팀 · 인스타는 뺌(OFF), 승인 · 출금은 목록에만(QUIET — 띄우지 않음).
+   종 모양 숫자 + 뜨는 알림 + 크롬 알림으로.
    · 읽기만 한다 — 원래 화면이 쓰는 통로(프록시 · 저장소 함수)를 그대로 읽고, 원래 화면과 같은 기준으로 고른다. 저장하는 것은 '확인했어요'(app_kv check_ack) 하나.
    · 두 번 보고 띄운다 — 처음 보이면 기억만, 70초 뒤 다시 읽어도 그대로인 것만 (모든 경보는 두 번 보고)
    · 하나하나 = 새로 생기면 한 번 뜸. 많은 것(카톡 불량 사진 등)은 한 줄로 묶음. 하루 첫 화면에서 남은 것을 한 번 정리해 띄움
@@ -18,6 +21,11 @@ if (window.BBCheck) return;
 const OWNER = '전승훈';
 const MIN = 60e3, CONFIRM = 70e3;
 const LS = {seen: 'bb_chk_seen_v1', ack: 'bb_check_ack_v1', day: 'bb_chk_day_v1'};
+/* 전승훈 알림에서 뺀 곳 (2026-11-24 사장님 "cs팀은 안뜨게" · 재고 쪽만) — 다시 보이려면 여기서 지운다. 카톡 이미지(kkoimg, to:'cs')는 CS팀 것이라 상관없음 */
+const OFF = new Set(['kko', 'faq', 'kdf', 'clm', 'cjb', 'dz', 'mdp', 'dm']);
+const QUIET = new Set(['appr']);          // 목록에만 — 띄우지 않음
+const STOCK_JOB = /^(pro-stock|erp|po-|reorder|kd-|stock|new-products|link-watch|office-(stock|defects|reorder|report))/, STOCK_NAME = /재고|ERP|매핑|발주|리오더|입고/i;          // 자동 업무 가운데 재고 쪽만
+const stockJob = x => STOCK_JOB.test(String(x.id || '')) || STOCK_NAME.test(String(x.name || x.label || ''));
 const AREAS = ['재고 ERP', '발주', '신상', '리오더', '승인 · 출금', 'CS팀', '디자인팀', 'MD팀', '자동 업무'];
 const BR = {kop: '코페리', apt: '아페티', koz: '코즈미', '6a': '식스에이', '6A': '식스에이', yar: '야르', akoi: '아코이하우스', pp: '프로덕트피알', bb: '브라이트비드', ct: '클리어타입', sb: '샤인비드'};
 const CHN = {home: '공홈', smartstore: '스마트스토어', ably: '에이블리', zigzag: '지그재그', '29cm': '29CM', wconcept: 'W컨셉', coupang: '쿠팡', ohou: '오늘의집', eql: 'EQL'};
@@ -81,6 +89,27 @@ const SRC = [
       .filter(x => { const nm = String(x.n || '').trim(); return nm && nm !== '상품명' && !/^\s*⚠|안\s*셈|묶음\s*→\s*낱개|^\s*세트\s*·/.test(String(x.c || '')); });
     return rs.length ? [{k: 'blank', a: '재고 ERP', t: `재고 미기재 ${n(rs.length)}건`, b: '남은 재고가 빈칸 — 실제 재고를 적어 주세요', list: rs.slice(0, 40).map(x => [String(ok.get(x.gid)).replace(/^[\d.]+\s*|\s*송장출력$/g, ''), x.n, x.o].filter(Boolean).join(' · ')), sig: hash(rs.map(x => x.gid + '|' + x.r).join(',')), q: 1, go: 'blank'}] : [];
   }},
+  {id: 'zero', nm: '재고 없는데 판매중', ev: 4, async run() {          // ERP 재고 탭 맨 위 빨간 줄과 같은 기준 (남은 재고 0 이하 · 식스샵프로 판매중) + 마이너스 재고
+    const ts = await sb('erp_tabs?select=gid,name&kind=eq.stock&alive=is.true&deleted_at=is.null&order=pos.asc'); if (!ts.length) return [];
+    const gs = ts.map(x => encodeURIComponent(x.gid)).join(','), hd = await sb(`erp_rows?select=gid,v&deleted_at=is.null&gid=in.(${gs})&v->>1=eq.${encodeURIComponent('상품명')}`);
+    const ok = new Map(ts.filter(x => hd.some(q => q.gid === x.gid && String((q.v || [])[11] || '').replace(/\s+/g, '') === '남은재고')).map(x => [x.gid, String(x.name).replace(/^[\d.]+\s*|\s*송장출력$/g, '')])); if (!ok.size) return [];
+    const rs = (await sb(`erp_rows?select=gid,r,c:v->>0,n:v->>1,o:v->>2,q:v->>11&deleted_at=is.null&gid=in.(${[...ok.keys()].map(encodeURIComponent).join(',')})&v->>1=neq.&or=(v->>11.eq.0,v->>11.like.-*)&limit=2000`))
+      .map(x => Object.assign(x, {z: Number(String(x.q || '').replace(/[,\s]/g, '')), n: String(x.n || '').trim(), o: String(x.o || '').trim()}))
+      .filter(x => x.n && isFinite(x.z) && x.z <= 0 && !/^\s*⚠|안\s*셈|묶음\s*→\s*낱개|^\s*세트\s*·/.test(String(x.c || '')));
+    const need = [...new Set(rs.map(x => x.gid))], pro = new Map(need.length ? (await sb(`erp_pro?select=gid,pro&gid=in.(${need.map(encodeURIComponent).join(',')})`)).map(p => [p.gid, p.pro || {}]) : []);
+    const on = x => { const st = (pro.get(x.gid) || {})[String(x.r)]; return !!st && st[0] === 'on'; };
+    // 방금 다 팔린 것은 재고 연동(5분)이 곧 품절로 돌리니, 11분 넘게 그대로일 때만
+    const was = jget('bb_chk_zero_v1'), now = Date.now(), keep = {}, out = [];
+    rs.filter(on).forEach(x => {
+      const k = `zero:${x.gid}|${x.n}|${x.o}`, h = hash(k), t = +was[h] || now;
+      keep[h] = t;
+      if (now - t >= 11 * MIN) out.push({k, a: '재고 ERP', t: `재고 없는데 판매중 — ${x.n}`, b: [ok.get(x.gid), x.o, `남은 재고 ${n(x.z)}`].filter(Boolean).join(' · ') + ' — 품절 처리하거나 재고를 확인해 주세요', hot: 1, go: 'erp'});
+    });
+    ls('bb_chk_zero_v1', JSON.stringify(keep));
+    const mi = rs.filter(x => x.z < 0 && !on(x) && !/B급/.test(x.n));          // 판매중은 위에서 · B급(반품)은 재고 연동 밖
+    if (mi.length) out.push({k: 'minus', a: '재고 ERP', t: `남은 재고 마이너스 ${n(mi.length)}줄`, b: '실제보다 더 빠진 줄 — 세어서 바로잡아 주세요', list: mi.slice(0, 40).map(x => [ok.get(x.gid), x.n, x.o, n(x.z)].filter(Boolean).join(' · ')), sig: hash(mi.map(x => `${x.gid}|${x.n}|${x.o}`).join(',')), go: 'erp'});
+    return out;
+  }},
   {id: 'audit', nm: '재고 검수', ev: 5, run: async () => ((await px('/erp/audit')).issues || []).filter(x => x.level === 'alert').map(x => ({k: 'au:' + (x.key || x.text), a: '재고 ERP', t: '재고 검수 — 확인 필요', b: x.text, go: 'erp'}))},
   {id: 'poa', nm: '발주 검수', ev: 5, run: async () => ((await px('/erp/po-audit')).issues || []).filter(x => x.level === 'alert').map(x => ({k: 'poa:' + (x.key || x.text), a: '발주', t: '발주 검수 — 확인 필요', b: x.text, go: 'pom'}))},
   {id: 'pom', nm: '발주 매칭', ev: 5, run: async () => (await px('/erp/po-match', {arr: 'items'})).items.filter(_pomNeedsCheck).map(it => ({k: 'pom:' + it.sn, a: '발주', t: `발주 ${it.sn} — ERP 줄 확인`, b: [it.date, it.n ? _pomName(it) : (it.cands || []).map(_pomName).slice(0, 3).join(' / ') || '행 못 찾음', it.planQty || it.qty ? n(it.planQty || it.qty) + '개' : '', it.why || (it.recv && it.recv.why) || ''].filter(Boolean).join(' · '), q: 1, go: 'pom'}))},   // 띄우기는 #poAlert
@@ -142,8 +171,8 @@ const SRC = [
   }},
   {id: 'sys', nm: '자동 업무 상태', ev: 5, async run() {
     const [h, a] = await Promise.all([px('/health', {arr: 'checks'}), px('/agents/status', {arr: 'agents'})]), out = [];
-    h.checks.filter(x => !x.ok).forEach(x => out.push({k: 'sys:' + x.id, a: '자동 업무', t: x.name || x.id, b: x.detail || (x.status === 'missing' ? '자료가 없어요' : '멈췄거나 늦어지고 있어요'), hot: 1, go: 'sys'}));
-    a.agents.filter(x => x.status === 'stale' && !h.checks.some(c => c.id === x.id)).forEach(x => out.push({k: 'ag:' + x.id, a: '자동 업무', t: `${x.label || x.id} — 멈춤`, b: x.detail || '확인 필요', hot: 1, go: 'agents'}));
+    h.checks.filter(x => !x.ok && stockJob(x)).forEach(x => out.push({k: 'sys:' + x.id, a: '자동 업무', t: x.name || x.id, b: x.detail || (x.status === 'missing' ? '자료가 없어요' : '멈췄거나 늦어지고 있어요'), hot: 1, go: 'sys'}));
+    a.agents.filter(x => x.status === 'stale' && stockJob(x) && !h.checks.some(c => c.id === x.id)).forEach(x => out.push({k: 'ag:' + x.id, a: '자동 업무', t: `${x.label || x.id} — 멈춤`, b: x.detail || '확인 필요', hot: 1, go: 'agents'}));
     return out;
   }},
   {id: 'dm', nm: '인스타 자동 DM', ev: 60, async run() {
@@ -159,7 +188,7 @@ S.first = Object.keys(S.seen).length > 0;
 SRC.forEach(s => { S.src[s.id] = {items: null, at: 0, next: 0, err: '', busy: false, fails: 0}; });
 const full = x => x.k + '#' + (x.sig || '');
 const isAck = x => !!S.ack[hash(full(x))];
-const mySrc = () => { const r = role(); return r ? SRC.filter(s => (s.to || 'me') === r) : []; };
+const mySrc = () => { const r = role(); return r ? SRC.filter(s => (s.to || 'me') === r && !(r === 'me' && OFF.has(s.id))) : []; };
 const all = () => mySrc().flatMap(s => S.src[s.id].items || []);
 const todo = () => all().filter(x => !isAck(x));
 const saveSeen = () => ls(LS.seen, JSON.stringify(S.seen));
@@ -173,7 +202,7 @@ function setAck(xs, on) {
 async function runSrc(s) {
   const c = S.src[s.id]; if (c.busy) return; c.busy = true; S.running++;
   try {
-    const xs = (await s.run()).map(x => Object.assign(x, {src: s.id}));
+    const xs = (await s.run()).map(x => Object.assign(x, {src: s.id}, QUIET.has(s.id) ? {q: 1} : {}));
     c.items = xs; c.err = ''; c.fails = 0; c.at = Date.now();
     look(s, xs);
   } catch (e) { c.fails++; c.err = (e && e.message) || String(e); }
@@ -383,7 +412,7 @@ function tick() {
     try { kvPull('check_ack', LS.ack, v => { S.ack = Object.assign({}, v || {}); closePops(all().filter(isAck).map(full)); S.drawn = ''; draw(); }); } catch (e) {}
     if (window.OfficeLive) {
       const soon = (id, ms) => () => { const c = S.src[id]; c.next = Math.min(c.next, Date.now() + (ms || 3000)); };
-      window.OfficeLive.on(['erp_alert', 'erp_ask'], soon('erp')); window.OfficeLive.on(['leave_comp_requests'], soon('appr')); window.OfficeLive.on(['dlog_pages'], soon('dz', 30e3));
+      window.OfficeLive.on(['erp_alert', 'erp_ask'], soon('erp')); window.OfficeLive.on(['erp_rows'], () => { soon('erp', 20e3)(); soon('zero', 60e3)(); }); window.OfficeLive.on(['leave_comp_requests'], soon('appr')); window.OfficeLive.on(['dlog_pages'], soon('dz', 30e3));
       window.OfficeLive.on(['app_kv'], () => { try { kvPull('check_ack', LS.ack, v => { S.ack = Object.assign({}, v || {}); closePops(all().filter(isAck).map(full)); S.drawn = ''; draw(); }); } catch (e) {} });
     }
   }
