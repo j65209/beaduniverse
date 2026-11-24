@@ -33,7 +33,7 @@ const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 const MAX_IMAGES = 10;
 const MAX_BYTES = 5 * 1024 * 1024; // X 는 5MB 넘는 사진을 못 올린다 (인스타는 8MB)
 const CAPTION_MAX = 2200;
-const HASHTAG_MAX = 5; // 인스타가 2025-12부터 게시물 · 릴스당 5개까지 (2026-11-12, 예전 30)
+const HASHTAG_MAX = 15; // 인스타 공지는 2025-12부터 5개까지지만 우리 계정은 11-12 에 15개로도 게시됨 (2026-11-24 사장님 "해시태그를 엄청 달아줘", 예전 5). 공식 API 한도는 30
 const X_MAX = 280;
 
 const args = Object.fromEntries(
