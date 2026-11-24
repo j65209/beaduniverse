@@ -10862,8 +10862,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   .leave-recent[hidden]{display:none}
   .leave-recent-head{
-    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
-    margin-bottom:10px;padding-bottom:8px;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 10px;
+    margin-bottom:4px;padding-bottom:8px;
     border-bottom:1px dashed rgba(255,179,71,.18);
   }
   .leave-recent-title{
@@ -10872,16 +10872,30 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .leave-recent-meta{
     font-size:10.5px;color:var(--text-3);font-family:var(--mono);
   }
-  .leave-recent-list{display:flex;flex-direction:column;gap:4px}
+  .leave-recent-list{display:flex;flex-direction:column;gap:0}
+  /* 한 줄 = [이름 · 구분 · 사유] [신청일 | 작성일] [×]
+     신청일 = 쉬는 날(주황 · 굵게) · 작성일 = 신청서를 낸 때(회색) — 이름표를 붙여 두 날짜를 헷갈리지 않게 */
   .leave-recent-item{
     display:grid;
-    grid-template-columns:78px 1fr auto auto auto;
-    gap:10px;align-items:center;
-    padding:5px 4px;
+    grid-template-columns:minmax(0,1fr) auto auto;
+    grid-template-areas:"who dates del";
+    gap:6px 12px;align-items:center;
+    padding:8px 4px;
     font-size:12px;
-    border-bottom:1px solid rgba(255,255,255,.03);
+    border-bottom:1px solid rgba(255,179,71,.14);
   }
+  .lr-who{grid-area:who;display:flex;align-items:center;gap:8px;min-width:0}
+  .lr-who .leave-recent-type{flex:none;white-space:nowrap}
+  .lr-dates{grid-area:dates;display:grid;grid-template-columns:118px 124px;gap:10px}
+  .lr-date{display:flex;align-items:baseline;gap:6px;white-space:nowrap;min-width:0}
+  .lr-date > i{
+    font-style:normal;font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:0;
+    padding:1px 5px;border-radius:3px;flex:none;
+  }
+  .lr-use > i{color:#c2410c;background:rgba(255,179,71,.14)}
+  .lr-wrote > i{color:var(--text-3);background:var(--bg-2)}
   .leave-recent-del{
+    grid-area:del;
     width:22px;height:22px;border-radius:4px;
     background:transparent;border:1px solid rgba(255,255,255,.08);
     color:var(--text-3);cursor:pointer;
@@ -10893,14 +10907,24 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     color:#b91c1c;border-color:rgba(255,115,115,.5);background:rgba(255,115,115,.08);
   }
   .leave-recent-item:last-child{border-bottom:none}
-  .leave-recent-when{
-    font-family:var(--mono);font-size:10.5px;color:var(--text-3);
+  .lr-dates .leave-recent-when{
+    font-family:var(--mono);font-size:11px;color:var(--text-3);
     letter-spacing:.01em;
   }
-  .leave-recent-name{color:var(--text-0);font-weight:500}
-  .leave-recent-date{
-    color:var(--text-2);font-family:var(--mono);font-size:11px;
+  .leave-recent-name{color:var(--text-0);font-weight:600;white-space:nowrap}
+  .lr-dates .leave-recent-date{
+    color:var(--text-0);font-family:var(--mono);font-size:12px;font-weight:600;
   }
+  .leave-recent-date small{font-family:var(--sans);font-size:.88em;font-weight:500;color:var(--text-2);margin-left:2px}
+  /* 정렬 — 작성일순 / 신청일순 */
+  .leave-recent-tools{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .leave-recent-sort{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .leave-recent-sort button{
+    padding:3px 9px;font-size:11px;font-weight:500;line-height:1.4;
+    background:transparent;border:0;color:var(--text-3);cursor:pointer;font-family:var(--sans);
+  }
+  .leave-recent-sort button + button{border-left:1px solid var(--line)}
+  .leave-recent-sort button.on{background:rgba(255,179,71,.14);color:#c2410c;font-weight:600}
   .leave-recent-type{
     font-size:11px;font-weight:500;
     padding:2px 8px;border-radius:3px;
@@ -10925,7 +10949,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     color:#3730a3;border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.06);
   }
   .leave-recent-reason{
-    font-size:11px;color:var(--text-3);
+    font-size:11px;color:var(--text-3);min-width:0;
     max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
   .leave-history-reason{
@@ -10949,16 +10973,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .leave-recent-more[hidden]{display:none}
   @media (max-width:600px){
     .leave-recent{padding:12px 14px 14px}
+    /* 휴대폰: 1줄 이름 · 구분 · ×  /  2줄 [신청일 칸][작성일 칸] — 이름표는 위, 날짜는 아래 */
     .leave-recent-item{
-      grid-template-columns:1fr auto auto;
-      gap:4px 8px;
-      padding:6px 2px;
+      grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:"who del" "dates dates";
+      gap:6px 8px;
+      padding:10px 2px 12px;
     }
-    .leave-recent-when{grid-column:1/-1;order:-1}
-    .leave-recent-name{order:1}
-    .leave-recent-type{order:2;justify-self:end}
-    .leave-recent-del{order:3}
-    .leave-recent-date{grid-column:1/-1;order:4;font-size:10.5px}
+    .lr-dates{grid-template-columns:1fr 1fr;gap:6px}
+    .lr-date{flex-direction:column;align-items:flex-start;gap:2px;padding:6px 10px;border-radius:6px}
+    .lr-date > i{padding:0;background:none;font-size:10.5px}
+    .lr-use{background:rgba(255,179,71,.09);border:1px solid rgba(255,179,71,.28)}
+    .lr-wrote{background:var(--bg-2);border:1px solid var(--line)}
+    .lr-dates .leave-recent-date{font-size:13.5px}
+    .lr-dates .leave-recent-when{font-size:12px}
+    .leave-recent-sort button{min-height:30px;padding:4px 11px;font-size:12px}
   }
 
   /* ===== 대체휴무 신청 · 대표 승인 (compReqPanel) ===== */
@@ -13527,7 +13556,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <div class="leave-recent" id="leaveRecent" hidden>
       <div class="leave-recent-head">
         <span class="leave-recent-title">📋 최근 연차 신청 내역</span>
-        <span class="leave-recent-meta" id="leaveRecentMeta"></span>
+        <span class="leave-recent-tools">
+          <span class="leave-recent-sort" role="group" aria-label="정렬">
+            <button type="button" data-sort="wrote" onclick="setLeaveRecentSort('wrote')">작성일순</button>
+            <button type="button" data-sort="use" onclick="setLeaveRecentSort('use')">신청일순</button>
+          </span>
+          <span class="leave-recent-meta" id="leaveRecentMeta"></span>
+        </span>
       </div>
       <div class="leave-recent-list" id="leaveRecentList"></div>
       <button class="leave-recent-more" id="leaveRecentMoreBtn" type="button" hidden onclick="toggleLeaveRecentExpanded()"></button>
@@ -33198,6 +33233,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     renderRecentLeaveLog();
   }
   window.toggleLeaveRecentExpanded=toggleLeaveRecentExpanded;
+  /* 정렬: wrote = 작성일(신청서 낸 때) 최신순 · use = 신청일(쉬는 날) 늦은 날부터 — 기기마다 기억 */
+  const LEAVE_RECENT_SORT_KEY='brightbeed_leave_recent_sort';
+  let _recentLeaveSort='wrote';
+  try{ if(localStorage.getItem(LEAVE_RECENT_SORT_KEY)==='use') _recentLeaveSort='use'; }catch(e){}
+  function setLeaveRecentSort(v){
+    _recentLeaveSort=(v==='use')?'use':'wrote';
+    try{ localStorage.setItem(LEAVE_RECENT_SORT_KEY,_recentLeaveSort); }catch(e){}
+    renderRecentLeaveLog();
+  }
+  window.setLeaveRecentSort=setLeaveRecentSort;
+  const _LEAVE_DOW=['일','월','화','수','목','금','토'];
+  function _leaveDow(iso){
+    const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return '';
+    const d=new Date(+m[1],+m[2]-1,+m[3]);
+    return isNaN(d.getTime())?'':_LEAVE_DOW[d.getDay()];
+  }
   function renderRecentLeaveLog(){
     const wrap=document.getElementById('leaveRecent');
     const list=document.getElementById('leaveRecentList');
@@ -33219,7 +33271,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         items.push({name,date:e.date||'',endDate:e.endDate||'',days:e.days,type:e.type||'',reason:e.reason||'',submittedAt:e.submittedAt,_id:e._id});
       });
     });
-    items.sort((a,b)=>String(b.submittedAt).localeCompare(String(a.submittedAt)));
+    const bySubmit=(a,b)=>String(b.submittedAt).localeCompare(String(a.submittedAt));
+    items.sort(_recentLeaveSort==='use'
+      ? (a,b)=>(String(b.date).localeCompare(String(a.date))||bySubmit(a,b))
+      : bySubmit);
+    wrap.querySelectorAll('.leave-recent-sort button').forEach(b=>{
+      const on=b.dataset.sort===_recentLeaveSort;
+      b.classList.toggle('on',on);
+      b.setAttribute('aria-pressed',on?'true':'false');
+    });
     if(titleEl) titleEl.textContent=`📋 ${currentYear}년 연차 신청 내역`;
     if(items.length===0){
       wrap.hidden=false;
@@ -33242,12 +33302,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         : ((isRangeR)?`${escapeHTML(it.type)} ${it.days}일`:escapeHTML(it.type));
       const delBtn=it._id?`<button class="leave-recent-del" type="button" title="신청 취소" onclick="deleteLeaveEntry('${escapeHTML(it._id)}', '${escapeHTML(it.name)}', '${escapeHTML(dlabel)}', '${escapeHTML(it.type)}')">×</button>`:'';
       const rsn=it.reason?`<span class="leave-recent-reason" title="${escapeHTML(it.reason)}">· ${escapeHTML(it.reason)}</span>`:'';
+      const isRangeD=it.endDate&&it.endDate!==it.date;
+      const dow=isRangeD?'':_leaveDow(it.date);
       return `<div class="leave-recent-item">
-        <span class="leave-recent-when">${escapeHTML(when)}</span>
-        <span class="leave-recent-name">${escapeHTML(it.name)}</span>
-        <span class="leave-recent-date">${dlabel}</span>
-        <span class="leave-recent-type ${cls}">${typeLabel}</span>
-        ${rsn}
+        <div class="lr-who">
+          <span class="leave-recent-name">${escapeHTML(it.name)}</span>
+          <span class="leave-recent-type ${cls}">${typeLabel}</span>
+          ${rsn}
+        </div>
+        <div class="lr-dates">
+          <span class="lr-date lr-use"><i>신청일</i><span class="leave-recent-date">${dlabel}${dow?` <small>(${dow})</small>`:''}</span></span>
+          <span class="lr-date lr-wrote"><i>작성일</i><span class="leave-recent-when">${escapeHTML(when)}</span></span>
+        </div>
         ${delBtn}
       </div>`;
     }).join('');
