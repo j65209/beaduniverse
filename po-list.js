@@ -158,7 +158,7 @@ const orderRow = (o, i, all) => `<div class="pol-o${i ? '' : ' first'}" title="$
 const dayS = t => { const m = String(t || '').match(/(?:20\d\d[-./])?0?(\d{1,2})[-./]0?(\d{1,2})/); return m ? `${m[1]}.${m[2]}` : String(t || '').slice(0, 10); };          // 수량은 바로 아래 발주 줄에 있다
 function linkRow(p) {
   const e = p.er, N = e && Array.isArray(e.N) ? e.N.filter(Boolean) : [], L = e ? String(e.L == null ? '' : e.L).trim() : '';
-  const erp = p.erp ? `<button type="button" class="pol-cn" data-act="erp" title="재고 ERP 열기">ERP ${L !== '' ? `남은 <b>${E(L)}</b>` : '연결됨'}${N.length ? ` · 발주일 ${E(dayS(N[N.length - 1]))}${N.length > 1 ? ` 외 ${N.length - 1}` : ''}` : ''}</button>`
+  const erp = p.erp ? `<button type="button" class="pol-cn" data-act="erp" title="재고 ERP 열기">ERP ${L !== '' ? `남은 <b>${E(L)}</b>` : '연결됨'}${N.length ? ` · 발주일 ${E(dayS(N.slice().sort()[N.length - 1]))}${N.length > 1 ? ` 외 ${N.length - 1}` : ''}` : ''}</button>`
     : p.kind === 'item' ? '<button type="button" class="pol-cn no" data-act="link">ERP 연결</button>' : '';
   const m = (p.md || [])[0];
   const md = m ? sec() ? `<button type="button" class="pol-cn" data-act="md" title="MD팀 시트 열기">MD시트 ${E(m[2])} ${E(m[1])}행</button>` : '<span class="pol-cn">MD시트 연결됨</span>' : '';
