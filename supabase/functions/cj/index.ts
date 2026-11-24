@@ -253,6 +253,7 @@ function cleanPrint(p: Record<string, unknown> = {}) {
     mask_nm: b('mask_nm', true), mask_tel: b('mask_tel', true), show_goods: b('show_goods', true), show_memo: b('show_memo', true),
     show_order: b('show_order', true), show_saddr: b('show_saddr', true), use_brand: b('use_brand', false), auto: b('auto', false),
     copies: clampN(p.copies, 1, 3, 1), note: cut(p.note, 120),
+    prt_def: p.prt_def === '02' ? '02' : '01', box_def: BOX.has(String(p.box_def)) ? String(p.box_def) : '01',
   };
 }
 /** CJ 주소정제 — 운송장에 찍는 도착지 분류코드 · 배송집배점 · SM. 실패하면 이유만 (출력은 분류코드 칸만 빈 채로 된다) */
