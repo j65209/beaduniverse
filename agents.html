@@ -571,6 +571,7 @@ const CHARACTERS = [
       '"Baby ring-B 50개 입고완료" 처럼 말씀하시면 ERP 7개 브랜드(아페티·코페리·코즈미·식스에이·야르·프로덕트피알·아코이하우스)에서 상품을 찾아 남은 재고에 더합니다',
       '이름이 여러 브랜드에 있으면 "어떤 브랜드의 어떤 제품 맞습니까?" 로 먼저 여쭙니다 — 수락하셔야 반영',
       '여러 품목은 줄을 바꾸거나 쉼표로 한 번에 · "3개 불량 빼줘" 는 차감',
+      '"지그재그 직진배송 cobaltiny bag mint 30개" 는 창고로 보낸 출고라 남은 재고에서 뺍니다 — 여러 품목은 홈 입고 현황 [− 출고 입력] 이 편해요',
       '반영하면 남은 재고 칸 메모에 몇 시 몇 분 · 누가 넣었는지 남기고, 발주 잔량이 있으면 입고 수량 · 입고일도 같이 채웁니다',
       '오피스 홈 맨 위 "입고 현황" 에서 오늘 · 이번 주 · 이번 달 내역 · 잘못 넣었으면 "방금 거 되돌려줘"',
     ],
@@ -2667,6 +2668,10 @@ const RCV_NAME_KEY = 'agents_receive_name';
 const RCV_UNIT = '(?:개|ea|pcs|피스|세트|set|장|박스|box)';
 const RCV_OUT = /(출고|차감|빼|불량|파손|분실|폐기|감소|줄여|마이너스)/;
 const RCV_IN = /(입고|들어왔|들어옴|들어온|들어와|도착|추가|더해|채워|늘려|플러스|받았|입하)/;
+/* 지그재그 직진배송 = 우리 창고 → 지그재그 창고 (2026-11-24). "직진배송에 입고 30개" 라고 해도 우리 재고에선 빠지는 것이라 늘 출고 (돌아온 것 = 회수 · 반품은 뺌) */
+const RCV_ZONLY = /(지그재그|직진\s*배송|지그인|zig\s*zag)/i;
+const RCV_ZBACK = /(회수|반출|반품|돌아)/;
+const RCV_ZNOISE = /(지그재그|직진\s*배송|지그인|zig\s*zag)(\s*(?:물류\s*)?(?:창고|센터))?\s*(으로|로|에서|에|용)?(?=\s|$|[가-힣])|보냈어요|보냈습니다|보냈음|보냈|보냄|보내줘|보내기|보내/gi;
 const RCV_NOISE = /(입고\s*완료|입고됐|입고했|입고|들어왔어요|들어왔어|들어왔습니다|들어왔|들어옴|들어온|들어와|도착했|도착|완료|추가|더해|채워|늘려|플러스|받았어요|받았|입하|출고|차감|빼줘요|빼줘|빼주세요|빼기|빼|불량|파손|분실|폐기|감소|줄여|마이너스|해주세요|해줘요|해줘|부탁해요|부탁|했어요|했습니다|했음|됐어요|됐습니다|됨|합니다|할게요|할게)/g;
 let erpCache = null;
 
@@ -2742,11 +2747,14 @@ function rcvParse(seg){
     qty = +m[2].replace(/,/g,''); qtyText = m[0];
   }
   const brand = rcvBrandOf(seg);
+  const dest = RCV_ZONLY.test(seg) && !RCV_ZBACK.test(seg) ? 'zonly' : null;
+  if(dest) kind = 'out';
   let s = qtyText ? seg.replace(qtyText, ' ') : seg;
+  if(RCV_ZONLY.test(seg)) s = s.replace(RCV_ZNOISE, ' ').replace(/(회수|반출|반품|돌아온|돌아왔|돌아와)[가-힣]*/g, ' ');
   ERP_BRAND_WORDS.forEach(([, ws]) => ws.forEach(w => { s = s.replace(rcvWordRe(w), /^[a-z0-9]+$/.test(w) ? '$1 ' : ' '); }));
   s = s.replace(RCV_NOISE, ' ').replace(/[.!?~·]+$/g, ' ');
   const q = s.split(/\s+/).filter(w => w && !FILLER.has(w) && !RCV_FILL.test(w)).join(' ').trim();
-  return {seg, q, qty: (qty && qty > 0) ? qty : null, kind, brand};
+  return {seg, q, qty: (qty && qty > 0) ? qty : null, kind, brand, dest};
 }
 /* 상품명으로 오인하면 안 되는 남은 낱말 ("40개로 바꿔줘" 의 '로 바꿔줘') */
 const RCV_FILL = /^(재고|상품|제품|개|요|좀|로|으로|바꿔|바꿔줘|바꿔주세요|수정|수정해줘|변경|정정|말고|아니고|총|전부|모두|각|각각|건|오늘)$/;
@@ -2810,7 +2818,7 @@ function rcvFind(products, it){
 function rcvIsCommand(R, raw, t){
   if(raw.startsWith('#')) return true;
   if(R && R.stage) return true;
-  if(RCV_IN.test(t) || RCV_OUT.test(t)) return true;
+  if(RCV_IN.test(t) || RCV_OUT.test(t) || RCV_ZONLY.test(t)) return true;
   if(/\d/.test(t)) return true;
   if(has(t, ['재고','몇 개','몇개','얼마','남았','확인','조회','체크','내역','기록','현황','되돌','취소'])) return true;
   return false;
@@ -2890,7 +2898,7 @@ async function receiveAgent(c, raw, t){
     if(act.length === 1){
       // "40개로 바꿔줘" · "50개 말고 40개" — 마지막에 말한 숫자가 새 수량
       const m2 = raw.match(/(?:말고|아니고|대신)\s*(\d[\d,]*)\s*개?/) || raw.match(/^\s*(\d[\d,]*)\s*개?\s*(?:로|으로)?\s*(?:바꿔줘|바꿔|수정해줘|수정|변경|해줘|요)?\s*$/);
-      if(m2){ act[0].qty = +m2[1].replace(/,/g,''); const k2 = rcvParse(raw).kind; if(k2) act[0].kind = k2; await rcvNext(c, R); return; }
+      if(m2){ act[0].qty = +m2[1].replace(/,/g,''); const k2 = rcvParse(raw).kind; if(k2){ act[0].kind = k2; if(k2 === 'in') act[0].dest = null; } await rcvNext(c, R); return; }
     }
   }
   if(R.stage === 'name'){
@@ -2907,7 +2915,7 @@ async function receiveAgent(c, raw, t){
   if(R.stage === 'qty'){
     const it = R.items[R.cur];
     const p2 = rcvParse(raw);
-    if(p2.qty && !p2.q){ it.qty = p2.qty; if(p2.kind) it.kind = p2.kind; R.stage = null; await rcvNext(c, R); return; }
+    if(p2.qty && !p2.q){ it.qty = p2.qty; if(p2.kind){ it.kind = p2.kind; if(p2.kind === 'in') it.dest = null; } R.stage = null; await rcvNext(c, R); return; }
     if(saysNo(flat)){ delete sess[c.id]; abort('네, 그만두겠습니다. 아무것도 바꾸지 않았습니다.'); return; }
     if(/\d/.test(t) && !p2.q){
       say('agent', `"${raw.trim()}" 를 수량으로 못 읽었어요. 몇 개인지 숫자로만 말씀해 주세요. (예: 50)`, {chips:[{label:'그만두기', cmd:'#cancel', style:'danger'}]});
@@ -2975,11 +2983,12 @@ async function receiveAgent(c, raw, t){
 
   /* --- 새 지시 --- */
   const segs = rcvSegments(raw);
-  let gKind = null, gBrand = rcvBrandOf(t);
+  let gKind = null, gDest = null, gBrand = rcvBrandOf(t);
   const items = [];
   for(const s of segs){
     const p = rcvParse(s);
     if(p.kind) gKind = gKind || p.kind;
+    if(p.dest) gDest = gDest || p.dest;
     if(p.q) items.push(p);
     else if(p.qty && items.length && !items[items.length-1].qty) items[items.length-1].qty = p.qty;
     else if(p.qty) items.push(p);   // "50개 입고" — 상품은 되묻는다
@@ -2997,7 +3006,7 @@ async function receiveAgent(c, raw, t){
   }
   R = sess[c.id] = {raw: raw.trim().slice(0, 300), items: items.map(x => ({
     seg: x.seg, q: x.q, qty: x.qty, brand: x.brand || gBrand,
-    kind: x.kind || gKind || 'in', kindAuto: !(x.kind || gKind),
+    kind: x.kind || (gDest ? 'out' : gKind) || 'in', kindAuto: !(x.kind || gKind), dest: x.dest || (!x.kind && gDest) || null,
   })), cur: 0, stage: null};
   if(items.length > 1) say('agent', `${items.length}건으로 나눠서 볼게요.`);
   await rcvNext(c, R);
@@ -3118,8 +3127,9 @@ async function rcvPropose(c, R){
     const blank = it.opt.s == null;
     const cur = it.opt.s || 0;
     const after = cur + (it.kind === 'out' ? -it.qty : it.qty);
-    let l = `${i+1}. ${rcvLabel(it.prod, it.opt)}\n   ${it.kind === 'out' ? '차감 −' : '입고 +'}${num(it.qty)}개 · 남은 재고 ${blank ? '빈칸' : num(cur)} → ${num(after)}`;
-    if(blank) l += `\n   ⚠️ 남은 재고 칸이 비어 있어요 (아직 재고를 안 적은 상품) — 수락하면 ${num(after)}개로 채워집니다. 원래 남아 있던 수량이 있으면 취소하고 합친 수량으로 말씀해 주세요`;
+    let l = `${i+1}. ${rcvLabel(it.prod, it.opt)}\n   ${it.dest ? '지그재그 직진배송 출고 −' : it.kind === 'out' ? '차감 −' : '입고 +'}${num(it.qty)}개 · 남은 재고 ${blank ? '빈칸' : num(cur)}${blank && it.dest ? '' : ` → ${num(after)}`}`;
+    if(blank && it.dest) l += `\n   ⚠️ 남은 재고 칸이 비어 있어 못 빼요 — 재고 ERP 에 먼저 적어 주세요`;
+    else if(blank) l += `\n   ⚠️ 남은 재고 칸이 비어 있어요 (아직 재고를 안 적은 상품) — 수락하면 ${num(after)}개로 채워집니다. 원래 남아 있던 수량이 있으면 취소하고 합친 수량으로 말씀해 주세요`;
     const rem = rcvRemain(it.opt);
     if(it.kind === 'in' && rem != null && rem > 0) l += `\n   발주 잔량 ${num(rem)} → ${num(rem - it.qty)}${rem - it.qty < 0 ? ' (발주보다 많이 들어옴)' : ''}`;
     if(after < 0) l += `\n   ⚠️ 남은 재고가 마이너스가 됩니다`;
@@ -3307,7 +3317,7 @@ async function rcvCommit(c, R){
     try{
       res = await api('/erp/moves', {method:'POST', body:{
         moves: act.map(it => ({brand: it.prod.b, product: it.prod.name, option: it.opt.o || '', category: it.prod.cat || '',
-          kind: it.kind, qty: it.qty, undoOf: it.undoOf || undefined})),
+          kind: it.kind, qty: it.qty, dest: it.dest && it.kind === 'out' ? it.dest : undefined, undoOf: it.undoOf || undefined})),
         by: rcvWho(), raw: R.raw || '',
       }});
     }catch(e){
@@ -3420,17 +3430,20 @@ async function rcvToday(c, kind){
   try{ rows = (await api(`/erp/moves?from=${rcvPeriodStart(kind)}`)).moves || []; }
   catch(e){ abort(`내역을 불러오지 못했습니다: ${e.message}`); return; }
   if(!rows.length){ say('agent', `${label} 입고·차감 기록이 아직 없어요.`, {chips: kind === 'today' ? [{label:'이번 주 보기', cmd:'#rweek'}] : []}); return; }
-  const ins = rows.filter(r => r.kind === 'in' && r.status === 'applied');
-  const outs = rows.filter(r => r.kind === 'out' && r.status === 'applied');
+  // dest = 지그재그 직진배송 출고 (되돌린 + 는 입고가 아님)
+  const ins = rows.filter(r => r.kind === 'in' && r.status === 'applied' && !r.dest);
+  const outs = rows.filter(r => r.kind === 'out' && r.status === 'applied' && !r.dest);
+  const back = new Set(rows.filter(r => r.dest && r.kind === 'in' && r.status === 'applied').map(r => r.undoOf));
+  const sent = rows.filter(r => r.dest && r.kind === 'out' && r.status === 'applied' && !back.has(r.id));
   const pend = rows.filter(r => r.status === 'pending').length, fail = rows.filter(r => r.status === 'failed' || r.status === 'stuck').length;
   const sum = a => a.reduce((x, r) => x + (r.qty||0), 0);
   const icon = r => r.status === 'applied' ? '✅' : (r.status === 'pending' ? '⏳' : '❌');
   const lines = rows.slice(0, 15).map(r => {
     const d = new Date(r.at || r.appliedAt);
     const when = kind === 'today' ? rcvHM(d.getTime()) : `${d.getMonth()+1}/${d.getDate()} ${rcvHM(d.getTime())}`;
-    return `${icon(r)} ${when} ${ERP_BRANDS[r.brand] || r.brand} · ${r.product}${r.option ? ` (${r.option})` : ''} ${r.kind === 'in' ? '+' : '−'}${num(r.qty)}${r.by ? ` · ${r.by}` : ''}`;
+    return `${icon(r)} ${when} ${ERP_BRANDS[r.brand] || r.brand} · ${r.product}${r.option ? ` (${r.option})` : ''} ${r.kind === 'in' ? '+' : '−'}${num(r.qty)}${r.dest ? (r.kind === 'out' ? ' 직진배송 출고' : ' 출고 되돌림') : ''}${r.by ? ` · ${r.by}` : ''}`;
   });
-  say('agent', `${label} 입고 ${num(sum(ins))}개 (${ins.length}건)${outs.length ? ` · 차감 ${num(sum(outs))}개 (${outs.length}건)` : ''}${pend ? ` · 반영 중 ${pend}건` : ''}${fail ? ` · 실패 ${fail}건` : ''}\n\n${lines.join('\n')}${rows.length > 15 ? `\n…외 ${rows.length - 15}건 — 오피스 홈 맨 위 "입고 현황" 에서 전부 볼 수 있어요.` : ''}`);
+  say('agent', `${label} 입고 ${num(sum(ins))}개 (${ins.length}건)${sent.length ? ` · 직진배송 출고 ${num(sum(sent))}개 (${sent.length}건)` : ''}${outs.length ? ` · 차감 ${num(sum(outs))}개 (${outs.length}건)` : ''}${pend ? ` · 반영 중 ${pend}건` : ''}${fail ? ` · 실패 ${fail}건` : ''}\n\n${lines.join('\n')}${rows.length > 15 ? `\n…외 ${rows.length - 15}건 — 오피스 홈 맨 위 "입고 현황" 에서 전부 볼 수 있어요.` : ''}`);
 }
 
 /* 재고 확인 (읽기만) — 이름이 겹치면 브랜드별로 다 보여준다 */

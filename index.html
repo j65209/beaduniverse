@@ -5855,6 +5855,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .rcv-none{padding:24px 4px;text-align:center;color:var(--text-3);font-size:12.5px}
   .rcv-foot{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--text-3);flex-wrap:wrap}
   .rcv-foot .hrc-btn{margin-left:auto}
+  .rcv-foot .hrc-btn~.hrc-btn{margin-left:0}
   @media (max-width:700px){
     .rcv-modal{padding:0}
     .rcv-panel{border-radius:0;max-height:none;min-height:100vh}
@@ -13245,13 +13246,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         </div>
         <div class="rcv-tools">
           <input type="search" id="rcvModalQ" placeholder="상품명 · 브랜드 · 입력자 찾기" oninput="rcvModalSearch(this.value)" autocomplete="off">
-          <label class="rcv-chk"><input type="checkbox" id="rcvModalOut" checked onchange="rcvModalToggleOut(this.checked)"> 차감도 보기</label>
+          <label class="rcv-chk"><input type="checkbox" id="rcvModalOut" checked onchange="rcvModalToggleOut(this.checked)"> 출고 · 차감도 보기</label>
         </div>
         <div class="rcv-sum" id="rcvModalSum"></div>
         <div class="rcv-list" id="rcvModalList"></div>
         <div class="rcv-foot">
           <span>몇 시 몇 분 · 누가 넣었는지 ERP 기록에 남습니다.</span>
           <a class="hrc-btn" href="./agents.html#chat=receive" onclick="rcvChatOpen();return false;">+ 입고 입력</a>
+          <button class="hrc-btn" type="button" onclick="rcvModalClose();window.StockOut&&StockOut.open()">− 출고 입력</button>
         </div>
       </div>
     </div>
@@ -13407,6 +13409,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="hrc-actions">
           <button class="hrc-btn hrc-btn-ghost" type="button" onclick="rcvHomeLoad()" title="지금 다시 읽기">↻</button>
           <a class="hrc-btn" href="./agents.html#chat=receive" onclick="rcvChatOpen();return false;">+ 입고 입력</a>
+          <button class="hrc-btn" type="button" onclick="window.StockOut&&StockOut.open()" title="지그재그 직진배송 창고로 보낸 수량을 재고에서 빼기">− 출고 입력</button>
           <button class="hrc-btn master-only" type="button" onclick="pstOpen()" title="식스샵프로 판매가능 · 품절 · 판매중지 바꾸기 (관리자만)">상품 상태</button>
         </div>
       </div>
@@ -17076,6 +17079,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      서버 /erp/moves = 오피스 재고 ERP 원장(모아) + 사람이 ERP 화면에서 남은 재고를 직접 올린 입고(direct, 2026-11-23)
                     + 전환 전 시트 기록 + 아직 반영 전인 대기 건 (맥미니 프록시 scripts/erp_moves.py).
      탭(오늘 · 이번 주 · 이번 달)과 칸은 반영된 입고만 센다 — 반영 중 · 실패 · 차감은 홈에서 뺌(11-23), 칸을 누르면 나오는 내역 창에 있다.
+     dest 'zonly' = [− 출고 입력](stock-out.js, 2026-11-24)으로 지그재그 직진배송 창고에 보낸 것 — kind out 은 출고, kind in 은 그 출고를 되돌린 것(입고로 안 센다).
      내역 창 검색칸은 다시 그리는 목록 밖에 있어서 1분 갱신이 입력을 지우지 않는다. */
   const RCV_BRAND_LABEL = {apt:'아페티', kop:'코페리', koz:'코즈미', '6a':'식스에이', yar:'야르', pp:'프로덕트피알', akoi:'아코이하우스'};
   const _rcvHome = {rows:[], at:0, loading:false, err:'', tab:'today', tabDay:'', period:'today', q:'', withOut:true, timer:null};
@@ -17110,14 +17114,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   function _rcvPeriodRows(p){ const st = _rcvStarts()[p]; return _rcvHome.rows.filter(r => _rcvAt(r) >= st); }
   function _rcvStat(rows){
-    const ins = rows.filter(r => r.kind === 'in' && r.status === 'applied');
-    const outs = rows.filter(r => r.kind === 'out' && r.status === 'applied');
+    const ins = rows.filter(r => r.kind === 'in' && r.status === 'applied' && !r.dest);
+    const outs = rows.filter(r => r.kind === 'out' && r.status === 'applied' && !r.dest);
+    const back = new Set(rows.filter(r => r.dest && r.kind === 'in' && r.status === 'applied').map(r => r.undoOf));
+    const sent = rows.filter(r => r.dest && r.kind === 'out' && r.status === 'applied' && !back.has(r.id));   // 직진배송 출고 (되돌린 것 뺌)
     const wait = rows.filter(r => r.status === 'pending');
     const fail = rows.filter(r => r.status === 'failed' || r.status === 'stuck');
     const byItem = new Map();
     ins.forEach(r => { const k = `${r.brand}::${r.product}::${r.option||''}`; const v = byItem.get(k) || {r, q:0}; v.q += r.qty||0; byItem.set(k, v); });
-    return {ins, outs, wait, fail,
-      qty: ins.reduce((a, r) => a + (r.qty||0), 0), outQty: outs.reduce((a, r) => a + (r.qty||0), 0),
+    return {ins, outs, sent, wait, fail,
+      qty: ins.reduce((a, r) => a + (r.qty||0), 0), outQty: outs.reduce((a, r) => a + (r.qty||0), 0), sentQty: sent.reduce((a, r) => a + (r.qty||0), 0),
       items: [...byItem.values()].sort((a, b) => b.q - a.q)};
   }
   /* 홈 가로 칸 (입고 · 리오더 공용) — 칸 수는 화면 폭에 맞게, 넘치면 마지막 칸이 '+N 더' */
@@ -17226,11 +17232,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.querySelectorAll('#rcvModalTabs button').forEach(b => b.classList.toggle('on', b.dataset.period === p));
     let rows = _rcvPeriodRows(p);
     const s = _rcvStat(rows);
-    if(!_rcvHome.withOut) rows = rows.filter(r => r.kind === 'in');
+    if(!_rcvHome.withOut) rows = rows.filter(r => r.kind === 'in' && !r.dest);
     const q = (_rcvHome.q || '').trim().toLowerCase();
-    if(q) rows = rows.filter(r => [RCV_BRAND_LABEL[r.brand], r.product, r.option, r.by, r.raw].join(' ').toLowerCase().includes(q));
+    if(q) rows = rows.filter(r => [RCV_BRAND_LABEL[r.brand], r.product, r.option, r.by, r.raw, r.dest ? '지그재그 직진배송 출고' : ''].join(' ').toLowerCase().includes(q));
     document.getElementById('rcvModalSum').textContent =
       `입고 ${_rcvN(s.qty)}개 · ${s.items.length}품목 · ${s.ins.length}건`
+      + (s.sent.length ? ` · 직진배송 출고 ${_rcvN(s.sentQty)}개 ${s.sent.length}건` : '')
       + (s.outs.length ? ` · 차감 ${_rcvN(s.outQty)}개 ${s.outs.length}건` : '')
       + (s.wait.length ? ` · 반영 중 ${s.wait.length}건` : '') + (s.fail.length ? ` · 실패 ${s.fail.length}건` : '')
       + (_rcvHome.at ? ` · ${_rcvHM(_rcvHome.at)} 기준` : (_rcvHome.err ? ` · 불러오지 못함 (${_rcvHome.err})` : ''));
@@ -17247,7 +17254,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(day !== lastDay){
         lastDay = day;
         const same = rows.filter(x => new Date(_rcvAt(x)).toDateString() === d.toDateString());
-        const inQ = same.filter(x => x.kind === 'in' && x.status === 'applied').reduce((a, x) => a + (x.qty||0), 0);
+        const inQ = same.filter(x => x.kind === 'in' && x.status === 'applied' && !x.dest).reduce((a, x) => a + (x.qty||0), 0);
         html += `<div class="rcv-day">${day}<span>입고 ${_rcvN(inQ)}개 · ${same.length}건</span></div>`;
       }
       const stCls = r.status === 'applied' ? 'ok' : (r.status === 'pending' ? 'wait' : 'fail');
@@ -17255,7 +17262,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const stock = r.after != null ? `${r.before == null ? '빈칸' : _rcvN(r.before)} → ${_rcvN(r.after)}` : '';
       html += `<div class="rcv-row">`
         + `<span class="t">${_rcvHM(_rcvAt(r))}</span>`
-        + `<span class="n"><span class="b reo-b-${_rcvEsc(r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}${r.direct ? '<i title="ERP 화면에서 남은 재고를 직접 올린 입고">· ERP에서 직접</i>' : ''}</span>`
+        + `<span class="n"><span class="b reo-b-${_rcvEsc(r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}${r.direct ? '<i title="ERP 화면에서 남은 재고를 직접 올린 입고">· ERP에서 직접</i>' : ''}${r.dest ? `<i>· ${r.kind === 'out' ? '지그재그 직진배송 출고' : '직진배송 출고 되돌림'}</i>` : ''}</span>`
         + `<span class="q ${r.kind === 'out' ? 'out' : 'in'}">${r.kind === 'out' ? '−' : '+'}${_rcvN(r.qty)}</span>`
         + `<span class="s" title="남은 재고 (반영 전 → 후)">${stock}</span>`
         + `<span class="w" title="입력자">${_rcvEsc((r.direct ? String(r.by || '').replace(' (ERP 직접)', '') : r.by) || '–')}</span>`
@@ -57862,6 +57869,7 @@ ${pv ? '.pre .pp{visibility:visible;opacity:.28}' : ''}`;
 <script src="erp-alert.js?v=2" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
 <script src="po-list.js?v=1" defer></script><!-- 발주 상품 리스트 (po-list.js) -->
 <script src="po-map.js?v=2" defer></script><!-- 발주 매핑하기 (po-map.js) -->
+<script src="stock-out.js?v=1" defer></script><!-- 출고 입력 — 지그재그 직진배송 (stock-out.js) -->
 <script src="stock-blank.js?v=1" defer></script><!-- 재고 미기재 알림 — 김성군 · 지희선 · 대표 2명 (stock-blank.js) -->
 <script src="notif-state.js?v=1" defer></script><!-- 알림 승인 상태 (notif-state.js) -->
 <script src="notif-ask.js?v=4" defer></script><!-- 알림 허용 안내 — 전 직원, 허용 안 했거나 보이는지 확인 안 한 PC 에 (notif-ask.js) -->
