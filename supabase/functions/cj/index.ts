@@ -13,6 +13,8 @@
 //   POST {action:'cancel', id, by?}                예약 취소 (접수 1분쯤 뒤부터 됨 · 자체 출력 · 집화 · CJ 출력 뒤엔 안 됨)
 //   POST {action:'track', invc_no, prod_only?}     운송장 추적 (단계 · 시각 · 지점만, 이름 · 전화는 버림) — 맥미니 cs-track.ts 가 prod_only 로 부름
 //   POST {action:'list', limit?, q?}               최근 접수 기록 (전화는 가림)
+//   POST {action:'print_save', print:{…}}          출력 설정 저장 (라벨 크기 · 여백 · 글자 · 바코드 · 가림 · 표시 항목)
+//   POST {action:'labels', ids:[…], mark?}         운송장 출력 자료 (운송장번호 있는 건만, 주소정제로 분류코드 — 실패하면 빈 칸) · 출력 횟수 기록
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
@@ -239,9 +241,67 @@ async function track(cfg: Cfg, invcIn: string) {
   return { ok: true, env: cfg.env, invc_no: invc, steps };
 }
 
+// ---------- 운송장 출력 (2026-11-24 사장님 "오피스에서 바로 출력 가능하다면 기능 넣어주고. 우리가 설정 할 수 있게 해줘") ----------
+// 출력 설정 = cj_config.print (모든 PC 공통). 값은 여기서 범위를 묶는다.
+const clampN = (v: unknown, lo: number, hi: number, d: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+function cleanPrint(p: Record<string, unknown> = {}) {
+  const b = (k: string, d: boolean) => (typeof p[k] === 'boolean' ? (p[k] as boolean) : d);
+  return {
+    w: clampN(p.w, 40, 220, 100), h: clampN(p.h, 40, 220, 150), orient: p.orient === 'l' ? 'l' : 'p',
+    mt: clampN(p.mt, -20, 20, 0), ml: clampN(p.ml, -20, 20, 0), pad: clampN(p.pad, 0, 15, 3),
+    scale: clampN(p.scale, 60, 150, 100), bc: p.bc === 'ITF' ? 'ITF' : 'CODE128', bch: clampN(p.bch, 6, 30, 14),
+    mask_nm: b('mask_nm', true), mask_tel: b('mask_tel', true), show_goods: b('show_goods', true), show_memo: b('show_memo', true),
+    show_order: b('show_order', true), show_saddr: b('show_saddr', true), use_brand: b('use_brand', false), auto: b('auto', false),
+    copies: clampN(p.copies, 1, 3, 1), note: cut(p.note, 120),
+  };
+}
+/** CJ 주소정제 — 운송장에 찍는 도착지 분류코드 · 배송집배점 · SM. 실패하면 이유만 (출력은 분류코드 칸만 빈 채로 된다) */
+async function refine(cfg: Cfg, address: string): Promise<Record<string, string> | { err: string }> {
+  const tok = await token(cfg);
+  const j = await cjPost(cfg.env, 'ReqAddrRfnSm', { TOKEN_NUM: tok, CLNTNUM: cfg.cust_id, CLNTMGMCUSTCD: cfg.cust_id, ADDRESS: cut(address, 100) }, tok);
+  if (j.RESULT_CD !== 'S' || !j.DATA) return { err: String(j.RESULT_DETAIL || '주소정제 실패').slice(0, 200) };
+  const d = j.DATA as Record<string, unknown>, pk = (k: string) => String(d[k] ?? '').trim();
+  return { CLSFCD: pk('CLSFCD'), SUBCLSFCD: pk('SUBCLSFCD'), CLSFADDR: pk('CLSFADDR'), CLLDLVBRANNM: pk('CLLDLVBRANNM'), CLLDLVEMPNM: pk('CLLDLVEMPNM'), CLLDLVEMPNICKNM: pk('CLLDLVEMPNICKNM'), RSPSDIV: pk('RSPSDIV'), P2PCD: pk('P2PCD') };
+}
+const telOf = (q: Record<string, unknown>, p: string) => [q[`${p}_NO1`], q[`${p}_NO2`], q[`${p}_NO3`]].map((x) => String(x ?? '').trim()).filter(Boolean).join('-');
+/** 출력할 접수 → 운송장에 찍을 자료 (받는 분 전체 정보 — 출력용이라 가리지 않음, 가림은 화면 설정이 한다). 45일 안 접수만 */
+async function labels(cfg: Cfg, idsIn: unknown, mark: boolean) {
+  const ids = [...new Set((Array.isArray(idsIn) ? idsIn : []).map(Number).filter((n) => n > 0))].slice(0, 30);
+  if (!ids.length) throw new Oops('출력할 접수를 골라 주세요');
+  const since = new Date(Date.now() - 45 * 86400e3).toISOString();
+  const { data, error } = await sb.from('cj_bookings').select('id,env,brand,status,prt_st,rcpt_dv,cust_use_no,invc_no,created_at,clsf,print_count,req').in('id', ids).gte('created_at', since);
+  if (error) throw new Oops('접수 기록을 못 읽었어요: ' + error.message);
+  const rows = (data || []).sort((a: { id: number }, b: { id: number }) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  const out: Record<string, unknown>[] = [];
+  for (const row of rows) {
+    if (!row.invc_no) { out.push({ id: row.id, skip: '운송장번호가 없어요 (CJ 프로그램에서 출력하는 건)' }); continue; }
+    if (row.status === 'cancelled' || row.status === 'failed') { out.push({ id: row.id, skip: '접수되지 않은 건이에요' }); continue; }
+    const q = (row.req || {}) as Record<string, any>;
+    let clsf = row.clsf as Record<string, string> | null, clsf_err = '';
+    if (!clsf || !clsf.CLSFCD) {
+      const r = await refine(cfg, `${q.RCVR_ADDR ?? ''} ${q.RCVR_DETAIL_ADDR ?? ''}`.trim());
+      if ('err' in r) clsf_err = r.err;
+      else { clsf = r; await sb.from('cj_bookings').update({ clsf }).eq('id', row.id); }
+    }
+    out.push({
+      id: row.id, env: row.env, brand: row.brand, invc_no: row.invc_no, cust_use_no: row.cust_use_no, rcpt_ymd: q.RCPT_YMD, rcpt_dv: row.rcpt_dv,
+      box_type: q.BOX_TYPE_CD, box_qty: q.BOX_QTY, frt_dv: q.FRT_DV_CD, amt: q.ARTICLE_AMT, memo: q.REMARK_1,
+      rcvr: { nm: q.RCVR_NM, tel: telOf(q, 'RCVR_TEL'), cell: telOf(q, 'RCVR_CELL'), zip: q.RCVR_ZIP_NO, addr: q.RCVR_ADDR, detail: q.RCVR_DETAIL_ADDR },
+      sendr: { nm: q.SENDR_NM, tel: telOf(q, 'SENDR_TEL'), zip: q.SENDR_ZIP_NO, addr: q.SENDR_ADDR, detail: q.SENDR_DETAIL_ADDR },
+      goods: (Array.isArray(q.ARRAY) ? q.ARRAY : []).map((g: Record<string, unknown>) => ({ nm: String(g.GDS_NM ?? ''), qty: Number(g.GDS_QTY) || 1 })),
+      clsf: clsf && clsf.CLSFCD ? clsf : null, clsf_err, print_count: row.print_count || 0,
+    });
+  }
+  if (mark) {
+    const now = new Date().toISOString();
+    for (const x of out) if (!x.skip) await sb.from('cj_bookings').update({ printed_at: now, print_count: Number(x.print_count || 0) + 1 }).eq('id', x.id as number);
+  }
+  return out;
+}
+
 async function list(limit: number, q: string) {
   let qb = sb.from('cj_bookings')
-    .select('id,created_at,env,kind,batch_id,brand,rcpt_dv,prt_st,cust_use_no,invc_no,status,result_detail,rcvr_nm,rcvr_tel,rcvr_addr,gds_nm,box_qty,created_by,cancelled_at')
+    .select('id,created_at,env,kind,batch_id,brand,rcpt_dv,prt_st,cust_use_no,invc_no,status,result_detail,rcvr_nm,rcvr_tel,rcvr_addr,gds_nm,box_qty,created_by,cancelled_at,printed_at,print_count')
     .order('id', { ascending: false }).limit(Math.max(1, Math.min(300, limit || 100)));
   const s = String(q || '').replace(/[%,()]/g, ' ').trim().slice(0, 40);
   if (s) qb = qb.or(`rcvr_nm.ilike.%${s}%,cust_use_no.ilike.%${s}%,invc_no.ilike.%${s}%,gds_nm.ilike.%${s}%`);
@@ -259,7 +319,14 @@ Deno.serve(async (req) => {
     const cfg = await loadCfg();
     switch (body.action) {
       case 'status':
-        return json({ ok: true, env: cfg.env, configured: !!(cfg.cust_id && cfg.biz_reg_num), cust: cfg.cust_id.replace(/^(\d{4})\d+/, '$1****'), sender: cfg.sender || {} });
+        return json({ ok: true, env: cfg.env, configured: !!(cfg.cust_id && cfg.biz_reg_num), cust: cfg.cust_id.replace(/^(\d{4})\d+/, '$1****'), sender: cfg.sender || {}, print: cleanPrint(cfg.print || {}) });
+      case 'print_save': {
+        const print = cleanPrint(body.print || {});
+        await sb.from('cj_config').update({ print, updated_at: new Date().toISOString() }).eq('id', 1);
+        return json({ ok: true, print });
+      }
+      case 'labels':
+        return json({ ok: true, env: cfg.env, labels: await labels(cfg, body.ids, body.mark !== false) });
       case 'sender': {
         const s = body.sender || {};
         const sender = { nm: cut(s.nm, 100), tel: cut(s.tel, 20), zip: zip(s.zip), addr: cut(s.addr, 150), detail: cut(s.detail, 300) };
