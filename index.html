@@ -9571,14 +9571,61 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tcx .tc{min-width:40px;white-space:pre-wrap;outline:none}
   .tcx .tc[contenteditable]:empty::before{content:attr(data-ph);color:#c9c4bd}
   .tcx .tc.is-auto{color:#57534e}
-  .tcx td:focus-within{box-shadow:inset 0 0 0 2px #f97316}
+  .tcx td:focus-within,.tcx th:focus-within{box-shadow:inset 0 0 0 2px #f97316}
   .tcx-rate{display:inline-block;min-width:26px;padding:0 3px;border-bottom:1px dashed #a8a29e;outline:none;cursor:text}
-  .tcx-vat{font:600 12px Arial,'Pretendard',sans-serif;border:1px dashed #d6d3d1;border-radius:5px;background:#fff;color:#a8a29e;padding:2px 8px;cursor:pointer;min-width:44px}
+  .tcx-vt{display:flex;align-items:center;justify-content:center;gap:4px}
+  .tcx-vt .tc{flex:1;min-width:30px}
+  .tcx-vat{flex:0 0 auto;width:19px;height:19px;font:700 11px/1 Arial,'Pretendard',sans-serif;border:1px dashed #d6d3d1;border-radius:5px;background:#fff;color:#a8a29e;padding:0;cursor:pointer}
   .tcx-vat.is-on{border-style:solid;border-color:#1c1917;color:#000}
-  .tcx-del{position:absolute;right:-24px;top:50%;transform:translateY(-50%);width:20px;height:20px;border:0;border-radius:50%;background:#e7e5e4;color:#57534e;font-size:13px;line-height:20px;cursor:pointer;display:none;padding:0}
-  .tcx tr:hover .tcx-del{display:block}
-  .tcx-del:hover{background:#dc2626;color:#fff}
-  .tpl-scroll-cost{padding-right:34px}
+  /* 원가계산서 여러 장 (2026-11-24) — 장마다 카드(이름 · 복사 · 메뉴), 두 장부터 비교 줄 */
+  .tpl-costs{flex:1 1 720px;min-width:0;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;align-content:flex-start;scroll-margin-top:130px}
+  .tcx-card{display:flex;flex-direction:column;gap:6px;min-width:0;max-width:100%;scroll-margin-top:130px}
+  .tcx-card.is-focus > .tpl-scroll{outline:3px solid #f97316;outline-offset:-2px}
+  .tcx-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tcx-no{flex:0 0 auto;min-width:22px;height:22px;border-radius:7px;background:#1c1917;color:#fff;font:800 12px/22px var(--sans);text-align:center}
+  .tcx-nm{flex:1 1 170px;min-width:120px;font:800 15px/1.35 var(--sans);color:#1c1917;padding:5px 8px;border:1px solid transparent;border-radius:8px;outline:none;cursor:text;overflow-wrap:anywhere}
+  .tcx-nm:hover{border-color:var(--line-2);background:#fff}
+  .tcx-nm:focus{border-color:#f97316;background:#fff}
+  .tcx-nm:empty::before{content:attr(data-ph);color:#a8a29e;font-weight:600;pointer-events:none}
+  .tcx-head .mb-btn{padding:5px 10px}
+  .tcx-cmp{flex:1 1 100%;min-width:0;overflow-x:auto}
+  .tcx-cmp:empty{display:none}
+  .tcx-cmp table{width:auto;border-collapse:collapse;font:600 12.5px var(--sans);color:#44403c;background:#fff;border:1px solid #efece7}
+  .tcx-cmp th{position:static;background:#faf8f5;letter-spacing:0;text-transform:none;font-weight:700;font-size:11.5px;color:#a8a29e;text-align:right;padding:7px 14px;white-space:nowrap}
+  .tcx-cmp td{text-align:right;padding:6px 14px;border-top:1px solid #f3f0ec;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tcx-cmp th:first-child,.tcx-cmp td:first-child{text-align:left}
+  .tcx-cmp td b{color:#1c1917;font-weight:800}
+  .tcx-cmp i{display:inline-block;min-width:16px;margin-right:6px;font-style:normal;color:#a8a29e}
+  .tcx-cmp tr[data-act]{cursor:pointer}
+  .tcx-cmp tr[data-act]:hover td{background:#faf8f5}
+  .tcx-more{flex:1 1 100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font:400 12px/1.55 var(--sans);color:var(--text-3)}
+  .tcx-more span{flex:1 1 320px;min-width:0;word-break:keep-all}
+  .tcx-tool{margin-left:auto}
+  /* 줄 메뉴(줄 끝 ⋯) · 칸 메뉴(머리글 ▾) · 직접 적은 자동 칸 표시 */
+  .tcx-rm{position:absolute;right:-26px;top:50%;transform:translateY(-50%);width:21px;height:21px;border:0;border-radius:6px;background:#eceae6;color:#78716c;font:800 12px/20px var(--sans);cursor:grab;padding:0;opacity:.55}
+  .tcx tr:hover .tcx-rm,.tcx-rm:focus-visible{opacity:1}
+  .tcx-rm:hover{background:#1c1917;color:#fff;opacity:1}
+  .tcx tr.is-over td{box-shadow:inset 0 3px 0 #f97316}
+  .tcx tr.is-over.is-below td{box-shadow:inset 0 -3px 0 #f97316}
+  .tcx-cm{position:absolute;right:1px;top:1px;width:16px;height:16px;border:0;border-radius:4px;background:transparent;color:#a8a29e;font-size:10px;line-height:16px;padding:0;cursor:pointer;opacity:0}
+  .tcx th:hover .tcx-cm,.tcx th:focus-within .tcx-cm,.tcx-cm:focus-visible{opacity:1}
+  .tcx-cm:hover{background:#1c1917;color:#fff}
+  .tcx-ty{position:absolute;left:3px;bottom:1px;font:600 9px var(--sans);color:#a8a29e}
+  .tcx td.is-own .tc{padding-top:6px}
+  .tcx td.is-own::after{content:'직접';position:absolute;right:3px;top:2px;font:700 8.5px/1 var(--sans);color:#b45309;pointer-events:none}
+  .tcx tfoot .tc.is-auto,.tcx .tcx-price .tc{color:#000}
+  .tcx td.tcx-price.is-own::after{color:#fff}
+  .tcx-cny{display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+  .tcx-cny .tc{min-width:0}
+  .tcx th .tc[contenteditable]{cursor:text}
+  .tcx-prc td,.tcx-ex td{height:34px}
+  .tcx-ex td:first-child{font-weight:600}
+  .tcx-note{width:0;min-width:100%;margin-top:8px;padding:7px 10px;border:1px dashed #d6d3d1;font:400 12px/1.55 Arial,'Pretendard','Malgun Gothic',sans-serif;text-align:left;white-space:pre-wrap;box-sizing:border-box}
+  .tcx-note:focus{border-color:#f97316;border-style:solid}
+  .tcx-rnd{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .tcx-foot .mb-btn{padding:4px 10px}
+  @media (hover:none){ .tcx-cm{opacity:.7} .tcx-rm{opacity:1} }
+  .tpl-scroll-cost{padding-right:36px}
   .tcx-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font:400 12px var(--sans);color:var(--text-3)}
   .tpl-cost-pg{padding:24px}
   .tcx-pg-t{font-size:18px;font-weight:700;margin-bottom:12px}
@@ -9610,6 +9657,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-pop[hidden]{display:none}
   .tpl-pop button{font:600 13px var(--sans);text-align:left;padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--text-2);cursor:pointer}
   .tpl-pop button:hover{background:#fff7ed;color:#9a3412}
+  .tpl-pop button.is-red:hover{background:#fef2f2;color:#dc2626}
+  #tplPop{max-height:min(70vh,520px);overflow-y:auto}
+  #tplPop .tpl-pop-t:not(:first-child){border-top:1px solid #f0ede8;margin-top:4px;padding-top:8px}
   .tpl-pop-t{font-size:12px;color:var(--text-3);padding:6px 10px 4px;line-height:1.45;word-break:keep-all}
   .tpl-cover{position:fixed;inset:0;z-index:10080;background:rgba(28,25,23,.35);display:flex;align-items:center;justify-content:center}
   .tpl-cover-b{display:flex;align-items:center;gap:12px;background:#fff;border-radius:12px;padding:16px 22px;font:700 14px var(--sans);color:#1c1917;box-shadow:0 18px 50px rgba(0,0,0,.25)}
@@ -9617,6 +9667,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-print-host{position:absolute;left:0;top:0;z-index:-1;background:#fff;pointer-events:none}
   .tpl-print-host .tpl-paper{box-shadow:none}
   /* ── 칸 색 · 굵게 (2026-11-20) — 시트 모양 종이는 구글시트 밝은 색, 디자인센터 라인시트(is-clean)는 연한 색 ── */
+  .tcx th.hl-y,.tcx th.is-hl{background:#ffff00}.tcx th.hl-o{background:#fce5cd}.tcx th.hl-r{background:#f4cccc}.tcx th.hl-p{background:#ead1dc}.tcx th.hl-v{background:#d9d2e9}.tcx th.hl-b{background:#c9daf8}.tcx th.hl-g{background:#d9ead3}.tcx th.hl-k{background:#e7e6e6}
   .tpl-paper .tx.hl-y,.tcx td.hl-y{background:#ffff00}
   .tpl-paper .tx.hl-o,.tcx td.hl-o{background:#fce5cd}
   .tpl-paper .tx.hl-r,.tcx td.hl-r{background:#f4cccc}
@@ -9673,6 +9724,30 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-ls.is-clean .tx.hl-g{background:#d8f5e1}
   .tpl-ls.is-clean .tx.hl-k{background:#eeece9}
   .tpl-ls.is-clean .ls-add{background:transparent;padding:14px 0 2px}
+  /* 라인시트 행 · 열 (2026-11-24) — 머리글 ▾ = 칸 메뉴, 컬러 줄 ⋯ = 줄 메뉴, 머리글 오른쪽 끝 = 너비, 상품 아래 얇은 줄 = 넣기 */
+  .tpl-ls .tx.th .tc{overflow:hidden;text-overflow:ellipsis}
+  .tpl-ls .tx.th .tc:focus{overflow:visible;text-overflow:clip}
+  .ls-cm{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:17px;height:17px;border:0;border-radius:5px;background:#44403c;color:#fff;font-size:10px;line-height:17px;padding:0;cursor:pointer;opacity:0}
+  .tx:hover > .ls-cm,.tx:focus-within > .ls-cm,.ls-cm:focus-visible{opacity:1}
+  .ls-cm:hover{background:#f97316}
+  .tx.ls-lab > .ls-cm{right:1px;background:#e7e5e4;color:#57534e}
+  .tx.ls-lab > .ls-cm:hover{background:#1c1917;color:#fff}
+  .ls-rm{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:20px;height:20px;border:0;border-radius:6px;background:#f0eeea;color:#78716c;font:800 12px/18px var(--sans);padding:0;cursor:pointer;opacity:0}
+  .tx:hover > .ls-rm,.tx:focus-within > .ls-rm,.ls-rm:focus-visible{opacity:1}
+  .ls-rm:hover{background:#1c1917;color:#fff}
+  .ls-grip{position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;touch-action:none;z-index:2}
+  .ls-grip:hover,html.ls-gripping .ls-grip:hover{background:#f97316}
+  html.ls-gripping,html.ls-gripping *{cursor:col-resize !important;user-select:none !important}
+  .ls-mini{border:0;background:transparent;font:700 11.5px var(--sans);color:#a8a29e;cursor:pointer;padding:3px 8px;border-radius:6px;white-space:nowrap}
+  .ls-mini:hover{background:#f0eeea;color:#1c1917}
+  .tpl-ls .tx.ls-bot,.tpl-ls.is-clean .tx.ls-bot{justify-content:flex-start;gap:2px;background:#fbfaf8;border-right:0;border-bottom:0;padding:0 6px;min-height:28px;overflow:hidden}
+  .tpl-ls .tx.ls-fill .ls-mini{opacity:.8}
+  .tpl-ls .tx.th.is-hl,.tpl-ls.is-clean .tx.th.is-hl{color:#1c1917}
+  .tpl-ls.is-mob .lm-l.tc{outline:none;min-height:1.2em;cursor:text}
+  .tpl-ls.is-mob .lm-l.tc:empty::before{content:attr(data-ph);color:#d6d3d1}
+  .tpl-ls.is-mob .lm-crow.is-more{margin:-1px 0 3px}
+  @media (hover:none){ .ls-cm{opacity:.75} .ls-rm{opacity:.8} }
+  @media (max-width:760px){ .tpl-ls .ls-tools .ls-find{flex:1 1 100%} .tpl-ls .ls-tools .ls-chip{flex:1 1 auto;justify-content:center} .tcx-head .tcx-nm{flex:1 1 calc(100% - 40px)} .tcx-head .mb-btn{flex:1 1 auto} }
   .tpl-ls.is-clean .ls-menu-b{color:#d6d3d1}
   .lsb[hidden]{display:none !important}
   .tpl-kid{margin-top:18px;padding-top:12px;border-top:2px dashed #e7e3dd;display:flex;flex-direction:column;gap:8px}
@@ -9688,6 +9763,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .mbx .tpl-note{margin-bottom:8px}
   .mbx .tpl-stage{gap:8px}
   .mbx .tpl-scroll{overflow-x:auto;background:#f7f6f3;border-color:#efece7;padding:10px}
+  .mbx .tpl-scroll-cost{padding-right:36px}
   @media (max-width:760px){
     .mbx{padding:8px 10px 12px;border-radius:12px}
     .mbx .tpl-ed-top{position:static;margin:0 0 6px;padding:4px 0 8px}
@@ -9696,6 +9772,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .mbx .tpl-chips .mb-chip{flex:0 0 auto}
     .mbx .tpl-scroll{padding:6px}
     .mbx .tpl-tools{gap:8px}
+    .mbx .tpl-scroll-cost{padding-right:32px}
+    .tpl-costs{flex-basis:100%}
     /* 폰 — 위쪽 막대를 작게 (안내 글 · 옛 시트 가져오기는 숨김) */
     .lst .tpl-note,.mbx .tpl-note,.lst #tplImpBtn,.mbx #tplImpBtn{display:none}
     .lst .tpl-ed-top .mb-btn,.mbx .tpl-ed-top .mb-btn{font-size:12px;padding:5px 9px}
@@ -26973,7 +27051,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const E = escapeHTML, url = _tplImgUrl(ref, true);
     return `<button type="button" class="mb-img ${cls}${url ? '' : ' is-wait'}" data-ref="${E(ref)}" data-cap="${E(cap)}" aria-label="${E(cap)} 크게 보기">${url ? `<img src="${E(url)}" alt="${E(cap)}" loading="lazy" decoding="async" draggable="false">` : ''}</button>`;
   }
-  const _mbCostHas = doc => !!(doc.secret && doc.secret.cost && doc.secret.cost.touched && (doc.secret.cost.rows || []).length);
+  const _mbCostHas = doc => _tcxShown(doc).length > 0;
   function _mbDocHtml(doc){
     const E = escapeHTML, d = doc.data, N = d.slots, V = (it, f) => _mbVal(doc, it, f);
     const join = (...xs) => xs.map(x => String(x || '').replace(/\s*\n+\s*/g, ' ')).filter(Boolean).join(' · ');
@@ -27017,7 +27095,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const specs = d.specs.filter(s => s.v).map(s => `<span class="mb-spec">${E(String(s.l || '').split('/').pop().trim())}<b>${E(/^\d+(\.\d+)?$/.test(s.v) ? s.v + 'cm' : s.v)}</b></span>`).join('');
     const notes = String(d.notes || '').trim();
     let cost = '';
-    if(designSecretOk()) cost = `<section class="mb-cost"><div class="mb-sec-t">견적 · 원가계산서 <span class="mb-sec-sub">내부 — 업체 전달용 PDF 에는 빠져요</span></div>${_mbCostHas(doc) ? `<div class="mb-scroll">${_tplCostHtml(doc, {edit:false})}</div>` : '<div class="mb-empty mb-empty-s">아직 적힌 견적이 없어요 — <b>✏️ 수정</b>을 눌러 원가계산서 칸에 적으면 여기에 그대로 보여요.</div>'}</section>`;
+    if(designSecretOk()) cost = `<section class="mb-cost"><div class="mb-sec-t">견적 · 원가계산서 <span class="mb-sec-sub">내부 — 업체 전달용 PDF 에는 빠져요</span></div>${_mbCostHas(doc) ? _tcxShown(doc).map(({c, si}) => `<div class="mb-scroll">${_tcxHas(c.name) ? `<b>${E(_tcxName(c, si))}</b>` : ''}${_tplCostHtml(doc, {edit:false, si})}</div>`).join('') : '<div class="mb-empty mb-empty-s">아직 적힌 견적이 없어요 — <b>✏️ 수정</b>을 눌러 원가계산서 칸에 적으면 여기에 그대로 보여요.</div>'}</section>`;
     return `<article class="mb-bag">
       <header><div class="mb-title">${E(_tplTitleOf(doc) || '(제목 없음)')}${d.ref ? '<span class="mb-ref">참고용</span>' : ''}</div>
         ${specs ? `<div class="mb-specs">${specs}</div>` : ''}</header>
@@ -27090,14 +27168,14 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
 
   /* ============================================================
      디자인팀 시트 편집 창 (2026-11-20) — 구글시트 3개(COFERRY LINE SHEET · [내부공유용] · [투엘] 원부자재 매칭표)와 같은 양식
-       · 매칭보드 [＋ 스타일 추가] [✏️ 수정] → 원부자재 매칭표 (내부공유용 = 원가계산서까지 / 업체 전달용 = 원가계산서만 뺌, 같은 문서)
+       · 매칭보드 [＋ 스타일 추가] [✏️ 수정] → 원부자재 매칭표 (내부공유용 = 원가계산서까지 / 업체 전달용 = 원가계산서만 뺌, 같은 문서). 원가계산서는 원단마다 여러 장(2026-11-24)
        · 보드맵   [＋ 상품 추가] [✏️ 수정]     → 라인시트 (시즌 하나 = 문서 하나, 홀딩도 문서 하나)
      · 칸을 누르면 바로 적고 1초 뒤 저절로 저장. 사진 칸은 누르기 · 끌어다 놓기 · Ctrl+V. 🟨 칸 강조
      · 저장 = Supabase design_tpl_docs (data = 공개 칸 / secret = 단가 · 정상가 · 라벨 단가 · 원가계산서), 사진 = Storage design-tpl
      · 기밀 = secret 칸은 디자인팀 기밀 명단(designSecretOk) PC 만 받고 그린다. 명단 PC 에서 매칭표 원단 · 안감 · 부자재 칸에
        '13.5원/m' 처럼 단가를 적으면 저절로 secret 쪽으로 옮겨 저장한다
      · 시트에서 가져오기 = 옛 구글시트 탭 하나를 새 문서로 (사진도 같이). 내부공유용 시트 주소는 design_center_settings 'matching_internal_sheet_id'
-     · PDF = html2canvas + jsPDF (누를 때만 불러온다) · A4 가로. 내부공유용 = 1쪽 매칭표 + 2쪽 원가계산서, 업체 전달용 = 매칭표만
+     · PDF = html2canvas + jsPDF (누를 때만 불러온다) · A4 가로. 내부공유용 = 1쪽 매칭표 + 원가계산서 한 장에 한 쪽씩, 업체 전달용 = 매칭표만
      ============================================================ */
   const TPL_MODES = {
     linesheet:{kind:'linesheet', label:'라인시트', ico:'📋'},
@@ -27113,18 +27191,21 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   const _tplUid = () => Math.random().toString(36).slice(2, 10);
   const _tplMe = () => { try{ return String(localStorage.getItem('brightbeed_diary_me') || '').trim(); }catch(e){ return ''; } };
   const _tplKind = () => TPL_MODES[_tpl.mode].kind;
-  // 숫자 칸 값 — 숫자 또는 사칙연산 식(=14.5*1.1 · 22.5+0.4 · (3190+506)/2). eval 없이 직접 계산, 못 읽으면 앞 숫자만
+  // 사칙연산 식 (숫자 · + - * / · 괄호) — eval 없이 직접 계산, 못 읽으면 null
+  function _tplExpr(s){
+    if(!/^[\d.+\-*/()]+$/.test(s)) return null;
+    let i = 0;
+    const num = () => { const m = s.slice(i).match(/^\d*\.?\d+|^\d+\./); if(!m) throw 0; i += m[0].length; return parseFloat(m[0]); };
+    const atom = () => { if(s[i] === '('){ i++; const v = expr(); if(s[i++] !== ')') throw 0; return v; } if(s[i] === '-'){ i++; return -atom(); } if(s[i] === '+'){ i++; return atom(); } return num(); };
+    const term = () => { let v = atom(); while(s[i] === '*' || s[i] === '/'){ const o = s[i++], b = atom(); v = o === '*' ? v * b : v / b; } return v; };
+    const expr = () => { let v = term(); while(s[i] === '+' || s[i] === '-'){ const o = s[i++], b = term(); v = o === '+' ? v + b : v - b; } return v; };
+    try{ const v = expr(); return i === s.length && isFinite(v) ? v : null; }catch(e){ return null; }
+  }
+  // 숫자 칸 값 — 숫자 또는 사칙연산 식(=14.5*1.1 · 22.5+0.4 · (3190+506)/2). 못 읽으면 앞 숫자만
   function _tplNum(v){
     const s = String(v ?? '').replace(/[,\s₩￦원]/g, '').replace(/^=/, '').replace(/[×xX]/g, '*').replace(/÷/g, '/');
     if(!s || s === '-') return null;
-    if(/^[\d.+\-*/()]+$/.test(s) && /[+\-*/]/.test(s.slice(1))){
-      let i = 0;
-      const num = () => { const m = s.slice(i).match(/^\d*\.?\d+|^\d+\./); if(!m) throw 0; i += m[0].length; return parseFloat(m[0]); };
-      const atom = () => { if(s[i] === '('){ i++; const v = expr(); if(s[i++] !== ')') throw 0; return v; } if(s[i] === '-'){ i++; return -atom(); } if(s[i] === '+'){ i++; return atom(); } return num(); };
-      const term = () => { let v = atom(); while(s[i] === '*' || s[i] === '/'){ const o = s[i++], b = atom(); v = o === '*' ? v * b : v / b; } return v; };
-      const expr = () => { let v = term(); while(s[i] === '+' || s[i] === '-'){ const o = s[i++], b = term(); v = o === '+' ? v + b : v - b; } return v; };
-      try{ const v = expr(); if(i === s.length && isFinite(v)) return v; }catch(e){}
-    }
+    if(/[+\-*/]/.test(s.slice(1))){ const x = _tplExpr(s); if(x != null) return x; }
     const n = parseFloat(s);
     return isFinite(n) ? n : null;
   }
@@ -27177,10 +27258,16 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     if(doc.kind === 'matching'){
       const b = _tplBlankMatch();
       Object.keys(b).forEach(k => { if(d[k] == null) d[k] = b[k]; });
-      if(!Array.isArray(d.specs) || d.specs.length < 6) d.specs = b.specs.map((s, i) => Object.assign(s, (d.specs || [])[i] || {}));
+      if(!Array.isArray(d.specs) || !d.specs.length) d.specs = b.specs;
+      d.specs = d.specs.map(s => s || {l:'', v:''});
       if(!Array.isArray(d.factory) || !d.factory.length) d.factory = b.factory;
       d.factory.forEach(f => { if(!f.u) f.u = _tplUid(); });
       _tplSetSlots(d, d.slots);
+      // 원가계산서 — 첫 장(cost)이 비었는데 둘째 장(costs)이 있으면 앞으로 당긴다
+      const sc = doc.secret;
+      if(sc.costs && !Array.isArray(sc.costs)) delete sc.costs;
+      if(!sc.cost && sc.costs && sc.costs.length) sc.cost = sc.costs.shift();
+      _tplCosts(doc).forEach(c => { if(!c.u) c.u = _tplUid(); if(!Array.isArray(c.rows)) c.rows = []; c.rows = c.rows.filter(Boolean); });
     }else{
       if(!Array.isArray(d.items)) d.items = [];
       d.items.forEach(it => {
@@ -27198,7 +27285,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   const _tplFind = id => Object.values(_tpl.docs).flat().find(d => d && d.id === id) || null;
   const _tplTitleOf = doc => String(doc.data.title || '').replace(/\s+/g, ' ').trim();
 
-  /* ── 칸 주소 ── 'colors.2.en' = 공개 칸, '$<u>.c' = 그 항목의 기밀 칸, 'cost.rows.3.cny' = 원가계산서 */
+  /* ── 칸 주소 ── 'colors.2.en' = 공개 칸, '$<u>.c' = 그 항목의 기밀 칸, 'cost.rows.3.cny' = 원가계산서 첫 장, 'costs.0.rows.3.cny' = 둘째 장, 'heads.fab' = 바꾼 머리글 */
   function _tplEntry(doc, u){
     const d = doc.data;
     for(const k of ['colors', 'fab', 'lin', 'hw', 'factory', 'items']){ const e = (d[k] || []).find(x => x && x.u === u); if(e) return e; }
@@ -27210,7 +27297,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       (doc.secret.p[u] = doc.secret.p[u] || {})[f] = val;
       return 'secret';
     }
-    const sec = path.startsWith('cost.'), parts = path.split('.');
+    const sec = _tcxOf(path) != null, parts = path.split('.');
     let o = sec ? doc.secret : doc.data;
     for(let i = 0; i < parts.length - 1; i++){
       const k = parts[i];
@@ -27222,7 +27309,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   }
   function _tplRef(doc, path){
     if(path[0] === '$'){ const [u, f] = path.slice(1).split('.'); const e = _tplEntry(doc, u); return e ? {obj:e, f, root:'data'} : null; }
-    const sec = path.startsWith('cost.'), parts = path.split('.');
+    const sec = _tcxOf(path) != null, parts = path.split('.');
     let o = sec ? doc.secret : doc.data;
     for(let i = 0; i < parts.length - 1 && o; i++){
       if(o[parts[i]] == null) o[parts[i]] = /^\d+$/.test(parts[i + 1]) ? [] : {};
@@ -27326,22 +27413,77 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     lb.hidden = false;
   }
 
-  /* ── 원가계산서 계산 — 시트 수식 그대로: 한화 변환 = 위안 × 환율(직접 적으면 그 값), VAT = 10%, 계 = (한화 + 원 + VAT) × 수량,
-        합계 = 계의 합, 판매가(정가) = ROUNDUP(합계 × 배수, -2) ── */
+  /* ── 원가계산서 여러 장 (2026-11-24 사장님 "원단별로 가격이 다른 경우가 있어서 추가 · 지금 있는 거 복사하면 그대로 원단가격만 변경 · 최대한 자유도 높게 · 웬만한 건 다 직접 수정") ──
+        첫 장 = secret.cost (예전 자리 그대로 — 열려 있던 옛 화면 · 백업도 그대로 읽는다), 둘째 장부터 = secret.costs[].  칸 주소 = 'cost.rows.3.cny' / 'costs.0.rows.3.cny'
+        표 하나 = {u, name(원단 이름), title, rate, vatPct, mult, round, rmode, heads{머리글}, cols[{k, off, t}], rows[], tot{}, prc{}, totalv, pricev, noPrice, extra[{name, v}], note, touched}
+        · 저절로 계산되는 칸(한화 변환 · VAT · 계 · 합계 · 판매가)도 직접 적으면 그 값(conv · vatv · sumv · totalv · pricev), 지우면 다시 자동
+        · cols = 칸 차례 · 숨김 + 새 칸(k = 'x…', t = 글자 'text' · 원 더하기 'add' · 곱하기 'mul'), extra = 판매가 아래 계산 줄 (=판매가-합계 같은 식) ── */
+  const TCX_BASE = [['name', '항목'], ['color', '색상'], ['size', '사이즈'], ['cny', '위안(환율기준)'], ['conv', '한화 변환'], ['krw', '원'], ['vat', 'VAT 필요'], ['qty', '수량'], ['sum', '계']];
+  const TCX_LABEL = Object.assign({grp:'단가'}, Object.fromEntries(TCX_BASE));
+  const TCX_GRP = new Set(['cny', 'conv', 'krw']), TCX_KEEP = new Set(['name', 'qty', 'sum']);   // GRP = '단가' 밑 칸, KEEP = 못 숨기는 칸
+  const TCX_RND = {up:'올림', near:'반올림', down:'내림', none:'그대로'};
+  const TCX_TYPES = {text:'글자 (계산 안 함)', add:'금액 — 단가에 더하기(원)', mul:'곱하기 (요척 · 로스율처럼)'};
+  const _tcxHas = v => String(v ?? '').trim() !== '';
+  const _tcxClone = o => JSON.parse(JSON.stringify(o));
+  function _tplCosts(doc){ const s = (doc && doc.secret) || {}; return [s.cost, ...(Array.isArray(s.costs) ? s.costs : [])].filter(c => c && typeof c === 'object'); }
+  function _tcxPut(doc, list){
+    doc.secret.cost = list[0] || _tplBlankCost();
+    if(list.length > 1) doc.secret.costs = list.slice(1); else delete doc.secret.costs;
+  }
+  const _tcxPath = si => si ? `costs.${si - 1}.` : 'cost.';
+  function _tcxOf(path){ const m = String(path || '').match(/^cost(?:s\.(\d+))?\./); return m ? (m[1] == null ? 0 : +m[1] + 1) : null; }
+  const _tcxName = (c, si) => String((c && c.name) || '').replace(/\s+/g, ' ').trim() || `원가계산서 ${si + 1}`;
+  const _tcxShown = doc => _tplCosts(doc).map((c, si) => ({c, si})).filter(x => x.c.touched && (x.c.rows || []).length);
+  function _tcxCols(c){
+    const list = (Array.isArray(c.cols) ? c.cols : []).filter(x => x && x.k && (TCX_LABEL[x.k] || x.k[0] === 'x')).map(x => Object.assign({}, x));
+    if(!list.length) return TCX_BASE.map(([k]) => ({k}));
+    const have = new Set(list.map(x => x.k));
+    TCX_BASE.forEach(([k]) => { if(have.has(k)) return; const at = list.findIndex(x => x.k === 'sum'); list.splice(k === 'sum' || at < 0 ? list.length : at, 0, {k}); });
+    return list;
+  }
+  // 칸에 적은 식 — '=' 로 시작하거나 이름(합계 · 판매가 · 환율 …)이 들어 있으면 식으로 계산, 아니면 숫자로 읽는다
+  function _tcxEval(v, vars){
+    let s = String(v ?? '').trim();
+    if(!s) return null;
+    const names = Object.keys(vars || {}).sort((a, b) => b.length - a.length);
+    if(s[0] !== '=' && !names.some(k => s.includes(k))) return _tplNum(s);
+    names.forEach(k => { if(s.includes(k)) s = s.split(k).join(`(${(+vars[k] || 0).toFixed(6)})`); });
+    s = s.replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)').replace(/[,\s₩￦원]/g, '').replace(/^=/, '').replace(/[×xX]/g, '*').replace(/÷/g, '/');
+    return _tplExpr(s);
+  }
+  const _tcxShow = v => { const s = String(v ?? ''); if(s.trim()[0] !== '=') return s; const n = _tplNum(s); return n == null ? s : _tplFmt(n); };   // 식은 값으로 보인다 (칸에 들어가면 식)
+  const _tcxOwn = (raw, val) => String(raw ?? '').trim()[0] === '=' && val != null ? _tplFmt(val) : String(raw ?? '');
+
+  /* ── 계산 — 시트 수식 그대로: 한화 변환 = 위안 × 환율, VAT = (한화 + 원) × 10%, 계 = (한화 + 원 + VAT) × 수량, 합계 = 계의 합, 판매가(정가) = ROUNDUP(합계 × 배수, -2) */
   function _tplCostCalc(c){
-    const rate = _tplNum(c && c.rate) || 0;
-    const rows = ((c && c.rows) || []).map(r => {
-      const cny = _tplNum(r.cny), krw = _tplNum(r.krw), own = _tplNum(r.conv), qn = _tplNum(r.qty);
-      const conv = own != null ? own : cny != null ? cny * rate : null;
-      const base = (conv || 0) + (krw || 0);
-      const vat = r.vat && (conv != null || krw != null) ? base / 10 : null;
-      const sum = conv != null || krw != null ? (base + (vat || 0)) * (qn == null ? 1 : qn) : null;
-      return {conv, auto:own == null, vat, sum};
+    c = c || {};
+    const rate = _tplNum(c.rate) || 0, pct = _tcxHas(c.vatPct) ? (_tplNum(c.vatPct) || 0) : 10;
+    const more = _tcxCols(c).filter(x => x.t === 'add' || x.t === 'mul');
+    const rows = (c.rows || []).map(r => {
+      const cny = _tplNum(r.cny), krw = _tplNum(r.krw), qn = _tplNum(r.qty);
+      const ownC = _tcxHas(r.conv), auto = cny != null ? cny * rate : null;
+      const conv = ownC ? _tcxEval(r.conv, {'환율':rate, '위안':cny, '수량':qn}) : auto;
+      let add = null, mul = 1;
+      more.forEach(x => { const v = _tplNum(r[x.k]); if(v == null) return; if(x.t === 'add') add = (add || 0) + v; else mul *= v; });
+      const any = conv != null || krw != null || add != null, base = (conv || 0) + (krw || 0) + (add || 0);
+      const vars = {'환율':rate, '위안':cny, '한화':conv, '수량':qn, '단가':base};
+      const ownV = _tcxHas(r.vatv), vat = ownV ? _tcxEval(r.vatv, vars) : r.vat && any ? base * pct / 100 : null;
+      const ownS = _tcxHas(r.sumv), sum = ownS ? _tcxEval(r.sumv, Object.assign({'VAT':vat}, vars)) : any || vat != null ? (base + (vat || 0)) * (qn == null ? 1 : qn) * mul : null;
+      return {conv, vat, sum, ownC, ownV, ownS, vatOn:ownV || !!r.vat};
     });
-    const total = rows.reduce((s, x) => s + (x.sum || 0), 0);
-    const mult = _tplNum(c && c.mult);
-    const price = mult ? Math.ceil(Math.round(total * mult * 1e4) / 1e4 / 100) * 100 : null;
-    return {rows, total, price};
+    const autoT = rows.reduce((s, x) => s + (x.sum || 0), 0);
+    const ownT = _tcxHas(c.totalv), totalE = ownT ? _tcxEval(c.totalv, {'합계':autoT, '환율':rate}) : autoT, total = totalE == null ? 0 : totalE;
+    const mult = _tplNum(c.mult), unit = _tcxHas(c.round) ? (_tplNum(c.round) || 0) : 100, fn = c.rmode === 'near' ? Math.round : c.rmode === 'down' ? Math.floor : Math.ceil;
+    const raw = mult ? Math.round(total * mult * 1e4) / 1e4 : null;
+    const autoP = raw == null ? null : unit > 0 && c.rmode !== 'none' ? fn(raw / unit) * unit : raw;
+    const ownP = _tcxHas(c.pricev), price = ownP ? _tcxEval(c.pricev, {'합계':total, '환율':rate, '배수':mult}) : autoP;
+    const vars = {'합계':total, '판매가':price, '정가':price, '환율':rate, '배수':mult};
+    const extra = (c.extra || []).map(x => {
+      const v = _tcxEval(x && x.v, vars), nm = String((x && x.name) || '').replace(/\s+/g, ' ').trim();
+      if(nm.length > 1 && !(nm in vars)) vars[nm] = v;   // 위 계산 줄 이름도 아래 줄 식에 쓸 수 있다
+      return v;
+    });
+    return {rows, total, price, ownT, ownP, extra};
   }
 
   /* ============ 매칭표 종이 ============ */
@@ -27354,38 +27496,42 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       const x = _tplF(doc, list, i, f, desig);
       return x.lock ? `<div class="tx${cls ? ' ' + cls : ''}${_tplCls(x.obj, f)}"${span(n)}><div class="tc"></div></div>` : T(x.path, x.val, ph, cls, n, x.obj, f);
     };
-    const H = t => `<div class="tx th r-h" style="grid-column:1 / -1">${t}</div>`;
+    // 구역 머리글 — 글자를 바로 고칠 수 있다 (2026-11-24 "웬만한 건 다 직접 수정")
+    const hd = (k, t) => d.heads && d.heads[k] != null ? d.heads[k] : t;
+    const H = (k, t) => `<div class="tx th r-h${_tplCls(d.heads, k)}" style="grid-column:1 / -1">${ce(`heads.${k}`, hd(k, t), t)}</div>`;
     const P = (path, ref, cls, n) => `<div class="tx tpx ${cls}"${span(n == null ? 3 : n)}>${_tplPh(path, ref, ed)}</div>`;
     const out = [];
     out.push(T('title', d.title, '제품명 / 한글명 (예: First-q bag / 퍼스트큐 백)', 'r-title', C, d, 'title'));
-    out.push(H('SIZE (단위 : cm)'));
+    out.push(H('size', 'SIZE (단위 : cm)'));
+    const per = Math.floor(C / 2);   // 한 줄에 들어가는 SIZE 칸 — 넘치면 다음 줄로
     d.specs.forEach((s, i) => {
       out.push(T(`specs.${i}.l`, s.l, '항목', 'th r-spec', 1, s, 'l'));
       out.push(T(`specs.${i}.v`, s.v, '', 'r-spec', 1, s, 'v'));
+      if((i + 1) % per === 0 && C % 2) out.push('<div class="tx r-spec"></div>');
     });
-    if(C > 12) out.push(`<div class="tx r-spec"${span(C - 12)}></div>`);
-    out.push(H('공장 정보'));
+    if(d.specs.length % per) out.push(`<div class="tx r-spec"${span(C - (d.specs.length % per) * 2)}></div>`);
+    out.push(H('factory', '공장 정보'));
     const fac = d.factory, W = fac.reduce((s, f) => s + (+f.w || 1), 0);
     let used = 0;
     const spans = fac.map((f, i) => { const n = i === fac.length - 1 ? C - used : Math.max(1, Math.round((+f.w || 1) * C / W)); used += n; return n; });
     fac.forEach((f, i) => out.push(T(`factory.${i}.text`, f.text, '공장 이름 · 연락처', 'r-fac', spans[i], f, 'text', true)));
     fac.forEach((f, i) => out.push(P(`factory.${i}.img`, f.img, 'r-facimg', spans[i])));
-    out.push(H('image'));
+    out.push(H('image', 'image'));
     d.colors.slice(0, N).forEach((c, i) => out.push(P(`colors.${i}.img`, c.img, 'r-ph')));
     d.colors.slice(0, N).forEach((c, i) => {
-      out.push('<div class="tx th r-txt">컬러명</div>');
+      out.push(T('heads.cname', hd('cname', '컬러명'), '컬러명', 'th r-txt', 1, d.heads, 'cname'));
       out.push(T(`colors.${i}.en`, c.en, 'english', 'r-txt', 1, c, 'en'));
       out.push(T(`colors.${i}.ko`, c.ko, '한글', 'r-txt', 1, c, 'ko'));
     });
-    out.push(H('메인 원단'));
+    out.push(H('fab', '메인 원단'));
     d.fab.slice(0, N).forEach((f, i) => out.push(P(`fab.${i}.tag`, f.tag, 'r-tag')));
     d.fab.slice(0, N).forEach((f, i) => out.push(P(`fab.${i}.img`, f.img, 'r-sw')));
     d.fab.slice(0, N).forEach((f, i) => { out.push(L('fab', i, 'a', '품번', 'r-txt')); out.push(L('fab', i, 'b', '컬러', 'r-txt')); out.push(L('fab', i, 'c', '단가', 'r-txt', 1, true)); });
-    out.push(H('안감'));
+    out.push(H('lin', '안감'));
     d.lin.slice(0, N).forEach((f, i) => out.push(P(`lin.${i}.img`, f.img, 'r-lin')));
     d.lin.slice(0, N).forEach((f, i) => { out.push(L('lin', i, 'a', '안감 이름', 'r-sm')); out.push(L('lin', i, 'b', '컬러', 'r-sm', 2)); });
     d.lin.slice(0, N).forEach((f, i) => { out.push(L('lin', i, 'c', '소재', 'r-sm')); out.push(L('lin', i, 'd', '단가', 'r-sm', 2, true)); });
-    out.push(H('부자재'));
+    out.push(H('hw', '부자재'));
     for(let g = 0; g < d.hw.length; g += N){
       for(let i = g; i < g + N; i++){
         const h = d.hw[i], cap = _tplF(doc, 'hw', i, 'cap');
@@ -27396,50 +27542,366 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       for(let i = g; i < g + N; i++){ out.push(L('hw', i, 'a', '부자재 이름', 'r-txt')); out.push(L('hw', i, 'b', '소재 · 컬러', 'r-txt')); out.push(L('hw', i, 'c', '수량', 'r-txt')); }
     }
     if(ed || String(d.notes || '').trim()){
-      out.push(H('생산주의사항'));
+      out.push(H('notes', '생산주의사항'));
       out.push(T('notes', d.notes, '공장에 꼭 전할 생산 주의사항 (예: 1. 원단 중량 꼭 확인하고 진행해주세요)', 'r-notes', C, d, 'notes', true));
     }
     return `<div class="tpl-paper tpl-m" data-doc="${doc.id}" style="--c:${C}">${out.join('')}</div>`;
   }
   function _tplCostHtml(doc, o){
-    const E = escapeHTML, c = doc.secret.cost || _tplBlankCost(), calc = _tplCostCalc(c), ed = !!o.edit;
-    const ce = (path, val, ph, cls) => ed ? `<div class="tc${cls ? ' ' + cls : ''}" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-ph="${E(ph || '')}">${E(val)}</div>` : `<div class="tc">${E(val)}</div>`;
-    const td = (obj, f, inner, cls) => `<td class="${cls || ''}${_tplCls(obj, f)}">${inner}</td>`;
-    const rows = c.rows.map((r, i) => {
-      const x = calc.rows[i], p = `cost.rows.${i}.`;
-      const conv = ed ? `<div class="tc${x.auto ? ' is-auto' : ''}" contenteditable="plaintext-only" spellcheck="false" data-f="${p}conv" data-calc="conv:${i}" data-ph="">${E(x.auto ? _tplFmt(x.conv) : r.conv)}</div>` : `<div class="tc">${E(_tplFmt(x.conv))}</div>`;
-      const vat = ed ? `<button type="button" class="tcx-vat${r.vat ? ' is-on' : ''}" data-act="vat" data-i="${i}" title="VAT 10% 더하기 (한 번 더 누르면 빼기)"><span data-calc="vat:${i}">${r.vat ? E(_tplFmt(x.vat)) : '＋'}</span></button>` : `<div class="tc">${E(r.vat ? _tplFmt(x.vat) : '')}</div>`;
-      return `<tr>${td(r, 'name', ce(p + 'name', r.name, '항목'))}${td(r, 'color', ce(p + 'color', r.color, ''))}${td(r, 'size', ce(p + 'size', r.size, ''))}${td(r, 'cny', ce(p + 'cny', r.cny, ''))}${td(r, 'conv', conv)}${td(r, 'krw', ce(p + 'krw', r.krw, ''))}${td(r, 'vat', vat)}${td(r, 'qty', ce(p + 'qty', r.qty, ''))}<td class="tcx-sum"><div class="tc" data-calc="sum:${i}">${E(_tplFmt(x.sum))}</div>${ed ? `<button type="button" class="tcx-del" data-act="cost-del" data-i="${i}" title="이 줄 지우기">×</button>` : ''}</td></tr>`;
+    const E = escapeHTML, si = o.si || 0, c = _tplCosts(doc)[si] || _tplBlankCost(), calc = _tplCostCalc(c), ed = !!o.edit, P = _tcxPath(si);
+    const cols = _tcxCols(c).filter(x => !x.off), n = cols.length, heads = c.heads || {};
+    const ce = (path, shown, ph, attr) => ed ? `<div class="tc" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-ph="${E(ph || '')}"${attr || ''}>${E(shown)}</div>` : `<div class="tc">${E(shown)}</div>`;
+    // 저절로 계산되는 칸 — 직접 적으면 그 값, 지우면 다시 자동
+    const auto = (path, key, shown, own) => ed ? `<div class="tc${own ? '' : ' is-auto'}" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-calc="${key}" data-ph="" title="${own ? '직접 적은 값이에요 — 지우면 다시 자동 계산' : '자동 계산 — 직접 적으면 그 값을 써요 (=식도 돼요)'}">${E(shown)}</div>` : `<div class="tc">${E(shown)}</div>`;
+    const td = (obj, f, inner, cls, own) => `<td class="${cls || ''}${own && ed ? ' is-own' : ''}${_tplCls(obj, f)}">${inner}</td>`;
+    const rm = (act, i) => ed ? `<button type="button" class="tcx-rm" draggable="${act === 'tcx-row'}" data-act="${act}" data-si="${si}" data-i="${i}" title="줄 넣기 · 복사 · 옮기기 · 지우기${act === 'tcx-row' ? ' (끌어서도 옮겨져요)' : ''}" aria-label="줄 메뉴">⋯</button>` : '';
+    const body = (c.rows || []).map((r, i) => {
+      const x = calc.rows[i], p = `${P}rows.${i}.`;
+      return `<tr data-i="${i}">${cols.map((cl, z) => {
+        const k = cl.k, end = z === n - 1 ? rm('tcx-row', i) : '';
+        if(k === 'conv') return td(r, 'conv', auto(p + 'conv', `conv:${i}`, x.ownC ? _tcxOwn(r.conv, x.conv) : _tplFmt(x.conv), x.ownC) + end, '', x.ownC);
+        if(k === 'sum') return td(r, 'sumv', auto(p + 'sumv', `sum:${i}`, x.ownS ? _tcxOwn(r.sumv, x.sum) : _tplFmt(x.sum), x.ownS) + end, 'tcx-sum', x.ownS);
+        if(k === 'vat'){
+          const shown = x.ownV ? _tcxOwn(r.vatv, x.vat) : _tplFmt(x.vat);
+          return td(r, 'vatv', (ed ? `<div class="tcx-vt"><button type="button" class="tcx-vat${x.vatOn ? ' is-on' : ''}" data-act="tcx-vat" data-si="${si}" data-i="${i}" title="VAT 켜기 · 끄기 (오른쪽에 금액을 직접 적어도 돼요)" aria-label="VAT">${x.vatOn ? '✓' : '＋'}</button>${auto(p + 'vatv', `vat:${i}`, shown, x.ownV)}</div>` : `<div class="tc">${E(shown)}</div>`) + end, '', x.ownV);
+        }
+        return td(r, k, ce(p + k, _tcxShow(r[k]), k === 'name' ? '항목' : '') + end);
+      }).join('')}</tr>`;
     }).join('');
-    return `<div class="tpl-paper tpl-cost" data-doc="${doc.id}">
+    // 아래 줄 — 합계 · 판매가 · 계산 줄 (빈 칸도 다 적을 수 있다)
+    const foot = (obj, base, def, special, cls, menu) => `<tr class="${cls || ''}">${cols.map((cl, z) => {
+      const k = cl.k, end = z === n - 1 && menu ? menu : '';
+      if(special[k]) return special[k](end);
+      return td(obj, k, ce(`${P}${base}.${k}`, obj && obj[k] != null ? obj[k] : (def[k] || ''), k === 'name' ? '이름' : '') + end);
+    }).join('')}</tr>`;
+    const tot = foot(c.tot, 'tot', {name:'계', color:'-'}, {sum:end => td(c, 'totalv', auto(P + 'totalv', 'total', calc.ownT ? _tcxOwn(c.totalv, calc.total) : _tplFmt(calc.total), calc.ownT) + end, '', calc.ownT)});
+    const prc = c.noPrice ? '' : foot(c.prc, 'prc', {name:'판매가(정가)'}, {
+      qty:end => td(c, 'mult', ce(P + 'mult', c.mult, '배수') + end),
+      sum:end => td(c, 'pricev', auto(P + 'pricev', 'price', calc.ownP ? _tcxOwn(c.pricev, calc.price) : _tplFmt(calc.price), calc.ownP) + end, 'tcx-price', calc.ownP)}, 'tcx-prc');
+    const ext = (c.extra || []).map((x, i) => foot(x, `extra.${i}`, {}, {sum:end => td(x, 'v', (ed ? `<div class="tc" contenteditable="plaintext-only" spellcheck="false" data-f="${P}extra.${i}.v" data-calc="ex:${i}" data-ph="=판매가-합계" title="숫자나 식 — 합계 · 판매가 · 환율 · 배수 · 위 계산 줄 이름을 쓸 수 있어요">${E(_tcxExShow(x, calc.extra[i]))}</div>` : `<div class="tc">${E(_tcxExShow(x, calc.extra[i]))}</div>`) + end)}, 'tcx-ex', rm('tcx-exrow', i))).join('');
+    // 머리글
+    const lab = k => heads[k] != null ? heads[k] : (TCX_LABEL[k] || ''), cm = k => ed ? `<button type="button" class="tcx-cm" data-act="tcx-col" data-si="${si}" data-k="${k}" title="칸 넣기 · 옮기기 · 숨기기" aria-label="칸 메뉴">▾</button>` : '';
+    const hd = k => ce(`${P}heads.${k}`, lab(k), k[0] === 'x' ? '칸 이름' : '');
+    const edn = (f, v) => ed ? `<span class="tcx-rate" contenteditable="plaintext-only" spellcheck="false" data-f="${P}${f}">${E(v)}</span>` : E(v);
+    let h1 = '', h2 = '';
+    for(let z = 0; z < n;){
+      const k = cols[z].k;
+      if(TCX_GRP.has(k)){
+        let e = z;
+        while(e < n && TCX_GRP.has(cols[e].k)) e++;
+        h1 += `<th colspan="${e - z}" class="${_tplCls(heads, 'grp')}">${hd('grp')}</th>`;
+        for(; z < e; z++){ const q = cols[z].k; h2 += `<th class="${_tplCls(heads, q)}">${q === 'cny' ? `<div class="tcx-cny">${hd(q)}<span>${edn('rate', c.rate)}원</span></div>` : hd(q)}${cm(q)}</th>`; }
+      }else if(k === 'vat'){ h1 += `<th class="${_tplCls(heads, k)}">${hd(k)}${cm(k)}</th>`; h2 += `<th>${edn('vatPct', _tcxHas(c.vatPct) ? c.vatPct : '10')}%</th>`; z++; }
+      else{ h1 += `<th rowspan="2" class="${_tplCls(heads, k)}">${hd(k)}${cols[z].t === 'add' || cols[z].t === 'mul' ? (ed ? `<span class="tcx-ty">${cols[z].t === 'add' ? '더하기' : '곱하기'}</span>` : '') : ''}${cm(k)}</th>`; z++; }
+    }
+    const note = ed ? `<div class="tcx-note tc" contenteditable="plaintext-only" spellcheck="false" data-f="${P}note" data-ml="1" data-ph="메모 — 원단 업체 · 요척 · 로스 · 조건 등 자유롭게">${E(c.note || '')}</div>` : _tcxHas(c.note) ? `<div class="tcx-note tc">${E(c.note)}</div>` : '';
+    return `<div class="tpl-paper tpl-cost" data-doc="${doc.id}" data-si="${si}">
       <table class="tcx">
         <thead>
-          <tr><th class="tcx-title" colspan="9">원가계산서</th></tr>
-          <tr><th rowspan="2">항목</th><th rowspan="2">색상</th><th rowspan="2">사이즈</th><th colspan="3">단가</th><th>VAT 필요</th><th rowspan="2">수량</th><th rowspan="2">계</th></tr>
-          <tr><th>위안(환율기준) ${ed ? `<span class="tcx-rate" contenteditable="plaintext-only" spellcheck="false" data-f="cost.rate">${E(c.rate)}</span>` : E(c.rate)}원</th><th>한화 변환</th><th>원</th><th></th></tr>
+          <tr><th class="tcx-title${_tplCls(c, 'title')}" colspan="${n}">${ce(P + 'title', c.title != null ? c.title : '원가계산서', '원가계산서')}</th></tr>
+          <tr>${h1}</tr>
+          <tr>${h2}</tr>
         </thead>
-        <tbody>${rows}</tbody>
-        <tfoot>
-          <tr><td>계</td><td>-</td><td></td><td></td><td></td><td></td><td></td><td></td><td><div class="tc" data-calc="total">${E(_tplFmt(calc.total))}</div></td></tr>
-          <tr><td>판매가(정가)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>${ce('cost.mult', c.mult, '배수')}</td><td class="tcx-price"><div class="tc" data-calc="price">${E(_tplFmt(calc.price))}</div></td></tr>
-        </tfoot>
+        <tbody>${body}</tbody>
+        <tfoot>${tot}${prc}${ext}</tfoot>
       </table>
-      ${ed ? '<div class="tcx-foot"><button type="button" class="mb-btn" data-act="cost-add">＋ 줄 추가</button><span>시트와 같은 함수 — 한화 변환 = 위안 × 환율 · VAT = (한화 + 원) × 10% · 계 = (한화 + 원 + VAT) × 수량 · 합계 = 계의 합 · 판매가 = ROUNDUP(합계 × 배수, -2). 숫자 칸엔 =14.5*1.1 · 22.5+0.4 같은 식도 돼요 · 한화 변환 칸에 직접 적으면 그 값을 써요</span></div>' : ''}
+      ${note}
+      ${ed ? `<div class="tcx-foot"><button type="button" class="mb-btn" data-act="tcx-add" data-si="${si}">＋ 줄</button><button type="button" class="mb-btn" data-act="tcx-coladd" data-si="${si}">＋ 칸</button><button type="button" class="mb-btn" data-act="tcx-exmenu" data-si="${si}">＋ 계산 줄</button><span class="mb-sp"></span>${c.noPrice ? '' : `<span class="tcx-rnd">판매가 ${edn('round', _tcxHas(c.round) ? c.round : '100')}원 단위 <button type="button" class="mb-btn" data-act="tcx-rmode" data-si="${si}" title="올림 → 반올림 → 내림 → 그대로">${TCX_RND[c.rmode] || TCX_RND.up}</button></span>`}</div>` : ''}
     </div>`;
   }
-  function _tplCostPaint(doc){
-    const calc = _tplCostCalc(doc.secret.cost), st = document.getElementById('tplStage'), ae = document.activeElement;
+  function _tcxExShow(x, val){ const raw = String((x && x.v) ?? ''); return val != null && _tplNum(raw) !== val ? _tplFmt(val) : raw.trim()[0] === '=' && val != null ? _tplFmt(val) : raw; }
+  /* 원가계산서 칸 전체 — 비교 줄(두 장부터) + 장마다 카드 (이름 · 원단 고르기 · 복사 · 메뉴) + 추가 */
+  function _tcxCmpHtml(doc){
+    const E = escapeHTML, list = _tplCosts(doc);
+    if(list.length < 2) return '';
+    const rs = list.map((c, si) => ({c, si, k:_tplCostCalc(c)})), first = rs[0].k.total;
+    return `<table><thead><tr><th>원단별 비교</th><th>원가 합계</th><th>1번과 차이</th><th>배수</th><th>판매가</th></tr></thead><tbody>${rs.map(({c, si, k}) => {
+      const df = k.total - first;
+      return `<tr data-act="tcx-go" data-si="${si}" title="눌러서 이 표로"><td><i>${si + 1}</i>${E(_tcxName(c, si))}</td><td>${E(_tplFmt(k.total))}</td><td>${si ? (df > 0 ? '+' : '') + E(_tplFmt(df)) : ''}</td><td>${E(c.mult || '')}</td><td><b>${E(_tplFmt(k.price))}</b></td></tr>`;
+    }).join('')}</tbody></table>`;
+  }
+  function _tplCostsHtml(doc){
+    const E = escapeHTML, list = _tplCosts(doc);
+    const cards = list.map((c, si) => `<section class="tcx-card" data-doc="${doc.id}" data-si="${si}">
+        <div class="tcx-head"><span class="tcx-no">${si + 1}</span><div class="tcx-nm" contenteditable="plaintext-only" spellcheck="false" data-f="${_tcxPath(si)}name" data-ph="원단 이름 적기 (예: 코듀로이 블랙)">${E(c.name || '')}</div>
+          <button type="button" class="mb-btn" data-act="tcx-fab" data-si="${si}" title="매칭표의 메인 원단에서 고르기">원단 ▾</button><button type="button" class="mb-btn is-edit" data-act="tcx-dup" data-si="${si}" title="이 표를 그대로 복사 — 원단 가격만 바꾸면 돼요">⧉ 복사</button><button type="button" class="mb-btn" data-act="tcx-menu" data-si="${si}" aria-label="이 표 메뉴">⋯</button></div>
+        <div class="tpl-scroll tpl-scroll-cost">${_tplCostHtml(doc, {edit:true, si})}</div>
+      </section>`).join('');
+    return `<div class="tcx-cmp">${_tcxCmpHtml(doc)}</div>${cards}
+      <div class="tcx-more"><button type="button" class="mb-btn is-add" data-act="tcx-addmenu">＋ 원가계산서 추가</button><span>칸을 눌러 바로 고치기 · 숫자 칸엔 =14.5*1.1 같은 식 · 회색 숫자는 자동 계산이고 직접 적으면 그 값(‘직접’ 표시, 지우면 다시 자동) · 칸 이름 옆 ▾ = 칸 넣기 · 옮기기 · 숨기기 · 줄 끝 ⋯ = 줄 메뉴(끌어서 옮기기) · 엑셀 · 구글시트에서 여러 칸 복사해 붙여넣기도 돼요</span></div>`;
+  }
+  function _tcxRender(doc){
+    const box = document.querySelector(`#tplStage .tpl-costs[data-doc="${doc.id}"]`);
+    if(!box) return _tplRenderPaper(true);
+    const keep = [...box.querySelectorAll('.tpl-scroll')].map(x => x.scrollLeft);
+    box.innerHTML = _tplCostsHtml(doc);
+    box.querySelectorAll('.tpl-scroll').forEach((x, i) => { x.scrollLeft = keep[i] || 0; });
+    document.querySelectorAll('#tplStage [data-tcx-n]').forEach(x => { x.textContent = _tplCosts(doc).length; });
+    _tplUndoUi();
+  }
+  // 글자를 고치는 중 — 계산 칸만 다시 (적고 있는 칸은 건드리지 않는다)
+  function _tplCostPaint(doc, only){
+    const st = document.getElementById('tplStage'), ae = document.activeElement;
     if(!st) return;
-    const set = (k, v) => st.querySelectorAll(`[data-calc="${k}"]`).forEach(el => { if(el !== ae) el.textContent = v; });
-    calc.rows.forEach((x, i) => {
-      const r = doc.secret.cost.rows[i];
-      if(x.auto) set(`conv:${i}`, _tplFmt(x.conv));
-      st.querySelectorAll(`[data-calc="conv:${i}"]`).forEach(el => el.classList.toggle('is-auto', x.auto));
-      set(`vat:${i}`, r.vat ? _tplFmt(x.vat) : '＋');
-      set(`sum:${i}`, _tplFmt(x.sum));
+    _tplCosts(doc).forEach((c, si) => {
+      if(only != null && si !== only) return;
+      const paper = st.querySelector(`.tpl-cost[data-doc="${doc.id}"][data-si="${si}"]`);
+      if(!paper) return;
+      const calc = _tplCostCalc(c);
+      const set = (k, v, own) => paper.querySelectorAll(`[data-calc="${k}"]`).forEach(el => {
+        if(el !== ae && el.textContent !== v) el.textContent = v;
+        if(own == null) return;
+        el.classList.toggle('is-auto', !own);
+        const box = el.closest('td');
+        if(box) box.classList.toggle('is-own', own);
+      });
+      calc.rows.forEach((x, i) => {
+        const r = c.rows[i];
+        set(`conv:${i}`, x.ownC ? _tcxOwn(r.conv, x.conv) : _tplFmt(x.conv), x.ownC);
+        set(`vat:${i}`, x.ownV ? _tcxOwn(r.vatv, x.vat) : _tplFmt(x.vat), x.ownV);
+        set(`sum:${i}`, x.ownS ? _tcxOwn(r.sumv, x.sum) : _tplFmt(x.sum), x.ownS);
+        const b = paper.querySelector(`.tcx-vat[data-i="${i}"]`);
+        if(b){ b.classList.toggle('is-on', x.vatOn); b.textContent = x.vatOn ? '✓' : '＋'; }
+      });
+      set('total', calc.ownT ? _tcxOwn(c.totalv, calc.total) : _tplFmt(calc.total), calc.ownT);
+      set('price', calc.ownP ? _tcxOwn(c.pricev, calc.price) : _tplFmt(calc.price), calc.ownP);
+      (c.extra || []).forEach((x, i) => set(`ex:${i}`, _tcxExShow(x, calc.extra[i])));
     });
-    set('total', _tplFmt(calc.total));
-    set('price', _tplFmt(calc.price));
+    const cmp = st.querySelector(`.tpl-costs[data-doc="${doc.id}"] .tcx-cmp`);
+    if(cmp) cmp.innerHTML = _tcxCmpHtml(doc);
+  }
+  function _tcxFocus(doc, sel, all){
+    const el = document.querySelector(`#tplStage .tpl-costs[data-doc="${doc.id}"] ${sel}`);
+    if(!el) return;
+    const card = el.closest('.tcx-card');
+    if(all && card){ card.scrollIntoView({block:'nearest', behavior:'smooth'}); card.classList.add('is-focus'); setTimeout(() => card.classList.remove('is-focus'), 1600); }
+    el.focus({preventScroll:!!all});
+    try{ const rg = document.createRange(); rg.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); }catch(e){}
+  }
+  // 작은 메뉴 (줄 · 칸 · 표) — items = [{t:'제목'} | {a:'단추', l:'글', d:{si, i, k …}}]
+  function _tplPop(btn, items){
+    let m = document.getElementById('tplPop');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'tplPop'; m.className = 'tpl-pop'; m.hidden = true;
+      document.body.appendChild(m);
+      m.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if(!b) return; m.hidden = true; _tplAct(b.dataset.act, b); });
+      document.addEventListener('pointerdown', e => { if(!m.hidden && !m.contains(e.target) && e.target.closest('[data-act]') !== m._btn) m.hidden = true; }, true);
+      document.addEventListener('keydown', e => { if(e.key === 'Escape') m.hidden = true; });
+      // 굴려서 누른 단추가 움직이면 닫는다
+      window.addEventListener('scroll', e => { if(m.hidden || m.contains(e.target)) return; const q = m._btn && m._btn.isConnected ? m._btn.getBoundingClientRect() : null; if(q && q.width && Math.abs(q.top - m._y) > 8) m.hidden = true; }, {passive:true, capture:true});
+    }
+    if(!m.hidden && m._btn === btn){ m.hidden = true; return; }
+    const E = escapeHTML;
+    m._btn = btn;
+    m.innerHTML = items.filter(Boolean).map(x => x.t ? `<div class="tpl-pop-t">${E(x.t)}</div>` : `<button type="button" data-act="${x.a}"${Object.entries(x.d || {}).map(([k, v]) => ` data-${k}="${E(String(v))}"`).join('')}${x.red ? ' class="is-red"' : ''}>${E(x.l)}</button>`).join('');
+    m.hidden = false;
+    let r = btn.getBoundingClientRect();
+    if(r.width) _tpl.popRect = r; else r = _tpl.popRect || r;   // 메뉴 안에서 또 여는 메뉴는 처음 누른 단추 옆에
+    m._y = r.top;
+    const w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left)) + 'px';
+    m.style.top = (r.bottom + 4 + h < innerHeight - 8 ? r.bottom + 4 : Math.max(8, r.top - h - 4)) + 'px';
+  }
+  function _tcxBlankRow(){ return {u:_tplUid(), name:'', color:'', size:'', cny:'', conv:'', krw:'', vat:false, qty:'1', hl:{}}; }
+  function _tcxCopyOf(src, name){
+    const c = _tcxClone(src);
+    c.u = _tplUid(); c.name = name; c.touched = true;
+    (c.rows || []).forEach(r => { r.u = _tplUid(); });
+    (c.extra || []).forEach(r => { r.u = _tplUid(); });
+    return c;
+  }
+  function _tcxAct(doc, act, btn){
+    if(!designSecretOk()) return;
+    const ds = btn.dataset, list = _tplCosts(doc), si = Math.max(0, Math.min(list.length - 1, +ds.si || 0)), c = list[si], i = +ds.i, k = ds.k || '';
+    if(!c) return;
+    const card = n => document.querySelector(`#tplStage .tcx-card[data-doc="${doc.id}"][data-si="${n}"]`), vis = _tcxCols(c).filter(x => !x.off);
+    /* ── 보기 · 메뉴 (고치지 않음) ── */
+    if(act === 'tcx-go' || act === 'tcx-goall'){
+      const el = act === 'tcx-go' ? card(si) : document.querySelector(`#tplStage .tpl-costs[data-doc="${doc.id}"]`);
+      if(el){ el.scrollIntoView({block:'start', behavior:'smooth'}); if(act === 'tcx-go'){ el.classList.add('is-focus'); setTimeout(() => el.classList.remove('is-focus'), 1600); } }
+      return;
+    }
+    if(act === 'tcx-addmenu'){
+      const others = (_tpl.docs.matching || []).filter(d => d.id !== doc.id && !(d.data && d.data.parent)).flatMap(d => _tcxShown(d).map(x => ({d, ...x}))).slice(0, 24);
+      return _tplPop(btn, [{t:'지금 있는 표를 그대로 복사 (원단 가격만 바꾸기)'}, ...list.map((x, n) => ({a:'tcx-dup', l:`⧉ ${_tcxName(x, n)}`, d:{si:n}})), {a:'tcx-new', l:'＋ 빈 양식으로 새로'},
+        others.length ? {t:'다른 스타일의 표 복사해 오기'} : null, ...others.map(x => ({a:'tcx-from', l:`${(_tplTitleOf(x.d) || '(이름 없음)').split('/').pop().trim()} · ${_tcxName(x.c, x.si)}`, d:{from:x.d.id, fi:x.si}}))]);
+    }
+    if(act === 'tcx-menu') return _tplPop(btn, [{a:'tcx-dup', l:'⧉ 이 표 복사', d:{si}}, si > 0 ? {a:'tcx-left', l:'◀ 앞으로 옮기기', d:{si}} : null, si < list.length - 1 ? {a:'tcx-right', l:'▶ 뒤로 옮기기', d:{si}} : null,
+      list.length > 1 ? {a:'tcx-shareset', l:'환율 · VAT · 배수 · 판매가 단위를 다른 표에도', d:{si}} : null,
+      {a:'tcx-coladd', l:'＋ 칸 넣기', d:{si}}, ..._tcxCols(c).filter(x => x.off).map(x => ({a:'tcx-colon', l:`숨긴 칸 다시 보이기 — ${c.heads && c.heads[x.k] != null ? c.heads[x.k] : TCX_LABEL[x.k] || '칸'}`, d:{si, k:x.k}})),
+      {a:'tcx-noprice', l:c.noPrice ? '판매가 줄 보이기' : '판매가 줄 숨기기', d:{si}}, {a:'tcx-del', l:'🗑 이 원가계산서 지우기', d:{si}, red:1}]);
+    if(act === 'tcx-fab'){
+      const seen = new Set(), fabs = [];
+      (doc.data.fab || []).forEach((f, n) => {
+        const co = (doc.data.colors || [])[n] || {}, t = [f.a, f.b].map(v => String(v || '').replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ') || String(co.ko || co.en || '').trim();
+        if(t && !seen.has(t)){ seen.add(t); fabs.push(t); }
+      });
+      return _tplPop(btn, fabs.length ? [{t:'매칭표 메인 원단에서 고르기'}, ...fabs.map(v => ({a:'tcx-setname', l:v, d:{si, v}}))] : [{t:'매칭표 메인 원단 칸(품번 · 컬러)을 적으면 여기서 고를 수 있어요'}]);
+    }
+    if(act === 'tcx-row') return _tplPop(btn, [{a:'tcx-rins', l:'＋ 위에 줄 넣기', d:{si, i, at:0}}, {a:'tcx-rins', l:'＋ 아래에 줄 넣기', d:{si, i, at:1}}, {a:'tcx-rdup', l:'⧉ 이 줄 복사', d:{si, i}},
+      i > 0 ? {a:'tcx-rmove', l:'▲ 위로', d:{si, i, to:i - 1}} : null, i < c.rows.length - 1 ? {a:'tcx-rmove', l:'▼ 아래로', d:{si, i, to:i + 1}} : null,
+      list.length > 1 ? {a:'tcx-rshare', l:`이 줄을 다른 표 ${list.length - 1}장에도 똑같이`, d:{si, i}} : null, {a:'tcx-rdel', l:'🗑 이 줄 지우기', d:{si, i}, red:1}]);
+    if(act === 'tcx-exmenu') return _tplPop(btn, [{t:'판매가 아래에 계산 줄 넣기'}, {a:'tcx-exadd', l:'빈 계산 줄', d:{si, n:'', v:''}}, {a:'tcx-exadd', l:'마진 (판매가 − 합계)', d:{si, n:'마진', v:'=판매가-합계'}}, {a:'tcx-exadd', l:'마진율(%)', d:{si, n:'마진율(%)', v:'=(판매가-합계)/판매가*100'}},
+      {a:'tcx-exadd', l:'할인가 (판매가 20% 할인)', d:{si, n:'할인가(20%)', v:'=판매가*0.8'}}, {a:'tcx-exadd', l:'로스 포함 원가 (합계 × 1.05)', d:{si, n:'로스 포함 원가', v:'=합계*1.05'}}]);
+    if(act === 'tcx-exrow') return _tplPop(btn, [{a:'tcx-exdup', l:'⧉ 이 줄 복사', d:{si, i}}, i > 0 ? {a:'tcx-exmove', l:'▲ 위로', d:{si, i, to:i - 1}} : null, i < (c.extra || []).length - 1 ? {a:'tcx-exmove', l:'▼ 아래로', d:{si, i, to:i + 1}} : null, {a:'tcx-exdel', l:'🗑 이 줄 지우기', d:{si, i}, red:1}]);
+    if(act === 'tcx-coladd') return _tplPop(btn, [{t:'새 칸 (맨 오른쪽 ‘계’ 앞)'}, ...Object.entries(TCX_TYPES).map(([t, l]) => ({a:'tcx-colins', l, d:{si, t}}))]);
+    if(act === 'tcx-col'){
+      const z = vis.findIndex(x => x.k === k), cl = vis[z], own = k[0] === 'x';
+      if(!cl) return;
+      return _tplPop(btn, [{a:'tcx-colins', l:'＋ 왼쪽에 칸 넣기', d:{si, k, at:0, t:'text'}}, {a:'tcx-colins', l:'＋ 오른쪽에 칸 넣기', d:{si, k, at:1, t:'text'}}, z > 0 ? {a:'tcx-colmove', l:'◀ 왼쪽으로 옮기기', d:{si, k, to:vis[z - 1].k}} : null, z < vis.length - 1 ? {a:'tcx-colmove', l:'▶ 오른쪽으로 옮기기', d:{si, k, to:vis[z + 1].k}} : null,
+        ...(own ? [{t:'이 칸의 쓰임'}, ...Object.entries(TCX_TYPES).map(([t, l]) => ({a:'tcx-coltype', l:`${(cl.t || 'text') === t ? '● ' : '○ '}${l}`, d:{si, k, t}})), {a:'tcx-coldel', l:'🗑 이 칸 지우기', d:{si, k}, red:1}] : TCX_KEEP.has(k) ? [] : [{a:'tcx-coloff', l:'이 칸 숨기기', d:{si, k}}])]);
+    }
+    /* ── 고치기 ── */
+    const snap = _tplUndoBegin(doc);
+    let after = null, msg = '';
+    const move = (arr, from, to) => { if(arr && from >= 0 && to >= 0 && from < arr.length && to < arr.length) arr.splice(to, 0, arr.splice(from, 1)[0]); };
+    if(act === 'tcx-vat'){
+      const r = c.rows[i];
+      if(!r) return;
+      if(r.vat || _tcxHas(r.vatv)){ r.vat = false; r.vatv = ''; } else r.vat = true;
+      c.touched = true; _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); _tplCostPaint(doc, si);
+      return;
+    }
+    if(act === 'tcx-dup'){
+      c.touched = true;
+      const cp = _tcxCopyOf(c, _tcxHas(c.name) ? `${c.name} (복사)` : '');
+      list.splice(si + 1, 0, cp); _tcxPut(doc, list);
+      after = () => _tcxFocus(doc, `.tcx-card[data-si="${si + 1}"] .tcx-nm`, true);
+      msg = _tcxHas(cp.pricev) || _tcxHas(cp.totalv) ? '복사했어요 — 합계 · 판매가에 직접 적은 값이 있어요 (칸을 지우면 자동 계산)' : '복사했어요 — 원단 이름과 가격만 바꾸면 돼요';
+    }else if(act === 'tcx-new'){
+      const b = Object.assign(_tplBlankCost(), {name:'', rate:c.rate, touched:true});
+      list.push(b); _tcxPut(doc, list);
+      after = () => _tcxFocus(doc, `.tcx-card[data-si="${list.length - 1}"] .tcx-nm`, true);
+      msg = '빈 원가계산서를 넣었어요';
+    }else if(act === 'tcx-from'){
+      const from = _tplFind(+ds.from), src = from && _tplCosts(from)[+ds.fi];
+      if(!src) return;
+      const cp = _tcxCopyOf(src, src.name || '');
+      if(list.length === 1 && !list[0].touched) list[0] = cp; else list.push(cp);   // 아직 안 적은 빈 양식 하나뿐이면 그 자리에
+      _tcxPut(doc, list);
+      after = () => _tcxFocus(doc, `.tcx-card[data-si="${list.length - 1}"] .tcx-nm`, true);
+      msg = `'${(_tplTitleOf(from) || '').split('/').pop().trim()}' 표를 복사해 왔어요`;
+    }else if(act === 'tcx-del'){
+      if(c.touched && !confirm(`'${_tcxName(c, si)}' 원가계산서를 지울까요?${list.length === 1 ? '\n(한 장뿐이라 빈 양식으로 바뀌어요)' : ''}`)) return;
+      list.splice(si, 1); _tcxPut(doc, list);
+      msg = '지웠어요 — 위 ↶ 되돌리기로 살릴 수 있어요';
+    }else if(act === 'tcx-left' || act === 'tcx-right'){
+      const to = si + (act === 'tcx-left' ? -1 : 1);
+      move(list, si, to); _tcxPut(doc, list);
+      after = () => { const el = card(to); if(el){ el.scrollIntoView({block:'nearest', behavior:'smooth'}); el.classList.add('is-focus'); setTimeout(() => el.classList.remove('is-focus'), 1600); } };
+    }else if(act === 'tcx-shareset'){
+      list.forEach((x, n) => { if(n === si) return; ['rate', 'vatPct', 'mult', 'round', 'rmode'].forEach(f => { if(c[f] === undefined) delete x[f]; else x[f] = c[f]; }); x.touched = true; });
+      msg = `다른 ${list.length - 1}장에도 넣었어요`;
+    }else if(act === 'tcx-setname') c.name = ds.v;
+    else if(act === 'tcx-noprice') c.noPrice = !c.noPrice;
+    else if(act === 'tcx-rmode'){ const ks = Object.keys(TCX_RND); c.rmode = ks[(ks.indexOf(TCX_RND[c.rmode] ? c.rmode : 'up') + 1) % ks.length]; }
+    else if(act === 'tcx-add' || act === 'tcx-rins'){
+      const at = act === 'tcx-add' ? c.rows.length : i + (+ds.at || 0);
+      c.rows.splice(at, 0, _tcxBlankRow());
+      after = () => _tcxFocus(doc, `.tpl-cost[data-si="${si}"] [data-f="${_tcxPath(si)}rows.${at}.name"]`);
+    }else if(act === 'tcx-rdup'){ const r = _tcxClone(c.rows[i]); r.u = _tplUid(); c.rows.splice(i + 1, 0, r); }
+    else if(act === 'tcx-rmove') move(c.rows, i, +ds.to);
+    else if(act === 'tcx-rdel'){ const r = c.rows[i]; if(!r) return; c.rows.splice(i, 1); msg = `'${r.name || '빈 줄'}' 줄을 지웠어요 — ↶ 되돌리기로 살릴 수 있어요`; }
+    else if(act === 'tcx-rshare'){
+      const r = c.rows[i], key = v => String(v || '').replace(/\s/g, '');
+      if(!r || !key(r.name)){ toast('항목 이름을 먼저 적어 주세요', 'err'); return; }
+      let put = 0, ins = 0;
+      list.forEach((x, n) => {
+        if(n === si) return;
+        const t = x.rows.find(y => key(y.name) === key(r.name)), fs = ['color', 'size', 'cny', 'conv', 'krw', 'vat', 'vatv', 'qty', 'sumv', ..._tcxCols(x).filter(y => y.k[0] === 'x').map(y => y.k)];
+        if(t){ fs.forEach(f => { if(r[f] === undefined) delete t[f]; else t[f] = r[f]; }); put++; }
+        else{
+          const y = _tcxClone(r);
+          let at = x.rows.length;
+          for(let q = i - 1; q >= 0; q--){ const z = x.rows.findIndex(v => key(v.name) && key(v.name) === key(c.rows[q].name)); if(z >= 0){ at = z + 1; break; } }   // 바로 윗줄과 같은 자리에
+          y.u = _tplUid(); x.rows.splice(i === 0 ? 0 : at, 0, y); ins++;
+        }
+        x.touched = true;
+      });
+      msg = `'${r.name}' 줄을 다른 표에도 넣었어요${ins ? ` (없던 ${ins}장엔 새 줄로)` : ''}`;
+    }else if(act === 'tcx-exadd'){
+      (c.extra = c.extra || []).push({u:_tplUid(), name:ds.n || '', v:ds.v || ''});
+      const n = c.extra.length - 1;
+      after = () => _tcxFocus(doc, `.tpl-cost[data-si="${si}"] [data-f="${_tcxPath(si)}extra.${n}.${ds.n ? 'v' : 'name'}"]`);
+    }else if(act === 'tcx-exdup'){ const r = _tcxClone(c.extra[i]); r.u = _tplUid(); c.extra.splice(i + 1, 0, r); }
+    else if(act === 'tcx-exmove') move(c.extra, i, +ds.to);
+    else if(act === 'tcx-exdel'){ c.extra.splice(i, 1); }
+    else if(act === 'tcx-colins'){
+      const cols = _tcxCols(c), nk = 'x' + _tplUid(), z = k ? cols.findIndex(x => x.k === k) + (+ds.at || 0) : cols.findIndex(x => x.k === 'sum');
+      cols.splice(z < 0 ? cols.length : z, 0, {k:nk, t:TCX_TYPES[ds.t] ? ds.t : 'text'});
+      c.cols = cols;
+      (c.heads = c.heads || {})[nk] = '';
+      after = () => _tcxFocus(doc, `.tpl-cost[data-si="${si}"] [data-f="${_tcxPath(si)}heads.${nk}"]`);
+    }else if(act === 'tcx-colmove'){ const cols = _tcxCols(c); move(cols, cols.findIndex(x => x.k === k), cols.findIndex(x => x.k === ds.to)); c.cols = cols; }
+    else if(act === 'tcx-coloff' || act === 'tcx-colon'){
+      const cols = _tcxCols(c), cl = cols.find(x => x.k === k);
+      if(!cl) return;
+      if(act === 'tcx-coloff'){ cl.off = true; msg = '칸을 숨겼어요 — 값은 그대로 계산돼요 (표 ⋯ 메뉴에서 다시 보이기)'; } else delete cl.off;
+      c.cols = cols;
+    }else if(act === 'tcx-coltype'){ const cols = _tcxCols(c), cl = cols.find(x => x.k === k); if(!cl) return; cl.t = ds.t; c.cols = cols; }
+    else if(act === 'tcx-coldel'){
+      if([...c.rows, c.tot, c.prc, ...(c.extra || [])].some(r => r && _tcxHas(r[k])) && !confirm('이 칸에 적힌 내용이 있어요. 지울까요?')) return;
+      c.cols = _tcxCols(c).filter(x => x.k !== k);
+      [...c.rows, c.tot, c.prc, ...(c.extra || []), c.heads].forEach(r => { if(r) delete r[k]; });
+    }else return;
+    const now = _tplCosts(doc);
+    if(act !== 'tcx-del' && now.includes(c)) c.touched = true;
+    _tplTouch(doc, 'secret');
+    _tplUndoEnd(doc, snap);
+    _tcxRender(doc);
+    if(after) after();
+    if(msg) toast(msg, 'ok');
+  }
+  /* 엑셀 · 구글시트에서 여러 칸 붙여넣기 — 원가계산서 줄 · 라인시트 컬러 줄에 칸 차례대로, 모자란 줄은 저절로 더한다 */
+  function _tplTsv(text){
+    const rows = [[]];
+    let q = false, cur = '', t = String(text || '').replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+    for(let i = 0; i < t.length; i++){
+      const ch = t[i];
+      if(q){ if(ch === '"'){ if(t[i + 1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+      else if(ch === '"' && cur === '') q = true;
+      else if(ch === '\t'){ rows[rows.length - 1].push(cur); cur = ''; }
+      else if(ch === '\n'){ rows[rows.length - 1].push(cur); cur = ''; rows.push([]); }
+      else cur += ch;
+    }
+    rows[rows.length - 1].push(cur);
+    return rows.map(r => r.map(v => v.trim()));
+  }
+  function _tplPasteGrid(el, text){
+    const path = el.dataset.f || '', doc = _tplDocOf(el);
+    if(!doc || !/[\t\n]/.test(String(text || '').replace(/[\r\n]+$/, ''))) return false;
+    const m = path.match(/^(?:cost|costs\.\d+)\.rows\.(\d+)\.(\w+)$/), l = path.match(/^items\.(\d+)\.colors\.(\d+)\.(\w+)$/);
+    if(!m && !l) return false;
+    const grid = _tplTsv(text), snap = _tplUndoBegin(doc);
+    if(m){
+      const si = _tcxOf(path), c = _tplCosts(doc)[si], keyOf = {vatv:'vat', sumv:'sum'}, vis = _tcxCols(c).filter(x => !x.off).map(x => x.k), z0 = Math.max(0, vis.indexOf(keyOf[m[2]] || m[2])), i0 = +m[1];
+      grid.forEach((vals, y) => {
+        while(c.rows.length <= i0 + y) c.rows.push(_tcxBlankRow());
+        const r = c.rows[i0 + y], late = {};
+        vals.forEach((v, x) => { const k = vis[z0 + x]; if(!k) return; if(k === 'conv' || k === 'vat' || k === 'sum') late[k] = v; else r[k] = v; });
+        // 계산 칸에 온 값이 자동 값과 같으면 자동 그대로, 다르면 직접 적은 값으로
+        const same = (v, a) => { const n = _tplNum(v); return n != null && a != null && Math.abs(n - a) < .6; };
+        ['conv', 'vat', 'sum'].forEach(k => {
+          if(late[k] === undefined) return;
+          const f = k === 'conv' ? 'conv' : k + 'v', v = late[k];
+          r[f] = '';
+          if(k === 'vat') r.vat = _tplNum(v) != null && _tplNum(v) !== 0;
+          const x = _tplCostCalc(c).rows[i0 + y];
+          if(_tcxHas(v) && !same(v, x[k]) && !(k === 'vat' && !r.vat)) r[f] = v;
+        });
+      });
+      c.touched = true;
+      _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); _tcxRender(doc);
+    }else{
+      const it = doc.data.items[+l[1]], vis = _tplLsVis(doc.data, _tplLsHold(doc), designSecretOk()).filter(x => x.g === 'c').map(x => x.k), z0 = Math.max(0, vis.indexOf(l[3])), j0 = +l[2];
+      grid.forEach((vals, y) => { while(it.colors.length <= j0 + y) it.colors.push({}); const c = it.colors[j0 + y] = it.colors[j0 + y] || {}; vals.forEach((v, x) => { const k = vis[z0 + x]; if(k) c[k] = v; }); });
+      _tplTouch(doc, 'data'); _tplUndoEnd(doc, snap); _tplRenderPaper(true);
+    }
+    const back = document.querySelector(`#tplStage [data-doc="${doc.id}"] [data-f="${CSS.escape(path)}"]`);
+    if(back) back.focus({preventScroll:true});
+    toast(`${grid.length}줄을 붙여넣었어요`, 'ok');
+    return true;
   }
 
   /* ============ 라인시트 종이 ============ */
@@ -27449,10 +27911,49 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   //   2026-11-23 2차 (사용자 "칸 간격 잘 배치 · 샘플 차수가 2층 · 직관성 · 단독여부 칸 안에 칸 컬러") — 상품 정보 칸을 이름표 | 값 두 칸으로 나눔, 샘플 차수 한 줄 폭
   //   순서: 번호 · 이름표 · 값 · 사진 · 사진 · 진행업체 · FABRIC · COLOR · 차수 · 요청일 · 입고일 · 진행공장 · 특이사항 · (라벨 단가 — 기밀)
   //   [화면 최소 px, 늘어나는 몫, PDF · 편집 창 고정 px] — 화면 최소 합 1324px 라 1440 노트북에서도 옆으로 안 밀리고, 넓은 화면은 몫대로 커진다
-  const TPL_LS_W = [[44, 0, 44], [58, 0, 60], [100, .9, 108], [104, 1.5, 130], [104, 1.5, 130], [84, .8, 90], [100, 1.1, 112], [92, 1.1, 104], [68, 0, 68], [84, .35, 92], [84, .35, 92], [100, 1, 104], [170, 2, 230], [140, 1.4, 190]];
-  const _tplLsW = sec => TPL_LS_W.slice(0, TPL_LS_W.length - (sec ? 0 : 1));
-  function _tplLsCols(sec, fit){ return _tplLsW(sec).map(([px, g, base]) => fit ? (g ? `minmax(${px}px, ${g}fr)` : px + 'px') : base + 'px').join(' '); }
-  const _tplLsMinW = sec => _tplLsW(sec).reduce((s, x) => s + x[0], 0) + 2;
+  //   2026-11-24 사장님 "라인시트에서도 행추가, 열추가 · 자유도 높게" — 칸(열) · 상품 정보 줄(행)을 문서(시즌)마다 정한다.
+  //   d.cols = 오른쪽 칸 차례 [{k, off, g, date}] (k = 'x…' 는 새 칸, g 'c' = 컬러 줄마다 한 칸 · 'i' = 상품마다 긴 칸), d.infos = 상품 정보 줄 [{k, off}] ('y…' 새 줄),
+  //   d.heads = 바꾼 이름, d.wd = 끌어서 정한 너비(px). 적은 값은 상품에 it['x…'] · it['y…'], 컬러 줄에 colors[j]['x…']. 안 바꾼 시즌은 아무것도 없어 예전 모양 그대로
+  const TPL_LS_FIX = [['no', 44, 0, 44], ['bl', 58, 0, 60], ['bv', 100, .9, 108], ['p', 104, 1.5, 130], ['p', 104, 1.5, 130]];   // 번호 · 이름표 · 값 · 사진 · 사진
+  const TPL_LS_COLS = [
+    {k:'vendor', g:'i', t:'진행업체', w:[84, .8, 90], cls:'ls-vendor'}, {k:'fabric', g:'i', t:'FABRIC', w:[100, 1.1, 112], ml:1},
+    {k:'c', g:'c', t:'COLOR', w:[92, 1.1, 104]}, {k:'r', g:'c', t:'샘플 차수', w:[68, 0, 68]}, {k:'q', g:'c', t:'샘플 요청일', w:[84, .35, 92]}, {k:'a', g:'c', t:'샘플 입고일', w:[84, .35, 92]},
+    {k:'factory', g:'i', t:'진행공장', w:[100, 1, 104], ml:1}, {k:'note', g:'i', t:'개발 특이사항 및 진행상황', w:[170, 2, 230], ml:1, cls:'ls-note'}, {k:'label', g:'i', t:'라벨 추가 시 단가', w:[140, 1.4, 190], ml:1, cls:'ls-note', sec:1, desig:1}];
+  const TPL_LS_INFO = [{k:'season', t:'시즌', ph:'New / 컬러추가', csv:'시즌 구분'}, {k:'cat', t:'카테고리', ph:'shoulder bag', csv:'제품 카테고리'}, {k:'price', t:'정상가', ph:'₩0', sec:1, desig:1}, {k:'first', t:'첫발주일', ph:''}, {k:'solo', t:'단독', ph:'O / X', csv:'단독여부'}];
+  const _tplLsLab = (d, k, def) => d.heads && d.heads[k] != null ? d.heads[k] : def;
+  function _tplLsMerge(saved, base, own){
+    const by = Object.fromEntries(base.map(x => [x.k, x])), seen = new Set(), out = [];
+    (Array.isArray(saved) ? saved : []).forEach(s => {
+      const b = s && s.k && !seen.has(s.k) ? by[s.k] || own(s) : null;
+      if(!b) return;
+      seen.add(s.k);
+      out.push(Object.assign({}, b, {off:!!s.off}));
+    });
+    base.forEach(b => { if(!seen.has(b.k)) out.push(Object.assign({}, b)); });
+    return out;
+  }
+  // 오른쪽 칸 전부 (숨긴 칸까지) · 보이는 칸
+  function _tplLsAll(d, hold){
+    const out = _tplLsMerge(d.cols, TPL_LS_COLS, s => s.k[0] === 'x' ? {k:s.k, g:s.g === 'c' ? 'c' : 'i', t:'', w:s.g === 'c' ? [84, .4, 96] : [110, 1, 130], ml:s.g === 'c' ? 0 : 1, own:1, date:s.date ? 1 : 0} : null);
+    out.forEach(x => { x.lab = _tplLsLab(d, x.k, x.k === 'note' && hold ? '홀딩 사유' : x.t); if(x.own && x.g === 'i' && TPL_PRICE.test(x.lab)) x.desig = 1; });
+    return out;
+  }
+  const _tplLsVis = (d, hold, sec) => _tplLsAll(d, hold).filter(x => !x.off && (sec || !x.sec));
+  function _tplLsInfoAll(d){
+    const out = _tplLsMerge(d.infos, TPL_LS_INFO, s => s.k[0] === 'y' ? {k:s.k, t:'', ph:'', own:1} : null);
+    out.forEach(x => { x.lab = _tplLsLab(d, x.k, x.t); if(x.own && TPL_PRICE.test(x.lab)) x.desig = 1; });
+    return out;
+  }
+  const _tplLsInfos = (d, sec) => _tplLsInfoAll(d).filter(x => !x.off && (sec || !x.sec));
+  const _tplLsKeepCols = list => list.map(x => Object.assign({k:x.k}, x.off ? {off:1} : {}, x.own && x.g ? {g:x.g} : {}, x.date ? {date:1} : {}));
+  // [화면 최소 px, 늘어나는 몫, PDF · 편집 창 고정 px] → 격자 칸 너비 (끌어서 정한 너비가 있으면 그 px 그대로)
+  function _tplLsGrid(d, hold, sec, fit){
+    const vis = _tplLsVis(d, hold, sec), wd = d.wd || {}, fx = (k, w) => +wd[k] > 0 ? [+wd[k], 0, +wd[k]] : w;
+    const w = [...TPL_LS_FIX.map(([k, px, g, base]) => fx(k, [px, g, base])), ...vis.map(x => fx(x.k, x.w))];
+    return {vis, cols:w.map(([px, g, base]) => fit ? (g ? `minmax(${px}px, ${g}fr)` : px + 'px') : base + 'px').join(' '), min:w.reduce((s, x) => s + x[0], 0) + 2};
+  }
+  // 한 상품의 줄 수 — 기본 8줄, 줄이면 상품 정보 줄 수까지
+  const _tplLsRowN = (it, nInfo) => Math.max(nInfo, 2, (it.colors || []).length, it.rows || TPL_LS_ROWS);
   /* ── 샘플 대기 (2026-11-23 디자이너용) — 컬러 줄에 요청일은 있는데 입고일이 비었으면 '⏳ N일째' (입고일 칸 안내 글), 14일 넘으면 빨강.
         날짜는 2026.11.20 · 2026-11-20 · 26.11.20 · 11.20 · 11/20 모두 읽는다 ── */
   function _tplDate(s){
@@ -27490,8 +27991,9 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   /* ── 찾기 (2026-11-23 디자이너용) — 상품명 · 시즌 · 카테고리 · 업체 · 원단 · 컬러 · 차수 · 날짜 · 공장 · 메모에서 찾아 그 상품만 보이고 맞는 칸을 칠한다.
         '⏳ 샘플 대기' 를 누르면 대기 컬러가 있는 상품만. 다른 시즌에도 있으면 아래에 그 시즌 단추 ── */
   function _tplLsText(it){
-    return [it.no, it.name, it.season, it.cat, it.first, it.solo, it.vendor, it.fabric, it.factory, it.note, it.reason,
-      ...(it.colors || []).flatMap(c => c ? [c.c, c.r, c.q, c.a] : [])].filter(Boolean).join('\n').toLowerCase();
+    const own = o => Object.keys(o).filter(k => /^[xy]/.test(k) && typeof o[k] === 'string').map(k => o[k]);   // 새로 넣은 칸 · 줄도
+    return [it.no, it.name, it.season, it.cat, it.first, it.solo, it.vendor, it.fabric, it.factory, it.note, it.reason, ...own(it),
+      ...(it.colors || []).flatMap(c => c ? [c.c, c.r, c.q, c.a, ...own(c)] : [])].filter(Boolean).join('\n').toLowerCase();
   }
   function _tplLsFilter(){
     const paper = document.querySelector('#tplStage .tpl-ls[data-doc]');
@@ -27507,7 +28009,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       if(ok) shown++;
     });
     paper.querySelectorAll('.tx.is-hit').forEach(x => x.classList.remove('is-hit'));
-    if(q) paper.querySelectorAll('.ls-block:not([hidden]) [data-f]').forEach(el => { if(el.textContent.toLowerCase().includes(q)){ const b = el.closest('.tx'); if(b) b.classList.add('is-hit'); } });
+    if(q) paper.querySelectorAll('.ls-block:not([hidden]) [data-f]:not([data-f^="heads."])').forEach(el => { if(el.textContent.toLowerCase().includes(q)){ const b = el.closest('.tx'); if(b) b.classList.add('is-hit'); } });
     const add = paper.querySelector('.ls-add');
     if(add) add.hidden = !!(q || wait);
     const hits = paper.querySelector('.ls-hits');
@@ -27521,15 +28023,15 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   /* ── 엑셀 내려받기 (2026-11-23 디자이너용) — 지금 시즌을 CSV(엑셀에서 바로 열림). 컬러 줄마다 한 줄, 상품 칸은 줄마다 되풀이 (엑셀 필터 · 정렬이 되게).
         정상가 · 라벨 단가는 기밀이라 디자인팀 명단 PC 에서만 들어간다 ── */
   function _tplLsCsv(doc){
-    const sec = designSecretOk(), hold = _tplLsHold(doc), d = doc.data;
-    const head = ['번호', '상품명', '시즌 구분', '제품 카테고리', ...(sec ? ['정상가'] : []), '첫발주일', '단독여부', '진행업체', 'FABRIC', 'COLOR', '샘플 차수', '샘플 요청일', '샘플 입고일', '진행공장', hold ? '홀딩 사유' : '개발 특이사항 및 진행상황', ...(sec ? ['라벨 추가 시 단가'] : [])];
+    const sec = designSecretOk(), hold = _tplLsHold(doc), d = doc.data, vis = _tplLsVis(d, hold, sec), infos = _tplLsInfos(d, sec);
+    const nm = x => d.heads && d.heads[x.k] != null ? d.heads[x.k] : x.csv || x.lab;
+    const head = ['번호', '상품명', ...infos.map(nm), ...vis.map(nm)], rowKeys = vis.filter(x => x.g === 'c').map(x => x.k);
     const out = [head];
     d.items.forEach((it, i) => {
       if(!it || !(it.name || (it.colors || []).some(c => c && (c.c || c.q || c.a)))) return;
       const F = (f, desig) => { const x = _tplF(doc, 'items', i, f, desig); return x.lock ? '' : x.val; };
-      const cs = (it.colors || []).filter(c => c && (c.c || c.r || c.q || c.a));
-      (cs.length ? cs : [{}]).forEach(c => out.push([it.no || String(i + 1), it.name, it.season, it.cat, ...(sec ? [F('price', true)] : []), it.first, it.solo, it.vendor, it.fabric,
-        c.c, c.r, c.q, c.a, it.factory, hold ? it.reason : it.note, ...(sec ? [F('label', true)] : [])]));
+      const cs = (it.colors || []).filter(c => c && rowKeys.some(k => c[k]));
+      (cs.length ? cs : [{}]).forEach(c => out.push([it.no || String(i + 1), it.name, ...infos.map(x => F(x.k, x.desig)), ...vis.map(x => x.g === 'c' ? c[x.k] : F(x.k === 'note' && hold ? 'reason' : x.k, x.desig))]));
     });
     const cell = v => { v = String(v == null ? '' : v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     const blob = new Blob(['﻿' + out.map(r => r.map(cell).join(',')).join('\r\n')], {type:'text/csv;charset=utf-8'});
@@ -27606,13 +28108,13 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   });
   // 엔터 = 바로 아래 칸으로 (시트처럼). 아래 칸이 없으면 마무리
   function _tplMoveDown(el){
-    const paper = el.closest('.tpl-paper'), box = el.closest('.tx, td');
+    const paper = el.closest('.tpl-paper'), box = el.closest('.tx, td, th');
     if(!paper || !box) return false;
     const r = box.getBoundingClientRect(), cx = r.left + r.width / 2;
     let best = null, bd = 1e9;
     paper.querySelectorAll('[data-f][contenteditable]').forEach(c => {
       if(c === el) return;
-      const b = c.closest('.tx, td');
+      const b = c.closest('.tx, td, th');
       if(!b || b.closest('[hidden]')) return;
       const q = b.getBoundingClientRect();
       if(q.top < r.bottom - 2 || cx < q.left || cx > q.right || !q.height) return;
@@ -27621,7 +28123,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     if(!best) return false;
     best.focus();
     try{ const rg = document.createRange(); rg.selectNodeContents(best); rg.collapse(false); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg); }catch(e){}
-    const b = best.closest('.tx, td');
+    const b = best.closest('.tx, td, th');
     if(b) b.scrollIntoView({block:'nearest'});
     return true;
   }
@@ -27655,6 +28157,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const tools = ed ? `<div class="ls-tools">
         <label class="ls-find" title="상품명 · 컬러 · 업체 · 공장 · 날짜 · 메모에서 찾기 (Esc = 지우기)"><span aria-hidden="true">🔍</span><input type="search" id="lsFind" placeholder="찾기" value="${escapeHTML(_tpl.lsQ || '')}" autocomplete="off" spellcheck="false" enterkeyhint="search"></label>
         <button type="button" class="ls-chip${_tpl.lsWait ? ' is-on' : ''}" data-act="ls-wait" data-wait="1" title="샘플 요청일은 있는데 입고일이 빈 컬러 — 누르면 그 상품만 보기">${_tplLsWaitHtml(d)}</button>
+        <button type="button" class="ls-chip" data-act="ls-coladd" title="칸(열) 넣기 · 숨긴 칸 다시 보이기 · 다른 시즌에도 똑같이">＋ 칸(열)</button>
         <button type="button" class="ls-chip" data-act="ls-csv" title="이 시즌을 엑셀(CSV)로 내려받기 — 컬러 줄마다 한 줄">⬇ 엑셀</button>
       </div>` : '';
     return `<div class="ls-top"><div class="tx ls-top-t${_tplCls(d, 'title')}">${ce('title', d.title, hold ? '홀딩' : '시즌 COFERRY LINE SHEET (예: 27FW COFERRY LINE SHEET)')}</div><div class="ls-sum" data-sum="1" title="제품 카테고리로 저절로 세요">${_tplLsSumHtml(_tplLsCount(d))}</div>${tools}</div>${ed ? '<div class="ls-hits" hidden></div>' : ''}`;
@@ -27662,23 +28165,28 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   /* 폰 — 상품 하나 = 세로 카드 (같은 칸 주소라 저장 · 고르기 · 칸 색 그대로) */
   function _tplLsMobileHtml(doc, o){
     const E = escapeHTML, d = doc.data, ed = !!o.edit, sec = designSecretOk(), hold = _tplLsHold(doc), nf = hold ? 'reason' : 'note';
+    const vis = _tplLsVis(d, hold, sec), infos = _tplLsInfos(d, sec), rowCols = vis.filter(x => x.g === 'c'), main = rowCols.filter(x => !x.own), more = rowCols.filter(x => x.own);
+    const MW = {c:'minmax(0,1fr)', r:'40px', q:'minmax(78px,.9fr)', a:'minmax(78px,.9fr)'}, tmpl = main.map(x => MW[x.k] || '1fr').join(' ');
     const ce = (path, val, ph, ml) => ed && path ? `<div class="tc" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-ph="${E(ph || '')}"${ml ? ' data-ml="1"' : ''}>${E(val)}</div>` : `<div class="tc">${E(val)}</div>`;
+    const PH = {c:'color', r:'차수', q:'요청일', a:'입고일'}, SH = {c:'COLOR', r:'차수', q:'요청일', a:'입고일'};
     const blocks = d.items.map((it, i) => {
       const p = `items.${i}.`, F = (f, desig) => _tplF(doc, 'items', i, f, desig);
-      const fld = (label, f, ph, ml, desig) => { const x = F(f, desig); return x.lock ? '' : `<div class="lm-row"><span class="lm-l">${label}</span><div class="tx lm-v${_tplCls(x.obj, f)}">${ce(x.path, x.val, ph, ml)}</div></div>`; };
+      const lb = x => ed ? `<div class="lm-l tc" contenteditable="plaintext-only" spellcheck="false" data-f="heads.${x.k}" data-ph="이름">${E(x.lab)}</div>` : `<span class="lm-l">${E(x.lab)}</span>`;
+      const fld = (x, f, ph, ml, desig) => { const y = F(f, desig); return y.lock ? '' : `<div class="lm-row">${lb(x)}<div class="tx lm-v${_tplCls(y.obj, f)}">${ce(y.path, y.val, ph, ml)}</div></div>`; };
       const R = Math.max(2, it.colors.length + 1);
       let rows = '';
       for(let j = 0; j < R; j++){
         const c = it.colors[j] || {}, q = `${p}colors.${j}.`;
         const wd = _tplLsWaitDays(c);
-        rows += `<div class="lm-crow">${[['c', 'color'], ['r', '차수'], ['q', '요청일'], ['a', '입고일']].map(([f, ph]) => `<div class="tx${f === 'a' && wd != null ? ' ' + _tplLsWaitCls(wd) : ''}${_tplCls(c, f)}">${ce(q + f, c[f] || '', f === 'a' && wd != null ? _tplLsWaitPh(wd) : j ? '' : ph)}</div>`).join('')}</div>`;
+        if(main.length) rows += `<div class="lm-crow" style="grid-template-columns:${tmpl}">${main.map(x => `<div class="tx${x.k === 'a' && wd != null ? ' ' + _tplLsWaitCls(wd) : ''}${_tplCls(c, x.k)}">${ce(q + x.k, c[x.k] || '', x.k === 'a' && wd != null ? _tplLsWaitPh(wd) : j ? '' : PH[x.k])}</div>`).join('')}</div>`;
+        if(more.length) rows += `<div class="lm-crow is-more" style="grid-template-columns:repeat(${Math.min(3, more.length)},minmax(0,1fr))">${more.map(x => `<div class="tx${_tplCls(c, x.k)}">${ce(q + x.k, c[x.k] || '', x.lab)}</div>`).join('')}</div>`;
       }
       return `<div class="lm-card ls-block" data-cut="1" data-i="${i}">
-        <div class="lm-head"><div class="tx lm-no${_tplCls(it, 'no')}">${ce(p + 'no', it.no, String(i + 1))}</div><div class="tx lm-name${_tplCls(it, 'name')}">${ce(p + 'name', it.name, '상품명 / 한글명')}</div>${ed ? `<button type="button" class="ls-menu-b" data-act="ls-menu" data-i="${i}" title="옮기기 · 지우기">⋯</button>` : ''}</div>
+        <div class="lm-head"><div class="tx lm-no${_tplCls(it, 'no')}">${ce(p + 'no', it.no, String(i + 1))}</div><div class="tx lm-name${_tplCls(it, 'name')}">${ce(p + 'name', it.name, '상품명 / 한글명')}</div>${ed ? `<button type="button" class="ls-menu-b" data-act="ls-menu" data-i="${i}" title="옮기기 · 줄 · 칸 · 지우기">⋯</button>` : ''}</div>
         <div class="lm-ph">${[0, 1, 2, 3].map(k => `<div class="tx tpx">${_tplPh(p + 'imgs.' + k, it.imgs[k], ed, '', true)}</div>`).join('')}</div>
-        <div class="lm-fields">${fld('시즌', 'season', 'New / 컬러추가')}${fld('카테고리', 'cat', 'shoulder bag')}${sec ? fld('정상가', 'price', '₩0', false, true) : ''}${fld('첫발주일', 'first', '-')}${fld('단독', 'solo', 'O / X')}${fld('진행업체', 'vendor', '')}${fld('FABRIC', 'fabric', '', true)}${fld('진행공장', 'factory', '', true)}</div>
-        <div class="lm-colors"><div class="lm-ch"><span>COLOR</span><span>차수</span><span>요청일</span><span>입고일</span></div>${rows}</div>
-        <div class="lm-fields">${fld(hold ? '홀딩 사유' : '특이사항', nf, '', true)}${sec ? fld('라벨 단가', 'label', '', true, true) : ''}</div>
+        <div class="lm-fields">${infos.map(x => fld(x, x.k, x.ph, false, x.desig)).join('')}${vis.filter(x => x.g === 'i' && x.k !== 'note' && x.k !== 'label').map(x => fld(x, x.k, '', x.ml, x.desig)).join('')}</div>
+        ${rowCols.length ? `<div class="lm-colors">${main.length ? `<div class="lm-ch" style="grid-template-columns:${tmpl}">${main.map(x => `<span>${E(d.heads && d.heads[x.k] != null ? x.lab : SH[x.k])}</span>`).join('')}</div>` : ''}${rows}</div>` : ''}
+        <div class="lm-fields">${vis.filter(x => x.k === 'note' || x.k === 'label').map(x => fld(x, x.k === 'note' ? nf : x.k, '', true, x.desig)).join('')}</div>
       </div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
@@ -27686,54 +28194,200 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   }
   const _tplMob = () => _tpl.host === 'tab' && !!window.matchMedia && window.matchMedia('(max-width:760px)').matches;
   function _tplLsHtml(doc, o){
-    const E = escapeHTML, d = doc.data, ed = !!o.edit, sec = designSecretOk(), NC = sec ? 14 : 13, hold = _tplLsHold(doc), nf = hold ? 'reason' : 'note';
+    const E = escapeHTML, d = doc.data, ed = !!o.edit, sec = designSecretOk(), hold = _tplLsHold(doc), nf = hold ? 'reason' : 'note';
     const ce = (path, val, ph, ml) => ed && path ? `<div class="tc" contenteditable="plaintext-only" spellcheck="false" data-f="${E(path)}" data-ph="${E(ph || '')}"${ml ? ' data-ml="1"' : ''}>${E(val)}</div>` : `<div class="tc">${E(val)}</div>`;
     const at = (r0, c0, r1, c1) => ` style="grid-area:${r0} / ${c0} / ${r1} / ${c1}"`;
     const X = (r0, c0, r1, c1, inner, cls, obj, f) => `<div class="tx${cls ? ' ' + cls : ''}${_tplCls(obj, f)}"${at(r0, c0, r1, c1)}>${inner}</div>`;
     const head = _tplLsTop(doc, ce, ed), fit = !!(o.clean && ed);   // fit = 디자인센터 카드 (화면 폭에 꽉) — PDF(edit:false) · 편집 창은 고정 너비
+    const G = _tplLsGrid(d, hold, sec, fit), vis = G.vis, infos = _tplLsInfos(d, sec), NC = 5 + vis.length + 1;
+    const C = {no:1, bl:2, bv:3, p1:4, p2:5, x:6};   // 격자 줄 번호 — 오른쪽 칸은 6번부터 차례대로
+    const firstRow = vis.find(x => x.g === 'c');
+    const grip = k => ed ? `<span class="ls-grip" data-k="${k}" title="끌어서 칸 너비 바꾸기 · 두 번 누르면 처음 너비"></span>` : '';
     const blocks = d.items.map((it, i) => {
-      const R = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0), p = `items.${i}.`, end = R + 2, cells = [];
+      const R = _tplLsRowN(it, infos.length), p = `items.${i}.`, end = R + 2, cells = [];
       const F = (f, desig) => _tplF(doc, 'items', i, f, desig);
       const V = (r0, c0, r1, c1, f, ph, cls, ml, desig) => { const x = F(f, desig); return X(r0, c0, r1, c1, x.lock ? '<div class="tc"></div>' : ce(x.path, x.val, ph, ml), cls, x.obj, f); };
-      const HD = (c, t) => X(1, c, 2, c + 1, `<div class="tc">${t}</div>`, 'th');
-      // 열 번호 (grid 줄 번호) — TPL_LS_W 순서와 같게
-      const C = {no:1, bl:2, bv:3, p1:4, p2:5, ven:6, fab:7, col:8, r:9, q:10, a:11, fac:12, note:13, lab:14};
       cells.push(X(1, C.no, 2, C.no + 1, ed ? `<button type="button" class="ls-menu-b" data-act="ls-menu" data-i="${i}" title="상품 복제 · 옮기기 · 줄 더하기 · 지우기">⋯</button>` : '', 'th'));
-      cells.push(X(1, C.bl, 2, C.bv + 1, '<div class="tc">상품 정보</div>', 'th'));
-      cells.push(X(1, C.p1, 2, C.p2 + 1, ce(p + 'name', it.name, '상품명 / 한글명'), 'th ls-name', it, 'name'));
-      [['진행업체', C.ven], ['FABRIC', C.fab], ['COLOR', C.col], ['샘플 차수', C.r], ['샘플 요청일', C.q], ['샘플 입고일', C.a], ['진행공장', C.fac], [hold ? '홀딩 사유' : '개발 특이사항 및 진행상황', C.note]].forEach(([t, c]) => cells.push(HD(c, t)));
-      if(sec) cells.push(HD(C.lab, '라벨 추가 시 단가'));
+      cells.push(X(1, C.bl, 2, C.bv + 1, ce('heads.info', _tplLsLab(d, 'info', '상품 정보'), '이름') + grip('bv'), 'th', d.heads, 'info'));
+      cells.push(X(1, C.p1, 2, C.p2 + 1, ce(p + 'name', it.name, '상품명 / 한글명') + grip('p'), 'th ls-name', it, 'name'));
+      vis.forEach((x, n) => cells.push(X(1, C.x + n, 2, C.x + n + 1, `${ce('heads.' + x.k, x.lab, '칸 이름')}${ed ? `<button type="button" class="ls-cm" data-act="ls-colm" data-k="${x.k}" data-i="${i}" title="칸 넣기 · 옮기기 · 숨기기" aria-label="칸 메뉴">▾</button>` : ''}${grip(x.k)}`, 'th', d.heads, x.k)));
       cells.push(X(2, C.no, end, C.no + 1, ce(p + 'no', it.no, String(i + 1)), 'ls-no', it, 'no'));
-      // 상품 정보 — 왼쪽 회색 이름표 | 오른쪽 값 (한 줄에 하나씩, 칸 색은 값 칸에만). 예전엔 이름표 줄 · 값 줄이 번갈았고 단독여부만 한 칸 안에 이름표가 겹쳐 있었다
-      const B = [['시즌', 'season', 'New / 컬러추가'], ['카테고리', 'cat', 'shoulder bag'], ...(sec ? [['정상가', 'price', '₩0', true]] : []), ['첫발주일', 'first', ''], ['단독', 'solo', 'O / X']];
+      // 상품 정보 — 왼쪽 회색 이름표 | 오른쪽 값 (한 줄에 하나씩, 칸 색은 값 칸에만). 이름표도 바로 고치고, ▾ 로 줄을 넣고 옮긴다
       let r = 2;
-      B.forEach(([lab, f, ph, desig]) => {
-        cells.push(X(r, C.bl, r + 1, C.bl + 1, `<div class="tc">${lab}</div>`, 'th ls-lab'));
-        cells.push(V(r, C.bv, r + 1, C.bv + 1, f, ph, 'ls-val', false, desig));
+      infos.forEach(x => {
+        cells.push(X(r, C.bl, r + 1, C.bl + 1, `${ce('heads.' + x.k, x.lab, '이름')}${ed ? `<button type="button" class="ls-cm" data-act="ls-infom" data-k="${x.k}" data-i="${i}" title="줄 넣기 · 옮기기 · 숨기기" aria-label="줄 메뉴">▾</button>` : ''}`, 'th ls-lab', d.heads, x.k));
+        cells.push(V(r, C.bv, r + 1, C.bv + 1, x.k, x.ph, 'ls-val', false, x.desig));
         r++;
       });
-      if(r < end) cells.push(X(r, C.bl, end, C.bv + 1, '', 'ls-fill'));
+      if(r < end) cells.push(X(r, C.bl, end, C.bv + 1, ed ? `<button type="button" class="ls-mini" data-act="ls-infoadd" data-i="${i}">＋ 정보 줄</button>` : '', 'ls-fill'));
       // 사진 2 × 2
       const h = Math.ceil(R / 2);
       [[2, C.p1, 2 + h, C.p1 + 1], [2, C.p2, 2 + h, C.p2 + 1], [2 + h, C.p1, end, C.p1 + 1], [2 + h, C.p2, end, C.p2 + 1]].forEach((g, k) => cells.push(`<div class="tx tpx"${at(...g)}>${_tplPh(p + 'imgs.' + k, it.imgs[k], ed, '', true)}</div>`));
-      // 긴 칸 · 컬러 줄 — 안내 글은 비움 (머리글에 이름이 있고, 회색 예시가 진짜 값처럼 보였다)
-      cells.push(V(2, C.ven, end, C.ven + 1, 'vendor', '', 'ls-vendor'));
-      cells.push(V(2, C.fab, end, C.fab + 1, 'fabric', '', '', true));
-      for(let j = 0; j < R; j++){
-        const c = it.colors[j] || {}, q = `${p}colors.${j}.`;
-        cells.push(X(2 + j, C.col, 3 + j, C.col + 1, ce(q + 'c', c.c || '', ''), 'ls-cr', c, 'c'));
-        cells.push(X(2 + j, C.r, 3 + j, C.r + 1, ce(q + 'r', c.r || '', ''), 'ls-cr', c, 'r'));
-        cells.push(X(2 + j, C.q, 3 + j, C.q + 1, ce(q + 'q', c.q || '', ''), 'ls-cr', c, 'q'));
-        const wd = _tplLsWaitDays(c);
-        cells.push(X(2 + j, C.a, 3 + j, C.a + 1, ce(q + 'a', c.a || '', _tplLsWaitPh(wd)), 'ls-cr' + (wd != null ? ' ' + _tplLsWaitCls(wd) : ''), c, 'a'));
-      }
-      cells.push(V(2, C.fac, end, C.fac + 1, 'factory', '', '', true));
-      cells.push(V(2, C.note, end, C.note + 1, nf, '', 'ls-note', true));
-      if(sec) cells.push(V(2, C.lab, end, C.lab + 1, 'label', '', 'ls-note', true, true));
-      return `<div class="tpl-g ls-block" data-cut="1" data-i="${i}" style="grid-template-columns:var(--ls-cols);grid-template-rows:30px repeat(${R}, minmax(30px, auto))">${cells.join('')}</div>`;
+      // 오른쪽 칸 — 긴 칸(상품마다) · 컬러 줄마다 칸. 안내 글은 비움 (머리글에 이름이 있고, 회색 예시가 진짜 값처럼 보였다)
+      vis.forEach((x, n) => {
+        const c0 = C.x + n;
+        if(x.g === 'i'){ cells.push(V(2, c0, end, c0 + 1, x.k === 'note' ? nf : x.k, '', x.cls || '', !!x.ml, x.desig)); return; }
+        for(let j = 0; j < R; j++){
+          const c = it.colors[j] || {}, wd = x.k === 'a' ? _tplLsWaitDays(c) : null;
+          cells.push(X(2 + j, c0, 3 + j, c0 + 1, ce(`${p}colors.${j}.${x.k}`, c[x.k] || '', wd != null ? _tplLsWaitPh(wd) : '') + (ed && x === firstRow ? `<button type="button" class="ls-rm" data-act="ls-rowm" data-i="${i}" data-j="${j}" title="줄 넣기 · 복사 · 옮기기 · 지우기" aria-label="줄 메뉴">⋯</button>` : ''), 'ls-cr' + (wd != null ? ' ' + _tplLsWaitCls(wd) : ''), c, x.k));
+        }
+      });
+      // 아래 얇은 줄 — 줄(행) · 칸(열) · 상품 넣기 (PDF 에는 없다)
+      if(ed) cells.push(`<div class="tx ls-bot" style="grid-area:${end} / 1 / ${end + 1} / ${NC}"><button type="button" class="ls-mini" data-act="ls-row+" data-i="${i}">＋ 줄(행)</button><button type="button" class="ls-mini" data-act="ls-coladd" data-i="${i}">＋ 칸(열)</button><button type="button" class="ls-mini" data-act="ls-infoadd" data-i="${i}">＋ 상품 정보 줄</button><button type="button" class="ls-mini" data-act="ls-ins1" data-i="${i}">＋ 아래에 상품</button></div>`);
+      return `<div class="tpl-g ls-block" data-cut="1" data-i="${i}" style="grid-template-columns:var(--ls-cols);grid-template-rows:30px repeat(${R}, minmax(30px, auto))${ed ? ' 28px' : ''}">${cells.join('')}</div>`;
     }).join('');
     const add = ed ? '<div class="ls-add"><button type="button" class="mb-btn" data-act="ls-add">＋ 상품 추가</button></div>' : '';
-    return `<div class="tpl-paper tpl-ls${o.clean ? ' is-clean' : ''}${fit ? ' is-fit' : ''}" data-doc="${doc.id}" style="--ls-cols:${_tplLsCols(sec, fit)}${fit ? `;min-width:${_tplLsMinW(sec)}px` : ''}">${head}${blocks}${add}</div>`;
+    return `<div class="tpl-paper tpl-ls${o.clean ? ' is-clean' : ''}${fit ? ' is-fit' : ''}" data-doc="${doc.id}" style="--ls-cols:${G.cols}${fit ? `;min-width:${G.min}px` : ''}">${head}${blocks}${add}</div>`;
+  }
+
+  /* ── 라인시트 행 · 열 (2026-11-24 사장님 "라인시트에서도 행추가, 열추가 가능하게 · 자유도 높게") ── */
+  function _tplLsAct(doc, act, btn){
+    const ds = btn.dataset, d = doc.data, i = +ds.i, j = +ds.j, k = ds.k || '', hold = _tplLsHold(doc), sec = designSecretOk();
+    const it = d.items[i], vis = _tplLsVis(d, hold, sec), infos = _tplLsInfos(d, sec);
+    const at = ds.i != null && it ? `.ls-block[data-i="${i}"] ` : '';
+    /* 메뉴 (고치지 않음) */
+    if(act === 'ls-coladd'){
+      const off = _tplLsAll(d, hold).filter(x => x.off && (sec || !x.sec)), offI = _tplLsInfoAll(d).filter(x => x.off && (sec || !x.sec)), D = ds.i != null ? {i} : {};
+      return _tplPop(btn, [{t:'새 칸(열) — 이 시즌 모든 상품에'}, {a:'lsc-new', l:'컬러 줄마다 한 칸', d:{...D, g:'c'}}, {a:'lsc-new', l:'컬러 줄마다 한 칸 — 날짜 (오늘 · 달력)', d:{...D, g:'c', date:1}}, {a:'lsc-new', l:'상품마다 한 칸 (긴 칸)', d:{...D, g:'i'}},
+        off.length || offI.length ? {t:'숨긴 것 다시 보이기'} : null, ...off.map(x => ({a:'lsc-on', l:x.lab || '칸', d:{k:x.k}})), ...offI.map(x => ({a:'lsi-on', l:`정보 줄 — ${x.lab || '줄'}`, d:{k:x.k}})),
+        (_tpl.docs.linesheet || []).length > 1 && (d.cols || d.infos || d.heads || d.wd) ? {t:'이 시즌의 칸 · 줄 이름 · 차례 · 너비를'} : null, (_tpl.docs.linesheet || []).length > 1 && (d.cols || d.infos || d.heads || d.wd) ? {a:'lsc-all', l:'다른 시즌에도 똑같이 쓰기'} : null,
+        d.cols || d.infos || d.wd ? {a:'lsc-reset', l:'칸 차례 · 너비 · 숨김을 처음처럼'} : null]);
+    }
+    if(act === 'ls-colm'){
+      const z = vis.findIndex(x => x.k === k), x = vis[z];
+      if(!x) return;
+      return _tplPop(btn, [{a:'lsc-new', l:'＋ 왼쪽에 칸 넣기', d:{i, k, at:0, g:x.g}}, {a:'lsc-new', l:'＋ 오른쪽에 칸 넣기', d:{i, k, at:1, g:x.g}}, z > 0 ? {a:'lsc-move', l:'◀ 왼쪽으로 옮기기', d:{k, to:vis[z - 1].k}} : null, z < vis.length - 1 ? {a:'lsc-move', l:'▶ 오른쪽으로 옮기기', d:{k, to:vis[z + 1].k}} : null,
+        x.own ? {a:'lsc-g', l:x.g === 'c' ? '상품마다 한 칸(긴 칸)으로 바꾸기' : '컬러 줄마다 한 칸으로 바꾸기', d:{k}} : null, x.own && x.g === 'c' ? {a:'lsc-date', l:x.date ? '날짜 칸 끄기' : '날짜 칸으로 (오늘 · 달력)', d:{k}} : null,
+        d.wd && d.wd[k] ? {a:'lsc-w0', l:'처음 너비로', d:{k}} : null, {a:'lsc-off', l:'이 칸 숨기기', d:{k}}, x.own ? {a:'lsc-del', l:'🗑 이 칸 지우기', d:{k}, red:1} : null]);
+    }
+    if(act === 'ls-infom'){
+      const z = infos.findIndex(x => x.k === k), x = infos[z];
+      if(!x) return;
+      return _tplPop(btn, [{a:'lsi-new', l:'＋ 위에 줄 넣기', d:{i, k, at:0}}, {a:'lsi-new', l:'＋ 아래에 줄 넣기', d:{i, k, at:1}}, z > 0 ? {a:'lsi-move', l:'▲ 위로', d:{k, to:infos[z - 1].k}} : null, z < infos.length - 1 ? {a:'lsi-move', l:'▼ 아래로', d:{k, to:infos[z + 1].k}} : null,
+        {a:'lsi-off', l:'이 줄 숨기기 (모든 상품)', d:{k}}, x.own ? {a:'lsi-del', l:'🗑 이 줄 지우기 (모든 상품)', d:{k}, red:1} : null]);
+    }
+    if(act === 'ls-rowm'){
+      if(!it) return;
+      const R = _tplLsRowN(it, infos.length);
+      return _tplPop(btn, [{a:'lsr-ins', l:'＋ 위에 줄 넣기', d:{i, j, at:0}}, {a:'lsr-ins', l:'＋ 아래에 줄 넣기', d:{i, j, at:1}}, {a:'lsr-dup', l:'⧉ 이 줄 복사', d:{i, j}}, j > 0 ? {a:'lsr-move', l:'▲ 위로', d:{i, j, to:j - 1}} : null, j < R - 1 ? {a:'lsr-move', l:'▼ 아래로', d:{i, j, to:j + 1}} : null, {a:'lsr-del', l:'🗑 이 줄 지우기', d:{i, j}, red:1}]);
+    }
+    /* 고치기 */
+    if(act === 'lsc-all'){
+      const others = (_tpl.docs.linesheet || []).filter(x => x.id !== doc.id);
+      if(!confirm(`지금 시즌의 칸 · 정보 줄 이름 · 차례 · 너비를 다른 시즌 ${others.length}개에도 똑같이 쓸까요?\n(적힌 내용은 그대로예요)`)) return;
+      others.forEach(x => {
+        // 그 시즌에만 있는 칸 · 줄은 맨 뒤에 그대로 둔다 (적힌 내용이 안 보이게 되지 않게)
+        const y = x.data, h2 = _tplLsHold(x), h0 = y.heads || {}, has = (arr, kk) => (arr || []).some(s => s && s.k === kk);
+        const keepC = _tplLsAll(y, h2).filter(v => v.own && !has(d.cols, v.k)), keepI = _tplLsInfoAll(y).filter(v => v.own && !has(d.infos, v.k)), nh = _tcxClone(d.heads || {});
+        [...keepC, ...keepI].forEach(v => { if(h0[v.k] != null) nh[v.k] = h0[v.k]; });
+        if(hold !== h2){ delete nh.note; if(h0.note != null) nh.note = h0.note; }   // 홀딩 사유 ↔ 특이사항 이름은 섞지 않는다
+        if(d.cols || keepC.length) y.cols = [..._tcxClone(d.cols || _tplLsKeepCols(TPL_LS_COLS)), ..._tplLsKeepCols(keepC)]; else delete y.cols;
+        if(d.infos || keepI.length) y.infos = [..._tcxClone(d.infos || _tplLsKeepCols(TPL_LS_INFO)), ..._tplLsKeepCols(keepI)]; else delete y.infos;
+        y.heads = nh;
+        if(d.wd) y.wd = _tcxClone(d.wd); else delete y.wd;
+        _tplTouch(x, 'data');
+      });
+      toast(`다른 시즌 ${others.length}개에도 넣었어요`, 'ok');
+      return;
+    }
+    const snap = _tplUndoBegin(doc);
+    let focus = '', msg = '';
+    const full = n => { while(it.colors.length < n) it.colors.push({}); for(let z = 0; z < it.colors.length; z++) if(!it.colors[z]) it.colors[z] = {}; };
+    const saveCols = list => { d.cols = _tplLsKeepCols(list); }, saveInfos = list => { d.infos = _tplLsKeepCols(list); };
+    const swap = (list, a, b) => { const x = list.findIndex(v => v.k === a), y = list.findIndex(v => v.k === b); if(x >= 0 && y >= 0) list.splice(y, 0, list.splice(x, 1)[0]); return list; };
+    const used = kk => d.items.some(v => v && (v[kk] || (doc.secret.p[v.u] || {})[kk] || (v.colors || []).some(c => c && c[kk])));
+    const wipe = kk => d.items.forEach(v => { if(!v) return; delete v[kk]; if(doc.secret.p[v.u]) delete doc.secret.p[v.u][kk]; (v.colors || []).forEach(c => { if(c) delete c[kk]; }); });
+    if(act === 'ls-ins0' || act === 'ls-ins1'){
+      const n = i + (act === 'ls-ins1' ? 1 : 0);
+      d.items.splice(n, 0, _tplBlankLsItem());
+      focus = `.ls-block[data-i="${n}"] [data-f="items.${n}.name"]`;
+    }else if(act === 'lsc-new'){
+      const all = _tplLsAll(d, hold), nk = 'x' + _tplUid(), z = k ? all.findIndex(x => x.k === k) + (+ds.at || 0) : (() => { const q = all.findIndex(x => x.k === 'label'); return q < 0 ? all.length : q; })();
+      all.splice(z, 0, {k:nk, g:ds.g === 'c' ? 'c' : 'i', own:1, date:ds.date ? 1 : 0});
+      saveCols(all);
+      (d.heads = d.heads || {})[nk] = '';
+      focus = `${at}[data-f="heads.${nk}"]`;
+      msg = '칸을 넣었어요 — 칸 이름을 적어 주세요';
+    }else if(act === 'lsc-move') saveCols(swap(_tplLsAll(d, hold), k, ds.to));
+    else if(act === 'lsc-off' || act === 'lsc-on' || act === 'lsc-g' || act === 'lsc-date'){
+      const all = _tplLsAll(d, hold), x = all.find(v => v.k === k);
+      if(!x) return;
+      if(act === 'lsc-off'){ x.off = true; msg = '칸을 숨겼어요 — 내용은 그대로예요 (＋ 칸(열) 메뉴에서 다시 보이기)'; }
+      else if(act === 'lsc-on') x.off = false;
+      else if(act === 'lsc-g') x.g = x.g === 'c' ? 'i' : 'c';
+      else x.date = x.date ? 0 : 1;
+      saveCols(all);
+    }else if(act === 'lsc-w0'){ if(d.wd) delete d.wd[k]; }
+    else if(act === 'lsc-reset'){
+      const own = _tplLsAll(d, hold).filter(x => x.own), ownI = _tplLsInfoAll(d).filter(x => x.own);
+      delete d.wd;
+      const put = (base, add) => [...base.map(x => Object.assign({}, x)), ...add.map(x => Object.assign(x, {off:false}))];
+      if(own.length) saveCols(put(TPL_LS_COLS, own)); else delete d.cols;
+      if(ownI.length) saveInfos(put(TPL_LS_INFO, ownI)); else delete d.infos;
+      msg = '처음 차례로 되돌렸어요 (새로 넣은 칸 · 줄은 맨 뒤에 그대로)';
+    }else if(act === 'lsc-del' || act === 'lsi-del'){
+      if(used(k) && !confirm('여기에 적힌 내용이 있어요. 모든 상품에서 지울까요?')) return;
+      wipe(k);
+      if(act === 'lsc-del') saveCols(_tplLsAll(d, hold).filter(x => x.k !== k)); else saveInfos(_tplLsInfoAll(d).filter(x => x.k !== k));
+      if(d.heads) delete d.heads[k];
+      if(d.wd) delete d.wd[k];
+      _tplTouch(doc, 'secret');
+      msg = '지웠어요 — ↶ 되돌리기로 살릴 수 있어요';
+    }else if(act === 'ls-infoadd' || act === 'lsi-new'){
+      const all = _tplLsInfoAll(d), nk = 'y' + _tplUid(), z = act === 'lsi-new' ? all.findIndex(x => x.k === k) + (+ds.at || 0) : all.length;
+      all.splice(z, 0, {k:nk, own:1});
+      saveInfos(all);
+      (d.heads = d.heads || {})[nk] = '';
+      focus = `${at}[data-f="heads.${nk}"]`;
+      msg = '상품 정보 줄을 넣었어요 — 이름을 적어 주세요 (모든 상품에 같이)';
+    }else if(act === 'lsi-move') saveInfos(swap(_tplLsInfoAll(d), k, ds.to));
+    else if(act === 'lsi-off' || act === 'lsi-on'){
+      const all = _tplLsInfoAll(d), x = all.find(v => v.k === k);
+      if(!x) return;
+      x.off = act === 'lsi-off';
+      saveInfos(all);
+      if(x.off) msg = '줄을 숨겼어요 — 내용은 그대로예요 (＋ 칸(열) 메뉴에서 다시 보이기)';
+    }else if(it && act === 'lsr-ins'){ const n = j + (+ds.at || 0), R = _tplLsRowN(it, infos.length); full(n); it.colors.splice(n, 0, {}); it.rows = R + 1; const f = vis.find(x => x.g === 'c'); if(f) focus = `${at}[data-f="items.${i}.colors.${n}.${f.k}"]`; }
+    else if(it && act === 'lsr-dup'){ const R = _tplLsRowN(it, infos.length); full(j + 1); it.colors.splice(j + 1, 0, _tcxClone(it.colors[j])); it.rows = R + 1; }
+    else if(it && act === 'lsr-move'){ const to = +ds.to; full(Math.max(j, to) + 1); it.colors.splice(to, 0, it.colors.splice(j, 1)[0]); }
+    else if(it && act === 'lsr-del'){
+      const R = _tplLsRowN(it, infos.length);
+      if(j < it.colors.length){ if(Object.entries(it.colors[j] || {}).some(([f, v]) => f !== 'hl' && f !== 'bd' && v)) msg = '줄을 지웠어요 — ↶ 되돌리기로 살릴 수 있어요'; it.colors.splice(j, 1); }
+      it.rows = Math.max(2, infos.length, R - 1);
+    }else return;
+    _tplTouch(doc, 'data');
+    _tplUndoEnd(doc, snap);
+    _tplRenderPaper(true);
+    if(focus){
+      const el = document.querySelector(`#tplStage [data-doc="${doc.id}"] ${focus}`);
+      if(el){ el.closest('.tx').scrollIntoView({block:'nearest', inline:'nearest'}); el.focus({preventScroll:true}); }
+    }
+    if(msg) toast(msg, 'ok');
+  }
+  // 칸 너비 — 머리글 오른쪽 끝을 끌어서
+  function _tplLsGripDown(e, g){
+    const doc = _tplDocOf(g), paper = g.closest('.tpl-ls'), box = g.closest('.tx'), k = g.dataset.k;
+    if(!doc || !paper || !box) return;
+    e.preventDefault();
+    const d = doc.data, hold = _tplLsHold(doc), sec = designSecretOk(), fit = paper.classList.contains('is-fit'), div = k === 'p' ? 2 : 1;
+    const bl = k === 'bv' ? (+((d.wd || {}).bl) || 58) : 0, w0 = (box.getBoundingClientRect().width - bl) / div, x0 = e.clientX, snap = _tplUndoBegin(doc);
+    let moved = false;
+    const mv = ev => {
+      const dx = ev.clientX - x0;
+      if(!moved && Math.abs(dx) < 3) return;
+      moved = true;
+      (d.wd = d.wd || {})[k] = Math.max(36, Math.min(700, Math.round(w0 + dx / div)));
+      const G = _tplLsGrid(d, hold, sec, fit);
+      paper.style.setProperty('--ls-cols', G.cols);
+      if(fit) paper.style.minWidth = G.min + 'px';
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      document.documentElement.classList.remove('ls-gripping');
+      if(moved){ _tplTouch(doc, 'data'); _tplUndoEnd(doc, snap); }
+    };
+    document.documentElement.classList.add('ls-gripping');
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
   }
 
   /* ============ 편집 창 ============ */
@@ -27758,9 +28412,9 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const del = document.getElementById('tplDelBtn');
     if(del) del.textContent = kind === 'matching' ? '이 스타일 지우기' : '이 시즌 지우기';
     const note = document.getElementById('tplNote');
-    if(note) note.innerHTML = _tpl.mode === 'internal' ? '칸을 눌러 바로 고치면 계속 저절로 저장돼요 · 사진 칸은 눌러서 고르기 · 끌어다 놓기 · Ctrl+V · 칸을 누른 뒤 위 색 · <b>B</b> · 옆(좁으면 아래) <b>원가계산서</b>는 내부용 — 업체 전달용에는 빠져요'
+    if(note) note.innerHTML = _tpl.mode === 'internal' ? '칸을 눌러 바로 고치면 계속 저절로 저장돼요 · 사진 칸은 눌러서 고르기 · 끌어다 놓기 · Ctrl+V · 칸을 누른 뒤 위 색 · <b>B</b> · 옆(좁으면 아래) <b>원가계산서</b>는 내부용 — 원단마다 <b>⧉ 복사</b>해서 여러 장, 업체 전달용에는 빠져요'
       : _tpl.mode === 'vendor' ? '업체 전달용 = 원가계산서가 빠진 모습 (구글시트 [투엘] 파일과 같은 모양). 내용은 내부공유용과 같은 문서예요.'
-      : `칸을 눌러 바로 고치면 저절로 저장돼요 · 칸을 누른 뒤 위 <b>색</b>을 고르면 칸 색, <b>B</b> = 굵게 · 상품 왼쪽 위 <b>⋯</b> = 옮기기 · 컬러 줄 더하기 · 지우기 · 맨 아래 <b>＋ 상품 추가</b>${inTab ? ' · 아래 보드맵에도 그대로 반영돼요' : ''}`;
+      : `칸을 눌러 바로 고치면 저절로 저장돼요 · 칸을 누른 뒤 위 <b>색</b>을 고르면 칸 색, <b>B</b> = 굵게 · 상품 왼쪽 위 <b>⋯</b> = 복제 · 옮기기 · 지우기 · 상품 아래 <b>＋ 줄(행) · ＋ 칸(열)</b> · 검은 머리글도 바로 고치고 <b>▾</b> = 칸 옮기기 · 숨기기, 오른쪽 끝을 끌면 너비${inTab ? ' · 아래 보드맵에도 그대로 반영돼요' : ''}`;
     _tplRenderPaper(false);
   }
   function _tplRenderPaper(force){
@@ -27782,12 +28436,15 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     let html;
     if(kind === 'matching'){
       if(_tpl.mode === 'internal' && designSecretOk() && !doc.secret.cost) doc.secret.cost = _tplBlankCost();   // 처음 여는 스타일 — 퍼스트큐 백 원가계산서 줄로 시작 (적기 전엔 보드에 안 보임)
+      const cost = _tpl.mode === 'internal' && designSecretOk();
       const tools = `<div class="tpl-tools">
+        <span class="tpl-tool">SIZE 칸 <button type="button" class="mb-btn" data-act="spec-" title="맨 끝 SIZE 칸 빼기">−</button><b>${doc.data.specs.length}</b><button type="button" class="mb-btn" data-act="spec+" title="SIZE 칸 더하기">＋</button></span>
         <span class="tpl-tool">컬러 칸 <button type="button" class="mb-btn" data-act="slot-" title="맨 오른쪽 컬러 칸 빼기">−</button><b>${doc.data.slots}</b><button type="button" class="mb-btn" data-act="slot+" title="컬러 칸 더하기 (최대 ${TPL_SLOT_MAX})">＋</button></span>
         <span class="tpl-tool">공장 칸 <button type="button" class="mb-btn" data-act="fac-">−</button><b>${doc.data.factory.length}</b><button type="button" class="mb-btn" data-act="fac+">＋</button></span>
         <span class="tpl-tool">부자재 줄 <button type="button" class="mb-btn" data-act="hw-">−</button><b>${doc.data.hw.length / doc.data.slots}</b><button type="button" class="mb-btn" data-act="hw+">＋</button></span>
+        ${cost ? `<span class="tpl-tool tcx-tool">원가계산서 <b data-tcx-n>${_tplCosts(doc).length}</b>장 <button type="button" class="mb-btn" data-act="tcx-addmenu">＋ 추가</button><button type="button" class="mb-btn" data-act="tcx-goall">보기 ↓</button></span>` : ''}
       </div>`;
-      html = `${tools}<div class="tpl-row"><div class="tpl-scroll">${_tplMatchHtml(doc, o)}</div>${_tpl.mode === 'internal' && designSecretOk() ? `<div class="tpl-scroll tpl-scroll-cost">${_tplCostHtml(doc, o)}</div>` : ''}</div>` + _tplKidsHtml(doc, o);
+      html = `${tools}<div class="tpl-row"><div class="tpl-scroll">${_tplMatchHtml(doc, o)}</div>${cost ? `<div class="tpl-costs" data-doc="${doc.id}">${_tplCostsHtml(doc)}</div>` : ''}</div>` + _tplKidsHtml(doc, o);
     }else html = `<div class="tpl-scroll">${_tplMob() ? _tplLsMobileHtml(doc, o) : _tplLsHtml(doc, o)}</div>`;
     st.innerHTML = html + `<div class="tpl-meta">${doc.updated_at ? `마지막 저장 ${new Date(doc.updated_at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'})}${doc.updated_by ? ' · ' + escapeHTML(doc.updated_by) : ''}` : ''}</div>`;
     const sc = st.querySelector('.tpl-scroll');
@@ -27889,6 +28546,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const kind = _tplKind(), me = _tplMe();
     const data = kind === 'matching' ? _tplBlankMatch() : _tplBlankLs();
     if(kind === 'matching') _tplSetSlots(data, 5);
+    else{ const now = _tplCurDoc(); if(now){ ['cols', 'infos', 'heads', 'wd'].forEach(f => { if(now.data[f]) data[f] = _tcxClone(now.data[f]); }); if(data.heads && _tplLsHold(now)) delete data.heads.note; } }   // 새 시즌 = 지금 시즌의 칸 · 줄 구성 그대로
     const secret = kind === 'matching' && designSecretOk() ? {p:{}, cost:_tplBlankCost()} : {p:{}};
     const doc = await _tplCreate(kind, data, secret, me);
     if(doc){
@@ -27946,10 +28604,11 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       if(!c || now === c) delete o.hl[ref.f]; else o.hl[ref.f] = c;
     }
     _tplTouch(doc, ref.root);
-    if(ref.root === 'secret' && doc.secret.cost) doc.secret.cost.touched = true;
+    const cs = _tcxOf(path), cc = cs != null && _tplCosts(doc)[cs];
+    if(cc) cc.touched = true;
     _tplUndoEnd(doc, snap);
-    const el = fe && fe.dataset.f === path ? fe : document.querySelector(`#tplStage [data-doc="${doc.id}"] [data-f="${CSS.escape(path)}"]`), box = el && el.closest('.tx, td');
-    if(box) box.className = box.className.replace(/\s*\b(is-hl|is-b|hl-[a-z])\b/g, '') + _tplCls(o, ref.f);
+    const same = [...document.querySelectorAll(`#tplStage [data-doc="${doc.id}"] [data-f="${CSS.escape(path)}"]`)], el = fe && fe.dataset.f === path ? fe : same[0];
+    (same.length ? same : [el]).forEach(x => { const box = x && x.closest('.tx, td, th'); if(box) box.className = box.className.replace(/\s*\b(is-hl|is-b|hl-[a-z])\b/g, '') + _tplCls(o, ref.f); });
     if(el && (!window.matchMedia || window.matchMedia('(hover:hover)').matches)) el.focus();
   }
 
@@ -28005,7 +28664,8 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const doc = _tplDocOf(el);
     if(!doc) return;
     let path = el.dataset.f, val = el.innerText.replace(/\r/g, '').replace(/\n$/, '');
-    if(path === 'cost.rate' || /^cost\.rows\.\d+\.conv$/.test(path) || path === 'cost.mult') val = val.trim();
+    const cs = _tcxOf(path);
+    if(cs != null && /\.(rate|mult|vatPct|round|totalv|pricev|conv|vatv|sumv|v)$/.test(path)) val = val.trim();
     // 명단 PC 에서 매칭표 원단 · 안감 · 부자재 칸에 단가를 적으면 기밀 칸으로 옮긴다
     const m = path.match(/^(fab|lin|hw)\.(\d+)\.([a-z]+)$/);
     if(m && designSecretOk() && TPL_PRICE.test(val)){
@@ -28014,11 +28674,14 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     }
     const root = _tplPathSet(doc, path, val);
     _tplTouch(doc, root);
-    if(path.startsWith('cost.')){
-      doc.secret.cost.touched = true;
-      if(/\.conv$/.test(path)) el.classList.toggle('is-auto', !val);
-      _tplCostPaint(doc);
+    if(cs != null){
+      const c = _tplCosts(doc)[cs], rv = path.match(/\.rows\.(\d+)\.vatv$/);
+      if(rv && !val) c.rows[+rv[1]].vat = false;   // VAT 금액을 지우면 VAT 끄기
+      c.touched = true;
+      _tplCostPaint(doc, cs);
     }
+    // 같은 머리글이 여러 곳에 있으면(상품마다 되풀이) 다른 곳도 바로
+    if(/(^|\.)heads\./.test(path)) document.querySelectorAll(`#tplStage [data-doc="${doc.id}"] [data-f="${CSS.escape(path)}"]`).forEach(x => { if(x !== el) x.textContent = val; });
     if(/^items\.\d+\.(cat|name)$/.test(path)) document.querySelectorAll('#tplStage [data-sum]').forEach(x => { x.innerHTML = _tplLsSumHtml(_tplLsCount(doc.data)); });
     const mw = path.match(/^items\.(\d+)\.colors\.(\d+)\.[qa]$/);
     if(mw) _tplLsWaitPaint(doc, +mw[1], +mw[2]);
@@ -28036,6 +28699,8 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     if(act === 'ls-find-x'){ _tpl.lsQ = ''; _tpl.lsWait = false; const f = document.getElementById('lsFind'); if(f) f.value = ''; document.querySelectorAll('#tplStage [data-wait]').forEach(x => x.classList.remove('is-on')); _tplLsFilter(); return; }
     if(act === 'ls-csv'){ _tplLsCsv(doc); return; }
     if(act === 'ls-menu'){ _tplLsMenu(btn, i); return; }
+    if(act.startsWith('tcx-')){ _tcxAct(doc, act, btn); return; }
+    if(/^(ls[cri]-|ls-(ins[01]|coladd|colm|infom|infoadd|rowm)$)/.test(act)){ _tplLsAct(doc, act, btn); return; }
     const snap = _tplUndoBegin(doc);   // 되돌리기 — 고치기 전 모습
     let focusI = null, focusName = false;
     const filled = o => o && Object.entries(o).some(([k, v]) => k !== 'u' && k !== 'hl' && k !== 'w' && k !== 'rows' && v != null && v !== '' && !(Array.isArray(v) && !v.some(x => x != null && (typeof x !== 'object' || filled(x)))));
@@ -28060,9 +28725,9 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       if(d.hw.length <= d.slots) return;
       if(d.hw.slice(-d.slots).some(filled) && !confirm('마지막 부자재 줄에 적힌 내용이 있어요. 지울까요?')) return;
       d.hw.splice(-d.slots);
-    }else if(act === 'vat'){ const r = doc.secret.cost.rows[i]; r.vat = !r.vat; doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); btn.classList.toggle('is-on', r.vat); _tplCostPaint(doc); return; }
-    else if(act === 'cost-add'){ doc.secret.cost.rows.push({u:_tplUid(), name:'', color:'', size:'', cny:'', conv:'', krw:'', vat:false, qty:'1', hl:{}}); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); _tplRenderPaper(true); return; }
-    else if(act === 'cost-del'){ const r = doc.secret.cost.rows[i]; if(r && (r.name || r.cny || r.krw) && !confirm(`'${r.name || '이 줄'}' 줄을 지울까요?`)) return; doc.secret.cost.rows.splice(i, 1); doc.secret.cost.touched = true; _tplTouch(doc, 'secret'); _tplUndoEnd(doc, snap); _tplRenderPaper(true); return; }
+    }
+    else if(act === 'spec+'){ if(d.specs.length >= 24) return; d.specs.push({l:'', v:''}); }
+    else if(act === 'spec-'){ if(d.specs.length <= 1) return; const s = d.specs[d.specs.length - 1]; if((s.v || s.l) && !confirm(`'${s.l || '마지막 SIZE'}' 칸을 지울까요?`)) return; d.specs.pop(); }
     else if(act === 'kid-add'){
       const data = _tplBlankMatch();
       _tplSetSlots(data, 4);
@@ -28086,11 +28751,11 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       if(sp && designSecretOk()){ doc.secret.p[it.u] = JSON.parse(JSON.stringify(sp)); _tplTouch(doc, 'secret'); }
       focusI = i + 1;
     }
-    else if(act === 'ls-row+'){ const it = d.items[i]; it.rows = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0) + 1; }
+    else if(act === 'ls-row+'){ const it = d.items[i]; it.rows = _tplLsRowN(it, _tplLsInfos(d, designSecretOk()).length) + 1; }
     else if(act === 'ls-row-'){
-      const it = d.items[i], R = Math.max(TPL_LS_ROWS, it.colors.length, it.rows || 0);
-      if(R <= TPL_LS_ROWS){ toast(`상품 칸은 ${TPL_LS_ROWS}줄이 기본이에요`, 'err'); return; }
-      if(filled(it.colors[R - 1]) && !confirm('마지막 컬러 줄에 적힌 내용이 있어요. 지울까요?')) return;
+      const it = d.items[i], nI = _tplLsInfos(d, designSecretOk()).length, R = _tplLsRowN(it, nI);
+      if(R <= Math.max(2, nI)){ toast(`상품 정보가 ${nI}줄이라 더 줄일 수 없어요`, 'err'); return; }
+      if(filled(it.colors[R - 1]) && !confirm('마지막 줄에 적힌 내용이 있어요. 지울까요?')) return;
       it.colors.length = Math.min(it.colors.length, R - 1); it.rows = R - 1;
     }else if(act === 'ls-del'){
       const it = d.items[i];
@@ -28124,12 +28789,12 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     }
     const n = (_tplCurDoc() || {data:{items:[]}}).data.items.length;
     m.innerHTML = [['ls-dup', '⧉ 이 상품 복제 (바로 아래에)', true], ['ls-up', '▲ 위로 옮기기', i > 0], ['ls-down', '▼ 아래로 옮기기', i < n - 1], ['ls-first', '⤒ 맨 위로', i > 1], ['ls-last', '⤓ 맨 아래로', i < n - 2],
-      ['ls-row+', '＋ 컬러 줄 더하기', true], ['ls-row-', '− 마지막 컬러 줄 빼기', true], ['ls-del', '🗑 이 상품 지우기', true]]
+      ['ls-ins0', '＋ 위에 새 상품 넣기', true], ['ls-ins1', '＋ 아래에 새 상품 넣기', true], ['ls-row+', '＋ 줄(행) 더하기', true], ['ls-row-', '− 마지막 줄 빼기', true], ['ls-infoadd', '＋ 상품 정보 줄 넣기', true], ['ls-coladd', '＋ 칸(열) 넣기 …', true], ['ls-del', '🗑 이 상품 지우기', true]]
       .filter(x => x[2]).map(x => `<button type="button" data-act="${x[0]}" data-i="${i}">${x[1]}</button>`).join('');
-    const r = btn.getBoundingClientRect();
-    m.style.left = Math.min(innerWidth - 200, r.left) + 'px';
-    m.style.top = (r.bottom + 4) + 'px';
+    const r = _tpl.popRect = btn.getBoundingClientRect();
     m.hidden = false;
+    m.style.left = Math.max(8, Math.min(innerWidth - m.offsetWidth - 8, r.left)) + 'px';
+    m.style.top = (r.bottom + 4 + m.offsetHeight < innerHeight - 8 ? r.bottom + 4 : Math.max(8, r.top - m.offsetHeight - 4)) + 'px';
   }
   function _tplBind(){
     if(_tpl.bound) return;
@@ -28146,13 +28811,24 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
         _tpl.focusF = el.dataset.f; _tpl.focusEl = el; _tplSugShow(el);
         const doc = _tplDocOf(el);
         if(doc){ _tplUndoPre(); _tpl.pre = _tplSnap(doc); }   // 되돌리기 — 이 칸에 들어갈 때 모습
+        if(doc && el.closest('.tpl-cost')){   // 식(=…)이 든 칸은 들어가 있는 동안 식을 보여 준다
+          const x = _tplRef(doc, el.dataset.f), raw = x ? String(x.obj[x.f] ?? '') : '';
+          if(raw && (raw.trim()[0] === '=' || /^ex:/.test(el.dataset.calc || '')) && el.textContent !== raw){
+            el.textContent = raw;
+            requestAnimationFrame(() => { if(document.activeElement !== el) return; try{ const rg = document.createRange(); rg.selectNodeContents(el); rg.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); }catch(e2){} });
+          }
+        }
       }
     });
     st.addEventListener('focusout', e => {
       const el = e.target.closest('[data-f]');
       if(el){ _tplUndoPre(); _tpl.pre = null; }   // 고쳤으면 고치기 전 모습을 쌓는다
       if(el){ const sg = document.getElementById('tplSug'); if(sg && sg._cell === el) _tplSugHide(); }
-      if(el && /\.conv$/.test(el.dataset.f)){ const doc = _tplCurDoc(); if(doc) _tplCostPaint(doc); }
+      if(el && el.closest('.tpl-cost')){   // 나오면 식은 값으로, 비운 자동 칸은 다시 자동 값으로
+        const doc = _tplDocOf(el), cs = _tcxOf(el.dataset.f), x = doc && cs != null ? _tplRef(doc, el.dataset.f) : null;
+        if(x && !el.dataset.calc && /\.rows\.\d+\./.test(el.dataset.f)){ const v = _tcxShow(x.obj[x.f]); if(el.textContent !== v && String(x.obj[x.f] ?? '').trim()[0] === '=') el.textContent = v; }
+        if(x) setTimeout(() => _tplCostPaint(doc, cs), 0);
+      }
       if(_tpl.dirty.size){ clearTimeout(_tpl.timer); _tpl.timer = setTimeout(_tplFlush, 250); }
     });
     st.addEventListener('keydown', e => {
@@ -28193,10 +28869,54 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       const files = [...((e.clipboardData || {}).files || [])].filter(f => /^image\//.test(f.type || ''));
       if(tp && files.length){ e.preventDefault(); e.stopPropagation(); _tplPhotoSet(tp.dataset.p, files[0], _tplDocOf(tp)); return; }
       const ce = e.target.closest && e.target.closest('[contenteditable]');
+      if(ce && ce.dataset.f && _tplPasteGrid(ce, (e.clipboardData || window.clipboardData).getData('text/plain'))){ e.preventDefault(); e.stopPropagation(); return; }
       if(ce && ce.getAttribute('contenteditable') !== 'plaintext-only'){
         e.preventDefault();
         document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
       }
+    });
+    // 원가계산서 줄 끌어서 옮기기 (같은 표 안) · 라인시트 칸 너비 끌기
+    const dragTr = e => { const t = e.target.closest && e.target.closest('.tpl-cost tbody tr[data-i]'), p = t && t.closest('.tpl-cost'); return p && _tpl.drag && +p.dataset.doc === _tpl.drag.doc && +p.dataset.si === _tpl.drag.si ? t : null; };
+    const dragOff = () => st.querySelectorAll('.tcx tr.is-over').forEach(x => x.classList.remove('is-over', 'is-below'));
+    st.addEventListener('dragstart', e => {
+      const b = e.target.closest && e.target.closest('.tcx-rm[draggable="true"]');
+      if(!b) return;
+      const doc = _tplDocOf(b);
+      _tpl.drag = {doc:doc.id, si:+b.dataset.si, i:+b.dataset.i};
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', '');
+      const tr = b.closest('tr');
+      if(tr && e.dataTransfer.setDragImage) e.dataTransfer.setDragImage(tr, 20, 10);
+    });
+    st.addEventListener('dragover', e => {
+      if(!_tpl.drag) return;
+      const t = dragTr(e);
+      dragOff();
+      if(!t) return;
+      e.preventDefault();
+      const r = t.getBoundingClientRect();
+      t.classList.add('is-over');
+      t.classList.toggle('is-below', e.clientY > r.top + r.height / 2);
+    });
+    st.addEventListener('drop', e => {
+      const t = dragTr(e);
+      if(!t) return;
+      e.preventDefault();
+      const d0 = _tpl.drag, r = t.getBoundingClientRect();
+      let to = +t.dataset.i + (e.clientY > r.top + r.height / 2 ? 1 : 0);
+      if(to > d0.i) to--;
+      _tpl.drag = null; dragOff();
+      const doc = _tplFind(d0.doc);
+      if(doc && to !== d0.i) _tcxAct(doc, 'tcx-rmove', {dataset:{si:d0.si, i:d0.i, to}});
+    });
+    st.addEventListener('dragend', () => { _tpl.drag = null; dragOff(); });
+    st.addEventListener('pointerdown', e => { const g = e.target.closest('.ls-grip'); if(g && e.button === 0) _tplLsGripDown(e, g); });
+    st.addEventListener('dblclick', e => {
+      const g = e.target.closest('.ls-grip'), doc = g && _tplDocOf(g), k = g && g.dataset.k;
+      if(!doc || !doc.data.wd || !doc.data.wd[k]) return;
+      const snap = _tplUndoBegin(doc);
+      delete doc.data.wd[k];
+      _tplTouch(doc, 'data'); _tplUndoEnd(doc, snap); _tplRenderPaper(true);
     });
     st.addEventListener('dragover', e => {
       const tp = e.target.closest('.tp[data-p]');
@@ -28632,7 +29352,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   }
   async function _tplPdfMatching(doc, mode){
     const pages = [{html:_tplMatchHtml(doc, {edit:false})}, ..._tplKids(doc).map(k => ({html:_tplMatchHtml(k, {edit:false})}))];
-    if(mode === 'internal' && designSecretOk() && _mbCostHas(doc)) pages.push({html:`<div class="tpl-paper tpl-cost-pg"><div class="tcx-pg-t">${escapeHTML(_tplTitleOf(doc))}</div>${_tplCostHtml(doc, {edit:false})}</div>`});
+    if(mode === 'internal' && designSecretOk()) _tcxShown(doc).forEach(({c, si}) => pages.push({html:`<div class="tpl-paper tpl-cost-pg"><div class="tcx-pg-t">${escapeHTML(_tplTitleOf(doc))}${_tcxHas(c.name) ? ` — ${escapeHTML(_tcxName(c, si))}` : ''}</div>${_tplCostHtml(doc, {edit:false, si})}</div>`}));   // 원가계산서 한 장 = 한 쪽
     await _tplPdf(pages, _tplPdfName(mode, _tplTitleOf(doc)));
   }
   async function tplPdf(){
@@ -28690,15 +29410,17 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
         목록에 없는 값은 그냥 적으면 저장되고 다음부터 목록에 나온다 */
   const TPL_SUG = {season:'시즌 카테고리', cat:'제품 카테고리', vendor:'진행업체', fabric:'FABRIC', factory:'진행공장', c:'COLOR', r:'샘플 차수', first:'date', q:'date', a:'date', solo:'opt'};
   function _tplSugKey(path){
-    let m = String(path || '').match(/^items\.\d+\.colors\.\d+\.([a-z]+)$/);
-    if(m) return ['c', 'r', 'q', 'a'].includes(m[1]) ? m[1] : null;
+    let m = String(path || '').match(/^items\.\d+\.colors\.\d+\.([a-z][a-z0-9]*)$/);
+    if(m) return ['c', 'r', 'q', 'a'].includes(m[1]) || m[1][0] === 'x' ? m[1] : null;
+    m = String(path || '').match(/^items\.\d+\.([xy][a-z0-9]{6,})$/);
+    if(m) return m[1];
     m = String(path || '').match(/^items\.\d+\.([a-z]+)$/);
     return m && TPL_SUG[m[1]] && !['c', 'r', 'q', 'a'].includes(m[1]) ? m[1] : null;
   }
   function _tplSugList(key){
     const cnt = new Map();
     (_tpl.docs.linesheet || []).forEach(d => ((d.data || {}).items || []).forEach(it => {
-      const vals = ['c', 'r', 'q', 'a'].includes(key) ? (it.colors || []).map(c => c && c[key]) : [it[key]];
+      const vals = ['c', 'r', 'q', 'a'].includes(key) ? (it.colors || []).map(c => c && c[key]) : /^[xy]/.test(key) && key.length > 6 ? [it[key], ...(it.colors || []).map(c => c && c[key])] : [it[key]];
       vals.forEach(v => { v = String(v || '').trim(); if(!v || v === '-') return; const k = v.toLowerCase().replace(/\s+/g, ' '); const o = cnt.get(k) || {v, n:0}; o.n++; cnt.set(k, o); });
     }));
     return [...cnt.values()].sort((a, b) => b.n - a.n || a.v.localeCompare(b.v)).map(o => o.v);
@@ -28719,7 +29441,8 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     if(_tplKind() !== 'linesheet' || !cell || !cell.isContentEditable) return _tplSugHide();
     const key = _tplSugKey(cell.dataset.f);
     if(!key) return _tplSugHide();
-    const E = escapeHTML, el = _tplSugEl(), typed = cell.innerText.trim(), q = typed.toLowerCase(), kind = TPL_SUG[key];
+    const E = escapeHTML, el = _tplSugEl(), typed = cell.innerText.trim(), q = typed.toLowerCase(), own = TPL_SUG[key] ? null : _tplLsAll((_tplDocOf(cell) || {data:{}}).data, false).find(x => x.k === key), kind = TPL_SUG[key] || (own && own.date ? 'date' : (own && own.lab) || '적은 값');
+    if(!TPL_SUG[key] && kind !== 'date' && !_tplSugList(key).length) return _tplSugHide();   // 새 칸인데 아직 적은 값이 없으면 목록을 띄우지 않는다
     const opt = v => `<button type="button" data-v="${E(v)}"${v.toLowerCase() === q ? ' class="is-now"' : ''}>${E(v.replace(/\s*\n+\s*/g, ' / '))}</button>`;
     let html = '';
     if(kind === 'date'){
