@@ -14592,7 +14592,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
       <!-- 출력 설정 (2026-11-24 사장님 "오피스에서 바로 출력 가능하다면 기능 넣어주고. 우리가 설정 할 수 있게 해줘") — 저장 = 함수 cj print_save (모든 PC 공통) -->
       <div class="cjb-pane" id="cjbPaneSet" role="tabpanel" aria-labelledby="cjbTabSet" hidden>
-        <p class="cjb-note"><b>자체 출력</b>으로 접수한 건(운송장번호가 바로 붙은 건)을 오피스에서 바로 인쇄해요. 여기 설정은 <b>모든 PC 에 같이</b> 적용돼요. 프린터는 인쇄 창에서 골라요 — 처음 한 번은 인쇄 창 '설정 더보기'에서 <b>여백 없음 · 배율 100% · 용지 크기 = 라벨 크기</b>로 맞춰 주세요. 모양은 <b>CJ 프로그램이 찍는 5인치 운송장</b>과 같게 맞췄어요 (분류코드 · 주소 약칭 · 배송 구역은 CJ 주소정제로). CJ 파란 틀이 인쇄된 전용 용지를 쓰면 아래 &lsquo;글자만 찍기&rsquo;를 켜고, 어긋나면 밀기(mm)로 맞춰요. 운영 전에 견본을 CJ 에 보내 확인받아야 해요.</p>
+        <p class="cjb-note"><b>자체 출력</b>으로 접수한 건(운송장번호가 바로 붙은 건)을 오피스에서 바로 인쇄해요. 여기 설정은 <b>모든 PC 에 같이</b> 적용돼요. 프린터는 인쇄 창에서 골라요 — 처음 한 번은 인쇄 창 '설정 더보기'에서 <b>여백 없음 · 배율 100% · 용지 크기 = 운송장 용지 크기</b>로 맞춰 주세요. <b style="color:#b91c1c">용지 크기가 다르면(예: USER 80 × 130) 운송장이 줄어서 작고 연하게, 칸도 다 어긋나게 찍혀요</b> — 그 크기가 목록에 없으면 프린터 '인쇄 기본 설정'에서 용지를 먼저 추가해요. 모양은 <b>CJ 프로그램이 찍는 5인치 운송장</b>과 같게 맞췄어요 (분류코드 · 주소 약칭 · 배송 구역은 CJ 주소정제로). CJ 파란 틀이 인쇄된 전용 용지를 쓰면 아래 &lsquo;글자만 찍기&rsquo;를 켜고, 어긋나면 밀기(mm)로 맞춰요. 운영 전에 견본을 CJ 에 보내 확인받아야 해요.</p>
         <div class="cjb-set">
           <div class="cjb-set-form">
             <div class="cjb-box">
@@ -19733,16 +19733,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const blue=pv ? '#1d5bbf' : '#000';
     return `@page{size:${W}mm ${H}mm;margin:0}
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}
-body{font-family:'Gulim','굴림','Dotum','돋움','Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .lb{position:relative;width:${W}mm;height:${H}mm;overflow:hidden;page-break-after:always;break-after:page}
 .lb:last-child{page-break-after:auto;break-after:auto}
-.in{position:absolute;left:${pad+(Number(p.ml)||0)}mm;top:${pad+(Number(p.mt)||0)}mm;width:123mm;height:100mm;transform-origin:0 0;transform:${tf};font-size:${em}mm;line-height:1.15}
+.in{position:absolute;left:${pad+(Number(p.ml)||0)}mm;top:${pad+(Number(p.mt)||0)}mm;width:123mm;height:100mm;transform-origin:0 0;transform:${tf};font-size:${em}mm;line-height:1.15;font-weight:700${pv ? '' : ';-webkit-text-stroke:.09mm #000'}}
 .in>*{position:absolute;margin:0}
 .one{white-space:nowrap;overflow:hidden}
 .num{font-family:Arial,Helvetica,'Malgun Gothic',sans-serif}
-.b{font-weight:700}.bb{font-weight:900}
+.b{font-weight:800}.bb{font-weight:900}
 .cb{color:${blue}}
-.bx{background:${blue};color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05;border-radius:.35mm}
+.bx{background:${blue};color:#fff;font-weight:800;-webkit-text-stroke:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05;border-radius:.35mm}
 .tint{background:#fff3c4;display:${pv ? 'block' : 'none'}}
 .frame{border:.45mm solid ${blue};border-radius:.7mm}
 .code{display:flex;align-items:baseline;white-space:nowrap;line-height:1;font-family:Arial,Helvetica,sans-serif;font-weight:900;letter-spacing:-.02em}
@@ -19754,7 +19754,7 @@ body{font-family:'Gulim','굴림','Dotum','돋움','Malgun Gothic','맑은 고�
 .warn{color:${pv ? '#c00' : '#000'};font-weight:700;white-space:normal}
 .pre .pp{visibility:hidden}
 ${pv ? '.pre .pp{visibility:visible}' : ''}
-.al .pp{visibility:hidden}.al .pp.bx,.al .pp.frame{visibility:visible;background:none;color:transparent;border:.25mm solid #000}`;
+.al .pp{visibility:hidden}.al .pp.bx,.al .pp.frame{visibility:visible;background:none;color:transparent;-webkit-text-stroke:0;border:.3mm solid #000}`;
   }
   function _cjbLabelHtml(lb,p,o){
     const e=_cjbEsc, r=lb.rcvr||{}, s=lb.sendr||{}, c=lb.clsf;
