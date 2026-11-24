@@ -17954,14 +17954,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 열린 직원 호출 (2026-11-24 사장님 '모두 추천대로' 21번 "한 번만 부르고 직원이 답할 때까지 '열린 호출' 목록에 남기기") — 서버 초안 파일의 openCalls.
   // 에이전트가 '확인 중'이라고 답해 기다림에서 빠져도 직원이 답할 때까지 직원 호출에 남는다. 초안 파일보다 나중에 직원이 답했으면 닫힌 것으로
   function _kkoOpenCall(r){
-    const x=(((_kko.drafts||{}).openCalls)||[]).find(x=>x.pid===r.pid && x.chatId===r.chatId);
+    const x=(((_kko.drafts||{}).openCalls)||[]).find(x=>x.pid===r.pid && x.chatId===r.chatId && x.kind!=='todo');
+    return x && !(r.lastWho==='staff' && (r.lastAt||0)>x.since) ? x : null;
+  }
+  // 처리할 일 (2026-11-24 사장님 "에이전트가 주로 다 처리하고 직원은 아직 학습안되었거나 이미지를 확인해야할때만 써") — 대화는 에이전트가 하고 손으로 할 일만(수거 접수 · 환불 · 입금 확인 · 재발송 …)
+  function _kkoTodo(r){
+    const x=(((_kko.drafts||{}).openCalls)||[]).find(x=>x.pid===r.pid && x.chatId===r.chatId && x.todo);
     return x && !(r.lastWho==='staff' && (r.lastAt||0)>x.since) ? x : null;
   }
   function _kkoIsStaff(r){
     if(r.managerCall || _kkoOpenCall(r)) return true;
     if(!_kkoWaiting(r)) return false;
     const x=_kkoDraft(r.pid,r.chatId);
-    return !!(x && x.owner==='staff');
+    return !!(x && x.owner==='staff' && x.to!=='todo');
   }
   function _kkoStaffWhy(r){
     if(r.managerCall) return '고객이 관리자 호출을 눌렀어요';
@@ -18016,7 +18021,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(rp && rp.total>0){
       const pct=Number.isFinite(rp.agentPct) ? rp.agentPct : Math.round((rp.agent||0)/rp.total*1000)/10;
       const top=(rp.staffTop||[]).slice(0,5).map(x=>`${x.why} ${n(x.n)}`).join(' · ');
-      it.push(card('지난 대화로 시험', `${E(pct)}<small>%</small>`, `에이전트가 답 ${n(rp.agent)} / ${n(rp.total)}${rp.calls>0 ? ` · 직원 호출 ${n(rp.calls)} (이미 부른 방 ${n(rp.repeat||0)} 빼고)` : ''}${rp.at ? ' · '+E(when(rp.at)) : ''}`, '',
+      it.push(card('지난 대화로 시험', `${E(pct)}<small>%</small>`, `에이전트가 답 ${n(rp.agent)} / ${n(rp.total)}${rp.calls>0 ? ` · 직원 호출 ${n(rp.calls)}${rp.todos>0 ? ` · 처리할 일 ${n(rp.todos)}` : ''} (이미 부른 방 ${n(rp.repeat||0)} 빼고)` : ''}${rp.at ? ' · '+E(when(rp.at)) : ''}`, '',
         `지난 대화에서 고객이 물은 순간마다 지금 규칙으로 초안을 다시 만들어 본 결과${top ? ' — 직원 몫 이유: '+top : ''}`));
     }
     const lv=L.live;
@@ -18124,13 +18129,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // 기본 목록 = 답해야 하는 것만. 답 완료(직원이 답했고 그 뒤 고객 글이 없는 방 · 고객 마무리 인사)는 가려 두고 '답 완료' 칩(탭)으로만
     // (11-20 사장님 "답변 완료 상담은 그냥 없애자" → 같은 날 저녁 "답변을 해야하는것만 띄우주고. 답 기다림 옆에 답 완료 탭에 완료된건 가려주고 완료탭으로 이동").
     // 고객이 다시 쓰면 답 기다림 맨 아래로 돌아옴
-    const needs=r=>_kkoIsStaff(r) || _kkoWaiting(r), isWait=r=>!_kkoIsStaff(r) && _kkoWaiting(r);
-    if(!['staff','wait','done'].includes(_kko.only)) _kko.only='';
+    const needs=r=>_kkoIsStaff(r) || _kkoTodo(r) || _kkoWaiting(r), isTodo=r=>!_kkoIsStaff(r) && !!_kkoTodo(r), isWait=r=>!_kkoIsStaff(r) && !_kkoTodo(r) && _kkoWaiting(r);
+    if(!['staff','todo','wait','done'].includes(_kko.only)) _kko.only='';
     const doneTab=_kko.only==='done', inView=doneTab ? r=>!needs(r) : needs;
     const base=_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand);
     const since=r=>((_kkoOpenCall(r)||{}).since||r.waitingSince||r.lastAt)||0;
     const staffRows=base.filter(_kkoIsStaff).sort((a,b)=>since(a)-since(b));
     const waitRows=base.filter(isWait).sort((a,b)=>since(a)-since(b));
+    const todoRows=base.filter(isTodo).sort((a,b)=>((_kkoTodo(a)||{}).since||0)-((_kkoTodo(b)||{}).since||0));
     const doneRows=base.filter(r=>!needs(r)).sort((a,b)=>(a.lastAt||0)-(b.lastAt||0));   // 오래된 것 위 · 맨 아래가 가장 최근
     const late=waitRows.filter(_kkoLate).length;
     const drNote=off ? '' : dr ? `서버 판정 ${Math.max(0,Math.round(dAge/60))}분 전` : (_kko.draftsErr ? '서버 판정을 아직 못 받아 관리자 호출만 셈' : '');
@@ -18138,6 +18144,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const pick=(key,label,n,hot,title,extra)=>`<button type="button" class="kko-chip${hot && n ? ' hot' : ''}${n ? '' : ' zero'}${_kko.only===key ? ' on' : ''}" onclick="kkoOnly('${key}')" aria-pressed="${_kko.only===key}" title="${_kkoEsc(title)} — 누르면 이것만 보기">${label} <b>${n}</b>${extra||''}</button>`;
     chips.innerHTML=pick('staff','직원 호출',staffRows.length,true,(off ? '에이전트를 꺼 둔 동안은 고객이 관리자 호출을 누른 채팅방만 — 다시 켜면 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화도'
         : '직원이 답해야 하는 채팅방 — 관리자 호출 · 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화')+(drNote ? ` (${drNote})` : ''))
+      + (todoRows.length || _kko.only==='todo' ? pick('todo','처리할 일',todoRows.length,false,'대화는 에이전트가 했고 사람 손으로 할 일이 남은 채팅방 — 수거 접수 · 환불 · 입금 확인 · 재발송') : '')
       + pick('wait','답 기다림',waitRows.length,late>0,`고객 글이 마지막인 채팅방 (최근 ${d.windowDays}일, 마무리 인사 · 직원 호출 뺌) — 빨강은 상담 시간 중 ${KKO_LATE_MIN}분 넘게 기다린 곳`, late ? `<small>${KKO_LATE_MIN}분 넘음 ${late}</small>` : '')
       + pick('done','답 완료',doneRows.length,false,`직원이 답했고 그 뒤 고객 글이 없는 채팅방 (최근 ${d.windowDays}일, 고객 마무리 인사 포함) — 기본 목록에서는 가려 둠`);
     // 채팅 탭 빨간 숫자 = 모든 브랜드의 직원 호출 + 답 기다림
@@ -18153,7 +18160,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + `<button type="button" onclick="kkoToggleCh()" aria-expanded="${_kko.showCh}">채널 ${chans.length}개 ${_kko.showCh?'▴':'▾'}</button>`;
     // 줄 순서 (사장님 11-19 "오래 기다린사람부터 맨위로 · 제일 최근에 연락온사람은 하단으로"): 직원 호출 · 답 기다림 모두 오래 기다린 것부터 —
     // 맨 아래가 가장 최근. 칩을 눌렀으면 그 묶음만 (답 완료도 오래된 것 위 · 맨 아래가 가장 최근).
-    const qS=doneTab || _kko.only==='wait' ? [] : staffRows, qW=doneTab || _kko.only==='staff' ? [] : waitRows;
+    const qS=doneTab || ['wait','todo'].includes(_kko.only) ? [] : staffRows, qT=doneTab || ['wait','staff'].includes(_kko.only) ? [] : todoRows, qW=doneTab || ['staff','todo'].includes(_kko.only) ? [] : waitRows;
     const ae=document.activeElement, focusK=(ae && ae.classList && ae.classList.contains('kko-row')) ? ae.dataset.k : '';
     const openK=_kko.chat ? _kko.chat.key : '';
     // 카카오톡 채팅 목록 한 줄: 프로필(브랜드 점) · 이름 + 브랜드 / 배지(직원 호출 · 이미지 확인 필요) + 마지막 글 · 오른쪽 시각 + 빨간 안 읽음 숫자
@@ -18164,15 +18171,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<button type="button" class="kko-row${r.unread>0?' unread':''}${key===openK?' on':''}" data-k="${_kkoEsc(key)}" onclick="kkoOpenChat(this.dataset.k)" title="${_kkoEsc(tip)}">`
         + `<span class="kko-av reo-b-${_kkoEsc(r.brand)}" aria-hidden="true"><i>${KKO_AV}</i></span>`
         + `<span class="kko-main"><span class="kko-l1"><b>${_kkoEsc(r.nick)}</b><span class="kko-bn">${_kkoEsc(label)}</span></span>`
-        + `<span class="kko-l2">${staff ? '<span class="kko-bd call">직원 호출</span>' : ''}${mb ? `<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>` : ''}<span class="kko-pv">${_kkoEsc(r.preview||'(사진 · 파일)')}</span></span></span>`
+        + `<span class="kko-l2">${staff ? '<span class="kko-bd call">직원 호출</span>' : _kkoTodo(r) ? `<span class="kko-bd">${_kkoEsc(_kkoTodo(r).todo)}</span>` : ''}${mb ? `<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>` : ''}<span class="kko-pv">${_kkoEsc(r.preview||'(사진 · 파일)')}</span></span></span>`
         + `<span class="kko-side"><span class="kko-tm ${tm.cls}">${_kkoEsc(tm.text)}</span>${r.unread>0 ? `<span class="kko-ur" title="안 읽은 메시지 ${r.unread}">${r.unread>299 ? '300+' : r.unread}</span>` : ''}</span></button>`;
     };
     const head=(cls,label,n)=>`<div class="kko-grp${cls ? ' '+cls : ''}"><span>${label}</span><em>${n}</em></div>`;
     let html='';
     if(qS.length) html+=head('call','직원 호출',qS.length)+qS.map(rowHtml).join('');
+    if(qT.length) html+=head('','처리할 일',qT.length)+qT.map(rowHtml).join('');
     if(qW.length) html+=head('','답 기다림',qW.length)+qW.map(rowHtml).join('');
     if(doneTab && doneRows.length) html+=head('done','답 완료',doneRows.length)+doneRows.map(rowHtml).join('');
-    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({staff:'직원 호출이 필요한 채팅이 없어요',wait:'답을 기다리는 채팅이 없어요',done:`최근 ${d.windowDays}일 안에 답 완료된 채팅이 없어요`})[_kko.only] || '지금 직원 호출 · 답 기다리는 상담이 없어요'}</div>`;
+    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({staff:'직원 호출이 필요한 채팅이 없어요',todo:'처리할 일이 없어요',wait:'답을 기다리는 채팅이 없어요',done:`최근 ${d.windowDays}일 안에 답 완료된 채팅이 없어요`})[_kko.only] || '지금 직원 호출 · 답 기다리는 상담이 없어요'}</div>`;
     if(focusK){ const el=[...list.querySelectorAll('.kko-row')].find(x=>x.dataset.k===focusK); if(el) el.focus({preventScroll:true}); }
     // 에이전트 학습 탭 — 바뀐 게 있을 때만 다시 그림
     const ln=document.getElementById('kkoLearn');
@@ -18759,7 +18767,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      서버 /cs/kakao-test = 맥미니 state/kakao/learn/test.json — 가린 실제 문의(지금 답 기다리는 문의 · 학습에 안 쓴 새 대화 · 지난 대화)에 AI 두뇌가 쓴 답 · 지금 규칙 답 · 실제 나간 답과 채점.
      고객에게 나가지 않는다 · 보기만. 관리자만(서버도 막음), 고객 글은 사무실 인터넷에서만(밖이면 숫자만). 창 모양은 시나리오 북(.kbk) 그대로. */
   const _kts={data:null,err:'',loading:false,open:false,ret:null,ov:'',f:'all',q:'',n:20,t:null};
-  const KTS_ACT={answer:'바로 답',ask:'정보를 물음',staff:'직원에게 넘김'};
+  const KTS_ACT={answer:'바로 답',ask:'정보를 물음',staff:'직원에게 넘김',todo:'답하고 처리할 일로'};
   const KTS_G={good:'맞음',weak:'아쉬움',bad:'틀림'};
   // 11-23 2차 — 사장님 기준(직접 변경 · 취소 · 배송 확인) + 직원 · 카나나 실제 답 학습. 지금 규칙 답은 보여 주지 않음(사장님 "규칙이 틀린건 바로 지워줘")
   const KTS_SET=[['wait','지금 답 기다리는 문의','시험을 돌린 때 답을 기다리던 문의예요. 채점은 없어요.'],['new','새 문의','학습에 쓰지 않은 11-20 오후 뒤 문의 전부예요 (직원이 이미 상담하던 대화와 인사만 한 글은 빼고).']];
@@ -18817,13 +18825,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return;
     }
     const S=(d.sums||{}).new||{}, L=d.learned||{}, B=d.before||{};
-    const tot=['answer','ask','staff'].reduce((a,k)=>a+((S[k]||{}).n||0),0);
+    const tot=['answer','ask','todo','staff'].reduce((a,k)=>a+((S[k]||{}).n||0),0);
     const row=(k)=>{ const x=S[k]||{}; return `<tr><th>${E(KTS_ACT[k])}</th><td>${x.n||0}</td><td>${x.good||0}</td><td>${x.weak||0}</td><td>${x.bad ? `<i>${x.bad}</i>` : 0}</td></tr>`; };
     const pct=v=>tot ? Math.round(v/tot*100)+'%' : '';
-    const self=((S.answer||{}).n||0)+((S.ask||{}).n||0);
+    const self=((S.answer||{}).n||0)+((S.ask||{}).n||0)+((S.todo||{}).n||0);
     const ov=`<section class="kbk-sec" id="kts-ov"><h3>한눈에</h3><p>${d.intro ? E(d.intro) : `사장님 기준(배송지 변경 · 취소 · 배송 확인은 고객이 직접, 운송장 출력 뒤 변경 불가)을 넣고, 지난 대화의 직원 답 ${N(L.staff)}건 · 카나나 답 ${N(L.kanana)}건을 브랜드별 직원 지침 ${N(L.guides)}개로 정리해 학습시켰어요. 학습에 쓰지 않은 새 문의 ${tot}건을 풀게 했고, 실제 나간 답은 안 보여 줬어요.`}</p>`
       + `<div class="kbk-over"><div class="kbk-card"><div class="kbk-h"><b>직원 없이 끝냄</b></div><div class="kbk-num"><span>${self} / ${tot} (${pct(self)})</span></div></div><div class="kbk-card"><div class="kbk-h"><b>직원에게 넘김</b></div><div class="kbk-num"><span>${(S.staff||{}).n||0} / ${tot} (${pct((S.staff||{}).n||0)})</span></div></div>${d.calls ? `<div class="kbk-card"><div class="kbk-h"><b>새로 부르는 직원 호출</b></div><div class="kbk-num"><span>${d.calls.new} / ${d.calls.total} (${Math.round(d.calls.new/d.calls.total*100)}%)</span></div></div>` : ''}<div class="kbk-card"><div class="kbk-h"><b>${E(B.short||'1차 시험 때')}</b></div><div class="kbk-num"><span>넘김 ${B.staff||0} / ${(B.auto||0)+(B.staff||0)} (${(B.auto||0)+(B.staff||0) ? Math.round((B.staff||0)/((B.auto||0)+(B.staff||0))*100) : 0}%)</span></div></div></div>`
-      + `<div class="kbk-tbl" style="margin-top:8px"><table><thead><tr><th></th><th>건수</th><th>맞음</th><th>아쉬움</th><th>틀림</th></tr></thead><tbody>${row('answer')}${row('ask')}${row('staff')}</tbody></table></div>`
+      + `<div class="kbk-tbl" style="margin-top:8px"><table><thead><tr><th></th><th>건수</th><th>맞음</th><th>아쉬움</th><th>틀림</th></tr></thead><tbody>${row('answer')}${row('ask')}${S.todo ? row('todo') : ''}${row('staff')}</tbody></table></div>`
       + `<div class="kbk-note">채점: ${E(d.grader||'')}. 한 달 비용 어림 ${d.monthLow ? `약 ${Math.round(d.monthLow/10000)}만~${Math.round(d.monthHigh/10000)}만 원` : ''} (하루 새 문의 ${E(d.perDay)}건 · 1달러 1,400원). ${E(d.compareNote||'1차 시험은 규칙이 답하던 쉬운 문의만이라 그대로 비교하기는 어려워요.')}</div></section>`;
     // 고정 시험지 (11-23 사장님 "고정 시험지 만들기") — 규칙을 고칠 때마다 맥미니 kakao-exam 이 다시 채점. 고객 글 없음
     const x=d.exam;
