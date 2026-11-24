@@ -30,7 +30,7 @@
     list.forEach(function (a) {
       if (pushed[a.key] && now - pushed[a.key] < (a.level === 'stop' ? 30 : 180) * 60000) return;
       pushed[a.key] = now;
-      try { var n = new Notification((a.level === 'stop' ? '🔴 ERP 문제 — ' : '🟠 ERP 확인 — ') + a.title, { body: String(a.body || '').slice(0, 160), tag: 'erp-' + a.key, requireInteraction: a.level === 'stop', icon: 'assets/icon-192.png?v=2' }); n.onclick = function () { window.focus(); n.close(); }; } catch (e) { /* 휴대폰 크롬 등 */ }
+      try { var n = new Notification((a.level === 'stop' ? '🔴 ERP 문제 — ' : '🟠 ERP 확인 — ') + a.title, { body: String(a.body || '').slice(0, 160), tag: 'erp-' + a.key, requireInteraction: a.level === 'stop', icon: 'assets/icon-192.png?v=2' }); n.onclick = function () { window.focus(); n.close(); if (window.bbNotifSeen) window.bbNotifSeen(); }; } catch (e) { /* 휴대폰 크롬 등 */ }
     });
     Object.keys(pushed).forEach(function (k) { if (now - pushed[k] > 86400000) delete pushed[k]; });
     ls('erp_alert_push', JSON.stringify(pushed));
