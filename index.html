@@ -34064,6 +34064,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     // 오늘 '한 일'을 하나도 안 적은 사람 (대표는 판단에서 제외, 퇴사자도 당연히 제외 · 오늘 연차 · 경조사휴가 · 출산휴가인 사람도 제외 2026-11-23)
     const missing = (typeof _diaryVisibleStaff === 'function' ? _diaryVisibleStaff() : STAFF).filter(st=>{
       if(st.ceo || _dslOnLeave(st.name, today)) return false;
+      try{ if(_dsl.data && _dsl.data.out.has(st.name)) return false; }catch(e){}   // 퇴사 · 업무일지 숨김
       const e = _diaryEntries[st.name];
       if(!e) return true;
       return (e.tasks||[]).length === 0;
@@ -38843,13 +38844,16 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   let _leave_lastHash=null;
   /* 숨긴 직원(퇴사자) 명단 — staff_hidden 테이블에서 동기화. 조직도·연차 현황·신청서에서 필터 */
   const _hiddenStaff=new Set();
+  // 지난번 받은 퇴사자 명단으로 먼저 시작 — 서버 응답 전 첫 화면에도 퇴사자가 안 뜨게 (2026-11-24)
+  try{ for(const n of JSON.parse(localStorage.getItem('bu_staff_hidden_v1')||'[]')) if(n) _hiddenStaff.add(n); }catch(e){}
+  function _saveHiddenStaff(){ try{ localStorage.setItem('bu_staff_hidden_v1', JSON.stringify([..._hiddenStaff])); }catch(e){} }
   function isStaffHidden(name){return _hiddenStaff.has(name)}
   /* 대표는 연차/조직도/신청서에서 제외 (업무일지 카드에만 노출) */
   function activeStaff(){return STAFF.filter(s=>!_hiddenStaff.has(s.name) && !s.ceo)}
   window.activeStaff=activeStaff;
   window.isStaffHidden=isStaffHidden;
   /* 업무일지가 따로 받아온 퇴사자 명단도 바로 반영 — 연차 묶음이 늦거나 실패해도 퇴사자가 '미작성'에 뜨지 않게 (2026-11-24). 새로 추가된 게 있으면 true */
-  window.addStaffHidden=function(names){let n=0;for(const x of (names||[])) if(x && !_hiddenStaff.has(x)){_hiddenStaff.add(x);n++}return n>0};
+  window.addStaffHidden=function(names){let n=0;for(const x of (names||[])) if(x && !_hiddenStaff.has(x)){_hiddenStaff.add(x);n++} if(n) _saveHiddenStaff(); return n>0};
 
   /* 직책(팀장 등) — staff_titles 테이블에서 동기화. 마스터가 인사팀 편집 모드에서 입력/삭제.
      조직도 pill · 연차 카드 이름 옆에 표시되고, 직책 있는 사람이 팀 맨 위로 온다. */
@@ -38915,6 +38919,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         const hidden=await hiddenR.json();
         _hiddenStaff.clear();
         for(const h of (hidden||[])) if(h?.staff_name) _hiddenStaff.add(h.staff_name);
+        _saveHiddenStaff();
       }
       const data={};
       for(const o of (overrides||[])){
