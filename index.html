@@ -5405,6 +5405,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .cjb-st.gray{background:#eee;color:#666}
   .cjb-sum{font-size:12px;color:var(--text-3)}
   .cjb-sum b{color:var(--text-0)}
+  .cjb-ret{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;margin:0 0 12px;padding:12px;border:1.5px solid #fcd9a8;border-radius:10px;background:#fffaf2}
+  .cjb-f>span small{font-weight:600;color:var(--text-3)}
+  .cjb-postbox{grid-column:1/-1;border:1px solid var(--line-2);border-radius:10px;overflow:hidden;background:#fff}
+  .cjb-posthd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:var(--text-2)}
+  .cjb-postw{height:340px}
   .cjb-set{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
   .cjb-chk{display:flex;align-items:center;gap:7px;padding:3px 0;font-size:12.5px;color:var(--text-1);cursor:pointer}
   .cjb-chk input{width:15px;height:15px;accent-color:var(--cjb-acc)}
@@ -14437,6 +14442,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <span class="cjb-seg" id="cjbPrt" role="group" aria-label="운송장 출력"><button type="button" data-v="01" aria-pressed="true" onclick="cjbSetPrt('cjbPrt','01')">CJ 프로그램에서 출력</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbSetPrt('cjbPrt','02')">자체 출력 (운송장번호 바로)</button></span>
           <label class="cjb-lab">브랜드 <select class="cjb-in" id="cjbBrand" style="width:auto;min-height:32px"></select></label>
         </div>
+        <!-- 반품 회수 — 원 운송장번호로 불러오기 (2026-11-24 사장님 "반품회수는 쉽게 운송장 조회만해서 접수 가능하게 해줘" · "반품접수한건 기록 남게") -->
+        <div class="cjb-ret" id="cjbRetTop" hidden>
+          <div class="cjb-f" style="flex:1 1 260px"><span>원 운송장번호 — 넣고 [불러오기] 하면 고객 · 주소 · 상품이 채워져요</span>
+            <div class="cjb-zip"><input class="cjb-in" id="cjbOri" inputmode="numeric" autocomplete="off" placeholder="반품할 물건이 나갈 때 송장번호" onkeydown="if(event.key==='Enter'){event.preventDefault();cjbRetLoad();}"><button type="button" class="cjb-btn pri" onclick="cjbRetLoad()">불러오기</button></div></div>
+          <label class="cjb-f" style="flex:0 1 200px"><span>반품 사유 <i>*</i></span><select class="cjb-in" id="cjbReason"><option value="">고르기</option><option>단순 변심</option><option>불량</option><option>오배송 (다른 상품 · 옵션)</option><option>파손</option><option>교환</option><option>배송 지연</option><option>기타</option></select></label>
+          <div class="cjb-out" id="cjbRetMsg" style="flex:1 1 100%"></div>
+        </div>
         <div class="cjb-grid">
           <div class="cjb-box">
             <div class="cjb-bh" id="cjbCustH">받는 분</div>
@@ -14444,7 +14456,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <label class="cjb-f s3"><span>이름 <i>*</i></span><input class="cjb-in" id="cjbCNm" autocomplete="off"></label>
               <label class="cjb-f s3"><span>전화 <i>*</i></span><input class="cjb-in" id="cjbCTel" inputmode="tel" autocomplete="off" placeholder="010-0000-0000"></label>
               <div class="cjb-f s3"><span>우편번호 <i>*</i></span><div class="cjb-zip"><input class="cjb-in" id="cjbCZip" inputmode="numeric" maxlength="6" autocomplete="off"><button type="button" class="cjb-btn" onclick="cjbPost('C')">주소 찾기</button></div></div>
-              <label class="cjb-f"><span>주소 <i>*</i></span><input class="cjb-in" id="cjbCAddr" autocomplete="off" placeholder="도로명 주소 (건물번호까지)"></label>
+              <label class="cjb-f"><span>주소 <i>*</i> <small>— 쓰고 엔터 누르면 우편번호까지 찾아요</small></span><input class="cjb-in" id="cjbCAddr" autocomplete="off" placeholder="예: 청초로 10 → 엔터" onkeydown="if(event.key==='Enter'){event.preventDefault();cjbAddrFind('C');}"></label>
+              <div class="cjb-postbox" id="cjbPostC" hidden></div>
               <label class="cjb-f"><span>상세 주소</span><input class="cjb-in" id="cjbCDet" autocomplete="off" placeholder="동 · 호수 · 층"></label>
             </div>
           </div>
@@ -14457,7 +14470,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <label class="cjb-f s2"><span>박스</span><select class="cjb-in" id="cjbBoxT"></select></label>
               <label class="cjb-f s3"><span>주문번호 (없으면 자동)</span><input class="cjb-in" id="cjbOrd" autocomplete="off"></label>
               <label class="cjb-f s3"><span>물품 가액 (원)</span><input class="cjb-in" id="cjbAmt" inputmode="numeric" autocomplete="off"></label>
-              <label class="cjb-f" id="cjbOriF" hidden><span>원 운송장번호 (반품할 물건이 나갈 때 송장)</span><input class="cjb-in" id="cjbOri" inputmode="numeric" autocomplete="off"></label>
               <label class="cjb-f"><span>배송 메시지</span><input class="cjb-in" id="cjbMemo" autocomplete="off"></label>
             </div>
           </div>
@@ -14469,7 +14481,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <label class="cjb-f s3"><span>전화 <i>*</i></span><input class="cjb-in" id="cjbSTel" inputmode="tel" autocomplete="off"></label>
             <div class="cjb-f s3"><span>우편번호 <i>*</i></span><div class="cjb-zip"><input class="cjb-in" id="cjbSZip" inputmode="numeric" maxlength="6" autocomplete="off"><button type="button" class="cjb-btn" onclick="cjbPost('S')">주소 찾기</button></div></div>
             <label class="cjb-f s3"><span>상세 주소</span><input class="cjb-in" id="cjbSDet" autocomplete="off"></label>
-            <label class="cjb-f"><span>주소 <i>*</i></span><input class="cjb-in" id="cjbSAddr" autocomplete="off"></label>
+            <label class="cjb-f"><span>주소 <i>*</i> <small>— 쓰고 엔터</small></span><input class="cjb-in" id="cjbSAddr" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();cjbAddrFind('S');}"></label>
+            <div class="cjb-postbox" id="cjbPostS" hidden></div>
           </div>
           <div class="cjb-act"><button type="button" class="cjb-btn" onclick="cjbSaveSender()">이 주소를 기본값으로 저장</button><span class="cjb-sum" id="cjbSenderMsg">일반 발송의 보내는 분 · 반품 회수의 회수지로 쓰여요</span></div>
         </details>
@@ -14513,6 +14526,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <button type="button" class="cjb-btn" onclick="document.getElementById('cjbLQ').value='';cjbList()" title="다시 불러오기">↻</button>
           <button type="button" class="cjb-btn pri" onclick="cjbPrintSel()" title="체크한 줄의 운송장을 인쇄 (운송장번호가 있는 건만)">🖨 선택한 운송장 출력</button>
         </div>
+        <div class="cjb-row"><span class="cjb-seg" id="cjbLDv" role="group" aria-label="구분으로 거르기"><button type="button" data-v="" aria-pressed="true" onclick="cjbListDv('')">전체</button><button type="button" data-v="01" aria-pressed="false" onclick="cjbListDv('01')">발송</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbListDv('02')">반품 회수 기록</button></span></div>
         <p class="cjb-note">취소는 접수가 CJ 에 반영된 뒤(보통 1분, 길면 10분쯤)부터 돼요. 자체 출력으로 접수한 건 · 기사님이 집화한 건 · CJ 에서 출력한 건은 취소가 안 돼요. 운송장 출력은 운송장번호가 있는 건(자체 출력)만 — CJ 프로그램 출력 건은 CJ 프로그램에서 찍어요. CJ 프로그램 출력 건의 운송장번호 · 최근 단계는 <b>30분마다 CJ 에서 가져와</b> 채워요 (기사님이 집화한 뒤부터).</p>
         <div class="cjb-out" id="cjbLOut"></div>
         <div class="cjb-tbl-wrap" id="cjbLWrap" hidden><table class="cjb-tbl" id="cjbLTbl"></table></div>
@@ -19027,15 +19041,60 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const prt=document.getElementById('cjbPrt'); if(prt) prt.hidden=ret;   // 반품 회수는 가이드상 CJ 출력(기사님이 출력)만
     const h=document.getElementById('cjbCustH'); if(h) h.textContent=ret ? '회수할 곳 (고객 · 기사님이 가지러 가는 곳)' : '받는 분';
     const co=document.getElementById('cjbCoH'); if(co) co.textContent=ret ? '회수지 (반품 받을 곳)' : '보내는 분';
-    const ori=document.getElementById('cjbOriF'); if(ori) ori.hidden=!ret;
+    const top=document.getElementById('cjbRetTop'); if(top) top.hidden=!ret;
     const go=document.getElementById('cjbOneGo'); if(go) go.textContent=ret ? '회수 접수하기' : '접수하기';
+    if(ret) setTimeout(()=>document.getElementById('cjbOri')?.focus({preventScroll:true}),0);
+  }
+  // 반품 회수 — 원 운송장번호로 불러오기 (2026-11-24 사장님 "반품회수는 쉽게 운송장 조회만해서 접수 가능하게 해줘")
+  // 오피스에서 접수한 송장이면 회수할 곳 · 상품 · 브랜드가 다 채워진다. 식스샵에서 나간 송장은 주소를 가진 곳이 없어 이름 · 전화 · 주소만 넣으면 됨.
+  async function cjbRetLoad(){
+    const msg=document.getElementById('cjbRetMsg'), inv=_cjbV('cjbOri').replace(/\D/g,'');
+    const say=(h,c)=>{ if(msg) msg.innerHTML=`<div class="cjb-msg ${c||''}">${h}</div>`; };
+    if(!/^\d{10,14}$/.test(inv)){ say('운송장 번호(숫자 10~14자리)를 넣어 주세요','err'); return; }
+    say('찾는 중…');
+    try{
+      const j=await _cjbCall({action:'from_invc',invc_no:inv});
+      if(!j.ok) throw new Error(j.error||'못 찾았어요');
+      const prev=(j.returns||[]).filter(x=>x.status!=='cancelled');
+      const warn=prev.length ? ` · <b style="color:#b45309">이미 반품 접수한 송장이에요 (${prev.length}건 — 상세 조회 › 반품 회수 기록)</b>` : '';
+      if(!j.found){ say(`오피스에서 접수한 송장이 아니라 고객 정보를 못 불러왔어요 — 이름 · 전화 · 주소(쓰고 엔터)만 넣어 주세요. 주문은 '주문 찾기' 탭에서 볼 수 있어요.${warn}`); document.getElementById('cjbCNm')?.focus(); return; }
+      const c=j.customer||{};
+      _cjbSet('cjbCNm',c.nm); _cjbSet('cjbCTel',c.tel); _cjbSet('cjbCZip',c.zip); _cjbSet('cjbCAddr',c.addr); _cjbSet('cjbCDet',c.detail);
+      const g=(j.goods||[]);
+      _cjbSet('cjbGNm', g.map(x=>x.nm).filter(Boolean).join(', ').slice(0,150)); _cjbSet('cjbGOpt',''); _cjbSet('cjbGQty', g.length===1 ? (g[0].qty||1) : 1);
+      if(j.brand) _cjbSet('cjbBrand', j.brand);
+      ['cjbCNm','cjbCTel','cjbCZip','cjbCAddr','cjbGNm'].forEach(id=>document.getElementById(id)?.classList.remove('bad'));
+      say(`✅ ${_cjbEsc(String(j.booked_at||'').slice(5,10).replace('-','/'))} 접수한 송장에서 불러왔어요 (${_cjbEsc(c.nm||'')} · ${_cjbEsc(g.length)}개 상품) — 반품 사유만 고르고 [회수 접수하기]${warn}`, prev.length ? '' : 'ok');
+      document.getElementById('cjbReason')?.focus();
+    }catch(e){ say(_cjbEsc((e && e.message) || String(e)),'err'); }
+  }
+  // 주소 쓰고 엔터 → 우편번호까지 (2026-11-24 사장님 "주소칸에 청초로10 엔터 누르면 우편번호랑 자동으로 입력")
+  // 다음(카카오) 우편번호 검색을 주소 칸 바로 아래에 펼쳐 쓴 글로 바로 찾는다 → 한 번 누르면 우편번호 · 도로명 주소가 들어간다
+  async function cjbAddrFind(w){
+    const q=_cjbV(`cjb${w}Addr`), box=document.getElementById(`cjbPost${w}`);
+    if(!box) return;
+    if(!q){ cjbPost(w); return; }
+    try{ await _cjbLoadPost(); }catch(e){ alert(e.message); return; }
+    box.hidden=false;
+    box.innerHTML=`<div class="cjb-posthd"><span>‘${_cjbEsc(q)}’ — 맞는 주소를 누르면 우편번호와 함께 들어가요 (동 · 호수는 아래 상세 주소에)</span><button type="button" class="cjb-btn sm" onclick="document.getElementById('cjbPost${w}').hidden=true">닫기</button></div><div class="cjb-postw"></div>`;
+    const wrap=box.querySelector('.cjb-postw');
+    new window.daum.Postcode({
+      width:'100%', height:'100%',
+      oncomplete(d){
+        _cjbSet(`cjb${w}Zip`, d.zonecode); _cjbSet(`cjb${w}Addr`, d.roadAddress || d.jibunAddress || d.address);
+        ['Zip','Addr'].forEach(k=>document.getElementById(`cjb${w}${k}`)?.classList.remove('bad'));
+        box.hidden=true; box.innerHTML='';
+        if(w==='S') _cjbCoSum();
+        document.getElementById(`cjb${w}Det`)?.focus();
+      },
+    }).embed(wrap,{q, autoClose:false});
   }
   // 주소 찾기 — 다음(카카오) 우편번호 창. CJ 는 우편번호가 없으면 접수를 안 받는다 (ORA-01400)
   function _cjbLoadPost(){
     return new Promise((res,rej)=>{
       if(window.daum && window.daum.Postcode) return res();
       const s=document.createElement('script');
-      s.src='https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      s.src='https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';   // 2026-11-30 t1.daumcdn.net 종료 공지 → kakaocdn
       s.onload=()=>res(); s.onerror=()=>rej(new Error('주소 찾기 창을 못 불러왔어요'));
       document.head.appendChild(s);
     });
@@ -19063,9 +19122,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       document.getElementById(id)?.classList.toggle('bad',bad);
       if(bad){ miss=true; if(/^cjbS/.test(id)) coMiss=true; }
     });
+    if(ret){ const rs=document.getElementById('cjbReason'), bad=!_cjbV('cjbReason'); rs?.classList.toggle('bad',bad); if(bad) miss=true; }
     if(miss){
       if(coMiss){ const d=document.getElementById('cjbCo'); if(d) d.open=true; }
-      out.innerHTML='<div class="cjb-msg err">빨간 칸을 채워 주세요 · 우편번호는 [주소 찾기]로 넣을 수 있어요</div>';
+      out.innerHTML=`<div class="cjb-msg err">빨간 칸을 채워 주세요 · 주소는 쓰고 엔터 누르면 우편번호까지 찾아요${ret && !_cjbV('cjbReason') ? ' · 반품 사유를 골라 주세요' : ''}</div>`;
       return;
     }
     const item={
@@ -19073,6 +19133,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       sender:ret ? cust : co, rcvr:ret ? co : cust,
       goods:[{nm:_cjbV('cjbGNm'),opt:_cjbV('cjbGOpt'),qty:_cjbV('cjbGQty')||1}],
       box_type:_cjbV('cjbBoxT'), box_qty:1, article_amt:_cjbV('cjbAmt'), cust_use_no:_cjbV('cjbOrd'), memo:_cjbV('cjbMemo'), ori_invc_no:ret ? _cjbV('cjbOri') : '',
+      reason:ret ? _cjbV('cjbReason') : '',
     };
     if(_cjb.env==='prod' && !confirm(`${ret ? '반품 회수' : '택배'} 접수를 CJ대한통운에 실제로 보낼까요?\n${cust.nm} · ${_cjbV('cjbGNm')}`)) return;
     _cjb.busy=true; btn.disabled=true; out.innerHTML='<div class="cjb-msg">접수하는 중…</div>';
@@ -19090,8 +19151,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     finally{ _cjb.busy=false; btn.disabled=false; }
   }
   function cjbOneClear(keepMsg){
-    ['cjbCNm','cjbCTel','cjbCZip','cjbCAddr','cjbCDet','cjbGNm','cjbGOpt','cjbOrd','cjbAmt','cjbOri','cjbMemo'].forEach(id=>{ _cjbSet(id,''); document.getElementById(id)?.classList.remove('bad'); });
+    ['cjbCNm','cjbCTel','cjbCZip','cjbCAddr','cjbCDet','cjbGNm','cjbGOpt','cjbOrd','cjbAmt','cjbOri','cjbMemo','cjbReason'].forEach(id=>{ _cjbSet(id,''); document.getElementById(id)?.classList.remove('bad'); });
     _cjbSet('cjbGQty','1');
+    const rm=document.getElementById('cjbRetMsg'); if(rm) rm.innerHTML='';
+    ['cjbPostC','cjbPostS'].forEach(id=>{ const b=document.getElementById(id); if(b){ b.hidden=true; b.innerHTML=''; } });
     if(keepMsg!==true){ const o=document.getElementById('cjbOneOut'); if(o) o.innerHTML=''; }
   }
 
@@ -19264,7 +19327,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const out=document.getElementById('cjbLOut'), wrap=document.getElementById('cjbLWrap'), tbl=document.getElementById('cjbLTbl');
     if(keepMsg!==true) out.innerHTML='<div class="cjb-msg">불러오는 중…</div>';
     try{
-      const j=await _cjbCall({action:'list',limit:200,q:_cjbV('cjbLQ')});
+      const j=await _cjbCall({action:'list',limit:200,q:_cjbV('cjbLQ'),dv:_cjb.ldv||''});
       if(!j.ok) throw new Error(j.error||'못 불러왔어요');
       const rows=j.rows||[];
       if(keepMsg!==true) out.innerHTML=rows.length ? '' : '<div class="cjb-msg">접수 기록이 없어요</div>';
@@ -19275,17 +19338,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + rows.map(r=>{
           const st=CJB_ST[r.status]||[r.status,''];
           const kind=`${r.rcpt_dv==='02' ? '반품 회수' : '발송'} · ${r.prt_st==='02' ? '자체 출력' : 'CJ 출력'}${r.kind==='file' ? ' · 파일' : ''}`;
+          const retInfo=r.rcpt_dv==='02' && (r.reason || r.ori_invc_no) ? `<br><small style="color:var(--text-3)">${r.reason ? '사유 '+_cjbEsc(r.reason) : ''}${r.reason && r.ori_invc_no ? ' · ' : ''}${r.ori_invc_no ? '원 송장 '+_cjbEsc(r.ori_invc_no) : ''}</small>` : '';
           const btns=(canPrint(r) ? `<button type="button" class="kko-trk-btn" onclick="cjbPrintIds([${Number(r.id)}],'cjbLOut')">출력</button>` : '')
             + (r.invc_no ? `<button type="button" class="kko-trk-btn" aria-expanded="false" onclick="cjbTrk(this,'${_cjbEsc(r.invc_no)}')">단계</button>` : '')
             // 자체 출력으로 접수한 건은 CJ 가 취소를 안 받는다 (가이드 1.4.8.2 — 안 보내면 운임에서 빠짐)
             + ((r.status==='booked' || r.status==='unknown') && r.prt_st!=='02' ? `<button type="button" class="kko-trk-btn" onclick="cjbCancel(${Number(r.id)},this)">취소</button>` : '');
-          return `<tr data-id="${Number(r.id)}"><td class="ck">${canPrint(r) ? `<input type="checkbox" class="cjb-pck" value="${Number(r.id)}" aria-label="출력 고르기">` : ''}</td><td class="n">${md(r.created_at)}${r.env==='dev' ? ' <span class="cjb-st dev">시험</span>' : ''}</td><td>${_cjbEsc(kind)}</td><td>${_cjbEsc(r.rcvr_nm)}</td><td class="n">${_cjbEsc(r.rcvr_tel)}</td>`
+          return `<tr data-id="${Number(r.id)}"><td class="ck">${canPrint(r) ? `<input type="checkbox" class="cjb-pck" value="${Number(r.id)}" aria-label="출력 고르기">` : ''}</td><td class="n">${md(r.created_at)}${r.env==='dev' ? ' <span class="cjb-st dev">시험</span>' : ''}</td><td>${_cjbEsc(kind)}${retInfo}</td><td>${_cjbEsc(r.rcvr_nm)}</td><td class="n">${_cjbEsc(r.rcvr_tel)}</td>`
             + `<td class="w">${_cjbEsc(r.gds_nm)}</td><td>${_cjbEsc(r.cust_use_no)}</td><td class="n">${r.invc_no ? _cjbEsc(r.invc_no) : '<span style="color:var(--text-3)">출력 때</span>'}</td>`
             + `<td class="w"><span class="cjb-st ${st[1]}" title="${_cjbEsc(r.result_detail)}">${_cjbEsc(st[0])}</span>${r.trk_name ? ` <span class="cjb-st ${r.trk_code==='91' ? 'ok' : ''}" title="CJ 최근 단계 (30분마다 CJ 에서 가져옴)">${_cjbEsc(r.trk_name)} ${_cjbEsc(md(r.trk_at))}</span>` : ''}${r.print_count ? ` <span class="cjb-st gray" title="마지막 출력 ${_cjbEsc(md(r.printed_at))}">출력 ${Number(r.print_count)}</span>` : ''}${r.status==='failed' && r.result_detail ? ` <small>${_cjbEsc(r.result_detail)}</small>` : ''}</td>`
             + `<td>${_cjbEsc(r.created_by)}</td><td style="white-space:nowrap">${btns}</td></tr>`;
         }).join('') + `</tbody>`;
     }catch(e){ out.innerHTML=`<div class="cjb-msg err">${_cjbEsc((e && e.message) || String(e))}</div>`; wrap.hidden=true; }
   }
+  // 상세 조회 거르기 — 전체 · 발송 · 반품 회수 기록 (2026-11-24 사장님 "반품접수한건 기록 남게 해주고")
+  function cjbListDv(v){ _cjb.ldv=v; document.querySelectorAll('#cjbLDv button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v))); cjbList(); }
   function cjbPrintSel(){
     const ids=[...document.querySelectorAll('#cjbLTbl .cjb-pck:checked')].map(c=>Number(c.value));
     cjbPrintIds(ids,'cjbLOut');
