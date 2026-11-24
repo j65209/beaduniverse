@@ -13,6 +13,7 @@
 //   POST {action:'cancel', id, by?}                예약 취소 (접수 1분쯤 뒤부터 됨 · 자체 출력 · 집화 · CJ 출력 뒤엔 안 됨)
 //   POST {action:'track', invc_no, prod_only?}     운송장 추적 (단계 · 시각 · 지점만, 이름 · 전화는 버림) — 맥미니 cs-track.ts 가 prod_only 로 부름
 //   POST {action:'list', limit?, q?}               최근 접수 기록 (전화는 가림)
+//   POST {action:'sync'}                           CJ 출력 건 운송장번호 · 최근 단계 채우기 (상품추적 대량) — pg_cron 30분
 //   POST {action:'print_save', print:{…}}          출력 설정 저장 (라벨 크기 · 여백 · 글자 · 바코드 · 가림 · 표시 항목)
 //   POST {action:'labels', ids:[…], mark?}         운송장 출력 자료 (운송장번호 있는 건만, 주소정제로 분류코드 — 실패하면 빈 칸) · 출력 횟수 기록
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -300,9 +301,51 @@ async function labels(cfg: Cfg, idsIn: unknown, mark: boolean) {
   return out;
 }
 
+// ---------- CJ 프로그램(Lois) 출력 건 운송장번호 · 최근 단계 채우기 (2026-11-24 사장님 "건별예약접수랑 파일접수랑? 좋아") ----------
+// Lois 출력 건은 운송장번호가 CJ 에서 찍을 때 생긴다 → 상품추적 대량(ReqMssGdsTrc, 스캔 생성일자 기준, 1번에 최대 500건)으로
+// 주문번호(CUST_USE_NO) ↔ 운송장번호를 받아 cj_bookings 에 채운다. SND_YN='Y' = 받은 자료는 CJ 가 '보냄' 처리 (다음엔 새 것만).
+// 30분마다 pg_cron 'cj-sync-30m' 이 부른다. 오늘 · 어제 · 그제 스캔분.
+async function sync(cfg: Cfg) {
+  const tok = await token(cfg);
+  const now = kstNow();
+  const days = [0, 1, 2].map((d) => ymdOf(new Date(now.getTime() - d * 86400e3)));
+  let got = 0, filled = 0, updated = 0;
+  const errs: string[] = [];
+  for (const d of days) {
+    for (let k = 0; k < 10; k++) {
+      const j = await cjPost(cfg.env, 'ReqMssGdsTrc', { TOKEN_NUM: tok, CUST_ID: cfg.cust_id, REQ_DT: d, SND_YN: 'Y' }, tok);
+      if (j.RESULT_CD !== 'S') { if (!/no\s*data/i.test(String(j.RESULT_DETAIL))) { errs.push(`${d}: ${String(j.RESULT_DETAIL).slice(0, 120)}`); await dropTokenIf(j); } break; }
+      const arr: Record<string, unknown>[] = Array.isArray(j.DATA) ? j.DATA : Array.isArray(j.DATA?.ARRAY) ? j.DATA.ARRAY : Array.isArray(j.ARRAY) ? j.ARRAY : j.DATA ? [j.DATA] : [];
+      got += arr.length;
+      // 주문번호마다 가장 늦은 스캔 하나
+      const last = new Map<string, { inv: string; at: string; code: string; name: string }>();
+      for (const x of arr) {
+        const use = String(x.CUST_USE_NO ?? '').trim(), inv = String(x.INVC_NO ?? '').replace(/\D/g, '');
+        if (!use || !inv) continue;
+        const at = `${String(x.SCAN_YMD ?? '')}${String(x.SCAN_HOUR ?? '').padStart(6, '0')}`;
+        const p = last.get(use);
+        if (!p || at > p.at) last.set(use, { inv, at, code: String(x.CRG_ST ?? '').trim(), name: String(x.CRG_ST_NM ?? '').trim() });
+      }
+      for (const [use, v] of last) {
+        const { data: rows } = await sb.from('cj_bookings').select('id,invc_no,trk_at').eq('env', cfg.env).eq('cust_use_no', use).in('status', ['booked', 'unknown']).limit(3);
+        for (const r of rows || []) {
+          const patch: Record<string, unknown> = {};
+          if (!r.invc_no) { patch.invc_no = v.inv; filled++; }
+          const iso = /^\d{14}$/.test(v.at) ? `${v.at.slice(0, 4)}-${v.at.slice(4, 6)}-${v.at.slice(6, 8)}T${v.at.slice(8, 10)}:${v.at.slice(10, 12)}:${v.at.slice(12, 14)}+09:00` : null;
+          if (iso && (!r.trk_at || new Date(iso) > new Date(r.trk_at))) { patch.trk_at = iso; patch.trk_code = v.code; patch.trk_name = v.name; }
+          if (Object.keys(patch).length) { await sb.from('cj_bookings').update(patch).eq('id', r.id); updated++; }
+        }
+      }
+      if (arr.length < 500) break;
+    }
+  }
+  await sb.from('cj_config').update({ synced_at: new Date().toISOString() }).eq('id', 1);
+  return { ok: true, env: cfg.env, got, filled, updated, errs };
+}
+
 async function list(limit: number, q: string) {
   let qb = sb.from('cj_bookings')
-    .select('id,created_at,env,kind,batch_id,brand,rcpt_dv,prt_st,cust_use_no,invc_no,status,result_detail,rcvr_nm,rcvr_tel,rcvr_addr,gds_nm,box_qty,created_by,cancelled_at,printed_at,print_count')
+    .select('id,created_at,env,kind,batch_id,brand,rcpt_dv,prt_st,cust_use_no,invc_no,status,result_detail,rcvr_nm,rcvr_tel,rcvr_addr,gds_nm,box_qty,created_by,cancelled_at,printed_at,print_count,trk_code,trk_name,trk_at')
     .order('id', { ascending: false }).limit(Math.max(1, Math.min(300, limit || 100)));
   const s = String(q || '').replace(/[%,()]/g, ' ').trim().slice(0, 40);
   if (s) qb = qb.or(`rcvr_nm.ilike.%${s}%,cust_use_no.ilike.%${s}%,invc_no.ilike.%${s}%,gds_nm.ilike.%${s}%`);
@@ -320,7 +363,9 @@ Deno.serve(async (req) => {
     const cfg = await loadCfg();
     switch (body.action) {
       case 'status':
-        return json({ ok: true, env: cfg.env, configured: !!(cfg.cust_id && cfg.biz_reg_num), cust: cfg.cust_id.replace(/^(\d{4})\d+/, '$1****'), sender: cfg.sender || {}, print: cleanPrint(cfg.print || {}) });
+        return json({ ok: true, env: cfg.env, configured: !!(cfg.cust_id && cfg.biz_reg_num), cust: cfg.cust_id.replace(/^(\d{4})\d+/, '$1****'), sender: cfg.sender || {}, print: cleanPrint(cfg.print || {}), synced_at: (cfg as Record<string, unknown>).synced_at ?? null });
+      case 'sync':
+        return json(await sync(cfg));
       case 'print_save': {
         const print = cleanPrint(body.print || {});
         await sb.from('cj_config').update({ print, updated_at: new Date().toISOString() }).eq('id', 1);
