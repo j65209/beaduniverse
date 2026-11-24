@@ -374,8 +374,10 @@
   // 숨긴 직원(staff_hidden, 퇴사)은 저장소에서 읽어 맞춘다 — 오피스 업무일지 · 조직도와 같은 기준
   const BASE_STAFF = [
     {name: '김수민', color: 'mkt'}, {name: '이승원', color: 'mkt'}, {name: '박규현', color: 'mkt'},
-    {name: '조혜인', color: 'md2'}, {name: '김완성', color: 'md2'}, {name: '김채원', color: 'md2'}, {name: '지희선', color: 'md2'},
+    {name: '김채원', color: 'md2'}, {name: '지희선', color: 'md2'},
   ];
+  // 회의록에 안 넣는 사람 (2026-11-24 사장님 "조혜인 김완성은 삭제" — 벤더 · MD). 직원 명단이 바뀌어도 기본 참여자 · 참여자 창 후보에서 뺀다
+  const EXCLUDE = new Set(['조혜인', '김완성']);
   const COLOR_TEAM = {design: 'design', mkt: 'mkt', md2: 'md'};
   const ETC_DEFAULT = ['전승훈', '전수빈'];   // 대표 — 기본은 빠져 있고 참여자 창에서 고를 수 있음
 
@@ -540,7 +542,7 @@
       (hid || []).forEach(r => col.delete(r.staff_name));
     } catch (e) { console.warn('staff', e); }
     const out = {design: [], mkt: [], md: []};
-    order.forEach(n => { const t = COLOR_TEAM[col.get(n)]; if (t && !out[t].includes(n)) out[t].push(n); });
+    order.forEach(n => { const t = COLOR_TEAM[col.get(n)]; if (t && !EXCLUDE.has(n) && !out[t].includes(n)) out[t].push(n); });
     S.staff = out;
   }
   function defaultMembers() {
@@ -549,7 +551,7 @@
     ['design', 'mkt', 'md'].forEach(t => st[t].forEach(n => list.push({name: n, team: t})));
     // 지난 회의에서 직접 넣은 사람(손님 · 대표)도 이어서
     const last = sortedMeetings()[0];
-    if (last && Array.isArray(last.members)) last.members.forEach(m => { if (m && m.name && !list.some(x => x.name === m.name) && !isStaffName(m.name)) list.push({name: m.name, team: m.team || 'etc'}); });
+    if (last && Array.isArray(last.members)) last.members.forEach(m => { if (m && m.name && !EXCLUDE.has(m.name) && !list.some(x => x.name === m.name) && !isStaffName(m.name)) list.push({name: m.name, team: m.team || 'etc'}); });
     return list;
   }
   function isStaffName(n) { const st = S.staff; return !!st && (st.design.includes(n) || st.mkt.includes(n) || st.md.includes(n)); }
