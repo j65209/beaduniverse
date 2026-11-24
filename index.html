@@ -14443,7 +14443,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
       <div class="kko-pane" id="kkoPaneLearn" role="tabpanel" aria-labelledby="kkoTabLearn" hidden>
         <!-- 시나리오 북 (2026-11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") — 누르면 화면 전체 창 #kkoBook -->
-        <button type="button" class="kko-bookbtn" onclick="kkoBookOpen()"><span class="t"><b>시나리오 북</b><small>에이전트가 어떤 글에 무엇을 하는지 · 브랜드별로 나가는 말 · 지난 6개월 대화 예시</small></span><span class="go">열기 ›</span></button>
+        <button type="button" class="kko-bookbtn" onclick="kkoBookOpen()"><span class="t"><b>시나리오 북</b><small>확인할 것을 대화창으로 · 에이전트가 어떤 글에 무엇을 하는지 · 브랜드별로 나가는 말 · 지난 6개월 대화 예시</small></span><span class="go">열기 ›</span></button>
         <!-- 시험 답변 (2026-11-23 사장님 "너가 테스트 답변을 우선 오피스앱에서 먼저 해볼래?") — AI 두뇌가 같은 문의에 쓴 답, 고객에게 안 나감. 관리자만 (kkoTab 이 보이게 함) -->
         <button type="button" class="kko-bookbtn kko-testbtn" id="kkoTestBtn" onclick="kkoTestOpen()" hidden><span class="t"><b>시험 답변</b><small>직원 · 카나나 실제 답을 학습한 AI 가 새 문의에 써 본 답 · 실제 나간 답 · 직원 지침 · 고객에게는 안 나가요</small></span><span class="go">열기 ›</span></button>
         <div class="kko-learn" id="kkoLearn" aria-label="에이전트 학습"></div>
@@ -18898,7 +18898,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      한눈에 · 판단 순서 · 시나리오(항목별 고객 말 · 할 일 · 고객에게 나가는 말 · 횟수 · 예시) · 주문을 찾아 답하는 말 · 고정 문장 · 직원 호출 이유 · 기준 · 브랜드 정보 · 말투.
      에이전트 학습 탭 [시나리오 북] → 화면 전체 창(#kkoBook). 브랜드를 고르면 그 브랜드 정보로 채운 문장, 찾기는 다시 그리지 않고 숨기기만.
      예시 글은 가린 지난 대화 — 사무실 밖이면 서버가 비워서 준다(outside). 보기만 한다 (고치기는 아직 없음). */
-  const _kkoBk={data:null,err:'',loading:false,brand:'',q:'',open:false,ret:null,t:null,ov:''};
+  const _kkoBk={data:null,err:'',loading:false,brand:'',q:'',open:false,ret:null,t:null,ov:'',view:'book'};
+  // 확인할 것 (2026-11-24 사장님 "시나리오 북에 … 확인해야하는거 대화창처럼 다 띄워줘") — 시나리오 북 안 첫 화면, kko-check.js 가 그린다 (관리자는 열면 여기부터)
+  function _kkoCheckOn(){ return _kkoBk.open && _kkoBk.view==='check'; }
+  function kkoBookView(v){
+    if(!_kkoBk.open || _kkoBk.view===v) return;
+    _kkoBk.view=v;
+    const box=document.getElementById('kkoBook'); if(box) box.innerHTML='';
+    _kkoBookPaint();
+  }
   const KBK_WHO={agent:'에이전트',staff:'직원',none:'끼어들지 않음',both:'에이전트 · 직원'};
   async function kkoBookLoad(){
     if(_kkoBk.loading) return;
@@ -18919,6 +18927,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     _kkoBk.open=true; _kkoBk.ret=document.activeElement;
     box.hidden=false;
     _kkoBk.ov=document.body.style.overflow; document.body.style.overflow='hidden';   // 뒤 화면이 같이 스크롤되지 않게
+    const K=window.KkoCheck;
+    _kkoBk.view=K && K.master() ? 'check' : 'book';
+    if(K) K.open(box);   // 확인할 것 — 열 때마다 새로
     _kkoBookPaint();
     const x=document.getElementById('kbkX'); if(x) x.focus({preventScroll:true});
     kkoBookLoad();   // 열 때마다 새로 (맥미니가 10분마다 바뀐 걸 반영)
@@ -18931,7 +18942,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const r=_kkoBk.ret; if(r && r.focus && r.isConnected) r.focus({preventScroll:true});
   }
   // Esc = 시나리오 북 먼저 닫기 (뒤에 채팅방 창이 떠 있어도 그건 그대로)
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kkoBk.open){ e.preventDefault(); e.stopImmediatePropagation(); kkoBookClose(); } }, true);
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kkoBk.open){ e.preventDefault(); e.stopImmediatePropagation(); if(window.KkoCheck && KkoCheck.typing()) document.activeElement.blur(); else kkoBookClose(); } }, true);
   function kkoBookBrand(b){ _kkoBk.brand=b; _kkoBookPaint(); }
   function kkoBookFind(v){ _kkoBk.q=String(v||''); clearTimeout(_kkoBk.t); _kkoBk.t=setTimeout(_kkoBookFilter,120); }
   function kkoBookGo(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({block:'start'}); }
@@ -18950,13 +18961,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _kkoBookPaint(){
     const box=document.getElementById('kkoBook');
     if(!box || !_kkoBk.open) return;
+    if(_kkoBk.view==='check' && window.KkoCheck){ KkoCheck.show(box); return; }
     const E=_kkoEsc, d=_kkoBk.data, brands=d ? (d.brands||[]) : [];
     if(d && !brands.some(b=>b.brand===_kkoBk.brand)) _kkoBk.brand=(brands.find(b=>b.brand===_kko.brand)||brands[0]||{}).brand||'';
     const B=_kkoBk.brand, L=b=>((brands.find(x=>x.brand===b)||{}).label||KKO_LABEL[b]||b);
     const N=v=>Number(v||0).toLocaleString('ko-KR');
     const when=s=>{ const t=new Date(s); return isNaN(t) ? '' : `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; };
     const fid=(document.activeElement && box.contains(document.activeElement)) ? document.activeElement.id : '';
-    const head=`<div class="kbk-head"><h2 id="kbkTitle">시나리오 북</h2>`
+    const head=`<div class="kbk-head"><h2 id="kbkTitle">시나리오 북</h2>${window.KkoCheck ? KkoCheck.seg('book') : ''}`
       + `<span class="sub">${d ? `${E(when(d.generatedAt))} 기준 · 예상 질문 · 답 ${E(d.faq.status||'')}${d.faq.updatedAt ? ' ('+E(d.faq.updatedAt)+')' : ''}` : ''}</span>`
       + `<div class="ctl">${d ? `<select id="kbkBrand" aria-label="브랜드" onchange="kkoBookBrand(this.value)">${brands.map(b=>`<option value="${E(b.brand)}"${b.brand===B ? ' selected' : ''}>${E(b.label)}</option>`).join('')}</select>` : ''}`
       + `<input type="search" id="kbkQ" placeholder="찾기 — 변색 · 환불 · 송장" value="${E(_kkoBk.q)}" oninput="kkoBookFind(this.value)" aria-label="시나리오 북에서 찾기" autocomplete="off"><span class="kbk-found" id="kbkFound" aria-live="polite"></span>`
@@ -57882,6 +57894,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="erp-alert.js?v=2" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
 <script src="po-list.js?v=1" defer></script><!-- 발주 상품 리스트 (po-list.js) -->
 <script src="po-map.js?v=2" defer></script><!-- 발주 매핑하기 (po-map.js) -->
+<script src="kko-check.js?v=1" defer></script><!-- 확인할 것 — 시나리오 북 안 대화창 (kko-check.js) -->
 <script src="stock-out.js?v=1" defer></script><!-- 출고 입력 — 지그재그 직진배송 (stock-out.js) -->
 <script src="stock-blank.js?v=1" defer></script><!-- 재고 미기재 알림 — 김성군 · 지희선 · 대표 2명 (stock-blank.js) -->
 <script src="notif-state.js?v=1" defer></script><!-- 알림 승인 상태 (notif-state.js) -->
