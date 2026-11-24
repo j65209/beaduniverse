@@ -107,7 +107,7 @@ const SRC = [
     });
     ls('bb_chk_zero_v1', JSON.stringify(keep));
     const mi = rs.filter(x => x.z < 0 && !on(x) && !/B급/.test(x.n));          // 판매중은 위에서 · B급(반품)은 재고 연동 밖
-    if (mi.length) out.push({k: 'minus', a: '재고 ERP', t: `남은 재고 마이너스 ${n(mi.length)}줄`, b: '실제보다 더 빠진 줄 — 세어서 바로잡아 주세요', list: mi.slice(0, 40).map(x => [ok.get(x.gid), x.n, x.o, n(x.z)].filter(Boolean).join(' · ')), sig: hash(mi.map(x => `${x.gid}|${x.n}|${x.o}`).join(',')), go: 'erp'});
+    if (mi.length) out.push({k: 'minus', a: '재고 ERP', t: `남은 재고 마이너스 ${n(mi.length)}줄`, b: '남은 재고가 0보다 작은 줄 — 실물을 세어 맞춰 주세요', list: mi.slice(0, 40).map(x => [ok.get(x.gid), x.n, x.o, n(x.z)].filter(Boolean).join(' · ')), sig: hash(mi.map(x => `${x.gid}|${x.n}|${x.o}`).join(',')), go: 'erp'});
     return out;
   }},
   {id: 'audit', nm: '재고 검수', ev: 5, run: async () => ((await px('/erp/audit')).issues || []).filter(x => x.level === 'alert').map(x => ({k: 'au:' + (x.key || x.text), a: '재고 ERP', t: '재고 검수 — 확인 필요', b: x.text, go: 'erp'}))},
