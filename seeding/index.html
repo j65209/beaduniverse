@@ -88,6 +88,7 @@
   .tab:focus-visible{outline:2px solid #93c5fd;outline-offset:-6px;border-radius:10px}
   .tabs .tsep{align-self:center;height:18px;margin:0 6px}
   .tab-add{flex:none;align-self:center;width:32px;height:32px;margin-left:4px;border-radius:8px;display:grid;place-items:center;color:var(--text-4)}
+  .tab-add.tab-hid{width:auto;padding:0 10px;font-size:12px;font-weight:600;white-space:nowrap}   /* 숨긴 탭 · 지운 탭 (2026-11-24) */
   .tab-add:hover{background:#f1f4f8;color:var(--text)}
   .tab-add svg{width:17px;height:17px}
   .find{flex:0 1 420px;min-width:0;display:flex;align-items:center;gap:7px;height:38px;padding:0 8px 0 13px;border-radius:10px;background:#f1f4f8;border:1px solid transparent;cursor:text}
@@ -879,7 +880,7 @@
     } else if (op.t === 'tab') {
       const t = op.tab;
       tabs = await sb('seeding_tabs?on_conflict=id', {method: 'POST', prefer: 'return=representation,resolution=merge-duplicates',
-        body: [{id: t.id, name: t.name, kind: t.kind, brand: t.brand || null, cols: t.cols, pos: t.pos, deleted_at: t.deleted_at || null, updated_by: who}]});
+        body: [{id: t.id, name: t.name, kind: t.kind, brand: t.brand || null, cols: t.cols, pos: t.pos, deleted_at: t.deleted_at || null, hidden_at: t.hidden_at || null, updated_by: who}]});   // hidden_at = 탭 숨기기 (2026-11-24)
     }
     opDone(op);
     let ch = false;
@@ -2303,7 +2304,7 @@
   /* ── 위 탭 ── 2026-11-23 사용자 "erp 디자인에서 상단 탭 눌러서 쉽게 바로 볼 수 있게 변경하자" — 왼쪽 메뉴 대신.
      순서: 전체 · 브랜드(X 시딩) | 담당자별 | 그 밖의 목록 | 주의사항, 묶음 사이에 세로 줄. 맨 끝 ＋ = 새 탭 */
   function renderNav() {
-    const items = [], tabs = tabList();
+    const items = [], tabs = tabList().filter(t => !t.hidden_at);   // 숨긴 탭은 탭 줄 끝 '숨김 N'으로 (2026-11-24)
     if (tabs.some(t => t.kind === 'x')) items.push({id: ALL, sec: 'x', label: '전체', dot: '#22c55e', n: xTabs().reduce((s, t) => s + rowsOf(t.id).filter(hasId).length, 0), title: 'X 시딩 전체 — 브랜드 탭을 한 표로'});
     tabs.forEach(t => {
       const b = brandOf(t.brand, true) || brandOf(t.name, true), sec = SEC_ORDER.includes(t.kind) ? t.kind : 'list';
@@ -2318,6 +2319,8 @@
       h += `<button type="button" class="tab${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-id="${esc(it.id)}" title="${esc(it.title)}"><i class="dot"${it.dot ? ` style="background:${it.dot}"` : ''}></i>${esc(it.label)}${it.en ? `<small>${esc(it.en)}</small>` : ''}${it.n != null ? `<em>${fmtN(it.n)}</em>` : ''}</button>`;
     });
     h += '<button type="button" class="tab-add" id="btnNewTab" title="새 탭 만들기" aria-label="새 탭 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>';
+    const nHid = hiddenTabs().length + goneTabs().length;
+    if (nHid) h += `<button type="button" class="tab-add tab-hid" id="btnHidTabs" title="숨긴 탭 · 지운 탭 — 다시 보이기 · 되살리기">숨김 ${nHid}</button>`;
     const el = $('tabs'), x = el.scrollLeft;
     el.innerHTML = h;
     el.scrollLeft = x;
@@ -2329,8 +2332,59 @@
     if (l < el.scrollLeft) el.scrollLeft = Math.max(0, l);
     else if (r > el.scrollLeft + el.clientWidth) el.scrollLeft = r - el.clientWidth;
   }
+  /* 탭 다루기 (2026-11-24 사장님 "erp 전부 탭 삭제, 수정, 숨기기 · 탭 추가 · 싹다 수정이 가능하게") — 탭에 오른쪽 버튼(안드로이드 길게 누르기):
+     이름 바꾸기(탭 설정 창 — 다른 탭 수식 속 주소도 같이) · 숨기기(seeding_tabs.hidden_at — 탭 줄에서만 빠짐, '전체' 표 · 수식은 그대로) · 지우기 · 새 탭.
+     숨긴 탭 · 지운 탭 = 탭 줄 끝 '숨김 N' → 다시 보이기 · 되살리기. 모두 되돌리기(Ctrl+Z) 됨 */
+  function hiddenTabs() { return tabList().filter(t => t.hidden_at); }
+  function goneTabs() { return [...D.tabs.values()].filter(t => t.deleted_at).sort((a, b) => String(b.deleted_at).localeCompare(String(a.deleted_at))).slice(0, 30); }
+  function hideTabS(t, hide) {
+    const before = clone(tabById(t.id) || t);
+    if (hide && tabList().filter(x => !x.hidden_at && x.id !== t.id).length < 1) { toast('마지막 남은 탭은 숨길 수 없어요', true); return; }
+    doAction({label: hide ? `'${t.name}' 탭 숨기기` : `'${t.name}' 탭 다시 보이기`, tabs: [{before, after: Object.assign(clone(before), {hidden_at: hide ? new Date().toISOString() : null})}]});
+    if (hide && S.cur === t.id) { const v = tabList().filter(x => !x.hidden_at); openTab(xTabs().some(x => !x.hidden_at) ? ALL : (v[0] || {}).id); }
+    else renderNav();
+    toast(hide ? `'${t.name}' 탭을 숨겼어요 — 탭 줄 끝 '숨김'에서 다시 보이게 할 수 있어요` : `'${t.name}' 탭이 다시 보여요`, false, {undo: true});
+  }
+  function delTabS(t) {
+    if (!confirm(`'${t.name}' 탭을 지울까요? (줄 ${rowsOf(t.id).length}개 — 되돌리기 · 탭 줄 끝 '숨김'에서 되살릴 수 있어요)`)) return;
+    const before = clone(tabById(t.id));
+    doAction({label: `'${t.name}' 탭 지우기`, tabs: [{before, after: Object.assign(clone(before), {deleted_at: new Date().toISOString()})}]});
+    if (S.cur === t.id) openTab(xTabs()[0] ? ALL : (tabList().find(x => !x.hidden_at) || tabList()[0] || {}).id); else renderNav();
+    toast(`'${t.name}' 탭을 지웠어요`, false, {undo: true});
+  }
+  function restoreTabS(t) {
+    if (tabByName(t.name)) { toast(`같은 이름의 '${t.name}' 탭이 있어요 — 그 탭 이름을 먼저 바꿔 주세요`, true); return; }
+    const before = clone(t);
+    doAction({label: `'${t.name}' 탭 되살리기`, tabs: [{before, after: Object.assign(clone(before), {deleted_at: null})}]});
+    openTab(t.id);
+    toast(`'${t.name}' 탭을 되살렸어요`, false, {undo: true});
+  }
+  $('tabs').addEventListener('contextmenu', e => {
+    const b = e.target.closest('.tab[data-id]'), t = b && tabById(b.dataset.id);
+    if (!t || t.deleted_at) return;   // '전체'는 탭이 아님 — 브라우저 메뉴 그대로
+    e.preventDefault();
+    openMenu([
+      {t: `✏️ 이름 · 설정 바꾸기`, f: () => { if (t.kind === 'guide') openGuideEditor(null); else openTabSettings(t); }},
+      {t: '＋ 새 탭 만들기', f: openNewTab},
+      '-',
+      {t: t.hidden_at ? '👁 다시 보이기' : '🙈 탭 숨기기', f: () => hideTabS(t, !t.hidden_at)},
+      '-',
+      {t: '🗑 탭 지우기', dng: true, f: () => delTabS(t)},
+    ], e.clientX, e.clientY);
+  });
   $('tabs').addEventListener('click', e => {
     if (e.target.closest('#btnNewTab')) { openNewTab(); return; }
+    const hb = e.target.closest('#btnHidTabs');
+    if (hb) {
+      const r = hb.getBoundingClientRect(), hid = hiddenTabs(), gone = goneTabs();
+      openMenu([].concat(
+        hid.length ? [{t: '<b>숨긴 탭</b> — 누르면 다시 보이기', dis: true}] : [],
+        hid.map(t => ({t: `👁 ${esc(t.name)}`, f: () => { hideTabS(t, false); openTab(t.id); }})),
+        hid.length && gone.length ? ['-'] : [],
+        gone.length ? [{t: '<b>지운 탭</b> — 누르면 되살리기', dis: true}] : [],
+        gone.map(t => ({t: `↩ ${esc(t.name)}`, f: () => restoreTabS(t)}))), r.left, r.bottom + 4);
+      return;
+    }
     const b = e.target.closest('.tab');
     if (!b) return;
     if (b.dataset.id === S.cur) { setHmin(false); grid.scrollTop = 0; return; }   // 지금 탭을 또 누르면 맨 위로
@@ -3663,7 +3717,7 @@
       <label class="fld"><span>종류</span><select id="sKind"><option value="x"${t.kind === 'x' ? ' selected' : ''}>X 시딩 (브랜드)</option><option value="insta"${t.kind === 'insta' ? ' selected' : ''}>담당자 · 인스타 시딩</option><option value="list"${t.kind === 'list' ? ' selected' : ''}>그 밖의 목록</option></select></label></div>
       <div class="frow"><label class="fld"><span>브랜드 (점 색)</span><select id="sBrand"><option value="">없음</option>${BRANDS.map(b => `<option value="${esc(b.k)}"${t.brand === b.k ? ' selected' : ''}>${esc(b.k)} · ${esc(b.en)}</option>`).join('')}</select></label>
       <label class="fld"><span>메뉴 순서</span><span style="display:flex;gap:6px;margin:0"><button type="button" class="btn" id="sUp">↑ 위로</button><button type="button" class="btn" id="sDown">↓ 아래로</button></span></label></div>
-      <div class="mact"><button type="button" class="btn dng" id="sDel">탭 지우기</button><span class="sp"></span><button type="button" class="btn" data-x>닫기</button><button type="button" class="btn pri" id="sOk">저장</button></div>`, () => {
+      <div class="mact"><button type="button" class="btn dng" id="sDel">탭 지우기</button><button type="button" class="btn" id="sHide">${t.hidden_at ? '다시 보이기' : '탭 숨기기'}</button><span class="sp"></span><button type="button" class="btn" data-x>닫기</button><button type="button" class="btn pri" id="sOk">저장</button></div>`, () => {
       const swap = d => {
         const list = tabList().filter(x => x.kind === t.kind || (t.kind !== 'guide' && x.kind !== 'guide'));
         const i = list.findIndex(x => x.id === t.id), o = list[i + d];
@@ -3675,6 +3729,7 @@
       };
       $('sUp').onclick = () => swap(-1);
       $('sDown').onclick = () => swap(1);
+      $('sHide').onclick = () => { closeModal(); const cur = tabById(t.id); if (cur) hideTabS(cur, !cur.hidden_at); };   // 2026-11-24 탭 숨기기 (휴대폰 · 아이폰은 오른쪽 버튼이 없어서 여기에도)
       $('sDel').onclick = () => {
         if (!confirm(`'${t.name}' 탭을 지울까요? (줄 ${rowsOf(t.id).length}개 — 되돌리기로 살릴 수 있어요)`)) return;
         closeModal();
