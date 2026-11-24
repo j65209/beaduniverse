@@ -1736,13 +1736,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .lgb-m-ec{color:#4ade80;border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.08)}
   .lgb-m-none{color:#6b7280;border-style:dashed;background:transparent;font-weight:600}
   .lgb-msub{display:none}   /* 휴대폰 · 태블릿에서만 방식 아래에 '박스 · 품목 수' · 신청서번호 */
-  .lgb-goods{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}
+  .lgb-goods{display:flex;flex-wrap:wrap;align-items:flex-start;gap:5px 3px;min-width:0}
+  /* 품목 한 칸 = 사진 + 그 밑에 출고 수량 (2026-11-24 "이미지밑에 작게 수량도 기재해줘. 몇개씩 출고되었는지"). 칸 폭은 모두 같게 — _lgbFitThumbs 가 이 폭으로 센다 */
+  .lgb-it{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none;width:36px}
+  .lgb-q{font:500 10px/1 var(--sans);color:#d1d5db;white-space:nowrap;letter-spacing:-.02em;font-variant-numeric:tabular-nums;cursor:default}
+  .lgb-noimg{display:flex;align-items:center;justify-content:center;width:32px;height:32px;box-sizing:border-box;border:1px dashed #2a3040;border-radius:5px;font:500 9px/1.15 var(--sans);color:#6b7280;text-align:center;flex:none}
   .lgb-thumb{width:32px;height:32px;border-radius:5px;object-fit:cover;background:#1f2430;border:1px solid #2a3040;flex:none;cursor:zoom-in}
   /* 사진은 칸 폭만큼 채우고 넘치는 것만 '+N 더보기' (_lgbFitThumbs 가 hidden 으로 정리) */
   .lgb-more{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 9px;font:600 11px/1 var(--sans);color:#d1d5db;background:transparent;border:1px solid #2a3040;border-radius:5px;cursor:pointer;flex:none;white-space:nowrap}
   .lgb-more:hover{color:#fde68a;border-color:#fbbf24}
   .lgb-more-t{margin-left:3px}
-  .lgb-thumb[hidden],.lgb-more[hidden]{display:none}
+  .lgb-it[hidden],.lgb-more[hidden]{display:none}
   .lgb-cnt{font-size:12px;color:#d1d5db;white-space:nowrap}
   .lgb-ords{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;min-width:0}
   .lgb-ord{font:500 11.5px/1 'JetBrains Mono',ui-monospace,monospace;color:#d1d5db;background:#151922;border:1px solid #2a3040;border-radius:5px;padding:4px 7px;cursor:pointer;white-space:nowrap}
@@ -1797,8 +1801,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .lgb-msub{display:block;font-size:10px;color:#9ca3af;white-space:nowrap}
     .lgb-mord{font:500 9.5px/1 'JetBrains Mono',ui-monospace,monospace;color:#8b93a1}
     .lgb-box,.lgb-cnt,.lgb-ords{display:none}
-    .lgb-goods{flex:1 1 auto;gap:4px}
-    .lgb-thumb{width:30px;height:30px}
+    .lgb-goods{flex:1 1 auto;gap:4px 2px}
+    .lgb-it{width:34px}
+    .lgb-q{font-size:9.5px;letter-spacing:-.04em}
+    .lgb-thumb,.lgb-noimg{width:30px;height:30px}
     .lgb-more{height:30px;min-width:30px;padding:0 5px;font-size:10.5px}
     .lgb-more-t{display:none}
     .lgb-act{flex:none}
@@ -36334,7 +36340,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       const a=best.b1, b=(best.b2!=null&&best.b2>=a&&best.b2-a<=300)?best.b2:a;
       for(let i=a;i<=b;i++) boxes.push(i);
     }
-    return {date:iso, method:best.method, boxes};
+    return {date:iso, method:best.method, boxes, idx:best.idx};
   }
   function _lgbBoxText(arr){
     const ns=[...new Set(arr)].sort((a,b)=>a-b);
@@ -36379,6 +36385,26 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   // key(출고일|방식) 는 그대로 두고 — 삭제 기록 · 서버 발주 매칭(lgb_board.py)이 이 키를 쓴다 — 화면의 줄은 rid(key + 신청서) 로 가른다
   function _lgbSplit(g){
     return [...g.orders].map(([ok,o])=>({key:g.key, ok, rid:g.key+'#'+ok, ord:o, date:g.date, method:g.method, sortKey:g.sortKey, items:o.items, boxes:o.boxes}));
+  }
+
+  // 품목마다 실제로 나간 개수 (2026-11-24 "몇개씩 출고되었는지"). 신청서 수량이 기본인데, 일부만 싣거나(나머지는 다음 신청서) 샘플 · 부족분을 뺀 출고는
+  // 신청서 수량이 안 바뀌고 메모의 출고 기록 뒤에 박스별 개수만 적힌다 — "4개 부족환불 LCL11월19일3번-13개" · "LCL11월1일 1번-18번 각각40개 /19번-18개".
+  // 그 합을 실제 출고 수량으로 본다. '각각' 이 없는 박스 묶음의 개수는 합계("22번-24번 총93개출고"), "1번-5개부족환불" 같은 부족 · 불량 개수는 출고가 아니다.
+  const _LGB_RE_QTY=/(\d{1,3})\s*번(?:\s*[-~]\s*(\d{1,3})\s*번)?\s*[-~]?\s*(각각|각)?\s*총?\s*(\d{1,6})\s*개(?!\s*(?:부족|불량|환불|오염|샘플|남김|보충|누락|파손))/g;
+  function _lgbShipQty(it, orderDate){
+    const q=Number(it.qty);
+    if(!(q>0)) return null;
+    const p=_lgbParseShip(it.memo, orderDate);
+    if(!p) return {n:q, ord:q};
+    const tail=String(it.memo||'').slice(p.idx);
+    let sum=0, m;
+    _LGB_RE_QTY.lastIndex=0;
+    while((m=_LGB_RE_QTY.exec(tail))){
+      const boxes=(m[2] && m[3]) ? Math.max(1, +m[2]-+m[1]+1) : 1;
+      sum+=boxes*+m[4];
+    }
+    // 보충분을 몇 개 더 실은 것까지만 믿고, 신청서 수량보다 훨씬 크면 잘못 읽은 것이라 신청서 수량으로
+    return {n:(sum>0 && sum<=q*1.1) ? sum : q, ord:q};
   }
 
   /* ── 줄 삭제 (2026-11-19 요청: "삭제 버튼 만들어줘. 언제 삭제했는지 시간도") — Supabase lg_board_deletes ──
@@ -36495,7 +36521,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     if(!box || box.hidden || !box.offsetWidth) return;
     box.querySelectorAll('.lgb-goods').forEach(goods=>{
       if(!goods.offsetWidth) return;   // 휴대폰의 삭제한 줄처럼 사진 칸을 숨긴 줄
-      const thumbs=[...goods.querySelectorAll('.lgb-thumb')];
+      const thumbs=[...goods.querySelectorAll('.lgb-it')];
       const btn=goods.querySelector('.lgb-more');
       thumbs.forEach(t=>{ t.hidden=false; });
       if(!btn || !thumbs.length) return;
@@ -36684,7 +36710,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const warn=(_lgbDelsAt && !_lgbDelsOk) ? `<span class="lgb-warn" title="삭제 목록(Supabase)을 받지 못해 삭제한 줄도 보일 수 있어요 — 1분 뒤 다시 받아요">삭제 목록 못 받음</span>` : '';
     const html=`<div class="lgb-head"><span class="lgb-title">출고 전광판</span><span class="lgb-sub"><span class="lgb-sub-l">콰이디에어 출고완료 · 상품 메모 기준 · </span>최근 ${_LGB_KEEP_DAYS}일</span><span class="lgb-sp"></span>${warn}<span class="lgb-stamp">${stamp}</span></div>`
       +(rows.length
-        ? `<div class="lgb-cols lgb-grid"><span>출고일</span><span>방식</span><span>박스</span><span>품목</span><span>상품</span><span>신청서</span><span></span></div><div class="lgb-list">${body}</div>`
+        ? `<div class="lgb-cols lgb-grid"><span>출고일</span><span>방식</span><span>박스</span><span>품목</span><span>상품 · 출고 수량</span><span>신청서</span><span></span></div><div class="lgb-list">${body}</div>`
         : `<div class="lgb-empty">${dels.length ? `최근 ${_LGB_KEEP_DAYS}일 출고를 모두 삭제했습니다` : `최근 ${_LGB_KEEP_DAYS}일 안에 출고된 건이 없습니다`}</div>`)
       +foot+delList;
     box.hidden=false;
@@ -36712,11 +36738,20 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       dateCell=`<span class="lgb-nd" title="콰이디에어 메모에 출고일이 없어 신청일을 보여 줍니다"><b>${_lgbMd(od)||'—'}</b>${wd}<em class="lgb-new">신청일</em></span>`;
     }
     const methodCell=`<span class="lgb-m lgb-m-${_LGB_CLS[g.method]||'none'}">${escapeHTML(g.method||'방식 미기재')}</span>`;
-    const seen=new Set(), imgs=[];
-    for(const it of g.items){ const u=it.image_url; if(u && !seen.has(u)){ seen.add(u); imgs.push(u); } }
-    // 사진은 전부 그려 두고 _lgbFitThumbs 가 칸 폭에 맞춰 넘치는 것만 숨긴다 ('+N 더보기' 를 누르면 그 줄만 전부)
-    const thumbs=imgs.map(u=>`<img class="lgb-thumb" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(u)}" alt="" onerror="this.style.visibility='hidden'">`).join('');
-    const moreBtn=imgs.length>1 ? `<button type="button" class="lgb-more" data-key="${escapeHTML((del?'del:':'')+g.rid)}" hidden></button>` : '';
+    // 품목마다 한 칸 — 사진 밑에 출고 수량. 사진이 같아도 옵션(블랙 391 · 화이트 467)이 다르면 따로, 사진 없는 품목은 빈 칸으로 맨 뒤에 (수량이 빠지지 않게).
+    // 전부 그려 두고 _lgbFitThumbs 가 칸 폭에 맞춰 넘치는 것만 숨긴다 ('+N 더보기' 를 누르면 그 줄만 전부)
+    const goods=[...g.items.filter(it=>it.image_url), ...g.items.filter(it=>!it.image_url)];
+    const thumbs=goods.map(it=>{
+      const sq=_lgbShipQty(it, o.date);
+      const memo=String(it.memo||'').replace(/\s+/g,' ').trim();
+      const tip=[sq ? `출고 ${sq.n.toLocaleString()}개`+(sq.n!==sq.ord?` (신청서 ${sq.ord.toLocaleString()}개 · 메모의 박스별 개수 기준)`:'') : '',
+        memo && !/단가|위안|元|[￥¥]/.test(memo) ? (memo.length>70?memo.slice(0,70)+'…':memo) : ''].filter(Boolean).join('\n');
+      const pic=it.image_url
+        ? `<img class="lgb-thumb" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(it.image_url)}" alt="" onerror="this.style.visibility='hidden'">`
+        : `<span class="lgb-noimg" title="${escapeHTML(tip)}">사진<br>없음</span>`;
+      return `<span class="lgb-it">${pic}${sq?`<span class="lgb-q" title="${escapeHTML(tip)}">${sq.n.toLocaleString()}개</span>`:''}</span>`;
+    }).join('');
+    const moreBtn=goods.length>1 ? `<button type="button" class="lgb-more" data-key="${escapeHTML((del?'del:':'')+g.rid)}" hidden></button>` : '';
     const chips=`<button type="button" class="lgb-ord" data-ord="${escapeHTML(o.ord_no)}" title="신청서 ${escapeHTML(o.ord_no)} · 신청 ${escapeHTML(o.date)} — 누르면 아래 표에서 찾기">${escapeHTML(o.ord_no)}</button>`;
     const bt=_lgbBoxText(g.boxes);
     const boxShort=bt.split('·').length>2 ? `${new Set(g.boxes).size}박스` : bt;
