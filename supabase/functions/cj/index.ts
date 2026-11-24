@@ -225,6 +225,9 @@ async function cancel(cfg: Cfg, id: number, by?: string) {
   return { ok: false, detail: `CJ 취소 실패: ${msg || '알 수 없음'}${hint}` };
 }
 
+/** 상품추적 단계 코드(CRG_ST) 순서 — 11 집화처리 · 41 간선상차 · 42 간선하차 · 82 배송출발 · 91 배송완료. 숫자가 아니면 0 */
+const stepRank = (c: unknown) => { const n = Number(String(c ?? '').trim()); return Number.isFinite(n) ? n : 0; };
+
 async function track(cfg: Cfg, invcIn: string) {
   const invc = String(invcIn ?? '').replace(/\D/g, '');
   if (!/^\d{10,14}$/.test(invc)) throw new Oops('운송장 번호는 숫자 10~14자리예요');
@@ -240,7 +243,8 @@ async function track(cfg: Cfg, invcIn: string) {
     const d = String(x.SCAN_YMD ?? ''), h = String(x.SCAN_HOUR ?? '').padStart(6, '0');
     const at = /^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)} ${h.slice(0, 2)}:${h.slice(2, 4)}` : '';
     return { at, step: String(x.CRG_ST_NM ?? '').trim(), code: String(x.CRG_ST ?? '').trim(), place: String(x.DEALT_BRAN_NM ?? '').trim() };
-  }).filter((x: { step: string }) => x.step).sort((a: { at: string }, b: { at: string }) => a.at.localeCompare(b.at));
+  // 같은 시각에 여러 단계가 찍히면(2026-11-24 CJ 개발 서버 수기 자료: 집화 · 배송출발 · 배송완료가 같은 초) 단계 코드 순(11 집화 < 82 배송출발 < 91 배송완료)
+  }).filter((x: { step: string }) => x.step).sort((a: { at: string; code: string }, b: { at: string; code: string }) => a.at.localeCompare(b.at) || stepRank(a.code) - stepRank(b.code));
   return { ok: true, env: cfg.env, invc_no: invc, steps };
 }
 
@@ -325,16 +329,18 @@ async function sync(cfg: Cfg) {
         const use = String(x.CUST_USE_NO ?? '').trim(), inv = String(x.INVC_NO ?? '').replace(/\D/g, '');
         if (!use || !inv) continue;
         const at = `${String(x.SCAN_YMD ?? '')}${String(x.SCAN_HOUR ?? '').padStart(6, '0')}`;
-        const p = last.get(use);
-        if (!p || at > p.at) last.set(use, { inv, at, code: String(x.CRG_ST ?? '').trim(), name: String(x.CRG_ST_NM ?? '').trim() });
+        const p = last.get(use), code = String(x.CRG_ST ?? '').trim();
+        // 같은 시각이면 단계 코드가 뒤인 것 (전엔 먼저 온 줄이 남아 배송완료 건이 '집화처리'로 적혔음)
+        if (!p || at > p.at || (at === p.at && stepRank(code) > stepRank(p.code))) last.set(use, { inv, at, code, name: String(x.CRG_ST_NM ?? '').trim() });
       }
       for (const [use, v] of last) {
-        const { data: rows } = await sb.from('cj_bookings').select('id,invc_no,trk_at').eq('env', cfg.env).eq('cust_use_no', use).in('status', ['booked', 'unknown']).limit(3);
+        const { data: rows } = await sb.from('cj_bookings').select('id,invc_no,trk_at,trk_code').eq('env', cfg.env).eq('cust_use_no', use).in('status', ['booked', 'unknown']).limit(3);
         for (const r of rows || []) {
           const patch: Record<string, unknown> = {};
           if (!r.invc_no) { patch.invc_no = v.inv; filled++; }
           const iso = /^\d{14}$/.test(v.at) ? `${v.at.slice(0, 4)}-${v.at.slice(4, 6)}-${v.at.slice(6, 8)}T${v.at.slice(8, 10)}:${v.at.slice(10, 12)}:${v.at.slice(12, 14)}+09:00` : null;
-          if (iso && (!r.trk_at || new Date(iso) > new Date(r.trk_at))) { patch.trk_at = iso; patch.trk_code = v.code; patch.trk_name = v.name; }
+          const newer = iso && (!r.trk_at || new Date(iso) > new Date(r.trk_at) || (new Date(iso).getTime() === new Date(r.trk_at).getTime() && stepRank(v.code) > stepRank(r.trk_code)));
+          if (newer) { patch.trk_at = iso; patch.trk_code = v.code; patch.trk_name = v.name; }
           if (Object.keys(patch).length) { await sb.from('cj_bookings').update(patch).eq('id', r.id); updated++; }
         }
       }
