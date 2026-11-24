@@ -1502,6 +1502,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .pmd-row:last-child{border-bottom:0}
   .pmd-row.flash{background:color-mix(in srgb,var(--accent) 8%,transparent)}
   .pmd-img{width:56px;height:56px;border-radius:6px;object-fit:cover;background:var(--bg-2);border:1px solid var(--line);grid-row:1/3}
+  /* 썸네일 마우스 올리면 크게 (2026-11-24 사장님 "썸네일 마우스오버되게") — 출고 전광판 확대 창(_lgbShowZoom) 같이 씀 */
+  img.pmd-img{cursor:zoom-in}
   .pmd-noimg{display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:11px}
   .pmd-top{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;min-width:0}
   .pmd-when{color:var(--text-3);font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums}
@@ -14028,7 +14030,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <span class="pom-stats" id="pmdStats"></span>
             <button type="button" class="pom-toggle" id="pmdToggle" onclick="pmdToggle()" aria-expanded="false">브랜드 고르기</button>
           </div>
-          <div class="pom-list pmd-list" id="pmdList" hidden></div>
+          <div class="pom-list pmd-list" id="pmdList" hidden onscroll="_lgbHideZoom()"></div>
         </div>
         <div id="poEmpty" class="po-empty">
           <div class="po-empty-icon">
@@ -35192,7 +35194,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const curB=it.fix||it.b||'';
     const sug=(!it.fix&&!it.b&&Array.isArray(it.alt)&&it.alt[0])?it.alt[0][0]:'';
     const sn=escapeHTML(it.sn);
-    const img=it.img?`<img class="pmd-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(it.img)}" alt="" onerror="this.outerHTML='<div class=&quot;pmd-img pmd-noimg&quot;>×</div>'">`:'<div class="pmd-img pmd-noimg">—</div>';
+    const img=it.img?`<img class="pmd-img" loading="lazy" referrerpolicy="no-referrer" src="${escapeHTML(it.img)}" alt="" onmouseenter="_lgbShowZoom(this)" onmouseleave="_lgbHideZoom()" onclick="_lgbShowZoom(this)" onerror="this.outerHTML='<div class=&quot;pmd-img pmd-noimg&quot;>×</div>'">`:'<div class="pmd-img pmd-noimg">—</div>';
     const btn=([k,l])=>`<button type="button" class="pmd-b${k==='skip'?' skip':''}${curB===k?' on':''}${sug===k&&curB!==k?' sug':''}" onclick="pmdPick('${sn}','${k}',this)"${sug===k&&curB!==k?' title="학습이 가장 가깝다고 본 브랜드"':''}>${l}</button>`;
     const who=it.fix?`<span class="pmd-who">${escapeHTML(it.by||'')} 고름${it.at?' · '+escapeHTML(_lgbWhenSafe(it.at)):''}</span><button type="button" class="pmd-undo" onclick="pmdPick('${sn}','',this)">되돌리기</button>`
       :(it.how==='learn'&&it.b?'<span class="pmd-who">자동(학습) — 틀리면 바꿔 주세요</span>':'');
