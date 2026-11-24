@@ -7,6 +7,8 @@
    · 저장 방식 = 0.7초 뒤 저절로 · ver 가 다르면 줄 단위 3방향 합치기 · 못 보낸 글은 이 PC 에 남겨 다시 보냄 · 지움은 전부 되살리기 가능
    · 보이는 꾸밈([업체] · 날짜 · 수량 · ⇒ 결과 · 새로 · n일째 · 상태)은 글자를 안 바꾸고 화면에서만 붙인다
    index.html 은 #wlBoard(전광판) · #wl(업무일지) 자리만 두고 이 파일을 불러온다. 쓰는 전역: _mdxRpc · toast · SUPABASE_URL · SUPABASE_KEY · loadProxyBase · ghPin · _dslHol · designHasAccess
+   · 2026-11-24 사장님 "전광판 말고 너무 지저분한데 좀 깔끔하게. 좌측 캘린더나 날짜 선택도 간편한 선택으로" — 왼쪽 달력 · 글 목록 칸을 없애고
+     맨 위 날짜 한 줄(날짜 누르면 달력 · 이번 주 칸)로. 날짜를 고르는 자리는 모두 mini() 작은 달력 하나 (전광판만 그대로). 자주 안 쓰는 단추는 ⋯ 메뉴 · '거르기' 로
    · 2026-11-23 노션과 연결 끊음 (사장님 "데이터 이전을 완료헀으면 노션이랑 연결 끊어") — 노션을 읽거나 부르는 코드는 없다. 옛 글의 원본은 dlog_pages.src
    ============================================================ */
 (function(){
@@ -45,9 +47,9 @@ const KIND_ALL = Object.assign({order:'발주 · 샘플'}, KINDS);
 const S = {
   ready:false, booting:null, err:'', max:0, today:ymd(new Date()),
   pages:new Map(), board:new Map(), checks:new Map(),
-  cur:null, view:'page', kind:'all', month:'', group:'vendor',
+  cur:null, view:'page', month:'', wk:'', wkFor:'', showTitle:'', sideAll:false, group:'vendor',
   dirty:new Map(), saving:false, saveT:0, saveAt:0, fails:0, pollT:0, polling:false, defer:false,
-  undo:new Map(), sel:null, fTag:'', fSt:'', hideDone:false, navOpen:false, sideOpen:true, find:null, fresh:new Set(), split:new Map(), caches:new Map(), moreBusy:false, oMode:'cal', oFac:'', oKind:'', oWait:false, oMonth:'', lastPage:null
+  undo:new Map(), sel:null, fTag:'', fSt:'', hideDone:false, find:null, fresh:new Set(), split:new Map(), caches:new Map(), moreBusy:false, oMode:'cal', oFac:'', oKind:'', oWait:false, oMonth:'', lastPage:null
 };
 try{ Object.assign(S, (u => ({group:u.group || 'vendor', hideDone:!!u.hideDone, boardFold:!!u.boardFold, oMode:u.oMode || 'cal'}))(JSON.parse(localStorage.getItem(K.ui) || '{}') || {})); }catch(e){}
 const saveUi = () => { try{ localStorage.setItem(K.ui, JSON.stringify({group:S.group, hideDone:S.hideDone, boardFold:S.boardFold, oMode:S.oMode})); }catch(e){} };
@@ -98,7 +100,7 @@ function decoPlain(t, first, res){
     for(let i = 0; i < 2; i++){
       const m = s.match(/^(\s*)\[([^\]\n\[]{1,24})\](\s*)/);
       if(!m) break;
-      out += `${E(m[1])}<span class="wl-tag"><i class="wl-br">[</i>${E(m[2])}<i class="wl-br">]</i></span>${E(m[3])}`;
+      out += `${E(m[1])}<span class="wl-tag"><i class="wl-br">[</i>${E(m[2])}<i class="wl-br">]</i></span><span class="wl-ts">${E(m[3])}</span>`;
       s = s.slice(m[0].length);
     }
     const d = s.match(/^(\d{4})(_)/), x = d && mmdd(d[1]);
@@ -136,6 +138,7 @@ function deco(b){
       pos += t.length; seen += t;
     }
   }
+  out = out.replace(/(\n+)((?:<\/\w+>)*)$/, '<span class="wl-tn">$1</span>$2');          // 줄 끝에 남은 빈 줄은 적을 때만 보인다 (글자는 그대로)
   if(segText(r).endsWith('\n')) out += '<br data-fill="1">';
   return out;
 }
@@ -724,15 +727,11 @@ function renderAll(){
 function renderTop(){
   const el = document.getElementById('wlTop'); if(!el) return;
   if(el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
-  const has = dailies().some(p => p.day === S.today), off = isOff(S.today);
   const V = [['page', '일지'], ['over', '한눈에'], ['cal', '달력'], ['order', '발주 · 샘플']];
-  el.innerHTML = `<b class="wl-name">📓 업무일지</b><span class="wl-save" data-s="">${S.saveAt ? `✓ 저장됨 ${hm(S.saveAt)}` : ''}</span>
-    <span class="wl-sp"></span>
-    <label class="wl-search"><span aria-hidden="true">🔍</span><input type="search" id="wlQ" placeholder="지난 기록 찾기 — 상품 · 업체 · 낱말" value="${E(S.find ? S.find.q : '')}" aria-label="지난 기록 찾기"></label>
-    <div class="wl-seg" role="tablist">${V.map(([k, t]) => `<button type="button" role="tab" aria-selected="${S.view === k}" class="${S.view === k && !S.find ? 'on' : ''}" data-view="${k}">${t}</button>`).join('')}</div>
-    <button type="button" class="wl-btn pri" data-act="today">${has ? '오늘로' : '＋ 오늘 업무일지'}</button>
-    <button type="button" class="wl-btn" data-act="new">＋ 새 글</button>
-    <button type="button" class="wl-btn ico" data-act="more" aria-label="더 보기" title="지운 글 · 단축키">⋯</button>`;
+  el.innerHTML = `<b class="wl-name">업무일지</b><div class="wl-tabs" role="tablist">${V.map(([k, t]) => `<button type="button" role="tab" aria-selected="${S.view === k}" class="${S.view === k && !S.find ? 'on' : ''}" data-view="${k}">${t}</button>`).join('')}</div>
+    <span class="wl-sp"></span><span class="wl-save" data-s="">${S.saveAt ? `✓ 저장됨 ${hm(S.saveAt)}` : ''}</span>
+    <label class="wl-search"><i class="wl-i-find" aria-hidden="true"></i><input type="search" id="wlQ" placeholder="지난 기록 찾기" value="${E(S.find ? S.find.q : '')}" aria-label="지난 기록 찾기 — 상품 · 업체 · 낱말"></label>
+    ${S.view === 'order' && !S.find ? '' : '<button type="button" class="wl-ib txt" data-act="new">＋ 새 글</button>'}${S.view === 'page' && !S.find && S.pages.size ? '' : '<button type="button" class="wl-ib" data-act="more" aria-label="더 보기" title="지운 글 · 단축키">⋯</button>'}`;          // 일지에선 날짜 줄의 ⋯ 하나로
 }
 function renderMain(){
   const el = document.getElementById('wlMain'); if(!el) return;
@@ -747,41 +746,119 @@ function renderMain(){
   if(S.view === 'over'){ el.className = 'wl-main one'; el.innerHTML = overHtml(); return; }
   if(S.view === 'order'){ el.className = 'wl-main one'; el.innerHTML = orderHtml(); renderOrd(); if(S.cur) renderPage(); return; }
   el.className = 'wl-main';
-  el.innerHTML = `<aside class="wl-nav" id="wlNav"></aside><div class="wl-page" id="wlPage"></div><aside class="wl-side" id="wlSide"></aside>`;
+  el.innerHTML = `<div class="wl-nav" id="wlNav"></div><div class="wl-page" id="wlPage"></div><aside class="wl-side" id="wlSide"></aside>`;
   renderNav(); renderPage();
 }
-/* ── 왼쪽 목록 ── */
+/* ── 날짜 줄 ── 날짜(누르면 달력) · 한 주 · 같은 날 다른 글. 주를 넘겨도 글은 그대로 두고, 글이 바뀌면 그 글의 주로 온다 */
+const longDay = s => `${+s.slice(5, 7)}월 ${+s.slice(8)}일`;
+const dayBtnText = s => s ? `${md(s)} (${WK[dow(s)]})` : '';
 function renderNav(){
   const el = document.getElementById('wlNav'); if(!el) return;
-  const ps = list(), p = cur();
-  if(!S.month) S.month = (p ? p.day : S.today).slice(0, 7);
-  const by = new Map(); ps.forEach(x => { if(!by.has(x.day)) by.set(x.day, []); by.get(x.day).push(x); });
-  const y = +S.month.slice(0, 4), m = +S.month.slice(5, 7), first = new Date(y, m - 1, 1).getDay(), n = new Date(y, m, 0).getDate();
-  let cells = '';
-  for(let i = 0; i < first; i++) cells += '<i></i>';
-  for(let d = 1; d <= n; d++){
-    const s = `${S.month}-${String(d).padStart(2, '0')}`, has = by.get(s);
-    cells += `<button type="button" class="${has ? 'has' : ''}${s === S.today ? ' tod' : ''}${p && p.day === s ? ' cur' : ''}${isOff(s) ? ' off' : ''}" data-day="${s}"${has ? ` title="${E(has.map(x => icoOf(x) + x.title).join(' · '))}"` : ''}>${d}</button>`;
+  const p = cur(); if(!p){ el.innerHTML = ''; return; }
+  const at = p.id + p.day;
+  if(S.wkFor !== at || !S.wk){ S.wkFor = at; S.wk = monOf(p.day); }
+  const ps = list(), by = new Map(); ps.forEach(x => { if(!by.has(x.day)) by.set(x.day, []); by.get(x.day).push(x); });
+  let days = '';
+  for(let i = 0; i < 7; i++){
+    const s = addD(S.wk, i), has = by.get(s);
+    if(i > 4 && !has && s !== S.today && s !== p.day) continue;          // 토 · 일은 적은 글이 있을 때만
+    days += `<button type="button" class="${has ? 'has' : ''}${s === S.today ? ' tod' : ''}${s === p.day ? ' cur' : ''}${isOff(s) ? ' off' : ''}" data-day="${s}" title="${E(`${longDay(s)} ${has ? has.map(x => icoOf(x) + x.title).join(' · ') : '— 아직 없음'}`)}"><em>${WK[dow(s)]}</em><b>${s.slice(8) === '01' ? `${+s.slice(5, 7)}/1` : +s.slice(8)}</b></button>`;
   }
-  const kinds = [['all', '전체']].concat(Object.entries(KINDS)), shown = ps.filter(x => S.kind === 'all' || x.kind === S.kind);
-  let lastM = '', rows = '';
-  shown.slice(0, S.navAll ? 2000 : 40).forEach(x => {
-    const mk = x.day.slice(0, 7);
-    if(mk !== lastM){ lastM = mk; rows += `<div class="wl-nm">${mk.slice(0, 4) === S.today.slice(0, 4) ? '' : mk.slice(0, 4) + '년 '}${+mk.slice(5)}월</div>`; }
-    rows += `<button type="button" class="wl-ni${S.cur === x.id ? ' on' : ''}" data-open="${x.id}"><span class="d">${+x.day.slice(8)}<small>${WK[dow(x.day)]}</small></span><span class="t">${E(icoOf(x) + (x.title || '(제목 없음)'))}</span><span class="c">${x.n ? (x.nd ? `${x.nd}/` : '') + x.n : ''}</span></button>`;
+  const mates = by.get(p.day) || [], need = needToday(p), todayPg = dailies().some(x => x.day === S.today), on = S.fSt ? STS[S.fSt] : S.fTag;
+  el.innerHTML = `<button type="button" class="wl-date" data-act="calnav" title="달력에서 고르기"><b>${longDay(p.day)}</b><span>${WK[dow(p.day)]}요일</span><i class="wl-i-down" aria-hidden="true"></i></button>
+    <div class="wl-wk"><button type="button" class="wl-step" data-wk="-7" aria-label="지난주" title="지난주">‹</button>${S.wk.slice(0, 7) !== p.day.slice(0, 7) && S.wk !== monOf(p.day) ? `<span>${+S.wk.slice(5, 7)}월</span>` : ''}${days}<button type="button" class="wl-step" data-wk="7" aria-label="다음 주" title="다음 주">›</button></div>
+    ${need || (p.day === S.today && todayPg) ? '' : `<button type="button" class="wl-btn" data-act="today">${todayPg ? '오늘' : '＋ 오늘 업무일지'}</button>`}
+    <span class="wl-sp"></span><span class="wl-band" id="wlBand">${p.blocks ? bandHtml(p) : ''}</span>
+    <button type="button" class="wl-ib txt${on ? ' on' : ''}" data-act="filter" aria-label="거르기">${on ? E(on) : '거르기'}${on ? '<i data-act="filteroff" title="거르기 끄기">×</i>' : ''}</button><button type="button" class="wl-ib" data-act="undo" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기"><i class="wl-i-undo"></i></button><button type="button" class="wl-ib" data-act="pagemenu" title="이 글 메뉴" aria-label="이 글 메뉴">⋯</button>
+    ${mates.length > 1 ? `<div class="wl-mates">${mates.map(x => `<button type="button" class="${x.id === p.id ? 'on' : ''}" data-open="${x.id}">${E(icoOf(x) + (x.title || '(제목 없음)'))}</button>`).join('')}</div>` : ''}`;
+}
+const needToday = p => p === dailies()[0] && p.day < S.today && !isOff(S.today);          // 오늘 글이 아직 없을 때 — 글 위 '오늘 업무일지 시작' 띠
+function openDay(d){
+  const ps = list().filter(p => p.day === d);
+  if(ps.length) return openPage((ps.find(p => p.kind === 'daily') || ps[0]).id);
+  if(d === S.today) return poll().then(() => newPage('daily', S.today));
+  if(confirm(`${longDay(d)} (${WK[dow(d)]}) 업무일지를 새로 만들까요?`)) newPage('daily', d);
+}
+/* 작은 달력 — 날짜를 고르는 자리는 모두 이것. 제목(○년 ○월)을 누르면 달을 바로 고른다
+   o = {val 고른 날, has(날) → 글 제목(있으면 굵게), pick(날), quick [[이름, 날]…], months 달만 고르기, pickMon(달)} */
+function mini(el, o){
+  let mon = (o.val || S.today).slice(0, 7), ms = !!o.months;
+  const draw = () => {
+    const y = +mon.slice(0, 4), m = +mon.slice(5, 7);
+    let g = '';
+    if(ms) for(let i = 1; i <= 12; i++){ const k = `${y}-${String(i).padStart(2, '0')}`; g += `<button type="button" class="${k === mon ? 'cur' : ''}${k === S.today.slice(0, 7) ? ' tod' : ''}" data-mo="${k}">${i}월</button>`; }
+    else{
+      g = WK.map(w => `<em>${w}</em>`).join('') + '<i></i>'.repeat(new Date(y, m - 1, 1).getDay());
+      for(let d = 1, n = new Date(y, m, 0).getDate(); d <= n; d++){ const s = `${mon}-${String(d).padStart(2, '0')}`, h = o.has ? o.has(s) : ''; g += `<button type="button" class="${o.has && !h ? 'no' : ''}${s === S.today ? ' tod' : ''}${s === o.val ? ' cur' : ''}${isOff(s) ? ' off' : ''}" data-d="${s}"${h ? ` title="${E(h)}"` : ''}>${d}</button>`; }
+    }
+    el.innerHTML = `<div class="mh"><button type="button" data-mv="-1" aria-label="${ms ? '지난해' : '지난달'}">‹</button><button type="button" class="mt" data-mt title="${o.months ? '' : ms ? '날짜로' : '달 고르기'}">${ms ? `${y}년` : `${y}년 ${m}월`}</button><button type="button" data-mv="1" aria-label="${ms ? '다음해' : '다음달'}">›</button></div><div class="${ms ? 'mm' : 'md'}">${g}</div>${o.quick && !ms ? `<div class="mq">${o.quick.map(([n, d]) => `<button type="button" data-d="${d}">${n}</button>`).join('')}</div>` : ''}`;
+  };
+  el.onclick = e => {
+    e.stopPropagation();
+    const q = s => e.target.closest(s), mv = q('[data-mv]'), mo = q('[data-mo]'), d = q('[data-d]');
+    if(mv){ mon = ymd(new Date(+mon.slice(0, 4) + (ms ? +mv.dataset.mv : 0), +mon.slice(5, 7) - 1 + (ms ? 0 : +mv.dataset.mv), 1)).slice(0, 7); return draw(); }
+    if(q('[data-mt]')){ if(!o.months){ ms = !ms; draw(); } return; }
+    if(mo){ if(o.pickMon) return o.pickMon(mo.dataset.mo); mon = mo.dataset.mo; ms = false; return draw(); }
+    if(d && o.pick) o.pick(d.dataset.d);
+  };
+  draw();
+}
+/* 누르면 작은 달력이 뜨는 창 */
+function calPop(at, o){
+  const b = pop(at, '<div class="wl-mini"></div>', 'cal');
+  const f = k => o[k] && (v => { closePop(); o[k](v); });
+  mini($('.wl-mini', b), Object.assign({}, o, {pick:f('pick'), pickMon:f('pickMon')}));
+  placePop(b, at);
+}
+/* 작은 창 안의 날짜 칸 — 누르면 그 자리에 달력이 펼쳐진다 */
+function dayField(host, val, on, o){
+  const quick = [['오늘', S.today], ['내일', addD(S.today, 1)], ['일주일 뒤', addD(S.today, 7)]];
+  const draw = () => {
+    host.innerHTML = `<button type="button" class="wl-dp">${dayBtnText(val)}<i class="wl-i-down"></i></button><div class="wl-mini" hidden></div>`;
+    $('.wl-dp', host).onclick = e => { e.stopPropagation(); const m = $('.wl-mini', host); m.hidden = !m.hidden; if(!m.hidden) mini(m, Object.assign({val, quick, pick:d => { val = d; on(d); draw(); fit(); }}, o || {})); fit(); };
+  };
+  const fit = () => { const b = host.closest('.wl-pop'); if(b && b._at) placePop(b, b._at); };
+  draw();
+}
+/* 날짜를 눌렀을 때 — 달력 · 진행상황 · 회의 메모 (예전 왼쪽 칸의 글 종류 목록이 여기로) */
+function navPop(at){
+  const ps = list(), by = new Map(), p = cur(); ps.forEach(x => by.set(x.day, (by.get(x.day) ? by.get(x.day) + ' · ' : '') + icoOf(x) + (x.title || '(제목 없음)')));
+  const tabs = [['cal', '달력'], ...Object.entries(KINDS).filter(([k]) => k !== 'daily').map(([k, t]) => [k, t]).filter(([k]) => ps.some(x => x.kind === k))];
+  const b = pop(at, `${tabs.length > 1 ? `<div class="wl-seg">${tabs.map(([k, t], i) => `<button type="button" class="${i ? '' : 'on'}" data-nk="${k}">${t}</button>`).join('')}</div>` : ''}<div class="wl-mini"></div><div class="wl-nl" hidden></div>`, 'cal', (e, box, close) => {
+    const k = e.target.closest('[data-nk]'), o = e.target.closest('[data-open]');
+    if(o){ close(); return openPage(o.dataset.open); }
+    if(!k) return;
+    $$('[data-nk]', box).forEach(x => x.classList.toggle('on', x === k));
+    const c = k.dataset.nk === 'cal', nl = $('.wl-nl', box);
+    $('.wl-mini', box).hidden = !c; nl.hidden = c;
+    if(!c){ let mo = ''; nl.innerHTML = ps.filter(x => x.kind === k.dataset.nk).map(x => { const m = x.day.slice(0, 7), h = m === mo ? '' : `<div class="wl-nm">${m.slice(0, 4) === S.today.slice(0, 4) ? '' : m.slice(0, 4) + '년 '}${+m.slice(5)}월</div>`; mo = m; return `${h}<button type="button" class="wl-ni${S.cur === x.id ? ' on' : ''}" data-open="${x.id}"><b>${+x.day.slice(8)}<small>${WK[dow(x.day)]}</small></b><span>${E(icoOf(x) + (x.title || '(제목 없음)'))}</span></button>`; }).join(''); }
+    placePop(box, at);
   });
-  if(shown.length > 40 && !S.navAll) rows += `<button type="button" class="wl-ni more" data-act="navall">더 보기 ${shown.length - 40}개</button>`;
-  el.innerHTML = `<div class="wl-mc"><div class="wl-mch"><button type="button" data-mon="-1" aria-label="지난달">‹</button><b>${y}년 ${m}월</b><button type="button" data-mon="1" aria-label="다음달">›</button></div>
-    <div class="wl-mcg"><em>일</em><em>월</em><em>화</em><em>수</em><em>목</em><em>금</em><em>토</em>${cells}</div></div>
-    <div class="wl-kinds">${kinds.map(([k, t]) => `<button type="button" class="${S.kind === k ? 'on' : ''}" data-kind="${k}">${t}</button>`).join('')}</div>
-    <div class="wl-nl">${rows || '<div class="wl-none">글이 없어요</div>'}</div>`;
+  mini($('.wl-mini', b), {val:p && p.day, has:d => by.get(d) || '', quick:[['오늘', S.today], ['지난 글', (dailies().find(x => x.day < S.today) || {}).day], ['지난주 오늘', by.has(addD(S.today, -7)) && addD(S.today, -7)]].filter(x => x[1]), pick:d => { closePop(); openDay(d); }});
+  placePop(b, at);
+}
+/* 거르기 — 상태 · 업체 · 끝낸 일. 예전엔 글 위에 칩으로 늘 떠 있었다 */
+function filterMenu(at){
+  const p = cur(), c = p && p.blocks && ctxOf(p); if(!c) return;
+  const st = {}, tg = new Map();
+  (c.I ? c.I.lines : []).forEach(l => { if(l.lv > 0) return; const s = c.own.get(l.id); if(s) st[s] = (st[s] || 0) + 1; const t = tagOf(l.t); if(t) tg.set(t, (tg.get(t) || 0) + 1); });
+  const tags = [...tg].sort((a, b) => b[1] - a[1]).slice(0, 14), dn = c.I ? c.I.lines.filter(l => l.b.k).length : 0, sts = Object.entries(STS).filter(([k]) => st[k]);
+  pop(at, `${sts.length ? `<div class="wl-pt">상태</div><div class="wl-chips sm">${sts.map(([k, t]) => `<button type="button" class="${S.fSt === k ? 'on' : ''}" data-fst="${k}">${t} ${st[k]}</button>`).join('')}</div>` : ''}${tags.length ? `<div class="wl-pt">업체 · 묶음</div><div class="wl-chips sm">${tags.map(([t, n]) => `<button type="button" class="${S.fTag === t ? 'on' : ''}" data-ftag="${E(t)}">${E(t)} ${n}</button>`).join('')}</div>` : ''}${dn ? `<button type="button" data-hd="1"><span>${S.hideDone ? '끝낸 일 다시 보기' : '끝낸 일 숨기기'}</span><kbd>${dn}</kbd></button>` : ''}${sts.length || tags.length || dn ? '' : '<p class="wl-none">거를 것이 없어요</p>'}`, 'menu', (e, box, close) => {
+    const s = e.target.closest('[data-fst]'), g = e.target.closest('[data-ftag]'), h = e.target.closest('[data-hd]');
+    if(!s && !g && !h) return;
+    close();
+    if(s){ S.fSt = S.fSt === s.dataset.fst ? '' : s.dataset.fst; S.fTag = ''; }
+    if(g){ S.fTag = S.fTag === g.dataset.ftag ? '' : g.dataset.ftag; S.fSt = ''; }
+    if(h){ S.hideDone = !S.hideDone; saveUi(); }
+    renderNav(); renderPage();
+  });
 }
 /* ── 글 ── */
 function lineHtml(b, s, x){
   const lv = Math.max(0, (b.lv || 0) - x.base), kids = x.kids.has(b.id), st = x.norm ? stOf(b, s.type) : (b.k ? 'done' : ''), d0 = x.age.get(b.id);
   const days = d0 && !b.k ? dayDiff(x.p.day, d0) : 0, tag = tagOf(bText(b));
   const dim = (S.fSt && x.own.get(b.id) !== S.fSt) || (S.fTag && x.tagOf.get(b.id) !== S.fTag);
-  const cls = `wl-b t-${b.t}${b.k ? ' is-done' : ''}${b.bg && b.bg !== 'default_background' ? ' bg-' + String(b.bg).replace(/_background$/, '') : ''}${kids ? ' has-k' : ''}${b.f ? ' is-fold' : ''}${isEmpty(b) ? ' is-empty' : ''}${dim ? ' is-dim' : ''}${st === 'hold' && x.norm ? ' is-hold' : ''}${S.sel && S.sel.ids.has(b.id) ? ' is-sel' : ''}`;
+  const cls = `wl-b t-${b.t}${b.k ? ' is-done' : ''}${b.bg && b.bg !== 'default_background' ? ' bg-' + String(b.bg).replace(/_background$/, '') : ''}${kids ? ' has-k' : ''}${b.f ? ' is-fold' : ''}${isEmpty(b) ? ' is-empty' : ''}${dim ? ' is-dim' : ''}${tag && s.head && tag === bText(s.head).trim() ? ' tag-same' : ''}${st === 'hold' && x.norm ? ' is-hold' : ''}${S.sel && S.sel.ids.has(b.id) ? ' is-sel' : ''}`;
   const grip = '<button type="button" class="wl-grip" draggable="true" data-act="menu" tabindex="-1" aria-label="줄 메뉴" title="누르면 메뉴 · 끌면 옮기기">⠿</button>';
   const del = '<button type="button" class="wl-x2" data-act="del" tabindex="-1" aria-label="이 줄 지우기" title="지우기">×</button>';
   const emo = '<button type="button" class="wl-emb" data-act="emo" tabindex="-1" aria-label="이모지 넣기" title="이모지 넣기 (Ctrl E)"><i class="wl-smile"></i></button>';
@@ -806,7 +883,7 @@ function secHtml(s, c){
   items.forEach(b => { const lv = b.lv || 0; if(hide >= 0 && lv > hide) return; hide = -1; rows += lineHtml(b, s, x); if(b.f && kids.has(b.id)) hide = lv; });
   const real = s.items.filter(b => !isEmpty(b) && b.t !== 'hr'), dn = real.filter(b => b.k).length;
   const fold = s.head && s.head.f;
-  return `<section class="wl-sec${s.type ? ' k-' + s.type : ''}${fold ? ' is-fold' : ''}" data-sec="${s.key}">
+  return `<section class="wl-sec${s.type ? ' k-' + s.type : ''}${fold ? ' is-fold' : ''}${real.length ? '' : ' is-blank'}" data-sec="${s.key}">
     ${s.head ? `<header class="wl-sh wl-b t-h" data-id="${s.head.id}"><button type="button" class="wl-grip" draggable="true" data-act="menu" tabindex="-1" title="누르면 메뉴 · 끌면 구역째 옮기기">⠿</button><button type="button" class="wl-fo" data-act="fold" tabindex="-1" aria-label="접기 · 펼치기" title="접기 · 펼치기"></button><div class="wl-x" contenteditable="true" spellcheck="false" role="textbox" data-ph="구역 이름">${deco(s.head)}</div><button type="button" class="wl-emb" data-act="emo" tabindex="-1" aria-label="이모지 넣기" title="이모지 넣기"><i class="wl-smile"></i></button><span class="wl-cnt">${dn ? `${dn}/` : ''}${real.length || ''}</span><button type="button" class="wl-x2" data-act="delsec" tabindex="-1" title="구역째 지우기">×</button></header>` : ''}
     <div class="wl-bs-list">${rows}</div>
     <button type="button" class="wl-add" data-act="addline" data-sec="${s.key}">＋ 줄</button></section>`;
@@ -821,7 +898,7 @@ function renderPage(){
   const c = ctxOf(p), seq = list(), i = seq.findIndex(x => x.id === p.id), nx = seq[i - 1], pv = seq[i + 1];
   const vis = secOrder(p, c.ss).filter(s => s.head || s.items.some(b => !isEmpty(b) || S.fresh.has(b.id)));
   // 두 칸 나누기 — 글을 열 때 한 번 정하고 고치는 동안 자리를 안 바꾼다 (카드가 튀지 않게). 업무일지는 '오늘 업무'(전광판과 같은 목록) · '그 밖' 두 묶음
-  const wide = el.clientWidth >= 860, band = p.kind === 'daily', A = band ? vis.filter(s => !SIDE_SEC.includes(s.type)) : vis, B = band ? vis.filter(s => SIDE_SEC.includes(s.type)) : [];
+  const wide = el.clientWidth >= 780, band = p.kind === 'daily', A = band ? vis.filter(s => !SIDE_SEC.includes(s.type)) : vis, B = band ? vis.filter(s => SIDE_SEC.includes(s.type)) : [];
   const sp = S.split.get(p.id) || new Map();
   const spread = L => {
     const w = s => 2.2 + s.items.filter(b => !isEmpty(b)).reduce((a, b) => a + Math.max(1, Math.ceil(bText(b).length / 34)), 0), tot = L.reduce((a, s) => a + w(s), 0), fresh = !L.some(s => sp.has(s.key));
@@ -830,47 +907,39 @@ function renderPage(){
   };
   spread(A); spread(B); S.split.set(p.id, sp);
   const grid = (L, end) => { const two = wide && L.some(s => sp.get(s.key) === 1), col = n => L.filter(s => (two ? sp.get(s.key) : 0) === n).map(s => secHtml(s, c)).join(''); return `<div class="wl-cols${two ? ' two' : ''}${S.hideDone ? ' hide-done' : ''}"><div>${col(0)}${two ? '' : end}</div>${two ? `<div>${col(1)}${end}</div>` : ''}</div>`; };
-  const st = {}, tg = new Map();
-  (c.I ? c.I.lines : []).forEach(l => { if(l.lv > 0) return; const s = c.own.get(l.id); if(s) st[s] = (st[s] || 0) + 1; const t = tagOf(l.t); if(t) tg.set(t, (tg.get(t) || 0) + 1); });
-  const tags = [...tg].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const tot = c.I ? c.I.lines.length : 0, dn = c.I ? c.I.lines.filter(l => l.b.k).length : 0;
-  if(S.fSt && !st[S.fSt]) S.fSt = ''; if(S.fTag && !tg.has(S.fTag)) S.fTag = '';
-  const first = dailies()[0], needToday = p === first && p.day < S.today && !isOff(S.today), rest = needToday && c.I ? c.I.lines.filter(l => !l.b.k && !['goalM', 'goalW', 'daily'].includes(l.sec)).length : 0;
+  // 거르던 상태 · 업체가 다 없어졌으면 거르기를 푼다
+  if((S.fSt || S.fTag) && !(c.I ? c.I.lines : []).some(l => l.lv === 0 && (S.fSt ? c.own.get(l.id) === S.fSt : tagOf(l.t) === S.fTag))){ S.fSt = S.fTag = ''; renderNav(); }
   if(p.kind === 'order'){ el.innerHTML = orderPage(p, c, vis); return; }
-  el.innerHTML = `${needToday ? `<div class="wl-today"><span><b>${md(S.today)} (${WK[dow(S.today)]})</b> 업무일지가 아직 없어요 — 남은 일 ${rest}줄을 이어받아 시작해요</span><button type="button" class="wl-btn pri" data-act="today">오늘 업무일지 시작</button></div>` : ''}<div class="wl-ph">
-      <div class="wl-pd"><button type="button" class="wl-step" data-open="${pv ? pv.id : ''}"${pv ? '' : ' disabled'} title="이전 글" aria-label="이전 글">‹</button>
-        <button type="button" class="wl-date" data-act="pickday" title="날짜 바꾸기"><b>${+p.day.slice(5, 7)}월 ${+p.day.slice(8)}일</b> <span>${WK[dow(p.day)]}요일</span>${p.day === S.today ? '<em>오늘</em>' : ''}</button>
-        <button type="button" class="wl-step" data-open="${nx ? nx.id : ''}"${nx ? '' : ' disabled'} title="다음 글" aria-label="다음 글">›</button></div>
-      ${icoBtn(p)}<input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목" aria-label="제목">
-      <select class="wl-kind" id="wlKind" aria-label="글 종류">${Object.entries(KINDS).map(([k, t]) => `<option value="${k}"${p.kind === k ? ' selected' : ''}>${t}</option>`).join('')}</select>
-      <span class="wl-sp"></span>
-      <span class="wl-meta">${p.ub && p.ub !== 'notion' ? E(p.ub) + ' · ' : ''}${p.ua ? `${md(ymd(new Date(p.ua)))} ${hm(p.ua)} 수정` : ''}${p.origin === 'notion' ? ' · 노션에서 옮김' : ''}</span>
-      <button type="button" class="wl-btn sm" data-act="undo" title="되돌리기 (Ctrl+Z)">되돌리기</button><button type="button" class="wl-btn sm" data-act="copy" title="글자로 복사">복사</button><button type="button" class="wl-btn sm ico" data-act="pagemenu" aria-label="이 글 메뉴">⋯</button></div>
-    <div class="wl-fl">${Object.entries(STS).filter(([k]) => st[k]).map(([k, t]) => `<button type="button" class="${S.fSt === k ? 'on' : ''}" data-fst="${k}">${t} <b>${st[k]}</b></button>`).join('')}${tags.length ? '<i></i>' : ''}${tags.map(([t, n]) => `<button type="button" class="tg${S.fTag === t ? ' on' : ''}" data-ftag="${E(t)}">${E(t)} <b>${n}</b></button>`).join('')}<span class="wl-sp"></span>${dn ? `<button type="button" class="${S.hideDone ? 'on' : ''}" data-act="hidedone">${S.hideDone ? `끝낸 일 ${dn} 보기` : `끝낸 일 ${dn} 숨기기`}</button>` : ''}</div>
-    ${band ? `<div class="wl-band" id="wlBand">${bandHtml(p)}</div>${grid(A, addSecBtn())}${B.length ? `<div class="wl-band sub"><b>그 밖</b><span>${[...new Set(B.map(s => s.head ? bText(s.head) : ''))].filter(Boolean).join(' · ')}</span></div>${grid(B, '')}` : ''}` : grid(A, addSecBtn())}`;
-  renderSide();
+  const need = needToday(p), rest = need && c.I ? c.I.lines.filter(l => !l.b.k && !['goalM', 'goalW', 'daily'].includes(l.sec)).length : 0;
+  const plain = p.kind === 'daily' && (p.title || '').trim() === '업무일지' && !(p.meta || {}).icon && S.showTitle !== p.id;          // 날짜가 곧 제목 — 제목을 따로 적은 글만 제목 칸을 보인다
+  el.innerHTML = `${need ? `<div class="wl-today"><span><b>${md(S.today)} (${WK[dow(S.today)]})</b> 업무일지가 아직 없어요 — 남은 일 ${rest}줄을 이어받아 시작해요</span><button type="button" class="wl-btn pri" data-act="today">오늘 업무일지 시작</button></div>` : ''}${plain ? '' : `<div class="wl-ph">${icoBtn(p)}<input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목" aria-label="제목"></div>`}${grid(A, addSecBtn())}${B.length ? `<div class="wl-rest">${grid(B, '')}</div>` : ''}`;
+  renderBand(); renderSide();
 }
 const icoBtn = p => { const v = (p.meta || {}).icon; return `<button type="button" class="wl-ic${v ? ' on' : ''}" data-act="icon" title="글 아이콘" aria-label="글 아이콘">${v ? E(v) : '<i class="wl-smile"></i>'}</button>`; };
-function bandHtml(p){ const it = todayItems(p), d = it.filter(x => x.b.k).length; return `<b>${p.day === S.today ? '오늘 업무' : `${md(p.day)} 업무`}</b><em>${d}/${it.length}</em>${p.day === S.today ? '<span>위 전광판과 같은 목록이에요 — 어느 쪽에서 고쳐도 같이 바뀌어요</span>' : ''}`; }
+function bandHtml(p){ if(p.kind !== 'daily') return ''; const it = todayItems(p), d = it.filter(x => x.b.k).length; return it.length ? `<em>${p.day === S.today ? '오늘 업무' : '업무'}</em> <b>${d}/${it.length}</b>` : ''; }
 function renderBand(){ const el = document.getElementById('wlBand'), p = cur(); if(el && p && p.blocks) el.innerHTML = bandHtml(p); }
 const addSecBtn = () => '<button type="button" class="wl-addsec" data-act="addsec">＋ 구역</button>';
 /* ── 오른쪽 자동 정리 ── */
 function renderSide(){
   const el = document.getElementById('wlSide'); if(!el) return;
-  const p = cur(); if(!p || !p.blocks){ el.innerHTML = ''; return; }
+  const p = cur(); if(!p || !p.blocks){ el.innerHTML = ''; return; }          // 모을 것이 없으면 칸째 없앤다
   const o = ordersOf(p), A = info(p), age = p.kind === 'daily' ? ageMap(p) : new Map();
   const parts = [];
   const go = (id, t, r, cls) => `<button type="button" class="wl-sl${cls ? ' ' + cls : ''}" data-go="${id}"><span>${t}</span>${r ? `<em>${r}</em>` : ''}</button>`;
-  const ups = p.kind === 'daily' && p === dailies()[0] ? upcoming() : [];
-  if(ups.length || o.due.length) parts.push(`<div class="wl-sc"><h4>입고 예정</h4>${ups.map(x => { const n = dayDiff(x.day, S.today); return `<button type="button" class="wl-sl up" data-open="${x.id}"><span>${md(x.day)} <small>${WK[dow(x.day)]}</small> ${E(oTitle(x))}<i>${E([oFac(x).join(' · '), oLines(x).slice(0, 2).join(' · ')].filter(Boolean).join(' — '))}</i></span><em>${n === 0 ? '오늘' : n > 0 ? 'D-' + n : -n + '일 전'}</em></button>`; }).join('')}${o.due.map(x => { const n = dayDiff(x.day, S.today); return go(x.id, E(x.t), `<b class="${n < 0 ? 'bad' : ''}">${n === 0 ? '오늘' : n > 0 ? 'D-' + n : -n + '일 지남'}</b> ${md(x.day)}`); }).join('')}</div>`);
+  const ups = p.kind === 'daily' && p === dailies()[0] ? upcoming() : [], LIM = 6, dd = n => n === 0 ? '<b>오늘</b>' : n > 0 ? 'D-' + n : `<b class="bad">${-n}일 지남</b>`;
+  // 입고 예정 — 한 줄에 하나: 날짜 · 들어올 것 · D-day (공장 · 나머지 줄은 마우스를 올리면, 누르면 일정이 열림)
+  const inName = x => { const ls = oLines(x), pr = ls.filter(t => !/^\d{4}\s.{0,14}(발주|요청|투입|재샘플)/.test(t)), f = oFac(x).join(' · '); return pr.length ? pr[0].replace(/\s*(국내|국외)?\s*입고\s*예정$/, '') + (pr.length > 1 ? ` 외 ${pr.length - 1}` : '') : [oTitle(x).replace(/\s*입고?\s*예정$/, ''), f].filter(Boolean).join(' · '); };
+  const inRows = [...ups.map(x => ({d:x.day, h:`<button type="button" class="wl-sl" data-open="${x.id}" title="${E([oTitle(x), oFac(x).join(' · '), ...oLines(x)].filter(Boolean).join('\n'))}"><i>${md(x.day)}</i><span>${E(inName(x))}</span><em>${dd(dayDiff(x.day, S.today))}</em></button>`})), ...o.due.map(x => ({d:x.day, h:`<button type="button" class="wl-sl" data-go="${x.id}" title="${E(x.t)}"><i>${md(x.day)}</i><span>${E(x.t)}</span><em>${dd(dayDiff(x.day, S.today))}</em></button>`}))].sort((a, b) => a.d.localeCompare(b.d));
+  if(inRows.length) parts.push(`<div class="wl-sc"><h4>입고 예정 <small>${inRows.length}</small></h4>${inRows.slice(0, S.sideAll ? 99 : LIM).map(x => x.h).join('')}${inRows.length > LIM ? `<button type="button" class="wl-sm" data-act="sidemore">${S.sideAll ? '접기' : `${inRows.length - LIM}건 더 보기`}</button>` : ''}</div>`);
   if(o.orders.length){
-    const wait = o.orders.filter(x => !x.done), sum = wait.reduce((a, x) => a + (+x.q.replace(/,/g, '') || 0), 0);
-    parts.push(`<div class="wl-sc"><h4>발주 · 입고 <small>${wait.length}건${sum ? ' · ' + sum.toLocaleString() + 'ea' : ''}${inb.at ? ` · ${hm(inb.at)} 자동 확인` : ''}</small></h4><table class="wl-ot"><tbody>${o.orders.map(x => `<tr class="${x.done ? 'is-done' : ''}"><td><button type="button" class="wl-ock" data-odone="${x.id}" title="${x.done ? '아직 안 들어옴' : '들어왔으면 누르기'}" aria-label="입고"></button></td><td class="d">${x.day ? md(x.day) : ''}</td><td class="n" data-go="${x.id}">${x.v ? `<small>${E(x.v)}</small> ` : ''}${E(x.name)}${(z => z ? `<i class="k-${z.k}">${E(z.t)}</i>` : '')(x.done ? null : inbOf(x))}</td><td class="q">${E(x.q)}</td><td class="a">${x.day && !x.done ? Math.max(0, dayDiff(p.day === dailies()[0]?.day ? S.today : p.day, x.day)) + '일' : ''}</td></tr>`).join('')}</tbody></table></div>`);
+    const wait = o.orders.filter(x => !x.done), sum = wait.reduce((a, x) => a + (+x.q.replace(/,/g, '') || 0), 0), now = p.day === dailies()[0]?.day ? S.today : p.day;
+    parts.push(`<div class="wl-sc"><h4>발주 · 입고 <small>${wait.length}건${sum ? ' · ' + sum.toLocaleString() + 'ea' : ''}</small></h4><table class="wl-ot"${inb.at ? ` title="${hm(inb.at)} 자동 확인"` : ''}><tbody>${o.orders.map(x => `<tr class="${x.done ? 'is-done' : ''}"${x.day && !x.done ? ` title="${md(x.day)} 발주 · ${Math.max(0, dayDiff(now, x.day))}일째"` : ''}><td><button type="button" class="wl-ock" data-odone="${x.id}" title="${x.done ? '아직 안 들어옴' : '들어왔으면 누르기'}" aria-label="입고"></button></td><td class="d">${x.day ? md(x.day) : ''}</td><td class="n" data-go="${x.id}">${E(x.name)}${x.v ? ` <small>${E(x.v)}</small>` : ''}${(z => z ? `<i class="k-${z.k}">${E(z.t)}</i>` : '')(x.done ? null : inbOf(x))}</td><td class="q">${E(x.q)}</td></tr>`).join('')}</tbody></table></div>`);
   }
   // '앞 글과 달라진 점(새로 · 고침 · 빠짐)' 은 뺐다 — 2026-11-23 사장님 "이전과 달라진 점 없애"
   const old = A.lines.filter(l => l.lv === 0 && !l.b.k && age.get(l.id) && dayDiff(p.day, age.get(l.id)) >= 13 && !NO_AGE.includes(l.sec)).sort((a, b) => age.get(a.id).localeCompare(age.get(b.id)));
-  if(old.length) parts.push(`<div class="wl-sc"><h4>2주 넘게 남은 일 <small>${old.length}</small></h4>${old.slice(0, 10).map(l => go(l.id, E(l.t), `<b class="bad">${dayDiff(p.day, age.get(l.id)) + 1}일째</b>`)).join('')}</div>`);
-  el.innerHTML = parts.length ? parts.join('') : '<div class="wl-sc mute">발주 줄([업체] 1104_상품 200ea)이나 날짜(1126 입고예정)를 적으면 여기에 저절로 모여요.</div>';
+  if(old.length) parts.push(`<div class="wl-sc"><h4>2주 넘게 남은 일 <small>${old.length}</small></h4>${old.slice(0, 6).map(l => go(l.id, E(l.t), `<b class="bad">${dayDiff(p.day, age.get(l.id)) + 1}일째</b>`)).join('')}</div>`);
+  el.innerHTML = parts.join('');
+  const mn = document.getElementById('wlMain'); if(mn && S.view === 'page') mn.classList.toggle('noside', !parts.length);
 }
 
 /* ── 한눈에 ── */
@@ -922,9 +991,9 @@ function calHtml(){
   for(let i = 0; i < 42; i++){
     const s = addD(start, i), out = s.slice(0, 7) !== S.month;
     if(i >= 35 && out && addD(start, 35).slice(0, 7) !== S.month) break;
-    c += `<div class="wl-cd${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-cday="${s}"><b>${+s.slice(8)}</b>${(by.get(s) || []).map(x => `<button type="button" class="wl-ce" data-open="${x.id}">${E(icoOf(x) + (x.title || '(제목 없음)'))}${x.n ? `<small>${x.n}</small>` : ''}</button>`).join('')}${pins.filter(b => b.due === s).map(b => `<span class="wl-cp">📌 ${E(b.title)}</span>`).join('')}${due.filter(x => x.day === s).map(x => `<span class="wl-cp">${E(x.t)}</span>`).join('')}${ords.filter(x => x.day === s).map(x => `<button type="button" class="wl-co${arrDone(x) ? ' is-done' : ''}" data-open="${x.id}">${E(oTitle(x))}</button>`).join('')}</div>`;
+    c += `<div class="wl-cd${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-cday="${s}"><b>${+s.slice(8)}</b>${(by.get(s) || []).map(x => `<button type="button" class="wl-ce" data-open="${x.id}">${E(icoOf(x) + (x.title || '(제목 없음)'))}</button>`).join('')}${pins.filter(b => b.due === s).map(b => `<span class="wl-cp">📌 ${E(b.title)}</span>`).join('')}${due.filter(x => x.day === s).map(x => `<span class="wl-cp">${E(x.t)}</span>`).join('')}${ords.filter(x => x.day === s).map(x => `<button type="button" class="wl-co${arrDone(x) ? ' is-done' : ''}" data-open="${x.id}">${E(oTitle(x))}</button>`).join('')}</div>`;
   }
-  return `<div class="wl-ob"><button type="button" class="wl-step" data-mon="-1" aria-label="지난달">‹</button><b class="wl-cm">${y}년 ${m}월</b><button type="button" class="wl-step" data-mon="1" aria-label="다음달">›</button></div><div class="wl-cal">${WK.map(w => `<em>${w}</em>`).join('')}${c}</div>`;
+  return `<div class="wl-ob"><button type="button" class="wl-step" data-mon="-1" aria-label="지난달">‹</button><button type="button" class="wl-cm" data-act="monpick" title="달 고르기">${y}년 ${m}월</button><button type="button" class="wl-step" data-mon="1" aria-label="다음달">›</button>${S.month !== S.today.slice(0, 7) ? '<button type="button" class="wl-btn sm" data-act="monnow">이번 달</button>' : ''}</div><div class="wl-cal">${WK.map(w => `<em>${w}</em>`).join('')}${c}</div>`;
 }
 /* ── 찾기 ── */
 let findT = 0, findGen = 0;
@@ -1019,9 +1088,12 @@ function renderOrd(){
   const L = A.filter(p => (!S.oFac || oFac(p).includes(S.oFac)) && (!S.oKind || okOf(p) === S.oKind) && (!S.oWait || oWaits(p)));
   const y = +S.oMonth.slice(0, 4), m = +S.oMonth.slice(5, 7);
   bar.innerHTML = `<div class="wl-seg"><button type="button" class="${S.oMode === 'cal' ? 'on' : ''}" data-omode="cal">달력</button><button type="button" class="${S.oMode === 'list' ? 'on' : ''}" data-omode="list">목록</button></div>
-    ${S.oMode === 'cal' ? `<button type="button" class="wl-step" data-omon="-1" aria-label="지난달">‹</button><b class="wl-cm">${y}년 ${m}월</b><button type="button" class="wl-step" data-omon="1" aria-label="다음달">›</button>${S.oMonth !== S.today.slice(0, 7) ? '<button type="button" class="wl-btn sm" data-oact="now">이번 달</button>' : ''}` : `<span class="wl-meta">${L.length}건</span>`}
-    <span class="wl-sp"></span><button type="button" class="wl-btn pri" data-oact="new">＋ 새 일정</button>
-    <div class="wl-fl ord">${kinds.map(([k, n]) => `<button type="button" class="${S.oKind === k ? 'on' : ''}" data-okind="${k}">${OKN[k]} <b>${n}</b></button>`).join('')}<i></i>${facList().map(([f, n]) => `<button type="button" class="${S.oFac === f ? 'on' : ''}" data-ofac="${E(f)}">${E(f)} <b>${n}</b></button>`).join('')}<i></i><button type="button" class="${S.oWait ? 'on' : ''}" data-oact="wait">미입고만 <b>${w}</b></button></div>`;
+    ${S.oMode === 'cal' ? `<span class="wl-mn"><button type="button" class="wl-step" data-omon="-1" aria-label="지난달">‹</button><button type="button" class="wl-cm" data-oact="monpick" title="달 고르기">${y}년 ${m}월</button><button type="button" class="wl-step" data-omon="1" aria-label="다음달">›</button></span>${S.oMonth !== S.today.slice(0, 7) ? '<button type="button" class="wl-btn sm" data-oact="now">이번 달</button>' : ''}` : ''}
+    <span class="wl-sp"></span>
+    <select class="wl-sel${S.oKind ? ' on' : ''}" data-osel="oKind" aria-label="종류"><option value="">종류 전체</option>${kinds.map(([k, n]) => `<option value="${k}"${S.oKind === k ? ' selected' : ''}>${OKN[k]} ${n}</option>`).join('')}</select>
+    <select class="wl-sel${S.oFac ? ' on' : ''}" data-osel="oFac" aria-label="공장"><option value="">공장 전체</option>${facList().map(([f, n]) => `<option value="${E(f)}"${S.oFac === f ? ' selected' : ''}>${E(f)} ${n}</option>`).join('')}</select>
+    <button type="button" class="wl-ib txt${S.oWait ? ' on' : ''}" data-oact="wait" aria-pressed="${S.oWait}">미입고만 ${w}</button>
+    <button type="button" class="wl-btn pri" data-oact="new">＋ 새 일정</button>`;
   const late = p => ['in', 'sin', 'ship'].includes(okOf(p)) && p.day < S.today && oWaits(p) && dayDiff(S.today, p.day) <= 30;
   if(S.oMode === 'cal'){
     const start = addD(`${S.oMonth}-01`, -new Date(y, m - 1, 1).getDay());
@@ -1030,7 +1102,7 @@ function renderOrd(){
       const s = addD(start, i), out = s.slice(0, 7) !== S.oMonth;
       if(i >= 35 && out && addD(start, 35).slice(0, 7) !== S.oMonth) break;
       const xs = L.filter(p => p.day <= s && ((p.meta || {}).end || p.day) >= s).sort((a, b) => a.title.localeCompare(b.title));
-      h += `<div class="wl-cd o${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-oday="${s}"><b>${+s.slice(8)}</b>${xs.map(p => { const ls = oLines(p); return `<button type="button" class="wl-oe${arrDone(p) ? ' is-done' : ''}${late(p) ? ' late' : ''}${p.id === sel ? ' on' : ''}" draggable="true" data-oid="${p.id}"><strong>${E(oTitle(p))}${oSt(p).length ? `<em>${E(oSt(p).join(' · '))}</em>` : ''}</strong>${oFac(p).length ? `<small>${E(oFac(p).join(' · '))}</small>` : ''}${ls.slice(0, 2).map(t => `<span>${E(t)}</span>`).join('')}${ls.length > 2 ? `<span>외 ${ls.length - 2}</span>` : ''}</button>`; }).join('')}</div>`;
+      h += `<div class="wl-cd o${out ? ' out' : ''}${s === S.today ? ' tod' : ''}${isOff(s) ? ' off' : ''}" data-oday="${s}"><b>${+s.slice(8)}</b>${xs.map(p => { const ls = oLines(p); return `<button type="button" class="wl-oe${arrDone(p) ? ' is-done' : ''}${late(p) ? ' late' : ''}${p.id === sel ? ' on' : ''}" draggable="true" data-oid="${p.id}" title="${E([oTitle(p), oFac(p).join(' · '), oSt(p).join(' · '), ...ls].filter(Boolean).join('\n'))}"><strong>${E(oTitle(p))}${late(p) ? '<em>미입고</em>' : ''}</strong>${ls.slice(0, 2).map(t => `<span>${E(t)}</span>`).join('')}${ls.length > 2 ? `<span>외 ${ls.length - 2}</span>` : ''}</button>`; }).join('')}</div>`;
     }
     om.innerHTML = `<div class="wl-cal">${WK.map(x => `<em>${x}</em>`).join('')}${h}</div>`;
   }else{
@@ -1047,8 +1119,8 @@ function renderOrd(){
 /* 오른쪽 상세 — 줄 고치기는 업무일지와 같은 편집기 */
 function orderPage(p, c, vis){
   const ok = okOf(p), st = oSt(p), fac = oFac(p), facs = [...new Set([...facList().map(x => x[0]), ...fac])], chip = (k, v, t, on) => `<button type="button" class="${on ? 'on' : ''}" data-oset="${k}" data-v="${E(v)}">${E(t)}</button>`;
-  return `<div class="wl-ph">${icoBtn(p)}<input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목 (예: 1126 입고예정)" aria-label="제목"><span class="wl-sp"></span><button type="button" class="wl-btn sm" data-act="undo" title="되돌리기 (Ctrl+Z)">되돌리기</button><button type="button" class="wl-btn sm" data-act="copy">복사</button><button type="button" class="wl-btn sm ico" data-act="pagemenu" aria-label="이 일정 메뉴">⋯</button><button type="button" class="wl-btn sm ico" data-oact="close" aria-label="닫기">×</button></div>
-    <dl class="wl-of"><dt>날짜</dt><dd><input type="date" data-om="day" value="${p.day}" aria-label="날짜"><i>~</i><input type="date" data-om="end" value="${E((p.meta || {}).end || '')}" aria-label="끝나는 날 (없어도 돼요)"></dd>
+  return `<div class="wl-ph">${icoBtn(p)}<input class="wl-title" id="wlTitle" value="${E(p.title)}" maxlength="120" placeholder="제목 (예: 1126 입고예정)" aria-label="제목"><button type="button" class="wl-ib" data-act="undo" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기"><i class="wl-i-undo"></i></button><button type="button" class="wl-ib" data-act="pagemenu" aria-label="이 일정 메뉴">⋯</button><button type="button" class="wl-ib x" data-oact="close" aria-label="닫기">×</button></div>
+    <dl class="wl-of"><dt>날짜</dt><dd><button type="button" class="wl-dp" data-oact="day">${dayBtnText(p.day)}<i class="wl-i-down"></i></button><i>~</i><button type="button" class="wl-dp${(p.meta || {}).end ? '' : ' none'}" data-oact="end">${dayBtnText((p.meta || {}).end) || '끝나는 날'}<i class="wl-i-down"></i></button>${(p.meta || {}).end ? '<button type="button" class="wl-ib x" data-oact="endoff" title="끝나는 날 없애기" aria-label="끝나는 날 없애기">×</button>' : ''}</dd>
       <dt>종류</dt><dd class="wl-chips sm">${Object.entries(OKN).map(([k, t]) => chip('ok', k, t, ok === k)).join('')}</dd>
       <dt>공장</dt><dd class="wl-chips sm">${facs.map(f => chip('fac', f, f, fac.includes(f))).join('')}<button type="button" data-oact="facadd" aria-label="공장 더하기">＋</button></dd>
       <dt>상태</dt><dd class="wl-chips sm">${[...new Set([...OST, ...st])].map(x => chip('st', x, x, st.includes(x))).join('')}</dd></dl>
@@ -1063,20 +1135,23 @@ function openOrd(id){
 function ordField(t){
   const k = t.dataset.om;
   if(k === 'lst'){ const p = S.pages.get(t.dataset.opid); if(!p) return; ordSet(p, {st:t.value ? [t.value] : []}); renderBoard(); if(S.cur === p.id) renderPage(); t.blur(); renderOrd(); return; }
+}
+function ordDay(k, v){          // 일정 날짜 · 끝나는 날
   const p = cur(); if(!p || p.kind !== 'order') return;
-  if(k === 'day' && t.value){ ordMove(p, t.value); S.oMonth = p.day.slice(0, 7); const i = document.getElementById('wlTitle'); if(i) i.value = p.title; }
-  if(k === 'end') ordSet(p, {end:t.value && t.value > p.day ? t.value : ''});
-  renderOrd(); renderBoard();
+  if(k === 'day'){ ordMove(p, v); S.oMonth = p.day.slice(0, 7); if((p.meta || {}).end && p.meta.end <= p.day) ordSet(p, {end:''}); }
+  else{ if(v && v <= p.day){ say('끝나는 날은 시작하는 날보다 뒤여야 해요', 'err'); return; } ordSet(p, {end:v}); }
+  renderOrd(); renderPage(); renderBoard();
 }
 function newOrder(at, day){
   const facs = facList().map(x => x[0]);
-  pop(at, `<label>날짜<input type="date" data-k="day" value="${day || S.today}"></label><div class="wl-pl">종류</div><div class="wl-chips sm" data-f="ok">${Object.entries(OKN).map(([k, t]) => `<button type="button" data-v="${k}" class="${k === 'in' ? 'on' : ''}">${t}</button>`).join('')}</div>
+  let d = day || S.today;
+  const nb0 = pop(at, `<div class="wl-pl">날짜</div><div data-k="day"></div><div class="wl-pl">종류</div><div class="wl-chips sm" data-f="ok">${Object.entries(OKN).map(([k, t]) => `<button type="button" data-v="${k}" class="${k === 'in' ? 'on' : ''}">${t}</button>`).join('')}</div>
     <div class="wl-pl">공장</div><div class="wl-chips sm" data-f="fac">${facs.map(f => `<button type="button" data-v="${E(f)}">${E(f)}</button>`).join('')}</div><input type="text" data-k="fac" maxlength="40" placeholder="새 공장이면 적기"><div class="wl-pf"><span class="wl-sp"></span><button type="button" class="wl-btn" data-x="no">닫기</button><button type="button" class="wl-btn pri" data-x="ok">만들기</button></div>`, 'form', (e, box, close) => {
     const c = e.target.closest('.wl-chips button');
     if(c){ if(c.parentNode.dataset.f === 'ok') $$('button', c.parentNode).forEach(b => b.classList.toggle('on', b === c)); else c.classList.toggle('on'); return; }
     const x = e.target.closest('[data-x]'); if(!x) return;
     if(x.dataset.x === 'no') return close();
-    const d = $('[data-k="day"]', box).value || S.today, ok = ($('[data-f="ok"] .on', box) || {dataset:{v:'in'}}).dataset.v, nf = $('[data-k="fac"]', box).value.trim(), fac = [...new Set([...$$('[data-f="fac"] .on', box).map(b => b.dataset.v), ...(nf ? [nf] : [])])];
+    const ok = ($('[data-f="ok"] .on', box) || {dataset:{v:'in'}}).dataset.v, nf = $('[data-k="fac"]', box).value.trim(), fac = [...new Set([...$$('[data-f="fac"] .on', box).map(b => b.dataset.v), ...(nf ? [nf] : [])])];
     close();
     const name = {po:'발주', in:'입고예정', sreq:'샘플요청', sin:'샘플입고예정', ship:'발송예정', etc:''}[ok], title = `${d.slice(5, 7)}${d.slice(8)} ${name}`.trim(), b = nb(), meta = {ok};
     if(fac.length) meta.fac = fac;
@@ -1087,14 +1162,13 @@ function newOrder(at, day){
     S.oMonth = d.slice(0, 7); S.cur = p.id; S.fresh.clear(); S.fresh.add(b.id);
     renderOrd(); renderPage(); renderBoard(); focusB(b.id);
   });
+  dayField($('[data-k="day"]', nb0), d, v => { d = v; });
 }
 function onOrdClick(e){
   const t = e.target, q = s => t.closest(s);
   let a;
   if((a = q('[data-omode]'))){ S.oMode = a.dataset.omode; saveUi(); renderOrd(); return true; }
   if((a = q('[data-omon]'))){ S.oMonth = ymd(new Date(+S.oMonth.slice(0, 4), +S.oMonth.slice(5, 7) - 1 + +a.dataset.omon, 1)).slice(0, 7); renderOrd(); return true; }
-  if((a = q('[data-okind]'))){ S.oKind = S.oKind === a.dataset.okind ? '' : a.dataset.okind; renderOrd(); return true; }
-  if((a = q('[data-ofac]'))){ S.oFac = S.oFac === a.dataset.ofac ? '' : a.dataset.ofac; renderOrd(); return true; }
   if((a = q('[data-oset]'))){
     const p = cur(); if(!p) return true;
     const k = a.dataset.oset, v = a.dataset.v;
@@ -1107,6 +1181,9 @@ function onOrdClick(e){
     const k = a.dataset.oact;
     if(k === 'wait'){ S.oWait = !S.oWait; renderOrd(); }
     if(k === 'now'){ S.oMonth = S.today.slice(0, 7); renderOrd(); }
+    if(k === 'monpick') calPop(a, {val:S.oMonth + '-01', months:true, pickMon:m => { S.oMonth = m; renderOrd(); }});
+    if(k === 'day' || k === 'end'){ const p = cur(); if(p) calPop(a, {val:k === 'day' ? p.day : (p.meta || {}).end || p.day, quick:k === 'day' ? [['오늘', S.today], ['내일', addD(S.today, 1)], ['일주일 뒤', addD(S.today, 7)]] : [['하루 더', addD(p.day, 1)], ['일주일', addD(p.day, 7)]], pick:v => ordDay(k, v)}); }
+    if(k === 'endoff') ordDay('end', '');
     if(k === 'new') newOrder(a, S.oMonth === S.today.slice(0, 7) ? S.today : S.oMonth + '-01');
     if(k === 'close'){ flushSoon(); S.cur = null; const pg = document.getElementById('wlPage'); if(pg) pg.innerHTML = ''; renderOrd(); }
     if(k === 'facadd'){ const v = (prompt('공장 · 업체 이름') || '').trim().slice(0, 40), p = cur(); if(v && p){ ordSet(p, {fac:[...new Set([...oFac(p), v])]}); renderPage(); renderOrd(); } }
@@ -1621,7 +1698,7 @@ function pop(at, html, cls, onClick){
   const b = document.createElement('div');
   b.className = 'wl-pop ' + (cls || ''); b.id = 'wlPop'; b.innerHTML = html;
   document.body.appendChild(b);
-  placePop(b, at);
+  b._at = at; placePop(b, at);
   b.addEventListener('mousedown', e => { if(e.target.closest('[data-emo]')) e.preventDefault(); });
   b.addEventListener('click', e => onClick && onClick(e, b, closePop));
   setTimeout(() => document.addEventListener('mousedown', popOut, true), 0);
@@ -1923,11 +2000,18 @@ function moveSec(id, dir){
 }
 function pageMenu(at){
   const p = cur(); if(!p) return;
-  const B = (k, t) => `<button type="button" data-m="${k}"><span>${t}</span></button>`;
-  pop(at, B('dup', p.kind === 'order' ? '똑같은 일정 하나 더' : '이 글을 복사해 새 글로') + (p.kind === 'order' ? '' : B('sec', '＋ 구역 추가')) + B('photo', '사진 · 파일 넣기') + B('redo', '다시 하기 (Ctrl Shift Z)') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '옮기기 전 원본 보기') : '') + B('del', '이 글 지우기'), 'menu', (e, box, close) => {
+  const B = (k, t, s) => `<button type="button" data-m="${k}"><span>${t}</span>${s ? `<kbd>${s}</kbd>` : ''}</button>`;
+  const O = p.kind === 'order', G = S.view === 'page', who = [p.ub && p.ub !== 'notion' ? p.ub : '', p.ua ? `${md(ymd(new Date(p.ua)))} ${hm(p.ua)} 수정` : '', p.origin === 'notion' ? '노션에서 옮김' : ''].filter(Boolean).join(' · ');
+  pop(at, B('cp', '글자로 복사') + (O ? '' : B('day', '날짜 바꾸기') + B('title', '제목 · 아이콘') + B('sec', '＋ 구역 추가')) + B('photo', '사진 · 파일 넣기') + B('dup', O ? '똑같은 일정 하나 더' : '복사해 새 글로') + B('redo', '다시 하기', 'Ctrl Shift Z') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '옮기기 전 원본 보기') : '') + B('del', O ? '이 일정 지우기' : '이 글 지우기') + (G ? '<div class="wl-ph0"></div>' + B('trash', '지운 글 되살리기') + B('help', '단축키') : '') + (O ? '' : `<div class="wl-pt">글 종류</div><div class="wl-chips sm" data-g="kind">${Object.entries(KINDS).map(([k, t]) => `<button type="button" data-v="${k}" class="${p.kind === k ? 'on' : ''}">${t}</button>`).join('')}</div>`) + (who ? `<div class="wl-pi">${E(who)}</div>` : ''), 'menu', (e, box, close) => {
+    const g = e.target.closest('[data-g] button'); if(g){ close(); const v = g.dataset.v; if(v !== p.kind){ beforeEdit(p); p.kind = v; touch(p); S.caches.clear(); S.split.delete(p.id); renderNav(); renderPage(); renderBoard(); } return; }
     const m = e.target.closest('[data-m]'); if(!m) return; close();
     const k = m.dataset.m;
     if(k === 'dup'){ const n = {id:uuid(), day:p.kind === 'order' ? p.day : S.today, title:p.title, kind:p.kind === 'daily' && dailies().some(x => x.day === S.today) ? 'memo' : p.kind, meta:clone(p.meta || {}), blocks:carryPlain(p), ver:0, _bv:0, n:p.n, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()}; S.pages.set(n.id, n); S.dirty.set(n.id, {base:0, bb:[], bm:{}, seq:1, isNew:true}); scheduleSave(60); openPage(n.id); return; }
+    if(k === 'trash') return trash();
+    if(k === 'help') return keysHelp();
+    if(k === 'cp') return copyText(pageText(p), '글자로 복사했어요 — 카톡에 붙여 넣으면 돼요');
+    if(k === 'day') return calPop(at, {val:p.day, quick:[['오늘', S.today]], pick:d => { const was = p.day; if(d === was) return; const put = v => { beforeEdit(p); p.day = v; touch(p); S.caches.clear(); renderNav(); renderPage(); renderBoard(); }; put(d); snack(`${md(was)} → ${md(d)} 로 날짜를 바꿨어요`, () => put(was)); }});
+    if(k === 'title'){ S.showTitle = p.id; renderPage(); const i = document.getElementById('wlTitle'); if(i){ i.focus(); i.select(); } return; }
     if(k === 'sec') return addSec();
     if(k === 'photo') return pickFile(null);
     if(k === 'redo') return undo(true);
@@ -1992,20 +2076,24 @@ async function showSrc(p){
   catch(e){ $('.wl-mc2', m).innerHTML = '<p class="wl-none">불러오지 못했어요</p>'; }
 }
 function newMenu(at){
-  const day = S.today;
-  pop(at, `<div class="wl-pt">날짜</div><input type="date" id="wlNewDay" value="${day}"><button type="button" data-m="daily"><span>업무일지 <small>앞글에서 남은 일 이어받기</small></span></button><button type="button" data-m="status"><span>진행상황 <small>지난 진행상황 복사</small></span></button><button type="button" data-m="memo"><span>회의 · 메모 <small>빈 글</small></span></button><button type="button" data-m="blank"><span>업무일지 <small>빈 양식으로</small></span></button>`, 'menu', (e, box, close) => {
+  let d = S.today;
+  const b = pop(at, `<div class="wl-nd" data-k="day"></div><button type="button" data-m="daily"><span>업무일지 <small>앞글에서 남은 일 이어받기</small></span></button><button type="button" data-m="status"><span>진행상황 <small>지난 진행상황 복사</small></span></button><button type="button" data-m="memo"><span>회의 · 메모 <small>빈 글</small></span></button><button type="button" data-m="blank"><span>업무일지 <small>빈 양식으로</small></span></button>`, 'menu', (e, box, close) => {
     const m = e.target.closest('[data-m]'); if(!m) return;
-    const d = $('#wlNewDay', box).value || day; close();
+    close();
     const k = m.dataset.m; newPage(k === 'blank' ? 'daily' : k, d, {blank:k === 'blank'});
   });
+  dayField($('[data-k="day"]', b), d, v => { d = v; });
 }
 function moreMenu(at){
   pop(at, `<button type="button" data-m="trash"><span>지운 글 · 지운 전광판</span></button><button type="button" data-m="reload"><span>새로 불러오기</span></button><button type="button" data-m="help"><span>단축키</span></button>`, 'menu', (e, box, close) => {
     const m = e.target.closest('[data-m]'); if(!m) return; close();
     if(m.dataset.m === 'trash') return trash();
     if(m.dataset.m === 'reload') return boot().then(renderAll);
-    modal('단축키', `<div class="wl-keys">${[['Enter', '아래에 새 줄'], ['Shift Enter', '줄 안에서 줄바꿈'], ['Tab · Shift Tab', '들여쓰기 · 내어쓰기'], ['Ctrl Enter', '끝냄 · 다시 할 일로'], ['Alt ↑ ↓', '줄 옮기기'], ['Ctrl Z · Ctrl Shift Z', '되돌리기 · 다시 하기'], ['Ctrl B', '굵게 (글자를 고른 뒤)'], ['Ctrl E', '이모지 넣기'], [':불 → Tab', '글 적다가 이모지 (:박스, :완료 …)'], ['여러 줄 끌기', '여러 줄 고르기 → Del 지우기 · Tab 들여쓰기 · Ctrl C 복사'], ['## + 빈칸', '구역 제목'], ['[] + 빈칸', '체크칸']].map(([a, b]) => `<div><kbd>${a}</kbd><span>${b}</span></div>`).join('')}</div>`);
+    keysHelp();
   });
+}
+function keysHelp(){
+  modal('단축키', `<div class="wl-keys">${[['Enter', '아래에 새 줄'], ['Shift Enter', '줄 안에서 줄바꿈'], ['Tab · Shift Tab', '들여쓰기 · 내어쓰기'], ['Ctrl Enter', '끝냄 · 다시 할 일로'], ['Alt ↑ ↓', '줄 옮기기'], ['Ctrl Z · Ctrl Shift Z', '되돌리기 · 다시 하기'], ['Ctrl B', '굵게 (글자를 고른 뒤)'], ['Ctrl E', '이모지 넣기'], [':불 → Tab', '글 적다가 이모지 (:박스, :완료 …)'], ['여러 줄 끌기', '여러 줄 고르기 → Del 지우기 · Tab 들여쓰기 · Ctrl C 복사'], ['## + 빈칸', '구역 제목'], ['[] + 빈칸', '체크칸']].map(([a, b]) => `<div><kbd>${a}</kbd><span>${b}</span></div>`).join('')}</div>`);
 }
 function addSec(){ edit(bs => { const h = nb({t:'h3', r:[]}), l = nb(); let z = bs.length; const t = bs.findIndex(b => isHead(b) && secType(b) === 'tomorrow'); if(t >= 0) z = t; bs.splice(z, 0, h, l); S.fresh.add(h.id); return {focus:h.id}; }); }
 function addLine(key){
@@ -2065,9 +2153,9 @@ function bindLog(w){
   w.addEventListener('compositionstart', () => { S.comp = true; });
   w.addEventListener('compositionend', () => { S.comp = false; if(S.defer) setTimeout(() => { if(S.defer && !S.comp && !S.ptr && logX()){ S.defer = false; renderNav(); renderKeep(); renderBoard(); } }, 80); });
   w.addEventListener('change', e => {
-    const p = cur(); if(!p) return;
-    if(e.target.dataset && e.target.dataset.om){ return ordField(e.target); }
-    if(e.target.id === 'wlKind'){ beforeEdit(p); p.kind = e.target.value; touch(p); S.caches.clear(); renderNav(); renderPage(); }
+    const t = e.target.dataset || {};
+    if(t.osel){ S[t.osel] = e.target.value; e.target.blur(); return renderOrd(); }
+    if(t.om) return ordField(e.target);
   });
   w.addEventListener('focusout', e => {
     const x = e.target.closest && e.target.closest('.wl-x');
@@ -2176,12 +2264,10 @@ function onClick(e){
   const go = t.closest('[data-go]'); if(go){ if(go.dataset.pid && go.dataset.pid !== S.cur || S.view !== 'page') return openPage(go.dataset.pid || S.cur, {line:go.dataset.go}); return flash(go.dataset.go); }
   const v = t.closest('[data-view]'); if(v){ flushSoon(); S.view = v.dataset.view; S.find = null; const q = document.getElementById('wlQ'); if(q) q.value = ''; if(S.view === 'order'){ const c = cur(); if(!c || c.kind !== 'order') S.cur = null; } else{ const c = cur(); if(!c || c.kind === 'order') S.cur = (S.lastPage && S.pages.has(S.lastPage) ? S.lastPage : (dailies()[0] || list()[0] || {}).id) || null; } renderTop(); return renderMain(); }
   const gr = t.closest('[data-group]'); if(gr){ S.group = gr.dataset.group; saveUi(); return renderMain(); }
-  const mo = t.closest('[data-mon]'); if(mo){ const y = +S.month.slice(0, 4), m = +S.month.slice(5, 7) - 1 + +mo.dataset.mon, d = new Date(y, m, 1); S.month = ymd(d).slice(0, 7); return S.view === 'cal' ? renderMain() : renderNav(); }
-  const kd = t.closest('[data-kind]'); if(kd){ S.kind = kd.dataset.kind; return renderNav(); }
-  const dy = t.closest('[data-day]'); if(dy){ const d = dy.dataset.day, ps = list().filter(p => p.day === d); if(ps.length) return openPage((ps.find(p => p.kind === 'daily') || ps[0]).id); if(confirm(`${md(d)} (${WK[dow(d)]}) 업무일지를 새로 만들까요?`)) newPage('daily', d); return; }
-  const cd = t.closest('[data-cday]'); if(cd && !t.closest('button')){ const d = cd.dataset.cday, ps = list().filter(p => p.day === d); if(ps.length) return openPage(ps[0].id); if(confirm(`${md(d)} (${WK[dow(d)]}) 업무일지를 새로 만들까요?`)) newPage('daily', d); return; }
-  const fs = t.closest('[data-fst]'); if(fs){ S.fSt = S.fSt === fs.dataset.fst ? '' : fs.dataset.fst; S.fTag = ''; return renderPage(); }
-  const ft = t.closest('[data-ftag]'); if(ft){ S.fTag = S.fTag === ft.dataset.ftag ? '' : ft.dataset.ftag; S.fSt = ''; return renderPage(); }
+  const mo = t.closest('[data-mon]'); if(mo){ const y = +S.month.slice(0, 4), m = +S.month.slice(5, 7) - 1 + +mo.dataset.mon, d = new Date(y, m, 1); S.month = ymd(d).slice(0, 7); return renderMain(); }
+  const wk = t.closest('[data-wk]'); if(wk){ S.wk = addD(S.wk, +wk.dataset.wk); return renderNav(); }
+  const dy = t.closest('[data-day]'); if(dy) return openDay(dy.dataset.day);
+  const cd = t.closest('[data-cday]'); if(cd && !t.closest('button')) return openDay(cd.dataset.cday);
   const od = t.closest('[data-odone]'); if(od) return toggleDone(od.dataset.odone);
   if(onOrdClick(e)) return;
   const c = t.closest('[data-act]'); if(!c) return;
@@ -2202,20 +2288,16 @@ function onClick(e){
   if(k === 'new') return newMenu(c);
   if(k === 'more') return moreMenu(c);
   if(k === 'pagemenu') return pageMenu(c);
-  if(k === 'copy') return copyText(pageText(cur()), '글자로 복사했어요 — 카톡에 붙여 넣으면 돼요');
   if(k === 'copyweek') return copyText(weekText(), '이번 주 정리를 복사했어요');
   if(k === 'undo') return undo(false);
-  if(k === 'hidedone'){ S.hideDone = !S.hideDone; saveUi(); return renderPage(); }
-  if(k === 'navall'){ S.navAll = true; return renderNav(); }
+  if(k === 'calnav') return navPop(c);
+  if(k === 'filteroff'){ S.fSt = S.fTag = ''; renderNav(); return renderPage(); }
+  if(k === 'filter') return filterMenu(c);
+  if(k === 'sidemore'){ S.sideAll = !S.sideAll; return renderSide(); }
+  if(k === 'monpick') return calPop(c, {val:S.month + '-01', months:true, pickMon:m => { S.month = m; renderMain(); }});
+  if(k === 'monnow'){ S.month = S.today.slice(0, 7); return renderMain(); }
   if(k === 'reload'){ return boot().then(renderAll); }
   if(k === 'findoff'){ S.find = null; const q = document.getElementById('wlQ'); if(q) q.value = ''; renderTop(); return renderMain(); }
-  if(k === 'pickday'){
-    pop(c, `<div class="wl-pt">이 글의 날짜</div><input type="date" id="wlDayIn" value="${cur().day}"><div class="wl-pf"><button type="button" class="wl-btn" data-x="no">닫기</button><button type="button" class="wl-btn pri" data-x="ok">바꾸기</button></div>`, 'form', (ev, box, close) => {
-      const x = ev.target.closest('[data-x]'); if(!x) return;
-      const d = $('#wlDayIn', box).value; close();
-      if(x.dataset.x === 'ok' && d){ const p = cur(); beforeEdit(p); p.day = d; touch(p); S.caches.clear(); renderNav(); renderPage(); }
-    });
-  }
 }
 /* ── 글자 ── */
 function blockOf(x){ const l = x.closest('.wl-b'), p = cur(); return l && p && p.blocks ? p.blocks.find(b => b.id === l.dataset.id) : null; }
