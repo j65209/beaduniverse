@@ -11064,6 +11064,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .hr-phone-cell{grid-column:2;grid-row:1;text-align:right}
     .hr-phone-acts{grid-column:2;grid-row:2}
   }
+  /* 직원 생일 (인사팀) — 직원 연락처 칸을 그대로 쓰고 날짜 · D-N 만 (renderStaffBdayPanel) */
+  .hr-bday-title{color:#be185d}
+  .hr-bday .hr-phone-meta b.is-today{color:#be185d}
+  .hr-bday-date{font-size:12.5px;color:var(--text-0);font-weight:600}
+  .hr-bday-dd{
+    display:inline-block;margin-left:8px;min-width:46px;text-align:center;
+    font-family:var(--mono);font-size:11px;font-weight:700;
+    padding:1px 7px;border-radius:999px;
+    color:var(--text-3);background:var(--bg-2);border:1px solid var(--line);
+  }
+  .hr-bday-dd.is-month{color:#a16207;background:rgba(250,204,21,.12);border-color:rgba(202,138,4,.3)}
+  .hr-bday-dd.is-soon{color:#be185d;background:rgba(236,72,153,.08);border-color:rgba(236,72,153,.35)}
+  .hr-bday-dd.is-today{color:#fff;background:#db2777;border-color:#db2777;font-family:var(--sans)}
+  .hr-phone-row.is-bday-today{background:rgba(236,72,153,.06);border-radius:6px}
+  .hr-phone-row.is-bday-today .hr-phone-name{color:#9d174d}
+  .bday-sel-row{display:flex;gap:10px}
+  .bday-sel-row .bday-sel{flex:1 1 0;min-width:0;font-family:var(--sans);font-size:17px;padding:11px 10px;cursor:pointer}
 
   /* 최근 연차 신청 내역 */
   .leave-recent{
@@ -12388,7 +12405,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   @media (max-width:600px){
     /* ④ 작은 글씨 — 11-02 목록 뒤에 생긴 것 + 더 구체적인 규칙이 10px 로 덮던 것 (그래프 안 글자는 그대로) */
-    #hrPhoneMeta,.leave-cal-daynum,.diary-scoreboard-live,.dcs-stat span,
+    #hrPhoneMeta,#hrBdayMeta,.leave-cal-daynum,.diary-scoreboard-live,.dcs-stat span,
     .kd-hist-chip,.kd-hist-chip em,.ar-stat .unit,.md-gantt-auto,.md-gantt-auto-st,.best-delta,.signage-brand-pill .pill-camps,
     .lsb-badge small,.vm-pending-badge,.sixstock-tbl .sixstock-cat,.sixstock-parent .sixstock-opts-tag,
     .ig-fixed-body code{font-size:11px}
@@ -12458,6 +12475,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
   @media (min-width:2300px){
     .hr-duo-top > .hr-phone .hr-phone-list{column-count:2}
+  }
+  @media (min-width:1500px){
+    /* 인사팀 직원 생일 — 조직도 아래 한 줄 전체라 세 단 */
+    .hr-bday .hr-phone-list{column-count:3}
   }
   /* ===== 화면 수정 모드 — 전승훈 전용 (2026-11-20) · 톱바 [✏️ 수정] → 아래 도구 막대 · [💾 저장] ===== */
   .ue-hidden{display:none !important}
@@ -13681,6 +13702,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="hr-phone-list" id="hrPhoneList"></div>
     </div>
     </div><!-- /hr-duo-top -->
+
+    <!-- 직원 생일 — 직원 연락처와 같은 칸 · 같은 권한 (staff_birthdays · 월-일만). 다가오는 순 + D-N. 관리자는 미등록까지 + 등록 · 수정 (#bdayModal) -->
+    <div class="hr-phone hr-bday" id="hrBdayPanel" hidden>
+      <div class="hr-phone-head">
+        <span class="hr-phone-title hr-bday-title">🎂 직원 생일</span>
+        <span class="hr-phone-meta" id="hrBdayMeta"></span>
+      </div>
+      <div class="hr-phone-list" id="hrBdayList"></div>
+    </div>
 
     <!-- 연차 신청하기 (CTA) -->
     <div class="leave-cta">
@@ -23714,6 +23744,9 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       // 직원 연락처 — 들고 있는 값으로 먼저 그리고 최신 번호로 다시
       if(typeof renderStaffPhonePanel==='function') renderStaffPhonePanel();
       if(typeof syncStaffPhonesFromRemote==='function') syncStaffPhonesFromRemote().catch(()=>{});
+      // 직원 생일 — 같은 방식 (D-N 은 그릴 때마다 오늘 기준)
+      if(typeof renderStaffBdayPanel==='function') renderStaffBdayPanel();
+      if(typeof syncStaffBdaysFromRemote==='function') syncStaffBdaysFromRemote().catch(()=>{});
     }
     if(id==='viewLg'){
       // 새로고침으로 바로 들어오면 탭 내용이 전부 접혀 빈 화면이 된다 → 선택된 탭을 펼친다
@@ -34742,7 +34775,10 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const baselineFiltered=(s.history||[])
       .filter(h=>!_delSet.has(`${h.date}|${h.type}`))
       .map(h=>Object.assign({_baseline:true}, h));
+    // 대체휴무 부여 줄(근무한 날 · 사유)은 본인 · 대표만 — 남은 일수에는 그대로 더해진다 (2026-11-24)
+    const _seeComp=compCanSeeName(s.name);
     const history=[...baselineFiltered,...(v?.history||[])]
+      .filter(h=>_seeComp || h?.type!=='대체휴무')
       .slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     const historyHtml=history.length?`
       <button class="leave-toggle" type="button" onclick="toggleLeaveHistory(this)">
@@ -37000,6 +37036,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     L.on(['staff_added'], ()=>call(syncStaffAddedFromRemote));
     L.on(['staff_dept_overrides','staff_titles'], ()=>call(syncDeptOverridesFromRemote));
     L.on(['staff_phones'], ()=>call(syncStaffPhonesFromRemote));
+    L.on(['staff_birthdays'], ()=>call(syncStaffBdaysFromRemote));
     L.on(['staff_diary_hidden'], ()=>call(syncDiaryHiddenFromRemote));
     L.on(['staff_hidden','staff_resigned','leave_entries','leave_overrides','leave_baseline_deletes','leave_comp_requests','leave_cycles'], ()=>call(syncLeaveFromRemote));
     // 출고 전광판 — 지운 줄 · 되살린 줄
@@ -39379,6 +39416,26 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   function _compVisible(){
     return (_compReqs||[]).filter(r=>r && r.id && !(typeof isStaffHidden==='function' && isStaffHidden(r.staff_name)));
   }
+  /* 누가 보나 (2026-11-24 사장님 "대체휴무는 신청자, 대표자만 볼 수 있게") — 대표(관리자 PIN + '나는' 전승훈 · 전수빈)는 전부,
+     직원은 '나는' 이름이 대상자이거나 신청한 사람인 것 + 이 기기에서 낸 신청만. 화면에서 가리는 것 — 표 자체는 공개 키로 읽힌다 */
+  var COMP_MINE_KEY='bb_comp_req_mine_v1';
+  function _compMineIds(){ try{ const a=JSON.parse(localStorage.getItem(COMP_MINE_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function _compRememberMine(id){
+    if(!id) return;
+    try{ const a=_compMineIds().filter(x=>x!==id); a.unshift(String(id)); localStorage.setItem(COMP_MINE_KEY,JSON.stringify(a.slice(0,50))); }catch(e){}
+  }
+  function compCanSeeName(name){
+    if(compCeoMe()) return true;
+    let me=''; try{ me=String(_diaryGetMe()||'').trim(); }catch(e){}
+    return !!me && me===String(name||'').trim();
+  }
+  window.compCanSeeName=compCanSeeName;
+  function _compSeen(){
+    if(compCeoMe()) return _compVisible();
+    let me=''; try{ me=String(_diaryGetMe()||'').trim(); }catch(e){}
+    const mine=new Set(_compMineIds());
+    return _compVisible().filter(r=>mine.has(String(r.id)) || (me && (r.staff_name===me || r.requested_by===me)));
+  }
   function renderCompReqPanel(){
     const wrap=document.getElementById('compReqPanel');
     const list=document.getElementById('compReqList');
@@ -39386,7 +39443,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     const meta=document.getElementById('compReqMeta');
     const more=document.getElementById('compReqMoreBtn');
     if(!wrap||!list||!done) return;
-    const rows=_compVisible();
+    const rows=_compSeen();
     const pending=rows.filter(r=>r.status==='pending')
       .sort((a,b)=>String(a.requested_at).localeCompare(String(b.requested_at)));   // 먼저 신청한 것부터
     const decided=rows.filter(r=>r.status==='approved'||r.status==='rejected')
@@ -39398,8 +39455,10 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     }
     wrap.hidden=false;
     const ceo=compCeoMe();
+    const ttl=wrap.querySelector('.comp-req-title');
+    if(ttl) ttl.textContent=ceo?'🎁 대체휴무 신청 · 대표 승인':'🎁 내 대체휴무 신청';
     if(meta){
-      meta.textContent=pending.length?`승인 대기 ${pending.length}건`:'승인 대기 없음';
+      meta.textContent=(pending.length?`승인 대기 ${pending.length}건`:'승인 대기 없음')+(ceo?'':' · 본인 · 대표만 보여요');
       meta.classList.toggle('has-wait',pending.length>0);
     }
     list.innerHTML=pending.length?pending.map(r=>{
@@ -39485,6 +39544,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
       toast(`저장 실패 (${ins.reason}) — 네트워크 확인 후 다시 시도해주세요`,'err');
       return;
     }
+    _compRememberMine(ins.row?.id);   // '나는' 이름을 안 골라도 이 기기에선 방금 낸 신청이 보이게
     clearTimeout(_leaveDraftSyncTimer);   // 대기 중인 임시저장이 신청 뒤에 되살아나지 않게
     clearLeaveDraft();
     if(typeof sbDeleteLeaveDraft==='function') sbDeleteLeaveDraft(name).catch(()=>{});
@@ -39880,6 +39940,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     renderHiddenStaffPanel();
     // 숨김 · 부서 · 직책이 바뀌면 직원 연락처 순서도 같이 (스크립트 실행 중 이른 호출이면 건너뜀)
     try{ renderStaffPhonePanel(); }catch(e){}
+    try{ renderStaffBdayPanel(); }catch(e){}
   }
   window.renderOrgChartExtra=renderOrgChartExtra;
   /* 예전 이름 유지 — 숨김/복원·연차 렌더 등 여러 곳에서 부른다. 이제 전체 재렌더와 같다. */
@@ -40229,6 +40290,177 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     _phoneFlush();
   }
   window.phoneBoot=phoneBoot;
+
+  /* ===== 인사팀 직원 생일 — staff_birthdays (staff_name PK, birth_md 'MM-DD' · 연도는 안 받는다) (2026-11-24)
+     · 사장님 "각자 생일들 다 직원연락처처럼 써줘. 몇일 남았는지도" → 직원 연락처와 같은 칸 · 같은 권한
+     · 전 직원이 본다 (등록된 사람만). 관리자(마스터 PIN)는 미등록까지 + 등록 · 수정 (#bdayModal)
+     · 처음 값은 근로계약서 주민번호 앞자리의 월 · 일 (계약서에 칸이 빈 사람 · 대표는 미등록)
+     · 다가오는 생일 순 — 오늘이면 '🎂 오늘', 아니면 D-N */
+  const _staffBdays=new Map();
+  let _bdayLoaded=false;
+  function getStaffBday(name){return _staffBdays.get(name)||''}
+  window.getStaffBday=getStaffBday;
+  async function sbFetchStaffBdays(){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_birthdays?select=staff_name,birth_md`,{headers:_sbHeaders(),cache:'no-cache'});
+      if(!r.ok) return null;
+      return await r.json();
+    }catch(e){return null}
+  }
+  async function sbUpsertStaffBday(staff_name, birth_md, updated_by){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/staff_birthdays?on_conflict=staff_name`,{
+        method:'POST',
+        headers:_sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+        body:JSON.stringify({staff_name, birth_md, updated_by:updated_by||null, updated_at:new Date().toISOString()})
+      });
+      return r.ok?{ok:true}:{ok:false,reason:`http_${r.status}`};
+    }catch(e){return {ok:false,reason:'fetch'}}
+  }
+  async function syncStaffBdaysFromRemote(){
+    const rows=await sbFetchStaffBdays();
+    if(!Array.isArray(rows)) return false;
+    _staffBdays.clear();
+    for(const r of rows) if(r && r.staff_name && /^\d{2}-\d{2}$/.test(String(r.birth_md||''))) _staffBdays.set(r.staff_name, String(r.birth_md));
+    _bdayLoaded=true;
+    renderStaffBdayPanel();
+    return true;
+  }
+  window.syncStaffBdaysFromRemote=syncStaffBdaysFromRemote;
+
+  /* 'MM-DD' → 오늘(이 기기 날짜)부터 다음 생일까지 며칠 · 다음 생일 날짜. 2/29 는 평년엔 2/28 */
+  function _bdayNext(md){
+    const m=String(md||'').match(/^(\d{2})-(\d{2})$/);
+    if(!m) return null;
+    const mo=+m[1], da=+m[2];
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    const at=y=>{
+      const leap=(y%4===0&&y%100!==0)||y%400===0;
+      return new Date(y, mo-1, (mo===2&&da===29&&!leap)?28:da);
+    };
+    let d=at(today.getFullYear());
+    if(d<today) d=at(today.getFullYear()+1);
+    return {days:Math.round((d-today)/86400000), date:d};
+  }
+  function _bdayLabel(md){
+    const m=String(md||'').match(/^(\d{2})-(\d{2})$/);
+    return m?`${+m[1]}월 ${+m[2]}일`:'';
+  }
+  function renderStaffBdayPanel(){
+    const panel=document.getElementById('hrBdayPanel');
+    const list=document.getElementById('hrBdayList');
+    if(!panel || !list) return;
+    const me=_diaryGetMe();
+    const master=isMaster();
+    const all=_phonePeople();
+    const people=master?all:all.filter(s=>getStaffBday(s.name));
+    if(!_bdayLoaded || !people.length){ panel.hidden=true; return; }
+    panel.hidden=false;
+    // 다가오는 순 (미등록은 맨 아래, 원래 순서대로)
+    const rows=people.map((s,i)=>({s,i,md:getStaffBday(s.name),nx:_bdayNext(getStaffBday(s.name))}))
+      .sort((a,b)=>(a.nx?a.nx.days:1e9)-(b.nx?b.nx.days:1e9) || a.i-b.i);
+    const meta=document.getElementById('hrBdayMeta');
+    const missing=all.filter(s=>!getStaffBday(s.name)).length;
+    const todayN=rows.filter(r=>r.nx && r.nx.days===0).length;
+    if(meta) meta.innerHTML=(todayN?`<b class="is-today">오늘 ${todayN}명 🎉</b> · `:'')
+      +(master?`등록 ${all.length-missing}/${all.length}명${missing?` · <b>미등록 ${missing}명</b>`:''}`:`${people.length}명`);
+    list.innerHTML=rows.map(({s,md,nx})=>{
+      const sub=s.ceo?'대표':(s.team?`${s.dept} · ${s.team}`:s.dept);
+      const nm=escapeHTML(s.name);
+      let dd='';
+      if(nx){
+        const cls=nx.days===0?'is-today':(nx.days<=7?'is-soon':(nx.days<=30?'is-month':''));
+        dd=`<span class="hr-bday-dd ${cls}" title="${nx.date.getFullYear()}.${nx.date.getMonth()+1}.${nx.date.getDate()}">${nx.days===0?'🎂 오늘':`D-${nx.days}`}</span>`;
+      }
+      return `<div class="hr-phone-row${md?'':' is-missing'}${nx&&nx.days===0?' is-bday-today':''}">
+        <span class="hr-phone-name">${nm}${s.name===me?'<em>나</em>':''}</span>
+        <span class="hr-phone-dept">${escapeHTML(sub)}</span>
+        <span class="hr-phone-cell">${md?`<span class="hr-bday-date">${escapeHTML(_bdayLabel(md))}</span>${dd}`:'<span class="hr-phone-none">미등록</span>'}</span>
+        <span class="hr-phone-acts">${master?`<button type="button" class="hr-phone-btn" data-bday-act="edit" data-bday-staff="${nm}">${md?'수정':'등록'}</button>`:''}</span>
+      </div>`;
+    }).join('');
+  }
+  window.renderStaffBdayPanel=renderStaffBdayPanel;
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest?.('#hrBdayList [data-bday-act]');
+    if(!btn) return;
+    openBdayModal(btn.getAttribute('data-bday-staff')||'');
+  });
+
+  /* 등록 · 수정 팝업 (#bdayModal, 관리자 전용) — 월 · 일 고르기 */
+  let _bdayTarget='';
+  function _bdayBind(){
+    if(_bdayBind._done) return true;
+    const form=document.getElementById('bdayForm');
+    const mSel=document.getElementById('bdayMonth');
+    const dSel=document.getElementById('bdayDay');
+    if(!form || !mSel || !dSel) return false;
+    _bdayBind._done=true;
+    mSel.innerHTML='<option value="">월</option>'+Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}월</option>`).join('');
+    const fillDays=()=>{
+      const mo=+mSel.value||1, keep=+dSel.value||0;
+      const max=[31,29,31,30,31,30,31,31,30,31,30,31][mo-1];
+      dSel.innerHTML='<option value="">일</option>'+Array.from({length:max},(_,i)=>`<option value="${i+1}">${i+1}일</option>`).join('');
+      if(keep && keep<=max) dSel.value=String(keep);
+    };
+    _bdayBind._fill=fillDays;
+    const gate=()=>{ document.getElementById('bdaySave').disabled=!(mSel.value && dSel.value); document.getElementById('bdayHint').textContent=''; };
+    mSel.addEventListener('change',()=>{ fillDays(); gate(); });
+    dSel.addEventListener('change',gate);
+    form.addEventListener('submit',e=>{ e.preventDefault(); bdayModalSave(); });
+    document.getElementById('bdayCancel').addEventListener('click',closeBdayModal);
+    document.getElementById('bdayModal').addEventListener('keydown',e=>{ if(e.key==='Escape') closeBdayModal(); });
+    return true;
+  }
+  function openBdayModal(name){
+    const modal=document.getElementById('bdayModal');
+    if(!modal || !name || !_bdayBind()) return;
+    if(!requireMaster('직원 생일 등록')) return;
+    _bdayTarget=name;
+    const cur=getStaffBday(name);
+    const mSel=document.getElementById('bdayMonth');
+    const dSel=document.getElementById('bdayDay');
+    const m=cur.match(/^(\d{2})-(\d{2})$/);
+    mSel.value=m?String(+m[1]):'';
+    dSel.value='';
+    _bdayBind._fill();
+    dSel.value=m?String(+m[2]):'';
+    document.getElementById('bdayTitle').textContent=cur?'생일 수정':'생일 등록';
+    document.getElementById('bdayDesc').innerHTML=`<b>${escapeHTML(name)}</b>님의 생일(월 · 일)을 골라주세요.`;
+    document.getElementById('bdayHint').textContent='';
+    const saveBtn=document.getElementById('bdaySave');
+    saveBtn.textContent=cur?'저장':'등록';
+    saveBtn.disabled=!(mSel.value && dSel.value);
+    modal.hidden=false;
+    setTimeout(()=>{ try{ mSel.focus(); }catch(e){} },60);
+  }
+  window.openBdayModal=openBdayModal;
+  function closeBdayModal(){
+    const modal=document.getElementById('bdayModal');
+    if(modal) modal.hidden=true;
+    _bdayTarget='';
+  }
+  async function bdayModalSave(){
+    const name=_bdayTarget;
+    if(!name) return;
+    const mo=+document.getElementById('bdayMonth').value, da=+document.getElementById('bdayDay').value;
+    const hint=document.getElementById('bdayHint');
+    if(!mo || !da){ hint.textContent='월과 일을 골라주세요'; return; }
+    if(!requireMaster('직원 생일 등록')) return;
+    const md=`${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+    if(md===getStaffBday(name)){ closeBdayModal(); return; }
+    const saveBtn=document.getElementById('bdaySave');
+    const label=saveBtn.textContent;
+    saveBtn.disabled=true; saveBtn.textContent='저장 중…';
+    const r=await sbUpsertStaffBday(name, md, _diaryGetMe());
+    saveBtn.textContent=label; saveBtn.disabled=false;
+    if(!r.ok){ hint.textContent=`저장 실패 (${r.reason}) — 잠시 후 다시 눌러주세요`; return; }
+    _staffBdays.set(name, md);
+    closeBdayModal();
+    renderStaffBdayPanel();
+    toast(`${name} — 생일 ${_bdayLabel(md)} 저장했어요`,'ok');
+  }
 
   /* 신규 입사자 등록 폼 — 마스터 전용 (뷰어는 .master-only CSS로 자동 숨김, JS도 이중 방어) */
   const _ADD_STAFF_SLOTS={
@@ -57740,6 +57972,25 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     <div class="dsm-actions">
       <button type="button" class="dsm-btn dsm-btn-ghost" id="phoneCancel">취소</button>
       <button type="submit" class="dsm-btn dsm-btn-primary" id="phoneSave" disabled>등록</button>
+    </div>
+  </form>
+</div>
+
+<!-- 직원 생일 등록 · 수정 팝업 (관리자 전용) — 인사팀 직원 생일의 등록/수정 버튼으로 열림 · staff_birthdays 에 월-일만 저장 -->
+<div id="bdayModal" class="dsm-overlay" hidden>
+  <form class="dsm-card" id="bdayForm" novalidate autocomplete="off">
+    <div class="dsm-icon">🎂</div>
+    <h2 class="dsm-title" id="bdayTitle">생일 등록</h2>
+    <p class="dsm-desc" id="bdayDesc"></p>
+    <div class="bday-sel-row">
+      <select id="bdayMonth" class="dsm-input bday-sel" aria-label="월"></select>
+      <select id="bdayDay" class="dsm-input bday-sel" aria-label="일"></select>
+    </div>
+    <div class="dsm-hint" id="bdayHint" aria-live="polite"></div>
+    <div class="dsm-note">연도는 받지 않아요. 인사팀 직원 생일에 저장되고, 전 직원이 볼 수 있어요.</div>
+    <div class="dsm-actions">
+      <button type="button" class="dsm-btn dsm-btn-ghost" id="bdayCancel">취소</button>
+      <button type="submit" class="dsm-btn dsm-btn-primary" id="bdaySave" disabled>등록</button>
     </div>
   </form>
 </div>
