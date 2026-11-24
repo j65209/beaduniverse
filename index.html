@@ -14289,7 +14289,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <!-- 출고 전광판 (2026-11-17) — 콰이디에어 출고완료 신청서의 메모 속 출고일 · 방식. 움직이는 효과 없음. renderLgBoard() 가 채운다 -->
     <section class="lgb" id="lgBoard" aria-label="출고 전광판" hidden></section>
 
-    <!-- 탭 버튼: 최근 발주 · 발주서 리스트 -->
+    <!-- 탭 버튼: 최근 발주 · 발주 상품 리스트 -->
     <div class="lg-tabs" role="tablist">
       <button class="lg-tab active" data-tab="recent" onclick="switchLgTab('recent')" role="tab" aria-selected="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="12 6 12 12 16 14"/><circle cx="12" cy="12" r="10"/></svg>
@@ -14373,13 +14373,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       </div>
     </div>
 
-    <!-- ============ 브라이트비드 발주서 아카이브 (Dropbox 파싱) ============ -->
+    <!-- ============ 발주 상품 리스트 — 콰이디에어 발주 전부 · 같은 상품 묶음 (po-list.js) ============ -->
     <div class="po-wrap lg-pane" data-pane="archive" style="display:none">
       <div class="po-section">
         <div class="po-section-head">
-          <div class="po-section-title">브라이트비드 발주 상품 카탈로그</div>
+          <div class="po-section-title">발주 상품 리스트 <span class="kd-section-sub">콰이디에어 발주 전부 · 같은 상품끼리</span></div>
           <div class="po-section-meta">
-            <input type="search" id="arSearch" class="kd-search" placeholder="상품명·1688옵션 검색" oninput="filterArchive(this.value)" />
+            <input type="search" id="arSearch" class="kd-search" placeholder="상품명 · 옵션 · 메모 · 판매번호 찾기" oninput="filterArchive(this.value)" />
             <select id="arSort" class="kd-search" style="width:auto;padding:7px 10px" onchange="setArchiveSort(this.value)">
               <option value="recent" selected>최근 발주순</option>
               <option value="qty">총 발주수량 많은 순</option>
@@ -14389,29 +14389,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <option value="name">이름순</option>
             </select>
             <span id="arUpdated"></span>
-            <span id="arCount">0건</span>
-            <button class="kd-refresh-btn master-only" id="arSyncBtn" onclick="syncOrdersFromDropbox()" title="서버 PC 가 Dropbox 발주서 폴더를 다시 읽어 카탈로그를 갱신합니다 (자동 갱신 없음)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              동기화
-            </button>
-            <button class="kd-refresh-btn" id="arResetBtn" onclick="resetAutoOverrides()" style="display:none" title="자동 매칭한 상품명을 원래대로 되돌립니다">
-              🤖 자동 매칭 초기화 <span id="arAutoCount" style="color:var(--text-3);font-weight:500;margin-left:3px"></span>
-            </button>
-            <button class="kd-refresh-btn" id="arRestoreBtn" onclick="restoreAllDeleted()" style="display:none" title="숨긴 상품을 모두 목록에 다시 표시합니다">
-              🗑 숨긴 상품 복원 <span id="arRestoreCount" style="color:var(--text-3);font-weight:500;margin-left:3px"></span>
-            </button>
+            <span id="arCount"></span>
           </div>
         </div>
-        <div id="arEmpty" class="po-empty">
-          <div class="po-empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="32" height="32"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          </div>
-          <div class="po-empty-text">발주서 아카이브 불러오는 중…</div>
-        </div>
-        <div id="arGrid" class="ar-grid" style="display:none"></div>
-        <div id="arMore" style="display:none;text-align:center;padding:16px 0 4px">
-          <button class="kd-refresh-btn" onclick="loadMoreArchive()">더 보기 (+40)</button>
-        </div>
+        <div class="pol-bar" id="polBar"></div>
+        <div id="polBody"></div>
       </div>
     </div>
 
@@ -24322,6 +24304,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   /* 홈 물류팀 카드 진입 — 2026-11-13 메인 · 브라이트비드 · 샤인비드 탭을 비드유니버스 하나로 합침 (브랜드 선택 없음) */
   function triggerLogistics(){
     showView('viewLg');
+    window._lgTabWas='';   // 물류팀에 새로 들어오면 맨 위부터
     // 진입 시 최근 발주 내역 탭부터
     if(typeof switchLgTab==='function') switchLgTab('recent');
   }
@@ -24329,16 +24312,10 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   function switchLgBrand(){
     _kdLastHash = '';
     if(typeof renderKDOrders==='function') renderKDOrders({force:true}).catch(()=>{});
-    if(document.querySelector('.lg-tab.active[data-tab="archive"]')) refreshArchivePane();
+    if(document.querySelector('.lg-tab.active[data-tab="archive"]')&&window.refreshArchivePane) window.refreshArchivePane();
   }
   window.switchLgBrand=switchLgBrand;
 
-  function _refreshArchiveTabLabel(){
-    const badge = document.getElementById('lgTabArchiveBadge');
-    if(!badge || typeof arState==='undefined') return;
-    const n = arState.filtered.length || (_arStateBB.all.length + _arStateSB.all.length);
-    badge.textContent = n ? n.toLocaleString('ko-KR') : '—';
-  }
   function triggerNotice(){ showView('viewNotice'); }
   function triggerCs(){
     _dsgActiveBoard = 'cs';
@@ -36938,17 +36915,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     });
     // 두 계정을 섞어 최근 신청서가 위로 (날짜가 같으면 계정별 원래 순서 유지)
     orders.sort((a,b)=>String(b.order_date||'').localeCompare(String(a.order_date||'')));
-    // 샤인비드는 KD orders 를 클라이언트측에서 dedupe해서 카탈로그로 서빙.
-    // 이 자리에서 자동 재빌드 → 아카이브 탭 진입 시 즉시 최신.
-    const sbData=got[1];
-    if(sbData){
-      _arStateSB.all = buildShineCatalog(orders.filter(o=>o._brand==='shinebeed'));
-      const ts=sbData.fetched_at?new Date(sbData.fetched_at*1000):null;
-      window._shineArUpdated = ts ? `${ts.getFullYear()}-${String(ts.getMonth()+1).padStart(2,'0')}-${String(ts.getDate()).padStart(2,'0')} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}` : '';
-      // 아카이브 탭이 활성 상태면 즉시 재렌더
-      if(document.querySelector('.lg-tab.active[data-tab="archive"]')){ applyArchive(); _arRenderUpdated(); }
-      _refreshArchiveTabLabel();
-    }
+    setTimeout(()=>{ if(window.PoList) window.PoList.warm(); }, 3000);   // 발주 상품 리스트 숫자 · '이전 N회' (po-list.js)
     // 갱신 시각 · 오류는 두 계정 중 더 늦게 받은 쪽 기준, 오류는 어느 계정이든 있으면 표시
     const fetchedAt=Math.max(0,...got.filter(Boolean).map(d=>d.fetched_at||0));
     // 출고 전광판 — 표 다시 그리기 생략(같은 자료)과 상관없이 매번 (바뀐 게 없으면 화면은 그대로)
@@ -37532,8 +37499,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     rows.forEach(tr=>{
       const slot=tr.querySelector('.kd-hist-slot');
       if(!slot) return;
-      const url=tr.dataset.purl||'';
-      const hist=window.getOfferHistory ? window.getOfferHistory(url) : [];
+      const hist=window.PoList ? window.PoList.history(tr.dataset.sn||'') : [];   // 같은 상품의 앞선 발주 (po-list.js)
       if(!hist.length){ slot.innerHTML=''; return; }
       const totalQty=hist.reduce((s,h)=>s+(+h.qty||0),0);
       slot.innerHTML=`<span class="kd-hist-chip" title="hover 시 이전 발주 내역">이전 ${hist.length}회<em>·${totalQty.toLocaleString('ko-KR')}</em></span>`;
@@ -37789,773 +37755,10 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   // 초기 렌더 — 페이지 로드 직후 KD 데이터 가져옴
   renderKDOrders().catch(()=>{});
 
-  /* ===== 발주 상품 카탈로그 (products 배열 로드) =====
-     scripts/parse_orders.py 가 xlsx 아이템 6천개를 link/img 기준 dedupe해서
-     1,100+ 개 고유 상품으로 집계한 것을 3열 그리드로 렌더. */
-  // 2026-11-13 비드유니버스 통합 — 화면은 두 브랜드 상품을 한 목록으로(arState = 검색 · 정렬 · 합친 목록),
-  // 상품 데이터 · 이름 바꾸기 등 오버라이드는 브랜드별로 따로 둔다(_arStateBB · _arStateSB, 상품마다 p._brand).
-  // BB는 dropbox 발주서 카탈로그(프록시 /orders-catalog) + product-name-overrides.json,
-  // SB는 KD 실시간 orders(dedupe) + product-name-overrides-shinebeed.json.
-  // 두 브랜드 모두 오버라이드 편집(제품명·이미지·삭제) 지원 — 고치면 그 상품 브랜드의 파일에 저장된다.
-  let arState={all:[],filtered:[],q:'',sort:'recent',shown:60,brand:'all',readonly:false};
-  const _arStateBB={all:[],overrides:{},autoOverrides:{},imgOverrides:{},deletedIds:{},brand:'brightbeed'};
-  const _arStateSB={all:[],overrides:{},autoOverrides:{},imgOverrides:{},deletedIds:{},brand:'shinebeed'};
-  const AR_BRANDS=['brightbeed','shinebeed'];
-  function _arSt(brand){ return brand==='shinebeed' ? _arStateSB : _arStateBB; }
-  // 브랜드별 오버라이드 파일 (GitHub contents API) + PUT용 sha 캐시
-  const AR_OVERRIDES_APIS={
-    brightbeed:'https://api.github.com/repos/j65209/beaduniverse/contents/data/product-name-overrides.json',
-    shinebeed :'https://api.github.com/repos/j65209/beaduniverse/contents/data/product-name-overrides-shinebeed.json',
-  };
-  const _arOverridesShaMap={brightbeed:null, shinebeed:null};
-  // 하위호환: 다른 곳에서 참조하던 이름 유지
-  let _arOverridesSha=null;
-  const AR_OVERRIDES_API=AR_OVERRIDES_APIS.brightbeed;
-  function arEscape(s){return (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
-  function arFmtInt(n){if(n==null||isNaN(n))return '—';return Math.round(n).toLocaleString('ko-KR');}
-  /* 발주 상품 카탈로그 JSON — 2026-11-12 공개 레포 data/orders.json 에서 빼서 맥미니 프록시가 내준다 (/orders-catalog, PIN).
-     1688 단가 · 수량이 있어 깃허브에 안 올린다 (서버 scripts/parse_orders.py → ~/server/brightbeed-proxy/out/orders.json).
-     없으면(404) null, 못 받으면 throw — metaAdsFetch 와 같은 규칙. gzip 으로 약 340KB. */
-  async function ordersCatalogFetch(){
-    const get=async(force)=>{
-      const base=await loadProxyBase(force);
-      if(!base) throw new Error('proxy unavailable');
-      return fetch(`${base}/orders-catalog?cb=${Date.now()}`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
-    };
-    let r=null;
-    try{ r=await get(false); }catch(e){}
-    if(!r || (r.status>=502 && r.status<=504)) r=await get(true);
-    if(r.status===404) return null;
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return r.json();
-  }
-  async function loadArchive(opts){
-    try{
-      const d=await ordersCatalogFetch();
-      if(!d){
-        _arLoaded=false;   // 다음에 탭을 열 때 다시 받는다
-        const emp=document.getElementById('arEmpty');
-        if(emp){emp.querySelector('.po-empty-text').textContent='아직 카탈로그가 없습니다 — 🔄 동기화를 눌러 주세요';emp.style.display='block';}
-        return;
-      }
-      _arStateBB.all=d.products||[];
-      buildOfferHistoryIndex(d.orders||[]);
-      window._bbArUpdated=(d.generated_at||'').slice(0,16).replace('T',' ');
-      _arRenderUpdated();
-      const sel=document.getElementById('arSort');
-      if(sel) sel.value=arState.sort;
-      loadNameOverrides('brightbeed').finally(()=>applyArchive());
-      // 콰이디에어 최근 발주 테이블이 이미 렌더되었으면 이전 발주 뱃지 재부착
-      if(typeof attachKDHistoryChips==='function') attachKDHistoryChips();
-    }catch(e){
-      _arLoaded=false;   // 서버 PC · 터널이 잠깐 끊긴 것일 수 있다 — 다음에 탭을 열 때 다시 받는다
-      const emp=document.getElementById('arEmpty');
-      if(emp){emp.querySelector('.po-empty-text').textContent='서버 PC 연결 안 됨 — 잠시 뒤 탭을 다시 열어 주세요';emp.style.display='block';}
-    }
-  }
+  /* ===== 발주 상품 리스트 = po-list.js (2026-11-24 사장님 "발주서 동기화 제거하고 최근 발주내역을 더 잘 보이게") =====
+     발주서(엑셀) 카탈로그 · 동기화 · 이름 파일(product-name-overrides*.json) 코드는 걷어냈다. 자료 = 프록시 /orders-catalog (맥미니 po_catalog.py) */
 
-  // 발주 링크(1688 offer URL) → 이전 발주 기록 인덱스
-  const _offerHistory={};
-  function _extractOfferId(url){
-    if(!url) return '';
-    const m=String(url).match(/\/offer\/(\d+)\.html/);
-    return m ? 'offer:'+m[1] : '';
-  }
-  function buildOfferHistoryIndex(orders){
-    for(const k of Object.keys(_offerHistory)) delete _offerHistory[k];
-    for(const o of orders||[]){
-      for(const it of (o.items||[])){
-        const oid=_extractOfferId(it.link);
-        if(!oid) continue;
-        (_offerHistory[oid] ||= []).push({
-          date: o.date||'',
-          file: o.file||'',
-          group: o.group||'',
-          note: o.note||'',
-          qty: it.qty||0,
-          price_cny: it.price_cny||0,
-          kor: it.kor||'',
-          cn: it.cn||'',
-          memo: it.memo||''
-        });
-      }
-    }
-    // 각 오퍼 기록을 날짜 내림차순으로 정렬
-    for(const oid in _offerHistory){
-      _offerHistory[oid].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-    }
-  }
-  window.getOfferHistory=(url)=>_offerHistory[_extractOfferId(url)]||[];
-
-  // 브랜드별 상품 이름 · 이미지 · 숨김 파일을 그 브랜드 상태(_arStateBB / _arStateSB)에 넣는다
-  async function loadNameOverrides(brand){
-    brand = brand==='shinebeed' ? 'shinebeed' : 'brightbeed';
-    const st=_arSt(brand);
-    const api=AR_OVERRIDES_APIS[brand];
-    try{
-      const r=await ghFetch(api,{cache:'no-cache'});
-      if(!r.ok){
-        // 못 읽은 건 "없음"이 아니다 — 파일이 정말 없을 때(404)만 비운다
-        if(r.status===404){
-          st.overrides={}; st.autoOverrides={}; st.imgOverrides={}; st.deletedIds={};
-          _arOverridesShaMap[brand]=null; if(brand==='brightbeed') _arOverridesSha=null;
-        }
-        return;
-      }
-      const j=await r.json();
-      const raw=decodeURIComponent(escape(atob(j.content||'')));
-      const d=JSON.parse(raw||'{}');
-      _arOvApplyToState(d, brand);
-      _arOverridesShaMap[brand]=j.sha||null;
-      if(brand==='brightbeed') _arOverridesSha=_arOverridesShaMap[brand]; // 하위호환
-    }catch(e){
-      console.warn('상품 이름 불러오기 실패',e);   // 지금 값을 그대로 둔다
-    }
-  }
-
-  /* product-name-overrides push — "이 상품 이름 바꾸기 / 숨기기" 작업만 남겨 서버 최신본 위에 적용한다 (브랜드별 파일 2개, 뷰어 편집 가능).
-     전체 사본을 올리면 오래 열어 둔 화면이 남이 고친 이름을 되돌리고, 조회 실패 뒤 1개만 고쳐도 파일 전체가 1건으로 바뀐다.
-       · 작업 목록은 localStorage 에 보관 → 자동 재전송
-       · 409 면 최신본을 다시 읽어 다시 적용 · 지수 백오프 */
-  const AR_OV_DIRTY_KEY_PREFIX = 'brightbeed_ar_overrides_dirty_';   // + brand
-  const AR_OV_FILE_KEY = {overrides:'overrides', autoOverrides:'auto_overrides', imgOverrides:'img_overrides', deletedIds:'deleted_ids'};
-  const _arOvPending = {};             // brand -> {ops:[{k,id,v}], msg}
-  const _arOvPushing = {};             // brand -> bool
-  const _arOvPushAgain = {};
-  const _arOvPushTimer = {};
-  const _arOvPushFailStreak = {};
-  function _arOvApplyOps(d, ops){
-    Object.values(AR_OV_FILE_KEY).forEach(f=>{ d[f]=Object.assign({}, d[f]||{}); });
-    ops.forEach(o=>{
-      const f=AR_OV_FILE_KEY[o.k];
-      if(o.v==null) delete d[f][o.id]; else d[f][o.id]=o.v;
-    });
-    return d;
-  }
-  // 파일 내용 + 아직 안 보낸 작업 → 화면 상태
-  function _arOvApplyToState(d, brand){
-    const p=_arOvPending[brand];
-    const m=_arOvApplyOps(Object.assign({}, d), p?p.ops:[]);
-    const st=_arSt(brand);
-    st.overrides=m.overrides;
-    st.autoOverrides=m.auto_overrides;
-    st.imgOverrides=m.img_overrides;
-    st.deletedIds=m.deleted_ids;
-  }
-  function _arOvPersistDirty(brand){
-    try{
-      if(_arOvPending[brand]) localStorage.setItem(AR_OV_DIRTY_KEY_PREFIX+brand, JSON.stringify(_arOvPending[brand]));
-      else localStorage.removeItem(AR_OV_DIRTY_KEY_PREFIX+brand);
-    }catch(e){}
-  }
-  function _arOvRestoreDirty(){
-    ['brightbeed','shinebeed'].forEach(brand=>{
-      try{
-        const raw = localStorage.getItem(AR_OV_DIRTY_KEY_PREFIX+brand);
-        if(!raw) return;
-        const p = JSON.parse(raw);
-        if(p && Array.isArray(p.ops)) _arOvPending[brand] = p;
-        else if(p && p.payload){
-          // 옛 방식의 전체 사본 — 언제 것인지 몰라 지우는 쪽으로는 쓰지 않고 있는 값만 넣는다
-          const ops=[];
-          Object.keys(AR_OV_FILE_KEY).forEach(k=>{
-            const m=p.payload[AR_OV_FILE_KEY[k]]||{};
-            Object.keys(m).forEach(id=>ops.push({k,id,v:m[id]}));
-          });
-          _arOvPending[brand] = ops.length ? {ops, msg:p.msg||'product-name-overrides: 재전송'} : null;
-          _arOvPersistDirty(brand);
-        }
-        _arOvSchedulePush(brand);
-      }catch(e){}
-    });
-  }
-  function _arOvSchedulePush(brand){
-    if(!_arOvPending[brand]) return;
-    if(_arOvPushing[brand]){ _arOvPushAgain[brand] = true; return; }
-    clearTimeout(_arOvPushTimer[brand]);
-    _arOvPushTimer[brand] = setTimeout(()=>_arOvPushInner(brand), 300);
-  }
-  const _AR_OV_APIS = {
-    brightbeed: 'https://api.github.com/repos/j65209/beaduniverse/contents/data/product-name-overrides.json',
-    shinebeed:  'https://api.github.com/repos/j65209/beaduniverse/contents/data/product-name-overrides-shinebeed.json',
-  };
-  async function _arOvPushInner(brand){
-    if(!_arOvPending[brand]) return true;
-    if(_arOvPushing[brand]){ _arOvPushAgain[brand] = true; return true; }
-    _arOvPushing[brand] = true;
-    try{
-      const { ops, msg } = _arOvPending[brand];
-      const sent = ops.slice();
-      const api = _AR_OV_APIS[brand];
-      let ok = false, lastReason = null, newSha = null, merged = null;
-      for(let attempt=0; attempt<3; attempt++){
-        try{
-          const file = await ghGetFile(api);
-          if(file.error){ lastReason = file.error; break; }
-          if(file.sha && !file.text){ lastReason = 'read_empty'; break; }
-          let d = {version:1, description: brand==='shinebeed'
-            ? '샤인비드 발주 상품 카탈로그 수동 오버라이드. product.id (콰이디에어 offer URL 기준)를 key로 사용.'
-            : '대시보드에서 사장님이 직접 수정한 상품명·이미지·숨김. product.id를 key로 사용.'};
-          if(file.text){
-            try{ d = JSON.parse(file.text)||d; }
-            catch(e){ lastReason = 'parse'; break; }
-          }
-          merged = _arOvApplyOps(d, sent);
-          const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
-          const r = await ghPut(api, b64, msg, {noConflictRetry:true, sha:file.sha||null});
-          if(r.ok){ ok = true; newSha = r.sha || null; break; }
-          lastReason = r.reason;
-          if(r.reason !== 'conflict') break;
-        } catch(e){ lastReason = 'throw'; break; }
-      }
-      if(ok){
-        const left = _arOvPending[brand].ops.slice(sent.length);   // 전송 중 새로 생긴 작업은 남김
-        _arOvPending[brand] = left.length ? {ops:left, msg:_arOvPending[brand].msg} : null;
-        _arOvPersistDirty(brand);
-        _arOvPushFailStreak[brand] = 0;
-        if(newSha){ _arOvOverridesShaMap[brand] = newSha; if(brand==="brightbeed") _arOverridesSha = newSha; }
-        _arOvApplyToState(merged, brand);   // 남이 바꾼 이름도 반영
-        if(left.length) _arOvPushAgain[brand] = true;
-        return true;
-      }
-      if(lastReason==='auth'){ try{ toast('⚠ 상품명 저장 인증 실패 · 재시도 중','err'); }catch(e){} }
-      else { try{ toast(`⚠ 상품명 저장 대기 · 재시도 중 (${lastReason||'network'})`,'warn'); }catch(e){} }
-      _arOvPushFailStreak[brand] = Math.min((_arOvPushFailStreak[brand]||0)+1, 6);
-      clearTimeout(_arOvPushTimer[brand]);
-      _arOvPushTimer[brand] = setTimeout(()=>_arOvPushInner(brand), Math.min(1000 * 2**(_arOvPushFailStreak[brand]-1), 30000));
-      return false;
-    } finally {
-      _arOvPushing[brand] = false;
-      if(_arOvPushAgain[brand]){ _arOvPushAgain[brand] = false; _arOvSchedulePush(brand); }
-    }
-  }
-  // 하위 호환용 sha map alias
-  const _arOvOverridesShaMap = _arOverridesShaMap;
-  // brand = 고친 상품의 브랜드 — 그 브랜드 상태 · 파일에만 저장한다
-  async function _saveOverridesPayload(brand, nextOverrides, nextAuto, msg, nextImg, nextDeleted){
-    brand = brand==='shinebeed' ? 'shinebeed' : 'brightbeed';
-    const st=_arSt(brand);
-    if(nextImg===undefined) nextImg=st.imgOverrides||{};
-    if(nextDeleted===undefined) nextDeleted=st.deletedIds||{};
-    // 지금 상태와 달라진 칸만 작업으로
-    const ops=[];
-    const diff=(k,cur,next)=>{
-      cur=cur||{}; next=next||{};
-      Object.keys(next).forEach(id=>{ if(JSON.stringify(cur[id])!==JSON.stringify(next[id])) ops.push({k,id,v:next[id]}); });
-      Object.keys(cur).forEach(id=>{ if(!(id in next)) ops.push({k,id,v:null}); });
-    };
-    diff('overrides',st.overrides,nextOverrides);
-    diff('autoOverrides',st.autoOverrides,nextAuto);
-    diff('imgOverrides',st.imgOverrides,nextImg);
-    diff('deletedIds',st.deletedIds,nextDeleted);
-    // 로컬 상태는 즉시 반영 (UI 반응성)
-    st.overrides=nextOverrides;
-    st.autoOverrides=nextAuto;
-    st.imgOverrides=nextImg;
-    st.deletedIds=nextDeleted;
-    if(!ops.length) return;
-    // 미푸시 작업을 localStorage 에 저장 → 새로고침 후 자동 재전송
-    const prev=_arOvPending[brand];
-    _arOvPending[brand] = {ops:(prev?prev.ops:[]).concat(ops), msg};
-    _arOvPersistDirty(brand);
-    const ok = await _arOvPushInner(brand);
-    if(!ok) throw new Error('저장 대기 — 재시도 중');   // 호출부 catch 유지 (기존 UI toast 호환)
-  }
-  _arOvRestoreDirty();
-  window.addEventListener('beforeunload', (e)=>{
-    if(!Object.values(_arOvPending).some(Boolean)) return;
-    e.preventDefault();
-    e.returnValue = '';
-  });
-  window.addEventListener('pagehide', ()=>{
-    Object.keys(_arOvPending).forEach(brand=>{
-      if(_arOvPending[brand]){ clearTimeout(_arOvPushTimer[brand]); _arOvPushInner(brand); }
-    });
-  });
-
-  async function resetAutoOverrides(){
-    if(!confirm('자동 매칭된 상품명을 모두 원래 이름으로 되돌립니다.\n(수동으로 수정한 이름은 그대로 유지됩니다)\n\n계속할까요?')) return;
-    try{
-      for(const b of AR_BRANDS){
-        const st=_arSt(b);
-        if(Object.keys(st.autoOverrides||{}).length) await _saveOverridesPayload(b, st.overrides, {}, 'product-name-overrides: reset auto_overrides');
-      }
-      applyArchive();
-      toast('✓ 자동 매칭 되돌림','ok');
-    }catch(e){ toast(`되돌리기 실패: ${e.message}`,'err'); }
-  }
-  window.resetAutoOverrides=resetAutoOverrides;
-
-  async function saveProductName(pid, currentDisplay, brand){
-    const raw=prompt('상품명 수정 (비우면 원래 이름으로 복구):', currentDisplay||'');
-    if(raw===null) return;
-    const val=raw.trim();
-    const st=_arSt(brand);
-    const next={...st.overrides};
-    if(val) next[pid]=val;
-    else delete next[pid];
-    try{
-      await _saveOverridesPayload(brand, next, st.autoOverrides, `product-name-overrides: ${val?'update':'clear'} ${pid}`);
-      applyArchive();
-      toast('✓ 상품명 저장됨','ok');
-    }catch(e){ toast(`저장 오류: ${e.message}`,'err'); }
-  }
-  window.saveProductName=saveProductName;
-
-  async function saveProductImg(pid, currentUrl, brand){
-    const raw=prompt('상품 이미지 URL 수정 (비우면 원래 이미지로 복구):', currentUrl||'');
-    if(raw===null) return;
-    const val=raw.trim();
-    if(val && !/^https?:\/\//i.test(val)){ toast('URL은 http:// 또는 https:// 로 시작해야 합니다','err'); return; }
-    const st=_arSt(brand);
-    const next={...st.imgOverrides};
-    if(val) next[pid]=val;
-    else delete next[pid];
-    try{
-      await _saveOverridesPayload(brand, st.overrides, st.autoOverrides, `product-name-overrides: ${val?'update':'clear'} img ${pid}`, next);
-      applyArchive();
-      toast(val?'✓ 이미지 저장됨':'✓ 이미지 복구됨','ok');
-    }catch(e){ toast(`저장 오류: ${e.message}`,'err'); }
-  }
-  window.saveProductImg=saveProductImg;
-
-  async function saveProductDelete(pid, displayName, brand){
-    if(!confirm(`이 상품을 목록에서 숨깁니까?\n\n"${displayName||pid}"\n\n(원본 발주 데이터는 그대로 유지되며, 언제든 되돌릴 수 있습니다.)`)) return;
-    const st=_arSt(brand);
-    const next={...st.deletedIds, [pid]: true};
-    try{
-      await _saveOverridesPayload(brand, st.overrides, st.autoOverrides, `product-name-overrides: delete ${pid}`, st.imgOverrides, next);
-      applyArchive();
-      toast('✓ 목록에서 숨김','ok');
-    }catch(e){ toast(`저장 오류: ${e.message}`,'err'); }
-  }
-  window.saveProductDelete=saveProductDelete;
-
-  function _arCountAll(key){ return AR_BRANDS.reduce((n,b)=>n+Object.keys(_arSt(b)[key]||{}).length,0); }
-  async function restoreAllDeleted(){
-    const cnt=_arCountAll('deletedIds');
-    if(!cnt){ toast('숨긴 상품이 없습니다','ok'); return; }
-    if(!confirm(`숨겨둔 상품 ${cnt}개를 모두 복원할까요?`)) return;
-    try{
-      for(const b of AR_BRANDS){
-        const st=_arSt(b);
-        if(Object.keys(st.deletedIds||{}).length) await _saveOverridesPayload(b, st.overrides, st.autoOverrides, 'product-name-overrides: restore all deleted', st.imgOverrides, {});
-      }
-      applyArchive();
-      toast(`✓ ${cnt}개 복원됨`,'ok');
-    }catch(e){ toast(`복원 오류: ${e.message}`,'err'); }
-  }
-  window.restoreAllDeleted=restoreAllDeleted;
-  // 상품 리스트 갱신 시각 — 발주서 동기화 · 콰이디에어 따로 (2026-11-17 브비 · 샤비 표시는 뺐다)
-  function _arRenderUpdated(){
-    const upd=document.getElementById('arUpdated');
-    if(!upd) return;
-    const parts=[];
-    if(window._bbArUpdated) parts.push('발주서 '+window._bbArUpdated);
-    if(window._shineArUpdated) parts.push('콰이디에어 '+window._shineArUpdated);
-    upd.textContent=parts.join(' · ');
-  }
-  function applyArchive(){
-    const q=arState.q.trim().toLowerCase();
-    // 두 브랜드 상품을 한 목록으로 — 상품마다 어느 브랜드 것인지 붙여 두고 숨김 · 이름은 그 브랜드 상태에서 본다
-    _arStateBB.all.forEach(p=>{ p._brand='brightbeed'; });
-    _arStateSB.all.forEach(p=>{ p._brand='shinebeed'; });
-    arState.all=_arStateBB.all.concat(_arStateSB.all);
-    arState.filtered=arState.all.filter(p=>{
-      if((_arSt(p._brand).deletedIds||{})[p.id]) return false;
-      if(q){
-        const hay=[p.kor||'',p.cn||'',...(p.memos||[])].join(' ').toLowerCase();
-        if(!hay.includes(q)) return false;
-      }
-      return true;
-    });
-    const s=arState.sort;
-    arState.filtered.sort((a,b)=>{
-      if(s==='recent'){
-        const d=(b.latest_date||'').localeCompare(a.latest_date||'');
-        // 같은 날 발주면 수량 많은 순으로 tie-break
-        return d!==0 ? d : (b.total_qty||0)-(a.total_qty||0);
-      }
-      if(s==='qty') return (b.total_qty||0)-(a.total_qty||0);
-      if(s==='order') return (b.order_count||0)-(a.order_count||0);
-      if(s==='price_hi' && secretOk()) return (b.price_avg||0)-(a.price_avg||0);   // 단가 정렬 = 기밀 명단만 (순서로도 단가가 드러난다)
-      if(s==='price_lo' && secretOk()) return (a.price_avg||Infinity)-(b.price_avg||Infinity);
-      if(s==='name') return (a.kor||a.cn||'').localeCompare(b.kor||b.cn||'');
-      return 0;
-    });
-    renderArchive();
-  }
-  function renderArchive(){
-    const grid=document.getElementById('arGrid');
-    const empty=document.getElementById('arEmpty');
-    const more=document.getElementById('arMore');
-    const cnt=document.getElementById('arCount');
-    if(!grid) return;
-    if(cnt) cnt.textContent=`${arState.filtered.length.toLocaleString('ko-KR')}종`;
-    const autoCnt=_arCountAll('autoOverrides');
-    const resetBtn=document.getElementById('arResetBtn');
-    const autoCntSpan=document.getElementById('arAutoCount');
-    if(resetBtn) resetBtn.style.display = autoCnt>0 ? '' : 'none';
-    if(autoCntSpan) autoCntSpan.textContent = autoCnt>0 ? `(${autoCnt}개)` : '';
-    const delCnt=_arCountAll('deletedIds');
-    const restoreBtn=document.getElementById('arRestoreBtn');
-    const restoreCntSpan=document.getElementById('arRestoreCount');
-    if(restoreBtn) restoreBtn.style.display = delCnt>0 ? '' : 'none';
-    if(restoreCntSpan) restoreCntSpan.textContent = delCnt>0 ? `(${delCnt}개)` : '';
-    if(!arState.filtered.length){
-      grid.style.display='none';empty.style.display='block';more.style.display='none';
-      empty.querySelector('.po-empty-text').textContent = arState.all.length?'검색 결과 없음':'데이터 없음';
-      return;
-    }
-    empty.style.display='none';
-    grid.style.display='grid';
-    const show=arState.filtered.slice(0,arState.shown);
-    grid.innerHTML=show.map(renderProductCard).join('');
-    more.style.display=arState.filtered.length>arState.shown?'block':'none';
-    // 우측 컬럼 썸네일 hover 시 확대 이미지가 화면 밖으로 나가지 않게 좌측 flip
-    grid.querySelectorAll('.ar-thumb-wrap').forEach(w=>{
-      w.addEventListener('mouseenter', ()=>{
-        const rect=w.getBoundingClientRect();
-        w.classList.toggle('zoom-left', rect.left + 128 + 570 > window.innerWidth);
-      }, {passive:true});
-    });
-    // 편집 버튼 클릭 → 상품명 수정 프롬프트
-    grid.querySelectorAll('.ar-name-edit').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const pid=btn.dataset.pid;
-        const nameEl=btn.parentElement.querySelector('.ar-name-text');
-        saveProductName(pid, nameEl?.textContent?.trim() || '', _arBrandOfBtn(btn));
-      });
-    });
-    // 이미지 편집 버튼 클릭 → 이미지 URL 수정 프롬프트
-    grid.querySelectorAll('.ar-img-edit').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        saveProductImg(btn.dataset.pid, btn.dataset.img || '', _arBrandOfBtn(btn));
-      });
-    });
-    // 삭제(숨김) 버튼 클릭 → 상품 숨김 처리
-    grid.querySelectorAll('.ar-card-del').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        saveProductDelete(btn.dataset.pid, btn.dataset.name || '', _arBrandOfBtn(btn));
-      });
-    });
-    // 이전 발주 뱃지 hover → 이력 팝업
-    grid.querySelectorAll('.ar-hist-chip').forEach(chip=>{
-      const url=chip.dataset.purl||'';
-      chip.addEventListener('mouseenter', ()=>{
-        const hist=window.getOfferHistory ? window.getOfferHistory(url) : [];
-        if(!hist.length) return;
-        showKDHistoryPopup(chip, hist);
-      }, {passive:true});
-      chip.addEventListener('mouseleave', hideKDHistoryPopup, {passive:true});
-    });
-    // 자동 매칭 승인/취소
-    grid.querySelectorAll('.ar-btn-approve').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ e.stopPropagation(); approveAutoName(btn.dataset.pid, _arBrandOfBtn(btn)); });
-    });
-    grid.querySelectorAll('.ar-btn-reject').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ e.stopPropagation(); rejectAutoName(btn.dataset.pid, _arBrandOfBtn(btn)); });
-    });
-  }
-
-  function _arBrandOfBtn(btn){ const c=btn.closest('.ar-prod'); return (c&&c.dataset.brand)||'brightbeed'; }
-  async function approveAutoName(pid, brand){
-    const st=_arSt(brand);
-    const name = st.autoOverrides[pid]?.name;
-    if(!name) return;
-    const nextOverrides = {...st.overrides, [pid]: name};
-    const nextAuto = {...st.autoOverrides};
-    delete nextAuto[pid];
-    try{
-      await _saveOverridesPayload(brand, nextOverrides, nextAuto, `product-name-overrides: approve auto ${pid}`);
-      applyArchive();
-      toast(`✓ 승인: ${name}`,'ok');
-    }catch(e){ toast(`승인 실패: ${e.message}`,'err'); }
-  }
-  async function rejectAutoName(pid, brand){
-    const st=_arSt(brand);
-    const nextAuto = {...st.autoOverrides};
-    delete nextAuto[pid];
-    try{
-      await _saveOverridesPayload(brand, st.overrides, nextAuto, `product-name-overrides: reject auto ${pid}`);
-      applyArchive();
-      toast('✗ 취소됨','ok');
-    }catch(e){ toast(`취소 실패: ${e.message}`,'err'); }
-  }
-  window.approveAutoName=approveAutoName;
-  window.rejectAutoName=rejectAutoName;
-  function renderProductCard(p){
-    const readonly = !!arState.readonly;
-    const st=_arSt(p._brand);
-    const overrideName=st.overrides[p.id];
-    const autoName=st.autoOverrides?.[p.id]?.name;
-    // 🤖 제안은 이미 붙은 이름(사진 보고 붙인 이름 등)이 있어도 보여줌 — 취소하면 그 이름으로 돌아감
-    const isAuto = !!autoName && autoName!==overrideName;
-    const shownName = isAuto ? autoName : overrideName;
-    const displayName=shownName || p.kor || p.cn || '—';
-    const origName=(isAuto && overrideName) ? overrideName : (p.kor||p.cn||'');
-    const sub=(shownName && origName && shownName!==origName) ? origName
-             : (p.kor && p.cn && p.kor!==p.cn) ? p.cn : '';
-    const overrideImg=st.imgOverrides?.[p.id];
-    const displayImg=overrideImg || p.img || '';
-    const isImgEdited = !!overrideImg;
-    const imgBody=displayImg
-      ? `<span class="ar-thumb-wrap${isImgEdited?' ar-thumb-edited':''}">
-           <img class="ar-thumb" loading="lazy" referrerpolicy="no-referrer" src="${arEscape(displayImg)}" alt="" onerror="var s=this.closest('.ar-img-slot');this.parentElement.classList.add('ar-thumb-err');if(s){s.classList.add('ar-img-slot-empty');s.querySelector('.ar-img-edit')?.classList.add('ar-img-edit-solid')}">
-           <img class="ar-thumb-zoom" referrerpolicy="no-referrer" src="${arEscape(displayImg)}" alt="">
-         </span>`
-      : '<span class="ar-no-img">×</span>';
-    const imgEditBtn=readonly ? '' : `<button class="ar-img-edit${displayImg?'':' ar-img-edit-solid'}" title="${displayImg?'이미지 URL 수정':'이미지 URL 추가'}" data-pid="${arEscape(p.id)}" data-img="${arEscape(overrideImg||p.img||'')}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-    </button>`;
-    const img=`<div class="ar-img-slot${displayImg?'':' ar-img-slot-empty'}">${imgBody}${imgEditBtn}</div>`;
-    // 단가 · 공급처 상품 링크 = 기밀 — 지희선 · 전승훈 · 전수빈만 (2026-11-20)
-    const secOk=secretOk();
-    const link=p.link && (secOk || !secretLink(p.link))
-      ? `<a class="ar-link" href="${arEscape(p.link)}" target="_blank" rel="noopener">상품열기</a>`
-      : '<span class="ar-no-link">—</span>';
-    // 최근 발주 시 실제 단가 (없으면 평균)
-    const priceLabel = !secOk ? '' : p.price_latest != null
-      ? `¥${p.price_latest}`
-      : (p.price_avg != null ? `¥${p.price_avg}` : '—');
-    const recentLabel = p.latest_date ? p.latest_date.slice(2).replace(/-/g,'.') : '—';
-    const delBtn = readonly ? '' : `<button class="ar-card-del" title="이 상품을 목록에서 숨김" data-pid="${arEscape(p.id)}" data-name="${arEscape(displayName)}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-        </button>`;
-    const nameEditBlock = readonly ? '' : (isAuto ? `
-              <div class="ar-auto-actions">
-                <button class="ar-btn-approve" title="이 이름 승인 (수동 편집으로 승격)" data-pid="${arEscape(p.id)}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
-                </button>
-                <button class="ar-btn-reject" title="원래 이름으로 취소" data-pid="${arEscape(p.id)}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              </div>
-            ` : `
-              <button class="ar-name-edit" title="상품명 편집" data-pid="${arEscape(p.id)}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-            `);
-    return `
-      <div class="ar-prod" data-brand="${p._brand==='shinebeed'?'shinebeed':'brightbeed'}">
-        ${delBtn}
-        <div class="ar-prod-img">${img}</div>
-        <div class="ar-prod-body">
-          <div class="ar-prod-name">
-            <span class="ar-name-text${overrideName&&!isAuto?' ar-name-edited':''}${isAuto?' ar-name-auto':''}">${arEscape(displayName)}${isAuto?' <span class="ar-auto-badge" title="자동 매칭 – 확인 후 승인/취소">🤖</span>':''}</span>
-            ${nameEditBlock}
-          </div>
-          ${sub?`<div class="ar-prod-sub">${arEscape(sub)}</div>`:''}
-          <div class="ar-prod-stats">
-            ${secOk?`<span class="ar-stat"><span class="lbl">단가</span><b>${priceLabel}</b></span>`:''}
-            <span class="ar-stat"><span class="lbl">누적</span><b>${arFmtInt(p.total_qty)}<span class="unit">개</span></b></span>
-            <span class="ar-stat"><span class="lbl">발주</span><b>${p.order_count}<span class="unit">회</span></b></span>
-            <span class="ar-stat"><span class="lbl">최근</span><b>${recentLabel}</b></span>
-            ${p.link ? `<span class="ar-hist-chip" data-purl="${arEscape(p.link)}" title="hover 시 이전 발주 내역">이전 <em>${p.order_count||0}회</em></span>` : ''}
-          </div>
-          <div class="ar-prod-foot">
-            <div class="ar-prod-tags"></div>
-            ${link}
-          </div>
-        </div>
-      </div>`;
-  }
-  function loadMoreArchive(){
-    arState.shown+=60;
-    renderArchive();
-  }
-  function filterArchive(q){
-    arState.q=q||'';
-    arState.shown=60;
-    applyArchive();
-  }
-  function setArchiveSort(s){
-    arState.sort=s;
-    arState.shown=60;
-    applyArchive();
-  }
-  window.filterArchive=filterArchive;
-  window.setArchiveSort=setArchiveSort;
-  window.loadMoreArchive=loadMoreArchive;
-  window.loadArchive=loadArchive;
-
-  /* ===== 발주 상품 카탈로그 수동 동기화 (서버 Dropbox 재파싱 트리거) =====
-     proxy POST /orders-parse → 서버 scripts/parse_orders.py → ~/server/brightbeed-proxy/out/orders.json
-     (검증 · 직전본 비교 후 통째 교체, git 안 씀 — 2026-11-12). 자동 스케줄은 없음(08-24 사장님 요청으로 끔).
-     발주서를 Dropbox 에 새로 넣고 바로 반영하고 싶을 때 사용. */
-  async function syncOrdersFromDropbox(){
-    if(!requireMaster('발주 상품 동기화')) return;
-    const btn=document.getElementById('arSyncBtn');
-    let origHTML=null;
-    if(btn){
-      origHTML=btn.innerHTML;
-      btn.disabled=true;
-      btn.innerHTML='<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> 동기화 중…';
-    }
-    try{
-      const base=await loadProxyBase();
-      if(!base) throw new Error('서버 프록시를 찾을 수 없습니다 (tunnel.json)');
-      const r=await fetch(base+'/orders-parse',{
-        method:'POST',
-        headers:{'X-Brightbeed-PIN':PROXY_PIN_MASTER,'Accept':'application/json'},
-      });
-      let j={};
-      try{ j=await r.json(); }catch{}
-      if(!r.ok){
-        const detail=j.message||j.error||`HTTP ${r.status}`;
-        toast('동기화 실패: '+detail,'err');
-        return;
-      }
-      // 서버가 아직 읽는 중(202) — Dropbox 가 파일을 내려받느라 몇 분 걸릴 수 있고 터널은 100초에 응답을 끊는다.
-      // 끝날 때까지 5초마다 상태(GET /orders-parse)를 확인한다.
-      if(j.running){
-        if(btn) btn.innerHTML='<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> 서버가 발주서 읽는 중…';
-        const until=Date.now()+15*60*1000;
-        let done=null;
-        while(!done && Date.now()<until){
-          await new Promise(res=>setTimeout(res,5000));
-          try{
-            const b2=await loadProxyBase();
-            const s=await fetch(`${b2}/orders-parse?cb=${Date.now()}`,{headers:{'X-Brightbeed-PIN':PROXY_PIN_MASTER,'Accept':'application/json'},cache:'no-store'});
-            const st=s.ok ? await s.json() : null;
-            if(st && !st.running && st.result) done=st.result;
-          }catch(e){}
-        }
-        if(!done){ toast('동기화가 아직 안 끝났습니다 — 잠시 뒤 탭을 다시 열어 확인해 주세요','err'); return; }
-        j=done;
-      }
-      if(j.ok===false){
-        const msg=j.message || j.reason || '알 수 없는 오류';
-        toast('동기화 실패: '+msg,'err');
-        return;
-      }
-      await loadArchive();
-      const cnt=Number(j.product_count)||0;
-      const tag=j.changed===false ? ' (변경 없음)' : '';
-      const warn=j.warning ? ` · ⚠️ ${j.warning}` : '';
-      toast(`✓ 동기화 완료 — ${cnt.toLocaleString()}개 상품${tag}${warn}`,'ok');
-    }catch(e){
-      toast('동기화 오류: '+e.message,'err');
-    }finally{
-      if(btn){
-        btn.disabled=false;
-        if(origHTML!=null) btn.innerHTML=origHTML;
-      }
-    }
-  }
-  window.syncOrdersFromDropbox=syncOrdersFromDropbox;
-
-  // 카탈로그(약 340KB gzip)는 발주 상품 리스트 탭을 실제로 열 때만 lazy 로 fetch.
-  // 다른 팀만 쓰는 사장님/직원한테는 평생 다운로드 안 나감. 못 받으면 false 로 되돌려 다음에 다시 받는다.
-  let _arLoaded=false;
-
-  /* ===== 샤인비드 발주 상품 카탈로그 (KD orders → 클라이언트측 dedupe) =====
-     브라이트비드는 dropbox 발주서 xlsx 를 서버가 파싱한 카탈로그(프록시 /orders-catalog)를 쓰는 반면,
-     샤인비드는 콰이디에어 최근 60일 신청서만이 소스이므로 클라이언트에서 실시간 집계.
-     dedupe key 우선순위: product_url → image_url → memo (전부 없으면 스킵). */
-  function _shineNormId(it){
-    if(it.product_url) return 'u:'+it.product_url.split('?')[0];
-    if(it.image_url)   return 'i:'+it.image_url.split('?')[0];
-    const m=(it.memo||'').replace(/\s+/g,' ').trim();
-    return m ? 'm:'+m : '';
-  }
-  function _shineParseCny(v){
-    const n=parseFloat(String(v||'').replace(/[^\d.]/g,''));
-    return isFinite(n) ? n : 0;
-  }
-  function _shineParseQty(v){
-    const n=parseInt(String(v||'').replace(/[^\d]/g,''),10);
-    return isFinite(n) ? n : 0;
-  }
-  function _shineCleanName(memo){
-    // 샤인비드 메모 구조 예시:
-    //   "9号开口戒指[아페티] 반지Baby ring-B라고 표기해주세요 (수량 표기 포함) /1 26일입고/에어요청"
-    // 규칙 (사장님 실제 발주 메모 관찰):
-    //   1. "XX라고 표기해주세요" 매칭시 XX 를 대표 이름으로 (사장님이 명시한 표기명)
-    //   2. 아니면 옵션 마커("옵션:"/"색상:"/한중 마커) 이전만
-    //   3. 처리 요청 문구 ("(수량...)", "/N일 입고", "에어요청" 등) 제거
-    //   4. 앞쪽 중국어 옵션 프리픽스 ("N号XXX", "N色XXX") 제거
-    //   5. 정리 후 비면 원본 그대로 유지
-    const raw=String(memo||'').replace(/\s+/g,' ').trim();
-    if(!raw) return '';
-    let s=raw;
-    const named=s.match(/^(.*?)\s*라고\s*표기(?:해)?\s*주세요/);
-    if(named){
-      s=named[1];
-    }else{
-      s=s.split(/(?:옵션|색상|사이즈|규격|款式|颜色|尺寸|规格)\s*[:：]/)[0];
-      s=s.replace(/\s*\([^)]*\)/g,'')                     // (수량 표기 포함) 등 괄호 문구
-         .replace(/\s*\/\s*\d+\s*[일日]?\s*\d*\s*[일日]\s*입고/g,'') // "/1 26일 입고"
-         .replace(/에어요청|일반요청|선편|일반\s*배송/g,'');
-    }
-    // 앞쪽 중국어 옵션 프리픽스 제거 (예: "9号开口戒指", "红色包" 등 옵션 성격)
-    s=s.replace(/^\s*\d+号[^\s\[]*\s*/,'')
-       .replace(/^\s*[红蓝白黑绿灰粉黄紫棕][色]?\s*/,'');
-    s=s.trim().replace(/[·•,;、|]+\s*$/,'');
-    return s || raw;
-  }
-  function buildShineCatalog(orders){
-    const byId={};
-    for(const o of (orders||[])){
-      const date=o.order_date||o.date||'';
-      for(const it of (o.items||[])){
-        const id=_shineNormId(it);
-        if(!id) continue;
-        const qty=_shineParseQty(it.qty);
-        const price=_shineParseCny(it.price_cny);
-        const name=_shineCleanName(it.memo);
-        let p=byId[id];
-        if(!p){
-          p=byId[id]={
-            id,
-            kor:name, cn:'',
-            img: it.image_url||'',
-            link: it.product_url||'',
-            total_qty:0, order_count:0,
-            price_avg:0, _price_sum:0, _price_n:0,
-            price_latest:0, latest_date:'',
-            memos:[], _memoSet:new Set(),
-            _ords:new Set(),
-          };
-        }
-        // 이미지/링크는 첫 값이 유효하면 유지, 비어있으면 다음 값으로 채움
-        if(!p.img && it.image_url) p.img=it.image_url;
-        if(!p.link && it.product_url) p.link=it.product_url;
-        if(!p.kor && name) p.kor=name;
-        // 신청서 단위 발주 횟수 (같은 신청서 안 같은 상품 여러 라인이면 1회)
-        const ordKey=o.ord_no||('nop:'+Math.random());
-        p._ords.add(ordKey);
-        p.total_qty += qty;
-        if(price>0){ p._price_sum += price*qty; p._price_n += qty; }
-        // 가장 최근 발주 단가/날짜
-        if(date && date > p.latest_date){
-          p.latest_date=date;
-          if(price>0) p.price_latest=price;
-        }
-        const memoLine=(it.memo||'').trim();
-        if(memoLine && !p._memoSet.has(memoLine)){
-          p._memoSet.add(memoLine);
-          p.memos.push(memoLine);
-        }
-      }
-    }
-    const arr=Object.values(byId).map(p=>({
-      id:p.id, kor:p.kor, cn:'',
-      img:p.img, link:p.link,
-      total_qty:p.total_qty,
-      order_count:p._ords.size,
-      price_avg: p._price_n>0 ? Math.round((p._price_sum/p._price_n)*100)/100 : null,
-      price_latest: p.price_latest>0 ? Math.round(p.price_latest*100)/100 : null,
-      latest_date:p.latest_date,
-      memos:p.memos,
-    }));
-    return arr;
-  }
-
-  // 물류팀 뷰 탭 전환 (최근 발주 내역 ↔ 발주서 리스트)
+  // 물류팀 뷰 탭 전환 (최근 발주 내역 ↔ 발주 상품 리스트)
   function switchLgTab(name){
     document.querySelectorAll('.lg-tab').forEach(btn=>{
       const active = btn.dataset.tab===name;
@@ -38565,43 +37768,17 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     document.querySelectorAll('.lg-pane').forEach(p=>{
       p.style.display = p.dataset.pane===name ? '' : 'none';
     });
-    // 스크롤 최상단
+    // 스크롤 최상단 — 단, 발주 상품 리스트를 열 때 · 거기서 돌아올 때는 탭 자리로 (위에 출고 전광판이 길어 목록이 화면 밖이었음, 2026-11-24 "최근 발주내역을 더 잘 보이게")
     const vh=document.getElementById('viewLg');
     if(vh) vh.scrollTop=0;
-    window.scrollTo({top:0,behavior:'instant'});
-    // 발주 상품 카탈로그는 처음 진입할 때만 로드 (브랜드별 데이터 소스 분기)
-    if(name==='archive') refreshArchivePane();
+    const tabs=document.querySelector('#viewLg .lg-tabs'), toList=name==='archive'||window._lgTabWas==='archive';
+    window._lgTabWas=name;
+    // 발주 상품 리스트 (po-list.js) — 탭을 열 때 받는다 (자리를 먼저 만들어야 아래로 내려갈 수 있다)
+    if(name==='archive'&&window.refreshArchivePane) window.refreshArchivePane();
+    if(toList&&tabs) window.scrollTo({top:Math.max(0, tabs.getBoundingClientRect().top+window.scrollY-72),behavior:'instant'});
+    else window.scrollTo({top:0,behavior:'instant'});
   }
   window.switchLgTab=switchLgTab;
-
-  // 2026-11-13 비드유니버스 통합 — 브라이트비드(발주서 카탈로그) · 샤인비드(콰이디에어) 상품을 한 목록으로
-  function refreshArchivePane(){
-    const titleEl = document.querySelector('.lg-pane[data-pane="archive"] .po-section-title');
-    if(titleEl) titleEl.textContent = '비드유니버스 발주 상품 카탈로그';
-    // 검색/정렬 UI 를 현재 상태로 복원
-    const sb = document.getElementById('arSearch');
-    if(sb) sb.value = arState.q || '';
-    const sel = document.getElementById('arSort');
-    if(sel) sel.value = arState.sort || 'recent';
-    _arRenderUpdated();
-    // SB 상품은 renderKDOrders 가 콰이디에어 신청서로 채워 둔다. 이름 · 숨김 파일은 처음 열 때 한 번
-    if(!window._shineOverridesLoaded){
-      window._shineOverridesLoaded=true;
-      loadNameOverrides('shinebeed').finally(()=>applyArchive());
-    }
-    // BB 카탈로그(약 340KB)는 처음 열 때만 받는다 — 받는 동안 SB 상품을 먼저 보여 준다
-    if(!_arLoaded){ _arLoaded=true; loadArchive(); }
-    applyArchive();
-  }
-  window.refreshArchivePane=refreshArchivePane;
-
-  // 상품 카탈로그 갯수를 탭 뱃지에 반영
-  const _origApply=applyArchive;
-  applyArchive=function(){
-    _origApply();
-    const b=document.getElementById('lgTabArchiveBadge');
-    if(b) b.textContent=arState.filtered.length.toLocaleString('ko-KR');
-  };
 
   /* ===================================================== */
   /* ============ 매출 보고서 PPT (업로드 + GitHub 동기화) ============ */
@@ -58630,7 +57807,8 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
 </div>
 <script src="office-live.js?v=1" defer></script><!-- 실시간 알림선 (office-live.js) -->
 <script src="erp-alert.js?v=2" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
-<script src="po-map.js?v=1" defer></script><!-- 발주 매핑하기 (po-map.js) -->
+<script src="po-list.js?v=1" defer></script><!-- 발주 상품 리스트 (po-list.js) -->
+<script src="po-map.js?v=2" defer></script><!-- 발주 매핑하기 (po-map.js) -->
 <script src="stock-blank.js?v=1" defer></script><!-- 재고 미기재 알림 — 김성군 · 지희선 · 대표 2명 (stock-blank.js) -->
 <script src="notif-state.js?v=1" defer></script><!-- 알림 승인 상태 (notif-state.js) -->
 <script src="notif-ask.js?v=4" defer></script><!-- 알림 허용 안내 — 전 직원, 허용 안 했거나 보이는지 확인 안 한 PC 에 (notif-ask.js) -->

@@ -135,7 +135,7 @@ function suggest(rows, it) {
   const out = [], seen = new Set(), by = new Map(rows.map(r => [key(r), r]));
   const add = (r, why) => { if (!r || seen.has(key(r)) || out.length >= 8) return; seen.add(key(r)); out.push({r, why}); };
   if (it.n && it.state === 'check') add(by.get(key(it)), it.how === 'code' ? '같은 업체 코드' : '같은 1688 상품');
-  (it.cands || []).forEach(c => add(by.get(key(c)), it.how === 'alias' ? '지난번에 이은 줄' : it.how === 'offer' ? '같은 1688 상품' : it.how === 'code' ? '같은 업체 코드' : '메모에 적힌 이름'));
+  (it.cands || []).forEach(c => add(by.get(key(c)), it.by === 'alias' ? '지난번에 이은 줄' : it.how === 'offer' ? '같은 1688 상품' : it.how === 'code' ? '같은 업체 코드' : '메모에 적힌 이름'));
   const q = memoQuery(it), hb = String(it.hint || '').split(' · ')[0], mine = /SB/.test(it.acct || '') ? ['apt', 'kop', 'koz'] : ['6a', 'yar', 'pp', 'akoi'];
   if (q) find(rows, q, r => r.b === hb ? .1 : mine.includes(r.b) ? .04 : 0).filter(x => x.all || x.s >= .58).slice(0, 8).forEach(x => add(x.r, x.all ? '이름이 맞음' : '비슷한 이름'));
   return out;
