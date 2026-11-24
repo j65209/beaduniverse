@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>ERP전산팀 · 비드유니버스 오피스</title>
 <script src="../office-undo.js?v=1" data-skip="rpc/(erp_cell_edit|erp_fmt_set)"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
+<script src="../office-grid.js?v=1"></script><script>window.OfficeGrid||document.write('<script src="../office-grid.js?r='+Date.now()+'"><\/script>')</script><!-- 표 엑셀 조작 (office-grid.js — MD팀 시트와 같이 씀) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <script>
   /* 오피스 잠금 연동 (models/ 와 같은 방식) — 오피스에서 PIN 을 넣은 브라우저만 들어올 수 있음.
@@ -54,7 +55,7 @@
        (예외: 식스샵프로 판매중인데 10개 이하면 남은 재고 숫자만 빨강 — stk-red). 머리글 오른쪽 끝을 끌어 칸 너비를 바꾸고
        (이 브라우저에 기억, 두 번 누르면 자동 너비), '칸 너비 되돌리기' 로 처음 모양.
      · 2026-11-24 사장님 "칸 시프트기능, 컨트롤기능 이런거 넣어주고 … 칸 텍스트 수정도 엑셀이랑 최대 유사하게, 엑셀 옮겨놓은듯한 느낌.
-       디자인은 너무 바꾸지말고 기능만" → PC 조작을 엑셀과 같게: 한 번 누르면 고르기, 두 번 누르거나 F2 · 바로 치면 고치기 (아래 '엑셀처럼 고르기'). */
+       디자인은 너무 바꾸지말고 기능만" → PC 조작을 엑셀과 같게: 한 번 누르면 고르기, 두 번 누르거나 F2 · 바로 치면 고치기. 조작은 공용 파일 ../office-grid.js. */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -352,26 +353,6 @@
   .pal .sw button.on{outline:2px solid var(--info);outline-offset:1px}
   .pal .cu{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:12px;color:var(--text-3)}
   .pal .cu input{width:34px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:#fff}
-  /* 엑셀식 고르기 (2026-11-24) — 범위 = 옅은 파랑 + 바깥 테두리(지금 칸만 흰 바탕), 오른쪽 아래 네모 = 채우기 손잡이, 움직이는 점선 = 복사 · 잘라낸 자리 */
-  .tbl td.crng{--rt:0px;--rb:0px;--rl:0px;--rr:0px;--rf:rgba(37,99,235,.13);box-shadow:inset 0 var(--rt) 0 0 var(--info),inset 0 var(--rb) 0 0 var(--info),inset var(--rl) 0 0 0 var(--info),inset var(--rr) 0 0 0 var(--info),inset 0 0 0 999px var(--rf)!important}
-  .tbl td.rg-t{--rt:2px}
-  .tbl td.rg-b{--rb:-2px}
-  .tbl td.rg-l{--rl:2px}
-  .tbl td.rg-r{--rr:-2px}
-  .tbl td.csel.crng{--rf:transparent}
-  .tbl td.fh:not(.sk):not(.skr){position:relative}
-  .tbl td.fh::before{content:'';position:absolute;right:0;bottom:0;z-index:2;width:8px;height:8px;background:var(--info);border:1px solid #fff;border-right:0;border-bottom:0;cursor:crosshair}
-  .tbl td.fprev{box-shadow:inset 0 0 0 1px rgba(37,99,235,.5),inset 0 0 0 999px rgba(37,99,235,.07)!important}
-  .tbl td.ant{--at:0px;--ab:0px;--al:0px;--ar:0px;background-image:linear-gradient(90deg,#1d4ed8 50%,#fff 0),linear-gradient(90deg,#1d4ed8 50%,#fff 0),linear-gradient(0deg,#1d4ed8 50%,#fff 0),linear-gradient(0deg,#1d4ed8 50%,#fff 0)!important;background-repeat:repeat-x,repeat-x,repeat-y,repeat-y!important;background-size:8px var(--at),8px var(--ab),var(--al) 8px,var(--ar) 8px!important;animation:ants .5s linear infinite}
-  .tbl td.ant-t{--at:2px}
-  .tbl td.ant-b{--ab:2px}
-  .tbl td.ant-l{--al:2px}
-  .tbl td.ant-r{--ar:2px}
-  .tbl td.ant.crng{--rt:0px;--rb:0px;--rl:0px;--rr:0px}
-  @keyframes ants{from{background-position:0 0,0 100%,0 0,100% 0}to{background-position:8px 0,-8px 100%,0 -8px,100% 8px}}
-  @media (prefers-reduced-motion:reduce){ .tbl td.ant{animation-play-state:paused} }
-  .tbl thead th.hl{background:#e4edfd;color:var(--text)}
-  .tbl tbody td.rn.hl{background:#e4edfd!important;color:var(--info);font-weight:700}
   /* 머리글 ▾ = 정렬 · 값으로 걸러보기 (엑셀 필터 단추) — 마우스를 올린 칸과 걸어 둔 칸에만 보임 */
   .tbl thead th .hm{position:absolute;right:7px;bottom:3px;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--text-3);background:var(--head);opacity:0;pointer-events:none}
   .tbl thead th .hm svg{width:12px;height:12px}
@@ -390,33 +371,10 @@
   .colm .cl-l label em{flex:none;font-style:normal;font-size:11px;color:var(--text-4);font-variant-numeric:tabular-nums}
   .colm .cl-l p{margin:0;padding:14px 6px;text-align:center;font-size:12px;color:var(--text-4)}
   .colm .cl-b{display:flex;justify-content:flex-end;gap:6px;margin:8px 2px 2px}
-  .colm .cl-b button,.xask .xa-b button{width:auto;height:30px;padding:0 13px;border-radius:7px;background:#f1f4f8;color:var(--text-2);font-size:12.5px;font-weight:700}
+  .colm .cl-b button{width:auto;height:30px;padding:0 13px;border-radius:7px;background:#f1f4f8;color:var(--text-2);font-size:12.5px;font-weight:700}
   .colm .cl-b button.ok{background:var(--info);color:#fff}
   .colm .cl-b button.ok:hover{background:#1d4ed8}
   .colm .cl-b button:disabled{opacity:.4;cursor:default}
-  /* 이름 상자 · 입력줄 (엑셀 수식 입력줄 자리) — 고른 칸의 글을 전부 보여 주고 여기서도 고친다 */
-  .fxbar{margin-top:6px;display:flex;align-items:stretch;height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
-  .fxbar[hidden]{display:none}
-  .fxbar:focus-within{border-color:#93c5fd}
-  .fxn{flex:none;width:168px;padding:0 10px;border:0;border-right:1px solid var(--line);border-radius:0;background:#f8fafc;color:var(--text-2);font:600 12px var(--ui);outline:0;text-overflow:ellipsis}
-  .fxi{flex:none;display:grid;place-items:center;width:34px;border-right:1px solid var(--line-2);color:var(--text-4);font:italic 700 13px Georgia,'Times New Roman',serif;user-select:none}
-  .fxin{flex:1;min-width:0;height:28px;padding:5px 10px;border:0;outline:0;background:transparent;resize:none;color:var(--text);font:400 13px var(--ui);line-height:18px;overflow-y:auto;scrollbar-width:none}
-  .fxin::-webkit-scrollbar{display:none}
-  .fxin:read-only{color:var(--text-3)}
-  /* 많은 칸을 한꺼번에 바꾸기 전 확인 */
-  .xask{position:fixed;inset:0;z-index:95;display:grid;place-items:center;padding:16px;background:rgba(15,23,42,.32)}
-  .xask .xa{width:min(380px,100%);padding:20px;border-radius:14px;background:#fff;box-shadow:0 24px 60px rgba(15,23,42,.3)}
-  .xask b{display:block;font-size:15px}
-  .xask p{margin:8px 0 16px;font-size:13px;line-height:1.55;color:var(--text-2)}
-  .xask .xa-b{display:flex;justify-content:flex-end;gap:8px}
-  .xask .xa-b button.ok{background:var(--danger);color:#fff}
-  .xask .xa-b button:focus-visible{outline:2px solid #93c5fd;outline-offset:1px}
-  .xhelp{position:fixed;z-index:85;width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 44px rgba(15,23,42,.2);font-size:12.5px}
-  .xhelp[hidden]{display:none}
-  .xhelp h4{margin:0 0 8px;font-size:13.5px}
-  .xhelp dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0}
-  .xhelp dt{font-weight:700;color:var(--text-2);white-space:nowrap}
-  .xhelp dd{margin:0;color:var(--text-2);line-height:1.45}
   /* 2026-11-20 사용자 "일반적인 숫자는 블랙으로 다 변경" — 0 · 마이너스 · 시트 글자색 모두 검정 (품절 · 임박은 줄 색으로) */
   .tbl td.r{color:#111827}
   .tbl .rn{color:var(--text-4);font-size:11.5px;text-align:left;font-variant-numeric:tabular-nums;padding:0 7px 0 3px}
@@ -466,21 +424,8 @@
   .tbl th.skr{z-index:4}
   .tbl tfoot td.skr{z-index:3}
   /* 엑셀처럼 고르기 · 고치기 (PC) — 고른 칸 파란 테두리, 저장 중 = 오른쪽 위 파란 점, 못 씀 = 빨간 점 */
-  .tbl td.csel:not(.crng){box-shadow:inset 0 0 0 2px var(--info)!important}
-  .tbl td.ant.csel:not(.crng){box-shadow:none!important}
-  .tbl td.pend:not(.sk):not(.skr){position:relative}
   .tbl td.pend::after{content:'';position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:var(--info)}
   .tbl td.pend.fail::after{background:var(--danger)}
-  /* 칸 입력 상자 하나 — 칸을 고르기만 했을 땐 안 보이게(idle) 그 칸 위에 놓고 포커스를 둔다 (바로 친 한글 첫 글자까지 받으려고). 고칠 땐 칸과 똑같은 글꼴 · 자리에 */
-  .cedit{position:fixed;z-index:65;margin:0;padding:6px;border:2px solid var(--info);border-radius:0;background:#fff;color:var(--text);font:400 13px var(--ui);line-height:17px;outline:0;box-shadow:0 2px 8px rgba(15,23,42,.18);resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;-webkit-appearance:none;appearance:none}
-  .cedit.idle,.cedit.away{opacity:0;pointer-events:none;box-shadow:none}
-  .cpick{position:fixed;z-index:66;min-width:120px;max-width:340px;max-height:232px;overflow:auto;padding:4px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 30px rgba(15,23,42,.18);font-size:13px}
-  .cpick[hidden]{display:none}
-  .cpick div{padding:5px 9px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-  .cpick div:hover{background:#f1f5f9}
-  .cpick div.on{background:#e8f0fe;color:var(--info)}
-  .cedit-tip{position:fixed;z-index:66;padding:3px 8px;border-radius:6px;background:#0f172a;color:#fff;font-size:11.5px;font-weight:600;line-height:1.4;white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(15,23,42,.2)}
-  .cedit-tip.err{background:#b91c1c}
   /* 칸 너비 조절 — 머리글 오른쪽 끝을 끌기 (두 번 누르면 자동 너비) */
   .tbl th .rz{position:absolute;top:0;right:0;width:8px;height:100%;cursor:col-resize;z-index:2}
   .tbl th .rz::after{content:'';position:absolute;top:9px;bottom:9px;right:3px;width:2px;border-radius:1px;background:transparent}
@@ -490,13 +435,6 @@
   .rz-line{position:fixed;top:0;bottom:0;z-index:90;width:0;border-left:2px solid var(--info);pointer-events:none}
   .rz-tip{position:fixed;z-index:91;padding:3px 8px;border-radius:6px;background:var(--info);color:#fff;font-size:11.5px;font-weight:700;pointer-events:none;font-variant-numeric:tabular-nums}
   body.rz-drag,body.rz-drag *{cursor:col-resize!important;user-select:none!important}
-  @media (hover:hover) and (min-width:721px){
-    .tbl tbody td[data-p]{cursor:cell;user-select:none;-webkit-user-select:none}
-    .tbl tbody td:not(.fill):not(.skl){border-right:1px solid var(--line-2)}   /* 엑셀 눈금선 (가로줄과 같은 옅은 색) */
-    .tbl tbody tr.vsp td{border-right:0}
-    .tbl tbody td.rn{user-select:none;-webkit-user-select:none}
-    .tbl tbody td .ck,.tbl tbody td .ck0,.tbl tbody td .hchip{cursor:pointer}
-  }
   .tbl tr.empty td{height:120px;text-align:center;color:var(--text-4);cursor:default;box-shadow:none!important}
   .tbl tfoot td{position:sticky;bottom:0;z-index:2;height:36px;background:#f1f5f9;border-top:1px solid #cbd5e1;border-bottom:0;font-weight:700;font-variant-numeric:tabular-nums}
   .tbl tfoot td.sk{z-index:3}
@@ -903,7 +841,7 @@
     html,body{background:#fff}
     .st{display:none}
     .st.is-err,.st.is-stored:not(.is-load){display:inline-flex}
-    .date,.etog,.kpis,.chips,.xbar,.fxbar{display:none!important}
+    .date,.etog,.kpis,.chips,.xbar{display:none!important}
     .head{padding:8px 12px}
     .trow{display:flex;flex-wrap:wrap;align-items:center;gap:0 10px;min-height:30px}
     .trow h1{flex:none;max-width:48%}
@@ -963,7 +901,7 @@
   }
   @media (max-width:1000px) and (max-height:520px){ :root{--bar-h:52px} @supports (-webkit-touch-callout:none){ html.solo{--top-in:env(safe-area-inset-top,0px)} } }
   @media (max-width:720px){ :root{--bar-h:54px} }
-  @media (pointer:coarse){ .xbar,.fxbar,.cmenu{display:none!important} }   /* 서식 단추는 마우스로 칸을 고르는 PC 만 — 휴대폰 · 태블릿에선 흐린 채로 떠 있기만 했다 */
+  @media (pointer:coarse){ .xbar,.cmenu{display:none!important} }   /* 서식 단추는 마우스로 칸을 고르는 PC 만 — 휴대폰 · 태블릿에선 흐린 채로 떠 있기만 했다 */
   @media (max-width:720px){
     .tbl tbody tr.pin2:not(.lv-low):not(.lv-out) td:not(.fill),.tbl tbody tr.pin3:not(.lv-low):not(.lv-out) td:not(.fill){background:#fff}
     .tbl tbody tr.lv-low.pin2 td:not(.fill),.tbl tbody tr.lv-low.pin3 td:not(.fill){background:#fff1f2}
@@ -1034,7 +972,7 @@
       <button type="button" class="logb" id="btnLog" title="수정 로그 — 누가 · 언제 · 어느 칸을 · 무엇에서 무엇으로 고쳤는지" aria-haspopup="dialog" aria-controls="logp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.4"/><path d="M3.5 3.5v4.9h4.9"/><path d="M12 7.5V12l3 2"/></svg><span class="logb-t">수정 로그</span><i class="logb-n" id="logN" hidden></i></button>
     </header>
     <section class="head">
-      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="mstrip" id="mstrip"></div><div class="tools"><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="cfReset" hidden title="머리글 ▾ 에서 걸어 둔 필터를 모두 지우고 전부 보기">필터 지우기</button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
+      <div class="trow"><h1 id="title">불러오는 중…</h1><span class="date" id="tDate" hidden></span><div class="dates" id="dates"></div><div class="mstrip" id="mstrip"></div><div class="tools"><button type="button" class="etog" id="wReset" hidden title="끌어서 바꾼 칸 너비를 모두 처음(내용에 맞춘 자동 너비)으로">칸 너비 되돌리기</button><button type="button" class="etog" id="cfReset" hidden title="머리글 ▾ 에서 걸어 둔 필터를 모두 지우고 전부 보기">필터 지우기</button><button type="button" class="etog" id="hcTog" hidden></button><button type="button" class="etog" id="hrTog" hidden></button><button type="button" class="etog" id="eTog" hidden></button><div class="parts" id="parts" hidden></div></div></div>
       <div class="asks" id="asks" hidden></div>
       <div class="asks blanks" id="blanks" hidden></div>
       <div class="alert" id="alert" hidden></div>
@@ -1054,12 +992,7 @@
         <button type="button" class="xb" data-fmt="clear" title="서식 지우기 — 두께 · 글자 색 · 칸 색 (Ctrl+\)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5l-3 14M14 14l6 6M20 14l-6 6"/></svg>서식 지우기</button>
         <span class="xsp"></span>
         <span class="xsel" id="xSel"></span>
-        <button type="button" class="xb" data-fmt="help" title="엑셀과 같은 단축키 보기">단축키</button>
-      </div>
-      <div class="fxbar" id="fxBar" hidden>
-        <input class="fxn" id="fxName" autocomplete="off" spellcheck="false" aria-label="고른 칸" title="고른 칸 — 줄 번호(예: 120)나 칸 이름을 쓰고 Enter 하면 그리로 가요">
-        <span class="fxi" aria-hidden="true">fx</span>
-        <textarea class="fxin" id="fxIn" rows="1" autocomplete="off" spellcheck="false" aria-label="고른 칸의 내용"></textarea>
+        <button type="button" class="xb" data-fmt="more" title="글자 모양 · 테두리 · 숫자 모양 · 메모 · 찾기 바꾸기 · 틀 고정 · 숨기기 · 엑셀로 받기 · 인쇄 · 단축키">더보기<svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
       </div>
     </section>
     <div class="gwrap">
@@ -1093,8 +1026,6 @@
 <div class="pal" id="pal" hidden></div>
 <div class="cmenu" id="cmenu" hidden role="menu"></div>
 <div class="cmenu colm" id="colm" hidden role="dialog" aria-label="정렬 · 필터"></div>
-<div class="cpick" id="cpick" hidden role="listbox"></div>
-<div class="xhelp" id="xhelp" hidden role="dialog" aria-label="단축키"></div>
 <div class="mscrim" id="mscrim" hidden></div>
 <div class="mapdlg" id="mapdlg" role="dialog" aria-modal="true" aria-labelledby="mTitle" hidden></div>
 <div class="logscrim" id="logScrim" hidden></div>
@@ -2082,8 +2013,8 @@
   }
   function cellFont(d, row, col, c) {   // 그 칸을 그리는 글꼴 — 오피스 서식 두께(w · 굵게)가 시트 굵게 · 열 굵게보다 먼저
     const f = d.fm && d.fm[`${row.r}:${col.p}`], w = f ? +f.w || (f.b ? 700 : 0) : 0;
-    if (!w) return c.st.bold || col.strong ? F_BOLD : F_CELL;
-    return w === 700 ? F_BOLD : w === 400 ? F_CELL : F_CELL.replace(/^400/, String(w));
+    const ft = !w ? (c.st.bold || col.strong ? F_BOLD : F_CELL) : w === 700 ? F_BOLD : w === 400 ? F_CELL : F_CELL.replace(/^400/, String(w));
+    return f && f.sz ? ft.replace(/\d+(\.\d+)?px/, `${+f.sz}px`) : ft;   // 글자 크기를 바꾼 칸
   }
   function fitCols(d) {
     const mapBw = d.rows.some(r => r.map) ? tw('⚠ 매핑하기', `700 11.5px ${FONT}`) + 20 : 0;
@@ -2123,7 +2054,8 @@
         else if (c.img) cw = 30;
         else if (c.chips.length) cw = c.chips.reduce((s, x) => s + tw(x.t, F_TAG) + 19, 0) + (c.chips.length - 1) * 4;
         else if (c.t) {
-          cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? display(col, c).replace(/\d/g, '0') : display(col, c), cellFont(d, row, col, c));   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
+          const nf = d.fm && (d.fm[`${row.r}:${col.p}`] || {}).nf, dt = nf ? OfficeGrid.fmtText(c.t, nf) : display(col, c);
+          cw = col.status ? statusW(c.t) : tw(col.type === 'num' ? dt.replace(/\d/g, '0') : dt, cellFont(d, row, col, c));   // 숫자는 고정폭(tabular)으로 그려서 '0' 폭으로 잰다
           const hx = col.hist && hxOf(c);
           if (hx && hx.prev.length) cw += 6 + tw(`이전 ${hx.prev.length}회`, F_CHIP) + 14;   // '이전 N회' 딱지
         }
@@ -2249,7 +2181,9 @@
     const fm = fmtOf((tabOf(S.cur) || {}).info, row.r, col.p);   // 오피스 칸 서식 (굵게 · 글자 색 · 칸 색)
     if (fm) {
       if (fm.b) cls += ' b';
-      const css = (fm.bg ? `background-color:${fm.bg};` : '') + (fm.fg ? `color:${fm.fg};` : '') + (fm.w ? `font-weight:${+fm.w};` : '');   // 두께 단계는 시트 굵게 · 열 굵게보다 먼저
+      if (fm.sz > 13) cls += ' big';
+      if (fm.n) cls += ' nt';
+      const css = (fm.bg ? `background-color:${fm.bg};` : '') + (fm.fg ? `color:${fm.fg};` : '') + (fm.w ? `font-weight:${+fm.w};` : '') + OfficeGrid.fmtCss(fm);   // 두께 단계는 시트 굵게 · 열 굵게보다 먼저
       if (css) style = (style ? style.replace(/;?$/, ';') : '') + css;
     }
     if (c) {
@@ -2262,7 +2196,7 @@
         inner = hl(display(col, c)) + (hxOf(c).prev.length ? `<span class="hchip" data-r="${row.r}" data-p="${col.p}">이전 ${hxOf(c).prev.length}회</span>` : '');
       }
       else if (c.t) {
-        const d = display(col, c);
+        const d0 = display(col, c), d = fm && fm.nf ? OfficeGrid.fmtText(c.t, fm.nf) : d0;   // 숫자 모양을 정한 칸
         inner = c.href && (secretOk() || !SECRET_LINK_RE.test(c.href)) ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : hl(d);
         if (col.wrap && !mg) inner = `<div class="cl">${inner}</div>`;   // 두 줄까지
         if (d !== c.t || (col.type !== 'num' && d.length > 12)) title = c.t;
@@ -2283,6 +2217,7 @@
         : `<div class="m-n">${inner}</div><div class="m-s">${sub}</div>`;
     }
     if (col.key && row.iss) title = (title ? title + '\n' : '') + '⚠ ' + row.iss.join('\n⚠ ');
+    if (fm && fm.n) title = '메모: ' + fm.n + (title ? '\n\n' + title : '');
     cls = cls.trim();
     return `<td data-p="${col.p}"${cls ? ` class="${cls}"` : ''}${style ? ` style="${style}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${inner}</td>`;
   }
@@ -2312,6 +2247,8 @@
     if (S.terms.length) rows = rows.filter(r => S.terms.every(t => r.k.includes(t) || r.k2.includes(t)) || keep(r));
     if (S.pick) rows = rows.filter(r => rowName(d, r) === S.pick.name || keep(r));   // 찾기에서 고른 제품 · 옵션
     if (S.opt && optCol(d)) rows = rows.filter(r => S.opt.ks.has(optKey(rowOpt(d, r))) || keep(r));
+    const hrs = hidRowSet();   // 더보기 ▾ 로 숨긴 줄 (이 화면에서만)
+    if (hrs) rows = rows.filter(r => !hrs.has(r.r));
     if (v.cf) Object.keys(v.cf).forEach(p => {   // 머리글 ▾ 값 필터 (엑셀 자동 필터)
       const col = d.cols.find(c => c.p === +p), set = v.cf[p];
       if (col && set) rows = rows.filter(r => set.has(fltText(r, col)) || keep(r));
@@ -2389,7 +2326,8 @@
     S.list = list;
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
     const nar = narrow.matches, showRn = !nar, vw = grid.clientWidth || 1000;
-    let cols = d.cols.filter(c => (S.showEmpty && !nar) || !c.empty || c.key || c.keep), stickN = 0, keyFirst = false, mgOpt = null;   // keep = 재고 탭 기본 칸 (비어도 보임)
+    const hcs = nar ? new Set() : hidColSet();   // 더보기 ▾ 로 숨긴 열 (이 PC 에서만)
+    let cols = d.cols.filter(c => ((S.showEmpty && !nar) || !c.empty || c.key || c.keep) && (c.key || !hcs.has(norm(c.name)))), stickN = 0, keyFirst = false, mgOpt = null;   // keep = 재고 탭 기본 칸 (비어도 보임)
     if (nar && cols.some(c => c.key)) {
       const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.pro ? 2.5 : c.strong ? 3 : c.status ? 4 : 5;   // 휴대폰: 식스샵프로 상태는 남은 재고 바로 뒤
       cols = cols.map((c, i) => [c, i]).sort((x, y) => pri(x[0]) - pri(y[0]) || x[1] - y[1]).map(x => x[0]);
@@ -2401,6 +2339,7 @@
       const kI = cols.findIndex(c => c.key);
       if (kI >= 0 && kI <= 2) { stickN = kI + 1; if (cols[kI + 1] && OPT_RE.test(norm(cols[kI + 1].name))) stickN++; }
     }
+    if (!nar) stickN = freezeN(cols, stickN);   // 더보기 ▾ 틀 고정
     // PC 는 화면 폭에 맞춰 칸 너비를 정하고 (fitWidths — 끌어서 정한 칸은 그 너비 그대로), 휴대폰은 칸마다 알맞은 너비로 옆으로 넘긴다
     // (휴대폰 글자 칸은 화면의 62% 를 넘지 않게 — 긴 글은 두 줄로 접히고 전체는 상세 창에)
     const fix = nar ? [] : cols.map(c => colWOf(c));
@@ -2428,7 +2367,7 @@
       cols.forEach((c, k) => { if (c.status) widths[k] = Math.min(112, Math.max(c.hm, ...d.rows.map(r => { const t = r.byP[c.p]; return t && t.t ? Math.ceil(tw(mgStat(t.t), F_TAG)) + PAD + 2 : 0; }))); });   // 리오더 알림 칸은 남은 날만 (딱지는 상품명 아래)
     }
     let left = showRn ? RN_W : 0;
-    while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (mgOpt ? 0.72 : keyFirst ? 0.62 : 0.5)) stickN--;
+    while (stickN > 0 && left + widths.slice(0, stickN).reduce((s, w) => s + w, 0) > vw * (mgOpt ? 0.72 : keyFirst ? 0.62 : XL.freezeName() ? 0.7 : 0.5)) stickN--;
     const posOf = cols.map((c, k) => {
       if (c.pro && !nar) return {cls: ' skr', style: 'right:0;'};   // 식스샵프로 상태 — 오른쪽 끝 고정 (PC)
       if (k >= stickN) return null;
@@ -2593,6 +2532,9 @@
     const nCf = v.cf ? Object.keys(v.cf).length : 0;
     $('cfReset').hidden = !d || !nCf;
     $('cfReset').textContent = nCf > 1 ? `필터 ${nCf}개 지우기` : '필터 지우기';
+    const nHc = d && !narrow.matches ? d.cols.filter(c => !c.key && hidColSet().has(norm(c.name))).length : 0, nHr = (hidRowSet() || new Set()).size;
+    $('hcTog').hidden = !nHc; $('hcTog').textContent = `숨긴 열 ${nHc}개 보기`;
+    $('hrTog').hidden = !nHr; $('hrTog').textContent = `숨긴 줄 ${nHr}개 보기`;
     fmtBar();
     const nEmpty = d ? d.cols.filter(c => c.empty && !c.key && !c.keep).length : 0, et = $('eTog');
     et.hidden = !nEmpty;
@@ -4420,949 +4362,28 @@
   }, {passive: true});
   window.addEventListener('resize', () => { if (E.x) placeEditor(E.anchor); if (CE.x) reanchor(); });
 
-  /* ── 엑셀처럼 고르기 (PC) ──
-     2026-11-24 사장님 "erp 전산팀에서 칸 시프트기능, 컨트롤기능 이런거 넣어주고 … 칸 텍스트 수정도 엑셀이랑 최대 유사하게 … 엑셀 옮겨놓은듯한 느낌.
-     디자인은 너무 바꾸지말고 기능만 엑셀과 유사하게" — 한 번 누르면 고르기, 두 번 누르거나 F2 = 고치기, 고른 채 바로 치면 새로 쓰기.
-     · 고르기: 끌기 = 네모 범위 · Shift+누르기 / Shift+화살표 = 범위 늘리기 · Ctrl(맥 ⌘)+누르기 / 끌기 = 떨어진 칸 더하기(고른 칸을 다시 누르면 빼기) ·
-       머리글 = 열 전체, 행 번호 = 줄 전체(끌기 · Shift · Ctrl 도), 왼쪽 위 '행' = 전부. Ctrl+화살표 = 글이 이어진 끝까지, Home · End · PageUp · PageDown.
-     · S.cell = 활성 칸, S.anc(없으면 활성 칸) ~ S.cell2 = 지금 범위, S.multi = Ctrl 로 먼저 골라 둔 범위들. 모두 줄 번호 · 열 번호로 기억해서
-       자동 갱신으로 표를 다시 그려도 그대로다 (calcRng 이 보이는 줄 차례로 바꿔 그림).
-     · 입력 상자(CE.el)는 하나 — 고르기만 했을 때도 그 칸 위에 안 보이게 두고 포커스를 둔다. 그래야 한글 첫 글자부터 그대로 들어간다(한글은 조합이라
-       자판 이벤트로는 못 받는다). 입력이 시작되면 그 자리에서 고치는 상자가 된다. 표(table)를 다시 그려도 상자는 밖에 있어 치던 글이 안 날아간다. */
-  const cellMode = () => !narrow.matches && hoverMQ.matches;
-  const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '');
-  const modOf = e => e.ctrlKey || e.metaKey;
-  const addKey = e => IS_MAC ? e.metaKey : e.ctrlKey;   // 맥에서 Ctrl+누르기는 오른쪽 누르기
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const ck = (r, p) => r * 16384 + p;
-  const CE = {el: null, x: null, orig: '', at: null, mode: '', src: 'cell', font: '', reject: false, pend: null, guard: 0};
-  const cellTd = (r, p) => grid.querySelector(`tbody tr[data-r="${r}"] td[data-p="${p}"]`);
-  const hasCell = () => !!(S.cell && S.cell.gid === S.cur);
-  const ancOf = () => S.anc || S.cell;
+  /* ── 엑셀처럼 (PC) — 고르기 · 고치기 · 복사/채우기 · 되돌리기 · 찾기/바꾸기 · 글자 모양 … 은 공용 ../office-grid.js (2026-11-24). 여기서는 ERP 것만 넘긴다 ── */
+  const rawOf = (gid, r, p) => { const ent = S.cache.get(gid), row = ent && ent.rows && ent.rows.get(r); return row && row.v && row.v[p] != null ? String(row.v[p]) : ''; };
   const HM_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   const HM_FLT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6.2 7.4V19l-3.6-2v-4.6z"/></svg>';
-  let ceTipEl = null, ceTipT = 0;
-  function cellTip(r, p, text, err, ms) {
-    const td = cellTd(r, p);
-    if (!td || !text) return;
-    if (!ceTipEl) { ceTipEl = document.createElement('div'); ceTipEl.className = 'cedit-tip'; document.body.appendChild(ceTipEl); }
-    ceTipEl.textContent = text;
-    ceTipEl.classList.toggle('err', !!err);
-    ceTipEl.hidden = false;
-    const rc = td.getBoundingClientRect(), w = ceTipEl.offsetWidth, h = ceTipEl.offsetHeight;
-    let top = rc.bottom + 4;
-    if (top + h > innerHeight - 8) top = rc.top - h - 4;
-    ceTipEl.style.left = Math.max(8, Math.min(rc.left, innerWidth - w - 8)) + 'px';
-    ceTipEl.style.top = top + 'px';
-    clearTimeout(ceTipT);
-    ceTipT = setTimeout(() => { if (ceTipEl) ceTipEl.hidden = true; }, ms || 2200);
-  }
-  const hideTip = () => { if (ceTipEl) ceTipEl.hidden = true; };
-
-  /* 고른 것 계산 — 줄 · 열 번호 → 지금 보이는 차례 */
-  function vIdx() {
-    const vr = S.vr;
-    if (vr && !vr.ri) { vr.ri = new Map(vr.list.map((x, i) => [x.r, i])); vr.ki = new Map(vr.cols.map((c, k) => [c.p, k])); }
-    return vr || null;
-  }
-  const vAt = (i, k) => ({r: S.vr.list[i].r, p: S.vr.cols[k].p});
-  function rectOf(a, b) {
-    const vr = vIdx();
-    if (!vr || !a || !b) return null;
-    const i0 = vr.ri.get(a.r), i1 = vr.ri.get(b.r), k0 = vr.ki.get(a.p), k1 = vr.ki.get(b.p);
-    if (i0 === undefined || i1 === undefined || k0 === undefined || k1 === undefined) return null;
-    return {i0: Math.min(i0, i1), i1: Math.max(i0, i1), k0: Math.min(k0, k1), k1: Math.max(k0, k1)};
-  }
-  function selRects() {   // 고른 네모들 (지금 범위가 맨 뒤)
-    if (!hasCell()) return [];
-    const out = [];
-    S.multi.forEach(m => { const t = rectOf(m.a, m.b); if (t) out.push(t); });
-    const a = ancOf(), t = rectOf(a, S.cell2 || a) || rectOf(S.cell, S.cell);
-    if (t) out.push(t);
-    return out;
-  }
-  const curRect = () => { const rs = selRects(); return rs.length ? rs[rs.length - 1] : null; };
-  const nOf = t => (t.i1 - t.i0 + 1) * (t.k1 - t.k0 + 1);
-  function rngCells() {   // 고른 칸들 [{r, p}] — 범위가 없으면 고른 한 칸
-    if (!hasCell()) return [];
-    const vr = vIdx(), rs = selRects();
-    if (!vr || !rs.length) return [{r: S.cell.r, p: S.cell.p}];
-    const out = [], seen = rs.length > 1 ? new Set() : null;
-    rs.forEach(t => {
-      for (let i = t.i0; i <= t.i1; i++) for (let k = t.k0; k <= t.k1; k++) {
-        const r = vr.list[i].r, p = vr.cols[k].p;
-        if (seen) { const key = ck(r, p); if (seen.has(key)) continue; seen.add(key); }
-        out.push({r, p});
-      }
-    });
-    return out;
-  }
-  function inSel(r, p) {
-    const vr = vIdx();
-    if (!vr || !hasCell()) return false;
-    const i = vr.ri.get(r), k = vr.ki.get(p);
-    return selRects().some(t => i >= t.i0 && i <= t.i1 && k >= t.k0 && k <= t.k1);
-  }
-  function edgeMap(rects, map) {   // 칸마다 안쪽(1) · 위(2) · 아래(4) · 왼쪽(8) · 오른쪽(16) 테두리
-    const vr = S.vr;
-    rects.forEach(t => {
-      for (let i = t.i0; i <= t.i1; i++) for (let k = t.k0; k <= t.k1; k++) {
-        const key = ck(vr.list[i].r, vr.cols[k].p);
-        map.set(key, (map.get(key) || 0) | 1 | (i === t.i0 ? 2 : 0) | (i === t.i1 ? 4 : 0) | (k === t.k0 ? 8 : 0) | (k === t.k1 ? 16 : 0));
-      }
-    });
-    return map;
-  }
-  function calcRng() {
-    const vr = vIdx(), rs = selRects();
-    S.rng = S.ant = S.hr = S.hk = null;
-    S.fh = 0;
-    if (!vr) return;
-    if (rs.length) {
-      S.hr = new Set();
-      S.hk = new Set();
-      rs.forEach(t => { for (let i = t.i0; i <= t.i1; i++) S.hr.add(vr.list[i].r); for (let k = t.k0; k <= t.k1; k++) S.hk.add(vr.cols[k].p); });
-      if (rs.length > 1 || nOf(rs[0]) > 1) S.rng = edgeMap(rs, new Map());
-      if (rs.length === 1 && !S.paint && !CE.x) S.fh = ck(vr.list[rs[0].i1].r, vr.cols[rs[0].k1].p);
-    }
-    if (S.clip && S.clip.gid === S.cur) {
-      const at = S.clip.rects.map(x => rectOf(x.a, x.b)).filter(Boolean);
-      if (at.length) S.ant = edgeMap(at, new Map());
-    }
-  }
-  function selCls(r, p) {
-    const key = ck(r, p), b = S.rng && S.rng.get(key), a = S.ant && S.ant.get(key);
-    let s = hasCell() && S.cell.r === r && S.cell.p === p ? ' csel' : '';
-    if (b) s += ' crng' + (b & 2 ? ' rg-t' : '') + (b & 4 ? ' rg-b' : '') + (b & 8 ? ' rg-l' : '') + (b & 16 ? ' rg-r' : '');
-    if (S.fh === key) s += ' fh';
-    if (a) s += ' ant' + (a & 2 ? ' ant-t' : '') + (a & 4 ? ' ant-b' : '') + (a & 8 ? ' ant-l' : '') + (a & 16 ? ' ant-r' : '');
-    if (S.fprev && S.fprev.has(key)) s += ' fprev';
-    return s;
-  }
-  const SEL_RX = /(^|\s)(csel|crng|rg-[tblr]|fh|ant|ant-[tblr]|fprev)(?=\s|$)/g;
-  function paintRng() {   // 고른 것 · 범위 표시 (그려 둔 칸만 — 새로 그리는 칸은 cellHtml 이 selCls 를 본다)
-    calcRng();
-    grid.querySelectorAll('tbody tr[data-r]').forEach(tr => {
-      const r = +tr.dataset.r;
-      for (const td of tr.children) {
-        if (td.dataset.p !== undefined) {
-          const nu = (td.className.replace(SEL_RX, '') + selCls(r, +td.dataset.p)).trim();
-          if (nu !== td.className) td.className = nu;
-        } else if (td.classList.contains('rn')) { const on = !!(S.hr && S.hr.has(r)); if (td.classList.contains('hl') !== on) td.classList.toggle('hl', on); }
-      }
-    });
-    paintHeadSel();
-    fmtBar();
-  }
-  function paintHeadSel() { grid.querySelectorAll('thead th[data-p]').forEach(th => { const on = !!(S.hk && S.hk.has(+th.dataset.p)); if (th.classList.contains('hl') !== on) th.classList.toggle('hl', on); }); }
-
-  /* 고르기 */
-  function setCell(r, p) {   // 고른 칸 하나 (r 없으면 고르기 없앰)
-    S.cell = r == null ? null : {gid: S.cur, r, p};
-    S.cell2 = S.anc = S.tabP = null;
-    S.multi = [];
-    paintRng();
-    placeIdle();
-  }
-  function selectCell(r, p, opt) {
-    opt = opt || {};
-    hideTip();
-    setCell(r, p);
-    if (opt.tabP != null) S.tabP = opt.tabP;
-    if (!opt.noScroll) revealCell(r, p);
-    syncDetail(r);
-    placeIdle();
-  }
-  function syncDetail(r) { if (S.sel && !$('detail').hidden && S.sel.r !== r) openDetail(r, false); }   // 상세 창이 열려 있으면 그 줄로
-  function extendTo(r, p, opt) {   // 지금 범위의 끝을 여기로 (시작 칸은 그대로)
-    const a = ancOf();
-    S.cell2 = a.r === r && a.p === p ? null : {r, p};
-    S.tabP = null;
-    paintRng();
-    if (opt && opt.reveal) {
-      const t = curRect(), vr = S.vr;
-      if (t && t.k1 - t.k0 + 1 === vr.cols.length && vr.cols.length > 1) showRow(r);          // 줄 전체를 고르는 중 — 옆으로는 안 넘김
-      else if (t && t.i1 - t.i0 + 1 === vr.list.length && vr.list.length > 1) revealCell(r, p, true);   // 열 전체 — 위아래로는 안 넘김
-      else revealCell(r, p);
-    }
-  }
-  function keepRange() { if (hasCell()) S.multi.push({a: ancOf(), b: S.cell2 || ancOf()}); else S.multi = []; }   // Ctrl — 지금 범위를 남겨 두고
-  function addCell(r, p) { keepRange(); S.cell = {gid: S.cur, r, p}; S.cell2 = S.anc = S.tabP = null; paintRng(); syncDetail(r); placeIdle(); }
-  function dropCell(r, p) {   // Ctrl+누르기로 고른 칸 빼기 → 범위를 쪼갠다 (하나뿐이면 그대로)
-    const vr = vIdx(), i = vr.ri.get(r), k = vr.ki.get(p), out = [];
-    selRects().forEach(t => {
-      if (i < t.i0 || i > t.i1 || k < t.k0 || k > t.k1) { out.push(t); return; }
-      if (i > t.i0) out.push({i0: t.i0, i1: i - 1, k0: t.k0, k1: t.k1});
-      if (i < t.i1) out.push({i0: i + 1, i1: t.i1, k0: t.k0, k1: t.k1});
-      if (k > t.k0) out.push({i0: i, i1: i, k0: t.k0, k1: k - 1});
-      if (k < t.k1) out.push({i0: i, i1: i, k0: k + 1, k1: t.k1});
-    });
-    if (!out.length) return;
-    const z = out.pop(), a = vAt(z.i0, z.k0), b = vAt(z.i1, z.k1);
-    S.multi = out.map(t => ({a: vAt(t.i0, t.k0), b: vAt(t.i1, t.k1)}));
-    S.cell = {gid: S.cur, r: a.r, p: a.p};
-    S.anc = S.tabP = null;
-    S.cell2 = nOf(z) > 1 ? b : null;
-    paintRng();
-    placeIdle();
-  }
-  function pickRows(r, mode) {   // 줄 전체 — mode: '' 새로 · 'shift' 여기까지 · 'add' 더하기
-    const vr = vIdx();
-    if (!vr || !vr.cols.length) return;
-    const p0 = vr.cols[0].p, p1 = vr.cols[vr.cols.length - 1].p;
-    if (mode === 'shift' && hasCell()) { const a = ancOf(); S.anc = null; S.cell = {gid: S.cur, r: a.r, p: p0}; S.cell2 = {r, p: p1}; }
-    else {
-      if (mode === 'add') keepRange(); else S.multi = [];
-      S.cell = {gid: S.cur, r, p: p0};
-      S.anc = null;
-      S.cell2 = vr.cols.length > 1 ? {r, p: p1} : null;
-    }
-    S.tabP = null;
-    hideTip();
-    paintRng();
-    syncDetail(r);
-    placeIdle();
-  }
-  function pickCols(p, mode) {   // 열 전체 (보이는 줄)
-    const vr = vIdx();
-    if (!vr || !vr.list.length) return;
-    const r0 = vr.list[0].r, r1 = vr.list[vr.list.length - 1].r;
-    if (mode === 'shift' && hasCell()) { const a = ancOf(); S.anc = null; S.cell = {gid: S.cur, r: r0, p: a.p}; S.cell2 = {r: r1, p}; }
-    else {
-      if (mode === 'add') keepRange(); else S.multi = [];
-      S.cell = {gid: S.cur, r: r0, p};
-      S.anc = null;
-      S.cell2 = vr.list.length > 1 ? {r: r1, p} : null;
-    }
-    S.tabP = null;
-    hideTip();
-    paintRng();
-    placeIdle();
-  }
-  function pickAll() {
-    const vr = vIdx();
-    if (!vr || !vr.list.length || !vr.cols.length) return;
-    const a = vAt(0, 0), b = vAt(vr.list.length - 1, vr.cols.length - 1);
-    if (!hasCell() || vr.ri.get(S.cell.r) === undefined || vr.ki.get(S.cell.p) === undefined) S.cell = {gid: S.cur, r: a.r, p: a.p};
-    S.multi = [];
-    S.anc = a;
-    S.cell2 = b;
-    S.tabP = null;
-    paintRng();
-    placeIdle();
-  }
-  // 고른 칸이 보이게 (아래 · 위는 showRow, 옆은 고정 칸을 피해서)
-  function revealCell(r, p, colOnly) {
-    if (!colOnly) showRow(r);
-    const td = colOnly ? grid.querySelector(`thead th[data-p="${p}"]`) : cellTd(r, p);
-    if (!td || td.classList.contains('sk') || td.classList.contains('skr')) return;
-    const g = grid.getBoundingClientRect(), rc = td.getBoundingClientRect();
-    const L = [...grid.querySelectorAll('thead th.sk')].reduce((m, th) => Math.max(m, th.getBoundingClientRect().right), g.left);
-    const R = [...grid.querySelectorAll('thead th.skr')].reduce((m, th) => Math.min(m, th.getBoundingClientRect().left), g.left + grid.clientWidth);
-    if (rc.left < L) grid.scrollLeft -= L - rc.left + 2;
-    else if (rc.right > R) grid.scrollLeft += Math.min(rc.right - R + 2, rc.left - L);
-  }
-  // 옆 칸 — 위 · 아래 = 보이는 줄 순서(정렬 · 걸러보기 그대로), 옆 = 보이는 칸 순서. 끝이면 null
-  function nextCell(dr, dc) {
-    const vr = vIdx(), c = S.cell;
-    if (!vr || !hasCell()) return null;
-    const i = vr.ri.get(c.r), k = vr.ki.get(c.p);
-    if (i === undefined || k === undefined) return null;
-    const ni = clamp(i + dr, 0, vr.list.length - 1), nk = clamp(k + dc, 0, vr.cols.length - 1);
-    return ni === i && nk === k ? null : vAt(ni, nk);
-  }
-  function moveCell(dr, dc) {
-    const n = nextCell(dr, dc);
-    if (n) selectCell(n.r, n.p);
-    else if (hasCell()) selectCell(S.cell.r, S.cell.p);
-  }
-  function extendRng(dr, dc, jump) {
-    const vr = vIdx();
-    if (!vr || !hasCell()) return;
-    const base = S.cell2 || ancOf(), i = vr.ri.get(base.r), k = vr.ki.get(base.p);
-    if (i === undefined || k === undefined) return;
-    const t = jump ? jumpTo(i, k, dr, dc) : {i: clamp(i + dr, 0, vr.list.length - 1), k: clamp(k + dc, 0, vr.cols.length - 1)};
-    const a = vAt(t.i, t.k);
-    extendTo(a.r, a.p, {reveal: true});
-  }
-  function cellBlank(row, col) {
-    if (col.pro) return !row.pro;
-    if (col.price) return !priceText(row.pro);
-    if (col.cost) return !row.cost;
-    return !hasVal(row.byP[col.p]);
-  }
-  function jumpTo(i, k, dr, dc) {   // Ctrl+화살표 — 글이 이어진 끝까지, 빈칸이면 다음 글까지, 없으면 표 끝까지 (엑셀과 같음)
-    const vr = S.vr, n = dr ? vr.list.length : vr.cols.length, d = dr || dc;
-    const blank = x => dr ? cellBlank(vr.list[x], vr.cols[k]) : cellBlank(vr.list[i], vr.cols[x]);
-    const ok = x => x >= 0 && x < n;
-    let x = dr ? i : k;
-    if (!ok(x + d)) return {i, k};
-    if (!blank(x) && !blank(x + d)) { while (ok(x + d) && !blank(x + d)) x += d; }
-    else { x += d; while (ok(x) && blank(x)) x += d; if (!ok(x)) x -= d; }
-    return dr ? {i: x, k} : {i, k: x};
-  }
-  function jumpCell(dr, dc) {
-    const vr = vIdx();
-    if (!vr || !hasCell()) return;
-    const i = vr.ri.get(S.cell.r), k = vr.ki.get(S.cell.p);
-    if (i === undefined || k === undefined) return;
-    const t = jumpTo(i, k, dr, dc), a = vAt(t.i, t.k);
-    selectCell(a.r, a.p);
-  }
-  function pageRows() {
-    const th = grid.querySelector('thead'), tf = grid.querySelector('tfoot');
-    return Math.max(1, Math.floor((grid.clientHeight - (th ? th.offsetHeight : 0) - (tf ? tf.offsetHeight : 0)) / (S.vr ? S.vr.rowH : 34)) - 1);
-  }
-  function cycleCell(dr, dc) {   // 범위를 고른 채 Enter · Tab = 그 안에서만 돎 (엑셀) → 했으면 true
-    const rs = selRects(), vr = S.vr;
-    if (!rs.length || (rs.length === 1 && nOf(rs[0]) === 1)) return false;
-    const order = [];
-    rs.forEach(t => {
-      if (dr) for (let k = t.k0; k <= t.k1; k++) for (let i = t.i0; i <= t.i1; i++) order.push(vAt(i, k));
-      else for (let i = t.i0; i <= t.i1; i++) for (let k = t.k0; k <= t.k1; k++) order.push(vAt(i, k));
-    });
-    const at = order.findIndex(x => x.r === S.cell.r && x.p === S.cell.p), n = order[((at < 0 ? 0 : at + (dr || dc)) + order.length) % order.length];
-    S.anc = Object.assign({}, ancOf());
-    S.cell = {gid: S.cur, r: n.r, p: n.p};
-    hideTip();
-    paintRng();
-    revealCell(n.r, n.p);
-    syncDetail(n.r);
-    placeIdle();
-    return true;
-  }
-  function enterMove(up) {   // Enter — Tab 으로 옆으로 왔으면 처음 열로 돌아가 다음 줄 (엑셀)
-    if (cycleCell(up ? -1 : 1, 0)) return;
-    const tp = S.tabP, vr = vIdx();
-    if (!up && tp != null && vr && vr.ki.get(tp) !== undefined) {
-      const n = nextCell(1, 0);
-      selectCell(n ? n.r : S.cell.r, tp);
-    } else moveCell(up ? -1 : 1, 0);
-  }
-  function tabMove(back) {
-    if (cycleCell(0, back ? -1 : 1)) return;
-    const start = S.tabP != null ? S.tabP : S.cell.p, n = nextCell(0, back ? -1 : 1);
-    if (n) selectCell(n.r, n.p, {tabP: start}); else selectCell(S.cell.r, S.cell.p, {tabP: start});
-  }
-  // 범위 끝으로 옮기기 (ext = Shift — 범위 늘리기)
-  function goTo(i, k, ext) {
-    const vr = vIdx();
-    if (!vr || !vr.list.length) return;
-    const a = vAt(clamp(i, 0, vr.list.length - 1), clamp(k, 0, vr.cols.length - 1));
-    if (ext) extendTo(a.r, a.p, {reveal: true}); else selectCell(a.r, a.p);
-  }
-
-  /* 자판 — 칸을 고르기만 했을 때 (고치는 중은 editKey) */
-  const keyOf = e => /^Key[A-Z]$/.test(e.code || '') ? e.code.slice(3).toLowerCase() : String(e.key || '').toLowerCase();   // 한글 상태에서도 Ctrl+C 같은 단축키
-  function gridKey(e) {
-    const k = e.key, vr = vIdx();
-    if (!vr || !hasCell()) return;
-    const eat = () => { e.preventDefault(); };
-    const base = e.shiftKey ? (S.cell2 || ancOf()) : S.cell;
-    let bi = vr.ri.get(base.r), bk = vr.ki.get(base.p);
-    const here = vr.ri.get(S.cell.r) !== undefined && vr.ki.get(S.cell.p) !== undefined;
-    if (!here && /^(Arrow|Home|End|Page|Tab|Enter)/.test(k)) { eat(); goTo(0, 0); return; }   // 걸러보기로 사라진 칸 — 맨 앞부터
-    if (bi === undefined) bi = 0;
-    if (bk === undefined) bk = 0;
-    const nR = vr.list.length, nC = vr.cols.length;
-    if (modOf(e) && !e.altKey) {
-      const kk = keyOf(e);
-      if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'ArrowLeft' || k === 'ArrowRight') {
-        eat();
-        const dr = k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : 0, dc = k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : 0;
-        if (e.shiftKey) extendRng(dr, dc, true); else jumpCell(dr, dc);
-        return;
-      }
-      if (k === 'Home') { eat(); goTo(0, 0, e.shiftKey); return; }
-      if (k === 'End') { eat(); goTo(nR - 1, nC - 1, e.shiftKey); return; }
-      if (k === ' ') { eat(); pickCols(S.cell.p, ''); return; }
-      if (k === 'Backspace') { eat(); revealCell(S.cell.r, S.cell.p); return; }
-      if (kk === 'z') { eat(); if (e.shiftKey) redo(); else undo(); return; }
-      if (kk === 'y') { eat(); redo(); return; }
-      if (kk === 'a' && !e.shiftKey) { eat(); pickAll(); return; }
-      if (kk === 'd' && !e.shiftKey) { eat(); fillDown(); return; }
-      if (kk === 'b' && !e.shiftKey) { eat(); fmtBold(); return; }
-      if (kk === 's' && !e.shiftKey) { eat(); toast('고치면 바로 저장돼요 — 따로 저장하지 않아도 됩니다'); return; }
-      if (kk === 'v' && e.shiftKey) { S.pasteVals = Date.now(); return; }   // 값만 붙여넣기 (paste 이벤트에서)
-      if (k === '\\') { eat(); fmtClear(); return; }   // 서식 지우기 (구글시트와 같은 키)
-      if (k === ';' || e.code === 'Semicolon') { eat(); const d = new Date(); startEdit('enter', {text: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`}); return; }   // 오늘 날짜
-      if (k === 'Enter') { eat(); return; }
-      return;   // Ctrl+C · X · V 는 copy · cut · paste 가 받는다, 나머지는 브라우저 그대로
-    }
-    if (e.altKey) {
-      if (k === 'ArrowDown') {   // 같은 열에 쓴 값에서 고르기 (엑셀 Alt+↓)
-        const x = editCtx(S.cur, S.cell.r, S.cell.p);
-        if (x && !roWhy(x) && !x.check && colValues(x).length) { eat(); e.stopPropagation(); if (startEdit('edit')) openPick(true); }
-      } else if (k === 'PageDown' || k === 'PageUp') {
-        eat();
-        const n = Math.max(1, Math.round(nC / 3));
-        goTo(bi, bk + (k === 'PageDown' ? n : -n), e.shiftKey);
-      }
-      return;
-    }
-    switch (k) {
-      case 'ArrowDown': case 'ArrowUp': case 'ArrowLeft': case 'ArrowRight': {
-        eat();
-        const dr = k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : 0, dc = k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : 0;
-        if (e.shiftKey) extendRng(dr, dc); else moveCell(dr, dc);
-        return;
-      }
-      case 'Home': eat(); goTo(bi, 0, e.shiftKey); return;
-      case 'End': { eat(); let z = nC - 1; while (z > 0 && cellBlank(vr.list[bi], vr.cols[z])) z--; goTo(bi, z, e.shiftKey); return; }
-      case 'PageDown': eat(); goTo(bi + pageRows(), bk, e.shiftKey); return;
-      case 'PageUp': eat(); goTo(bi - pageRows(), bk, e.shiftKey); return;
-      case 'Tab': eat(); tabMove(e.shiftKey); return;
-      case 'Enter': eat(); enterMove(e.shiftKey); return;
-      case 'F2': eat(); startEdit('edit'); return;
-      case 'Delete': eat(); clearSel(); return;
-      case 'Backspace': eat(); startEdit('enter', {text: ''}); return;   // 비우고 고치기 (엑셀)
-      case 'Escape': if (S.clip) { eat(); e.stopPropagation(); S.clip = null; paintRng(); } hideTip(); return;   // 복사 점선 없애기
-      case 'ContextMenu': eat(); ctxAtCell(); return;
-      case 'F10': if (e.shiftKey) { eat(); ctxAtCell(); } return;
-      case ' ': {
-        eat();
-        if (e.shiftKey) { pickRows(S.cell.r, ''); return; }
-        const x = editCtx(S.cur, S.cell.r, S.cell.p);
-        if (x && x.check) { const why = roWhy(x); if (why) cellTip(S.cell.r, S.cell.p, why, true); else toggleCheck(x); }
-        return;
-      }
-    }
-    // 글자는 입력 상자가 그대로 받는다 (input · compositionstart → startEdit)
-  }
-  function ctxAtCell() {
-    const td = cellTd(S.cell.r, S.cell.p);
-    if (!td) return;
-    const rc = td.getBoundingClientRect();
-    openCm(rc.left + 12, rc.bottom - 4, S.cell.r);
-  }
-
-  /* 칸 입력 상자 */
-  const IDLE = ' ';   // 고르기만 했을 때 상자에 넣고 골라 두는 빈칸 하나 — 치면 이 빈칸이 바뀌고, 어느 브라우저든 복사 · 잘라내기가 나간다
-  function idleReset() {
-    const el = CE.el;
-    if (!el || CE.x) return;
-    el.value = IDLE;
-    if (document.activeElement === el) { try { el.setSelectionRange(0, IDLE.length); } catch (e) { /* noop */ } }
-  }
-  function ceEl() {
-    if (CE.el) return CE.el;
-    const el = document.createElement('textarea');
-    el.className = 'cedit idle';
-    el.rows = 1;
-    el.spellcheck = false;
-    el.tabIndex = -1;
-    el.setAttribute('autocomplete', 'off');
-    el.setAttribute('autocapitalize', 'off');
-    el.setAttribute('aria-label', '고른 칸');
-    el.value = IDLE;
-    document.body.appendChild(el);
-    el.addEventListener('keydown', e => {
-      if (e.isComposing || (e.keyCode === 229 && !modOf(e))) { if (CE.x) composeKey(e); return; }   // 한글 조합 중
-      if (Date.now() < CE.guard && /^(Enter|Tab|Arrow\w+)$/.test(e.key)) { e.preventDefault(); CE.guard = 0; return; }   // 조합을 끝낸 그 키가 한 번 더 온 것
-      if (CE.x) editKey(e, el); else gridKey(e);
-    });
-    el.addEventListener('beforeinput', e => { if (/^insert(LineBreak|Paragraph)$/.test(e.inputType || '')) e.preventDefault(); });   // 줄바꿈은 Alt+Enter 만
-    el.addEventListener('input', e => {
-      if (CE.x) { if (CE.src === 'cell') { ceReveal(); ceSize(); fxIn.value = el.value; autoDone(e); openPick(false); } return; }
-      if (CE.reject) { if (!e.isComposing) { CE.reject = false; idleReset(); } return; }
-      if (hasCell() && cellMode() && startEdit('enter', {keep: true})) { autoDone(e); return; }
-      idleReset();
-    });
-    el.addEventListener('compositionstart', () => {
-      if (CE.x) return;
-      if (!(hasCell() && cellMode() && startEdit('enter', {keep: true}))) CE.reject = true;   // 못 고치는 칸 — 조합이 끝나면 버림
-    });
-    el.addEventListener('compositionend', () => {
-      if (CE.reject) { CE.reject = false; setTimeout(idleReset, 0); return; }
-      if (CE.x) { ceSize(); fxIn.value = el.value; }
-      const pk = CE.pend;
-      CE.pend = null;
-      if (pk && Date.now() - pk.at < 500) setTimeout(() => { if (CE.x && CE.x === pk.x) { CE.guard = Date.now() + 150; pk.run(); } }, 0);
-    });
-    el.addEventListener('blur', () => {
-      if (!CE.x || !document.hasFocus()) return;   // 다른 창으로 갔다 오면 그대로 이어서
-      setTimeout(() => { const a = document.activeElement; if (CE.x && a !== CE.el && a !== fxIn) commitCell(0, 0, true); }, 0);
-    });
-    return (CE.el = el);
-  }
-  // 한글을 조합하다 누른 Enter · Tab · 화살표 — 조합이 끝나면 그 키대로 (엑셀처럼 한 번에)
-  function composeKey(e) {
-    const c = e.code, x = CE.x;
-    if (e.altKey) return;
-    const set = run => { CE.pend = {x, at: Date.now(), run}; };
-    if (c === 'Enter' || c === 'NumpadEnter') { const sh = e.shiftKey, all = modOf(e); set(() => all ? commitAll() : commitCell(sh ? -1 : 1, 0)); }
-    else if (c === 'Tab') { e.preventDefault(); const sh = e.shiftKey; set(() => commitCell(0, sh ? -1 : 1)); }
-    else if (CE.mode === 'enter' && CE.src === 'cell' && !e.shiftKey && /^Arrow/.test(c)) set(() => commitCell(c === 'ArrowDown' ? 1 : c === 'ArrowUp' ? -1 : 0, c === 'ArrowRight' ? 1 : c === 'ArrowLeft' ? -1 : 0));
-  }
-  function focusCells() {   // 고른 칸에 자판을 (고른 칸이 없으면 표에)
-    if (!cellMode() || !hasCell()) { if (document.activeElement !== grid) grid.focus({preventScroll: true}); return; }
-    const el = ceEl();
-    placeIdle();
-    if (document.activeElement !== el) el.focus({preventScroll: true});
-    idleReset();
-  }
-  function placeIdle() {   // 고르기만 했을 때 — 안 보이는 상자를 그 칸 위에 (한글 조합 창이 그 자리에 뜨게)
-    const el = CE.el;
-    if (!el || CE.x) return;
-    const td = hasCell() && cellMode() ? cellTd(S.cell.r, S.cell.p) : null, g = grid.getBoundingClientRect(), rc = td ? td.getBoundingClientRect() : g;
-    el.style.left = clamp(rc.left, g.left, Math.max(g.left, g.right - 20)) + 'px';
-    el.style.top = clamp(rc.top, g.top, Math.max(g.top, g.bottom - 20)) + 'px';
-    el.style.width = Math.max(20, td ? rc.width : 20) + 'px';
-    el.style.height = Math.max(16, td ? rc.height : 16) + 'px';
-  }
-  /* 고치기 시작 — mode 'enter'(바로 쳐서 새로 쓰기 · 화살표 = 저장하고 옮김) · 'edit'(F2 · 두 번 누르기 = 글자 사이 · 화살표 = 글자 옮김). F2 로 서로 바꿈 (엑셀과 같음)
-     opt: text 처음 글 · keep 상자에 이미 친 글 그대로 · src 'fx' 위 입력줄에서 · x 누른 자리(글자 사이) */
-  function startEdit(mode, opt) {
-    opt = opt || {};
-    if (!hasCell() || !cellMode()) return false;
-    const c = S.cell, x = editCtx(S.cur, c.r, c.p), why = roWhy(x);
-    revealCell(c.r, c.p);
-    if (why) { cellTip(c.r, c.p, why, true, 3200); return false; }
-    if (x.check) return false;
-    const td = cellTd(c.r, c.p);
-    if (!td) return false;
-    const el = ceEl();
-    hideTip();
-    if (S.clip) S.clip = null;   // 고치기 시작하면 복사 점선은 사라진다 (엑셀)
-    CE.x = x;
-    CE.orig = x.cell.t;
-    CE.at = {r: c.r, p: c.p};
-    CE.mode = mode;
-    CE.src = opt.src || 'cell';
-    if (!opt.keep) el.value = opt.text != null ? opt.text : x.cell.t;
-    const cs = getComputedStyle(td);
-    CE.font = `${cs.fontWeight} ${cs.fontSize} ${FONT}`;
-    el.style.fontWeight = cs.fontWeight;
-    el.style.fontSize = cs.fontSize;
-    el.style.color = cs.color;
-    const bg = cs.backgroundColor;
-    el.style.background = !bg || bg === 'transparent' || /,\s*0\)$/.test(bg) ? '#fff' : bg;
-    el.classList.remove('idle');
-    paintRng();   // 손잡이 · 점선 걷기
-    placeCell(td);
-    if (CE.src === 'cell') {
-      if (document.activeElement !== el) el.focus({preventScroll: true});
-      if (!opt.keep) { const n = opt.x != null ? caretAt(td, opt.x) : el.value.length; el.setSelectionRange(n, n); }
-    }
-    if (document.activeElement !== fxIn) fxIn.value = el.value;
-    const warn = nameWarn(x);
-    if (warn) cellTip(x.row, x.p, warn, true, 4500);
-    return true;
-  }
-  function caretAt(td, x) {   // 두 번 누른 자리의 글자 사이 (한 줄 칸)
-    const v = CE.el.value;
-    if (/\n/.test(v)) return v.length;
-    const left = td.getBoundingClientRect().left + (parseFloat(getComputedStyle(td).paddingLeft) || 8);
-    let best = v.length, bd = 1e9;
-    for (let i = 0; i <= v.length && i <= 400; i++) { const d = Math.abs(left + tw(v.slice(0, i), CE.font) - x); if (d < bd) { bd = d; best = i; } }
-    return best;
-  }
-  function ceReveal() {   // 치는 중에 칸이 화면 밖이면 다시 보이게
-    if (!CE.x || !CE.el.classList.contains('away')) return;
-    revealCell(CE.at.r, CE.at.p);
-    placeCell(cellTd(CE.at.r, CE.at.p));
-  }
-  function placeCell(td) {
-    const el = CE.el;
-    if (!el || !CE.x) return;
-    let away = !td;
-    if (td) {
-      const rc = td.getBoundingClientRect(), w = viewBox();
-      away = rc.bottom < w.t + 4 || rc.top > w.b - 4 || rc.right < w.l + 10 || rc.left > w.r - 10;
-      if (!away) { el.style.top = (rc.top - 1) + 'px'; ceSize(td); }
-    }
-    el.classList.toggle('away', away);
-  }
-  function ceSize(td) {   // 칸에 딱 맞게 — 글이 길어지면 오른쪽으로, 더 길면 아래로 (엑셀)
-    const el = CE.el;
-    td = td || (CE.at && cellTd(CE.at.r, CE.at.p));
-    if (!el || !CE.x || !td) return;
-    const rc = td.getBoundingClientRect(), g = grid.getBoundingClientRect(), pl = parseFloat(getComputedStyle(td).paddingLeft) || 8;
-    const lines = String(el.value).split('\n'), longest = Math.max(...lines.map(s => tw(s, CE.font)), 0);
-    const maxW = Math.max(rc.width + 1, Math.min(g.left + grid.clientWidth - rc.left - 2, 620)), w = Math.min(maxW, Math.max(rc.width + 1, longest + pl * 2 + 8));
-    const h0 = rc.height + 1;
-    el.style.left = (rc.left - 1) + 'px';
-    el.style.width = w + 'px';
-    el.style.paddingLeft = Math.max(0, pl - 1) + 'px';
-    el.style.paddingRight = '4px';
-    if (lines.length === 1 && longest + pl * 2 + 4 <= w) {
-      const v = Math.max(0, (h0 - 4 - 17) / 2);
-      el.style.paddingTop = v + 'px';
-      el.style.paddingBottom = '0px';
-      el.style.height = h0 + 'px';
-      el.style.overflowY = 'hidden';
-      return;
-    }
-    el.style.paddingTop = el.style.paddingBottom = '5px';
-    el.style.height = '0px';
-    const need = el.scrollHeight + 4, room = Math.max(h0, Math.min(320, innerHeight - rc.top - 10)), h = Math.max(h0, Math.min(need, room));
-    el.style.height = h + 'px';
-    el.style.overflowY = need > room ? 'auto' : 'hidden';
-  }
-  function closeCell(silent) {   // 고치기 끝 (저장은 commitCell)
-    if (!CE.x) return;
-    const el = CE.el, fx = document.activeElement === fxIn;
-    CE.x = CE.at = CE.pend = null;
-    CE.mode = '';
-    CE.src = 'cell';
-    closePick();
-    hideTip();
-    el.classList.add('idle');
-    el.classList.remove('away');
-    el.style.padding = '';
-    el.style.background = '';
-    if (!silent || fx) focusCells(); else idleReset();
-    paintRng();
-  }
-  const ceVal = () => String(CE.el.value).replace(/\r\n?/g, '\n');
-  // 고친 칸 저장 (값이 그대로면 그냥 닫음) → dr · dc 쪽 칸으로 (범위를 골라 뒀으면 그 안에서)
-  function commitCell(dr, dc, fromBlur) {
-    const x = CE.x;
-    if (!x) return;
-    const v = ceVal(), old = CE.orig, tabP = S.tabP, start = tabP != null ? tabP : x.p;
-    const many = selRects().reduce((n, t) => n + nOf(t), 0) > 1;
-    const n = many || !(dr || dc) ? null : nextCell(dr, dc);   // 옮길 칸은 저장하기 전 화면 기준 (저장하면 정렬 · 걸러보기가 바뀔 수 있어서)
-    closeCell(fromBlur);
-    if (v !== old) {
-      S.stick.add(x.row);   // 걸러 보는 중이어도 고친 줄은 그대로 보이게
-      afterWrite(x, v, old, writeCell(x, v, old, old), () => cellTd(x.row, x.p)).catch(() => {});
-    }
-    if (!(dr || dc)) return;
-    if (many) { cycleCell(dr, dc); return; }
-    if (dc) { if (n) selectCell(n.r, n.p, {tabP: start}); }
-    else if (dr > 0 && tabP != null) selectCell(n ? n.r : x.row, tabP);   // Tab 으로 왔으면 처음 열로 (엑셀)
-    else if (n) selectCell(n.r, n.p);
-  }
-  function commitAll() {   // Ctrl+Enter — 고른 칸 전부에 같은 값 (엑셀)
-    const v = ceVal(), cs = rngCells();
-    if (cs.length <= 1) { commitCell(0, 0); return; }
-    closeCell();
-    applyCells(cs.map(c => ({r: c.r, p: c.p, v})), '한꺼번에 넣기', {ask: n => `고른 칸 ${n}개에 '${short(v)}'을(를) 넣을까요?`});
-  }
-  function cancelEdit() { closeCell(); }
-  function newLine(el) {   // 칸 안 줄바꿈 (Alt+Enter)
-    const a = el.selectionStart, b = el.selectionEnd;
-    el.value = el.value.slice(0, a) + '\n' + el.value.slice(b);
-    el.setSelectionRange(a + 1, a + 1);
-    if (el === fxIn) CE.el.value = el.value; else fxIn.value = el.value;
-    ceSize();
-  }
-  function editKey(e, el) {   // 고치는 중 (칸 · 위 입력줄 공통)
-    const k = e.key, mod = modOf(e);
-    if (PK.open && pickKey(e)) return;
-    if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelEdit(); return; }
-    if (k === 'Enter' && (e.altKey || (IS_MAC && e.ctrlKey && !e.metaKey))) { e.preventDefault(); newLine(el); return; }   // 맥 엑셀은 Ctrl+Option+Enter 도
-    if (k === 'Enter' && mod) { e.preventDefault(); commitAll(); return; }
-    if (k === 'Enter') { e.preventDefault(); commitCell(e.shiftKey ? -1 : 1, 0); return; }
-    if (k === 'Tab') { e.preventDefault(); commitCell(0, e.shiftKey ? -1 : 1); return; }
-    if (k === 'F2') { e.preventDefault(); CE.mode = CE.mode === 'edit' ? 'enter' : 'edit'; return; }
-    if (k === 'ArrowDown' && e.altKey) { e.preventDefault(); e.stopPropagation(); openPick(true); return; }
-    if (mod && keyOf(e) === 's' && !e.shiftKey) { e.preventDefault(); commitCell(0, 0); return; }
-    if (el === CE.el && CE.mode === 'enter' && !e.shiftKey && !mod && !e.altKey && /^(Arrow|Page)/.test(k)) {
-      e.preventDefault();
-      if (/^Page/.test(k)) { commitCell(0, 0); gridKey(e); return; }
-      commitCell(k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : 0, k === 'ArrowRight' ? 1 : k === 'ArrowLeft' ? -1 : 0);
-    }
-  }
-  // 치는 동안 위 · 아래로 이어진 칸에 쓴 글이 딱 하나 맞으면 나머지를 채워 보여 줌 (엑셀 자동 완성 — 이어서 치면 바뀌고, Delete 로 지움).
-  // 엑셀처럼 빈칸에서 끊고, 숫자 · 여러 줄 글은 안 함 (드문드문 적는 메모 칸에서 엉뚱한 글이 채워지지 않게)
-  function adjTexts(x) {
-    const vr = vIdx(), i = vr ? vr.ri.get(x.row) : undefined, k = vr ? vr.ki.get(x.p) : undefined, out = new Set();
-    if (i === undefined || k === undefined || x.col.type !== 'text') return [];
-    [-1, 1].forEach(d => {
-      for (let j = i + d; j >= 0 && j < vr.list.length && !cellBlank(vr.list[j], vr.cols[k]); j += d) {
-        const t = cellRaw(vr.list[j], vr.cols[k]).trim();
-        if (t && !/\n/.test(t) && numOf(t) === null && !/^⚠/.test(t)) out.add(t);
-      }
-    });
-    return [...out];
-  }
-  function autoDone(e) {
-    const el = CE.el, x = CE.x;
-    if (!x || CE.mode !== 'enter' || !e || e.isComposing || e.inputType !== 'insertText') return;
-    const v = el.value;
-    if (!v.trim() || /\n/.test(v) || el.selectionStart !== v.length) return;
-    const hit = adjTexts(x).filter(t => t.length > v.length && t.toLowerCase().startsWith(v.toLowerCase()));
-    if (hit.length !== 1) return;
-    el.value = v + hit[0].slice(v.length);
-    el.setSelectionRange(v.length, el.value.length);
-    fxIn.value = el.value;
-    ceSize();
-  }
-  /* 같은 열에 쓴 값 목록 — 치는 동안 비슷한 값(누르면 넣음), Alt+↓ = 전부 (↑↓ · Enter) */
-  const PK = {el: $('cpick'), open: false, kb: false, list: [], i: -1};
-  function closePick() { if (!PK.open) return; PK.open = PK.kb = false; PK.el.hidden = true; }
-  function openPick(kb) {
-    const x = CE.x;
-    if (!x) return;
-    if (PK.kb && !kb) kb = false;
-    const q = ceVal().trim().toLowerCase(), all = colValues(x);
-    const list = kb ? all : q ? all.filter(t => t.toLowerCase().includes(q) && t.toLowerCase() !== q).slice(0, 8) : [];
-    if (!list.length) { closePick(); if (kb) cellTip(x.row, x.p, '이 열은 고를 값이 많거나 없어서 목록이 없어요'); return; }
-    PK.open = true;
-    PK.kb = !!kb;
-    PK.list = list;
-    PK.i = kb ? Math.max(0, list.findIndex(t => t.toLowerCase() === q)) : -1;
-    PK.el.innerHTML = list.map((t, i) => `<div role="option" data-i="${i}"${i === PK.i ? ' class="on"' : ''}>${esc(t)}</div>`).join('');
-    PK.el.hidden = false;
-    const rc = CE.el.getBoundingClientRect(), h = PK.el.offsetHeight;
-    PK.el.style.minWidth = Math.min(340, rc.width) + 'px';
-    PK.el.style.left = Math.max(8, Math.min(rc.left, innerWidth - PK.el.offsetWidth - 8)) + 'px';
-    PK.el.style.top = (rc.bottom + 2 + h > innerHeight - 8 ? Math.max(8, rc.top - h - 2) : rc.bottom + 2) + 'px';
-    const on = PK.el.querySelector('.on');
-    if (on) on.scrollIntoView({block: 'nearest'});
-    hideTip();
-  }
-  function takePick(i, dr) {
-    const t = PK.list[i];
-    closePick();
-    if (t === undefined || !CE.x) return;
-    CE.el.value = t;
-    commitCell(dr || 0, 0);
-    focusCells();
-  }
-  function pickKey(e) {   // 목록이 열려 있을 때 (Alt+↓ 로 연 것만 화살표를 받는다 — 치다가 뜬 목록은 엑셀처럼 화살표 = 저장하고 옮김)
-    if (e.key === 'Escape') { closePick(); if (!PK.kb) return false; e.preventDefault(); e.stopPropagation(); return true; }
-    if (!PK.kb) return false;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      PK.i = (PK.i + (e.key === 'ArrowDown' ? 1 : -1) + PK.list.length) % PK.list.length;
-      PK.el.querySelectorAll('div').forEach((d, i) => d.classList.toggle('on', i === PK.i));
-      const on = PK.el.querySelector('.on');
-      if (on) on.scrollIntoView({block: 'nearest'});
-      return true;
-    }
-    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); takePick(PK.i, 0); return true; }
-    return false;
-  }
-  PK.el.addEventListener('mousedown', e => { e.preventDefault(); const d = e.target.closest('div[data-i]'); if (d) takePick(+d.dataset.i, 0); });
-
-  /* 이름 상자 · 입력줄 (표 위 fx 줄) */
-  const fxBar = $('fxBar'), fxN = $('fxName'), fxIn = $('fxIn');
-  function cellRaw(row, col) {   // 그 칸의 원래 글 (표에 줄여 보이는 것 말고)
-    if (!row || !col) return '';
-    if (col.pro) return row.pro ? PRO_LABEL[row.pro[0]] || '' : '';
-    if (col.price) return priceText(row.pro);
-    if (col.cost) return costText(row.cost);
-    const c = row.byP[col.p];
-    if (!c) return '';
-    if (c.cb && !c.t) return c.cb === 2 ? 'TRUE' : 'FALSE';
-    if (c.img) return '';
-    return c.t || c.chips.map(x => x.t).join(', ');
-  }
-  function paintFx() {
-    const on = cellMode() && !!tabOf(S.cur);
-    if (fxBar.hidden === on) fxBar.hidden = !on;
-    if (!on || CE.x) return;
-    const d = curData(), c = hasCell() ? S.cell : null, col = c && d ? d.cols.find(x => x.p === c.p) : null, row = col ? d.rows.find(x => x.r === c.r) : null;
-    if (document.activeElement !== fxN) fxN.value = row ? `${col.name} · ${row.past ? '지난 상품' : `${row.r}행`}` : '';
-    if (document.activeElement === fxIn) return;
-    fxIn.value = cellRaw(row, col);
-    const why = row ? roWhy(editCtx(S.cur, c.r, c.p)) : '';
-    fxIn.readOnly = !row || !!why;
-    fxIn.title = why || '';
-  }
-  fxIn.addEventListener('focus', () => {
-    if (CE.x) { CE.src = 'fx'; CE.mode = 'edit'; return; }   // 칸에서 고치다 입력줄을 누름 — 이어서
-    if (!hasCell() || fxIn.readOnly) return;
-    const v = fxIn.value;
-    if (startEdit('edit', {src: 'fx'})) { if (fxIn.value !== CE.el.value) fxIn.value = CE.el.value; }
-    else { fxIn.value = v; fxIn.readOnly = true; }
+  const XL = OfficeGrid({
+    ns: 'erp', S, grid, $, narrow, hoverMQ, esc, fmt, norm, numOf, pad2, colName, tw, FONT, tabOf, curData, vstate, editCtx, roWhy, colValues, nameWarn, short, toast, toggleCheck, openDetail, closeDetail, showRow, hasVal,
+    afterWrite, writeCell, rawOf, writeMany, fmtBar, fmtApply, fmtOf, fmtBold, fmtClear, layoutKey,
+    fxAfter: $('fmtBar'), menuBtn: '.hm', calcEntry: true,   // 자동 차감이 같이 쓰는 표라 함수는 안 넣고 '=120-30' 같은 계산만
+    title: () => $('title').textContent.trim() || 'ERP',
+    redraw: () => { renderHead(); renderGrid({keep: true}); paintRng(); },
+    virtual: (row, col) => col.pro ? (row.pro ? PRO_LABEL[row.pro[0]] || '' : '') : col.price ? priceText(row.pro) : col.cost ? costText(row.cost) : undefined,   // 줄 자료에 없는 칸
+    virtualNum: (row, col) => col.price && row.pro && row.pro[6] === undefined ? row.pro[5] : null,
+    cellName: (row, col) => `${col.name} · ${row.past ? '지난 상품' : `${row.r}행`}`,
+    shown: (row, col) => fltText(row, col),
+    bigNote: items => items.some(it => it.x.col && it.x.col.stock) ? ' · <b style="display:inline">남은 재고는 5분 안에 식스샵 품절 · 수량에 이어져요</b>' : '',
+    fmtWhy: () => whoAmI() ? '' : NO_WHO,
+    fmtProbe: () => sbFetch('rpc/office_fmt_apply', {method: 'POST', body: JSON.stringify({p_fmt: {}, p_cells: [{r: 1, p: 1, i: 1, n: '-'}]})}),
+    closeMenus: () => closeColMenu(), openMenu: (x, y, r) => openCm(x, y, r),
+    openFilter: p => { const th = grid.querySelector(`thead th[data-p="${p}"]`), rc = th ? th.getBoundingClientRect() : {left: 200, bottom: 200}; openColMenu(p, rc.left, rc.bottom + 2); },
+    paintAt: () => paintAt(), paintStop: () => paintStop(),
   });
-  fxIn.addEventListener('input', () => { if (CE.x) { CE.src = 'fx'; CE.el.value = fxIn.value; ceReveal(); ceSize(); } });
-  fxIn.addEventListener('keydown', e => {
-    if (e.isComposing || e.keyCode === 229) { if (CE.x) composeKey(e); return; }
-    if (Date.now() < CE.guard && /^(Enter|Tab)$/.test(e.key)) { e.preventDefault(); CE.guard = 0; return; }
-    if (CE.x) editKey(e, fxIn);
-    else if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); focusCells(); }
-  });
-  fxIn.addEventListener('beforeinput', e => { if (/^insert(LineBreak|Paragraph)$/.test(e.inputType || '')) e.preventDefault(); });
-  fxIn.addEventListener('compositionend', () => {
-    if (CE.x) { CE.el.value = fxIn.value; ceSize(); }
-    const pk = CE.pend;
-    CE.pend = null;
-    if (pk && Date.now() - pk.at < 500) setTimeout(() => { if (CE.x && CE.x === pk.x) { CE.guard = Date.now() + 150; pk.run(); } }, 0);
-  });
-  fxIn.addEventListener('blur', () => {
-    if (!CE.x || CE.src !== 'fx' || !document.hasFocus()) return;
-    setTimeout(() => { const a = document.activeElement; if (!CE.x || a === fxIn) return; if (a === CE.el) { CE.src = 'cell'; return; } commitCell(0, 0, true); }, 0);
-  });
-  // 이름 상자 — 줄 번호 · 칸 이름 · '남은재고 120' 을 쓰고 Enter → 그 칸으로
-  fxN.addEventListener('focus', () => fxN.select());
-  fxN.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); focusCells(); paintFx(); return; }
-    if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
-    e.preventDefault();
-    const vr = vIdx(), t = norm(fxN.value).replace(/행$/, ''), m = t.match(/^(.*?)·?(\d*)$/);
-    if (!vr || !vr.list.length || !t) { focusCells(); return; }
-    const nm = m ? m[1] : t, num = m && m[2] ? +m[2] : 0;
-    let col = nm ? vr.cols.find(c => norm(c.name) === nm) || vr.cols.find(c => norm(c.name).startsWith(nm)) || (/^[a-z]{1,2}$/i.test(nm) ? vr.cols.find(c => colName(c.p) === nm.toUpperCase()) : null) : null;
-    if (nm && !col) { toast(`'${fxN.value.trim()}' 칸을 찾지 못했어요`, true); fxN.select(); return; }
-    const row = num ? vr.list.find(x => x.r === num) : vr.list.find(x => hasCell() && x.r === S.cell.r) || vr.list[0];
-    if (!row) { toast(`${num}행은 지금 표에 없어요 (걸러 보는 중이거나 없는 줄)`, true); fxN.select(); return; }
-    if (!col) col = vr.cols.find(c => hasCell() && c.p === S.cell.p) || vr.cols[0];
-    fxN.blur();
-    selectCell(row.r, col.p);
-    focusCells();
-  });
-  fxN.addEventListener('blur', () => setTimeout(paintFx, 0));
-
-  /* 고른 칸 합계 · 평균 · 개수 (엑셀 상태 표시줄) */
-  function selStat(cs) {
-    const d = curData(), nr = new Set(), np = new Set();
-    cs.forEach(x => { nr.add(x.r); np.add(x.p); });
-    const size = nr.size * np.size === cs.length ? `${nr.size}줄 × ${np.size}열` : `${cs.length.toLocaleString()}칸`;
-    if (!d || cs.length > 20000) return `<b>${size}</b>`;
-    const rows = new Map(d.rows.map(x => [x.r, x])), cols = new Map(d.cols.map(x => [x.p, x]));
-    let n = 0, sum = 0, nn = 0;
-    cs.forEach(x => {
-      const row = rows.get(x.r), col = cols.get(x.p);
-      if (!row || !col || cellBlank(row, col)) return;
-      n++;
-      const c = row.byP[x.p], v = col.pro ? null : col.price ? (row.pro && row.pro[6] === undefined ? row.pro[5] : null) : col.cost ? null : c ? numOf(c.t) : null;
-      if (v !== null && v !== undefined) { nn++; sum += v; }
-    });
-    return `<b>${size}</b>` + (nn ? ` · 합계 <b>${fmt(Math.round(sum * 100) / 100)}</b> · 평균 ${fmt(Math.round(sum / nn * 100) / 100)}` : '') + (n ? ` · 개수 ${fmt(n)}` : '');
-  }
-
-  /* ── 마우스 — 누르기 · 끌기 (PC) ── */
-  const DG = {on: null, x: 0, y: 0, raf: 0};
-  // 줄이 보이는 자리 — 머리글 · 합계 줄은 붙박이(sticky)라 thead · tfoot 이 아니라 그 안 칸의 자리로 잰다
-  function viewBox() {
-    const g = grid.getBoundingClientRect(), th = grid.querySelector('thead th'), tf = grid.querySelector('tfoot td');
-    return {l: g.left, r: g.left + grid.clientWidth, t: th ? th.getBoundingClientRect().bottom : g.top, b: Math.min(g.top + grid.clientHeight, tf ? tf.getBoundingClientRect().top : 1e9)};
-  }
-  // 화면 자리 → 칸 {r, p} (표 밖이면 가장 가까운 칸, 행 번호 칸 = 첫 열)
-  function cellAt(x, y) {
-    const vr = vIdx(), w = viewBox();
-    if (!vr || !vr.list.length) return null;
-    const last = vr.tb ? vr.tb.lastElementChild : null, lb = last ? last.getBoundingClientRect().bottom - 3 : w.b;
-    const el = document.elementFromPoint(clamp(x, w.l + 2, w.r - 3), clamp(y, w.t + 2, Math.max(w.t + 2, Math.min(w.b - 3, lb))));
-    const td = el && el.closest ? el.closest('#grid tbody td') : null, tr = td && td.closest('tr[data-r]');
-    if (!tr) return null;
-    const r = +tr.dataset.r;
-    if (td.dataset.p !== undefined) return {r, p: +td.dataset.p};
-    return {r, p: td.classList.contains('rn') ? vr.cols[0].p : vr.cols[vr.cols.length - 1].p};
-  }
-  function colAt(x) {
-    const w = viewBox(), th0 = grid.querySelector('thead th'), vr = vIdx();
-    if (!th0 || !vr) return null;
-    const b = th0.getBoundingClientRect(), el = document.elementFromPoint(clamp(x, w.l + 2, w.r - 3), b.top + b.height / 2);
-    const th = el && el.closest ? el.closest('#grid thead th') : null;
-    if (!th) return null;
-    return th.dataset.p !== undefined ? +th.dataset.p : th.classList.contains('rn') ? vr.cols[0].p : vr.cols[vr.cols.length - 1].p;
-  }
-  const inHandle = (e, td) => { const b = td.getBoundingClientRect(); return td.classList.contains('fh') && e.clientX > b.right - 11 && e.clientY > b.bottom - 11; };
-  grid.addEventListener('mousedown', e => {
-    if (!cellMode() || e.button !== 0 || !e.target.closest) return;
-    if (IS_MAC && e.ctrlKey) return;   // 맥 Ctrl+누르기 = 오른쪽 누르기
-    const t = e.target;
-    if (t.closest('.rz')) return;      // 칸 너비 끌기 (아래)
-    if (t.closest('.hm')) { e.preventDefault(); return; }
-    const mode = e.shiftKey ? 'shift' : addKey(e) ? 'add' : '';
-    const th = t.closest('thead th');
-    if (th) {
-      e.preventDefault();
-      if (th.classList.contains('fill')) return;
-      if (CE.x) commitCell(0, 0, true);
-      closeColMenu();
-      if (th.dataset.sort === 'rn') pickAll();
-      else { pickCols(+th.dataset.p, mode); DG.on = {kind: 'col'}; }
-      focusCells();
-      return;
-    }
-    const rn = t.closest('tbody td.rn');
-    if (rn) {
-      const tr = rn.closest('tr[data-r]');
-      if (!tr) return;
-      e.preventDefault();
-      const r = +tr.dataset.r;
-      if (CE.x) commitCell(0, 0, true);
-      if (e.detail === 2 && !mode) {   // 두 번 누르기 = 그 줄 상세 창 (열려 있으면 닫기)
-        if (S.sel && S.sel.r === r && !$('detail').hidden && DG.det !== r) closeDetail(); else openDetail(r, false);
-        DG.det = 0;
-        focusCells();
-        return;
-      }
-      DG.det = !$('detail').hidden && S.sel && S.sel.r !== r ? r : 0;   // 이번 누르기로 상세 창이 이 줄로 바뀜 (두 번째 누르기에 닫지 않게)
-      pickRows(r, mode);
-      DG.on = {kind: 'row'};
-      focusCells();
-      return;
-    }
-    const td = t.closest('tbody td[data-p]'), tr = td && td.closest('tr[data-r]');
-    if (!tr) return;
-    if (t.closest('a,button,img.thumb')) { if (CE.x) commitCell(0, 0, true); return; }   // 링크 · 배지 · 사진은 누른 대로
-    e.preventDefault();   // 글자 끌어 고르기 · 포커스 옮기기 대신 칸 고르기
-    const r = +tr.dataset.r, p = +td.dataset.p;
-    if (inHandle(e, td) && !mode) {   // 채우기 손잡이
-      if (e.detail === 2) { DG.on = null; fillToEnd(); return; }
-      DG.on = {kind: 'fill', src: curRect(), to: null};
-      return;
-    }
-    if (CE.x) { commitCell(0, 0, true); }
-    hideTip();
-    if (e.detail === 2 && !mode && hasCell() && S.cell.r === r && S.cell.p === p) {   // 두 번 누르기 = 글자 사이에서 고치기
-      DG.on = null;
-      focusCells();
-      const x = editCtx(S.cur, r, p), why = roWhy(x);
-      if (why) cellTip(r, p, why, true, 3200); else if (!x.check) startEdit('edit', {x: e.clientX});
-      return;
-    }
-    if (mode === 'shift' && hasCell()) extendTo(r, p);
-    else if (mode === 'add' && hasCell() && inSel(r, p)) { dropCell(r, p); focusCells(); return; }
-    else if (mode === 'add' && hasCell()) addCell(r, p);
-    else selectCell(r, p, {noScroll: true});
-    DG.on = {kind: 'cell', ck: !mode && t.closest('.ck,.ck0') ? {r, p} : null, r, p};
-    focusCells();
-  });
-  function dragTo() {
-    const D = DG.on;
-    if (!D) return;
-    if (D.kind === 'col') { const p = colAt(DG.x); if (p !== null && hasCell()) { const vr = vIdx(), r1 = vr.list[vr.list.length - 1].r; if (!S.cell2 || S.cell2.p !== p) { S.cell2 = {r: r1, p}; paintRng(); } } return; }
-    const a = cellAt(DG.x, DG.y);
-    if (!a) return;
-    if (D.kind === 'row') { const vr = vIdx(), p1 = vr.cols[vr.cols.length - 1].p; if (hasCell() && (!S.cell2 || S.cell2.r !== a.r)) { S.cell2 = {r: a.r, p: p1}; paintRng(); } return; }
-    if (D.kind === 'fill') { fillPreview(a); return; }
-    if (!hasCell()) return;
-    const anc = ancOf(), end = S.cell2 || anc;
-    if (end.r !== a.r || end.p !== a.p) { D.moved = true; extendTo(a.r, a.p); }
-  }
-  function dragScroll() {   // 끌다가 표 끝을 넘으면 그쪽으로 넘긴다
-    DG.raf = 0;
-    if (!DG.on) return;
-    const w = viewBox(), step = d => Math.sign(d) * Math.max(3, Math.min(38, Math.abs(d) * 0.35)), M = 14;   // 아래 합계 줄 · 오른쪽 끝에 닿기만 해도 천천히
-    const sk = DG.on.kind === 'col' || DG.on.kind === 'row' ? w.l : [...grid.querySelectorAll('thead th.sk')].reduce((m, th) => Math.max(m, th.getBoundingClientRect().right), w.l);
-    const skr = [...grid.querySelectorAll('thead th.skr')].reduce((m, th) => Math.min(m, th.getBoundingClientRect().left), w.r);
-    const inSk = hasCell() && S.vr && S.vr.ki.get(ancOf().p) < S.vr.stickN;   // 고정 칸에서 끌기 시작했으면 고정 칸 안에서 옆으로 안 넘김
-    const dy = DG.on.kind === 'col' ? 0 : DG.y < w.t ? step(DG.y - w.t) : DG.y > w.b - 2 ? step(DG.y - w.b + 2) : 0;
-    const dx = DG.on.kind === 'row' ? 0 : DG.x < (inSk ? w.l : sk) && grid.scrollLeft > 0 ? step(DG.x - (inSk ? w.l : sk)) : DG.x > Math.min(skr, w.r - M) ? step(DG.x - Math.min(skr, w.r - M)) : 0;
-    if (dx || dy) { grid.scrollTop += dy; grid.scrollLeft += dx; dragTo(); }
-    DG.raf = requestAnimationFrame(dragScroll);
-  }
-  document.addEventListener('mousemove', e => {
-    if (!DG.on) return;
-    if (!(e.buttons & 1)) { dragEnd(); return; }   // 창 밖에서 단추를 놓음
-    DG.x = e.clientX;
-    DG.y = e.clientY;
-    dragTo();
-    if (!DG.raf) DG.raf = requestAnimationFrame(dragScroll);
-  });
-  function dragEnd(e) {
-    const D = DG.on;
-    DG.flip = !!(e && e.type === 'mouseup' && addKey(e));   // Ctrl 을 누른 채 놓음 — 채우기 방식 반대로
-    DG.on = null;
-    if (DG.raf) { cancelAnimationFrame(DG.raf); DG.raf = 0; }
-    if (!D) return;
-    if (D.kind === 'fill') { fillApply(D); return; }
-    if (S.paint && D.kind) { paintAt(); return; }   // 서식 복사 — 누르거나 끈 범위에
-    if (D.ck && !D.moved) {   // 체크 네모를 누름
-      const x = editCtx(S.cur, D.ck.r, D.ck.p), why = roWhy(x);
-      if (why) cellTip(D.ck.r, D.ck.p, why, true, 3200); else if (x.check) toggleCheck(x);
-    }
-  }
-  document.addEventListener('mouseup', dragEnd);
-
+  const {CE, cellMode, cellTd, hasCell, cellTip, hideTip, vIdx, rngCells, curRect, inSel, calcRng, selCls, paintRng, paintHeadSel, setCell, selectCell, pickRows, pickCols, focusCells, placeIdle, placeCell, gridKey, commitCell, closeCell, paintFx, selStat, undo, redo, pushUndo, selTsv, setClip, pasteText, clearSel, fillDown, openMore, editNote, openFind, hidColSet, hidRowSet, showHidden, hideCols, hideRows, freezeN, fmtCellOk} = XL;
   /* ── 칸 서식 — 굵게 · 글자 색 · 칸 색 (2026-11-20 사장님 "erp, md시트 폰트컬러 변경 및 폰트굵기 변경 가능하게 해줘. 칸 변경까지 부탁해") ──
      오피스에서만 정한다 (구글시트 서식은 그대로 안 씀) — 저장소 erp_tabs.ofmt (erp_fmt_set) = {"줄:열": {b, fg, bg}}.
      고르기: 칸 누르기 = 한 칸, Shift+누르기 · Shift+화살표 = 네모 범위 (보이는 줄 · 칸 순서). Ctrl+B = 굵게. PC · 고칠 수 있는 사람만 (도구가 보임) */
@@ -5414,7 +4435,7 @@
   }
   // fn(그 칸 서식 사본) → 새 서식. 화면 먼저 바꾸고 저장소에 — 못 쓰면 되돌림
   function fmtApply(fn, label, only, noUndo, quiet) {
-    const t = tabOf(S.cur), info = t && t.info, cs = only || rngCells();
+    const t = tabOf(S.cur), info = t && t.info, cs = (only || rngCells()).filter(x => fmtCellOk(x.r, x.p));   // 식스샵프로 · 판매가 칸 · 지난 상품 줄은 서식을 저장할 자리가 없다
     if (!info || !cs.length) { toast(NO_PICK, true); return; }
     if (cs.length > FMT_MAX) { toast(`한 번에 ${FMT_MAX.toLocaleString()}칸까지 바꿀 수 있어요 — 범위를 줄여 주세요`, true); return; }
     const prev = info.ofmt || {}, next = Object.assign({}, prev), cells = [];
@@ -5425,7 +4446,8 @@
       if (JSON.stringify(nu) === JSON.stringify(cur)) return;
       if (fwOf(nu) !== fwOf(cur)) refit = true;
       if (Object.keys(nu).length) next[k] = nu; else delete next[k];
-      cells.push({r: x.r, p: x.p, b: nu.b ? 1 : 0, w: +nu.w || 0, fg: nu.fg || '', bg: nu.bg || ''});
+      if ((nu.sz || 0) !== (cur.sz || 0) || (nu.nf || '') !== (cur.nf || '')) refit = true;
+      cells.push(Object.assign({r: x.r, p: x.p}, OfficeGrid.fmtPack(nu)));
     });
     if (!cells.length) { if (!quiet) toast('이미 그 서식이에요'); return; }
     if (!noUndo) pushUndo(t.gid, {label, fmt: cells.map(c => ({r: c.r, p: c.p, f: prev[`${c.r}:${c.p}`] || null, g: next[`${c.r}:${c.p}`] || null}))});
@@ -5521,7 +4543,7 @@
     const k = b.dataset.fmt;
     if (k === 'undo') undo();
     else if (k === 'redo') redo();
-    else if (k === 'help') toggleHelp(b);
+    else if (k === 'more') openMore(b);
     else if (k === 'b') fmtBold();
     else if (k === 'clear') fmtClear();
     else if (k === 'paint') paintToggle();
@@ -5541,6 +4563,8 @@
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
     fill: '<path d="M5 4h14M12 8v11M7.5 14.5L12 19l4.5-4.5"/>',
+    note: '<path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-4 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/>',
+    hide: '<path d="M3 3l18 18M10.6 6.2A9 9 0 0 1 12 6c5 0 8.5 4 9.5 6-.5 1-1.4 2.3-2.7 3.4M6.3 7.6C4.3 8.9 3 10.8 2.5 12c1 2 4.5 6 9.5 6 1.5 0 2.9-.4 4.1-1"/>',
     detail: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M14 4v16M17 9h1M17 13h1"/>',
   };
   const cmIc = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CM_IC[k]}</svg>`;
@@ -5564,6 +4588,10 @@
       cmIt('bg', `<i class="sw" style="background:${esc(lsGet('fmt_last_bg') || '#fff2cc')}"></i>`, '칸 색…'),
       cmIt('paint', cmIc('paint'), '서식 복사'),
       cmIt('clear', cmIc('clear'), '서식 지우기', 'Ctrl+\\'),
+      !XL.fmt2() ? '' : cmIt('note', cmIc('note'), XL.noteAt(S.cell ? S.cell.r : 0, S.cell ? S.cell.p : 0) ? '메모 고치기' : '메모 넣기', 'Shift+F2'),
+      '<hr>',
+      cmIt('hrow', cmIc('hide'), '이 줄 숨기기'),
+      cmIt('hcol', cmIc('hide'), '이 열 숨기기'),
       '<hr>',
       cmIt('undo', cmIc('undo'), '되돌리기', 'Ctrl+Z'),
       cmIt('redo', cmIc('redo'), '다시 실행', 'Ctrl+Y'),
@@ -5624,6 +4652,9 @@
     }
     else if (k === 'del') clearSel('지우기');
     else if (k === 'fill') fillDown();
+    else if (k === 'note') editNote();
+    else if (k === 'hrow') hideRows();
+    else if (k === 'hcol') hideCols();
     else if (k === 'redo') redo();
     else if (k === 'b') fmtBold();
     else if (k === 'clear') fmtClear();
@@ -5639,314 +4670,19 @@
   document.addEventListener('keydown', e => {   // Esc = 메뉴 · 색판 닫기, 서식 복사 그만 (다른 Esc 처리보다 먼저)
     if (e.key !== 'Escape') return;
     if (!COLM.hidden) { closeColMenu(); focusCells(); e.preventDefault(); e.stopImmediatePropagation(); }
-    else if (!$('xhelp').hidden) { $('xhelp').hidden = true; e.preventDefault(); e.stopImmediatePropagation(); }
     else if (!CM.hidden) { closeCm(); e.preventDefault(); e.stopImmediatePropagation(); }
     else if (!PAL.hidden) { PAL.hidden = true; e.preventDefault(); e.stopImmediatePropagation(); }
     else if (S.paint) { paintStop(); e.preventDefault(); e.stopImmediatePropagation(); }
   }, true);
-  /* ── 여러 칸 — 복사 · 잘라내기 · 붙여넣기 · 지우기 · 채우기 · 되돌리기 / 다시 실행 (엑셀과 같게, 2026-11-24) ──
-     (2026-11-20 사장님 "구글시트 안써도 쓸 수 있는지 체크해줘. 완벽해야해" — 엑셀 · 구글시트에서 늘 하던 일을 오피스에서)
-     · 복사 · 잘라내기 = 움직이는 점선. 잘라낸 칸은 붙여 넣을 때 옮겨진다(붙여 넣기 전엔 그대로 — 엑셀과 같음, 못 쓴 칸의 원래 값은 안 지움)
-     · 붙여넣기 = 엑셀 · 구글시트에서 복사한 표(탭 · 줄바꿈)를 고른 칸부터, 한 칸만 복사했으면 고른 칸 전부에, 고른 범위가 딱 배수면 되풀이.
-       ERP 안에서 복사했으면 칸 서식도 같이 (원래 칸에 서식이 있을 때만) · Ctrl+Shift+V = 값만
-     · 채우기 = 손잡이 끌기 · Ctrl+D · 손잡이 두 번 누르기. 숫자 두 칸 이상이면 이어지는 수, 날짜 · 끝에 숫자가 붙은 글은 하나씩 (Ctrl 을 누르고 끌면 반대)
-     · 못 고치는 칸(합계 · 잔량 · 개인정보 · 사진 · 식스샵프로 · 판매가 · 단가 · 막힌 탭)은 건너뛰고 몇 칸인지 알린다
-     · 한꺼번에 지우기 · 채우기가 BIG 칸을 넘으면 한 번 묻는다 — 남은 재고는 5분 안에 식스샵 품절에 이어지고, 이제 머리글 · 행 번호로 한 번에 많이 골라지므로
-     · 쓰기 = 한 칸 고치기와 같은 길을 묶어서 — 시트(브리지 60칸씩, 그사이 바뀐 칸은 안 덮음) → 저장소(줄마다), 구글을 끊은 탭은 저장소만(칸마다, p_old 로 같은 검사)
-     · 되돌리기 = 이 화면에서 고친 값 · 서식 (탭마다 100번까지, 그사이 다른 사람이 바꾼 칸은 그대로 둠) */
-  const UNDO = new Map(), REDO = new Map(), UNDO_MAX = 100, PASTE_MAX = 2000, BATCH = 60, BIG = 20;
-  function pushUndo(gid, entry) {
-    const st = UNDO.get(gid) || [];
-    st.push(entry);
-    while (st.length > UNDO_MAX) st.shift();
-    UNDO.set(gid, st);
-    REDO.delete(gid);   // 새로 고치면 '다시 실행' 은 비운다 (엑셀)
-  }
-  const rawOf = (gid, r, p) => { const ent = S.cache.get(gid), row = ent && ent.rows && ent.rows.get(r); return row && row.v && row.v[p] != null ? String(row.v[p]) : ''; };
+  /* ── 여러 칸 쓰기 — 한 칸 고치기와 같은 길을 묶어서 (붙여넣기 · 채우기 · 지우기 · 바꾸기 · 되돌리기는 office-grid.js 가 이 writeMany 로) ──
+     (2026-11-20 사장님 "구글시트 안써도 쓸 수 있는지 체크해줘. 완벽해야해") 시트(브리지 60칸씩, 그사이 바뀐 칸은 안 덮음) → 저장소(줄마다), 구글을 끊은 탭은 저장소만(칸마다, p_old 로 같은 검사) */
+  const BATCH = 60;
   function bumpRows(gid, d) {   // 내가 쓴 것 — 다음 확인 때 다시 받지 않게 번호표를 앞당긴다
     const t = tabOf(gid);
     if (!d || !d.rows_ver || !t || !t.info) return;
     const ent = S.cache.get(gid);
     if (ent && ent.rowsVer >= +t.info.rows_ver) ent.rowsVer = +d.rows_ver;
     t.info.rows_ver = Math.max(+t.info.rows_ver, +d.rows_ver);
-  }
-  // 많은 칸을 한꺼번에 바꾸기 전 — 묻고 답을 기다린다 (Esc · 취소 = 안 함)
-  function askBig(text, stk) {
-    return new Promise(res => {
-      const box = document.createElement('div');
-      box.className = 'xask';
-      box.innerHTML = `<div class="xa" role="alertdialog" aria-modal="true"><b>${esc(text)}</b><p>바로 저장돼요${stk ? ' · <b style="display:inline">남은 재고는 5분 안에 식스샵 품절 · 수량에 이어져요</b>' : ''}. 잘못 눌렀으면 취소하세요. (바꾼 뒤에도 Ctrl+Z 로 되돌릴 수 있어요)</p><div class="xa-b"><button type="button" class="no">취소</button><button type="button" class="ok">네, 바꿀게요</button></div></div>`;
-      document.body.appendChild(box);
-      const end = v => { box.remove(); focusCells(); res(v); };
-      box.querySelector('.no').onclick = () => end(false);
-      box.querySelector('.ok').onclick = () => end(true);
-      box.addEventListener('mousedown', e => { if (e.target === box) end(false); });
-      box.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(false); } });
-      box.querySelector('.no').focus();
-    });
-  }
-  function selTsv() {   // 고른 범위 → 엑셀 · 구글시트에 붙는 글 (탭 · 줄바꿈, 칸 속 줄바꿈 · 따옴표는 "…"). 네모가 안 되는 여러 군데면 null
-    const d = curData(), g = selGrid();
-    if (!d || !g) return g === null ? null : '';
-    const byR = new Map(d.rows.map(x => [x.r, x]));
-    const q = v => /[\t\n"]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-    const txt = (r, p) => {
-      const row = byR.get(r), c = row && row.byP[p], col = d.cols.find(x => x.p === p);
-      if (row && col && (col.pro || col.price || col.cost)) return cellRaw(row, col);
-      if (!c) return rawOf(S.cur, r, p);
-      if (c.cb && !c.t) return c.cb === 2 ? 'TRUE' : 'FALSE';
-      return String(c.t == null ? '' : c.t);
-    };
-    return g.rs.map(r => g.ps.map(p => q(txt(r, p))).join('\t')).join('\n');
-  }
-  // 고른 칸들이 '줄 묶음 × 열 묶음' 이면 {rs, ps} (Ctrl 로 떨어진 줄 · 열을 골라도 같은 모양이면 됨 — 엑셀과 같음), 아니면 null
-  function selGrid() {
-    const vr = vIdx(), cs = rngCells();
-    if (!vr || !cs.length) return undefined;
-    const rs = [...new Set(cs.map(x => x.r))].sort((a, b) => vr.ri.get(a) - vr.ri.get(b)), ps = [...new Set(cs.map(x => x.p))].sort((a, b) => vr.ki.get(a) - vr.ki.get(b));
-    return rs.length * ps.length === cs.length ? {rs, ps} : null;
-  }
-  const MULTI_NO = '떨어진 칸들은 줄이나 열이 서로 맞아야 복사할 수 있어요 — 한 덩어리로 골라 주세요';
-  function setClip(tsv, cut) {   // 복사 · 잘라낸 자리 (점선)
-    const g = selGrid(), info = (tabOf(S.cur) || {}).info;
-    if (!g) return;
-    S.clip = {gid: S.cur, cut, tsv: nl(tsv), rs: g.rs, ps: g.ps,
-      rects: [...S.multi.map(m => ({a: Object.assign({}, m.a), b: Object.assign({}, m.b)})), {a: Object.assign({}, ancOf()), b: Object.assign({}, S.cell2 || ancOf())}],
-      fmt: g.rs.map(r => g.ps.map(p => fmtOf(info, r, p)))};
-    S.clip.hasFmt = S.clip.fmt.some(l => l.some(Boolean));
-    if (cut) S.clip.src = g.rs.map(r => g.ps.map(p => { const x = editCtx(S.cur, r, p); return x && !roWhy(x) ? {x, v: rawOf(S.cur, x.r, x.p)} : null; }));   // 옮기고 나서 비울 칸 (지금 값 그대로일 때만 비움)
-    paintRng();
-  }
-  const nl = s => String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/\n$/, '');
-  function parseTsv(text) {
-    let s = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
-    if (s.endsWith('\n')) s = s.slice(0, -1);
-    const out = [[]];
-    let cur = '', q = false;
-    for (let i = 0; i < s.length; i++) {
-      const ch = s[i];
-      if (q) { if (ch === '"') { if (s[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; continue; }
-      if (ch === '"' && cur === '') { q = true; continue; }
-      if (ch === '\t') { out[out.length - 1].push(cur); cur = ''; continue; }
-      if (ch === '\n') { out[out.length - 1].push(cur); cur = ''; out.push([]); continue; }
-      cur += ch;
-    }
-    out[out.length - 1].push(cur);
-    return out;
-  }
-  function pasteTargets(g, one) {   // 붙일 칸 [{r, p, v, si, sk}] (보이는 줄 · 칸 순서, si · sk = 복사한 표의 몇째 줄 · 칸) · 표 밖으로 넘친 칸 수
-    const vr = vIdx(), rs = selRects(), cells = [];
-    let over = 0;
-    if (!vr || !rs.length) return {cells, over};
-    const gh = g.length, gw = Math.max(...g.map(x => x.length));
-    if (gh === 1 && gw === 1 && !one) { rngCells().forEach(x => cells.push({r: x.r, p: x.p, v: g[0][0], si: 0, sk: 0})); return {cells, over}; }   // 한 칸 → 고른 칸 전부
-    if (rs.length > 1) return {cells, over, multi: true};
-    const t = rs[0], H = t.i1 - t.i0 + 1, W = t.k1 - t.k0 + 1;
-    const nh = !one && H % gh === 0 ? H : gh, nw = !one && W % gw === 0 ? W : gw;   // 고른 범위가 복사한 크기의 배수면 되풀이
-    for (let di = 0; di < nh; di++) for (let dk = 0; dk < nw; dk++) {
-      const v = g[di % gh][dk % gw], i = t.i0 + di, k = t.k0 + dk;
-      if (v === undefined) continue;
-      if (i >= vr.list.length || k >= vr.cols.length) { over++; continue; }
-      cells.push({r: vr.list[i].r, p: vr.cols[k].p, v, si: di % gh, sk: dk % gw});
-    }
-    return {cells, over};
-  }
-  // 여러 칸에 값 쓰기 (붙여넣기 · 채우기 · 한꺼번에 넣기) — list [{r, p, v}], opt: ask(칸 수 → 물어볼 글) · fmt [{r, p, f}] · over · undo(앞뒤로 같이 되돌릴 칸)
-  async function applyCells(list, label, opt) {
-    opt = opt || {};
-    const gid = S.cur, items = [];
-    let skip = 0;
-    list.forEach(tg => {
-      const x = editCtx(gid, tg.r, tg.p);
-      if (!x || roWhy(x)) { skip++; return; }
-      let v = String(tg.v);
-      if (x.check) {
-        const k = v.trim();
-        if (/^(true|1|y|yes|o|v|✓|☑|체크)$/i.test(k)) v = 'TRUE'; else if (/^(false|0|n|no|x|)$/i.test(k)) v = 'FALSE'; else { skip++; return; }
-      }
-      if (v === rawOf(gid, x.r, x.p)) { tg.same = true; return; }   // 이미 같은 값
-      items.push({x, v, tg});
-    });
-    const fmts = (opt.fmt || []).filter(f => { const x = editCtx(gid, f.r, f.p); return x && x.row < PAST_R0; });
-    if (!items.length && !fmts.length) { toast(skip ? `바꿀 수 있는 칸이 없어요 (못 고치는 칸 ${skip}개)` : '바뀐 칸이 없어요', !!skip); return null; }
-    if (opt.ask && items.length > BIG && !(await askBig(opt.ask(items.length), items.some(it => it.x.col && it.x.col.stock)))) return null;
-    if (gid !== S.cur) return null;
-    items.forEach(it => S.stick.add(it.x.row));   // 걸러 보는 중이어도 고친 줄은 그대로 보이게
-    const e = {label, cells: []};
-    if (fmts.length) {
-      const info = (tabOf(gid) || {}).info, m = new Map(fmts.map(f => [`${f.r}:${f.p}`, f.f]));
-      e.fmt = fmts.map(f => ({r: f.r, p: f.p, f: fmtOf(info, f.r, f.p), g: f.f || null}));
-      fmtApply((o, x) => Object.assign({}, m.get(`${x.r}:${x.p}`) || {}), label, fmts.map(f => ({r: f.r, p: f.p})), true, true);
-    }
-    const res = items.length ? await writeMany(gid, items, label, {noUndo: true}) : {ok: 0, fail: 0, why: '', cells: []};
-    e.cells = res.cells;
-    if (opt.then) await opt.then(res, e);
-    if (e.cells.length || e.fmt) pushUndo(gid, e);
-    toast(`${label} · ${res.ok || (e.fmt ? e.fmt.length : 0)}칸${res.fail ? ` · 못 씀 ${res.fail}칸 (${res.why})` : ''}${skip ? ` · 못 고치는 칸 ${skip}개 건너뜀` : ''}${opt.over ? ` · 표 밖 ${opt.over}칸은 빠짐` : ''}`, !!res.fail);
-    return res;
-  }
-  function pasteText(text, opt) {
-    opt = opt || {};
-    if (!hasCell()) { toast('붙여 넣을 칸을 먼저 눌러 고르세요', true); return; }
-    const g = parseTsv(text), cl = S.clip && S.clip.tsv === nl(text) ? S.clip : null, move = !!(cl && cl.cut);   // ERP 안에서 복사한 것인지
-    if (!g.length || (g.length === 1 && g[0].length === 1 && g[0][0] === '' && !cl)) return;
-    const {cells, over, multi} = pasteTargets(g, move);
-    if (multi) { toast('떨어진 여러 칸에는 한 칸만 복사해서 붙여 넣을 수 있어요', true); return; }
-    if (!cells.length) { toast('붙여 넣을 칸을 먼저 눌러 고르세요', true); return; }
-    if (cells.length > PASTE_MAX) { toast(`한 번에 ${PASTE_MAX.toLocaleString()}칸까지 붙여 넣을 수 있어요 — 나눠서 붙여 주세요`, true); return; }
-    const a = cells[0], b = cells[cells.length - 1], gid = S.cur;
-    const fmt = cl && cl.hasFmt && !opt.vals ? cells.map(c => ({r: c.r, p: c.p, f: (cl.fmt[c.si] || [])[c.sk] || null})) : null;
-    const go = applyCells(cells, move ? '옮기기' : opt.vals ? '값만 붙여넣기' : '붙여넣기', {fmt, over, then: move ? async (res, e) => {
-      // 옮기기 — 붙은 칸의 원래 자리만 비운다 (붙인 자리와 겹치면 그대로). 다른 탭에서 잘라 왔으면 그 탭에
-      const okKey = new Set(res.cells.map(c => ck(c.r, c.p))), dest = new Set(cells.map(c => ck(c.r, c.p))), items = [];
-      cells.forEach(c => {
-        const s = cl.src && (cl.src[c.si] || [])[c.sk];
-        if (!s || s.v === '' || !(okKey.has(ck(c.r, c.p)) || c.same)) return;
-        if (cl.gid === gid && dest.has(ck(s.x.row, s.x.p))) return;
-        items.push({x: s.x, v: s.x.check ? 'FALSE' : '', old: s.v});
-      });
-      if (!items.length) return;
-      const r2 = await writeMany(cl.gid, items, '옮기기', {noUndo: true});
-      if (cl.gid === gid) e.cells = e.cells.concat(r2.cells); else if (r2.cells.length) pushUndo(cl.gid, {label: '옮기기', cells: r2.cells});
-      if (r2.fail) toast(`옮기기 — 원래 칸 ${r2.fail}개는 그사이 바뀌어 안 비웠어요`, true);
-    } : null});
-    if (cells.length > 1 && !(g.length === 1 && g[0].length === 1)) { S.multi = []; S.anc = null; S.cell = {gid, r: a.r, p: a.p}; S.cell2 = {r: b.r, p: b.p}; }   // 붙인 자리를 고른 채로 (엑셀)
-    if (move) S.clip = null;
-    paintRng();
-    return go;
-  }
-  async function clearSel(label) {
-    const cs = rngCells(), list = [];
-    let skip = 0, nFull = 0;
-    cs.forEach(c => {
-      const x = editCtx(S.cur, c.r, c.p);
-      if (!x || roWhy(x)) { if (x && x.cell && hasVal(x.cell)) skip++; return; }
-      if (x.check ? x.cell && x.cell.cb === 2 : rawOf(S.cur, x.r, x.p) !== '') { nFull++; list.push({r: c.r, p: c.p, v: x.check ? 'FALSE' : ''}); }
-    });
-    label = label || '지우기';
-    if (!list.length) { toast(skip ? `지울 수 있는 칸이 없어요 (못 고치는 칸 ${skip}개)` : '지울 값이 없어요', !!skip); return; }
-    await applyCells(list, label, {ask: n => `글이 든 칸 ${n}개를 지울까요?`});
-  }
-  /* 채우기 */
-  const DATE_FILL = [   // 하루씩 늘리는 날짜 꼴 (연-월-일 · 연.월.일 · 월/일)
-    [/^(\d{4})-(\d{1,2})-(\d{1,2})$/, (d, t) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`],
-    [/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/, d => `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}`],
-    [/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/, d => `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`],
-    [/^()(\d{1,2})\/(\d{1,2})$/, d => `${d.getMonth() + 1}/${d.getDate()}`],
-  ];
-  function asDate(t) {
-    for (let i = 0; i < DATE_FILL.length; i++) {
-      const m = t.match(DATE_FILL[i][0]);
-      if (!m || +m[2] < 1 || +m[2] > 12 || +m[3] < 1 || +m[3] > 31) continue;
-      return {kind: i, n: Math.round(Date.UTC(m[1] ? +m[1] : new Date().getFullYear(), +m[2] - 1, +m[3]) / 864e5)};
-    }
-    return null;
-  }
-  const dateText = (kind, n) => { const u = new Date(n * 864e5); return DATE_FILL[kind][1](new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate())); };
-  /* 원래 값들 → n 번째(1부터) 다음 값을 내는 함수. 숫자 한 칸 = 그대로 · 두 칸 이상 = 이어지는 수, 날짜 · 끝이 숫자인 글 = 하나씩. flip(Ctrl) 이면 반대 (엑셀) */
-  function fillSeries(vals, flip) {
-    const L = vals.length, rep = n => vals[(n - 1) % L], t = vals.map(v => String(v).trim());
-    if (!L) return () => '';
-    const nums = t.map(v => (/^-?[\d,]*\.?\d+$/.test(v) ? numOf(v) : null));
-    if (nums.every(v => v !== null)) {
-      const comma = t.some(v => /\d,\d{3}/.test(v)), out = v => { const x = Math.round(v * 1e6) / 1e6; return comma ? x.toLocaleString('en-US', {maximumFractionDigits: 6}) : String(x); };
-      if (L === 1) return flip ? n => out(nums[0] + n) : rep;
-      if (flip) return rep;
-      const mx = (L - 1) / 2, my = nums.reduce((a, b) => a + b, 0) / L;   // 엑셀과 같은 선형 추세
-      const b = nums.reduce((s, y, x) => s + (x - mx) * (y - my), 0) / nums.reduce((s, y, x) => s + (x - mx) * (x - mx), 0);
-      return n => out(my + b * (L - 1 + n - mx));
-    }
-    const ds = t.map(asDate);
-    if (ds.every(d => d && d.kind === ds[0].kind)) {
-      if (flip) return rep;
-      const step = L === 1 ? 1 : ds[1].n - ds[0].n;
-      if (L < 3 || ds.every((d, i) => !i || d.n - ds[i - 1].n === step)) return n => dateText(ds[0].kind, ds[L - 1].n + step * n);
-      return rep;
-    }
-    const ms = t.map(v => v.match(/^([^\n]*?\D)(\d{1,6})$/));
-    if (!flip && ms.every(m => m && m[1] === ms[0][1] && !/https?:/.test(m[1]))) {
-      const a = ms.map(m => +m[2]), step = L === 1 ? 1 : a[1] - a[0], w = /^0/.test(ms[0][2]) ? ms[0][2].length : 0;
-      if (L < 3 || a.every((x, i) => !i || x - a[i - 1] === step)) return n => ms[0][1] + String(Math.abs(a[L - 1] + step * n)).padStart(w, '0');
-    }
-    return rep;
-  }
-  const rawAt = (i, k) => { const vr = S.vr, row = vr.list[i], col = vr.cols[k], c = row.byP[col.p]; return c ? (c.cb && !c.t ? (c.cb === 2 ? 'TRUE' : 'FALSE') : String(c.t == null ? '' : c.t)) : ''; };
-  // 손잡이를 끈 자리 → 채울 네모 (세로 · 가로 중 더 멀리 끈 쪽)
-  function fillRect(s, a) {
-    const vr = vIdx(), i = vr.ri.get(a.r), k = vr.ki.get(a.p);
-    if (i === undefined || k === undefined) return null;
-    const dv = i > s.i1 ? i - s.i1 : i < s.i0 ? i - s.i0 : 0, dh = k > s.k1 ? k - s.k1 : k < s.k0 ? k - s.k0 : 0;
-    if (!dv && !dh) return null;
-    if (Math.abs(dv) >= Math.abs(dh)) return dv > 0 ? {dir: 'down', i0: s.i1 + 1, i1: i, k0: s.k0, k1: s.k1} : {dir: 'up', i0: i, i1: s.i0 - 1, k0: s.k0, k1: s.k1};
-    return dh > 0 ? {dir: 'right', i0: s.i0, i1: s.i1, k0: s.k1 + 1, k1: k} : {dir: 'left', i0: s.i0, i1: s.i1, k0: k, k1: s.k0 - 1};
-  }
-  function fillList(s, t, flip) {   // [{r, p, v, si, sk}]
-    const out = [], vert = t.dir === 'down' || t.dir === 'up', back = t.dir === 'up' || t.dir === 'left';
-    const line = (vals, put, n) => { const f = fillSeries(back ? vals.slice().reverse() : vals, flip); for (let q = 1; q <= n; q++) put(q, f(q)); };
-    if (vert) for (let k = t.k0; k <= t.k1; k++) {
-      const vals = [];
-      for (let i = s.i0; i <= s.i1; i++) vals.push(rawAt(i, k));
-      line(vals, (q, v) => { const i = back ? t.i1 + 1 - q : t.i0 - 1 + q; out.push(Object.assign(vAt(i, k), {v, si: back ? s.i1 - (q - 1) % vals.length : s.i0 + (q - 1) % vals.length, sk: k})); }, t.i1 - t.i0 + 1);
-    }
-    else for (let i = t.i0; i <= t.i1; i++) {
-      const vals = [];
-      for (let k = s.k0; k <= s.k1; k++) vals.push(rawAt(i, k));
-      line(vals, (q, v) => { const k = back ? t.k1 + 1 - q : t.k0 - 1 + q; out.push(Object.assign(vAt(i, k), {v, si: i, sk: back ? s.k1 - (q - 1) % vals.length : s.k0 + (q - 1) % vals.length})); }, t.k1 - t.k0 + 1);
-    }
-    return out;
-  }
-  function fillPreview(a) {
-    const D = DG.on, t = fillRect(D.src, a), key = t ? `${t.dir}${t.i0},${t.i1},${t.k0},${t.k1}` : '';
-    if (key === D.key) return;
-    D.key = key;
-    D.to = t;
-    S.fprev = t ? new Set(edgeMap([t], new Map()).keys()) : null;
-    paintRng();
-    if (!t) { hideTip(); return; }
-    const end = t.dir === 'down' ? vAt(t.i1, t.k0) : t.dir === 'up' ? vAt(t.i0, t.k0) : t.dir === 'right' ? vAt(t.i0, t.k1) : vAt(t.i0, t.k0);
-    const z = fillList(D.src, t, false).find(x => x.r === end.r && x.p === end.p);
-    if (z) cellTip(end.r, end.p, short(z.v), false, 4000);
-  }
-  function fillApply(D) {
-    S.fprev = null;
-    hideTip();
-    const s = D.src, t = D.to;
-    if (!s || !t) { paintRng(); return; }
-    runFill(s, t, DG.flip);
-  }
-  function runFill(s, t, flip, ask) {
-    const list = fillList(s, t, flip), info = (tabOf(S.cur) || {}).info;
-    const fs = list.map(c => { const o = vAt(c.si, c.sk); return {r: c.r, p: c.p, f: fmtOf(info, o.r, o.p)}; });
-    const a = vAt(Math.min(s.i0, t.i0), Math.min(s.k0, t.k0)), b = vAt(Math.max(s.i1, t.i1), Math.max(s.k1, t.k1));
-    S.multi = [];
-    S.anc = null;
-    S.cell = {gid: S.cur, r: a.r, p: a.p};
-    S.cell2 = a.r === b.r && a.p === b.p ? null : b;
-    paintRng();
-    return applyCells(list, '채우기', {fmt: fs.some(x => x.f) ? fs : null, ask});
-  }
-  function fillDown() {   // Ctrl+D — 고른 범위 맨 윗줄을 아래로 (한 줄만 골랐으면 바로 윗줄 값을 — 엑셀과 같음)
-    const rs = selRects(), vr = vIdx(), list = [], fmts = [], info = (tabOf(S.cur) || {}).info;
-    if (!rs.length) return;
-    rs.forEach(t => {
-      const src = t.i1 > t.i0 ? t.i0 : t.i0 - 1;
-      if (src < 0) return;
-      for (let k = t.k0; k <= t.k1; k++) for (let i = t.i1 > t.i0 ? t.i0 + 1 : t.i0; i <= t.i1; i++) {
-        const o = vAt(src, k), c = vAt(i, k);
-        list.push(Object.assign(c, {v: rawAt(src, k)}));
-        fmts.push({r: c.r, p: c.p, f: fmtOf(info, o.r, o.p)});
-      }
-    });
-    if (!list.length || !vr) { toast('맨 윗줄이라 위에서 가져올 값이 없어요', true); return; }
-    applyCells(list, '아래로 채우기', {fmt: fmts.some(x => x.f) ? fmts : null, ask: n => `아래로 채우기로 칸 ${n}개를 바꿀까요?`});
-  }
-  function fillToEnd() {   // 손잡이 두 번 누르기 — 옆 칸에 글이 이어진 데까지 아래로 (엑셀)
-    const s = curRect(), vr = vIdx();
-    if (!s || !vr || selRects().length > 1) return;
-    const run = k => { if (k < 0 || k >= vr.cols.length) return 0; let i = s.i1 + 1; while (i < vr.list.length && !vr.list[i].past && !cellBlank(vr.list[i], vr.cols[k])) i++; return i - 1 - s.i1; };
-    const n = run(s.k0 - 1) || run(s.k1 + 1);
-    if (!n) { toast('옆 칸에 이어진 글이 없어서 어디까지 채울지 몰라요 — 손잡이를 끌어 주세요'); return; }
-    runFill(s, {dir: 'down', i0: s.i1 + 1, i1: s.i1 + n, k0: s.k0, k1: s.k1}, false, m => `아래로 ${m}칸을 채울까요?`);
   }
   // 화면 먼저 새 값 (한 번에 그림) · 끝나면 한 번에 맞춤 — 한 칸 고치기의 showPending · settle 과 같은 규칙
   function pendBatch(gid, cells) {
@@ -6033,64 +4769,6 @@
     okc.slice(0, 100).forEach(c => logEdit(c.x, c.old, c.v, true));
     return res;
   }
-  /* 되돌리기 · 다시 실행 — 한 번에 한 일 하나씩 (값 · 서식 같이) */
-  function undo() { stepBack(false); }
-  function redo() { stepBack(true); }
-  function stepBack(again) {
-    const gid = S.cur, from = again ? REDO : UNDO, to = again ? UNDO : REDO, st = from.get(gid), word = again ? '다시 실행' : '되돌리기';
-    if (!st || !st.length) {
-      if (!again && window.OfficeUndo && OfficeUndo.can()) { OfficeUndo.undo(); return; }   // 칸 말고 다른 일(매핑 등) — 오피스 공용 되돌리기 (office-undo.js)
-      toast(again ? '다시 실행할 게 없어요' : '되돌릴 게 없어요 (이 화면에서 이 탭에 한 일만 되돌려요)', true); return;
-    }
-    const e = st.pop(), val = c => (again ? c.after : c.before), cur = c => (again ? c.before : c.after);
-    const keep = () => { const q = to.get(gid) || []; q.push(e); to.set(gid, q); };
-    const cells = e.cells || [];
-    if (e.fmt) {   // 서식
-      const m = new Map(e.fmt.map(c => [`${c.r}:${c.p}`, again ? c.g : c.f]));
-      fmtApply((f, x) => Object.assign({}, m.get(`${x.r}:${x.p}`) || {}), `${word} (${e.label})`, e.fmt.map(c => ({r: c.r, p: c.p})), true, cells.length > 0);
-      if (!cells.length) { keep(); return; }
-    }
-    const items = [];
-    let skip = 0;
-    cells.forEach(c => {
-      const x = editCtx(gid, c.r, c.p);
-      if (!x || roWhy(x)) { skip++; return; }
-      if (norm(rawOf(gid, c.r, c.p)) !== norm(cur(c))) { skip++; return; }   // 그사이 바뀐 칸은 그대로
-      items.push({x, v: val(c), old: rawOf(gid, c.r, c.p)});
-    });
-    if (!items.length) { toast(`${word}할 수 없어요 — 그사이 바뀌었거나 지금 안 보이는 칸 ${skip}개`, true); if (e.fmt) keep(); return; }
-    keep();
-    items.forEach(it => S.stick.add(it.x.row));
-    if (cells.length && hasCell()) {   // 되돌린 자리를 보여 준다 (엑셀)
-      const vr = vIdx(), a = cells[0];
-      if (vr && vr.ri.get(a.r) !== undefined && vr.ki.get(a.p) !== undefined) selectCell(a.r, a.p);
-    }
-    writeMany(gid, items, word, {noUndo: true}).then(r => toast(`${word} (${e.label}) · ${r.ok}칸${r.fail ? ` · 못 씀 ${r.fail}칸` : ''}${skip ? ` · 그대로 둔 칸 ${skip}개` : ''}`, !!r.fail));
-  }
-  const gridKeys = () => !CE.x && hasCell() && cellMode() && (document.activeElement === CE.el || document.activeElement === grid);
-  function clipEvent(e, cut) {
-    if (!gridKeys() || !e.clipboardData) return;
-    const tsv = selTsv();
-    if (tsv === null) { e.preventDefault(); toast(MULTI_NO, true); return; }
-    if (tsv === undefined || !rngCells().length) return;
-    e.clipboardData.setData('text/plain', tsv);
-    e.preventDefault();
-    setClip(tsv, cut);
-    idleReset();
-    toast(cut ? `잘라내기 · ${rngCells().length}칸 — 옮길 칸에 붙여 넣으세요` : `복사 · ${rngCells().length}칸`);
-  }
-  document.addEventListener('copy', e => clipEvent(e, false));
-  document.addEventListener('cut', e => clipEvent(e, true));
-  document.addEventListener('paste', e => {
-    if (!gridKeys()) return;
-    const text = e.clipboardData && e.clipboardData.getData('text/plain');
-    e.preventDefault();
-    if (!text && !S.clip) { toast('붙여 넣을 글이 없어요 (그림은 칸에 못 넣어요)'); return; }
-    pasteText(text || '', {vals: Date.now() - (S.pasteVals || 0) < 800});
-    S.pasteVals = 0;
-    idleReset();
-  });
-
   /* ── 머리글 ▾ — 정렬 · 값으로 걸러보기 (엑셀 자동 필터) ── 걸러 둔 것은 이 화면에서 그 탭에만 (다른 사람 화면 · 저장소와 상관없음) */
   const COLM = $('colm');
   let CF = null;
@@ -6186,46 +4864,8 @@
     else if (k === 'nosort') applyCol(v => { v.sort = null; });
     else if (k === 'noflt') applyCol(v => { const cf = Object.assign({}, v.cf || {}); delete cf[p]; v.cf = Object.keys(cf).length ? cf : null; });
   });
-  document.addEventListener('pointerdown', e => { if (!COLM.hidden && !e.target.closest('#colm,.hm')) closeColMenu(); if (!$('xhelp').hidden && !e.target.closest('#xhelp,[data-fmt="help"]')) $('xhelp').hidden = true; }, true);
+  document.addEventListener('pointerdown', e => { if (!COLM.hidden && !e.target.closest('#colm,.hm')) closeColMenu(); }, true);
   addEventListener('resize', closeColMenu);
-
-  /* 단축키 안내 */
-  function toggleHelp(btn) {
-    const h = $('xhelp');
-    if (!h.hidden) { h.hidden = true; return; }
-    const M1 = IS_MAC ? '⌘' : 'Ctrl', L = [
-      ['누르기 · 끌기', '칸 고르기 · 네모 범위 고르기'],
-      ['Shift+누르기 · Shift+화살표', '여기까지 범위로 고르기'],
-      [`${M1}+누르기 · 끌기`, '떨어진 칸 더 고르기 (고른 칸을 다시 누르면 빼기)'],
-      ['머리글 · 행 번호', '열 전체 · 줄 전체 고르기 (끌기 · Shift · ' + M1 + ' 도) · 왼쪽 위 ‘행’ = 전부'],
-      ['행 번호 두 번 누르기', '그 줄 상세 창'],
-      ['두 번 누르기 · F2', '글자 사이에서 고치기'],
-      ['바로 글자 치기', '새로 쓰기 (화살표 · Enter · Tab 으로 저장하고 옮김)'],
-      ['Enter · Shift+Enter', '아래 · 위로'],
-      ['Tab · Shift+Tab', '오른쪽 · 왼쪽으로'],
-      ['Alt+Enter', '칸 안에서 줄바꿈'],
-      [`${M1}+Enter`, '고른 칸 전부에 같은 값 넣기'],
-      ['Alt+↓', '같은 열에 쓴 값에서 고르기'],
-      ['Esc', '고치기 취소 · 복사 점선 없애기'],
-      ['Delete · Backspace', '지우기 · 비우고 고치기'],
-      [`${M1}+C · X · V`, '복사 · 잘라내기(옮기기) · 붙여넣기 (엑셀 · 구글시트와 주고받기)'],
-      [`${M1}+Shift+V`, '값만 붙여넣기'],
-      [`${M1}+Z · ${M1}+Y`, '되돌리기 · 다시 실행'],
-      [`${M1}+D · 파란 네모 끌기`, '아래로 채우기 · 끌어서 채우기 (두 번 누르면 끝까지)'],
-      [`${M1}+화살표 (+Shift)`, '글이 이어진 끝으로 가기 (고르기)'],
-      [`Home · End · ${M1}+Home · End`, '줄 처음 · 끝 · 표 처음 · 끝'],
-      ['PageUp · PageDown', '한 화면 위 · 아래 (Alt 와 같이 = 옆으로)'],
-      [`Shift+Space · ${M1}+Space`, '줄 전체 · 열 전체 고르기'],
-      [`${M1}+A`, '전부 고르기'],
-      [`${M1}+; · ${M1}+B · ${M1}+F`, '오늘 날짜 · 굵게 · 찾기'],
-      ['머리글 ▾', '정렬 · 값으로 걸러보기'],
-    ];
-    h.innerHTML = '<h4>단축키 — 엑셀과 같아요</h4><dl>' + L.map(x => `<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('') + '</dl>';
-    h.hidden = false;
-    const rc = btn.getBoundingClientRect(), w = h.offsetWidth, hh = h.offsetHeight;
-    h.style.left = Math.max(8, Math.min(rc.right - w, innerWidth - w - 8)) + 'px';
-    h.style.top = Math.max(8, Math.min(rc.bottom + 6, innerHeight - hh - 8)) + 'px';
-  }
 
   /* ── 칸 너비 끌기 (머리글 오른쪽 끝) — 끄는 동안은 세로 줄만 보여 주고, 놓으면 그 너비로 다시 그린다 ── */
   const RZ = {on: null, line: null, tip: null, justDragged: 0};
@@ -6277,6 +4917,8 @@
     renderHead();
     renderGrid({keep: true});
   });
+  $('hcTog').addEventListener('click', () => showHidden('col'));
+  $('hrTog').addEventListener('click', () => showHidden('row'));
   $('cfReset').addEventListener('click', () => { const v = vstate(); v.cf = null; S.stick.clear(); renderHead(); renderGrid({keep: true}); });
   $('wReset').addEventListener('click', () => {
     const all = colWAll();
@@ -6887,7 +5529,8 @@
     const cells = h.after && Array.isArray(h.after.cells) ? h.after.cells : [];
     if (!cells.length) return '<div class="lch lop">서식 바꿈</div>';
     const what = [];
-    if (cells.every(c => !+c.b && !+c.w && !c.fg && !c.bg)) what.push('서식 지움');
+    const ex = [['i', '기울임'], ['u', '밑줄'], ['s', '취소선'], ['sz', '글자 크기'], ['al', '맞춤'], ['bd', '테두리'], ['nf', '숫자 모양']].filter(x => cells.some(c => c[x[0]])).map(x => x[1]), note = (cells.find(c => c.n && c.n !== '\u200b') || {}).n;   // 2026-11-24 글자 모양 · 메모
+    if (cells.every(c => !+c.b && !+c.w && !c.fg && !c.bg) && !ex.length && !note) what.push('서식 지움');
     else {
       const w = (cells.find(c => +c.w) || {}).w;
       if (cells.some(c => +c.b)) what.push('<b>굵게</b>');
@@ -6895,6 +5538,8 @@
       const fg = (cells.find(c => c.fg) || {}).fg, bg = (cells.find(c => c.bg) || {}).bg;
       if (fg) what.push(`글자 색 <i class="sw" style="background:${safeColor(fg)}"></i>`);
       if (bg) what.push(`칸 색 <i class="sw" style="background:${safeColor(bg)}"></i>${/^#f{3}(f{3})?$/i.test(bg) ? ' (흰색)' : ''}`);
+      what.push(...ex);
+      if (note) what.push(`메모 ‘${esc(short(note))}’`);
     }
     const cols = [...new Set(cells.map(c => head.names[c.p] || `${colName(c.p)}열`))], rows = new Set(cells.map(c => c.r));
     const where = `${cols.slice(0, 3).join(' · ')}${cols.length > 3 ? ` 외 ${cols.length - 3}열` : ''}${cells.length > 1 ? ` · ${cells.length}칸` : ''}${rows.size > 1 ? ` (${rows.size}줄)` : ''}`;
