@@ -240,7 +240,8 @@ async function track(cfg: Cfg, invcIn: string) {
   }
   const list = Array.isArray(j.DATA) ? j.DATA : j.DATA ? [j.DATA] : [];
   const steps = list.map((x: Record<string, unknown>) => {
-    const d = String(x.SCAN_YMD ?? ''), h = String(x.SCAN_HOUR ?? '').padStart(6, '0');
+    // 단건 조회는 '2026-11-24' · '16:21:08' 처럼 구분자를 붙여 준다 (대량 조회는 숫자만) → 숫자만 남겨 읽는다
+    const d = String(x.SCAN_YMD ?? '').replace(/\D/g, ''), h = String(x.SCAN_HOUR ?? '').replace(/\D/g, '').padStart(6, '0');
     const at = /^\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)} ${h.slice(0, 2)}:${h.slice(2, 4)}` : '';
     return { at, step: String(x.CRG_ST_NM ?? '').trim(), code: String(x.CRG_ST ?? '').trim(), place: String(x.DEALT_BRAN_NM ?? '').trim() };
   // 같은 시각에 여러 단계가 찍히면(2026-11-24 CJ 개발 서버 수기 자료: 집화 · 배송출발 · 배송완료가 같은 초) 단계 코드 순(11 집화 < 82 배송출발 < 91 배송완료)
@@ -328,7 +329,7 @@ async function sync(cfg: Cfg) {
       for (const x of arr) {
         const use = String(x.CUST_USE_NO ?? '').trim(), inv = String(x.INVC_NO ?? '').replace(/\D/g, '');
         if (!use || !inv) continue;
-        const at = `${String(x.SCAN_YMD ?? '')}${String(x.SCAN_HOUR ?? '').padStart(6, '0')}`;
+        const at = `${String(x.SCAN_YMD ?? '').replace(/\D/g, '')}${String(x.SCAN_HOUR ?? '').replace(/\D/g, '').padStart(6, '0')}`;
         const p = last.get(use), code = String(x.CRG_ST ?? '').trim();
         // 같은 시각이면 단계 코드가 뒤인 것 (전엔 먼저 온 줄이 남아 배송완료 건이 '집화처리'로 적혔음)
         if (!p || at > p.at || (at === p.at && stepRank(code) > stepRank(p.code))) last.set(use, { inv, at, code, name: String(x.CRG_ST_NM ?? '').trim() });
