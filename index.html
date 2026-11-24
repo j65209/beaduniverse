@@ -40294,7 +40294,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   /* ===== 인사팀 직원 생일 — staff_birthdays (staff_name PK, birth_md 'MM-DD' · 연도는 안 받는다) (2026-11-24)
      · 사장님 "각자 생일들 다 직원연락처처럼 써줘. 몇일 남았는지도" → 직원 연락처와 같은 칸 · 같은 권한
      · 전 직원이 본다 (등록된 사람만). 관리자(마스터 PIN)는 미등록까지 + 등록 · 수정 (#bdayModal)
-     · 처음 값은 근로계약서 주민번호 앞자리의 월 · 일 (계약서에 칸이 빈 사람 · 대표는 미등록)
+     · 처음 값은 근로계약서의 월 · 일 (주민번호 앞자리, 없으면 생년월일 칸). 대표는 목록에서 뺀다
      · 다가오는 생일 순 — 오늘이면 '🎂 오늘', 아니면 D-N */
   const _staffBdays=new Map();
   let _bdayLoaded=false;
@@ -40353,7 +40353,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     if(!panel || !list) return;
     const me=_diaryGetMe();
     const master=isMaster();
-    const all=_phonePeople();
+    const all=_phonePeople().filter(s=>!s.ceo);   // 대표는 생일 목록에서 뺀다 (사장님 "대표는 필요없지")
     const people=master?all:all.filter(s=>getStaffBday(s.name));
     if(!_bdayLoaded || !people.length){ panel.hidden=true; return; }
     panel.hidden=false;
