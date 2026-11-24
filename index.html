@@ -5561,6 +5561,28 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-cd-h b{font-size:12.5px;font-weight:800;color:var(--kko-ink)}
   .kko-cd-t{padding:9px 12px;border-radius:10px;background:#f5f5f5;font-size:13.5px;line-height:1.55;color:var(--kko-ink);white-space:pre-wrap;overflow-wrap:anywhere}
   .kko-cd-w{font-size:11.5px;font-weight:700;color:var(--kko-redt)}
+  .kko-cd-w:empty{display:none}
+  /* 보낼 답 고르기 (11-24 사장님 "타이핑 안치고 예상답변이나 전달 답변을 선택해서") — 문의 종류 칩 · 고를 답 · 고쳐 쓰는 칸 */
+  .kko-chat-draft:has(.kko-pk-ta){max-height:46vh}
+  .kko-chat-draft>*{flex:none}
+  .kko-pk-int{display:flex;gap:5px;overflow-x:auto;padding:1px 0 2px;scrollbar-width:none;flex:none}
+  .kko-pk-int::-webkit-scrollbar{display:none}
+  .kko-pk-int button{flex:none;min-height:28px;padding:0 10px;border-radius:999px;border:1px solid #e3e3e3;background:#fff;color:#555;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .kko-pk-int button:hover{background:#f5f5f5}
+  .kko-pk-int button.on{background:var(--kko-ink);border-color:var(--kko-ink);color:#fff}
+  .kko-pk-list{display:flex;flex-direction:column;gap:5px}
+  .kko-pk{display:flex;flex-direction:column;gap:3px;width:100%;padding:8px 11px;border-radius:10px;border:1.5px solid transparent;background:#f5f5f5;text-align:left;font:inherit;color:var(--kko-ink);cursor:pointer}
+  .kko-pk:hover{background:#ededed}
+  .kko-pk.on{border-color:var(--kko-ink);background:#fff}
+  .kko-pk[disabled]{opacity:.45;cursor:default}
+  .kko-pk .l{display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;font-weight:800;color:var(--kko-gray)}
+  .kko-pk .lt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kko-pk .l em{flex:none;font-style:normal;font-weight:700;padding:1px 6px;border-radius:999px;background:#e6e6e6;color:#555;font-size:10.5px}
+  .kko-pk .l em.hot{background:var(--kko-yellow);color:var(--kko-ink)}
+  .kko-pk .t{font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+  .kko-pk-none{padding:8px 11px;border-radius:10px;background:#f5f5f5;font-size:12px;color:var(--kko-gray)}
+  .kko-pk-ta{flex:none;width:100%;box-sizing:border-box;min-height:76px;padding:9px 12px;border-radius:10px;border:1.5px solid #dcdcdc;background:#fff;font:inherit;font-size:13.5px;line-height:1.55;color:var(--kko-ink);resize:vertical}
+  .kko-pk-ta:focus{outline:none;border-color:var(--kko-ink)}
   .kko-chat-foot{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #e9e9e9;font-size:11.5px;color:var(--kko-gray)}
   .kko-chat-draft:not(:empty)+.kko-chat-foot{border-top:0}
   .kko-chat-foot>span{flex:1 1 170px;min-width:0}
@@ -17908,7 +17930,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const KKO_WHO={customer:'고객',staff:'직원',ai:'카나나',bot:'자동응답',system:'안내',auto:'자동 안내'};
   const KKO_KIND={photo:'사진',video:'동영상',file:'파일',card:'카드',emoticon:'이모티콘',deleted:'지운 글',media:'사진 · 파일'};
   const KKO_FAQ_TTL=10*60000, KKO_AGENT_STALE_SEC=600;   // 예상 질문 · 답은 10분마다 다시 (옆 학습 세션이 고쳐 올림) · 에이전트 판정 10분 넘으면 경고 (2분마다 돎)
-  const _kko={data:null,err:'',loading:false,brand:'all',only:'',timer:null,showCh:false,tab:'chat',faq:null,faqErr:'',faqBrand:'',faqAt:0,faqLoading:false,faqHtml:'',drafts:null,draftsAt:0,draftsErr:'',chat:null,chatLocked:false,learnHtml:''};
+  const _kko={data:null,err:'',loading:false,brand:'all',only:'',timer:null,showCh:false,tab:'chat',faq:null,faqErr:'',faqBrand:'',faqAt:0,faqLoading:false,faqHtml:'',drafts:null,draftsAt:0,draftsErr:'',chat:null,chatLocked:false,learnHtml:'',picks:null,picksAt:0,picksErr:'',picksLoading:false};
+  // 직원 답 고르기 학습 (11-24) — 고른 답 기록(kko_picks)은 5분마다 다시 · 최근 120일 · 같은 답을 그대로 3번 넘게(80% 넘게 그대로) 고른 문의 = 자동 답 후보
+  const KKO_PICK_TTL=5*60000, KKO_PICK_DAYS=120, KKO_AUTO_MIN=3, KKO_PICK_MAX=6;
   // 카카오톡 기본 프로필(하늘빛 바탕 흰 사람) · 사진 배지 그림
   const KKO_AV='<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="19" r="8.5" fill="#fff"/><path d="M7 48c0-9.9 7.6-16.5 17-16.5S41 38.1 41 48z" fill="#fff"/></svg>';
   const KKO_IMG_ICON='<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.6" cy="6.4" r="1.25" fill="currentColor"/><path d="M2.6 12.2l3.7-3.5 2.5 2.3 2-1.7 2.6 2.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
@@ -17944,6 +17968,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       _kko.loading=false; kkoRender(); if(_kko.chat) kkoChatLoad();
       // 학습 줄 · 초안 근거에 쓰는 예상 질문 · 답 — 처음 한 번, 그 뒤 10분마다
       if(Date.now()-_kko.faqAt>KKO_FAQ_TTL) kkoFaqLoad();
+      if(Date.now()-_kko.picksAt>KKO_PICK_TTL) kkoPicksLoad();   // 직원 답 고르기 학습 기록
     }
   }
   // 에이전트 판정(초안 파일)이 몇 초 전 것인지 — 서버가 준 나이 + 받은 뒤 지난 시간 (못 받는 동안에도 늘어나게)
@@ -18033,6 +18058,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + (agN ? ` · 에이전트 몫 맞음 ${Math.round(((Number(ag.same)||0)+(Number(ag.edited)||0))/agN*100)}%` : ''), '', tip));
       // 에이전트를 꺼 두면 새 초안이 없어 세지 않는다 (수집기 live.agentRunning=false)
       else if(lv.since && !off && lv.agentRunning!==false) it.push(card('초안 ↔ 실제 답', '세는 중', E(when(lv.since))+'부터', '', tip));
+    }
+    // 직원 답 고르기 (11-24) — 채팅방 창에서 직원이 고른 답 · 같은 답을 그대로 3번 넘게 고른 문의 = 자동 답 후보
+    const pk=(_kko.picks||[]).filter(p=>!KKO_HIDE.has(p.brand));
+    if(pk.length){
+      const same=pk.filter(p=>!p.edited).length, auto=_kkoPickAuto(pk);
+      const bl=b=>{ const ch=((d.channels)||[]).find(z=>z.brand===b); return (ch && ch.label) || b || ''; };
+      const top=auto.slice(0,5).map(a=>`${bl(a.brand)} ${KKO_INTENT[a.intent]||a.intent||'기타'} ${a.same}번`).join(' · ');
+      it.push(card('직원 답 고르기', `${n(pk.length)}<small>번</small>`, `그대로 ${n(same)} · 고쳐서 ${n(pk.length-same)}${auto.length ? ` · 자동 답 후보 ${n(auto.length)}` : ''}`, '',
+        `채팅방 창에서 직원이 고른 답 (최근 ${KKO_PICK_DAYS}일) — 많이 고른 답이 다음에 위로 올라오고, 같은 답을 그대로 ${KKO_AUTO_MIN}번 넘게 고른 문의는 자동 답 후보${top ? ' — '+top : ''}`));
     }
     return `<div class="kko-lst">${st}</div>` + (it.length ? `<div class="kko-stats">${it.join('')}</div>` : '');
   }
@@ -18208,7 +18242,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     key=String(key||'');
     const i=key.indexOf(':');
     if(i<1) return;
-    _kko.chat={key, pid:key.slice(0,i), chatId:key.slice(i+1), data:null, err:'', loading:false, sig:'', info:'', dsig:'', fsig:'', draftText:'', shown:false};
+    _kko.chat={key, pid:key.slice(0,i), chatId:key.slice(i+1), data:null, err:'', loading:false, sig:'', info:'', dsig:'', fsig:'', draftText:'', shown:false,
+      pick:null, pickIntent:'', pickTouched:false, pickList:[], logged:new Set()};   // 직원 답 고르기 (11-24)
+    if(Date.now()-_kko.picksAt>KKO_PICK_TTL) kkoPicksLoad();
     const box=document.getElementById('kkoChat');
     if(!box) return;
     box.hidden=false;
@@ -18312,30 +18348,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(info!==c.info){ document.getElementById('kkoChatInfo').innerHTML=info; c.info=info; }
     // 아래 = 보낼 답 (학습한 예상 질문 · 답으로 에이전트가 만든 초안 — 고객에게는 아직 안 보냄). 직원이 복사해 파트너센터에서 보낸다.
     // 사무실 밖이면 서버가 초안 속 번호 · 링크를 (번호) · (링크)로 가려서 복사 버튼을 숨김
+    // 11-24 '보낼 답 고르기' — 초안 하나만 보여 주던 자리를 고르는 목록으로 (에이전트 초안 · 배운 답 · 예상 답 → 고르면 아래 칸, 고쳐서 복사). _kkoPickHtml 아래
     const masked=!!(x && dr.outside && /\((번호|링크)\)/.test(x.reply||''));
-    const canCopy=!!(x && x.reply && fresh==='ok' && !masked);
-    let dh='';
-    if(x && x.reply){
-      const agent=x.owner==='agent';
-      const head=agent ? (x.kind==='closing' ? '보낼 답 · 마무리 인사' : '보낼 답') : x.kind==='collect' ? '보낼 답 · 정보 받기' : '먼저 보낼 말';
-      const sub=agent ? '에이전트 초안 — 확인하고 보내 주세요' : x.kind==='collect' ? '필요한 정보를 먼저 받아요 — 처리는 직원이' : '확인 중이라고 먼저 알릴 때 — 답은 직원이';
-      dh=`<div class="kko-cd-h"><b>${head}</b><span>${sub}</span></div><div class="kko-cd-t">${_kkoEsc(x.reply)}</div>`
-        + (fresh==='newer' ? '<div class="kko-cd-w">초안을 만든 뒤 고객이 글을 더 보냈어요 — 2분 안에 새로 만들어요</div>' : '')
-        + (masked ? '<div class="kko-cd-w">사무실 밖이라 번호 · 링크가 가려져 있어요 — 파트너센터에서 고쳐서 보내 주세요</div>' : '');
+    const draftOk=!!(x && x.reply && fresh==='ok' && !masked);
+    c.link=link; c.brand=brand;
+    const dh=_kkoPickHtml(c, r, x, brand, draftOk, fresh, masked);
+    if(dh!==c.dsig){
+      // 고쳐 쓰는 중인 칸은 그대로 (다시 그려도 글 · 커서 · 스크롤을 지킴)
+      const de=document.getElementById('kkoChatDraft'), ta0=document.getElementById('kkoPickTa');
+      const foc=!!(ta0 && document.activeElement===ta0), sel=foc ? [ta0.selectionStart, ta0.selectionEnd] : null, sc=de.scrollTop;
+      de.innerHTML=dh; c.dsig=dh;
+      const ta=document.getElementById('kkoPickTa');
+      if(ta){ ta.value=c.pick ? c.pick.text : ''; if(foc){ ta.focus({preventScroll:true}); try{ ta.setSelectionRange(sel[0], sel[1]); }catch(e){} } }
+      de.scrollTop=sc;
     }
-    c.draftText=canCopy ? x.reply : '';
-    if(dh!==c.dsig){ document.getElementById('kkoChatDraft').innerHTML=dh; c.dsig=dh; }
     // 맨 아래 = 카카오톡 입력창 자리 — 답장은 아직 파트너센터에서 (거기서 열면 읽음 처리)
-    const foot=canCopy
-      ? `<button type="button" class="kko-chat-copy" onclick="kkoDraftCopy(this,false)">복사</button>`
-        + `<a class="kko-chat-open" href="${_kkoEsc(link)}" target="_blank" rel="noopener" onclick="kkoDraftCopy(this,true)">복사하고 파트너센터 열기 ↗</a>`
-        + `<span id="kkoChatMsg" aria-live="polite">파트너센터 입력칸에 붙여 넣고 보내요 — 거기서 열면 읽음 처리돼요</span>`
-      : `<span class="kko-inp">답장은 파트너센터에서 — 거기서 열면 읽음 처리돼요</span><a class="kko-chat-open" href="${_kkoEsc(link)}" target="_blank" rel="noopener">파트너센터 열기 ↗</a>`;
-    if(foot!==c.fsig){
-      const fe=document.getElementById('kkoChatFoot'), had=fe.contains(document.activeElement);
-      fe.innerHTML=foot; c.fsig=foot;
-      if(had){ const el=fe.querySelector('a,button'); if(el) el.focus({preventScroll:true}); }
-    }
+    _kkoPickFoot();
     // 대화 — 바뀐 게 있을 때만 다시 그림
     const log=document.getElementById('kkoChatLog');
     let html, sig;
@@ -18381,6 +18409,181 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(()=>msg(true),()=>msg(false));
     else msg(false);
     if(el && !open) el.focus({preventScroll:true});
+    _kkoPickLog(open);   // 고른 답 학습 기록 (11-24)
+  }
+  /* ===== 직원 답 고르기 (2026-11-24 사장님 "카카오톡 상담에서 직원을 호출하게되면 직원한테 타이핑 안치고 예상답변이나 전달 답변을 선택해서 쉽게 진행 될 수 있게"
+     · "답변들은 계속 학습해서 개선하면서 점점 더 쉬운 방식과 자동으로 대화할 수 있게" · "선택지를 직원이 선택할 수 있게 해줘. 그걸 선택하면서 너가 자동으로 학습해야해") =====
+     채팅방 창 아래 = 문의 종류 칩 + 고를 답 목록 + 고쳐 쓰는 칸. 고를 답 = ① 에이전트 초안(있을 때) ② 예상 답(faq.json 같은 문의 종류, 브랜드 정보로 {칸}을 채움)
+     ③ 배운 답(직원이 고쳐 쓴 · 직접 쓴 답). [복사] · [복사하고 파트너센터 열기] 할 때 고른 답을 슈퍼베이스 kko_picks 에 한 줄
+     (긴 숫자 · 전화번호는 {번호}로 가림, 같은 채팅방에서 같은 글은 한 번만) → 다음부터 같은 브랜드에서 많이 고른 답이 위로, 고쳐 쓴 답은 '배운 답'으로 나옴.
+     같은 답을 그대로 3번 넘게 고른 문의는 에이전트 학습 탭 '직원 답 고르기'에 자동 답 후보로 셈 (학습 세션이 읽어 예상 답 · 자동 답으로 올릴 자리).
+     고객에게 바로 보내는 길은 아직 없음 (보내기는 사장님 결정 뒤) — 지금은 파트너센터에 붙여 넣어 보낸다 */
+  function _kkoPickMask(t){
+    return String(t||'')
+      .replace(/01[016789][-\s.]?\d{3,4}[-\s.]?\d{4}/g,'{번호}')
+      .replace(/\d[\d-]{4,}\d/g, m=>m.replace(/\D/g,'').length>=6 ? '{번호}' : m)
+      .slice(0,2000);
+  }
+  function _kkoPickNorm(t){ return _kkoPickMask(t).replace(/\s+/g,' ').trim(); }
+  function _kkoPickHash(t){ let h=0; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))|0; return (h>>>0).toString(36); }
+  async function kkoPicksLoad(){
+    if(_kko.picksLoading) return;
+    _kko.picksLoading=true;
+    try{
+      const from=new Date(Date.now()-KKO_PICK_DAYS*86400000).toISOString();
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/kko_picks?select=brand,intent,faq_id,source,text,edited,created_at&created_at=gte.${encodeURIComponent(from)}&order=created_at.desc&limit=3000`,{headers:_sbHeaders(),cache:'no-cache'});
+      const j=await r.json().catch(()=>null);
+      if(!r.ok || !Array.isArray(j)) throw new Error((j && j.message) || `HTTP ${r.status}`);
+      _kko.picks=j; _kko.picksErr='';
+    }catch(e){ _kko.picksErr=(e && e.message) || String(e); }
+    finally{ _kko.picksLoading=false; _kko.picksAt=Date.now(); }
+    if(_kko.chat) _kkoChatPaint(false);
+    if(_kko.data) kkoRender();
+  }
+  // 이 브랜드에서 고른 답 — 같은 글(가린 뒤 · 띄어쓰기 무시)끼리 묶어 몇 번 · 그대로 몇 번 · 마지막 문의 종류
+  function _kkoPickStats(brand){
+    const m=new Map();
+    for(const p of (_kko.picks||[])){
+      if(brand && p.brand!==brand) continue;
+      const k=_kkoPickNorm(p.text);
+      if(!k) continue;
+      let s=m.get(k);
+      if(!s){ s={norm:k, text:p.text, n:0, same:0, intent:p.intent||'', faqId:p.faq_id||'', source:p.source||''}; m.set(k,s); }
+      s.n++; if(!p.edited) s.same++;
+    }
+    return m;
+  }
+  const _kkoPickHot=s=>!!s && s.same>=KKO_AUTO_MIN && s.same/s.n>=0.8;
+  // 자동 답 후보 — 브랜드 · 문의 종류 · 같은 답을 그대로 3번 넘게 (에이전트 학습 탭)
+  function _kkoPickAuto(rows){
+    const m=new Map();
+    for(const p of rows){
+      const k=(p.brand||'')+'|'+(p.intent||'')+'|'+_kkoPickNorm(p.text);
+      let s=m.get(k); if(!s){ s={brand:p.brand, intent:p.intent, n:0, same:0}; m.set(k,s); }
+      s.n++; if(!p.edited) s.same++;
+    }
+    return [...m.values()].filter(_kkoPickHot).sort((a,b)=>b.same-a.same);
+  }
+  // 예상 답의 {칸}을 브랜드 정보 → 공통 정보로 채움 (못 채운 칸은 {이름} 그대로 — 복사 전에 채우라고 알림)
+  function _kkoPickFill(a, brand){
+    const f=_kko.faq||{}, bf=(f.facts||{})[brand]||{}, cf=_kkoCommonFacts(f)||{};
+    const ok=v=>v!=null && typeof v!=='object' && String(v).trim();
+    return String(a||'').replace(/\{([^{}]{1,20})\}/g,(m,k)=>ok(bf[k]) ? String(bf[k]) : ok(cf[k]) ? String(cf[k]) : m);
+  }
+  function _kkoPickHtml(c, r, x, brand, draftOk, fresh, masked){
+    const E=_kkoEsc, st=_kkoPickStats(brand), f=_kko.faq||{};
+    // 지금 고른 게 초안인데 고치지 않았으면 초안을 따라감 (새 초안 → 새 글, 초안이 사라지면 비움)
+    if(c.pick && c.pick.source==='draft' && _kkoPickNorm(c.pick.text)===_kkoPickNorm(c.pick.base)){
+      if(!draftOk) c.pick=null;
+      else if(c.pick.base!==x.reply) c.pick=Object.assign({}, c.pick, {text:x.reply, base:x.reply});
+    }
+    if(!c.pick && !c.pickTouched && draftOk) c.pick={key:'draft', source:'draft', text:x.reply, base:x.reply, intent:x.intent||'', faqId:x.faqId||''};
+    // 문의 종류 칩 — 처음엔 초안의 문의 종류, 없으면 '자주 쓴 답'(고른 기록이 있을 때) · '사람 상담 요청'
+    const items=[...(((f.brandItems||{})[brand])||[]), ...(f.common||[])];
+    const has=new Set(items.map(it=>it.intent));
+    const ints=Object.keys(KKO_INTENT).filter(k=>has.has(k));
+    if(!c.pickIntent) c.pickIntent=(x && KKO_INTENT[x.intent] && has.has(x.intent)) ? x.intent : st.size ? 'top' : (has.has('human') ? 'human' : (ints[0]||'top'));
+    const cur=c.pickIntent;
+    const chips=(st.size ? [['top','자주 쓴 답']] : []).concat(ints.map(k=>[k, KKO_INTENT[k]]));
+    // 고를 답
+    const list=[], seen=new Set();
+    const add=o=>{ const k=_kkoPickNorm(o.text); if(!k || seen.has(k)) return; seen.add(k); const s=st.get(k); o.n=s ? s.n : 0; o.hot=_kkoPickHot(s); list.push(o); };
+    if(x && x.reply){
+      const agent=x.owner==='agent';
+      add({key:'draft', source:'draft', label:agent ? (x.kind==='closing' ? '에이전트 초안 · 마무리 인사' : '에이전트 초안') : x.kind==='collect' ? '초안 · 정보 받기' : '초안 · 먼저 보낼 말',
+        text:x.reply, intent:x.intent||'', faqId:x.faqId||'', off:!draftOk});
+    }
+    const rest=[];
+    const addR=o=>{ const k=_kkoPickNorm(o.text); if(!k || seen.has(k)) return; seen.add(k); const s=st.get(k); o.n=s ? s.n : 0; o.hot=_kkoPickHot(s); o.ord=rest.length; rest.push(o); };
+    const qOf=id=>{ const it=_kkoFaqItem(id, brand); return it ? it.q : ''; };
+    // 고른 기록에서 나온 답 — 예상 답을 그대로 고른 것 · 초안에서 고른 것 · 직원이 고쳐 쓴(직접 쓴) 것
+    const learned=s=>{ const q=s.faqId ? qOf(s.faqId) : '';
+      const lb=s.source==='faq' && s.same===s.n ? '예상 답' : s.source==='draft' && s.same===s.n ? '초안에서 고른 답' : '배운 답';
+      addR({key:'l:'+_kkoPickHash(s.norm), source:'learned', label:q ? lb+' · '+q : lb, text:s.text, intent:s.intent, faqId:s.faqId}); };
+    if(cur==='top') [...st.values()].sort((a,b)=>b.n-a.n).forEach(learned);
+    else{
+      const fq=items.filter(it=>it.intent===cur);
+      if(x && x.faqId) fq.sort((a,b)=>(b.id===x.faqId)-(a.id===x.faqId));
+      fq.forEach(it=>addR({key:'faq:'+it.id, source:'faq', label:(x && it.id===x.faqId ? '예상 답 · 초안 근거 · ' : '예상 답 · ')+it.q, text:_kkoPickFill(it.a, brand), intent:it.intent, faqId:it.id}));
+      [...st.values()].filter(s=>s.intent===cur).sort((a,b)=>b.n-a.n).forEach(learned);
+    }
+    // 많이 고른 답이 위로 (같으면 원래 순서 — 초안 근거 · 예상 답 순)
+    rest.sort((a,b)=>(b.n-a.n) || (a.ord-b.ord));
+    list.push(...rest.slice(0, KKO_PICK_MAX));
+    c.pickList=list;
+    const sel=c.pick ? c.pick.key : '';
+    const chipH=chips.map(([k,t])=>`<button type="button" class="${k===cur ? 'on' : ''}" onclick="kkoPickInt('${k}')">${E(t)}</button>`).join('');
+    const listH=list.map((o,i)=>`<button type="button" class="kko-pk${o.key===sel ? ' on' : ''}" onclick="kkoPick(${i})"${o.off ? ' disabled' : ''}>`
+      + `<span class="l"><span class="lt">${E(o.label)}</span>${o.hot ? '<em class="hot">자주 고름</em>' : ''}${o.n ? `<em>${o.n}번 고름</em>` : ''}</span>`
+      + `<span class="t">${E(o.text)}</span></button>`).join('')
+      || `<div class="kko-pk-none">${_kko.faq ? '이 문의 종류에는 아직 고를 답이 없어요 — 아래 칸에 직접 써 주세요' : _kko.faqErr ? '예상 답을 못 받았어요 — 아래 칸에 직접 써 주세요' : '예상 답 불러오는 중…'}</div>`;
+    return `<div class="kko-cd-h"><b>보낼 답 고르기</b><span>고르면 아래 칸에 들어가요 — 고쳐서 보내도 되고, 고른 답은 학습해서 다음에 위로 올려요</span></div>`
+      + `<div class="kko-pk-int" role="group" aria-label="문의 종류">${chipH}</div>`
+      + `<div class="kko-pk-list">${listH}</div>`
+      + (fresh==='newer' ? '<div class="kko-cd-w">초안을 만든 뒤 고객이 글을 더 보냈어요 — 2분 안에 새로 만들어요</div>' : '')
+      + (masked ? '<div class="kko-cd-w">사무실 밖이라 초안 속 번호 · 링크가 가려져 있어요 — 파트너센터에서 고쳐서 보내 주세요</div>' : '')
+      + `<textarea class="kko-pk-ta" id="kkoPickTa" rows="3" placeholder="위에서 답을 고르거나 여기에 직접 써 주세요" oninput="kkoPickInput(this)" aria-label="보낼 답"></textarea>`
+      + `<div class="kko-cd-w" id="kkoPickWarn" aria-live="polite"></div>`;
+  }
+  function kkoPick(i){
+    const c=_kko.chat, o=c && c.pickList[i];
+    if(!o || o.off) return;
+    c.pick={key:o.key, source:o.source, text:o.text, base:o.text, intent:o.intent||'', faqId:o.faqId||''};
+    c.pickTouched=true; c.dsig='';
+    _kkoChatPaint(false);
+    // PC 는 바로 고쳐 쓸 수 있게 칸으로 (휴대폰은 키보드가 올라와 가려서 그대로)
+    const ta=document.getElementById('kkoPickTa');
+    if(ta && window.matchMedia && matchMedia('(hover:hover)').matches){ ta.focus({preventScroll:true}); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }
+  function kkoPickInt(k){ const c=_kko.chat; if(!c) return; c.pickIntent=k; c.dsig=''; _kkoChatPaint(false); }
+  function kkoPickInput(el){
+    const c=_kko.chat;
+    if(!c) return;
+    if(!c.pick) c.pick={key:'', source:'typed', text:'', base:'', intent:c.pickIntent==='top' ? '' : c.pickIntent, faqId:''};
+    c.pick.text=el.value; c.pickTouched=true;
+    _kkoPickFoot();
+  }
+  // 아래 버튼 — 칸에 글이 있고 못 채운 {칸} · 가린 (번호)가 없을 때만 복사
+  function _kkoPickFoot(){
+    const c=_kko.chat, fe=document.getElementById('kkoChatFoot');
+    if(!c || !fe) return;
+    const t=((c.pick && c.pick.text) || '').trim();
+    const hole=(t.match(/\{[^{}]{1,20}\}/g)||[]).filter((v,i,a)=>a.indexOf(v)===i), cut=/\((번호|링크)\)/.test(t);
+    const canCopy=!!t && !hole.length && !cut;
+    c.draftText=canCopy ? t : '';
+    const w=document.getElementById('kkoPickWarn');
+    if(w) w.textContent=hole.length ? `${hole.join(' · ')} 칸을 채워 주세요` : cut ? '(번호) · (링크) 자리를 채워 주세요' : '';
+    const link=c.link||'';
+    const foot=canCopy
+      ? `<button type="button" class="kko-chat-copy" onclick="kkoDraftCopy(this,false)">복사</button>`
+        + `<a class="kko-chat-open" href="${_kkoEsc(link)}" target="_blank" rel="noopener" onclick="kkoDraftCopy(this,true)">복사하고 파트너센터 열기 ↗</a>`
+        + `<span id="kkoChatMsg" aria-live="polite">파트너센터 입력칸에 붙여 넣고 보내요 — 거기서 열면 읽음 처리돼요</span>`
+      : `<span class="kko-inp">${t ? '빈 칸을 채우면 복사할 수 있어요' : '답을 고르면 복사할 수 있어요'}</span><a class="kko-chat-open" href="${_kkoEsc(link)}" target="_blank" rel="noopener">파트너센터 열기 ↗</a>`;
+    if(foot!==c.fsig){
+      const had=fe.contains(document.activeElement);
+      fe.innerHTML=foot; c.fsig=foot;
+      if(had){ const el=fe.querySelector('a,button'); if(el) el.focus({preventScroll:true}); }
+    }
+  }
+  // 복사할 때 한 줄 — 무엇을 골랐는지(초안 · 예상 답 · 배운 답 · 직접 씀) · 고쳤는지 · 직원 호출 방인지 · 누가
+  function _kkoPickLog(open){
+    const c=_kko.chat;
+    if(!c || !c.draftText) return;
+    const text=_kkoPickMask(c.draftText).trim(), k=_kkoPickNorm(text);
+    if(!k || c.logged.has(k)) return;
+    c.logged.add(k);
+    const p=c.pick||{}, base=p.base||'';
+    const src=base ? (p.source||'typed') : 'typed';
+    const edited=src==='typed' || _kkoPickNorm(base)!==k;
+    const r=(((_kko.data||{}).chats)||[]).find(z=>z.pid===c.pid && z.chatId===c.chatId);
+    const x=r ? _kkoDraftOf(r) : null;
+    const intent=p.intent || (c.pickIntent!=='top' ? c.pickIntent : '') || (x && x.intent) || '';
+    let me=''; try{ me=(localStorage.getItem('brightbeed_diary_me')||'').trim().slice(0,40); }catch(e){}
+    const row={pid:c.pid, chat_id:c.chatId, brand:c.brand||null, intent:intent||null, faq_id:p.faqId||null, source:src, choice_key:p.key||null,
+      text, base_text:base ? _kkoPickMask(base) : null, edited, called:!!(r && _kkoIsStaff(r)), how:open ? 'open' : 'copy', by_name:me||null};
+    // 화면 순서는 바로 반영 (서버 기록은 뒤에서)
+    (_kko.picks=_kko.picks||[]).unshift({brand:row.brand, intent:row.intent, faq_id:row.faq_id, source:src, text, edited, created_at:new Date().toISOString()});
+    fetch(`${SUPABASE_URL}/rest/v1/kko_picks`,{method:'POST',headers:_sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(row),keepalive:true}).catch(()=>{});
   }
   /* ===== 받은 사진 보기 (2026-11-19 사장님 "이미지도 받으면 여기서 마우스오버로 볼 수 있게 해줘") =====
      서버 /cs/kakao-chat 이 사진 줄에 imgs [{thumb, full}] 를 주면(사무실 인터넷에서만) 작은 사진은 채팅방에 바로(11-20 카카오톡 모양), 원본은 마우스를 올릴 때 불러온다.
