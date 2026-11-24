@@ -5945,6 +5945,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-seeding .sub-module-tag{color:#be123c;border-color:rgba(225,29,72,.5);border-style:solid}
   .sub-module.m-feed {--m-color:#c026d3;--m-border:rgba(192,38,211,.42)}
   .sub-module.m-feed .sub-module-tag{color:#a21caf;border-color:rgba(192,38,211,.5);border-style:solid}
+  .sub-module.m-meeting {--m-color:#2563eb;--m-border:rgba(37,99,235,.42)}
+  .sub-module.m-meeting .sub-module-tag{color:#1d4ed8;border-color:rgba(37,99,235,.5);border-style:solid}
   /* .sub-module 의 display:flex 가 hidden 속성을 덮어쓰므로 명시 (권한 카드 숨김: 대표 전용 금고 등) */
   .sub-module[hidden]{display:none}
 
@@ -12582,11 +12584,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== ERP전산팀(erp/) · 시딩 마스터(seeding/) — MD팀 시트 창처럼 가장자리에서 살짝 띄운 둥근 창 (2026-11-20 사용자 "MD팀처럼 erp도 좌/우 여백 조금만,
      erp 디자인과 동일한 서식들도"). 상단 바 아래를 꽉 채우던 iframe 둘레에 오피스 바탕색 여백 + 둥근 테두리. VOC 전산 · MD팀 시트는 이미 이 모양 ===== */
-  #viewErp,#viewSeeding,#viewFeed,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
-  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  #viewErp,#viewSeeding,#viewFeed,#viewMeeting,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
+  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMeeting > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
   @media (max-width:720px){
-    #viewErp,#viewSeeding,#viewFeed,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
-    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
+    #viewErp,#viewSeeding,#viewFeed,#viewMeeting,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
+    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewMeeting > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
   }
 
   /* ===== 물류팀 다듬기 (2026-11-20 사용자 "모서리 자연스럽게 둥글게 · 텍스트 위치 최적화") — 틀 모서리를 위 출고 전광판(14px)에 맞추고,
@@ -13139,6 +13141,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-sub">11-20 18:29 에 멈춘 사본 (구글시트 · 새 탭)</div>
           <div class="sub-module-tag">구글시트 ↗</div>
         </a>
+        <!-- 마케팅 회의록 = meeting/ (2026-11-24 사장님 "업무용툴에 마케팅 회의록 · 인스타 피드 · 릴스 · 계정 주소 마우스오버로 보기 · 디자인팀 · 마케팅팀 · 엠디팀 이름별 세로 칸 · 중복 계정 경고"). 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links, 전 직원 -->
+        <div class="sub-module m-meeting" onclick="openMeetingPage()">
+          <div class="sub-module-icon">📝</div>
+          <div class="sub-module-title">마케팅 회의록</div>
+          <div class="sub-module-sub">디자인 · 마케팅 · MD팀 이름별 칸에 인스타 계정 · 피드 · 릴스 링크 — 마우스를 올리면 미리보기 · 중복 계정 경고</div>
+          <div class="sub-module-tag">NEW</div>
+        </div>
         <!-- 시딩 마스터 = 자체 저장 엑셀식 프로그램 (seeding/, 2026-11-20 — 구글시트 'x시딩 및 시호님시딩' 에서 옮김, 전 직원, 따로 앱으로도 설치) -->
         <div class="sub-module m-seeding" onclick="openSeedingPage()">
           <div class="sub-module-icon">🎁</div>
@@ -16283,6 +16292,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <div class="view view-tool" id="viewErp" hidden></div>
   <div class="view view-tool" id="viewSeeding" hidden></div>
   <div class="view view-tool" id="viewFeed" hidden></div>
+  <div class="view view-tool" id="viewMeeting" hidden></div>
   <div class="view view-tool" id="viewMileage" hidden></div>
 
   </main>
@@ -22654,8 +22664,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewMileage'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewMileage:'mileage'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewMeeting','viewMileage'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewMeeting:'meeting',viewMileage:'mileage'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -23500,6 +23510,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     erp:{view:'viewErp',path:'erp/',title:'ERP전산팀',keep:true,bridge:false},
     seeding:{view:'viewSeeding',path:'seeding/',title:'시딩 마스터',keep:true,bridge:false},
     feed:{view:'viewFeed',path:'feed/',title:'인스타 피드 시뮬레이터',keep:true,bridge:false},
+    // 마케팅 회의록(meeting/, 업무용 툴 카드, 2026-11-24) — 사람별 세로 칸에 인스타 링크 · 미리보기 · 중복 경고. 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links
+    meeting:{view:'viewMeeting',path:'meeting/',title:'마케팅 회의록',keep:true,bridge:false},
     // 마일리지 항공권(mileage/, 옛 이름 마일리지 캘린더 — 11-22 사장님 "마일리지 항공권으로 네이밍 변경", '관리자 전용' 폴더, 2026-11-22) — 대표 전용 금고와 같은 판정 (관리자 PIN + 전승훈 · 전수빈)
     mileage:{view:'viewMileage',path:'mileage/',title:'마일리지 항공권',keep:false,bridge:false,
       access(){ try{ return execHasAccess(); }catch(e){ return true; } }},
@@ -23829,6 +23841,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   window.openSeedingPage=openSeedingPage;
   /* 인스타 피드 시뮬레이터 — feed/ (브랜드별 피드 배치 미리보기 · 지금 인스타 피드는 함수 ig-feed · 계획 저장 feed_plans, 전 직원) */
   function openFeedPage(){ openToolPage('feed'); }
+  /* 마케팅 회의록 — meeting/ (디자인 · 마케팅 · MD팀 사람별 칸 · 인스타 미리보기 · 중복 계정 경고) */
+  function openMeetingPage(){ openToolPage('meeting'); }
+  window.openMeetingPage=openMeetingPage;
   window.openFeedPage=openFeedPage;
   /* 마일리지 항공권 — mileage/ (2026-11-22 사장님 "대표만 사용 할 수 있는 앱 · 30분마다 대한항공 마일리지로 예약 가능한 프레스티지, 일등석 가능한 나라 전부 캘린더로").
      자료 = 로마일 2석 이상(맥미니 ke-roamile) + 대한항공 공개 현황 교차 확인(맥미니 ke-award) → Supabase ke_r2_* · ke_award_*. 카드는 '관리자 전용' 폴더 — execHasAccess 일 때만 (execRefreshAccess) */
