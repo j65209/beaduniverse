@@ -17852,15 +17852,22 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 이 채팅방의 답장 초안 (서버 kakao-agent — 보내지 않은 것)
   function _kkoDraft(pid,chatId){ return (((_kko.drafts||{}).drafts)||[]).find(x=>x.pid===pid && x.chatId===chatId) || null; }
   // 직원 필요 = 관리자 호출, 또는 답을 기다리는데 초안이 '직원 몫' (돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화 …)
+  // 열린 직원 호출 (2026-11-24 사장님 '모두 추천대로' 21번 "한 번만 부르고 직원이 답할 때까지 '열린 호출' 목록에 남기기") — 서버 초안 파일의 openCalls.
+  // 에이전트가 '확인 중'이라고 답해 기다림에서 빠져도 직원이 답할 때까지 직원 호출에 남는다. 초안 파일보다 나중에 직원이 답했으면 닫힌 것으로
+  function _kkoOpenCall(r){
+    const x=(((_kko.drafts||{}).openCalls)||[]).find(x=>x.pid===r.pid && x.chatId===r.chatId);
+    return x && !(r.lastWho==='staff' && (r.lastAt||0)>x.since) ? x : null;
+  }
   function _kkoIsStaff(r){
-    if(r.managerCall) return true;
+    if(r.managerCall || _kkoOpenCall(r)) return true;
     if(!_kkoWaiting(r)) return false;
     const x=_kkoDraft(r.pid,r.chatId);
     return !!(x && x.owner==='staff');
   }
   function _kkoStaffWhy(r){
     if(r.managerCall) return '고객이 관리자 호출을 눌렀어요';
-    const x=_kkoDraft(r.pid,r.chatId);
+    const x=_kkoDraft(r.pid,r.chatId), oc=_kkoOpenCall(r);
+    if(oc) return (oc.why||oc.topic||'')+(oc.more>0 ? ` · 그 뒤 이어 쓴 글 ${oc.more}번` : '');
     return (x && (x.why||[])[0]) || '';
   }
   // 이미지 확인 필요 (사장님 11-20 "이미지가 있는것들은 이미지 확인 필요를 채팅창에 배지를 달아줘") — 직원이 마지막으로 답한 뒤 고객이 보낸 사진(영상)이 있는 채팅방.
@@ -17910,7 +17917,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(rp && rp.total>0){
       const pct=Number.isFinite(rp.agentPct) ? rp.agentPct : Math.round((rp.agent||0)/rp.total*1000)/10;
       const top=(rp.staffTop||[]).slice(0,5).map(x=>`${x.why} ${n(x.n)}`).join(' · ');
-      it.push(card('지난 대화로 시험', `${E(pct)}<small>%</small>`, `에이전트가 답 ${n(rp.agent)} / ${n(rp.total)}${rp.at ? ' · '+E(when(rp.at)) : ''}`, '',
+      it.push(card('지난 대화로 시험', `${E(pct)}<small>%</small>`, `에이전트가 답 ${n(rp.agent)} / ${n(rp.total)}${rp.calls>0 ? ` · 직원 호출 ${n(rp.calls)} (이미 부른 방 ${n(rp.repeat||0)} 빼고)` : ''}${rp.at ? ' · '+E(when(rp.at)) : ''}`, '',
         `지난 대화에서 고객이 물은 순간마다 지금 규칙으로 초안을 다시 만들어 본 결과${top ? ' — 직원 몫 이유: '+top : ''}`));
     }
     const lv=L.live;
@@ -17934,7 +17941,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 채팅방 창 머리의 상태 — 직원 호출 · 기다린 시간 · 답변 완료 (사장님 11-20 "답한 상담 -> 답변 완료 상담으로 변경").
   // 답 완료 탭(11-20 저녁)에서 연 채팅방 · 열어 둔 채팅방에 직원이 답하면 머리가 '답변 완료'
   function _kkoRowState(r){
-    const w=_kkoAgo(r.waitingSince||r.lastAt), wt=w==='방금' ? '방금 옴' : w+' 기다림';
+    const oc=_kkoOpenCall(r), w=_kkoAgo((oc && oc.since) || r.waitingSince || r.lastAt), wt=w==='방금' ? '방금 옴' : w+' 기다림';
     if(_kkoIsStaff(r)) return {text:'직원 호출 · '+wt, cls:'call'};
     if(_kkoWaiting(r)) return {text:wt, cls:_kkoLate(r) ? 'late' : 'wait'};
     return {text:'답변 완료 · '+_kkoWhen(r.lastAt), cls:''};
@@ -17942,7 +17949,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 목록 오른쪽 위 — 직원 호출 · 답 기다림이면 기다린 시간, 아니면 카카오톡처럼 마지막 글 시각 (오늘 = 오후 3:42 · 어제 · 11월 18일)
   function _kkoRowTime(r){
     const staff=_kkoIsStaff(r);
-    if(staff || _kkoWaiting(r)){ const w=_kkoAgo(r.waitingSince||r.lastAt); return {text:w==='방금' ? '방금' : w+' 기다림', cls:staff ? 'call' : _kkoLate(r) ? 'late' : 'wait'}; }
+    if(staff || _kkoWaiting(r)){ const oc=_kkoOpenCall(r), w=_kkoAgo((oc && oc.since) || r.waitingSince || r.lastAt); return {text:w==='방금' ? '방금' : w+' 기다림', cls:staff ? 'call' : _kkoLate(r) ? 'late' : 'wait'}; }
     return {text:_kkoWhen(r.lastAt), cls:''};
   }
   function _kkoHmKo(t){ const h=t.getHours(); return `${h<12 ? '오전' : '오후'} ${h%12||12}:${String(t.getMinutes()).padStart(2,'0')}`; }
@@ -18022,7 +18029,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!['staff','wait','done'].includes(_kko.only)) _kko.only='';
     const doneTab=_kko.only==='done', inView=doneTab ? r=>!needs(r) : needs;
     const base=_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand);
-    const since=r=>(r.waitingSince||r.lastAt)||0;
+    const since=r=>((_kkoOpenCall(r)||{}).since||r.waitingSince||r.lastAt)||0;
     const staffRows=base.filter(_kkoIsStaff).sort((a,b)=>since(a)-since(b));
     const waitRows=base.filter(isWait).sort((a,b)=>since(a)-since(b));
     const doneRows=base.filter(r=>!needs(r)).sort((a,b)=>(a.lastAt||0)-(b.lastAt||0));   // 오래된 것 위 · 맨 아래가 가장 최근
