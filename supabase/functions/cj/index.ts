@@ -117,7 +117,7 @@ type Goods = { nm?: string; opt?: string; qty?: number | string; amt?: number | 
 type Item = {
   rcpt_dv?: string; prt_st?: string; brand?: string; cust_use_no?: string; order_no?: string;
   sender?: Party; rcvr?: Party; goods?: Goods[]; box_type?: string; box_qty?: number | string;
-  article_amt?: number | string; memo?: string; ori_invc_no?: string; frt_dv?: string;
+  article_amt?: number | string; memo?: string; ori_invc_no?: string; frt_dv?: string; reason?: string;
 };
 function party(p: Party | undefined, who: string) {
   const nm = cut(p?.nm, 100);
@@ -198,6 +198,8 @@ async function book(cfg: Cfg, item: Item, meta: { kind?: string; batch_id?: stri
     rcvr_addr: rcptDv === '02' ? `${s.addr} ${s.detail}` : `${r.addr} ${r.detail}`,
     gds_nm: goods.map((g) => g.nm).join(', ').slice(0, 300), box_qty: boxQty,
     created_by: meta.by ? String(meta.by).slice(0, 40) : null, req,
+    reason: item.reason ? cut(item.reason, 200) : null,
+    ori_invc_no: rcptDv === '02' ? (String(item.ori_invc_no ?? '').replace(/\D/g, '').slice(0, 20) || null) : null,
   };
   const { data: ins } = await sb.from('cj_bookings').insert(row).select('id').single();
   return {
@@ -343,12 +345,37 @@ async function sync(cfg: Cfg) {
   return { ok: true, env: cfg.env, got, filled, updated, errs };
 }
 
-async function list(limit: number, q: string) {
+// ---------- 반품 회수 — 원 운송장번호로 불러오기 (2026-11-24 사장님 "반품회수는 쉽게 운송장 조회만해서 접수 가능하게 해줘") ----------
+// 오피스에서 접수한 송장이면 그 접수의 받는 분(= 회수할 곳) · 상품 · 브랜드를 돌려준다 (화면이 반품 칸을 채움).
+// 식스샵에서 나간 송장은 주소를 가진 곳이 없어 못 찾는다 (맥미니 주문 색인은 개인정보 때문에 주소를 안 담음).
+async function fromInvc(invcIn: unknown) {
+  const invc = String(invcIn ?? '').replace(/\D/g, '');
+  if (!/^\d{10,14}$/.test(invc)) throw new Oops('운송장 번호는 숫자 10~14자리예요');
+  const { data, error } = await sb.from('cj_bookings').select('id,env,brand,rcpt_dv,cust_use_no,invc_no,status,req,created_at').eq('invc_no', invc).order('id', { ascending: false }).limit(1);
+  if (error) throw new Oops('기록을 못 읽었어요: ' + error.message);
+  const row = (data || [])[0];
+  const { data: rets } = await sb.from('cj_bookings').select('id,created_at,status,cust_use_no').eq('ori_invc_no', invc).neq('status', 'failed').order('id', { ascending: false }).limit(5);
+  if (!row) return { ok: true, found: false, invc_no: invc, returns: rets || [] };
+  const q = (row.req || {}) as Record<string, any>;
+  const sendBack = row.rcpt_dv === '02';   // 반품 건의 송장이면 받는 분이 우리 → 회수할 곳은 그 반품의 보내는 분
+  const p = sendBack
+    ? { nm: q.SENDR_NM, tel: telOf(q, 'SENDR_TEL'), zip: q.SENDR_ZIP_NO, addr: q.SENDR_ADDR, detail: q.SENDR_DETAIL_ADDR }
+    : { nm: q.RCVR_NM, tel: telOf(q, 'RCVR_CELL') || telOf(q, 'RCVR_TEL'), zip: q.RCVR_ZIP_NO, addr: q.RCVR_ADDR, detail: q.RCVR_DETAIL_ADDR };
+  if (p.detail === '.') p.detail = '';
+  return {
+    ok: true, found: true, invc_no: invc, id: row.id, env: row.env, brand: row.brand, cust_use_no: row.cust_use_no, booked_at: row.created_at,
+    customer: p, goods: (Array.isArray(q.ARRAY) ? q.ARRAY : []).map((g: Record<string, unknown>) => ({ nm: String(g.GDS_NM ?? ''), qty: Number(g.GDS_QTY) || 1 })),
+    returns: rets || [],
+  };
+}
+
+async function list(limit: number, q: string, dv = '') {
   let qb = sb.from('cj_bookings')
-    .select('id,created_at,env,kind,batch_id,brand,rcpt_dv,prt_st,cust_use_no,invc_no,status,result_detail,rcvr_nm,rcvr_tel,rcvr_addr,gds_nm,box_qty,created_by,cancelled_at,printed_at,print_count,trk_code,trk_name,trk_at')
+    .select('id,created_at,env,kind,batch_id,brand,rcpt_dv,prt_st,cust_use_no,invc_no,status,result_detail,rcvr_nm,rcvr_tel,rcvr_addr,gds_nm,box_qty,created_by,cancelled_at,printed_at,print_count,trk_code,trk_name,trk_at,reason,ori_invc_no')
     .order('id', { ascending: false }).limit(Math.max(1, Math.min(300, limit || 100)));
+  if (dv === '01' || dv === '02') qb = qb.eq('rcpt_dv', dv);
   const s = String(q || '').replace(/[%,()]/g, ' ').trim().slice(0, 40);
-  if (s) qb = qb.or(`rcvr_nm.ilike.%${s}%,cust_use_no.ilike.%${s}%,invc_no.ilike.%${s}%,gds_nm.ilike.%${s}%`);
+  if (s) qb = qb.or(`rcvr_nm.ilike.%${s}%,cust_use_no.ilike.%${s}%,invc_no.ilike.%${s}%,gds_nm.ilike.%${s}%,ori_invc_no.ilike.%${s}%,reason.ilike.%${s}%`);
   const { data, error } = await qb;
   if (error) throw new Oops('기록을 못 읽었어요: ' + error.message);
   return (data || []).map((x: Record<string, unknown>) => ({ ...x, rcvr_tel: maskTel(x.rcvr_tel) }));
@@ -388,7 +415,9 @@ Deno.serve(async (req) => {
         if (body.prod_only && cfg.env !== 'prod') return json({ ok: false, env: cfg.env, error: '대한통운 API 가 아직 개발 서버예요 (운영 승인 전)' });
         return json(await track(cfg, body.invc_no));
       case 'list':
-        return json({ ok: true, env: cfg.env, rows: await list(Number(body.limit), String(body.q || '')) });
+        return json({ ok: true, env: cfg.env, rows: await list(Number(body.limit), String(body.q || ''), String(body.dv || '')) });
+      case 'from_invc':
+        return json(await fromInvc(body.invc_no));
       default:
         return json({ ok: false, error: '모르는 요청이에요' }, 400);
     }
