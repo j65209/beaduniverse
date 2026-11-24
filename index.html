@@ -6156,8 +6156,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-feed .sub-module-tag{color:#a21caf;border-color:rgba(192,38,211,.5);border-style:solid}
   .sub-module.m-meeting {--m-color:#2563eb;--m-border:rgba(37,99,235,.42)}
   .sub-module.m-meeting .sub-module-tag{color:#1d4ed8;border-color:rgba(37,99,235,.5);border-style:solid}
-  .sub-module.m-weekly {--m-color:#0f766e;--m-border:rgba(15,118,110,.42)}
-  .sub-module.m-weekly .sub-module-tag{color:#0f766e;border-color:rgba(15,118,110,.5);border-style:solid}
   /* .sub-module 의 display:flex 가 hidden 속성을 덮어쓰므로 명시 (권한 카드 숨김: 대표 전용 금고 등) */
   .sub-module[hidden]{display:none}
 
@@ -13482,19 +13480,14 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <span class="folder-meta"><b id="subModulesCount">—</b> 도구<span class="fm-long"> · 자주 쓰는 순</span></span>
       </div>
       <div class="sub-modules">
-        <!-- 주간 회의록 = weekly/ (2026-11-24 사장님 "마케팅 회의록 옆에 주간 회의록 만들어줘") — 주차마다 회의 메모 · 결정 두 칸, 전 직원. 저장 = 슈퍼베이스 weekly_meetings.
-             data-pin = 자주 쓰는 순과 상관없이 늘 그 자리 (homeTidy) — 사장님 "업무용 툴에서 주간,마케팅 회의록은 무조건 1,2순위 고정" -->
-        <div class="sub-module m-weekly" data-pin="1" onclick="openWeeklyPage()">
-          <div class="sub-module-icon">🗓️</div>
-          <div class="sub-module-title">주간 회의록</div>
-          <div class="sub-module-sub">주차마다 회의 메모 · 결정 · 할 일 — 누구나 적고 바로 저장</div>
-          <div class="sub-module-tag">NEW</div>
-        </div>
+        <!-- 주간&마케팅 회의록 = 카드 하나 (2026-11-24 사장님 "주간&마케팅 회의록으로 버튼 하나로 합쳐줘") — 주간 회의록(weekly/)이 열리고, 화면 맨 위 탭 [주간 회의록 | 마케팅 회의록] 으로 오간다.
+             다시 두 장으로 나누지 말 것. data-pin = 자주 쓰는 순과 상관없이 늘 맨 앞 (homeTidy) — 사장님 "업무용 툴에서 주간,마케팅 회의록은 무조건 1,2순위 고정"
+             주간 회의록 저장 = 슈퍼베이스 weekly_meetings, 전 직원 -->
         <!-- 마케팅 회의록 = meeting/ (2026-11-24 사장님 "업무용툴에 마케팅 회의록 · 인스타 피드 · 릴스 · 계정 주소 마우스오버로 보기 · 디자인팀 · 마케팅팀 · 엠디팀 이름별 세로 칸 · 중복 계정 경고", 같은 날 "매주 수요일 오후2시까지 · 브랜드별 벤치마킹/레퍼런스 · 상단 1주차 2주차 · 배지 선택 · 중복 안되게", "기재할때 어떤 브랜드 래퍼런스 주소인지 선택하게"). 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links, 전 직원 -->
-        <div class="sub-module m-meeting" data-pin="2" onclick="openMeetingPage()">
+        <div class="sub-module m-meeting" data-pin="1" onclick="openWeeklyPage()">
           <div class="sub-module-icon">📝</div>
-          <div class="sub-module-title">마케팅 회의록</div>
-          <div class="sub-module-sub">매주 수요일 오후 2시까지 — 브랜드를 골라 벤치마킹 · 레퍼런스 인스타 주소 넣기</div>
+          <div class="sub-module-title">주간&amp;마케팅 회의록</div>
+          <div class="sub-module-sub">주간 회의 메모 · 결정 — 마케팅은 매주 수요일 오후 2시까지 벤치마킹 · 레퍼런스 주소</div>
           <div class="sub-module-tag">NEW</div>
         </div>
         <!-- 재고 구글시트 = 구글시트 '식스샵 ERP MASTER' (2026-11-13 실시간 재고 폴더에서 옮겨 옴). 2026-11-20 이름 '재고 ERP 마스터' → '재고 구글시트' — 사장님 "erp 명칭은 이제 무조건 오피스에 있는 erp만" (ERP = ERP전산팀 화면 erp/ 하나, 구글시트를 ERP 로 부르지 않기) -->
@@ -24942,9 +24935,9 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
     erp:{view:'viewErp',path:'erp/',title:'ERP전산팀',keep:true,bridge:false},
     seeding:{view:'viewSeeding',path:'seeding/',title:'시딩 마스터',keep:true,bridge:false},
     feed:{view:'viewFeed',path:'feed/',title:'인스타 피드 시뮬레이터',keep:true,bridge:false},
-    // 마케팅 회의록(meeting/, 업무용 툴 카드, 2026-11-24) — 사람별 세로 칸에 인스타 링크 · 미리보기 · 중복 경고. 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links
+    // 마케팅 회의록(meeting/, 업무용 툴 '주간&마케팅 회의록' 카드의 탭, 2026-11-24) — 사람별 세로 칸에 인스타 링크 · 미리보기 · 중복 경고. 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links
     meeting:{view:'viewMeeting',path:'meeting/',title:'마케팅 회의록',keep:true,bridge:false},
-    // 주간 회의록(weekly/, 마케팅 회의록 바로 옆 카드, 2026-11-24) — 주차마다 글 두 칸. 저장 = 슈퍼베이스 weekly_meetings
+    // 주간 회의록(weekly/, 마케팅 회의록과 같은 카드 '주간&마케팅 회의록' · 맨 위 탭으로 오감, 2026-11-24) — 주차마다 글 두 칸. 저장 = 슈퍼베이스 weekly_meetings
     weekly:{view:'viewWeekly',path:'weekly/',title:'주간 회의록',keep:true,bridge:false},
     // 마일리지 항공권(mileage/, 옛 이름 마일리지 캘린더 — 11-22 사장님 "마일리지 항공권으로 네이밍 변경", '관리자 전용' 폴더, 2026-11-22) — 대표 전용 금고와 같은 판정 (관리자 PIN + 전승훈 · 전수빈)
     mileage:{view:'viewMileage',path:'mileage/',title:'마일리지 항공권',keep:false,bridge:false,
@@ -25286,7 +25279,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   /* 마케팅 회의록 — meeting/ (디자인 · 마케팅 · MD팀 사람별 칸 · 인스타 미리보기 · 중복 계정 경고) */
   function openMeetingPage(){ openToolPage('meeting'); }
   window.openMeetingPage=openMeetingPage;
-  /* 주간 회의록 — weekly/ (주차마다 회의 메모 · 결정 두 칸, 전 직원) */
+  /* 주간&마케팅 회의록 카드 → 주간 회의록(weekly/, 주차마다 회의 메모 · 결정 두 칸, 전 직원)부터 열고, 맨 위 탭으로 마케팅 회의록(meeting/) */
   function openWeeklyPage(){ openToolPage('weekly'); }
   window.openWeeklyPage=openWeeklyPage;
   window.openFeedPage=openFeedPage;
@@ -48214,7 +48207,7 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
      0) 팀 바로가기 = 자리 고정 (2026-11-23 사장님 "부서별 탭 위치 안바뀌고 고정 시켜줘 지금 이대로").
         그 PC 에서 그때까지 보이던 순서를 'bb_home_team_order_v1' 에 한 번 적어 두고 계속 그 순서로 — 눌러도 · 날이 지나도 안 바뀐다.
         다시 자주 쓰는 순서로 돌리지 말 것. 새로 생긴 팀은 맨 뒤.
-     1) 업무용 툴 · 관리자 전용 — 이 PC 에서 많이 누른 순서로 앞에 둔다. 단 data-pin 카드(주간 회의록 1 · 마케팅 회의록 2)는 무조건 맨 앞 고정.
+     1) 업무용 툴 · 관리자 전용 — 이 PC 에서 많이 누른 순서로 앞에 둔다. 단 data-pin 카드(주간&마케팅 회의록)는 무조건 맨 앞 고정.
         기록 = localStorage 'bb_home_usage_v1' {키:{s:점수,t:마지막}} · 점수는 30일마다 반으로 줄어 요즘 쓰는 것이 앞으로.
         정렬은 화면을 열 때 한 번만 (누르는 중에 카드가 움직이지 않게) · 기록이 거의 없으면 원래 순서 그대로.
      2) 줄마다 같은 개수 맞추기 balance() — 팀 카드는 PC 에서 2층(rows:2, 2026-11-24 사장님). 도구 카드는 쓰지 않음(noBalance, 원래 칸 나눔).
