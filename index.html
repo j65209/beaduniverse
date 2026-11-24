@@ -14614,6 +14614,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <div class="cjb-box" style="margin-top:12px">
               <div class="cjb-bh">운송장에 찍을 것</div>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_preprint"> 용지에 CJ 파란 틀이 이미 인쇄돼 있어요 (CJ 전용 운송장 용지) — 글자만 찍기</label>
+              <p class="cjb-note" style="margin:0 0 6px 22px">처음 한 번 아래 <b>📐 위치 맞춤 시험</b>을 찍어 보세요. 검은 테두리가 파란 칸보다 오른쪽으로 2mm 나가 있으면 '오른쪽으로 밀기'를 −2, 아래로 나가 있으면 '아래로 밀기'를 − 로 고치고 저장해요.</p>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_mask_nm"> 받는 분 이름 가운데 가리기 (홍*동)</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_mask_tel"> 받는 분 전화 뒷자리 가리기 (010-1234-****)</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_show_goods"> 상품명</label>
@@ -14634,12 +14635,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <div class="cjb-act">
               <button type="button" class="cjb-btn pri" onclick="cjbPrintSave()">설정 저장</button>
               <button type="button" class="cjb-btn" onclick="cjbPrintSample()">🖨 견본 인쇄</button>
+              <button type="button" class="cjb-btn" onclick="cjbPrintSample(true)" title="전용 용지의 파란 칸 자리에 얇은 검은 테두리를 찍어요 — 파란 칸과 어긋난 만큼 '밀기(mm)'를 고치고 다시 찍어 맞춰요">📐 위치 맞춤 시험</button>
               <button type="button" class="cjb-btn" onclick="_cjbPrintFill();cjbPrintPreview()">되돌리기</button>
               <span class="cjb-sum" id="cjbPMsg"></span>
             </div>
           </div>
           <div>
-            <div class="cjb-bh" style="margin-bottom:6px">미리보기 <small>견본 자료 · 실제 크기 아님</small></div>
+            <div class="cjb-bh" style="margin-bottom:6px">미리보기 <small>견본 자료 · 실제 크기 아님 · 파란 칸은 용지 것</small></div>
             <div class="cjb-prev" id="cjbPrev">미리보기 준비 중…</div>
           </div>
         </div>
@@ -19661,7 +19663,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // ---- 운송장 출력 (2026-11-24 사장님 "오피스에서 바로 출력 가능하다면 기능 넣어주고. 우리가 설정 할 수 있게 해줘") ----
   // 자료 = 함수 cj labels (받는 분 전체 정보 + CJ 주소정제 분류코드), 설정 = cj_config.print (출력 설정 탭, 모든 PC 공통).
   // 인쇄 = 숨은 iframe 에 mm 단위 라벨 페이지를 써서 print() — 프린터 · 용지는 인쇄 창에서. 바코드 = JsBarcode(SVG).
-  const CJB_PRINT_DEF={w:123,h:100,mt:0,ml:0,pad:0,scale:100,bc:'CODE128',preprint:false,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'01',box_def:'01'};
+  const CJB_PRINT_DEF={w:123,h:100,mt:0,ml:0,pad:0,scale:100,bc:'CODE128',preprint:true,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'01',box_def:'01'};
   const CJB_P_NUM=['w','h','mt','ml','pad','scale','copies'], CJB_P_BOOL=['mask_nm','mask_tel','show_goods','show_memo','show_order','show_saddr','use_brand','auto','preprint'], CJB_P_STR=['bc','note','prt_def','box_def'];
   const CJB_BOX_NM=Object.fromEntries(CJB_BOX), CJB_FRT_NM={'01':'선불','02':'착불','03':'신용'};
   const _cjbPrint=()=>({...CJB_PRINT_DEF, ...(_cjb.print||{})});
@@ -19750,7 +19752,8 @@ body{font-family:'Gulim','굴림','Dotum','돋움','Malgun Gothic','맑은 고�
 .mk.r{color:${pv ? '#c00' : '#000'};border-color:${pv ? '#c00' : '#000'}}
 .warn{color:${pv ? '#c00' : '#000'};font-weight:700;white-space:normal}
 .pre .pp{visibility:hidden}
-${pv ? '.pre .pp{visibility:visible;opacity:.28}' : ''}`;
+${pv ? '.pre .pp{visibility:visible}' : ''}
+.al .pp{visibility:hidden}.al .pp.bx,.al .pp.frame{visibility:visible;background:none;color:transparent;border:.25mm solid #000}`;
   }
   function _cjbLabelHtml(lb,p,o){
     const e=_cjbEsc, r=lb.rcvr||{}, s=lb.sendr||{}, c=lb.clsf;
@@ -19821,7 +19824,8 @@ ${pv ? '.pre .pp{visibility:visible;opacity:.28}' : ''}`;
   }
   // 칸에 넘치는 글자는 줄여서 맞춘다 (긴 주소 · 상품 여러 개)
   const CJB_FIT_JS=`(function(){document.querySelectorAll('.fit').forEach(function(e){var f=parseFloat(getComputedStyle(e).fontSize),m=f*.5,i=0;while(i++<60&&f>m&&(e.scrollWidth>e.clientWidth+.5||e.scrollHeight>e.clientHeight+.5)){f*=.96;e.style.fontSize=f+'px';}});})();`;
-  async function _cjbLabelDoc(labels,p,pv){
+  // al = 위치 맞춤 시험: 전용 용지의 파란 칸 자리에 얇은 검은 테두리만 찍어, 어긋난 만큼 밀기(mm)로 맞추게 한다
+  async function _cjbLabelDoc(labels,p,pv,al){
     await _cjbLoadBarcode();
     const pages=[], n=labels.length, blue=pv ? '#1d5bbf' : '#000';
     labels.forEach((lb,i)=>{
@@ -19830,7 +19834,7 @@ ${pv ? '.pre .pp{visibility:visible;opacity:.28}' : ''}`;
         cbc:lb.clsf && lb.clsf.CLSFCD ? _cjbBarcode(lb.clsf.CLSFCD,'CODE128',18.8,10.4) : ''};
       for(let k=0;k<Math.max(1,Number(p.copies)||1);k++) pages.push(_cjbLabelHtml(lb,p,o));
     });
-    return `<!doctype html><html><head><meta charset="utf-8"><title>CJ대한통운 운송장</title><style>${_cjbLabelCss(p,pv)}</style></head><body class="${pv ? 'pv' : ''}${p.preprint ? ' pre' : ''}">${pages.join('')}<script>${CJB_FIT_JS}<\/script></body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><title>CJ대한통운 운송장</title><style>${_cjbLabelCss(p,pv)}</style></head><body class="${pv ? 'pv' : ''}${al ? ' al' : p.preprint ? ' pre' : ''}">${pages.join('')}<script>${CJB_FIT_JS}<\/script></body></html>`;
   }
   function _cjbPrintFrame(html){
     return new Promise(res=>{
@@ -19881,8 +19885,8 @@ ${pv ? '.pre .pp{visibility:visible;opacity:.28}' : ''}`;
       box.querySelector('iframe').srcdoc=html;
     }catch(e){ box.textContent=(e && e.message) || String(e); }
   }
-  async function cjbPrintSample(){
-    try{ await _cjbPrintFrame(await _cjbLabelDoc([_cjbSampleLabel()],{..._cjbPrint(),..._cjbPrintRead()})); }
+  async function cjbPrintSample(al){
+    try{ await _cjbPrintFrame(await _cjbLabelDoc([_cjbSampleLabel()],{..._cjbPrint(),..._cjbPrintRead()},false,!!al)); }
     catch(e){ const m=document.getElementById('cjbPMsg'); if(m) m.textContent=(e && e.message) || String(e); }
   }
   async function cjbCancel(id, btn){
