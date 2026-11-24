@@ -9,6 +9,7 @@
    index.html 은 #wlBoard(전광판) · #wl(업무일지) 자리만 두고 이 파일을 불러온다. 쓰는 전역: _mdxRpc · toast · SUPABASE_URL · SUPABASE_KEY · loadProxyBase · ghPin · _dslHol · designHasAccess
    · 2026-11-24 사장님 "전광판 말고 너무 지저분한데 좀 깔끔하게. 좌측 캘린더나 날짜 선택도 간편한 선택으로" — 왼쪽 달력 · 글 목록 칸을 없애고
      맨 위 날짜 한 줄(날짜 누르면 달력 · 이번 주 칸)로. 날짜를 고르는 자리는 모두 mini() 작은 달력 하나 (전광판만 그대로). 자주 안 쓰는 단추는 ⋯ 메뉴 · '거르기' 로
+   · 2026-11-24 사장님 "디자인팀에서 노션처럼 링크 연결할 수 있게 해줘" — 글 · 줄마다 주소, '@' · Ctrl K 로 글끼리 잇기, 이은 글 되짚기, 다른 사이트는 제목 · 카드 (아래 '링크 · 글 잇기')
    · 2026-11-23 노션과 연결 끊음 (사장님 "데이터 이전을 완료헀으면 노션이랑 연결 끊어") — 노션을 읽거나 부르는 코드는 없다. 옛 글의 원본은 dlog_pages.src
    ============================================================ */
 (function(){
@@ -72,8 +73,8 @@ function segNorm(r){
   for(const s of r || []){
     if(!s || !s.t) continue;
     const p = out[out.length - 1];
-    if(p && MK.every(k => !!p[k] === !!s[k]) && (p.h || '') === (s.h || '') && (p.a || '') === (s.a || '')) p.t += s.t;
-    else{ const n = {t:s.t}; MK.forEach(k => { if(s[k]) n[k] = 1; }); if(s.h) n.h = s.h; if(s.a) n.a = s.a; out.push(n); }
+    if(p && MK.every(k => !!p[k] === !!s[k]) && (p.h || '') === (s.h || '') && (p.a || '') === (s.a || '') && !!p.m === !!(s.a && s.m) && !(p.m && p.t === s.t)) p.t += s.t;
+    else{ const n = {t:s.t}; MK.forEach(k => { if(s[k]) n[k] = 1; }); if(s.h) n.h = s.h; if(s.a){ n.a = s.a; if(s.m) n.m = 1; } out.push(n); }
   }
   out.forEach(x => { x.t = wf(x.t); });
   return out.filter(x => x.t);
@@ -82,7 +83,7 @@ function segSlice(r, a, z){
   const out = []; let p = 0;
   for(const s of r || []){
     const l = s.t.length, x = Math.max(a, p), y = Math.min(z, p + l);
-    if(y > x) out.push(Object.assign({}, s, {t:s.t.slice(x - p, y - p)}));
+    if(y > x){ const q = Object.assign({}, s, {t:s.t.slice(x - p, y - p)}); if(q.m && y - x < l) delete q.m; out.push(q); }          // 이름 링크를 반으로 자르면 그냥 링크
     p += l;
   }
   return out;
@@ -93,7 +94,7 @@ const T = s => [{t:s}];
 /* ── 꾸밈 (화면에서만, 글자는 그대로) ── */
 const AR = /⇒|=>|→/;
 const mmdd = s => { const m = +s.slice(0, 2), d = +s.slice(2, 4); return m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${m}/${d}` : ''; };
-function decoPlain(t, first, res){
+function decoPlain(t, first, res, inA){
   let out = '', s = t;
   if(first){
     const ld = leadOf(s); if(ld){ out += E(ld); s = s.slice(ld.length); }
@@ -110,7 +111,7 @@ function decoPlain(t, first, res){
   let p = 0, m;
   while((m = re.exec(s))){
     out += E(s.slice(p, m.index));
-    if(m[1]) out += `<a class="wl-al" href="${E(m[1])}" target="_blank" rel="noopener noreferrer">${E(m[1])}</a>`;
+    if(m[1]) out += inA ? E(m[1]) : `<a class="wl-al" href="${E(m[1])}" target="_blank" rel="noopener noreferrer">${E(m[1])}</a>`;
     else out += `<span class="wl-q">${E(m[2])}</span>`;
     p = m.index + m[0].length;
   }
@@ -125,15 +126,15 @@ function deco(b){
     if(arrows && !res && AR.test(s.t)){ const i = s.t.search(AR); if(i > 0) parts.push([s.t.slice(0, i), false]); parts.push([s.t.slice(i), true]); res = true; }
     else parts.push([s.t, res]);
     for(const [t, isRes] of parts){
-      let h = decoPlain(t, !isHead(b) && (pos === 0 || !noLead(seen).trim()), isRes);
-      if(isRes){ const m = t.match(/^(⇒|=>|→)/); if(m) h = `<span class="wl-ar">${E(m[0])}</span>` + decoPlain(t.slice(m[0].length), false, true); h = `<span class="wl-res">${h}</span>`; }
+      let h = decoPlain(t, !isHead(b) && (pos === 0 || !noLead(seen).trim()), isRes, s.a);
+      if(isRes){ const m = t.match(/^(⇒|=>|→)/); if(m) h = `<span class="wl-ar">${E(m[0])}</span>` + decoPlain(t.slice(m[0].length), false, true, s.a); h = `<span class="wl-res">${h}</span>`; }
       if(s.c) h = `<code>${h}</code>`;
       if(s.b) h = `<b>${h}</b>`;
       if(s.i) h = `<i data-i="1">${h}</i>`;
       if(s.s) h = `<s>${h}</s>`;
       if(s.u) h = `<u>${h}</u>`;
       if(s.h && s.h !== 'default_background') h = `<span class="wl-h-${E(String(s.h).replace(/[^a-z_]/g, ''))}" data-h="${E(s.h)}">${h}</span>`;
-      if(s.a) h = `<a class="wl-a" data-a="${E(s.a)}"${/^https?:/.test(s.a) ? ` href="${E(s.a)}" target="_blank" rel="noopener noreferrer"` : ''}>${h}</a>`;
+      if(s.a) h = lkA(s, h);
       out += h;
       pos += t.length; seen += t;
     }
@@ -157,12 +158,12 @@ function parseX(el){
     if(G === 'U') k = Object.assign({}, k, {u:1});
     if(G === 'CODE') k = Object.assign({}, k, {c:1});
     if(n.dataset && n.dataset.h) k = Object.assign({}, k, {h:n.dataset.h});
-    if(G === 'A' && n.dataset.a) k = Object.assign({}, k, {a:n.dataset.a});
+    if(G === 'A' && n.dataset.a) k = Object.assign({}, k, {a:n.dataset.a}, n.dataset.m ? {m:1} : {});
     if((G === 'DIV' || G === 'P') && n !== el && out.length) out.push({t:'\n'});
     n.childNodes.forEach(c => walk(c, k));
   })(el, {});
   out.forEach(s => delete s.br);
-  return segNorm(out);
+  return lkKeep(segNorm(out));
 }
 /* ── 커서 ── */
 function selIn(el){
@@ -172,16 +173,21 @@ function selIn(el){
   return [off(g.startContainer, g.startOffset), off(g.endContainer, g.endOffset)];
 }
 const midEmo = (s, i) => { while(i > 0 && i < s.length && (/[\uDC00-\uDFFF\uFE0F\u200D\u20E3]/.test(s[i]) || s[i - 1] === '\u200D' || (s[i] === '\uD83C' && /[\uDFFB-\uDFFF]/.test(s[i + 1] || '')))) i--; return i; };
-function putSel(el, a, z){
-  if(!el) return;
-  if(document.activeElement !== el) el.focus({preventScroll:true});
+function rangeIn(el, a, z){
   const find = p => {
     const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n, last = null, left = p;
     while((n = w.nextNode())){ last = n; if(left <= n.nodeValue.length) return [n, midEmo(n.nodeValue, left)]; left -= n.nodeValue.length; }
     return last ? [last, last.nodeValue.length] : [el, 0];
   };
-  const [n1, o1] = find(a), [n2, o2] = find(z == null ? a : z), r = document.createRange(), s = getSelection();
-  try{ r.setStart(n1, o1); r.setEnd(n2, o2); s.removeAllRanges(); s.addRange(r); }catch(e){}
+  const [n1, o1] = find(a), [n2, o2] = find(z == null ? a : z), r = document.createRange();
+  try{ r.setStart(n1, o1); r.setEnd(n2, o2); }catch(e){ return null; }
+  return r;
+}
+function putSel(el, a, z){
+  if(!el) return;
+  if(document.activeElement !== el) el.focus({preventScroll:true});
+  const r = rangeIn(el, a, z), s = getSelection();
+  if(r) try{ s.removeAllRanges(); s.addRange(r); }catch(e){}
 }
 const lineEl = id => $(`#wl .wl-b[data-id="${CSS.escape(id)}"]`);
 const xEl = id => { const l = lineEl(id); return l && $('.wl-x', l); };
@@ -560,7 +566,7 @@ const BLANK = {
 };
 /* 어제 글 → 오늘 글: 끝낸 줄은 빼고, '내일 할 일' 은 '오늘 할 일' 로, 나머지는 그대로 이어받기 */
 function carry(src){
-  const age = ageMap(src), out = [], keep = b => nb({lv:b.lv || 0, t:b.t, r:clone(b.r || []), bg:b.bg, st:b.st === 'done' ? undefined : b.st, f:b.f, src:b.src, w:b.w, cap:b.cap, href:b.href, name:b.name, size:b.size, o:b.o || b.id, d0:b.d0 || age.get(b.id) || src.day, bd:b.bd});
+  const age = ageMap(src), out = [], keep = b => nb({lv:b.lv || 0, t:b.t, r:clone(b.r || []), bg:b.bg, st:b.st === 'done' ? undefined : b.st, f:b.f, src:b.src, w:b.w, cap:b.cap, href:b.href, name:b.name, size:b.size, im:b.im, o:b.o || b.id, d0:b.d0 || age.get(b.id) || src.day, bd:b.bd});
   // 끝낸 줄은 빼되, 전광판 루틴 줄(bd)은 날마다 새로 체크하는 것이라 체크만 풀고 남긴다
   const live = (items, rt) => { const r = []; let cut = -1; items.forEach(b => { const lv = b.lv || 0; if(cut >= 0 && lv > cut) return; cut = -1; if(b.k && !(rt && b.bd)){ cut = lv; return; } r.push(b); }); while(r.length && isEmpty(r[r.length - 1])) r.pop(); return r; };
   const ss = sections(src.blocks), todo = [];
@@ -864,6 +870,7 @@ function lineHtml(b, s, x){
   const emo = '<button type="button" class="wl-emb" data-act="emo" tabindex="-1" aria-label="이모지 넣기" title="이모지 넣기 (Ctrl E)"><i class="wl-smile"></i></button>';
   if(b.t === 'img') return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}<figure class="wl-fig"><img src="${E(imgUrl(b.src))}" alt="${E(b.cap || '')}" loading="lazy" data-act="zoom">${b.cap ? `<figcaption>${E(b.cap)}</figcaption>` : ''}</figure>${del}</div>`;
   if(b.t === 'file') return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}<a class="wl-file" href="${E(imgUrl(b.src))}" target="_blank" rel="noopener noreferrer">📎 ${E(b.name || bText(b) || '파일')}${b.size ? `<small>${Math.max(1, Math.round(b.size / 1024)).toLocaleString()}KB</small>` : ''}</a>${del}</div>`;
+  if(b.t === 'bm') return `<div class="${cls}" data-id="${b.id}" style="--lv:${lv}">${grip}${bmHtml(b)}${del}</div>`;
   const dot = b.t === 'p' || b.t === 'quote' || b.t === 'callout' || b.t === 'code' ? '<span class="wl-dot none"></span>' : `<button type="button" class="wl-dot" data-act="done" tabindex="-1" aria-label="${b.k ? '끝냄 풀기' : '끝냄'}" title="${b.k ? '다시 할 일로' : '끝냈으면 누르기'}"></button>`;
   const side = [x.norm && days >= 5 ? `<em class="age${days >= 14 ? ' old' : ''}" title="${E(d0)} 부터 남아 있어요">${days + 1}일째</em>` : '',
     st && x.norm && lv <= 1 ? `<button type="button" class="st s-${st}" data-act="st" tabindex="-1" title="누르면 상태를 골라요">${STS[st]}</button>` : ''].join('');
@@ -893,6 +900,7 @@ function renderPage(){
   const p = cur();
   if(!p){ el.innerHTML = S.view === 'order' ? '' : '<div class="wl-empty"><b>글을 골라 주세요</b></div>'; return; }
   if(!p.blocks){ el.innerHTML = '<div class="wl-skel"><i></i><i></i><i></i><i></i></div>'; loadBlocks([p.id]).then(() => { if(S.cur === p.id) renderPage(); }).catch(e => { el.innerHTML = `<div class="wl-empty"><b>글을 불러오지 못했어요</b><button type="button" class="wl-btn" data-act="reload">다시</button></div>`; }); return; }
+  lkSync(p); lkHide();
   const prev = prevOf(p);
   if(prev && !prev.blocks && !prev._try){ prev._try = 1; loadBlocks([prev.id]).then(() => { S.caches.delete(p.id); if(S.cur === p.id && !editing()) renderPage(); }).catch(() => {}); }
   const c = ctxOf(p), seq = list(), i = seq.findIndex(x => x.id === p.id), nx = seq[i - 1], pv = seq[i + 1];
@@ -938,8 +946,9 @@ function renderSide(){
   // '앞 글과 달라진 점(새로 · 고침 · 빠짐)' 은 뺐다 — 2026-11-23 사장님 "이전과 달라진 점 없애"
   const old = A.lines.filter(l => l.lv === 0 && !l.b.k && age.get(l.id) && dayDiff(p.day, age.get(l.id)) >= 13 && !NO_AGE.includes(l.sec)).sort((a, b) => age.get(a.id).localeCompare(age.get(b.id)));
   if(old.length) parts.push(`<div class="wl-sc"><h4>2주 넘게 남은 일 <small>${old.length}</small></h4>${old.slice(0, 6).map(l => go(l.id, E(l.t), `<b class="bad">${dayDiff(p.day, age.get(l.id)) + 1}일째</b>`)).join('')}</div>`);
+  parts.push(lkSide(p));
   el.innerHTML = parts.join('');
-  const mn = document.getElementById('wlMain'); if(mn && S.view === 'page') mn.classList.toggle('noside', !parts.length);
+  const mn = document.getElementById('wlMain'); if(mn && S.view === 'page') mn.classList.toggle('noside', !parts.join(''));
 }
 
 /* ── 한눈에 ── */
@@ -953,7 +962,7 @@ function overHtml(){
   const put = (k, l) => { if(!groups.has(k)) groups.set(k, []); groups.get(k).push(l); };
   let key = null, kb = 0;
   c.I.lines.forEach(l => {
-    if(['goalM', 'goalW'].includes(l.sec)) return;
+    if(['goalM', 'goalW'].includes(l.sec) || (l.b.src && !l.t.trim())) return;          // 사진 · 카드는 글자가 없어 뺀다
     if(S.group === 'status'){ if(l.sec === 'daily') return; if(l.lv > 0){ const s = stOf(l.b, l.sec); if(s && s !== c.own.get(l.id)) return put(key, l); if(key) put(key, l); return; } key = stOf(l.b, l.sec) || 'none'; put(key, l); }
     else{ const t = tagOf(l.t); if(l.lv > 0 && !t){ if(key) put(key, Object.assign({}, l, {lv:Math.max(1, l.lv - kb)})); return; } if(l.sec === 'daily' && !t) { key = null; return; } key = t || (l.head || '기타'); kb = l.lv; put(key, Object.assign({}, l, {lv:0})); }
   });
@@ -1026,7 +1035,7 @@ function openPage(id, opt){
   if(isO) S.oMonth = S.pages.get(id).day.slice(0, 7); else S.month = S.pages.get(id).day.slice(0, 7);
   renderTop(); renderMain();
   const q = document.getElementById('wlQ'); if(q) q.value = '';
-  if(opt.line) flash(opt.line);
+  if(opt.line){ if(S.pages.get(id).blocks) flash(opt.line); else loadBlocks([id]).then(() => { if(S.cur === id) setTimeout(() => flash(opt.line), 60); }).catch(() => {}); }
   if(opt.find){ const t = opt.find.trim(); const go = () => { const p = cur(), b = p && p.blocks && p.blocks.find(x => bText(x).replace(/\n/g, ' ').trim() === t); if(b) flash(b.id); }; if(S.pages.get(id).blocks) go(); else setTimeout(go, 900); }
 }
 function flash(id){
@@ -1123,7 +1132,7 @@ function orderPage(p, c, vis){
     <dl class="wl-of"><dt>날짜</dt><dd><button type="button" class="wl-dp" data-oact="day">${dayBtnText(p.day)}<i class="wl-i-down"></i></button><i>~</i><button type="button" class="wl-dp${(p.meta || {}).end ? '' : ' none'}" data-oact="end">${dayBtnText((p.meta || {}).end) || '끝나는 날'}<i class="wl-i-down"></i></button>${(p.meta || {}).end ? '<button type="button" class="wl-ib x" data-oact="endoff" title="끝나는 날 없애기" aria-label="끝나는 날 없애기">×</button>' : ''}</dd>
       <dt>종류</dt><dd class="wl-chips sm">${Object.entries(OKN).map(([k, t]) => chip('ok', k, t, ok === k)).join('')}</dd>
       <dt>공장</dt><dd class="wl-chips sm">${facs.map(f => chip('fac', f, f, fac.includes(f))).join('')}<button type="button" data-oact="facadd" aria-label="공장 더하기">＋</button></dd>
-      <dt>상태</dt><dd class="wl-chips sm">${[...new Set([...OST, ...st])].map(x => chip('st', x, x, st.includes(x))).join('')}</dd></dl>
+      <dt>상태</dt><dd class="wl-chips sm">${[...new Set([...OST, ...st])].map(x => chip('st', x, x, st.includes(x))).join('')}</dd>${lkRow2(p)}</dl>
     <div class="wl-cols">${vis.map(s => secHtml(s, c)).join('') || '<button type="button" class="wl-addsec" data-act="addfirst">＋ 상품 · 수량 적기</button>'}</div>
     <p class="wl-meta">${p.ub && p.ub !== 'notion' ? E(p.ub) + ' · ' : ''}${p.ua ? `${md(ymd(new Date(p.ua)))} ${hm(p.ua)} 수정` : ''}${p.origin === 'notion' ? ' · 노션에서 옮김' : ''}</p>`;
 }
@@ -1184,6 +1193,7 @@ function onOrdClick(e){
     if(k === 'monpick') calPop(a, {val:S.oMonth + '-01', months:true, pickMon:m => { S.oMonth = m; renderOrd(); }});
     if(k === 'day' || k === 'end'){ const p = cur(); if(p) calPop(a, {val:k === 'day' ? p.day : (p.meta || {}).end || p.day, quick:k === 'day' ? [['오늘', S.today], ['내일', addD(S.today, 1)], ['일주일 뒤', addD(S.today, 7)]] : [['하루 더', addD(p.day, 1)], ['일주일', addD(p.day, 7)]], pick:v => ordDay(k, v)}); }
     if(k === 'endoff') ordDay('end', '');
+    if(k === 'lkadd'){ const p = cur(); if(p) lkOpen(a, {self:p.id, onPick:lkLine}); }
     if(k === 'new') newOrder(a, S.oMonth === S.today.slice(0, 7) ? S.today : S.oMonth + '-01');
     if(k === 'close'){ flushSoon(); S.cur = null; const pg = document.getElementById('wlPage'); if(pg) pg.innerHTML = ''; renderOrd(); }
     if(k === 'facadd'){ const v = (prompt('공장 · 업체 이름') || '').trim().slice(0, 40), p = cur(); if(v && p){ ordSet(p, {fac:[...new Set([...oFac(p), v])]}); renderPage(); renderOrd(); } }
@@ -1297,7 +1307,7 @@ function todayWork(){
   shown.forEach(x => {
     if(x.head !== last && !x.b.k){ last = x.head; if(x.head) h += `<h5>${E(x.head)}</h5>`; }
     const st = stOf(x.b, x.type), d0 = age.get(x.b.id), dd = d0 && !x.b.k ? dayDiff(p.day, d0) : 0;
-    h += `<div class="wl-r wk${x.b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-bact="wdone" data-pid="${p.id}" data-lid="${x.b.id}" aria-pressed="${!!x.b.k}" aria-label="끝냄" title="끝났으면 누르기"></button>${S.twEdit === x.b.id ? `<input class="wl-in" data-tw="${x.b.id}" data-pid="${p.id}" maxlength="500" value="${E(bText(x.b).replace(/\n/g, ' '))}" aria-label="오늘 업무 고치기">${emoBtn}` : `<button type="button" class="wl-rt" data-go="${x.b.id}" data-pid="${p.id}" title="업무일지에서 이 줄 보기"><span>${E(bText(x.b))}</span></button>`}<span class="wl-rm">${[dd >= 13 ? `<b class="bad">${dd + 1}일째</b>` : '', st && st !== 'done' ? (st === 'chk' ? `<b>${STS[st]}</b>` : STS[st]) : ''].filter(Boolean).join(' ')}</span><span class="wl-bc"><button type="button" data-bact="wedit" data-pid="${p.id}" data-lid="${x.b.id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="wdel" data-pid="${p.id}" data-lid="${x.b.id}" title="지우기" aria-label="지우기">×</button></span></div>`;
+    h += `<div class="wl-r wk${x.b.k ? ' done' : ''}"><button type="button" class="wl-ck" data-bact="wdone" data-pid="${p.id}" data-lid="${x.b.id}" aria-pressed="${!!x.b.k}" aria-label="끝냄" title="끝났으면 누르기"></button>${S.twEdit === x.b.id ? `<input class="wl-in" data-tw="${x.b.id}" data-pid="${p.id}" maxlength="500" value="${E(bText(x.b).replace(/\n/g, ' '))}" aria-label="오늘 업무 고치기">${emoBtn}` : `<button type="button" class="wl-rt" data-go="${x.b.id}" data-pid="${p.id}" title="업무일지에서 이 줄 보기"><span>${lkInline(x.b.r)}</span></button>`}<span class="wl-rm">${[dd >= 13 ? `<b class="bad">${dd + 1}일째</b>` : '', st && st !== 'done' ? (st === 'chk' ? `<b>${STS[st]}</b>` : STS[st]) : ''].filter(Boolean).join(' ')}</span><span class="wl-bc"><button type="button" data-bact="wedit" data-pid="${p.id}" data-lid="${x.b.id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="wdel" data-pid="${p.id}" data-lid="${x.b.id}" title="지우기" aria-label="지우기">×</button></span></div>`;
   });
   const more = left.length + done.length - shown.length;
   return `<section class="wl-tw"><h4>${is ? '오늘 업무' : `${md(p.day)} 업무일지에서 남은 일`} <small>${is ? `${done.length}/${all.length}` : left.length}</small></h4>${!is && !isOff(S.today) ? '<button type="button" class="wl-go" data-bact="wstart">오늘 업무일지 시작 — 남은 일 이어받기</button>' : ''}${h || '<p class="wl-bz">적힌 일이 없어요</p>'}${more > 0 || S.twAll ? `<button type="button" class="wl-off1" data-bact="wmore">${S.twAll ? '접기' : `외 ${more}개${done.length ? ` (끝낸 일 ${done.length})` : ''} 더 보기`}</button>` : ''}${is ? `<form class="wl-ba" data-add="today"><input type="text" maxlength="300" placeholder="＋ 오늘 할 일 — 적고 Enter" aria-label="오늘 할 일 더하기">${emoBtn}</form>` : ''}</section>`;
@@ -1318,7 +1328,7 @@ function pageEdit(p, fn){
   show();
   return () => { beforeEdit(p); if(S.cur === p.id) mark(p); p.blocks = JSON.parse(snap); show(); };
 }
-const setText = (b, t) => { b.r = (b.r || []).length === 1 ? [Object.assign({}, b.r[0], {t})] : T(t); };
+const setText = (b, t) => { b.r = segEdit(b.r || [], t); };
 function twCommit(i){
   const p = S.pages.get(i.dataset.pid), id = i.dataset.tw, t = i.value.trim();
   if(S.twEdit !== id) return;
@@ -1389,8 +1399,8 @@ function renderBoard(){
   const late17 = new Date().getHours() >= 17;
   const ps = pins(), tw = todayWork(), tp = todayPage(), wl = todayLeft();
   const ctl = id => `<span class="wl-bc"><button type="button" data-bact="edit" data-bid="${id}" title="고치기" aria-label="고치기">✎</button><button type="button" data-bact="del" data-bid="${id}" title="지우기" aria-label="지우기">×</button></span>`;
-  const rRow = ([it, s]) => `<div class="wl-r${s.done ? ' done' : ''}${s.late || (!s.done && late17) ? ' late' : ''}${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="check" data-bid="${it.id}" data-day="${s.day}" aria-pressed="${s.done}" aria-label="${E(it.title)} 체크"></button><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span>${(it.rule || {}).auto === 'in' ? `<small>${E(inb.rows ? inbSum() : inb.err ? '콰이디에어 · ERP 를 못 읽었어요 — ' + inb.err : '콰이디에어 · ERP 확인 중…')}</small>` : ''}${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${s.done && autoBy(it, s) ? `자동 확인 ${hm(autoBy(it, s))}` : s.late ? `<b class="bad">${md(s.day)}(${WK[dow(s.day)]}) 것 밀림</b>` : E([it.slot, (it.rule || {}).t === 'day' ? '' : ruleText(it.rule)].filter(Boolean).join(' · '))}</span>${dots(it)}${ctl(it.id)}</div>`;
-  const pRow = it => `<div class="wl-r pin${it.hot ? ' hot' : ''}${it.done_at ? ' done' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="pindone" data-bid="${it.id}" aria-pressed="${!!it.done_at}" aria-label="${E(it.title)} 끝냄" title="${it.done_at ? '다시 누르면 풀려요 · 지우려면 ×' : '끝났으면 누르기 (지우기 전까지 여기 남아요)'}"></button><button type="button" class="wl-rt" data-bact="${pinLineOf(it) ? 'golink' : 'edit'}" data-bid="${it.id}"><span>${E(it.title)}</span>${it.memo ? `<small>${E(it.memo)}</small>` : ''}</button><span class="wl-rm">${it.due && !it.done_at ? dday(it.due) + ' ' + md(it.due) : ''}</span>${ctl(it.id)}</div>`;
+  const rRow = ([it, s]) => `<div class="wl-r${s.done ? ' done' : ''}${s.late || (!s.done && late17) ? ' late' : ''}${it.hot ? ' hot' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="check" data-bid="${it.id}" data-day="${s.day}" aria-pressed="${s.done}" aria-label="${E(it.title)} 체크"></button><button type="button" class="wl-rt" data-bact="edit" data-bid="${it.id}"><span>${E(it.title)}</span>${(it.rule || {}).auto === 'in' ? `<small>${E(inb.rows ? inbSum() : inb.err ? '콰이디에어 · ERP 를 못 읽었어요 — ' + inb.err : '콰이디에어 · ERP 확인 중…')}</small>` : ''}${it.memo ? `<small>${lkInline(T(it.memo))}</small>` : ''}</button><span class="wl-rm">${s.done && autoBy(it, s) ? `자동 확인 ${hm(autoBy(it, s))}` : s.late ? `<b class="bad">${md(s.day)}(${WK[dow(s.day)]}) 것 밀림</b>` : E([it.slot, (it.rule || {}).t === 'day' ? '' : ruleText(it.rule)].filter(Boolean).join(' · '))}</span>${dots(it)}${ctl(it.id)}</div>`;
+  const pRow = it => `<div class="wl-r pin${it.hot ? ' hot' : ''}${it.done_at ? ' done' : ''}" data-bid="${it.id}" draggable="true"><button type="button" class="wl-ck" data-bact="pindone" data-bid="${it.id}" aria-pressed="${!!it.done_at}" aria-label="${E(it.title)} 끝냄" title="${it.done_at ? '다시 누르면 풀려요 · 지우려면 ×' : '끝났으면 누르기 (지우기 전까지 여기 남아요)'}"></button><button type="button" class="wl-rt" data-bact="${pinLineOf(it) ? 'golink' : 'edit'}" data-bid="${it.id}"><span>${lkInline(pinR(it))}</span>${it.memo ? `<small>${lkInline(T(it.memo))}</small>` : ''}</button><span class="wl-rm">${it.due && !it.done_at ? dday(it.due) + ' ' + md(it.due) : ''}</span>${ctl(it.id)}</div>`;
   const add = (k, ph) => `<form class="wl-ba" data-add="${k}"><input type="text" maxlength="200" placeholder="${ph}" aria-label="${ph}">${emoBtn}</form>`;
   el.className = 'wl-board' + (S.boardFold ? ' is-fold' : '');
   el.innerHTML = `<div class="wl-bh"><b>전광판</b><span class="wl-bd">${+S.today.slice(5, 7)}월 ${+S.today.slice(8)}일 ${WK[dow(S.today)]}요일</span><span class="wl-bn${left || wl ? '' : ' ok'}">${wl ? `오늘 업무 <b>${wl}</b>` : tp && tp.day === S.today ? '오늘 업무 끝' : ''}${left ? `${wl ? ' · ' : ' '}루틴 <b>${left}</b>` : ''}${left || wl ? ' 남음' : ''}</span><span class="wl-sp"></span><button type="button" class="wl-bb" data-bact="tolog">업무일지로 ↓</button><button type="button" class="wl-bb" data-bact="tolst">라인시트로 ↓</button><button type="button" class="wl-bb" data-bact="fold">${S.boardFold ? '펼치기' : '접기'}</button></div>
@@ -1476,6 +1486,7 @@ function pinLineOf(it){           // 꼭 챙길 것과 이어진 업무일지 �
   for(const p of dailies()){ if(!p.blocks) continue; const b = p.blocks.find(x => x.bd === it.id || (L && (x.id === L || x.o === L))); if(b) return {p, b}; }
   return null;
 }
+const pinR = it => { const r = pinLineOf(it), t = String(it.title || ''); return r && bText(r.b).replace(/\s+/g, ' ').trim() === t ? r.b.r : T(t); };          // 업무일지 줄과 이름이 같으면 그 줄의 링크까지
 function logShow(p){ if(!p || S.cur !== p.id || S.view !== 'page' || S.find) return; if(S.ptr && !boardClick) S.defer = true; else if(logX() || !editing()) renderKeep(); else S.defer = true; }
 let boardClick = false;          // 전광판 단추를 누르는 중 — 밑 업무일지는 바로 다시 그려도 된다 (누르는 곳이 업무일지가 아니라서)
 function logReveal(p){           // 전광판에서 더했는데 밑 업무일지가 다른 날을 보고 있으면 오늘 글로
@@ -1568,11 +1579,11 @@ function logRename(it){           // 업무일지 줄 글자도 바꾼다 — �
   if(it.kind === 'routine'){
     const p = logPage(), b = p && p.blocks.find(x => x.bd === it.id); if(!b) return;
     const t = bText(b), i = t.search(AR), nt = rtText(it) + (i > 0 ? ' ' + t.slice(i).trim() : '');
-    if(nt !== t) logEdit(p, () => { b.r = T(nt); });
+    if(nt !== t) logEdit(p, () => { setText(b, nt); });
     return;
   }
   const r = pinLineOf(it), nt = String(it.title || '').trim();
-  if(r && nt && bText(r.b).replace(/\s+/g, ' ').trim() !== nt) logEdit(r.p, () => { r.b.r = T(nt); });
+  if(r && nt && bText(r.b).replace(/\s+/g, ' ').trim() !== nt) logEdit(r.p, () => { setText(r.b, nt); });
 }
 /* 전광판에서 지움 → 오늘 업무일지의 그 줄도 (아래 줄이 달려 있으면 줄은 두고 잇기만 끊는다) */
 function logUnlink(it){
@@ -1624,6 +1635,7 @@ function boardEdit(id, at){
 }
 function onBoardClick(e){ boardClick = true; setTimeout(() => { boardClick = false; }, 0); return onBoardClick2(e); }
 function onBoardClick2(e){
+  const u = e.target.closest('[data-lk]'); if(u){ e.preventDefault(); return lkGo(u.dataset.lk, {text:u.textContent, tab:e.metaKey || e.ctrlKey}); }
   const a = e.target.closest('[data-bact]');
   if(a){
     const id = a.dataset.bid, k = a.dataset.bact;
@@ -1689,9 +1701,9 @@ function bindBoard(el){
 /* ============================================================ 작은 창 · 알림 ============================================================ */
 function placePop(b, at){
   const r0 = at && at.getBoundingClientRect ? at.getBoundingClientRect() : at, r = r0 && (r0.width || r0.height || r0.top) ? r0 : {left:innerWidth / 2 - 140, right:innerWidth / 2 + 140, top:120, bottom:120};
-  const w = b.offsetWidth, h = b.offsetHeight;
+  const w = b.offsetWidth, h = b.offsetHeight, v = window.visualViewport, H = v ? Math.min(innerHeight, v.offsetTop + v.height) : innerHeight;          // 휴대폰 자판이 올라오면 그 위까지
   b.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left)) + 'px';
-  b.style.top = Math.max(8, r.bottom + 6 + h < innerHeight - 8 ? r.bottom + 6 : r.top - h - 6 > 8 ? r.top - h - 6 : innerHeight - h - 8) + 'px';
+  b.style.top = Math.max(8, r.bottom + 6 + h < H - 8 ? r.bottom + 6 : r.top - h - 6 > 8 ? r.top - h - 6 : H - h - 8) + 'px';
 }
 function pop(at, html, cls, onClick){
   closePop();
@@ -1707,10 +1719,10 @@ function pop(at, html, cls, onClick){
 function popOut(e){ const b = document.getElementById('wlPop'); if(b && !b.contains(e.target) && !(EMO.el && EMO.el.contains(e.target))) closePop(); }
 function closePop(){ const b = document.getElementById('wlPop'); if(b) b.remove(); document.removeEventListener('mousedown', popOut, true); }
 let snackT = 0;
-function snack(msg, undoFn){
+function snack(msg, undoFn, label){
   let el = document.getElementById('wlSnack');
   if(!el){ el = document.createElement('div'); el.id = 'wlSnack'; el.className = 'wl-snack'; document.body.appendChild(el); }
-  el.innerHTML = `<span>${E(msg)}</span>${undoFn ? '<button type="button">되돌리기</button>' : ''}`;
+  el.innerHTML = `<span>${E(msg)}</span>${undoFn ? `<button type="button">${label || '되돌리기'}</button>` : ''}`;
   el.classList.add('on');
   const b = $('button', el); if(b) b.onclick = () => { el.classList.remove('on'); undoFn(); };
   clearTimeout(snackT); snackT = setTimeout(() => el.classList.remove('on'), 7000);
@@ -1730,6 +1742,7 @@ async function copyText(t, ok){
   catch(e){ const x = document.createElement('textarea'); x.value = t; document.body.appendChild(x); x.select(); try{ document.execCommand('copy'); }catch(e2){} x.remove(); }
   say(ok || '복사했어요');
 }
+const selHtml = (p, ids) => `<ul>${(p.blocks || []).filter(b => ids.has(b.id) && b.t !== 'hr' && !isEmpty(b) && (!b.src || b.t === 'bm')).map(b => `<li>${b.t === 'bm' ? `<a href="${E(b.src)}">${E(b.name || b.src)}</a>` : (b.r || []).map(s => s.a ? `<a href="${E(lkUrl(s.a))}" data-a="${E(s.a)}"${s.m ? ' data-m="1"' : ''}>${E(s.t)}</a>` : E(s.t)).join('')}</li>`).join('')}</ul>`;          // 여러 줄 복사 — 링크까지
 function pageText(p, ids){
   const L = [];
   if(!ids) L.push(`${+p.day.slice(5, 7)}월 ${+p.day.slice(8)}일 (${WK[dow(p.day)]}) ${icoOf(p)}${p.title}`);
@@ -1739,6 +1752,7 @@ function pageText(p, ids){
     if(isHead(b)){ L.push('', `[${bText(b)}]`); return; }
     if(b.t === 'img'){ L.push('  '.repeat(b.lv || 0) + '(사진)'); return; }
     if(b.t === 'file'){ L.push('  '.repeat(b.lv || 0) + `(파일) ${b.name || ''}`); return; }
+    if(b.t === 'bm'){ L.push('  '.repeat(b.lv || 0) + [b.name, b.src].filter(Boolean).join(' ')); return; }
     if(isEmpty(b)) return;
     L.push('  '.repeat(b.lv || 0) + (b.t === 'p' ? '' : b.k ? '✓ ' : '- ') + bText(b));
   });
@@ -1915,28 +1929,485 @@ function pageIcon(at){
   emoOpen(at, set, {clear:(p.meta || {}).icon ? () => set('') : null});
 }
 /* 글 중간에서 ':불' — 고를 것이 있으면 아래에 작은 목록. Tab 이나 누르기로 넣는다 (Enter 는 ↑↓ 로 고른 뒤에만 — 'A :완료' 처럼 적은 글이 바뀌지 않게) */
-const SUG = {el:null, id:'', pos:null, i:0, mv:false, L:[]};
+const SUG = {el:null, kind:'', id:'', pos:null, i:0, mv:false, go:false, off:'', L:[]};
 function sugSync(x, b){
-  const s = selIn(x), m = s && s[0] === s[1] && b.t !== 'code' ? bText(b).slice(0, s[0]).match(/(?:^|\s):([가-힣a-zA-Z]{1,12})$/) : null;
+  if(SUG.el && SUG.kind === 'ask') sugClose();
+  const s = selIn(x);
+  if(lkSug(x, b, s)) return;
+  const m = s && s[0] === s[1] && b.t !== 'code' ? bText(b).slice(0, s[0]).match(/(?:^|\s):([가-힣a-zA-Z]{1,12})$/) : null;
   if(!m) return sugClose();
   const q = m[1], pos = [s[0] - q.length - 1, s[0]];
   emoLoad().then(() => {
     if(document.activeElement !== x || !bText(b).slice(0, pos[1]).endsWith(':' + q)) return;
     const L = emoFind(q, true).slice(0, 6); if(!L.length) return sugClose();
-    if(!SUG.el){ SUG.el = document.createElement('div'); SUG.el.className = 'wl-pop sug'; document.body.appendChild(SUG.el); SUG.el.addEventListener('mousedown', e => { e.preventDefault(); const c = e.target.closest('[data-i]'); if(c) sugPick(+c.dataset.i); }); }
-    Object.assign(SUG, {id:b.id, pid:S.cur, pos, i:0, mv:false, L});
-    SUG.el.innerHTML = L.map((o, i) => `<button type="button" tabindex="-1" data-i="${i}" class="${i ? '' : 'on'}"><span>${o.e}</span>${E(o.n)}</button>`).join('') + '<div class="ef">Tab 넣기 · ↑↓ 고르기 · Esc 닫기</div>';
-    const g = getSelection(), r = g.rangeCount && g.getRangeAt(0).getClientRects()[0] || x.getBoundingClientRect();
-    placePop(SUG.el, r);
+    sugOpen(x, {kind:'emo', id:b.id, pid:S.cur, pos, go:false, key:'', L, rows:L.map(o => `<span>${o.e}</span>${E(o.n)}`), foot:'Tab 넣기 · ↑↓ 고르기 · Esc 닫기', pick:o => { emoUse(o.e); emoPut(SUG.pid, SUG.id, SUG.pos, o.e); }});
   }).catch(() => {});
 }
-function sugMove(d){ SUG.i = (SUG.i + d + SUG.L.length) % SUG.L.length; SUG.mv = true; $$('[data-i]', SUG.el).forEach((c, i) => c.classList.toggle('on', i === SUG.i)); }
+/* 커서 아래 작은 목록 — Tab · 누르기로 넣고, Enter 는 ↑↓ 로 고른 뒤(글 잇기는 낱말을 적은 뒤에도)에만. at = 목록을 붙일 글자 자리 */
+function sugOpen(x, o, at){
+  if(!SUG.el){ SUG.el = document.createElement('div'); document.body.appendChild(SUG.el); SUG.el.addEventListener('mousedown', e => { e.preventDefault(); const c = e.target.closest('[data-i]'); if(c) sugPick(+c.dataset.i); }); }
+  Object.assign(SUG, {i:0, mv:false, off:''}, o);
+  SUG.el.className = 'wl-pop sug ' + SUG.kind;
+  SUG.el.innerHTML = o.rows.map((h, i) => `<button type="button" tabindex="-1" data-i="${i}" class="${i || o.kind === 'ask' ? '' : 'on'}">${h}</button>`).join('') + `<div class="ef">${o.foot}</div>`;
+  if(o.kind === 'ask') SUG.i = -1;
+  const g = getSelection(), k = at != null && rangeIn(x, at, at + 1), r = (k && k.getClientRects()[0]) || (g.rangeCount && g.getRangeAt(0).getClientRects()[0]) || x.getBoundingClientRect();
+  placePop(SUG.el, r);
+}
+function sugMove(d){ SUG.i = SUG.i < 0 ? (d > 0 ? 0 : SUG.L.length - 1) : (SUG.i + d + SUG.L.length) % SUG.L.length; SUG.mv = true; $$('[data-i]', SUG.el).forEach((c, i) => c.classList.toggle('on', i === SUG.i)); }
 function sugPick(i){
-  const o = SUG.L[i], {pid, id, pos} = SUG, x = xEl(id); sugClose(); if(!o || !x) return;
+  const o = SUG.L[i], x = xEl(SUG.id), f = SUG.pick; sugClose(); if(!o || !x) return;
   if(S.comp) x.blur();          // 한글 조합을 마치고 바꾼다
-  emoUse(o.e); emoPut(pid, id, pos, o.e);
+  f(o);
 }
 function sugClose(){ if(SUG.el){ SUG.el.remove(); SUG.el = null; } }
+
+/* ============================================================ 링크 · 글 잇기 ============================================================
+   2026-11-24 사장님 "디자인팀에서 노션처럼 링크 연결할 수 있게 해줘"
+   · 글자 조각의 a = 'wl:글id' (그 글) · 'wl:글id#줄id' (그 줄) · 'wl:orders' · 'ds:line/시즌/상품' · 'ds:match/스타일' · 'ds:quote' · http 주소
+   · m = 1 이면 그 글 이름 그대로인 링크 — 글 이름이 바뀌면 따라 바뀐다. 글자를 손으로 고치면 m 이 빠지고 적은 글자 그대로
+   · 잇는 길 — '@' 치고 찾기 · Ctrl K (고른 글자 · 커서 자리) · 글자 막대 🔗 · 줄 메뉴 · 발주 상세 [＋ 글 잇기] · 주소 붙여넣기
+   · 글 · 줄마다 주소가 있다(?app=design&wl=글id.줄id#design) — 복사해 붙여 넣으면 안에서는 글 이름으로, 밖(카톡)에서는 열면 바로 그 글
+   · 이 글을 이어 둔 글은 발주 상세 '연결' · 업무일지 오른쪽에 저절로 (이은 쪽만 적으면 된다)
+   · 다른 사이트 주소는 제목으로 바꾸거나 카드(t 'bm')로 — 제목 · 사진은 엣지 함수 link-peek (회의록과 같은 것) */
+const RE_ID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const RE_OFFICE = /^https?:\/\/(?:j65209\.github\.io\/beaduniverse|(?:www\.)?beaduniverse\.kr\/office)(?=[/?#]|$)/i;
+const lkBase = () => location.origin + location.pathname;
+const lkIsIn = a => /^(wl|ds):/.test(a || '');
+const lkUrl = a => a === 'wl:orders' ? `${lkBase()}?app=design&wl=orders#design` : a.startsWith('wl:') ? `${lkBase()}?app=design&wl=${a.slice(3).replace('#', '.')}#design` : a.startsWith('ds:') ? `${lkBase()}?app=design&ds=${a.slice(3).replace(/\//g, '.')}#design` : a;
+/* 적거나 붙여 넣은 글자 → 안쪽 링크 · 'office'(글을 안 가리키는 디자인팀 첫 화면 주소) · 바깥 주소 · '' */
+function lkIn(s){
+  const u = String(s || '').trim();
+  if(lkIsIn(u)) return u;
+  if(!/^https?:\/\/\S+$/i.test(u)) return /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?:[/?#]\S*)?$/i.test(u) ? 'https://' + u : '';
+  if(RE_OFFICE.test(u) || u.startsWith(lkBase())){
+    try{
+      const x = new URL(u), w = x.searchParams.get('wl'), d = x.searchParams.get('ds');
+      if(w === 'orders') return 'wl:orders';
+      if(w){ const [id, ln] = w.split('.'); if(RE_ID.test(id)) return 'wl:' + id.toLowerCase() + (ln && /^\w+$/.test(ln) ? '#' + ln : ''); }
+      if(d && /^(line|match|quote)(\.\w+)*$/.test(d)) return 'ds:' + d.replace(/\./g, '/');
+      if((x.searchParams.get('app') === 'design' && /^(#design)?$/.test(x.hash)) || (!x.search && x.hash === '#design')) return 'office';
+    }catch(e){}
+  }
+  return u;
+}
+const lkPage = a => { const id = String(a || '').startsWith('wl:') ? a.slice(3).split('#')[0] : ''; return id && S.pages.get(id) || null; };
+const lkGone = a => a.startsWith('wl:') && a !== 'wl:orders' && S.ready && !lkPage(a);
+const lkTitle = p => (p.kind === 'daily' && !/^\s*\d{4}(?!\d)/.test(p.title || '') ? `${md(p.day)} ${icoOf(p)}${p.title || '업무일지'}` : icoOf(p) + (p.title || '(제목 없음)')).replace(/\s+/g, ' ').trim();          // 업무일지는 이름이 다 같아 날짜를 붙인다
+const lkTitleOf = a => { const p = !String(a).includes('#') && lkPage(a); return p ? lkTitle(p) : ''; };          // m 링크가 따라갈 이름
+const lkKind = p => p.kind === 'order' ? OKN[okOf(p)] : {daily:'일지', status:'진행', memo:'메모'}[p.kind] || '글';
+const lkShort = u => { try{ const x = new URL(u); const t = (x.hostname.replace(/^www\./, '') + decodeURI(x.pathname)).replace(/\/$/, ''); return t.length > 46 ? t.slice(0, 44) + '…' : t; }catch(e){ return u; } };
+const lkHost = u => { try{ return new URL(u).hostname.replace(/^www\./, ''); }catch(e){ return ''; } };
+/* 디자인팀 첫 화면 주소로 걸어 둔 링크는 적힌 글자와 이름이 같은 글로 (글이 하나일 때만) */
+function lkFix(a, text){
+  if(lkIn(a) !== 'office') return lkIn(a) || a;
+  const k = lkNorm(text), L = k ? [...S.pages.values()].filter(p => lkNorm(lkTitle(p)) === k || lkNorm(p.title) === k) : [];
+  return L.length === 1 ? 'wl:' + L[0].id : 'office';
+}
+const lkNorm = s => String(s || '').toLowerCase().replace(/\s+/g, '');
+function lkA(s, h){
+  const a = lkIsIn(s.a) ? s.a : lkFix(s.a, s.t), inn = lkIsIn(a), u = inn ? lkUrl(a) : /^https?:/.test(s.a) ? s.a : '';
+  return `<a class="wl-a${inn ? ' in' : ''}${inn && lkGone(a) ? ' gone' : ''}" data-a="${E(s.a)}"${s.m ? ' data-m="1"' : ''}${u ? ` href="${E(u)}" target="_blank" rel="noopener noreferrer"` : ''}>${h}</a>`;
+}
+/* 이름 링크(m)를 손으로 고친 것 — 이어 적은 글은 링크 밖으로, 이름을 바꾼 것은 적은 글자 그대로 */
+function lkKeep(r){
+  if(!r.some(s => s.m)) return r;
+  const out = [];
+  r.forEach(s => {
+    const t = s.m ? lkTitleOf(s.a) : '';
+    if(!s.m || s.t === t) return out.push(s);
+    const bare = Object.assign({}, s); delete bare.a; delete bare.m;
+    if(t && s.t.startsWith(t)) out.push(Object.assign({}, s, {t}), Object.assign({}, bare, {t:s.t.slice(t.length)}));
+    else if(t && s.t.endsWith(t)) out.push(Object.assign({}, bare, {t:s.t.slice(0, s.t.length - t.length)}), Object.assign({}, s, {t}));
+    else{ const q = Object.assign({}, s); delete q.m; out.push(q); }
+  });
+  return segNorm(out);
+}
+/* 이은 글 이름이 바뀌었으면 화면 글자도 (저장은 다음에 이 글을 고칠 때) */
+function lkSync(p){
+  const d = S.dirty.get(p.id); let hit = false;
+  [p.blocks, d && d.bb].forEach(bs => (bs || []).forEach(b => (b.r || []).forEach(s => { if(!s.m) return; const t = lkTitleOf(s.a); if(t && t !== s.t){ s.t = t; hit = true; } })));
+  if(hit) S.caches.delete(p.id);
+}
+/* ── 찾기 ── */
+const lkSheet = () => { try{ return _tpl; }catch(e){ return null; } };
+function lkDocs(){           // 라인시트 시즌 · 상품, 매칭보드 스타일
+  const t = lkSheet(), out = []; if(!t) return out;
+  try{
+    (t.docs.linesheet || []).filter(d => !(d.data || {}).parent).forEach(d => {
+      const nm = _tplLsTab(d); out.push({a:`ds:line/${d.id}`, title:nm, kind:'라인시트', sub:'시즌'});
+      (d.data.items || []).forEach(it => { const n = String(it.name || '').replace(/\s+/g, ' ').trim(); if(n && it.u) out.push({a:`ds:line/${d.id}/${it.u}`, title:n, kind:'라인시트', sub:nm}); });
+    });
+    (t.docs.matching || []).filter(d => !(d.data || {}).parent).forEach(d => { const n = _tplTitleOf(d); if(n) out.push({a:`ds:match/${d.id}`, title:n, kind:'매칭보드', sub:''}); });
+  }catch(e){}
+  return out;
+}
+const LK_VIEW = [{a:'wl:orders', title:'발주 · 샘플 달력', kind:'화면', sub:''}, {a:'ds:line', title:'라인시트', kind:'화면', sub:''}, {a:'ds:match', title:'매칭보드', kind:'화면', sub:''}, {a:'ds:quote', title:'견적서', kind:'화면', sub:''}];
+function lkFind(q, self, n){
+  const ts = String(q || '').toLowerCase().split(/\s+/).filter(Boolean), w = lkNorm(q), out = [];
+  const add = (o, hay, base) => {
+    if(!ts.length){ o.s = base; return out.push(o); }
+    const h = `${o.title} ${o.kind} ${hay}`.toLowerCase();
+    if(!ts.every(t => h.includes(t)) && !(w.length > 1 && lkNorm(h).includes(w))) return;
+    const tn = lkNorm(o.title);
+    o.s = (tn === w ? 100 : tn.startsWith(w) ? 70 : tn.includes(w) ? 45 : 12) + base; out.push(o);
+  };
+  S.pages.forEach(p => {
+    if(p.id === self) return;
+    const O = p.kind === 'order', ls = O ? oLines(p) : [], fac = O ? oFac(p) : [], far = Math.abs(dayDiff(p.day, S.today));
+    add({a:'wl:' + p.id, title:lkTitle(p), m:1, kind:lkKind(p), sub:[fac.join(' · '), ls[0] ? ls[0] + (ls.length > 1 ? ` 외 ${ls.length - 1}` : '') : ''].filter(Boolean).join(' · '), day:p.day, p},
+      [p.day, md(p.day), p.day.slice(5, 7) + p.day.slice(8), p.title, ...fac, ...ls].join(' '), ts.length ? -Math.min(9, far / 30) : (Date.parse(p.ua || p.ca || 0) || 0) / 1e15);
+  });
+  if(ts.length){ lkDocs().forEach(o => add(o, o.sub, o.sub === '시즌' || o.kind === '매칭보드' ? -1 : -3)); LK_VIEW.forEach(o => add(Object.assign({}, o), '', -40)); }
+  return out.sort((a, b) => b.s - a.s).slice(0, n || 30);
+}
+const lkRow = o => `<i>${E(o.kind)}</i><span><b>${E(o.title)}</b>${o.sub ? `<small>${E(o.sub)}</small>` : ''}</span>${o.day ? `<em>${md(o.day)} ${WK[dow(o.day)]}</em>` : ''}`;
+/* ── 가기 ── */
+function lkGo(a0, o){
+  o = o || {};
+  const a = lkFix(a0, o.text);
+  if(a === 'office') return o.pick ? o.pick() : say('어느 글인지 모르는 주소예요 — 링크를 고쳐 글을 골라 주세요', 'err');
+  if(!lkIsIn(a)){ if(/^https?:/i.test(a)) window.open(a, '_blank', 'noopener,noreferrer'); return; }
+  if(o.tab){ window.open(lkUrl(a), '_blank', 'noopener'); return; }
+  const was = {view:S.view, id:S.cur, line:o.line}, p0 = cur();
+  const back = label => { if(p0 || was.view === 'order') snack(label, () => { showCenter(); if(p0 && S.pages.has(p0.id)) openPage(p0.id, {line:was.line}); else goOrders(); if(!was.line) toLog(); }, '돌아가기'); };
+  closePop(); lkHide();
+  if(a === 'wl:orders'){ goOrders(); toLog(); return back('발주 · 샘플 달력'); }
+  if(a.startsWith('wl:')){
+    const [id, ln] = a.slice(3).split('#'), p = S.pages.get(id);
+    if(!p) return say('지운 글이에요 — ⋯ 메뉴 ‘지운 글’ 에서 되살릴 수 있어요', 'err');
+    showCenter(); openPage(id, {line:ln});
+    if(!ln) toLog();
+    if(!o.quiet && id !== was.id) back(`‘${cut(lkTitle(p), 30)}’ 글로 왔어요`);
+    return;
+  }
+  const [k, doc, item] = a.slice(3).split('/');
+  flushSoon();
+  try{
+    if(k === 'quote'){ dsgSwitchTab('quote'); scrollTo({top:0, behavior:'smooth'}); return; }
+    if(k === 'match'){ if(doc){ _tpl.cur.matching = +doc; try{ localStorage.setItem('mbCurDoc', doc); }catch(e){} } dsgSwitchTab('match'); _tpl.sig = ''; _tplRender(); toLog('mbx'); return; }
+    showCenter();
+    const el = document.getElementById('lst'); if(el && el.classList.contains('is-fold')) lstFold();
+    lstInit().then(() => {
+      if(doc && (_tpl.docs.linesheet || []).some(d => d.id === +doc)){ tplPick(+doc); }
+      const d = doc && (_tpl.docs.linesheet || []).find(x => x.id === +doc), i = d && item ? d.data.items.findIndex(x => x.u === item) : -1;
+      if(i >= 0) setTimeout(() => _tplFocusItem(i), 120); else toLog('lst');
+    });
+    if(!o.quiet) back(doc ? '라인시트로 왔어요' : '라인시트');
+  }catch(e){ say('그 화면을 열지 못했어요', 'err'); }
+}
+/* 주소로 바로 들어왔을 때 (?wl= · ?ds=) */
+let lkCame = false;
+function lkBoot(){
+  if(lkCame || !S.ready) return;
+  lkCame = true;
+  let q; try{ q = new URLSearchParams(location.search); }catch(e){ return; }
+  if(!q.get('wl') && !q.get('ds')) return;
+  const a = lkIn(location.href);
+  try{ q.delete('wl'); q.delete('ds'); const s = q.toString(); history.replaceState(history.state, '', location.pathname + (s ? '?' + s : '') + location.hash); }catch(e){}
+  if(lkIsIn(a)) setTimeout(() => lkGo(a, {quiet:true}), 60);
+}
+/* ── 넣기 ── */
+/* 줄 속 [s, z] 자리 — keep 이면 고른 글자에 링크만, 아니면 그 자리에 이름을 넣는다 */
+function lkPut(pid, id, pos, o, keep){
+  const p = cur(); if(!p || p.id !== pid || !p.blocks) return false;
+  const b = p.blocks.find(q => q.id === id), x = xEl(id); if(!b || !x) return false;
+  if(document.activeElement === x) b.r = parseX(x);
+  const n = segLen(b.r), s = Math.min(pos[0], n), z = Math.min(pos[1], n);
+  const L = segSlice(b.r, 0, s), R = segSlice(b.r, z, 1e9), mid = segSlice(b.r, s, z);
+  beforeEdit(p); mark(p);
+  if(z > s && keep){
+    const one = o.m && segText(mid) === o.title;
+    putSegs(x, b, [...L, ...mid.map(q => { const w = Object.assign({}, q, {a:o.a}); delete w.m; if(one) w.m = 1; return w; }), ...R], z);
+  }else{
+    const pre = o.pre && segText(L) && !/\s$/.test(segText(L)) ? ' ' : '', t = wf(o.title || lkUrl(o.a)), post = /^\s/.test(segText(R)) ? '' : ' ';
+    const seg = {t}; if(o.a !== t || lkIsIn(o.a)){ seg.a = o.a; if(o.m) seg.m = 1; }
+    putSegs(x, b, [...L, {t:pre}, seg, {t:post}, ...R], s + pre.length + t.length + 1);
+  }
+  sideSoon();
+  return true;
+}
+function lkDrop(id, s, z){           // 링크만 떼기 (글자는 그대로)
+  const p = cur(), b = p && p.blocks && p.blocks.find(q => q.id === id), x = xEl(id); if(!b || !x) return;
+  if(document.activeElement === x) b.r = parseX(x);
+  beforeEdit(p); mark(p);
+  b.r = segNorm([...segSlice(b.r, 0, s), ...segSlice(b.r, s, z).map(q => { const w = Object.assign({}, q); delete w.a; delete w.m; return w; }), ...segSlice(b.r, z, 1e9)]);
+  x.innerHTML = deco(b); S.lineDirty = true; touch(p); sideSoon();
+}
+/* 커서(고른 자리)가 닿은 링크 하나 */
+function lkAt(r, s, z){
+  let p = 0, hit = null;
+  for(const q of r || []){ const e = p + q.t.length; if(q.a && (s === z ? s >= p && s <= e : s < e && z > p)){ if(hit && hit.a === q.a && hit.z === p) hit.z = e; else if(hit) return null; else hit = {s:p, z:e, a:q.a, m:q.m, t:''}; } p = e; }
+  if(hit) hit.t = segText(segSlice(r, hit.s, hit.z));
+  return hit;
+}
+/* Ctrl K · 막대 🔗 */
+function lkHere(x){
+  if(S.comp){ const c = selIn(x); x.blur(); if(c) putSel(x, c[0], c[1]); }          // 한글 조합을 마치고
+  const b = x && blockOf(x), p = cur(), sel = x && selIn(x); if(!b || !p || !sel) return;
+  b.r = parseX(x);
+  const at = lkAt(b.r, sel[0], sel[1]), s = at ? at.s : sel[0], z = at ? at.z : sel[1], g = rangeIn(x, s, z), rs = z > s && g ? [...g.getClientRects()] : [], rect = rs[rs.length - 1] || caretRect(x), pid = p.id, id = b.id;
+  lkOpen(rect, {self:p.id, text:z > s ? segText(segSlice(b.r, s, z)) : '', val:at ? at.a : '', rects:rs,
+    onPick:o => { const url = !lkIsIn(o.a); if(lkPut(pid, id, [s, z], o, z > s && !(at && at.m && !url)) && url && z === s) lkAsk(id, s, s + o.title.length, o.a); },
+    onClear:at ? () => lkDrop(id, s, z) : null,
+    onBack:() => { const x2 = xEl(id); if(x2) putSel(x2, sel[0], sel[1]); }});
+}
+/* 새 글로 만들고 잇기 */
+function lkNew(q){
+  const t = cut(q.trim(), 120), m = t.match(/^(\d{2})(\d{2})(?=\s|$)/), ok = okAuto(t), isO = ok !== 'etc' || !!(m && mmdd(m[1] + m[2]));
+  let day = S.today;
+  if(m && mmdd(m[1] + m[2])){ day = `${S.today.slice(0, 4)}-${m[1]}-${m[2]}`; const n = dayDiff(day, S.today); if(n < -200) day = (+S.today.slice(0, 4) + 1) + day.slice(4); else if(n > 250) day = (+S.today.slice(0, 4) - 1) + day.slice(4); }
+  const kind = isO ? 'order' : 'memo', meta = isO ? Object.assign({ok}, ['po', 'in', 'sin'].includes(ok) ? {st:['미입고']} : {}) : {};
+  const p = {id:uuid(), day, title:t, kind, meta, blocks:[nb()], ver:0, _bv:0, n:0, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()};
+  S.pages.set(p.id, p); S.dirty.set(p.id, {base:0, bb:[], bm:{title:t, day, kind, meta:clone(meta)}, seq:1, isNew:true});
+  persistDirty(); saveTag('saving'); scheduleSave(60);
+  return {a:'wl:' + p.id, title:lkTitle(p), m:1, kind:lkKind(p), day, p, made:1};
+}
+/* 글 찾아 잇는 창 — o = {self, text 고른 글자, val 지금 링크, rects 고른 자리 표시, onPick(o), onClear, onBack} */
+const LK = {el:null};
+function lkOpen(at, o){
+  closePop(); emoClose(true); lkHide(); lkClose(true);
+  const b = document.createElement('div'); b.className = 'wl-pop lk'; b.id = 'wlLk'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', '링크 · 글 잇기');
+  const val = o.val0 || (o.val && !lkIsIn(o.val) && lkIn(o.val) !== 'office' ? o.val : '');
+  b.innerHTML = `<input type="text" autocomplete="off" spellcheck="false" placeholder="글 찾기 · 주소 붙여넣기" aria-label="글 찾기 · 주소 붙여넣기" value="${E(val)}"><div class="ll"></div>${o.onClear ? '<button type="button" class="lx" data-lx="1">링크 떼기</button>' : ''}`;
+  const marks = (o.rects || []).map(r => { const i = document.createElement('i'); i.className = 'wl-lkm'; i.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`; document.body.appendChild(i); return i; });
+  document.body.appendChild(b);
+  LK.el = b; LK.back = o.onBack || null; LK.marks = marks;
+  const inp = $('input', b), box = $('.ll', b), touchy = !matchMedia('(hover:hover)').matches;
+  let L = [], act = 0, mv = false;
+  const place = () => { if(touchy){ const v = window.visualViewport; b.style.left = '8px'; b.style.top = ((v ? v.offsetTop : 0) + 8) + 'px'; } else placePop(b, at); };
+  const draw = () => {
+    const q = inp.value.trim(), url = q ? lkIn(q) : '', sure = lkIsIn(url) || url === 'office' || /^(https?:\/\/|www\.)/i.test(q), seed = o.text && o.text.length <= 40 ? o.text.trim() : '';
+    let head = '';
+    L = []; act = 0; mv = false;
+    if(url === 'office'){
+      head = '<p class="wl-none">디자인팀 첫 화면 주소라 어느 글인지 알 수 없어요 — 글을 골라 주세요</p>';
+      L = seed ? lkFind(seed, o.self, 10) : []; if(!L.length) L = lkFind('', o.self, 8);
+      L = [...L, {a:q, title:'첫 화면 주소 그대로', kind:'주소', sub:'', url:1}];
+    }else if(url && sure){
+      const p = lkPage(url);
+      L = lkIsIn(url) ? [{a:url, title:p ? lkTitle(p) : lkName(url), m:p && !url.includes('#') ? 1 : 0, kind:p ? lkKind(p) : '화면', sub:'이 글로 잇기', day:p ? p.day : ''}] : [{a:url, title:url, kind:'주소', sub:'', url:1}];
+    }else if(q){
+      L = lkFind(q, o.self, 30);
+      if(url) L = [...L, {a:url, title:url, kind:'주소', sub:'', url:1}];
+      else if(!L.some(x => lkNorm(x.title) === lkNorm(q))) L = [...L, {make:q, kind:'＋', title:`‘${cut(q, 30)}’ 새로 만들고 잇기`, sub:''}];
+    }else{
+      const f = seed ? lkFind(seed, o.self, 12) : [];
+      head = `<div class="wl-pt">${f.length ? `‘${E(cut(seed, 24))}’ 와 비슷한 글` : '최근에 고친 글'}</div>`;
+      L = f.length ? f : [...lkFind('', o.self, 8), ...LK_VIEW];
+    }
+    box.innerHTML = head + (L.map((x, i) => `<button type="button" tabindex="-1" data-i="${i}" class="${i ? '' : 'on'}${x.make ? ' mk' : ''}">${lkRow(x)}</button>`).join('') || '<p class="wl-none">없어요 — 다른 낱말로 찾아 주세요</p>');
+    box.scrollTop = 0; place();
+  };
+  const take = i => { let x = L[i]; if(!x) return; if(x.make){ x = lkNew(x.make); snack(`‘${cut(x.title, 30)}’ 을(를) 새로 만들고 이었어요`, () => lkGo(x.a, {}), '열기'); } lkClose(true); o.onPick(x); if(x.made) renderBoard(); };
+  draw(); place();
+  { const t = lkSheet(); if(t && !t.loaded.matching && typeof _tplLoad === 'function') _tplLoad('matching').then(() => { if(LK.el === b && inp.value.trim()) draw(); }).catch(() => {}); }
+  inp.addEventListener('input', draw);
+  inp.addEventListener('keydown', e => {
+    if(e.isComposing || e.keyCode === 229) return;
+    const c = $$('[data-i]', box);
+    if(e.key === 'Enter'){ e.preventDefault(); if(inp.value.trim() || mv || (L[0] && L[0].s >= 90)) take(act); return; }          // 아무것도 안 적고 누른 Enter 로 엉뚱한 글이 이어지지 않게
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); if(!c.length) return; mv = true; act = (act + (e.key === 'ArrowDown' ? 1 : -1) + c.length) % c.length; c.forEach((x, i) => x.classList.toggle('on', i === act)); c[act].scrollIntoView({block:'nearest'}); }
+  });
+  b.addEventListener('mousedown', e => { if(e.target !== inp) e.preventDefault(); });
+  b.addEventListener('click', e => { const i = e.target.closest('[data-i]'); if(i) return take(+i.dataset.i); if(e.target.closest('[data-lx]')){ lkClose(true); o.onClear(); } });
+  setTimeout(() => document.addEventListener('mousedown', lkOut, true), 0);
+  inp.focus({preventScroll:true}); inp.select();
+}
+function lkOut(e){ if(LK.el && !LK.el.contains(e.target)) lkClose(true); }
+function lkClose(quiet){
+  document.removeEventListener('mousedown', lkOut, true);
+  const b = LK.el; if(!b) return;
+  const back = LK.back; (LK.marks || []).forEach(i => i.remove());
+  b.remove(); LK.el = LK.back = null; LK.marks = [];
+  if(!quiet && back) back();
+  setTimeout(settle, 60);
+}
+const lkName = a => { const v = LK_VIEW.find(x => x.a === a); if(v) return v.title; const d = lkDocs().find(x => x.a === a); return d ? d.title : a.startsWith('ds:line') ? '라인시트' : a.startsWith('ds:match') ? '매칭보드' : '글'; };
+/* 줄 하나로 더하기 (발주 상세 [＋ 글 잇기]) */
+function lkLine(o){
+  const url = !lkIsIn(o.a), seg = url ? {t:o.a} : Object.assign({t:o.title, a:o.a}, o.m ? {m:1} : {});
+  edit(bs => {
+    const last = bs[bs.length - 1];
+    if(last && isEmpty(last) && !isHead(last)){ last.r = [seg]; return; }
+    bs.push(nb({r:[seg]}));
+  });
+  if(url) lkMeta(o.a).then(j => { const p = cur(), b = p && p.blocks && p.blocks.find(q => segText(q.r) === o.a); if(!j || !j.title || !b || editing()) return; edit(() => { b.r = [{t:cut(j.title, 120), a:o.a}]; }); });
+}
+/* ── '@' 로 찾기 ── 줄 맨 앞이나 빈칸 뒤의 @ 만 ('빈타 +@' 처럼 쓰는 글은 그대로) */
+function lkSug(x, b, s){
+  const left = s && s[0] === s[1] && b.t !== 'code' ? bText(b).slice(0, s[0]) : '', m = left.match(/(?:^|[\s(])@([^@\n]{0,24})$/) || left.match(/\[\[([^\][\n]{0,24})$/);
+  if(!m || /^\s/.test(m[1])){ SUG.off = ''; return false; }
+  const q = m[1], st = s[0] - q.length - (m[0].startsWith('[[') ? 2 : 1), key = b.id + ':' + st;
+  if(SUG.off === key) return false;
+  if(lkAt(b.r, st, st + 1)) return false;
+  const L = lkFind(q, S.cur, 7); if(!L.length) return false;
+  sugOpen(x, {kind:'lk', id:b.id, pid:S.cur, pos:[st, s[0]], go:!!q.trim(), key, L, rows:L.map(lkRow), foot:q.trim() ? 'Enter 잇기 · ↑↓ 고르기 · Esc 닫기' : '글 이름 · 날짜(1123) · 업체를 적으면 찾아요', pick:o => lkPut(SUG.pid, SUG.id, SUG.pos, o)}, st);
+  return true;
+}
+/* ── 주소를 붙여 넣은 뒤 — 그대로 · 제목으로 · 카드로 (안 고르고 이어 적으면 그대로) ── */
+const META = new Map();
+function lkMeta(u){
+  if(!META.has(u)) META.set(u, fetch(`${SUPABASE_URL}/functions/v1/link-peek?u=${encodeURIComponent(u)}`, {headers:{apikey:SUPABASE_KEY, Authorization:'Bearer ' + SUPABASE_KEY}}).then(r => r.ok ? r.json() : null).then(j => j && j.ok ? j : null).catch(() => null));
+  return META.get(u);
+}
+function lkAsk(id, s, z, url){
+  const x = xEl(id); if(!x || lkIsIn(url)) return;
+  lkMeta(url);
+  const L = ['title', 'card', 'url'], N = {title:['제목', '제목으로 바꾸기'], card:['카드', '사진 · 설명이 있는 카드로'], url:['주소', '주소 그대로']};
+  sugOpen(x, {kind:'ask', id, pid:S.cur, pos:[s, z], go:false, L, rows:L.map(k => `<i>${N[k][0]}</i><span><b>${N[k][1]}</b></span>`), foot:'↑↓ 고르고 Enter · 이어 적으면 주소 그대로', pick:k => lkTo(SUG.pid, SUG.id, SUG.pos, url, k)}, s);
+}
+async function lkTo(pid, id, pos, url, k){
+  if(k === 'url') return;
+  const tip = setTimeout(() => say('제목을 읽는 중…'), 900), j = await lkMeta(url); clearTimeout(tip);
+  const p = cur(), b = p && p.id === pid && p.blocks && p.blocks.find(q => q.id === id); if(!b) return;
+  const x = xEl(id); if(x && document.activeElement === x) b.r = parseX(x);
+  const full = bText(b), at = full.slice(pos[0], pos[1]) === url ? pos[0] : full.indexOf(url); if(at < 0) return;
+  const t = cut((j && j.title) || '', 140).trim();
+  if(k === 'title'){
+    if(!t){ say('그 사이트가 제목을 안 알려 줘요 — 주소 그대로 두었어요', 'err'); return; }
+    beforeEdit(p); mark(p);
+    const r = [...segSlice(b.r, 0, at), {t, a:url}, ...segSlice(b.r, at + url.length, 1e9)];
+    if(x) putSegs(x, b, r, at + t.length); else{ b.r = segNorm(r); touch(p); }
+    return sideSoon();
+  }
+  edit(bs => {
+    const i = bs.findIndex(q => q.id === id), c = bs[i], card = nb({lv:isHead(c) ? 0 : c.lv || 0, t:'bm', src:url, name:t || lkShort(url)});
+    if(j && j.desc) card.cap = cut(j.desc, 200);
+    if(j && j.image) card.im = j.image;
+    c.r = segNorm([...segSlice(c.r, 0, at), ...segSlice(c.r, at + url.length, 1e9)]);
+    const z = isHead(c) ? i + 1 : subEnd(bs, i);
+    if(isEmpty(c) && !isHead(c) && z === i + 1){ const n = bs[i + 1]; bs.splice(i, 1, card); if(!n || isHead(n) || n.t === 'hr'){ const e = nb({lv:card.lv, t:c.t}); bs.splice(i + 1, 0, e); S.fresh.add(e.id); return {focus:e.id}; } return; }
+    if(!isHead(c)) card.lv++;          // 적힌 일 밑에 딸리게 — 그 일을 끝내면 카드도 같이 (다음 날 이어받지 않는다)
+    bs.splice(i + 1, 0, card); delete c.f;
+  });
+}
+const bmHtml = b => `<a class="wl-bm" href="${/^https?:/i.test(b.src) ? E(b.src) : '#'}" target="_blank" rel="noopener noreferrer" draggable="false"><span><b>${E(b.name || lkShort(b.src))}</b>${b.cap ? `<small>${E(b.cap)}</small>` : ''}<em>${E(lkHost(b.src))}</em></span>${b.im ? `<img src="${E(b.im)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}</a>`;
+/* 붙여 넣은 글(html)에 들어 있던 링크 되살리기 — 노션 · 웹 · 우리 글에서 복사해도 링크가 안 사라지게 */
+function lkFromHtml(html){
+  if(!html || !/<a\s/i.test(html)) return [];
+  let d; try{ d = new DOMParser().parseFromString(html, 'text/html'); }catch(e){ return []; }
+  return $$('a', d).map(a => { const t = a.textContent.replace(/\s+/g, ' ').trim(), u = lkIn(a.dataset.a || a.getAttribute('href') || ''); return {t, a:u, m:a.dataset.m ? 1 : 0}; }).filter(x => x.t && x.a && x.a !== 'office' && (lkIsIn(x.a) || /^https?:/i.test(x.a)) && x.t !== x.a && (!x.a.startsWith('wl:') || x.a === 'wl:orders' || lkPage(x.a)));
+}
+function lkApply(r, links){           // 앞에서부터 맞는 것을 하나씩 쓴다 (못 찾은 것은 다음 줄에서)
+  let out = r, from = 0;
+  for(let k = 0; k < links.length;){
+    const x = links[k], i = segText(out).indexOf(x.t, from); if(i < 0){ k++; continue; }
+    const mid = segSlice(out, i, i + x.t.length).map(q => Object.assign({}, q, {a:x.a}, x.m && lkTitleOf(x.a) === x.t ? {m:1} : {}));
+    out = [...segSlice(out, 0, i), ...mid, ...segSlice(out, i + x.t.length, 1e9)]; from = i + x.t.length; links.splice(k, 1);
+  }
+  return segNorm(out);
+}
+/* 한 줄 붙여넣기에서 주소 하나만 온 경우. 처리했으면 true */
+function lkPaste(x, b, s, t){
+  const u = /^https?:\/\/\S+$/i.test(t.trim()) ? lkIn(t) : ''; if(!u) return false;
+  const p = cur(), pid = p.id, id = b.id;
+  if(u === 'office'){
+    const text = segText(segSlice(b.r, s[0], s[1])), g = rangeIn(x, s[0], s[1]);
+    lkOpen(caretRect(x), {self:pid, text, rects:s[1] > s[0] && g ? [...g.getClientRects()] : [], onPick:o => lkPut(pid, id, s, o, s[1] > s[0]), val0:t.trim(), onBack:() => { const x2 = xEl(id); if(x2) putSel(x2, s[0], s[1]); }});
+    return true;
+  }
+  if(lkIsIn(u)){
+    const pg = lkPage(u), ln = u.startsWith('wl:') && u.split('#')[1], bl = ln && pg && pg.blocks && pg.blocks.find(q => q.id === ln);
+    if(u.startsWith('wl:') && u !== 'wl:orders' && !pg) return false;
+    lkPut(pid, id, s, {a:u, title:bl && bText(bl).trim() ? cut(bText(bl).replace(/\s+/g, ' ').trim(), 80) : pg ? lkTitle(pg) : lkName(u), m:pg && !ln ? 1 : 0}, s[1] > s[0]);
+    return true;
+  }
+  if(s[1] > s[0]){ lkPut(pid, id, s, {a:u, title:u}, true); return true; }
+  beforeEdit(p); mark(p);
+  putSegs(x, b, [...segSlice(b.r, 0, s[0]), {t:u}, ...segSlice(b.r, s[1], 1e9)], s[0] + u.length);
+  lkAsk(id, s[0], s[0] + u.length, u);
+  return true;
+}
+/* ── 마우스를 올리면 ── 어디로 가는지 + 열기 · 복사 · 고치기 · 떼기 */
+const HOV = {el:null, a:null, t:0, o:0};
+function lkHide(){ clearTimeout(HOV.t); clearTimeout(HOV.o); if(HOV.el) HOV.el.remove(); HOV.el = HOV.a = null; }
+function lkHov(a){
+  if(!a.isConnected || S.ptr || LK.el || EMO.el || SUG.el || document.getElementById('wlPop') || getSelection().toString()) return;
+  lkHide();
+  const x = a.closest('.wl-x'), l = a.closest('.wl-b'), raw = !a.dataset.a, a0 = a.dataset.a || a.getAttribute('href') || '', text = a.textContent, u = lkFix(a0, text), p = lkPage(u), ln = u.startsWith('wl:') && u.split('#')[1];
+  const b = document.createElement('div'); b.className = 'wl-pop lkh';
+  const B = (k, t) => `<button type="button" data-h="${k}">${t}</button>`;
+  const page = () => { const bl = ln && (p.blocks || []).find(q => q.id === ln), ls = (p.blocks || []).filter(q => !isEmpty(q) && q.t !== 'hr' && !q.src && !isHead(q)), meta = p.kind === 'order' ? [oFac(p).join(' · '), oSt(p).join(' · ')].filter(Boolean).join(' · ') : ''; return `<div class="hh"><b>${E(lkTitle(p))}</b><em>${md(p.day)} (${WK[dow(p.day)]})</em></div>${meta ? `<div class="hm">${E(meta)}</div>` : ''}${p.blocks ? (bl ? `<p>${E(bText(bl))}</p>` : ls.slice(0, 5).map(q => `<p class="${q.k ? 'is-done' : ''}">${E(bText(q).replace(/\s+/g, ' '))}</p>`).join('') + (ls.length > 5 ? `<p class="mo">외 ${ls.length - 5}줄</p>` : '')) : '<p class="mo">불러오는 중…</p>'}`; };
+  const site = j => j ? `${j.image ? `<img src="${E(j.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}<div class="hh"><b>${E(j.title || lkShort(u))}</b></div>${j.desc ? `<p class="de">${E(j.desc)}</p>` : ''}<div class="hm">${E(lkHost(u))}</div>` : `<div class="hh"><b>${E(lkShort(u))}</b></div>`;
+  const acts = `<div class="ha">${u === 'office' ? '' : B('go', '열기')}${u === 'office' ? '' : B('cp', '주소 복사')}${x ? (raw ? B('title', '제목으로') + B('card', '카드로') : B('ed', '고치기') + B('off', '떼기')) : ''}</div>`;
+  const body = () => u === 'office' ? '<p>디자인팀 첫 화면 주소예요 — [고치기]에서 글을 골라 주세요</p>' : p ? page() : lkIsIn(u) ? `<div class="hh"><b>${E(u === 'wl:orders' || !u.startsWith('wl:') ? lkName(u) : '지운 글이에요')}</b></div>` : site(null);
+  const r = [...a.getClientRects()], at = r[r.length - 1] || a.getBoundingClientRect();
+  const draw = h => { b.innerHTML = `<div class="hb">${h}</div>${acts}`; placePop(b, at); };
+  document.body.appendChild(b); HOV.el = b; HOV.a = a; draw(body());
+  if(p && !p.blocks) loadBlocks([p.id]).then(() => { if(HOV.el === b) draw(page()); }).catch(() => {});
+  if(!lkIsIn(u) && u !== 'office') lkMeta(u).then(j => { if(j && HOV.el === b) draw(site(j)); });
+  b.addEventListener('mouseenter', () => clearTimeout(HOV.o));
+  b.addEventListener('mouseleave', () => { HOV.o = setTimeout(lkHide, 200); });
+  b.addEventListener('mousedown', e => e.preventDefault());
+  b.addEventListener('click', e => {
+    const k = (e.target.closest('[data-h]') || {dataset:{}}).dataset.h; if(!k) return;
+    let pos = null;
+    if(x && a.isConnected){ const g = document.createRange(); g.selectNodeContents(x); g.setEnd(a, 0); const s = g.toString().length; pos = [s, s + a.textContent.length]; }
+    const id = l && l.dataset.id, pid = S.cur; lkHide();
+    if(k === 'go') return lkGo(a0, {text, line:id, tab:e.metaKey || e.ctrlKey});
+    if(k === 'cp') return copyText(lkUrl(u), '주소를 복사했어요');
+    if(!pos) return;
+    if(k === 'off') return lkDrop(id, pos[0], pos[1]);
+    if(k === 'title' || k === 'card') return lkTo(pid, id, pos, text, k);
+    if(k === 'ed') lkEdit(id, pos, a0, text, !!a.dataset.m);
+  });
+}
+function lkEdit(id, pos, a0, text, m){
+  const x = xEl(id), g = x && rangeIn(x, pos[0], pos[1]), rs = g ? [...g.getClientRects()] : [], pid = S.cur;
+  if(!rs.length) return;
+  lkOpen(rs[rs.length - 1], {self:pid, text, val:a0, rects:rs, onPick:o => lkPut(pid, id, pos, o, !m || !lkIsIn(o.a)), onClear:() => lkDrop(id, pos[0], pos[1])});
+}
+function lkHovBind(w){
+  if(!matchMedia('(hover:hover)').matches) return;
+  w.addEventListener('mouseover', e => {
+    const a = e.target.closest && e.target.closest('.wl-x a'); if(!a) return;
+    clearTimeout(HOV.o); if(HOV.a === a) return;
+    clearTimeout(HOV.t); HOV.t = setTimeout(() => lkHov(a), 350);
+  });
+  w.addEventListener('mouseout', e => { if(!(e.target.closest && e.target.closest('.wl-x a'))) return; clearTimeout(HOV.t); clearTimeout(HOV.o); HOV.o = setTimeout(lkHide, 260); });
+  addEventListener('scroll', () => { if(HOV.el) lkHide(); }, {passive:true, capture:true});
+}
+/* ── 이 글을 이어 둔 글 ── */
+const LKX = new Map();
+function lkOut1(p){           // 이 글에서 나간 링크 [{to, b}] — 고치기 전까지 기억
+  const q = (S.dirty.get(p.id) || {}).seq || 0, c = LKX.get(p.id);
+  if(c && c.bs === p.blocks && c.v === p._bv && c.q === q && c.n === S.pages.size) return c.L;
+  const L = [];
+  (p.blocks || []).forEach(b => (b.r || []).forEach(s => { if(!s.a) return; const a = lkIsIn(s.a) ? s.a : lkFix(s.a, s.t); if(String(a).startsWith('wl:') && a !== 'wl:orders') L.push({to:a.slice(3).split('#')[0], b}); }));
+  LKX.set(p.id, {bs:p.blocks, v:p._bv, q, n:S.pages.size, L});
+  return L;
+}
+const LKS = new Map();          // 아직 안 받은 옛 글이 이어 둔 것은 서버에 한 번 물어본다
+function lkBack(p){
+  const out = new Map();
+  S.pages.forEach(x => { if(x.id === p.id || !x.blocks) return; lkOut1(x).forEach(l => { if(l.to === p.id && !out.has(x.id)) out.set(x.id, {p:x, line:l.b.id}); }); });
+  const c = LKS.get(p.id);
+  if(!c){ LKS.set(p.id, []); rpc('dlog_links', {p_id:p.id}).then(rows => { LKS.set(p.id, rows || []); if((rows || []).some(r => S.pages.has(r.id) && !S.pages.get(r.id).blocks) && S.cur === p.id) sideSoon(); }).catch(() => {}); }
+  (c || []).forEach(r => { const x = S.pages.get(r.id); if(x && !x.blocks && !out.has(x.id)) out.set(x.id, {p:x, line:r.line}); });
+  return [...out.values()].sort((a, b) => byDay(a.p, b.p));
+}
+function lkRow2(p){           // 발주 상세 '연결' 칸
+  const L = lkBack(p);
+  return `<dt>연결</dt><dd class="wl-chips sm wl-lks">${L.map(x => `<button type="button" data-go="${x.line}" data-pid="${x.p.id}" title="이 글을 이어 둔 글 — ${E([lkTitle(x.p), `${md(x.p.day)} (${WK[dow(x.p.day)]})`, oFac(x.p).join(' · ')].filter(Boolean).join(' · '))}">${E(lkTitle(x.p))}</button>`).join('')}<button type="button" data-oact="lkadd" title="다른 글 · 라인시트 · 주소를 이 일정에 잇기">＋ 글 잇기</button></dd>`;
+}
+function lkSide(p){           // 업무일지 오른쪽
+  const L = lkBack(p); if(!L.length) return '';
+  return `<div class="wl-sc"><h4>이 글을 이은 글 <small>${L.length}</small></h4>${L.slice(0, 8).map(x => `<button type="button" class="wl-sl" data-go="${x.line}" data-pid="${x.p.id}"><i>${md(x.p.day)}</i><span>${E(lkTitle(x.p))}</span></button>`).join('')}</div>`;
+}
+/* ── 전광판 ── 글자 속 링크만 누를 수 있게 (나머지를 누르면 업무일지 줄로) */
+const lkU = (a, t) => `<u class="wl-lk" data-lk="${E(a)}">${E(t)}</u>`;
+function lkInline(r){
+  return (r || []).map(s => s.a && (lkIsIn(s.a) || /^https?:/.test(s.a)) ? lkU(s.a, s.t) : s.t.split(/(https?:\/\/[^\s<>"']+)/).map((t, i) => i % 2 ? lkU(t, lkShort(t)) : E(t)).join('')).join('');
+}
+/* 글자를 새로 적을 때 안 바뀐 앞 · 뒤 조각(링크 · 굵게)은 남긴다 */
+function segEdit(r, t){
+  const o = segText(r); let a = 0, z = 0;
+  while(a < o.length && a < t.length && o[a] === t[a]) a++;
+  while(z < o.length - a && z < t.length - a && o[o.length - 1 - z] === t[t.length - 1 - z]) z++;
+  const L = segSlice(r, 0, a), R = segSlice(r, o.length - z, o.length), f = L[L.length - 1], mid = t.slice(a, t.length - z);
+  const at = lkAt(r, a, a), inA = at && a > at.s && a < at.z ? at.a : '';
+  return segNorm([...L, {t:mid, ...(f && !f.a && !f.c ? MK.reduce((m, k) => (f[k] ? Object.assign(m, {[k]:1}) : m), {}) : {}), ...(inA ? {a:inA} : {})}, ...R]);
+}
 
 /* ============================================================ 메뉴 ============================================================ */
 function lineMenu(id, at){
@@ -1944,7 +2415,7 @@ function lineMenu(id, at){
   const many = S.sel && S.sel.ids.has(id) && S.sel.ids.size > 1 ? [...S.sel.ids] : null, ids = many || [id], h = isHead(b);
   const B = (k, t, s) => `<button type="button" data-m="${k}"><span>${t}</span>${s ? `<kbd>${s}</kbd>` : ''}</button>`;
   const html = `${many ? `<div class="wl-pt">${many.length}줄 고름</div>` : ''}
-    ${h ? '' : B('done', b.k ? '다시 할 일로' : '끝냄', 'Ctrl Enter') + (many ? '' : B('pin', '📌 전광판에 올리기') + B('tomorrow', '내일 할 일로 보내기') + B('hist', '이 건 지난 기록 보기'))}
+    ${h ? '' : B('done', b.k ? '다시 할 일로' : '끝냄', 'Ctrl Enter') + (many ? '' : B('pin', '📌 전광판에 올리기') + B('tomorrow', '내일 할 일로 보내기') + B('hist', '이 건 지난 기록 보기') + (b.src ? '' : B('lk', '🔗 글 잇기 · 링크', 'Ctrl K'))) + (many ? '' : B('lkcp', '이 줄 주소 복사'))}
     ${B('del', h ? '구역째 지우기' : '지우기', many ? 'Del' : '')}
     ${h ? '' : `<div class="wl-pt">상태</div><div class="wl-chips sm" data-g="st"><button type="button" data-v="" class="${b.st ? '' : 'on'}">자동</button>${Object.entries(STS).filter(([k]) => k !== 'done').map(([k, t]) => `<button type="button" data-v="${k}" class="${b.st === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     <div class="wl-pt">줄 색</div><div class="wl-sw" data-g="bg">${['', 'yellow_background', 'red_background', 'blue_background', 'teal_background', 'gray_background'].map(c => `<button type="button" data-v="${c}" class="bg-${c.replace('_background', '') || 'no'}${(b.bg || '') === c ? ' on' : ''}" aria-label="${c || '색 없음'}"></button>`).join('')}</div>
@@ -1958,7 +2429,7 @@ function lineMenu(id, at){
       const k = g.parentNode.dataset.g, v = g.dataset.v; close();
       if(k === 'em') return v === '+' ? emoOpen(at, x => lineEmo(ids, x)) : lineEmo(ids, v === '-' ? '' : v);
       if(k === 'mv'){ if(v === 'up' || v === 'down') h ? moveSec(id, v === 'up' ? -1 : 1) : moveLine(id, v === 'up' ? -1 : 1); else indent([id], v === 'in' ? 1 : -1); return; }
-      return setProp(ids, x => { if(k === 't'){ x.t = v; if(v === 'h3') x.lv = 0; } else if(v) x[k] = v; else delete x[k]; });
+      return setProp(ids, x => { if(k === 't'){ if(x.t === 'bm'){ x.r = [{t:x.name || x.src, a:x.src}]; ['src', 'name', 'cap', 'im'].forEach(q => delete x[q]); } x.t = v; if(v === 'h3') x.lv = 0; } else if(v) x[k] = v; else delete x[k]; });
     }
     const m = e.target.closest('[data-m]'); if(!m) return;
     close();
@@ -1967,6 +2438,8 @@ function lineMenu(id, at){
     if(k === 'pin') return pinLine(b, p);
     if(k === 'tomorrow') return sendTomorrow(id);
     if(k === 'hist') return showHist(b);
+    if(k === 'lk'){ clearSel(); return lkOpen(at, {self:p.id, onPick:o => { const q = cur(), c = q && q.blocks.find(x => x.id === id), n = c ? segLen(c.r) : 0; if(c && lkPut(p.id, id, [n, n], Object.assign({}, o, {pre:true})) && !lkIsIn(o.a)){ const t = bText(c), s = t.lastIndexOf(o.a); if(s >= 0) lkAsk(id, s, s + o.a.length, o.a); } }}); }
+    if(k === 'lkcp'){ clearSel(); return copyText(lkUrl(`wl:${p.id}#${id}`), '이 줄 주소를 복사했어요 — 다른 글에 붙여 넣으면 이어져요'); }
     if(k === 'in' || k === 'out') return indent(ids, k === 'in' ? 1 : -1);
     if(k === 'toli') return setProp([id], x => { x.t = 'li'; });
     if(k === 'dup') return edit(bs => { const i = bs.findIndex(x => x.id === id), z = subEnd(bs, i), c = bs.slice(i, z).map(x => Object.assign(clone(x), {id:bid()})); c.forEach(x => { delete x.o; delete x.d0; delete x.bd; }); bs.splice(z, 0, ...c); return {focus:c[0].id, pos:'end'}; });
@@ -2002,13 +2475,14 @@ function pageMenu(at){
   const p = cur(); if(!p) return;
   const B = (k, t, s) => `<button type="button" data-m="${k}"><span>${t}</span>${s ? `<kbd>${s}</kbd>` : ''}</button>`;
   const O = p.kind === 'order', G = S.view === 'page', who = [p.ub && p.ub !== 'notion' ? p.ub : '', p.ua ? `${md(ymd(new Date(p.ua)))} ${hm(p.ua)} 수정` : '', p.origin === 'notion' ? '노션에서 옮김' : ''].filter(Boolean).join(' · ');
-  pop(at, B('cp', '글자로 복사') + (O ? '' : B('day', '날짜 바꾸기') + B('title', '제목 · 아이콘') + B('sec', '＋ 구역 추가')) + B('photo', '사진 · 파일 넣기') + B('dup', O ? '똑같은 일정 하나 더' : '복사해 새 글로') + B('redo', '다시 하기', 'Ctrl Shift Z') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '옮기기 전 원본 보기') : '') + B('del', O ? '이 일정 지우기' : '이 글 지우기') + (G ? '<div class="wl-ph0"></div>' + B('trash', '지운 글 되살리기') + B('help', '단축키') : '') + (O ? '' : `<div class="wl-pt">글 종류</div><div class="wl-chips sm" data-g="kind">${Object.entries(KINDS).map(([k, t]) => `<button type="button" data-v="${k}" class="${p.kind === k ? 'on' : ''}">${t}</button>`).join('')}</div>`) + (who ? `<div class="wl-pi">${E(who)}</div>` : ''), 'menu', (e, box, close) => {
+  pop(at, B('lkcp', O ? '이 일정 주소 복사' : '이 글 주소 복사') + B('cp', '글자로 복사') + (O ? '' : B('day', '날짜 바꾸기') + B('title', '제목 · 아이콘') + B('sec', '＋ 구역 추가')) + B('photo', '사진 · 파일 넣기') + B('dup', O ? '똑같은 일정 하나 더' : '복사해 새 글로') + B('redo', '다시 하기', 'Ctrl Shift Z') + B('ver', '지난 버전 보기') + (p.origin === 'notion' ? B('src', '옮기기 전 원본 보기') : '') + B('del', O ? '이 일정 지우기' : '이 글 지우기') + (G ? '<div class="wl-ph0"></div>' + B('trash', '지운 글 되살리기') + B('help', '단축키') : '') + (O ? '' : `<div class="wl-pt">글 종류</div><div class="wl-chips sm" data-g="kind">${Object.entries(KINDS).map(([k, t]) => `<button type="button" data-v="${k}" class="${p.kind === k ? 'on' : ''}">${t}</button>`).join('')}</div>`) + (who ? `<div class="wl-pi">${E(who)}</div>` : ''), 'menu', (e, box, close) => {
     const g = e.target.closest('[data-g] button'); if(g){ close(); const v = g.dataset.v; if(v !== p.kind){ beforeEdit(p); p.kind = v; touch(p); S.caches.clear(); S.split.delete(p.id); renderNav(); renderPage(); renderBoard(); } return; }
     const m = e.target.closest('[data-m]'); if(!m) return; close();
     const k = m.dataset.m;
     if(k === 'dup'){ const n = {id:uuid(), day:p.kind === 'order' ? p.day : S.today, title:p.title, kind:p.kind === 'daily' && dailies().some(x => x.day === S.today) ? 'memo' : p.kind, meta:clone(p.meta || {}), blocks:carryPlain(p), ver:0, _bv:0, n:p.n, nd:0, origin:'office', ca:new Date().toISOString(), ua:new Date().toISOString(), ub:me()}; S.pages.set(n.id, n); S.dirty.set(n.id, {base:0, bb:[], bm:{}, seq:1, isNew:true}); scheduleSave(60); openPage(n.id); return; }
     if(k === 'trash') return trash();
     if(k === 'help') return keysHelp();
+    if(k === 'lkcp') return copyText(lkUrl('wl:' + p.id), '주소를 복사했어요 — 다른 글에 붙여 넣으면 이름으로 이어져요');
     if(k === 'cp') return copyText(pageText(p), '글자로 복사했어요 — 카톡에 붙여 넣으면 돼요');
     if(k === 'day') return calPop(at, {val:p.day, quick:[['오늘', S.today]], pick:d => { const was = p.day; if(d === was) return; const put = v => { beforeEdit(p); p.day = v; touch(p); S.caches.clear(); renderNav(); renderPage(); renderBoard(); }; put(d); snack(`${md(was)} → ${md(d)} 로 날짜를 바꿨어요`, () => put(was)); }});
     if(k === 'title'){ S.showTitle = p.id; renderPage(); const i = document.getElementById('wlTitle'); if(i){ i.focus(); i.select(); } return; }
@@ -2045,7 +2519,7 @@ async function trash(){
 }
 async function poll2(){ S.max = Math.max(0, S.max - 200); await poll(); renderBoard(); }
 function readHtml(blocks){           // 읽기 전용 미리보기
-  return `<div class="wl-read">${(blocks || []).map(b => b.t === 'hr' ? '<hr>' : isHead(b) ? `<h4>${deco(b)}</h4>` : b.t === 'img' ? `<img src="${E(imgUrl(b.src))}" alt="">` : isEmpty(b) ? '' : `<div class="${b.k ? 'is-done' : ''}" style="--lv:${b.lv || 0}">${b.t === 'p' ? '' : b.k ? '✓ ' : '• '}${deco(b)}</div>`).join('')}</div>`;
+  return `<div class="wl-read">${(blocks || []).map(b => b.t === 'hr' ? '<hr>' : isHead(b) ? `<h4>${deco(b)}</h4>` : b.t === 'img' ? `<img src="${E(imgUrl(b.src))}" alt="">` : b.t === 'bm' ? bmHtml(b) : isEmpty(b) ? '' : `<div class="${b.k ? 'is-done' : ''}" style="--lv:${b.lv || 0}">${b.t === 'p' ? '' : b.k ? '✓ ' : '• '}${deco(b)}</div>`).join('')}</div>`;
 }
 async function versions(p){
   if(S.dirty.has(p.id)) await flush();
@@ -2093,7 +2567,7 @@ function moreMenu(at){
   });
 }
 function keysHelp(){
-  modal('단축키', `<div class="wl-keys">${[['Enter', '아래에 새 줄'], ['Shift Enter', '줄 안에서 줄바꿈'], ['Tab · Shift Tab', '들여쓰기 · 내어쓰기'], ['Ctrl Enter', '끝냄 · 다시 할 일로'], ['Alt ↑ ↓', '줄 옮기기'], ['Ctrl Z · Ctrl Shift Z', '되돌리기 · 다시 하기'], ['Ctrl B', '굵게 (글자를 고른 뒤)'], ['Ctrl E', '이모지 넣기'], [':불 → Tab', '글 적다가 이모지 (:박스, :완료 …)'], ['여러 줄 끌기', '여러 줄 고르기 → Del 지우기 · Tab 들여쓰기 · Ctrl C 복사'], ['## + 빈칸', '구역 제목'], ['[] + 빈칸', '체크칸']].map(([a, b]) => `<div><kbd>${a}</kbd><span>${b}</span></div>`).join('')}</div>`);
+  modal('단축키', `<div class="wl-keys">${[['Enter', '아래에 새 줄'], ['Shift Enter', '줄 안에서 줄바꿈'], ['Tab · Shift Tab', '들여쓰기 · 내어쓰기'], ['Ctrl Enter', '끝냄 · 다시 할 일로'], ['Alt ↑ ↓', '줄 옮기기'], ['Ctrl Z · Ctrl Shift Z', '되돌리기 · 다시 하기'], ['Ctrl B', '굵게 (글자를 고른 뒤)'], ['@1123 → Enter', '다른 글 잇기 — 이름 · 날짜 · 업체로 찾기'], ['Ctrl K', '고른 글자에 링크 · 커서 자리에 글 잇기'], ['주소 붙여넣기', '우리 글 주소는 이름으로, 다른 사이트는 제목 · 카드로'], ['Ctrl E', '이모지 넣기'], [':불 → Tab', '글 적다가 이모지 (:박스, :완료 …)'], ['여러 줄 끌기', '여러 줄 고르기 → Del 지우기 · Tab 들여쓰기 · Ctrl C 복사'], ['## + 빈칸', '구역 제목'], ['[] + 빈칸', '체크칸']].map(([a, b]) => `<div><kbd>${a}</kbd><span>${b}</span></div>`).join('')}</div>`);
 }
 function addSec(){ edit(bs => { const h = nb({t:'h3', r:[]}), l = nb(); let z = bs.length; const t = bs.findIndex(b => isHead(b) && secType(b) === 'tomorrow'); if(t >= 0) z = t; bs.splice(z, 0, h, l); S.fresh.add(h.id); return {focus:h.id}; }); }
 function addLine(key){
@@ -2150,6 +2624,7 @@ function bindLog(w){
   w.addEventListener('beforeinput', onBeforeInput);
   w.addEventListener('keydown', onKey);
   w.addEventListener('paste', onPaste);
+  lkHovBind(w);
   w.addEventListener('compositionstart', () => { S.comp = true; });
   w.addEventListener('compositionend', () => { S.comp = false; if(S.defer) setTimeout(() => { if(S.defer && !S.comp && !S.ptr && logX()){ S.defer = false; renderNav(); renderKeep(); renderBoard(); } }, 80); });
   w.addEventListener('change', e => {
@@ -2207,12 +2682,12 @@ function bindLog(w){
   document.addEventListener('dragend', () => { S.dragLine = null; S.dragOrd = null; $$('#wl .wl-cd.over').forEach(x => x.classList.remove('over')); $$('#wl .is-drag,#wl .dr-a,#wl .dr-b').forEach(x => x.classList.remove('is-drag', 'dr-a', 'dr-b')); });
   document.addEventListener('selectionchange', barSync);
   document.addEventListener('keydown', e => {
-    if(e.key === 'Escape'){ if(EMO.el){ emoClose(); e.preventDefault(); e.stopPropagation(); return; } if(SUG.el){ sugClose(); e.preventDefault(); e.stopPropagation(); return; } if(document.getElementById('wlPop')){ closePop(); e.stopPropagation(); return; } if(document.getElementById('wlModal')){ closeModal(); return; } const lb = $('.wl-lb'); if(lb){ lb.remove(); return; } if(S.sel) clearSel(); }
+    if(e.key === 'Escape'){ if(LK.el){ lkClose(); e.preventDefault(); e.stopPropagation(); return; } if(HOV.el) lkHide(); if(EMO.el){ emoClose(); e.preventDefault(); e.stopPropagation(); return; } if(SUG.el){ SUG.off = SUG.key || ''; sugClose(); e.preventDefault(); e.stopPropagation(); return; } if(document.getElementById('wlPop')){ closePop(); e.stopPropagation(); return; } if(document.getElementById('wlModal')){ closeModal(); return; } const lb = $('.wl-lb'); if(lb){ lb.remove(); return; } if(S.sel) clearSel(); }
     if(S.sel && !editing()) return selKey(e);
     // 체크 · 지우기처럼 글자 칸 밖에서 한 일도 Ctrl+Z 로 (오피스 공용 되돌리기보다 먼저 — 업무일지는 자체 되돌리기)
     if((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z') && !e.isComposing && !e.altKey && !editing() && visible() && Date.now() - (S.actAt || 0) < 60000){ const a = document.activeElement, u = S.cur && S.undo.get(S.cur); if(u && (e.shiftKey ? u.rd : u.st).length && (!a || a === document.body || a.closest('#wl, #wlBoard'))){ e.preventDefault(); e.stopPropagation(); undo(e.shiftKey); } }
   }, true);
-  document.addEventListener('copy', e => { if(S.sel && !editing() && cur()){ e.preventDefault(); e.clipboardData.setData('text/plain', pageText(cur(), S.sel.ids)); } });
+  document.addEventListener('copy', e => { if(S.sel && !editing() && cur()){ e.preventDefault(); e.clipboardData.setData('text/plain', pageText(cur(), S.sel.ids)); e.clipboardData.setData('text/html', selHtml(cur(), S.sel.ids)); } });
 }
 let sideT = 0; const sideSoon = () => { clearTimeout(sideT); sideT = setTimeout(() => { if(S.ptr) return sideSoon(); if(S.view === 'page' && !S.find) renderSide(); if(S.view === 'order' && !S.find) renderOrd(); renderBoard(); }, 500); };
 function refreshLabels(){ if(S.find || editing()) return; if(S.view === 'page') renderPage(); if(S.view === 'order'){ renderOrd(); if(S.cur) renderPage(); } }
@@ -2259,7 +2734,15 @@ function selKey(e){
 function onClick(e){
   const t = e.target;
   const a = t.closest('.wl-x a');
-  if(a){ const u = a.dataset.a || a.getAttribute('href') || ''; if(u === 'wl:orders'){ e.preventDefault(); return goOrders(); } if(u.startsWith('wl:')){ e.preventDefault(); openPage(u.slice(3)); } else if(/^https?:/.test(u) && !(t.closest('.wl-x') === document.activeElement && !e.metaKey && !e.ctrlKey && getSelection().toString())){ e.preventDefault(); window.open(u, '_blank', 'noopener,noreferrer'); } return; }
+  if(a){
+    const x = a.closest('.wl-x'), mod = e.metaKey || e.ctrlKey;
+    e.preventDefault();
+    if(x === document.activeElement && !mod && getSelection().toString()) return;          // 글자를 고르는 중
+    const l = a.closest('.wl-b'), id = l && l.dataset.id, u = a.dataset.a || a.getAttribute('href') || '', text = a.textContent;
+    const g = document.createRange(); g.selectNodeContents(x); g.setEnd(a, 0); const s = g.toString().length;
+    lkHide();
+    return lkGo(u, {text, line:id, tab:mod, pick:() => lkEdit(id, [s, s + text.length], u, text, false)});
+  }
   const o = t.closest('[data-open]'); if(o && o.dataset.open){ return openPage(o.dataset.open, {find:o.dataset.find}); }
   const go = t.closest('[data-go]'); if(go){ if(go.dataset.pid && go.dataset.pid !== S.cur || S.view !== 'page') return openPage(go.dataset.pid || S.cur, {line:go.dataset.go}); return flash(go.dataset.go); }
   const v = t.closest('[data-view]'); if(v){ flushSoon(); S.view = v.dataset.view; S.find = null; const q = document.getElementById('wlQ'); if(q) q.value = ''; if(S.view === 'order'){ const c = cur(); if(!c || c.kind !== 'order') S.cur = null; } else{ const c = cur(); if(!c || c.kind === 'order') S.cur = (S.lastPage && S.pages.has(S.lastPage) ? S.lastPage : (dailies()[0] || list()[0] || {}).id) || null; } renderTop(); return renderMain(); }
@@ -2325,7 +2808,7 @@ function onInput(e){
 function putSegs(x, b, r, pos){ b.r = segNorm(r); x.innerHTML = deco(b); putSel(x, pos); x.closest('.wl-b').classList.toggle('is-empty', isEmpty(b)); S.lineDirty = true; touch(cur()); }
 function onBeforeInput(e){
   const x = e.target.closest && e.target.closest('.wl-x'); if(!x) return;
-  if(e.inputType === 'insertParagraph'){ e.preventDefault(); split(x); }
+  if(e.inputType === 'insertParagraph'){ e.preventDefault(); if(SUG.el && SUG.kind !== 'emo' && (SUG.mv || SUG.go)) return sugPick(Math.max(0, SUG.i)); split(x); }
   else if(e.inputType === 'insertLineBreak'){ e.preventDefault(); const b = blockOf(x), s = selIn(x); if(!b || !s) return; beforeEdit(cur()); mark(cur()); putSegs(x, b, [...segSlice(b.r, 0, s[0]), {t:'\n'}, ...segSlice(b.r, s[1], 1e9)], s[0] + 1); }
   else if(/^format/.test(e.inputType)){ e.preventDefault(); if(e.inputType === 'formatBold') fmt('b'); if(e.inputType === 'formatUnderline') fmt('u'); if(e.inputType === 'formatStrikeThrough') fmt('s'); }
 }
@@ -2350,12 +2833,13 @@ function onKey(e){
   const x = e.target.closest && e.target.closest('.wl-x');
   if(e.target.id === 'wlQ' && e.key === 'Escape'){ e.target.value = ''; findRun(''); renderTop(); return; }
   if(e.target.id === 'wlTitle'){ if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); e.target.blur(); } return; }
+  if(x && (/Mac|iP/.test(navigator.platform) ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && (e.code === 'KeyK' || e.key === 'k' || e.key === 'K')){ e.preventDefault(); e.stopPropagation(); return lkHere(x); }
   if(!x || e.isComposing || e.keyCode === 229) return;
   const b = blockOf(x), p = cur(), mod = e.metaKey || e.ctrlKey; if(!b) return;
   if(SUG.el && !mod && !e.altKey){
-    if(e.key === 'Tab' && !e.shiftKey){ e.preventDefault(); return sugPick(SUG.i); }
+    if(e.key === 'Tab' && !e.shiftKey && SUG.i >= 0){ e.preventDefault(); return sugPick(SUG.i); }
     if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); return sugMove(e.key === 'ArrowDown' ? 1 : -1); }
-    if(e.key === 'Enter' && SUG.mv){ e.preventDefault(); return sugPick(SUG.i); }
+    if(e.key === 'Enter' && (SUG.mv || SUG.go)){ e.preventDefault(); return sugPick(SUG.i); }
     if(/^(Enter|Arrow|Home|End|Page)/.test(e.key)) sugClose();
   }
   if((/Mac|iP/.test(navigator.platform) ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'e' || e.key === 'E')){ e.preventDefault(); e.stopPropagation(); return emoLine(b.id, caretRect(x)); }
@@ -2375,7 +2859,7 @@ function onKey(e){
     if((b.lv || 0) > baseLv(b)) return indent([b.id], -1);
     const v = visIds(), vi = v.indexOf(b.id), pid = v[vi - 1], pb = pid && p.blocks.find(q => q.id === pid);
     if(!pb){ return; }
-    if(isHead(pb) || pb.t === 'img' || pb.t === 'file'){ if(isEmpty(b)) edit(bs => { const i = bs.findIndex(q => q.id === b.id); if(subEnd(bs, i) > i + 1) return false; bs.splice(i, 1); return {focus:pb.id}; }); return; }
+    if(isHead(pb) || pb.t === 'img' || pb.t === 'file' || pb.t === 'bm'){ if(isEmpty(b)) edit(bs => { const i = bs.findIndex(q => q.id === b.id); if(subEnd(bs, i) > i + 1) return false; bs.splice(i, 1); return {focus:pb.id}; }); return; }
     return edit(bs => {
       const i = bs.findIndex(q => q.id === b.id), pos = segLen(pb.r);
       pb.r = segNorm([...(pb.r || []), ...(b.r || [])]);
@@ -2413,13 +2897,13 @@ function onPaste(e){
   if(!x) return;
   e.preventDefault(); e.stopPropagation();
   const txt = String(e.clipboardData.getData('text/plain') || '').replace(/\r/g, ''), b = blockOf(x), s = selIn(x) || [0, 0]; if(!b || !txt) return;
-  const lines = txt.split('\n').filter((l, i, a) => l.trim() || (a.length === 1));
+  const lines = txt.split('\n').filter((l, i, a) => l.trim() || (a.length === 1)), html = e.clipboardData.getData('text/html');
   b.r = parseX(x);
   if(lines.length <= 1){
     const t = lines[0] || '';
-    if(/^https?:\/\/\S+$/.test(t.trim()) && s[1] > s[0]){ beforeEdit(cur()); mark(cur()); return putSegs(x, b, [...segSlice(b.r, 0, s[0]), ...segSlice(b.r, s[0], s[1]).map(q => Object.assign(q, {a:t.trim()})), ...segSlice(b.r, s[1], 1e9)], s[1]); }
+    if(lkPaste(x, b, s, t)) return;
     beforeEdit(cur()); mark(cur());
-    return putSegs(x, b, [...segSlice(b.r, 0, s[0]), {t}, ...segSlice(b.r, s[1], 1e9)], s[0] + t.length);
+    return putSegs(x, b, [...segSlice(b.r, 0, s[0]), ...lkApply([{t}], lkFromHtml(html)), ...segSlice(b.r, s[1], 1e9)], s[0] + t.length);
   }
   edit(bs => {
     const i = bs.findIndex(q => q.id === b.id), L = segSlice(b.r, 0, s[0]), R = segSlice(b.r, s[1], 1e9);
@@ -2433,6 +2917,7 @@ function onPaste(e){
       else if((m = t.match(/^#{1,3}\s+/))){ t = t.slice(m[0].length); typ = 'h3'; }
       const n = nb({t:typ, lv:typ === 'h3' ? 0 : (b.lv || 0) + steps.indexOf(ind[k] - min), r:t ? T(t) : []}); if(dn) n.k = 1; return n;
     });
+    const links = lkFromHtml(html); made.forEach(n => { if(links.length && n.r.length) n.r = lkApply(n.r, links); });
     const last = made[made.length - 1];
     if(isEmpty(b) && !isHead(b)) bs.splice(i, 1, ...made);
     else if(/^\s*\n/.test(txt) && !isHead(b)){ bs[i].r = segNorm(L); bs.splice(subEnd(bs, i), 0, ...made); }
@@ -2445,13 +2930,13 @@ function onPaste(e){
 /* ── 글자 서식 막대 ── */
 function fmt(k, v){
   const x = document.activeElement; if(!x || !x.classList.contains('wl-x')) return;
+  if(k === 'a') return lkHere(x);
   const b = blockOf(x), s = selIn(x); if(!b || !s || s[0] === s[1]) return;
   b.r = parseX(x);
   const mid = segSlice(b.r, s[0], s[1]);
   beforeEdit(cur()); mark(cur());
-  if(k === 'clear') mid.forEach(q => { MK.forEach(m => delete q[m]); delete q.h; delete q.a; });
+  if(k === 'clear') mid.forEach(q => { MK.forEach(m => delete q[m]); delete q.h; delete q.a; delete q.m; });
   else if(k === 'h'){ const on = mid.every(q => q.h === v); mid.forEach(q => { if(on) delete q.h; else q.h = v; }); }
-  else if(k === 'a'){ const u = v != null ? v : prompt('링크 주소', (mid.find(q => q.a) || {}).a || 'https://'); if(u == null) return; mid.forEach(q => { if(u && /^https?:\/\//.test(u)) q.a = u; else delete q.a; }); }
   else{ const on = mid.every(q => q[k]); mid.forEach(q => { if(on) delete q[k]; else q[k] = 1; }); }
   b.r = segNorm([...segSlice(b.r, 0, s[0]), ...mid, ...segSlice(b.r, s[1], 1e9)]);
   x.innerHTML = deco(b); putSel(x, s[0], s[1]); S.lineDirty = true; touch(cur());
@@ -2463,7 +2948,7 @@ function barSync(){
   let el = document.getElementById('wlBar');
   if(!el){
     el = document.createElement('div'); el.id = 'wlBar'; el.className = 'wl-bar';
-    el.innerHTML = '<button type="button" data-k="b" title="굵게 (Ctrl B)"><b>B</b></button><button type="button" data-k="s" title="취소선"><s>S</s></button><button type="button" data-k="h" data-v="yellow_background" title="형광펜"><span class="wl-h-yellow_background">가</span></button><button type="button" data-k="h" data-v="red" title="빨간 글자"><span class="wl-h-red">가</span></button><button type="button" data-k="a" title="링크">🔗</button><button type="button" data-k="clear" title="서식 지우기">⊘</button>';
+    el.innerHTML = '<button type="button" data-k="b" title="굵게 (Ctrl B)"><b>B</b></button><button type="button" data-k="s" title="취소선"><s>S</s></button><button type="button" data-k="h" data-v="yellow_background" title="형광펜"><span class="wl-h-yellow_background">가</span></button><button type="button" data-k="h" data-v="red" title="빨간 글자"><span class="wl-h-red">가</span></button><button type="button" data-k="a" title="링크 · 글 잇기 (Ctrl K)">🔗</button><button type="button" data-k="clear" title="서식 지우기">⊘</button>';
     el.addEventListener('mousedown', e => { e.preventDefault(); const b = e.target.closest('button'); if(b) fmt(b.dataset.k, b.dataset.v); });
     document.body.appendChild(el);
   }
@@ -2497,6 +2982,7 @@ async function init(){
   const was = S.ready;
   await boot();
   if(!editing() && !S.ptr) renderAll(); else S.defer = true;
+  lkBoot();
   if(S.dirty.size) scheduleSave(100);
   if(!S.ready && S.err) setTimeout(() => { if(!S.ready && visible()) init(); }, 10000);
   if(S.ready) inbTick(false);
@@ -2514,5 +3000,5 @@ async function homeBadge(){
     await autoRoutines(); badge(leftToday().length);
   }catch(e){}
 }
-window.WL = {ready:true, init, homeBadge, stripSync, _:{S, inb, inbOf, inbTick, upcoming, todayItems, ordersOf2:ordersOf, merge3, carry, sections, isDue, state, parseX, deco, diffOf, ageMap, ordersOf, stOf, segNorm, newPage, openPage, flush, poll, renderAll}};
+window.WL = {ready:true, init, homeBadge, stripSync, _:{S, inb, inbOf, inbTick, upcoming, todayItems, ordersOf2:ordersOf, merge3, carry, sections, isDue, state, parseX, deco, diffOf, ageMap, ordersOf, stOf, segNorm, newPage, openPage, flush, poll, renderAll, lkIn, lkUrl, lkFind, lkKeep, lkApply, lkFromHtml, lkBack, lkGo, segEdit, segSlice}};
 })();
