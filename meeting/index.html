@@ -36,13 +36,15 @@
      디자인팀 · 마케팅팀 · 엠디팀 참여하고 각각 이름으로 세로로 만들어줘서 각자 링크 넣을 수 있게 / 중복되는 계정주소가 있으면 경고문"
      사장님 요청 ②: "매주 수요일 · 오후2시까지 · 각각 브랜드별로 벤치마킹 or 래퍼런스 인스타그램 주소 넣기 / 좌측 목록은 지워주고 상단에서 날짜 11월 1주차 2주차 이런식으로 /
      배지 선택 가능하게 · 중복안되게 · 사람마다"
+     사장님 요청 ③: "다들 인스타그램 주소 기재할때 어떤 브랜드 래퍼런스 주소인지 선택하게 하는거라" → 사람이 브랜드를 맡는 게 아니라 주소마다 브랜드를 고른다
      · 맨 위 = 달 ‹ 11월 › + 주차 탭 (그 달의 첫째 수요일 = 1주차). 회의 줄(mkt_meetings)은 그 주에 처음 무언가 넣을 때 저절로 생긴다 (수요일 하루에 한 줄)
-     · 안내 띠 = 매주 수요일 오후 2시까지 + 남은 시간 · 아직 안 넣은 사람 · 브랜드 배지 현황
-     · 사람마다 세로 칸(디자인팀 · 마케팅팀 · MD팀 순): 브랜드 배지 고르기 → 배지마다 [벤치마킹 | 레퍼런스] + 주소 칸
-     · 배지 = 한 주에 한 브랜드는 한 사람 (저장소 유일 조건 mkt_meeting_brands_one). 다른 사람이 고른 배지는 흐리게 · 누르면 누가 골랐는지
-     · 주소 = 한 주에 같은 계정 · 게시물은 한 번만 (mkt_meeting_links_one). 또 넣으면 빨간 안내만 뜨고 안 들어감. 다른 주에 나왔던 것은 회색 안내
+     · 안내 띠 = 매주 수요일 오후 2시까지 + 남은 시간 · 아직 안 넣은 사람 · 브랜드별 개수(누르면 그 브랜드 주소만 보기)
+     · 사람마다 세로 칸(디자인팀 · 마케팅팀 · MD팀 순): 브랜드 배지 하나 고르기 → [벤치마킹 | 레퍼런스] → 주소 붙여넣기.
+       브랜드를 안 고르고 주소부터 넣으면 "어떤 브랜드 레퍼런스예요?" 를 묻고, 배지를 누르는 순간 저장. 저장 뒤엔 배지 선택이 풀려 다음 주소도 다시 고른다
+     · 카드의 브랜드 · 벤치마킹/레퍼런스 배지를 누르면 나중에도 바꿀 수 있다
+     · 주소 = 한 주에 같은 계정 · 게시물은 한 번만, 사람이 달라도 (mkt_meeting_links_one). 또 넣으면 빨간 안내만 뜨고 안 들어감. 다른 주에 나왔던 것은 회색 안내
      · 마우스를 올리면 인스타 미리보기(휴대폰은 누르면)
-     · 저장 = 오피스 슈퍼베이스 mkt_meetings · mkt_meeting_brands(배지 한 줄씩) · mkt_meeting_links(주소 한 줄씩). 지우기는 deleted_at 만 */
+     · 저장 = 오피스 슈퍼베이스 mkt_meetings · mkt_meeting_links(주소 한 줄씩, brand · tag). 지우기는 deleted_at 만 */
   :root {
     --bg: #f5f6f8; --panel: #fff; --line: #e5e7eb; --line2: #cfd4dc; --text: #1f2329; --t2: #4b5563; --t3: #8b93a1;
     --red: #dc2626; --red-t: #fef2f2; --soft: #f1f3f6;
@@ -80,6 +82,7 @@
   .menu button { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; background: none; padding: 8px 10px; border-radius: 7px; cursor: pointer; text-align: left; font-size: 13px }
   .menu button:hover { background: var(--soft) }
   .menu svg { width: 16px; height: 16px }
+  .menu button.on { font-weight: 800; background: var(--soft) }
 
   /* ── 주차 고르기 ── */
   .weeks { position: sticky; top: var(--top); z-index: 25; min-height: var(--wkh); display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
@@ -106,9 +109,11 @@
   .due { margin-left: auto; font-size: 13px; color: var(--t2); font-weight: 600; text-align: right }
   .due .red { color: var(--red); font-weight: 700 }
   .bstrip { display: flex; flex-wrap: wrap; gap: 6px }
-  .bst { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--soft); font-size: 12.5px; white-space: nowrap }
+  .bst { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 12.5px; white-space: nowrap; cursor: pointer }
+  .bst:hover { border-color: var(--t3) }
   .bst b { font-weight: 700 }
-  .bst.free { background: none; box-shadow: inset 0 0 0 1px var(--line); color: var(--t3) }
+  .bst.zero { color: var(--t3) }
+  .bst.on { background: var(--text); border-color: var(--text); color: #fff }
   .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block }
 
   /* ── 사람별 세로 칸 ── */
@@ -132,27 +137,15 @@
   .col-h .ct { margin-left: auto; font-size: 12px; color: var(--t3); font-weight: 600; white-space: nowrap }
   .col-h .ct.w { color: var(--red); font-weight: 700 }
 
-  /* 브랜드 배지 */
-  .bds { padding: 0 10px 10px; display: flex; flex-wrap: wrap; gap: 5px }
-  .bds .ask { width: 100%; font-size: 12.5px; font-weight: 600; color: var(--t2); padding: 0 2px 3px }
+  /* 주소 넣기 — 브랜드 배지 → 벤치마킹/레퍼런스 → 주소 */
+  .ent { padding: 0 10px 10px }
+  .ask { font-size: 12.5px; font-weight: 600; color: var(--t2); padding: 0 2px 6px }
+  .ent.need .ask { color: var(--red); font-weight: 700 }
+  .bds { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px }
   .bd { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line2); background: #fff; cursor: pointer; font-size: 12.5px; font-weight: 600; white-space: nowrap }
-  .bd:hover { border-color: var(--t3) }
+  .bd:hover { border-color: var(--text) }
   .bd.on { background: var(--text); border-color: var(--text); color: #fff }
-  .bd.on .x { opacity: .6; font-size: 13px; line-height: 1; margin-right: -2px }
-  .bd.on:hover .x { opacity: 1 }
-  .bd.free .plus { color: var(--t3); font-weight: 500; margin-left: -1px }
-  .bd.off { border-color: var(--line); background: var(--soft); color: var(--t3); cursor: not-allowed; font-weight: 500 }
-  .bd.off .dot { opacity: .35 }
-  .bd.off s { text-decoration: none }
-  .bd.off em { font-style: normal; font-size: 11.5px }
-  .bd.more { border-style: dashed; color: var(--t2) }
-
-  /* 배지마다 주소 칸 */
-  .bs { border-top: 1px solid var(--line); padding: 10px 10px 10px }
-  .bs-h { display: flex; align-items: center; gap: 6px; padding: 0 2px 8px; font-size: 13.5px }
-  .bs-h b { font-weight: 800 }
-  .bs-h .n { color: var(--t3); font-weight: 600; font-size: 12px }
-  .bs-h .off { color: var(--t3); font-size: 11.5px; margin-left: auto }
+  .ent.need .bds { margin: 0 -4px 8px; padding: 4px; border-radius: 12px; box-shadow: 0 0 0 1.5px var(--red) }
   .seg { display: flex; gap: 3px; background: var(--soft); border-radius: 9px; padding: 3px; margin-bottom: 6px }
   .seg button { flex: 1; height: 28px; border: 0; border-radius: 7px; background: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--t2) }
   .seg button.on { background: #fff; color: var(--text); font-weight: 700; box-shadow: 0 1px 3px rgba(15, 23, 42, .13) }
@@ -163,7 +156,7 @@
   .add-in .btn { height: 36px; padding: 0 11px }
   .add-warn { position: relative; margin-top: 6px; border: 1px solid rgba(220, 38, 38, .35); background: var(--red-t); border-radius: 9px; padding: 8px 28px 8px 10px; font-size: 12.5px; color: #991b1b; line-height: 1.5; word-break: break-word }
   .add-warn button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; background: none; color: inherit; cursor: pointer; font-size: 16px; line-height: 1 }
-  .lks { display: flex; flex-direction: column; gap: 6px; margin-top: 8px }
+  .lks { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px }
   .lks:empty { display: none }
 
   .lk { position: relative; display: flex; gap: 9px; align-items: flex-start; border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 9px; background: #fff;
@@ -173,10 +166,13 @@
   .lk-ic svg { width: 16px; height: 16px }
   .lk-b { flex: 1; min-width: 0 }
   .lk-t { font-weight: 700; font-size: 13.5px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-  .lk-s { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--t3); margin-top: 4px; min-width: 0 }
+  .lk-s { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 11.5px; color: var(--t3); margin-top: 5px; min-width: 0 }
   .lk-s span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
-  .tg { flex: none; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--text); background: var(--text); color: #fff; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap }
-  .tg.ref { background: #fff; color: var(--text); border-color: var(--line2) }
+  .bb { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line2); background: #fff; color: var(--text); font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap }
+  .bb:hover, .tg:hover { border-color: var(--t3) }
+  .bb.none { color: var(--red); border-style: dashed; border-color: var(--red) }
+  .tg { flex: none; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--soft); color: var(--t2); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap }
+  .tg.ref { background: #fff }
   .tg.none { background: #fff; color: var(--t3); border-style: dashed; border-color: var(--line2) }
   .lk-m { font-size: 12.5px; color: var(--t2); margin-top: 5px; white-space: pre-wrap; word-break: break-word }
   .lk-me { width: 100%; margin-top: 5px; border: 1px solid var(--text); border-radius: 7px; padding: 5px 7px; font-size: 12.5px; outline: none; resize: vertical; min-height: 34px; background: #fff }
@@ -314,7 +310,7 @@
     <section class="rule">
       <div class="rule-1">
         <b>매주 수요일 오후 2시까지</b>
-        <span class="how">브랜드 배지를 고르고, 브랜드마다 벤치마킹 · 레퍼런스 인스타 주소 넣기</span>
+        <span class="how">브랜드별로 벤치마킹 · 레퍼런스 인스타 주소 넣기 — 넣을 때 어떤 브랜드인지 고르기</span>
         <span class="due" id="due"></span>
       </div>
       <div class="bstrip" id="bstrip"></div>
@@ -369,7 +365,7 @@
     '61bac9d4e564d8096a969a0af7ec131066991620a2807be2b6b889cf8b24193e': 'master',
   };
   const AUTH_VERSION = '4', MASTER_PIN_VER = '1';
-  const T_M = 'mkt_meetings', T_B = 'mkt_meeting_brands', T_L = 'mkt_meeting_links';
+  const T_M = 'mkt_meetings', T_L = 'mkt_meeting_links';
   const LS = {me: 'mtg_me_v1'};
   const POLL_MS = 8000, POLL_LIVE_MS = 60000;   // 실시간 알림선이 이어져 있으면 1분에 한 번만
   // 회의 = 매주 수요일, 마감 = 그날 오후 2시 (사장님 11-24 "매주 수요일 · 오후2시까지"). 바꾸려면 이 두 줄
@@ -386,7 +382,8 @@
     {k: 'koz', name: '코즈미', dot: '#14b8a6'},
   ];
   const BMAP = Object.fromEntries(BRANDS.map(b => [b.k, b]));
-  const bName = k => (BMAP[k] ? BMAP[k].name : k || '배지 없음');
+  const bName = k => (BMAP[k] ? BMAP[k].name : k || '브랜드 없음');
+  const bRank = k => { const i = BRANDS.findIndex(b => b.k === k); return i < 0 ? 99 : i; };
   const bDot = k => `<i class="dot" style="background:${BMAP[k] ? BMAP[k].dot : '#cbd5e1'}"></i>`;
   const TAGS = [['bench', '벤치마킹'], ['ref', '레퍼런스']];
   const TAG_NAME = {bench: '벤치마킹', ref: '레퍼런스'};
@@ -568,17 +565,15 @@
   /* ══════════════════════ 상태 ══════════════════════ */
   const S = {
     meetings: new Map(),   // id → 저장소 줄 (지운 건 뺌)
-    badges: new Map(),     // id → 배지 줄 {meeting_id, brand, person}
     links: new Map(),      // id → 주소 줄 (지운 건 뺌)
     wk: null,              // 고른 주 (그 주 수요일 날짜)
     month: null,           // 탭에 보이는 달 '2026-11'
     staff: null,           // {design:[이름], mkt:[], md:[]}
-    curM: '', curB: '', curL: '',    // 마지막으로 받은 updated_at
+    filter: null,          // 이 브랜드 주소만 보기 (안내 띠에서 고름)
+    curM: '', curL: '',    // 마지막으로 받은 updated_at
   };
-  const drafts = new Map();   // 사람|브랜드 → {text, tag, warn:[글]} (칸 입력 · 중복 안내)
-  const dkey = (p, b) => p + '|' + b;
-  const draftOf = (p, b) => { const k = dkey(p, b); if (!drafts.has(k)) drafts.set(k, {text: '', tag: 'bench', warn: []}); return drafts.get(k); };
-  const pickOpen = new Set(); // 배지 목록을 펼쳐 둔 사람
+  const drafts = new Map();   // 사람 → {text, brand, tag, ask, warn:[글]} (칸 입력 · 고른 브랜드 · 브랜드 묻는 중 · 중복 안내)
+  const draftOf = p => { if (!drafts.has(p)) drafts.set(p, {text: '', brand: null, tag: 'bench', ask: false, warn: []}); return drafts.get(p); };
   let editMemo = null;        // 메모 고치는 주소 id
   let boardPending = false;
 
@@ -633,8 +628,6 @@
   }
   const cur = () => meetingOf(S.wk);
   const linksOf = mid => (mid ? [...S.links.values()].filter(l => l.meeting_id === mid) : []);
-  const badgesOf = mid => (mid ? [...S.badges.values()].filter(b => b.meeting_id === mid) : []);
-  const ownerOf = (mid, brand) => badgesOf(mid).find(b => b.brand === brand) || null;
 
   // 그 주에 처음 무언가 넣을 때 회의 줄을 만든다. 두 사람이 동시에 만들어도 저장소가 하루 한 줄만 받으므로(mkt_meetings_day_one) 있던 줄을 쓴다
   const making = new Map();
@@ -673,12 +666,11 @@
     }
   }
   async function loadAll() {
-    const [ms, bs, ls] = await Promise.all([
-      page(`${T_M}?deleted_at=is.null&select=*`), page(`${T_B}?deleted_at=is.null&select=*`), page(`${T_L}?deleted_at=is.null&select=*`),
+    const [ms, ls] = await Promise.all([
+      page(`${T_M}?deleted_at=is.null&select=*`), page(`${T_L}?deleted_at=is.null&select=*`),
     ]);
-    S.meetings.clear(); S.badges.clear(); S.links.clear();
+    S.meetings.clear(); S.links.clear();
     ms.forEach(r => { S.meetings.set(r.id, r); if (later(r.updated_at, S.curM)) S.curM = r.updated_at; });
-    bs.forEach(r => { S.badges.set(r.id, r); if (later(r.updated_at, S.curB)) S.curB = r.updated_at; });
     ls.forEach(r => { S.links.set(r.id, r); if (later(r.updated_at, S.curL)) S.curL = r.updated_at; });
   }
   // 겹쳐 읽기(1분) — 먼저 시작해 늦게 끝난 저장도 놓치지 않게. 같은 줄은 updated_at 이 늦은 쪽만
@@ -698,24 +690,21 @@
   }
   async function pollOnce() {
     const mid = (cur() || {}).id, t0 = Date.now();
-    const [ms, bs, ls, aliveB, aliveL] = await Promise.all([
+    const [ms, ls, aliveL] = await Promise.all([
       rest(`${T_M}?updated_at=gt.${encodeURIComponent(since(S.curM))}&select=*&order=updated_at.asc&limit=1000`),
-      rest(`${T_B}?updated_at=gt.${encodeURIComponent(since(S.curB))}&select=*&order=updated_at.asc&limit=1000`),
       rest(`${T_L}?updated_at=gt.${encodeURIComponent(since(S.curL))}&select=*&order=updated_at.asc&limit=1000`),
       // 되돌리기(office-undo)는 넣은 줄을 아예 지우므로, 지금 보는 주는 남아 있는 줄 번호도 맞춘다
-      mid ? rest(`${T_B}?meeting_id=eq.${mid}&deleted_at=is.null&select=id&limit=1000`) : null,
       mid ? rest(`${T_L}?meeting_id=eq.${mid}&deleted_at=is.null&select=id&limit=1000`) : null,
     ]);
     let ch = false;
     (ms || []).forEach(r => { if (later(r.updated_at, S.curM)) S.curM = r.updated_at; if (applyRow(S.meetings, r)) { ch = true; syncFields(r); } });
-    (bs || []).forEach(r => { if (later(r.updated_at, S.curB)) S.curB = r.updated_at; if (applyRow(S.badges, r)) ch = true; });
     (ls || []).forEach(r => { if (later(r.updated_at, S.curL)) S.curL = r.updated_at; if (applyRow(S.links, r)) ch = true; });
     const prune = (map, alive) => {
       if (!alive || alive.length >= 1000) return;
       const ids = new Set(alive.map(x => x.id));
       [...map.values()].forEach(r => { if (r.meeting_id === mid && !ids.has(r.id) && Date.parse(r.updated_at) < t0 - 15000) { map.delete(r.id); ch = true; } });
     };
-    prune(S.badges, aliveB); prune(S.links, aliveL);
+    prune(S.links, aliveL);
     if (ch) renderAll();
   }
   function pollLoop() {
@@ -729,7 +718,7 @@
   });
   // 다른 사람이 고치면 바로 (실시간 알림선 ../office-live.js) — 끊기면 8초 확인 그대로
   let liveOn = false;
-  function liveBoot() { if (liveOn || !window.OfficeLive) return; liveOn = true; OfficeLive.on([T_M, T_B, T_L], () => poll()); }
+  function liveBoot() { if (liveOn || !window.OfficeLive) return; liveOn = true; OfficeLive.on([T_M, T_L], () => poll()); }
 
   /* ══════════════════════ 주차 탭 ══════════════════════ */
   function renderWeeks() {
@@ -747,7 +736,7 @@
   function pickWeek(wk) {
     const changed = S.wk !== wk;
     S.wk = wk; S.month = monthOf(wk);
-    if (changed) { EST.forEach(e => { if (Object.keys(e.dirty).length) saveText(e); }); drafts.clear(); pickOpen.clear(); editMemo = null; hidePreview(); paintText(); }
+    if (changed) { EST.forEach(e => { if (Object.keys(e.dirty).length) saveText(e); }); drafts.clear(); S.filter = null; editMemo = null; hidePreview(); paintText(); }
     renderAll(true);
     showTab();
   }
@@ -773,13 +762,13 @@
     $('due').innerHTML = h;
   }
   function paintStrip() {
-    const m = cur(), bs = m ? badgesOf(m.id) : [], ls = m ? linksOf(m.id) : [];
-    $('bstrip').innerHTML = BRANDS.map(b => {
-      const own = bs.find(x => x.brand === b.k), n = ls.filter(l => l.brand === b.k).length;
-      return own ? `<span class="bst">${bDot(b.k)}<b>${esc(b.name)}</b>${esc(own.person)}${n ? ` · ${n}` : ''}</span>`
-        : `<span class="bst free">${bDot(b.k)}${esc(b.name)}</span>`;
+    const ls = linksOf((cur() || {}).id), cnt = k => ls.filter(l => l.brand === k).length;
+    $('bstrip').innerHTML = `<button type="button" class="bst${S.filter ? '' : ' on'}" data-f="" aria-pressed="${!S.filter}">전체 <b>${ls.length}</b></button>` + BRANDS.map(b => {
+      const n = cnt(b.k), on = S.filter === b.k;
+      return `<button type="button" class="bst${on ? ' on' : n ? '' : ' zero'}" data-f="${b.k}" aria-pressed="${on}" title="${esc(b.name)} 주소만 보기">${bDot(b.k)}${esc(b.name)} <b>${n}</b></button>`;
     }).join('');
   }
+  $('bstrip').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; S.filter = b.dataset.f && S.filter !== b.dataset.f ? b.dataset.f : null; hidePreview(); paintStrip(); renderBoard(true); });
   setInterval(() => { if (document.visibilityState !== 'hidden' && S.wk) paintDue(); }, 30000);
 
   /* ══════════════════════ 회의 메모 · 결정 ══════════════════════
@@ -899,8 +888,8 @@
     const mem = (m && Array.isArray(m.members) ? m.members.filter(x => x && x.name) : defaultMembers(S.wk));
     const cols = mem.map(x => ({name: x.name, team: TMAP[x.team] ? x.team : teamOfName(x.name), off: false}));
     if (!m) return cols;
-    // 참여자에서 뺐어도 주소 · 배지가 남아 있는 사람은 칸을 보여 줌 (안 숨게)
-    linksOf(m.id).concat(badgesOf(m.id)).forEach(l => { if (!cols.some(c => c.name === l.person)) cols.push({name: l.person, team: teamOfName(l.person), off: true}); });
+    // 참여자에서 뺐어도 주소가 남아 있는 사람은 칸을 보여 줌 (안 숨게)
+    linksOf(m.id).forEach(l => { if (!cols.some(c => c.name === l.person)) cols.push({name: l.person, team: teamOfName(l.person), off: true}); });
     return cols;
   }
   function analyze(m) {
@@ -923,13 +912,13 @@
     if (!force && ae && box.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) { boardPending = true; return; }
     boardPending = false;
     const A = analyze(m), cols = columnsOf(m), mid = m ? m.id : null;
-    const ls = linksOf(mid).sort((a, b) => b.pos - a.pos), bs = badgesOf(mid);
+    const ls = linksOf(mid).sort((a, b) => bRank(a.brand) - bRank(b.brand) || b.pos - a.pos);   // 브랜드끼리 모으고, 그 안은 새로 넣은 것부터
     const html = [];
     TEAMS.forEach(t => {
       const tc = cols.filter(c => c.team === t.k);
       if (!tc.length) return;
       html.push(`<div class="team" style="--n:${tc.length}"><div class="team-h">${esc(t.name)}<span class="n">${tc.length}명</span></div><div class="cols">`);
-      tc.forEach(c => html.push(colHtml(c, ls.filter(l => l.person === c.name), bs, A, !!m)));
+      tc.forEach(c => html.push(colHtml(c, ls.filter(l => l.person === c.name), A, !!m)));
       html.push('</div></div>');
     });
     if (!cols.length) html.push('<div class="muted" style="padding:24px">참여자가 없어요 — 위 <b>참여자</b> 단추로 사람을 골라 주세요</div>');
@@ -945,41 +934,23 @@
   $('bnavR').addEventListener('click', () => $('board').scrollBy({left: Math.round($('board').clientWidth * .8), behavior: 'smooth'}));
   window.addEventListener('resize', () => paintNav());
 
-  function colHtml(c, ls, bs, A, hasRow) {
-    const mine = bs.filter(b => b.person === c.name).map(b => b.brand);
-    const late = hasRow && Date.now() > dueMs(S.wk);
+  function colHtml(c, ls, A, hasRow) {
+    const d = draftOf(c.name), late = hasRow && Date.now() > dueMs(S.wk);
     const ct = ls.length ? `${ls.length}개` : late && !c.off ? '못 넣음' : '';
-    // 배지 — 고른 것은 검정, 비어 있는 것은 흰색, 다른 사람이 고른 것은 흐리게. 하나라도 고르면 고른 것만 보이고 [＋ 배지] 로 다시 펼친다
-    const open = !mine.length || pickOpen.has(c.name);
-    const chips = BRANDS.map(b => {
-      const own = bs.find(x => x.brand === b.k);
-      if (own && own.person === c.name) return `<button type="button" class="bd on" data-act="badge" data-b="${b.k}" aria-pressed="true" title="누르면 배지를 빼요">${bDot(b.k)}${esc(b.name)}<span class="x">×</span></button>`;
-      if (!open) return '';
-      if (own) return `<button type="button" class="bd off" data-act="badge" data-b="${b.k}" aria-disabled="true" title="${esc(own.person)}님이 골랐어요">${bDot(b.k)}${esc(b.name)}<em>${esc(own.person)}</em></button>`;
-      return `<button type="button" class="bd free" data-act="badge" data-b="${b.k}" aria-pressed="false"><span class="plus">＋</span>${esc(b.name)}</button>`;
-    });
-    const sel = chips.filter(x => x.includes('bd on')), rest2 = chips.filter(x => x && !x.includes('bd on'));
-    if (mine.length && mine.length < BRANDS.length) rest2.push(`<button type="button" class="bd more" data-act="pick" aria-expanded="${open}">${open ? '접기' : '＋ 배지'}</button>`);
-    const secs = BRANDS.map(b => b.k).filter(k => mine.includes(k) || ls.some(l => l.brand === k));
-    const known = new Set(secs);
-    const loose = ls.filter(l => !known.has(l.brand));
+    const show = S.filter ? ls.filter(l => l.brand === S.filter) : ls;
+    const warn = d.warn.length ? `<div class="add-warn" role="alert">${d.warn.map(w => `<div>${w}</div>`).join('')}<button type="button" data-act="okwarn" aria-label="닫기">×</button></div>` : '';
     return `<div class="col" data-p="${esc(c.name)}">
       <div class="col-h"><span class="av">${esc(c.name.slice(-2))}</span><span class="nm">${esc(c.name)}</span>${c.off ? '<span class="muted" style="font-size:11px">(참여자 아님)</span>' : ''}
         <span class="ct${ct === '못 넣음' ? ' w' : ''}">${ct}</span></div>
-      <div class="bds">${mine.length ? '' : '<div class="ask">브랜드 배지를 골라 주세요</div>'}${sel.join('')}${rest2.join('')}</div>
-      ${secs.map(k => secHtml(c, k, mine.includes(k), ls.filter(l => l.brand === k), A)).join('')}
-      ${loose.length ? `<section class="bs"><div class="bs-h"><b>배지 없음</b><span class="n">${loose.length}</span></div><div class="lks">${loose.map(l => linkHtml(l, A)).join('')}</div></section>` : ''}
+      <div class="ent${d.ask ? ' need' : ''}">
+        <div class="ask">${d.ask ? '이 주소는 어떤 브랜드 레퍼런스예요?' : '어떤 브랜드 레퍼런스예요?'}</div>
+        <div class="bds" role="radiogroup" aria-label="${esc(c.name)} 브랜드 고르기">${BRANDS.map(b => `<button type="button" class="bd${d.brand === b.k ? ' on' : ''}" role="radio" aria-checked="${d.brand === b.k}" data-act="brand" data-b="${b.k}">${bDot(b.k)}${esc(b.name)}</button>`).join('')}</div>
+        <div class="seg" role="group" aria-label="종류">${TAGS.map(([t, n]) => `<button type="button" data-act="seg" data-t="${t}" class="${d.tag === t ? 'on' : ''}" aria-pressed="${d.tag === t}">${n}</button>`).join('')}</div>
+        <form class="add-in" data-p="${esc(c.name)}"><input type="text" inputmode="url" enterkeyhint="done" autocomplete="off" autocapitalize="off" placeholder="인스타 주소 · @아이디" value="${esc(d.text)}" aria-label="${esc(c.name)} 주소 넣기"><button class="btn" type="submit">넣기</button></form>
+        ${warn}
+      </div>
+      <div class="lks">${show.map(l => linkHtml(l, A)).join('')}</div>
     </div>`;
-  }
-  function secHtml(c, k, on, ls, A) {
-    const d = draftOf(c.name, k);
-    const warn = d.warn.length ? `<div class="add-warn" role="alert">${d.warn.map(w => `<div>${w}</div>`).join('')}<button type="button" data-act="okwarn" data-b="${k}" aria-label="닫기">×</button></div>` : '';
-    return `<section class="bs" data-b="${k}">
-      <div class="bs-h">${bDot(k)}<b>${esc(bName(k))}</b><span class="n">${ls.length || ''}</span>${on ? '' : '<span class="off">배지 빠짐</span>'}</div>
-      ${on ? `<div class="seg" role="group" aria-label="${esc(bName(k))} 종류">${TAGS.map(([t, n]) => `<button type="button" data-act="seg" data-b="${k}" data-t="${t}" class="${d.tag === t ? 'on' : ''}" aria-pressed="${d.tag === t}">${n}</button>`).join('')}</div>
-      <form class="add-in" data-p="${esc(c.name)}" data-b="${k}"><input type="text" inputmode="url" enterkeyhint="done" autocomplete="off" autocapitalize="off" placeholder="인스타 주소 · @아이디" value="${esc(d.text)}" aria-label="${esc(c.name)} ${esc(bName(k))} 주소 넣기"><button class="btn" type="submit">넣기</button></form>${warn}` : ''}
-      <div class="lks">${ls.map(l => linkHtml(l, A)).join('')}</div>
-    </section>`;
   }
   function linkHtml(l, A) {
     let p = '';
@@ -994,14 +965,14 @@
       p += `<div class="lk-p">↺ ${uniq.slice(0, 2).map(x => `${weekName(weekOf(x.m.day))} ${esc(x.person)}`).join(', ')}${uniq.length > 2 ? ` 외 ${uniq.length - 2}` : ''} 에도 나왔어요</div>`;
     }
     const late = Date.parse(l.created_at) > dueMs(S.wk) ? ' · 마감 뒤' : '';
-    const by = l.created_by && l.created_by !== l.person ? ` · ${l.created_by} 넣음` : '';
+    const by = l.created_by && l.created_by !== l.person ? ` · ${l.created_by} 넣음` : '', note = (late + by).replace(/^ · /, '');
     const memo = editMemo === l.id
       ? `<textarea class="lk-me" data-id="${esc(l.id)}" maxlength="2000" placeholder="메모 (Enter 저장 · Esc 취소)">${esc(l.memo || '')}</textarea>`
       : (l.memo ? `<div class="lk-m">${esc(l.memo)}</div>` : '');
     return `<div class="lk k-${esc(l.kind)}" data-id="${esc(l.id)}">
       <div class="lk-ic">${ICON[l.kind] || ICON.link}</div>
       <div class="lk-b"><div class="lk-t">${esc(linkTitle(l))}</div>
-        <div class="lk-s"><button type="button" class="tg ${l.tag === 'ref' ? 'ref' : l.tag === 'bench' ? '' : 'none'}" data-act="tag" title="누르면 벤치마킹 ↔ 레퍼런스">${TAG_NAME[l.tag] || '종류'}</button><span>${esc(KIND_NAME[l.kind] || '링크')}${esc(late + by)}</span></div>${memo}${p}</div>
+        <div class="lk-s"><button type="button" class="bb${BMAP[l.brand] ? '' : ' none'}" data-act="cbrand" title="누르면 브랜드 바꾸기">${BMAP[l.brand] ? bDot(l.brand) : ''}${esc(BMAP[l.brand] ? bName(l.brand) : '브랜드 고르기')}</button><button type="button" class="tg ${l.tag === 'ref' ? 'ref' : l.tag === 'bench' ? '' : 'none'}" data-act="tag" title="누르면 벤치마킹 ↔ 레퍼런스">${TAG_NAME[l.tag] || '종류'}</button>${note ? `<span>${esc(note)}</span>` : ''}</div>${memo}${p}</div>
       <div class="lk-a">
         <a href="${esc(l.url)}" target="_blank" rel="noopener" title="새 탭으로 열기" aria-label="새 탭으로 열기">${ICON.open}</a>
         <button type="button" data-act="memo" title="메모" aria-label="메모">${ICON.edit}</button>
@@ -1014,76 +985,63 @@
     $('memN').textContent = n + '명';
   }
 
-  /* ── 배지 고르기 · 빼기 ── */
+  /* ── 주소 넣기 (브랜드를 골라야 저장 · 같은 주에 같은 계정 · 게시물 · 주소는 한 번만, 사람이 달라도) ── */
   const busy = new Set();
-  async function toggleBadge(person, brand) {
-    const wk = S.wk, key = wk + dkey(person, brand);
-    if (busy.has(key)) return;
-    const m0 = cur(), own0 = m0 ? ownerOf(m0.id, brand) : null;
-    if (own0 && own0.person !== person) { toast(`${bName(brand)} — ${own0.person}님이 고른 배지예요`, true); return; }
-    busy.add(key);
-    try {
-      if (own0) {
-        const n = linksOf(m0.id).filter(l => l.person === person && l.brand === brand).length;
-        if (n) { toast(`${bName(brand)} 주소 ${n}개를 먼저 지워야 배지를 뺄 수 있어요`, true); return; }
-        const r = await rest(`${T_B}?id=eq.${own0.id}`, {method: 'PATCH', headers: RET, body: JSON.stringify({deleted_at: new Date().toISOString()})});
-        S.badges.delete(own0.id);
-        if (r && r[0] && later(r[0].updated_at, S.curB)) S.curB = r[0].updated_at;
-      } else {
-        const m = await ensureMeeting(wk);
-        const r = await rest(T_B, {method: 'POST', headers: RET, body: JSON.stringify({meeting_id: m.id, brand, person, created_by: ME()})});
-        (r || []).forEach(x => { S.badges.set(x.id, x); if (later(x.updated_at, S.curB)) S.curB = x.updated_at; });
-      }
-      if (S.wk !== wk) return;
-      pickOpen.delete(person);
-      renderAll(true);
-      if (!own0 && matchMedia('(pointer:fine)').matches) focusAdd(person, brand);
-    } catch (e) {
-      if (e.status === 409) {   // 방금 다른 사람이 먼저 고름 (저장소가 한 브랜드 한 사람만 받음)
-        await poll();
-        const m = meetingOf(wk), own = m ? ownerOf(m.id, brand) : null;
-        toast(own && own.person !== person ? `${bName(brand)} — 방금 ${own.person}님이 골랐어요` : '방금 바뀌었어요 — 다시 골라 주세요', true);
-        renderAll(true);
-      } else { console.warn('badge', e); toast('배지를 저장하지 못했어요: ' + e.message, true); }
-    } finally { busy.delete(key); }
+  function focusAdd(person) {
+    const i = document.querySelector(`.add-in[data-p="${cssEsc(person)}"] input`);
+    if (i && matchMedia('(pointer:fine)').matches) i.focus({preventScroll: true});
   }
-  function focusAdd(person, brand) {
-    const i = document.querySelector(`.add-in[data-p="${cssEsc(person)}"][data-b="${cssEsc(brand)}"] input`);
-    if (i) i.focus({preventScroll: true});
-  }
-
-  /* ── 주소 넣기 (같은 주에 같은 계정 · 게시물 · 주소는 한 번만) ── */
-  function findDup(p, mid, extra) { const k = dupKey(p); return linksOf(mid).concat(extra || []).find(l => dupKey(l) === k) || null; }
+  const splitWords = t => String(t || '').split(/[\s,]+/).filter(Boolean);
   const dupMsg = (p, hit, person) => `<b>${esc(keyLabel(dupKey(p)))}</b> — ${hit.person === person ? '이미 이 칸에' : `${esc(hit.person)}님이 이미`} 넣었어요${hit.brand ? ` (${esc(bName(hit.brand))})` : ''}`;
-  async function addLinks(person, brand, text, retry) {
-    const wk = S.wk, key = 'add' + wk + dkey(person, brand);
-    if (busy.has(key) && !retry) return;
-    const parts = String(text || '').split(/[\s,]+/).filter(Boolean);
-    const parsed = parts.map(parseLink).filter(Boolean);
+  function sift(parsed, person, mid) {   // 넣을 것 · 중복이라 못 넣는 것
+    const ok = [], warn = [];
+    parsed.forEach(p => {
+      const pp = Object.assign({person}, p), k = dupKey(pp), hit = linksOf(mid).concat(ok).find(l => dupKey(l) === k);
+      if (hit) warn.push(dupMsg(pp, hit, person)); else ok.push(pp);
+    });
+    return {ok, warn};
+  }
+  // 칸에서 [넣기] · 붙여넣기 → 중복 먼저 가르고, 브랜드를 안 골랐으면 묻는다
+  function submitLinks(person, text) {
+    const d = draftOf(person), parts = splitWords(text), parsed = parts.map(parseLink).filter(Boolean);
     if (!parsed.length) { if (parts.length) toast('인스타 주소나 링크 모양이 아니에요', true); return; }
+    const {ok, warn} = sift(parsed, person, (cur() || {}).id);
+    if (!ok.length) { d.text = ''; d.ask = false; d.warn = warn; renderBoard(true); focusAdd(person); return; }
+    if (d.brand) { addLinks(person, d.brand, text); return; }
+    d.text = ok.map(p => p.url).join(' '); d.ask = true; d.warn = warn;
+    renderBoard(true);
+  }
+  function pickBrand(person, brand) {
+    const d = draftOf(person);
+    if (d.ask && d.text.trim()) { d.brand = brand; addLinks(person, brand, d.text); return; }   // 주소를 먼저 넣어 둠 → 고르는 순간 저장
+    d.brand = d.brand === brand ? null : brand; d.ask = false;
+    renderBoard(true);
+    focusAdd(person);
+  }
+  async function addLinks(person, brand, text, retry) {
+    const wk = S.wk, key = wk + '|' + person;
+    if (busy.has(key) && !retry) return;
+    const d = draftOf(person), parsed = splitWords(text).map(parseLink).filter(Boolean);
+    if (!parsed.length) return;
     busy.add(key);
-    const d = draftOf(person, brand);
+    const kept = d.ask ? d.warn : [];
     let again = false;
     try {
-      const m = await ensureMeeting(wk);
-      const ok = [], warn = [];
-      parsed.forEach(p => {
-        const pp = Object.assign({person, brand}, p), hit = findDup(pp, m.id, ok);
-        if (hit) warn.push(dupMsg(pp, hit, person)); else ok.push(pp);
-      });
+      const m = await ensureMeeting(wk), {ok, warn} = sift(parsed, person, m.id);
       if (ok.length) {
         const base = Date.now();
         const rows = ok.map((p, i) => ({meeting_id: m.id, person, brand, tag: d.tag, url: p.url, kind: p.kind, ig_user: p.ig_user, ig_code: p.ig_code, memo: '', pos: base + i, created_by: ME()}));
         const r = await rest(T_L, {method: 'POST', headers: RET, body: JSON.stringify(rows)});
         (r || []).forEach(x => { S.links.set(x.id, x); if (later(x.updated_at, S.curL)) S.curL = x.updated_at; });
       }
-      d.text = ''; d.warn = warn;
-      if (ok.length && !warn.length) toast(ok.length > 1 ? `${ok.length}개 넣었어요` : '넣었어요');
+      d.text = ''; d.ask = false; d.brand = null; d.warn = kept.concat(warn.filter(w => !kept.includes(w)));   // 다음 주소도 브랜드를 다시 고르게
+      if (S.filter && S.filter !== brand) S.filter = null;   // 다른 브랜드만 보던 중이면 방금 넣은 것이 보이게
+      if (ok.length && !d.warn.length) toast(`${bName(brand)} ${ok.length > 1 ? ok.length + '개 ' : ''}넣었어요`);
     } catch (e) {
       if (e.status === 409 && !retry) { await poll(); again = true; }   // 방금 다른 사람이 같은 주소를 넣음 → 새로 받아 다시 가름
       else {
         console.warn('add', e);
-        d.text = parts.join(' ');
+        d.text = text;
         if (e.status === 409) d.warn = ['이미 들어 있는 주소예요 — 다른 주소를 넣어 주세요'];
         else toast('저장하지 못했어요: ' + e.message, true);
       }
@@ -1091,22 +1049,24 @@
     if (again) return addLinks(person, brand, text, true);
     if (S.wk !== wk) return;
     renderAll(true);
-    if (matchMedia('(pointer:fine)').matches) focusAdd(person, brand);
+    focusAdd(person);
   }
 
   const board = $('board');
   board.addEventListener('submit', e => {
     const f = e.target.closest('.add-in'); if (!f) return;
     e.preventDefault();
-    addLinks(f.dataset.p, f.dataset.b, f.querySelector('input').value);
+    submitLinks(f.dataset.p, f.querySelector('input').value);
   });
-  board.addEventListener('input', e => { const f = e.target.closest('.add-in'); if (f) draftOf(f.dataset.p, f.dataset.b).text = e.target.value; });
-  // 붙여 넣으면 바로 넣기 (주소가 맞을 때만)
+  board.addEventListener('input', e => { const f = e.target.closest('.add-in'); if (!f) return; const d = draftOf(f.dataset.p); d.text = e.target.value; if (!d.text.trim() && d.ask) { d.ask = false; const box = f.closest('.ent'); if (box) box.classList.remove('need'); } });
+  // 붙여 넣으면 바로 넣기 (주소가 맞을 때만). 여러 줄을 붙여도 줄마다 따로
   board.addEventListener('paste', e => {
     const f = e.target.closest('.add-in'); if (!f) return;
+    const raw = e.clipboardData ? e.clipboardData.getData('text') : '', parts = splitWords(raw);
+    if (parts.length > 1 && parts.every(x => parseLink(x))) { e.preventDefault(); submitLinks(f.dataset.p, parts.join(' ')); return; }
     setTimeout(() => {
-      const v = e.target.value.trim(), parts = v.split(/[\s,]+/).filter(Boolean);
-      if (parts.length && parts.every(x => parseLink(x))) addLinks(f.dataset.p, f.dataset.b, v);
+      const v = e.target.value.trim(), ps = splitWords(v);
+      if (ps.length && ps.every(x => parseLink(x))) submitLinks(f.dataset.p, v);
     }, 0);
   });
   board.addEventListener('focusout', () => { setTimeout(() => { if (boardPending && !board.contains(document.activeElement)) renderBoard(); }, 0); });
@@ -1114,13 +1074,13 @@
     const act = e.target.closest('[data-act]');
     if (act) {
       const a = act.dataset.act, col = act.closest('.col'), person = col ? col.dataset.p : '';
-      if (a === 'badge') { toggleBadge(person, act.dataset.b); return; }
-      if (a === 'pick') { if (pickOpen.has(person)) pickOpen.delete(person); else pickOpen.add(person); renderBoard(true); return; }
-      if (a === 'seg') { draftOf(person, act.dataset.b).tag = act.dataset.t; renderBoard(true); if (matchMedia('(pointer:fine)').matches) focusAdd(person, act.dataset.b); return; }
-      if (a === 'okwarn') { draftOf(person, act.dataset.b).warn = []; renderBoard(true); return; }
+      if (a === 'brand') { pickBrand(person, act.dataset.b); return; }
+      if (a === 'seg') { draftOf(person).tag = act.dataset.t; renderBoard(true); focusAdd(person); return; }
+      if (a === 'okwarn') { draftOf(person).warn = []; renderBoard(true); return; }
       const card = act.closest('.lk'); if (!card) return;
       const l = S.links.get(card.dataset.id); if (!l) return;
       if (a === 'tag') setTag(l);
+      else if (a === 'cbrand') { e.stopPropagation(); brandMenu(act, l); }
       else if (a === 'memo') { editMemo = l.id; renderBoard(true); const t = board.querySelector(`.lk-me[data-id="${cssEsc(l.id)}"]`); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
       else if (a === 'del') delLink(l);
       return;
@@ -1153,6 +1113,17 @@
   async function setTag(l) {
     try { await patchLink(l, {tag: l.tag === 'bench' ? 'ref' : 'bench'}); } catch (e) { toast('바꾸지 못했어요: ' + e.message, true); }
     renderBoard(true);
+  }
+  // 카드의 브랜드 배지 → 다른 브랜드로 바꾸기
+  function brandMenu(btn, l) {
+    if (menuEl) { const same = menuEl.dataset.l === l.id; closeMenu(); if (same) return; }
+    hidePreview();
+    openMenu(btn, BRANDS.map(b => `<button type="button" data-m="${b.k}" class="${l.brand === b.k ? 'on' : ''}">${bDot(b.k)} ${esc(b.name)}</button>`).join(''), async k => {
+      if (k === l.brand) return;
+      try { await patchLink(l, {brand: k}); } catch (e) { toast('브랜드를 바꾸지 못했어요: ' + e.message, true); }
+      renderAll(true);
+    });
+    menuEl.dataset.l = l.id;
   }
   async function delLink(l) {
     hidePreview();
@@ -1289,17 +1260,21 @@
   /* ══════════════════════ 더보기 (글로 복사) ══════════════════════ */
   let menuEl = null;
   function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
+  function openMenu(btn, html, pick) {
+    const r = btn.getBoundingClientRect();
+    menuEl = document.createElement('div');
+    menuEl.className = 'menu';
+    menuEl.innerHTML = html;
+    document.body.appendChild(menuEl);
+    const below = r.bottom + 6 + menuEl.offsetHeight <= innerHeight - 8;
+    menuEl.style.top = Math.max(scrollY + 8, (below ? r.bottom + 6 : r.top - 6 - menuEl.offsetHeight) + scrollY) + 'px';
+    menuEl.style.left = clamp(r.left + scrollX, 8, Math.max(8, innerWidth - menuEl.offsetWidth - 8)) + 'px';
+    menuEl.addEventListener('click', ev => { const b = ev.target.closest('[data-m]'); if (!b) return; ev.stopPropagation(); closeMenu(); pick(b.dataset.m); });
+  }
   $('moreBtn').addEventListener('click', e => {
     e.stopPropagation();
     if (menuEl) { closeMenu(); return; }
-    const r = $('moreBtn').getBoundingClientRect();
-    menuEl = document.createElement('div');
-    menuEl.className = 'menu';
-    menuEl.innerHTML = `<button type="button" data-m="copy">${ICON.copy} 회의록 글로 복사 (카톡에 붙여넣기)</button>`;
-    document.body.appendChild(menuEl);
-    menuEl.style.top = (r.bottom + scrollY + 6) + 'px';
-    menuEl.style.left = Math.max(8, r.right + scrollX - menuEl.offsetWidth) + 'px';
-    menuEl.addEventListener('click', ev => { if (!ev.target.closest('[data-m]')) return; ev.stopPropagation(); closeMenu(); copyText(); });
+    openMenu($('moreBtn'), `<button type="button" data-m="copy">${ICON.copy} 회의록 글로 복사 (카톡에 붙여넣기)</button>`, () => copyText());
   });
   document.addEventListener('click', e => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); });
   document.addEventListener('keydown', e => {
@@ -1309,17 +1284,12 @@
     else if (!pv.hidden) hidePreview();
   });
   async function copyText() {
-    const m = cur(), cols = columnsOf(m), all = m ? linksOf(m.id) : [], bs = m ? badgesOf(m.id) : [];
+    const m = cur(), cols = columnsOf(m), all = m ? linksOf(m.id) : [];
     const out = [`[${weekName(S.wk)} · ${mdw(S.wk)}] 마케팅 회의`];
     TEAMS.forEach(t => cols.filter(c => c.team === t.k).forEach(c => {
-      const ls = all.filter(l => l.person === c.name).sort((a, b) => b.pos - a.pos), mine = bs.filter(b => b.person === c.name).map(b => b.brand);
+      const ls = all.filter(l => l.person === c.name).sort((a, b) => bRank(a.brand) - bRank(b.brand) || b.pos - a.pos);
       out.push('', `■ ${t.name} ${c.name} (${ls.length})`);
-      const keys = BRANDS.map(b => b.k).filter(k => mine.includes(k) || ls.some(l => l.brand === k));
-      keys.concat(ls.some(l => !keys.includes(l.brand)) ? [null] : []).forEach(k => {
-        const arr = ls.filter(l => (k ? l.brand === k : !keys.includes(l.brand)));
-        out.push(`[${bName(k)}]`);
-        arr.forEach(l => out.push(`- ${TAG_NAME[l.tag] ? TAG_NAME[l.tag] + ' ' : ''}${l.url}${l.memo ? '  ' + l.memo.replace(/\n/g, ' ') : ''}`));
-      });
+      ls.forEach(l => out.push(`- [${bName(l.brand)}] ${TAG_NAME[l.tag] ? TAG_NAME[l.tag] + ' ' : ''}${l.url}${l.memo ? '  ' + l.memo.replace(/\n/g, ' ') : ''}`));
     }));
     const e = est(S.wk), notes = e.val.notes.trim(), dec = e.val.decisions.trim();
     if (notes) out.push('', '■ 회의 메모', notes);
