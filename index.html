@@ -5601,6 +5601,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 보낼 답 고르기 (11-24 사장님 "타이핑 안치고 예상답변이나 전달 답변을 선택해서") — 문의 종류 칩 · 고를 답 · 고쳐 쓰는 칸 */
   .kko-chat-draft:has(.kko-pk-ta){max-height:46vh}
   .kko-chat-draft>*{flex:none}
+  .kko-chat-done{display:flex;flex-direction:column;gap:7px;padding:10px 12px 4px;background:#fff;flex:none}
+  .kko-chat-done:empty{display:none}
+  .kko-chat-done select{min-height:34px;padding:0 10px;border-radius:10px;border:1.5px solid #dcdcdc;background:#fff;font:inherit;font-size:12.5px;color:var(--kko-ink);max-width:100%}
+  .kko-chat-done .go{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--kko-gray)}
+  .kko-chat-done .go button[disabled]{opacity:.45;cursor:default}
   .kko-pk-int{display:flex;gap:5px;overflow-x:auto;padding:1px 0 2px;scrollbar-width:none;flex:none}
   .kko-pk-int::-webkit-scrollbar{display:none}
   .kko-pk-int button{flex:none;min-height:28px;padding:0 10px;border-radius:999px;border:1px solid #e3e3e3;background:#fff;color:#555;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
@@ -18021,6 +18026,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // 처리할 일 (2026-11-24 사장님 "에이전트가 주로 다 처리하고 직원은 아직 학습안되었거나 이미지를 확인해야할때만 써") — 대화는 에이전트가 하고 손으로 할 일만(수거 접수 · 환불 · 입금 확인 · 재발송 …)
   function _kkoTodo(r){
     const x=(((_kko.drafts||{}).openCalls)||[]).find(x=>x.pid===r.pid && x.chatId===r.chatId && x.todo);
+    if(x && ((_kko.doneAt||{})[r.pid+':'+r.chatId]||0)>(x.firstAt||x.since)) return null;
     return x && !(r.lastWho==='staff' && (r.lastAt||0)>x.since) ? x : null;
   }
   function _kkoIsStaff(r){
@@ -18118,7 +18124,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const oc=_kkoOpenCall(r), w=_kkoAgo((oc && oc.since) || r.waitingSince || r.lastAt), wt=w==='방금' ? '방금 옴' : w+' 기다림';
     if(_kkoIsStaff(r)) return {text:'직원 호출 · '+wt, cls:'call'};
     if(_kkoWaiting(r)) return {text:wt, cls:_kkoLate(r) ? 'late' : 'wait'};
-    return {text:'답변 완료 · '+_kkoWhen(r.lastAt), cls:''};
+    const td=_kkoTodo(r);
+    return {text:(td ? '처리할 일 · '+td.todo : '답변 완료 · '+_kkoWhen(r.lastAt)), cls:''};
   }
   // 목록 오른쪽 위 — 직원 호출 · 답 기다림이면 기다린 시간, 아니면 카카오톡처럼 마지막 글 시각 (오늘 = 오후 3:42 · 어제 · 11월 18일)
   function _kkoRowTime(r){
@@ -18336,11 +18343,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         + `<div class="kko-chat-head"><div class="in" id="kkoChatHead"></div><button type="button" class="kko-chat-x" id="kkoChatX" onclick="kkoChatClose()" aria-label="닫기" title="닫기 (Esc)">✕</button></div>`
         + `<div class="kko-chat-info" id="kkoChatInfo"></div>`
         + `<div class="kko-chat-log" id="kkoChatLog"></div>`
+        + `<div class="kko-chat-done" id="kkoChatDone"></div>`
         + `<div class="kko-chat-draft" id="kkoChatDraft"></div>`
         + `<div class="kko-chat-foot" id="kkoChatFoot"></div>`
         + `</div>`
         + `<div class="kko-imgpop" id="kkoImgPop" hidden onclick="kkoImgClose()" title="누르면 닫기"></div>`;
-      c.sig=''; c.info=''; c.dsig=''; c.fsig=''; c.hsig='';
+      c.sig=''; c.info=''; c.dsig=''; c.fsig=''; c.hsig=''; c.nsig='';
       // 맨 아래(최근 글)를 보고 있는지 — 사진이 늦게 불러와져 대화가 길어져도 맨 아래를 지킨다 (위로 올려 읽는 중이면 그대로)
       const lg=document.getElementById('kkoChatLog');
       lg._stick=true;
@@ -18382,6 +18390,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       }
     }
     if(info!==c.info){ document.getElementById('kkoChatInfo').innerHTML=info; c.info=info; }
+    _kkoDonePaint(r, brand);
     // 아래 = 보낼 답 (학습한 예상 질문 · 답으로 에이전트가 만든 초안 — 고객에게는 아직 안 보냄). 직원이 복사해 파트너센터에서 보낸다.
     // 사무실 밖이면 서버가 초안 속 번호 · 링크를 (번호) · (링크)로 가려서 복사 버튼을 숨김
     // 11-24 '보낼 답 고르기' — 초안 하나만 보여 주던 자리를 고르는 목록으로 (에이전트 초안 · 배운 답 · 예상 답 → 고르면 아래 칸, 고쳐서 복사). _kkoPickHtml 아래
@@ -18446,6 +18455,52 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else msg(false);
     if(el && !open) el.focus({preventScroll:true});
     _kkoPickLog(open);   // 고른 답 학습 기록 (11-24)
+  }
+  /* ===== 처리할 일 [처리함] (2026-11-24 사장님 "만들기") =====
+     직원이 손으로 할 일(수거 접수 · 환불 · 입금 확인 …)을 끝내고 결과를 고르면 할 일이 닫히고, 고른 결과에 맞는 완료 안내를 에이전트가 준비한다.
+     안내 글 = faq.json done (할 일 종류마다) · 서버 POST /cs/kakao-done (사무실 인터넷에서만, 적기만) · 고객에게 보내는 것은 kakao-send(꺼져 있음 — drafts.sendOff) */
+  function _kkoDonePaint(r, brand){
+    const c=_kko.chat, el=document.getElementById('kkoChatDone');
+    if(!c || !el) return;
+    const t=r ? _kkoTodo(r) : null, menu=((_kko.faq||{}).done)||null, E=_kkoEsc;
+    let h='';
+    if(c.doneMsg && !t) h=`<div class="kko-cd-h"><b>${E(c.doneMsg)}</b></div>`;
+    else if(t && menu){
+      const own=menu[t.todo]||[], cur=c.doneId||'', val=(g,id)=>g+'|'+id;
+      const [g,id]=cur ? cur.split('|') : ['',''];
+      const opt=id && id!=='none' ? ((menu[g]||[]).find(x=>x.id===id)||null) : null;
+      const chip=(v,l)=>`<button type="button" class="${cur===v ? 'on' : ''}" data-v="${E(v)}" onclick="kkoDonePick(this.dataset.v)">${E(l)}</button>`;
+      h=`<div class="kko-cd-h"><b>처리할 일 · ${E(t.todo)}</b><span>끝냈으면 결과를 골라 주세요${t.why ? ' — '+E(t.why) : ''}</span></div>`
+        + (own.length ? `<div class="kko-pk-int" role="group" aria-label="처리 결과">${own.map(o=>chip(val(t.todo,o.id),o.label)).join('')}${chip(val(t.todo,'none'),'안내 없이 닫기')}</div>`
+          : `<select onchange="kkoDonePick(this.value)" aria-label="처리 결과"><option value="">처리 결과 고르기</option><option value="${E(val(t.todo,'none'))}"${cur===val(t.todo,'none') ? ' selected' : ''}>안내 없이 닫기</option>`
+            + Object.keys(menu).map(k=>`<optgroup label="${E(k)}">${menu[k].map(o=>`<option value="${E(val(k,o.id))}"${cur===val(k,o.id) ? ' selected' : ''}>${E(o.label)}</option>`).join('')}</optgroup>`).join('')+'</select>')
+        + (opt ? `<div class="kko-cd-t">${E(_kkoPickFill(opt.a, brand))}</div>` : '')
+        + (cur ? `<div class="go"><button type="button" class="kko-chat-copy" onclick="kkoDoneSave()"${c.doneBusy ? ' disabled' : ''}>${c.doneBusy ? '저장 중…' : '처리함'}</button><span>${opt ? ((_kko.drafts||{}).sendOff!==false ? '보내기를 꺼 두어 고객에게 자동으로 나가지 않아요' : '누르면 이 글이 고객에게 나가요') : '고객에게 안내하지 않고 닫아요'}</span></div>` : '')
+        + (c.doneErr ? `<div class="kko-cd-w">${E(c.doneErr)}</div>` : '');
+    }
+    if(h!==c.nsig){ el.innerHTML=h; c.nsig=h; }
+  }
+  function kkoDonePick(v){ const c=_kko.chat; if(!c) return; c.doneId=c.doneId===v ? '' : v; c.doneErr=''; _kkoChatPaint(false); }
+  async function kkoDoneSave(){
+    const c=_kko.chat;
+    if(!c || !c.doneId || c.doneBusy) return;
+    const [todo,id]=c.doneId.split('|');
+    c.doneBusy=true; c.doneErr=''; _kkoChatPaint(false);
+    let me=''; try{ me=(localStorage.getItem('brightbeed_diary_me')||'').trim().slice(0,20); }catch(e){}
+    try{
+      const base=await loadProxyBase();
+      if(!base) throw new Error('서버 연결 안 됨');
+      const r=await fetch(`${base}/cs/kakao-done`,{method:'POST',headers:{'X-Brightbeed-PIN':ghPin(),'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({pid:c.pid,chatId:c.chatId,todo,id,by:me})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      (_kko.doneAt=_kko.doneAt||{})[c.key]=Date.now();
+      // 보내기가 꺼져 있는 동안은 안내 글을 아래 '보낼 답' 칸에 넣어 직원이 복사해 보낼 수 있게
+      const opt=id==='none' ? null : (((((_kko.faq||{}).done)||{})[todo])||[]).find(x=>x.id===id), hand=!!opt && (_kko.drafts||{}).sendOff!==false;
+      if(hand){ c.pick={key:'done', source:'typed', text:_kkoPickFill(opt.a, c.brand), base:'', intent:'', faqId:''}; c.pickTouched=true; c.dsig=''; }
+      c.doneMsg=!opt ? '닫았어요' : hand ? '처리함으로 적었어요 — 안내는 아래 칸에 넣어 뒀어요' : '처리함으로 적었어요 — 곧 고객에게 안내해요';
+      c.doneId='';
+    }catch(e){ c.doneErr='저장하지 못했어요 — '+((e && e.message) || e); }
+    finally{ c.doneBusy=false; kkoRender(); if(_kko.chat) _kkoChatPaint(false); }
   }
   /* ===== 직원 답 고르기 (2026-11-24 사장님 "카카오톡 상담에서 직원을 호출하게되면 직원한테 타이핑 안치고 예상답변이나 전달 답변을 선택해서 쉽게 진행 될 수 있게"
      · "답변들은 계속 학습해서 개선하면서 점점 더 쉬운 방식과 자동으로 대화할 수 있게" · "선택지를 직원이 선택할 수 있게 해줘. 그걸 선택하면서 너가 자동으로 학습해야해") =====
