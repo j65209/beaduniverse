@@ -221,7 +221,7 @@ type Line = {
   link: string; img: string; memo: string; memos: string[]; memosC: string[]; cs: string; cn: string; en: string; ords: string[];
   kind: string; tag: string | null; phrase: string | null; feat: Feat;
   brand: string | null; how: string | null; conf: number; alt: [string, number][] | null; name: string;
-  row: { tab: string; r: number; s: number } | null; erp: { b: string; n: string; o: string; how: string } | null;
+  row: { tab: string; r: number; s: number } | null; erp: { b: string; n: string; o: string; how: string; ok: boolean } | null;
 };
 function currentQty(act: App[]): number | null {
   const seen = new Set<string>();
@@ -273,7 +273,7 @@ function buildLines(kd: Record<string, any>): Map<string, Line> {
     for (const mm of L.memos) { const p = parseMemo(mm); if (p.brand) { L.tag = p.brand; L.phrase = p.phrase; break; } }
     const all = L.memos.join(' ');
     if (!L.act.length) L.kind = 'cancelled';
-    else if ((SAMPLE.test(all) && (L.qty ?? 0) <= 10) || (L.qty != null && L.qty <= 5)) L.kind = 'sample';
+    else if ((SAMPLE.test(all) && (L.qty ?? 0) <= 20) || (L.qty != null && L.qty <= 5)) L.kind = 'sample';   // 2026-11-24 '6가지 색상 각 2개씩 샘플' 12개가 상품으로 들어간 것 → 20개까지
     else if (MATERIAL.test(all) && !(L.tag && L.phrase && !MATERIAL.test(L.phrase))) L.kind = 'material';
     L.feat = featOf(L.link, L.img, [L.phrase || '', L.phrase ? '' : all, L.en], [all, L.cs]);
   }
@@ -380,10 +380,10 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
     }
   }
   // 맥미니 ERP 매칭 (재고 ERP 상품명) — 브랜드 · 이름
-  const STRONG_HOW = new Set(['sheet', 'tag', 'name']);
+  const STRONG_HOW = new Set(['sheet', 'tag', 'name', 'map', 'alias']);   // map · alias = 사람이 오피스 [매핑하기]로 이은 것 (2026-11-24)
   for (const it of (pom && Array.isArray(pom.items) ? pom.items : [])) {
     const L = lines.get(it.sn);
-    if (L && it.b && LABEL[it.b] && it.n) L.erp = { b: it.b, n: clean(it.n), o: clean(it.o), how: String(it.how || '') };
+    if (L && it.b && LABEL[it.b] && it.n) L.erp = { b: it.b, n: clean(it.n), o: it.map && it.map.n > 1 ? '' : clean(it.o), how: String(it.how || ''), ok: STRONG_HOW.has(String(it.how || '')) || it.state === 'written' || it.state === 'entered' };   // 여러 줄로 나눠 이은 세트는 상품명만
   }
   // 이미 정해진 발주(사람 · 메모 표시 · 시트 판매번호 · ERP 강한 매칭)로 1688 상품 · 사진 · 업체 · 계정을 배운다
   for (const L of lines.values()) {
@@ -431,7 +431,7 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       if (rowHit && rowHit.tab === L.brand) L.row = rowHit;
       else { const h = bestRow(L, tabInfo[L.brand].rows); L.row = h ? { tab: L.brand, ...h } : null; }
     }
-    const nm = (ss && ss.name) || (L.erp && L.erp.b === L.brand ? clean(`${L.erp.n} ${L.erp.o}`) : '') || L.phrase ||
+    const nm = (ss && ss.name) || (L.erp && L.erp.ok && L.erp.b === L.brand ? clean(`${L.erp.n} ${L.erp.o}`) : '') || L.phrase ||
       (L.row ? clean((tabInfo[L.row.tab].rows.find((x) => x.r === L.row!.r) || { v: [] as string[] }).v[TABS[L.row.tab].cols.name] || '') : '') ||
       clean(L.memo.replace(/[一-鿿]+/g, ' ')).slice(0, 40) || L.en;
     L.name = nm;
@@ -482,6 +482,13 @@ async function run(dry: boolean, opt: { goLive?: string } = {}) {
       const use = act.sort((a, b2) => (a.date + a.sn).localeCompare(b2.date + b2.sn)).pop()!;
       P.cells.push(...trailCells(r, use));
       if (t.cols.cny >= 0 && use.price != null && use.price > 0) P.cells.push({ r, p: t.cols.cny, v: use.priceTxt || String(use.price), blank: true });
+      // 우리가 넣은 줄의 이름이 메모 찌꺼기('KASSEL【 】' · '9 /1')면 재고 ERP 상품명으로 (사람이 고친 이름은 그대로, 2026-11-24 "다들 연결 시켜줘")
+      if (ours.has(`${t.tk}#${r}`)) {
+        const e = act.slice().reverse().find((x) => x.erp && x.erp.ok && x.erp.b === b), cell = clean(((ti.rows.find((x) => x.r === r) || { v: [] as string[] }).v[t.cols.name]) || '');
+        const junk = !/[A-Za-z가-힣]{3,}/.test(cell) || /【\s*】|（\s*\d*\s*）|에어\s*\d*번|\d+월\s*\d+일/.test(cell) || ls.some((x) => clean(x.memo.replace(/[一-鿿]+/g, ' ')).slice(0, 40) === cell);
+        const want = e ? clean(`${e.erp!.n} ${e.erp!.o}`) : '';
+        if (want && junk && want !== cell) P.cells.push({ r, p: t.cols.name, v: want });
+      }
       for (const L of ls) mdOf.set(L.sn, { tk: t.tk, r, how: prev.get(L.sn)?.md_how === 'added' && prev.get(L.sn)?.md_r === r ? 'added' : 'matched' });
       P.matched++;
     }
