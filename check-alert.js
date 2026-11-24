@@ -9,7 +9,7 @@
    · '확인했어요' = 그 건만 목록에서 내림(PC · 휴대폰 같이). 내용이 바뀌거나 새로 생기면 다시. 원래 화면에서 해결되면 저절로 빠짐
    · 이미 자기 알림이 있는 것(ERP 문제 = erp-alert.js, 재고 미기재 = stock-blank.js, 발주 매칭 · 발주 브랜드 = index.html 발주 확인 필요 알림(#poAlert, 그 자리에서 브랜드 고르기), 출금 요청 = 크롬 알림)은 목록에만 넣고 또 띄우지 않는다
    보이는 조건 = '나는' 이름이 전승훈 (이 이름은 관리자 PIN 화면에서만 고를 수 있다 — secretOk · designHasAccess 와 같은 판정). 새 '확인 필요'가 생기면 SRC 에 한 줄 더한다.
-   · 카톡 이미지(영상) 확인 필요 · 카톡 불량 사진(상품 확인 필요)은 CS팀에게 (같은 날 사장님 "cs에서 뜨는 이미지 확인이 필요한건 전승훈한테 안뜨고 cs부서에 있는 사람한테 뜨게 해줘") — SRC 의 to:'cs'.
+   · 카톡 이미지(영상) 확인 필요 · 카톡 불량 사진(상품 확인 필요) · 직원 호출(고객이 호출을 누른 방, 사장님 "CS팀에 띄우기")은 CS팀에게 (같은 날 사장님 "cs에서 뜨는 이미지 확인이 필요한건 전승훈한테 안뜨고 cs부서에 있는 사람한테 뜨게 해줘") — SRC 의 to:'cs'.
      CS팀 = 인사팀 명단에서 팀이 C/S 인 지금 직원(이름을 코드에 적지 않는다 — 사람이 바뀌면 인사팀만 고치면 따라간다). CS팀 새 탭(?app=cs)에서도 뜬다. index.html 이 맨 끝에서 부른다 */
 (function () {
 'use strict';
@@ -21,8 +21,8 @@ if (window.BBCheck) return;
 const OWNER = '전승훈';
 const MIN = 60e3, CONFIRM = 70e3;
 const LS = {seen: 'bb_chk_seen_v1', ack: 'bb_check_ack_v1', day: 'bb_chk_day_v1'};
-/* 전승훈 알림에서 뺀 곳 (2026-11-24 사장님 "cs팀은 안뜨게" · 재고 쪽만) — 다시 보이려면 여기서 지운다. 카톡 이미지(kkoimg) · 불량 사진(kdf)은 to:'cs' 라 CS팀에게만 */
-const OFF = new Set(['kko', 'faq', 'clm', 'cjb', 'dz', 'mdp', 'dm']);
+/* 전승훈 알림에서 뺀 곳 (2026-11-24 사장님 "cs팀은 안뜨게" · 재고 쪽만) — 다시 보이려면 여기서 지운다. 카톡 직원 호출(kko) · 이미지(kkoimg) · 불량 사진(kdf)은 to:'cs' 라 CS팀에게만 */
+const OFF = new Set(['faq', 'clm', 'cjb', 'dz', 'mdp', 'dm']);
 const QUIET = new Set(['appr']);          // 목록에만 — 띄우지 않음
 const STOCK_JOB = /^(pro-stock|erp|po-|reorder|kd-|stock|new-products|link-watch|office-(stock|defects|reorder|report))/, STOCK_NAME = /재고|ERP|매핑|발주|리오더|입고/i;          // 자동 업무 가운데 재고 쪽만
 const stockJob = x => STOCK_JOB.test(String(x.id || '')) || STOCK_NAME.test(String(x.name || x.label || ''));
@@ -124,8 +124,8 @@ const SRC = [
     return c.map(x => ({k: 'comp:' + x.id, a: '승인 · 출금', t: `대체휴무 승인 대기 — ${x.staff_name}`, b: [x.work_date && md(x.work_date) + ' 근무', x.days && x.days + '일', x.reason].filter(Boolean).join(' · '), at: x.requested_at, go: 'comp'}))
       .concat(w.map(x => ({k: 'wd:' + x.id, a: '승인 · 출금', t: `출금 요청 — ${x.requested_by || '벤더팀'}`, b: `${(x.rows || []).length}건`, at: x.requested_at, q: 1, go: 'vendor'})));
   }},
-  {id: 'kko', nm: '카카오톡 상담', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && r.managerCall).map(r => ({k: `kko:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — 고객이 직원을 불렀어요`, b: r.nick || '', sig: 'call', at: r.lastAt, hot: 1, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},
-  {id: 'kkoimg', to: 'cs', nm: '카카오톡 이미지', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && (r.photos > 0 || r.videos > 0) && !(typeof KKO_HIDE !== 'undefined' && KKO_HIDE.has(r.brand))).map(r => ({k: `kkoimg:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — ${r.photos > 0 ? '이미지' : '영상'} 확인 필요`, b: [r.nick, r.photos > 0 && `사진 ${r.photos}장`, r.videos > 0 && `영상 ${r.videos}개`, r.managerCall && '직원 호출'].filter(Boolean).join(' · '), sig: `${r.photos || 0}/${r.videos || 0}`, at: r.lastAt, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},          // 사진이 더 오면(sig) 다시 뜸, 직원이 답하면 저절로 빠짐
+  {id: 'kko', to: 'cs', nm: '카카오톡 직원 호출', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && r.managerCall && !(r.photos > 0 || r.videos > 0) && !(typeof KKO_HIDE !== 'undefined' && KKO_HIDE.has(r.brand))).map(r => ({k: `kko:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — 고객이 직원을 불렀어요`, b: r.nick || '', sig: 'call', at: r.lastAt, hot: 1, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},          // 사진도 있는 방은 아래 이미지 한 장에 같이(한 방 = 한 장)
+  {id: 'kkoimg', to: 'cs', nm: '카카오톡 이미지', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && (r.photos > 0 || r.videos > 0) && !(typeof KKO_HIDE !== 'undefined' && KKO_HIDE.has(r.brand))).map(r => ({k: `kkoimg:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — ${r.photos > 0 ? '이미지' : '영상'} 확인 필요${r.managerCall ? ' · 직원 호출' : ''}`, b: [r.nick, r.photos > 0 && `사진 ${r.photos}장`, r.videos > 0 && `영상 ${r.videos}개`].filter(Boolean).join(' · '), sig: `${r.photos || 0}/${r.videos || 0}${r.managerCall ? '/call' : ''}`, at: r.lastAt, hot: r.managerCall ? 1 : 0, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},          // 사진이 더 오면(sig) 다시 뜸, 직원이 답하면 저절로 빠짐
   {id: 'faq', nm: '카카오 답변 자료', ev: 60, async run() { const c = (await px('/cs/kakao-faq')).checks || []; return c.length ? [{k: 'faq', a: 'CS팀', t: `카카오 답변 자료 확인 필요 ${c.length}건`, b: '알려 주시면 에이전트 답에 고쳐 넣어요', list: c.map(x => `${BR[x.brand] ? '[' + BR[x.brand] + '] ' : ''}${x.text}`), sig: hash(c.map(x => x.text).join('|')), go: 'faq'}] : []; }},
   {id: 'kdf', to: 'cs', nm: '카톡 불량 사진', ev: 60, async run() {
     const xs = (await px('/cs/kakao-defects', {arr: 'items'})).items.filter(x => x.needsCheck), t = today();
