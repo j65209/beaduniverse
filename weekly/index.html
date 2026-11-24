@@ -44,7 +44,7 @@
 <style>
   /* 주간 회의록 — 오피스 업무용 툴 (2026-11-24 사장님 "마케팅 회의록 옆에 주간 회의록 만들어줘. 지금 마케팅 회의록 오늘 내용들 그대로 주간회의록으로 이동시켜줘")
      · 모양은 마케팅 회의록(meeting/) 그대로 — 달 ‹ 11월 › + 주차 탭. 주차 이름도 같게(그 주 수요일이 든 달의 N번째)
-     · 주마다 글 두 칸(회의 메모 · 결정 · 할 일), 누구나 · 바로 저장. 인스타 주소 칸 · 마감은 없음
+     · 주마다 글 두 칸(회의 메모 · 결정 · 할 일), 누구나 · 바로 저장. 글 사이에 사진(붙여넣기 · 끌어다 놓기 · [이미지 넣기]) — 모서리를 끌어 크기를 마음대로, 마우스를 올리면 크게. 인스타 주소 칸 · 마감은 없음
      · 저장 = 오피스 슈퍼베이스 weekly_meetings (주마다 한 줄, day = 그 주 수요일). 지우기는 deleted_at 만.
        0.7초 뒤 저장 · 두 사람이 동시에 고치면 줄 단위로 합침(merge3) · 아직 못 보낸 글은 이 브라우저에 적어 두었다가(wkm_draft_v1) 다시 보냄 */
   :root {
@@ -102,10 +102,12 @@
   .note { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px }
   .note label { font-weight: 800; font-size: 14.5px; display: flex; align-items: center; gap: 6px }
   .note label .s { font-weight: 500; color: var(--t3); font-size: 12px }
-  .note textarea { width: 100%; min-height: 420px; border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; outline: none; resize: none; background: #fafbfc;
-    font-size: 14.5px; line-height: 1.65; overflow: hidden }
-  .note textarea:hover { border-color: var(--line) }
-  .note textarea:focus { border-color: var(--text); background: #fff }
+  .notes.wide { grid-template-columns: 1fr }   /* 사진을 칸보다 크게 키우면 화면 폭으로 */
+  .note { min-width: 0 }
+  .note-h { display: flex; align-items: center; gap: 8px; min-height: 28px }
+  .note-h .btn { margin-left: auto }
+  .note-h .btn svg { width: 14px; height: 14px }
+  .note .memo { min-height: 420px; padding: 8px 10px; font-size: 14.5px }
 
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 500; background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 10px;
     font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(15, 23, 42, .25); max-width: calc(100vw - 32px) }
@@ -133,7 +135,7 @@
     .wk.on i { background: #fff }
     .main { padding: 12px 10px 40px }
     .notes { grid-template-columns: 1fr }
-    .note textarea { min-height: 240px; font-size: 16px }   /* 아이폰이 칸을 누를 때 화면을 키우지 않게 16px */
+    .note .memo { min-height: 240px; font-size: 16px }   /* 아이폰이 칸을 누를 때 화면을 키우지 않게 16px */
     .save-st { display: none }
     .save-st.err { display: inline }
     #copyBtn span { display: none }
@@ -172,15 +174,16 @@
   </nav>
   <main class="main" id="main">
     <div class="notes">
-      <div class="note"><label for="mNotes">회의 메모 <span class="s">누구나 · 바로 저장</span></label>
-        <textarea id="mNotes" placeholder="오늘 나온 이야기, 참고할 점…" maxlength="50000"></textarea></div>
-      <div class="note"><label for="mDec">결정 · 할 일</label>
+      <div class="note"><div class="note-h"><label for="mNotes">회의 메모 <span class="s">누구나 · 바로 저장</span></label><button type="button" class="btn sm" data-pic="notes"></button></div>
+        <textarea id="mNotes" placeholder="오늘 나온 이야기, 참고할 점… (사진은 붙여넣기 · 끌어다 놓기)" maxlength="50000"></textarea></div>
+      <div class="note"><div class="note-h"><label for="mDec">결정 · 할 일</label><button type="button" class="btn sm" data-pic="decisions"></button></div>
         <textarea id="mDec" placeholder="- 이름: 할 일" maxlength="50000"></textarea></div>
     </div>
   </main>
 </div>
 <div class="toast" id="toast" hidden></div>
 
+<script src="../meeting/shots.js?v=1"></script><!-- 글 사이 사진 메모 칸 · 마우스 올리면 크게 (마케팅 회의록과 같이 씀) -->
 <script>
 (function () {
   'use strict';
@@ -316,6 +319,7 @@
   $('wkNow').addEventListener('click', () => pickWeek(thisWeek()));
   function pickWeek(wk) {
     const changed = S.wk !== wk;
+    if (changed && EDS().some(x => x.busy)) { toast('메모 사진을 올리는 중이에요 — 끝나면 옮겨 주세요', true); return; }
     S.wk = wk; S.month = monthOf(wk);
     if (changed) { flush(); paintText(); }
     renderWeeks(); showTab();
@@ -352,15 +356,40 @@
       if (isDirty(e)) saveText(e);
     });
   }
-  function setField(f, v) {
-    const el = $(FEL[f]);
-    if (el.value === (v || '')) return;
-    const focused = document.activeElement === el, a = el.selectionStart, b = el.selectionEnd;
-    el.value = v || '';
-    if (focused && a != null) { try { el.setSelectionRange(Math.min(a, el.value.length), Math.min(b, el.value.length)); } catch (e) { /* noop */ } }
-    autoGrow(el);
-  }
-  function paintText() { const e = est(S.wk); Object.keys(FEL).forEach(f => { $(FEL[f]).value = e.val[f]; autoGrow($(FEL[f])); }); setSt(isDirty(e) ? 'saving' : ''); }
+  // 칸 = 글 + 사진 (../meeting/shots.js memo, 2026-11-24 사장님 "회의메모에도 이미지 추가해서 자유롭게 크게 조절"). 사진은 글 속에 한 줄 표시로 저장돼 합치기 · 되돌리기 · 복사가 그대로 된다
+  const ED = {}, EDS = () => Object.keys(FEL).map(f => ED[f]).filter(Boolean);
+  MtgShots.init({url: SB_URL, key: SB_KEY, toast});
+  const COLS = MtgShots.columns(document.querySelector('.notes'), () => [ED.notes, ED.decisions]);
+  const PIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.7"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>';
+  Object.keys(FEL).forEach((f, i) => {
+    ED[f] = MtgShots.memo($(FEL[f]), Object.assign(COLS.opts(i), {
+      label: f === 'notes' ? '회의 메모' : '결정 · 할 일',
+      onInput: () => {
+        const e = est(S.wk);
+        e.val[f] = ED[f].value; e.dirty[f] = true;
+        keepDraft(e);
+        setSt('saving');
+        clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 700);
+      },
+      onBlur: () => { const e = est(S.wk); if (isDirty(e)) saveText(e); },
+    }));
+    const b = document.querySelector(`[data-pic="${f}"]`);
+    b.innerHTML = PIC + ' 이미지 넣기';
+    b.addEventListener('mousedown', ev => ev.preventDefault());   // 적던 커서 자리를 잃지 않게
+    b.addEventListener('click', () => ED[f].pick());
+  });
+  // 칸 밖에 놓아도 사진이 화면을 덮어 열리지 않게
+  const dtFiles = ev => !!ev.dataTransfer && [...(ev.dataTransfer.types || [])].includes('Files');
+  document.addEventListener('dragover', ev => { if (dtFiles(ev)) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'none'; } });
+  document.addEventListener('drop', ev => { if (dtFiles(ev)) ev.preventDefault(); });
+  // 칸을 안 누르고 붙여넣어도 회의 메모에
+  document.addEventListener('paste', ev => {
+    if (ev.defaultPrevented || $('app').hidden || EDS().some(x => x.has(ev.target))) return;
+    const fs = MtgShots.filesOf(ev.clipboardData); if (!fs.length) return;
+    ev.preventDefault(); ED.notes.addFiles(fs);
+  });
+  function setField(f, v) { ED[f].value = v || ''; }
+  function paintText() { const e = est(S.wk); Object.keys(FEL).forEach(f => setField(f, e.val[f])); COLS.layout(); setSt(isDirty(e) ? 'saving' : ''); }
   function syncFields(r) {   // 다른 PC 에서 고친 것 — 내가 고치는 중인 칸은 그대로 두고 저장할 때 합친다
     const wk = isDay(r.day) ? weekOf(r.day) : '', e = EST.get(wk);
     if (!e || r.deleted_at) return;
@@ -390,17 +419,6 @@
     }
     return out.join('\n');
   }
-  Object.keys(FEL).forEach(f => {
-    const el = $(FEL[f]);
-    el.addEventListener('input', () => {
-      const e = est(S.wk);
-      e.val[f] = el.value; e.dirty[f] = true;
-      keepDraft(e);
-      setSt('saving'); autoGrow(el);
-      clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 700);
-    });
-    el.addEventListener('blur', () => { const e = est(S.wk); if (isDirty(e)) saveText(e); });
-  });
   async function saveText(e) {
     clearTimeout(e.timer); clearTimeout(e.retryT);
     if (e.saving) { e.again = true; return; }
@@ -413,7 +431,7 @@
       let srv = await ensureRow(e.wk);
       for (let tries = 0; tries < 4 && !ok; tries++) {
         const body = {updated_by: ME()}, sent = {};
-        fs.forEach(f => { sent[f] = e.val[f]; body[f] = merge3(e.base[f], sent[f], srv[f]).slice(0, 50000); });
+        fs.forEach(f => { sent[f] = e.val[f]; body[f] = MtgShots.mergeFix(merge3(e.base[f], sent[f], srv[f]), sent[f]).slice(0, 50000); });
         const r = await rest(`${T}?id=eq.${srv.id}&updated_at=eq.${encodeURIComponent(srv.updated_at)}`, {method: 'PATCH', headers: RET, body: JSON.stringify(body)});
         if (r && r.length) {
           const row = r[0];
@@ -451,18 +469,16 @@
     el.textContent = k === 'saving' ? '저장 중…' : k === 'err' ? '저장 안 됨 · 누르면 다시' : k === 'ok' ? '저장됨' : '';
   }
   $('saveSt').addEventListener('click', () => { if ($('saveSt').classList.contains('err')) saveText(est(S.wk)); });
-  function autoGrow(el) { const y = scrollY; el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; if (scrollY !== y) scrollTo(0, y); }
-  window.addEventListener('resize', () => Object.keys(FEL).forEach(f => autoGrow($(FEL[f]))));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); else if (S.wk) poll(); });
   window.addEventListener('pagehide', flush);
-  window.addEventListener('beforeunload', ev => { if ([...EST.values()].some(isDirty)) { flush(); ev.preventDefault(); ev.returnValue = ''; } });
+  window.addEventListener('beforeunload', ev => { if ([...EST.values()].some(isDirty) || EDS().some(x => x.busy)) { flush(); ev.preventDefault(); ev.returnValue = ''; } });
 
   /* ══════════════════════ 글로 복사 ══════════════════════ */
   $('copyBtn').addEventListener('click', async () => {
     const e = est(S.wk), notes = e.val.notes.trim(), dec = e.val.decisions.trim();
     const out = [`[${weekName(S.wk)} · ${range(S.wk)}] 주간 회의`];
-    if (notes) out.push('', '■ 회의 메모', notes);
-    if (dec) out.push('', '■ 결정 · 할 일', dec);
+    if (notes) out.push('', '■ 회의 메모', MtgShots.plain(notes));
+    if (dec) out.push('', '■ 결정 · 할 일', MtgShots.plain(dec));
     const txt = out.join('\n');
     try { await navigator.clipboard.writeText(txt); toast('복사했어요 — 카톡에 붙여 넣으면 돼요'); }
     catch (err) {
@@ -501,19 +517,19 @@
     S.month = monthOf(S.wk);
     renderWeeks(); showTab();
     // 못 불러온 채로 적으면 빈 글로 덮을 수 있으니, 다 읽을 때까지 칸을 잠가 둔다
-    Object.values(FEL).forEach(id => { $(id).disabled = true; });
+    EDS().forEach(x => { x.disabled = true; });
     for (let n = 0; ; n++) {
       try { await loadAll(); break; }
       catch (e) { console.warn('load', e); if (n === 0) toast('회의록을 못 불러왔어요 — 다시 해 볼게요', true); await new Promise(r => setTimeout(r, Math.min(2000 * (n + 1), 15000))); }
     }
-    Object.values(FEL).forEach(id => { $(id).disabled = false; });
+    EDS().forEach(x => { x.disabled = false; });
     EST.clear();
     restoreDrafts();
     paintText();
     pollLoop();
     if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
   }
-  window.__wkmTest = {merge3, weekOf, weeksOf, weekName, range};   // 확인용
+  window.__wkmTest = {merge3, weekOf, weeksOf, weekName, range, ED, S};   // 확인용
   if (isUnlocked()) start(); else { $('lock').hidden = false; setTimeout(() => $('lockPin').focus(), 50); }
 })();
 </script>

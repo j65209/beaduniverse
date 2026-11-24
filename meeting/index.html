@@ -50,13 +50,17 @@
      사장님 요청 ③: "다들 인스타그램 주소 기재할때 어떤 브랜드 래퍼런스 주소인지 선택하게 하는거라" → 사람이 브랜드를 맡는 게 아니라 주소마다 브랜드를 고른다
      사장님 요청 ④: "벤치마킹 or 레퍼런스 같이 합쳐줘 버튼" → 둘 중 고르기 없음, '벤치마킹 · 레퍼런스' 한 칸 (카드의 종류 배지도 없음). 저장소 tag 는 옛 줄에만 있고 새 줄은 비움
      사장님 요청 ⑤: "마케팅 회의록 옆에 주간 회의록 만들어줘" → weekly/ (맨 위 탭으로 오감)
+     사장님 요청 ⑥: "수요일 오후2시까지 미작성 인원들 알림뜨게해줘 / 인스타 아이디만 넣는게 아니라 그냥 세일 래퍼런스 이미지만 넣고싶다고하네 /
+     회의메모에도 이미지 추가해서 자유롭게 크게 조절할 수 있게 / 마우스오버 잊지말고. 뭐든 마우스오버 기능!"
+       → 이미지 카드(kind image) · 글 사이 사진 메모 칸(shots.js) · 무엇이든 마우스 올리면 크게 · 알림은 서버(cron mkt-meeting-nudge-* → notif_calls kind meeting, 화면 ../notif-call.js)
      · 맨 위 = 달 ‹ 11월 › + 주차 탭 (그 달의 첫째 수요일 = 1주차). 회의 줄(mkt_meetings)은 그 주에 처음 무언가 넣을 때 저절로 생긴다 (수요일 하루에 한 줄)
      · 안내 띠 = 매주 수요일 오후 2시까지 + 남은 시간 · 아직 안 넣은 사람 · 브랜드별 개수(누르면 그 브랜드 주소만 보기)
      · 사람마다 세로 칸(디자인팀 · 마케팅팀 · MD팀 순): 브랜드 배지 하나 고르기 → '벤치마킹 · 레퍼런스' 주소 붙여넣기.
        브랜드를 안 고르고 주소부터 넣으면 "이 주소는 어떤 브랜드예요?" 를 묻고, 배지를 누르는 순간 저장. 저장 뒤엔 배지 선택이 풀려 다음 주소도 다시 고른다
      · 카드의 브랜드 배지를 누르면 나중에도 바꿀 수 있다
+     · 이미지 = [이미지 넣기] · 붙여넣기(Ctrl+V) · 끌어다 놓기, 주소 없이 사진만. 같은 파일은 한 주에 한 번만 (사진 지문)
      · 주소 = 한 주에 같은 계정 · 게시물은 한 번만, 사람이 달라도 (mkt_meeting_links_one). 또 넣으면 빨간 안내만 뜨고 안 들어감. 다른 주에 나왔던 것은 회색 안내
-     · 마우스를 올리면 인스타 미리보기(휴대폰은 누르면)
+     · 마우스를 올리면 — 인스타 · 유튜브 · 틱톡은 그 화면, 다른 사이트는 제목 · 대표 이미지(엣지 함수 link-peek), 사진은 크게 (휴대폰은 누르면)
      · 저장 = 오피스 슈퍼베이스 mkt_meetings · mkt_meeting_links(주소 한 줄씩, brand). 지우기는 deleted_at 만 */
   :root {
     --bg: #f5f6f8; --panel: #fff; --line: #e5e7eb; --line2: #cfd4dc; --text: #1f2329; --t2: #4b5563; --t3: #8b93a1;
@@ -170,12 +174,29 @@
   .add-in .btn { height: 36px; padding: 0 11px }
   .add-warn { position: relative; margin-top: 6px; border: 1px solid rgba(220, 38, 38, .35); background: var(--red-t); border-radius: 9px; padding: 8px 28px 8px 10px; font-size: 12.5px; color: #991b1b; line-height: 1.5; word-break: break-word }
   .add-warn button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; background: none; color: inherit; cursor: pointer; font-size: 16px; line-height: 1 }
+  .shot-b { display: flex; width: 100%; min-height: 36px; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; padding: 0 8px; border: 1px dashed var(--line2); border-radius: 8px; background: #fff; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--t2) }
+  .shot-b:hover { border-color: var(--text); color: var(--text) }
+  .shot-b svg { width: 16px; height: 16px }
+  .shot-b i { font-style: normal; font-weight: 500; font-size: 11px; color: var(--t3) }
+  .col.drop { border-color: var(--text); box-shadow: 0 0 0 2px rgba(31, 35, 41, .12) }
+  .col.drop .shot-b { border-color: var(--text); color: var(--text); background: var(--soft) }
+  .pend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px }
+  .pd { position: relative; width: 58px; height: 58px; border-radius: 8px; overflow: hidden; background: var(--soft); border: 1px solid var(--line) }
+  .pd img { width: 100%; height: 100%; object-fit: cover; display: block }
+  .pd.up img { opacity: .4 }
+  .pd.up::after { content: ''; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px; border: 2.5px solid rgba(255, 255, 255, .6); border-top-color: var(--text); border-radius: 50%; animation: spin .8s linear infinite }
+  .pd button { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border: 0; padding: 0; border-radius: 50%; background: rgba(15, 23, 42, .72); color: #fff; font-size: 13px; line-height: 1; cursor: pointer }
   .lks { display: flex; flex-direction: column; gap: 6px; padding: 0 10px 10px }
   .lks:empty { display: none }
 
   .lk { position: relative; display: flex; gap: 9px; align-items: flex-start; border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 8px 9px; background: #fff;
     cursor: pointer; transition: border-color .12s, box-shadow .12s }
   .lk:hover, .lk.pv-on { border-color: var(--line2); box-shadow: 0 2px 8px rgba(15, 23, 42, .07) }
+  .lk.k-image { flex-direction: column; gap: 7px; padding: 6px 6px 8px }
+  .lk.k-image .lk-b { width: 100%; padding: 0 3px }
+  .lk.k-image .lk-s { margin-top: 0 }
+  .lk-im { width: 100%; border-radius: 7px; overflow: hidden; background: var(--soft); cursor: zoom-in }
+  .lk-im img { display: block; width: 100%; max-height: 280px; object-fit: cover; object-position: top }
   .lk-ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; background: var(--soft); color: var(--t2) }
   .lk-ic svg { width: 16px; height: 16px }
   .lk-b { flex: 1; min-width: 0 }
@@ -186,6 +207,7 @@
   .bb:hover { border-color: var(--t3) }
   .bb.none { color: var(--red); border-style: dashed; border-color: var(--red) }
   .lk-m { font-size: 12.5px; color: var(--t2); margin-top: 5px; white-space: pre-wrap; word-break: break-word }
+  .lk-m a { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px }
   .lk-me { width: 100%; margin-top: 5px; border: 1px solid var(--text); border-radius: 7px; padding: 5px 7px; font-size: 12.5px; outline: none; resize: vertical; min-height: 34px; background: #fff }
   .lk-p { font-size: 11.5px; color: var(--t3); margin-top: 4px }
   .lk-p.amb { color: var(--red) }
@@ -205,12 +227,20 @@
   /* ── 회의 메모 ── */
   .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px }
   .note { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px }
+  .notes.wide { grid-template-columns: 1fr }   /* 사진을 칸보다 크게 키우면 화면 폭으로 */
+  .note { min-width: 0 }
+  .note-h { display: flex; align-items: center; gap: 8px; min-height: 28px }
+  .note-h .btn { margin-left: auto }
+  .note-h .btn svg { width: 14px; height: 14px }
   .note label { font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 6px }
   .note label .s { font-weight: 500; color: var(--t3); font-size: 12px }
-  .note textarea { width: 100%; min-height: 140px; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; outline: none; resize: none; background: #fafbfc;
-    font-size: 13.5px; line-height: 1.6; overflow: hidden }
-  .note textarea:hover { border-color: var(--line) }
-  .note textarea:focus { border-color: var(--text); background: #fff }
+  .note .memo { font-size: 13.5px; flex: 1 }
+  .mlinks { display: flex; flex-wrap: wrap; gap: 5px }
+  .mlinks:empty { display: none }
+  .mch { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 12px; font-weight: 600; text-decoration: none; color: var(--text) }
+  .mch:hover, .mch.pv-on { border-color: var(--t3) }
+  .mch svg { width: 13px; height: 13px; color: var(--t2) }
+  .mch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 
   /* ── 인스타 미리보기 (마우스 올리면 · 휴대폰은 누르면 아래에서) ── */
   .pv { position: fixed; z-index: 200; width: 360px; background: #fff; border: 1px solid var(--line2); border-radius: 14px; box-shadow: 0 18px 50px rgba(15, 23, 42, .22);
@@ -225,6 +255,12 @@
   .pv-spin { position: absolute; inset: 0; display: grid; place-items: center; color: var(--t3); font-size: 12.5px; pointer-events: none }
   .pv-spin i { width: 26px; height: 26px; border: 3px solid #e5e7eb; border-top-color: var(--t2); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 8px; display: block }
   @keyframes spin { to { transform: rotate(360deg) } }
+  .pv-o { height: 100%; overflow: auto; background: #fff }
+  .pv-o img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: var(--soft) }
+  .pv-o div { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 5px }
+  .pv-o b { font-size: 14px; line-height: 1.4 }
+  .pv-o p { margin: 0; font-size: 12.5px; color: var(--t2); line-height: 1.55 }
+  .pv-o span { font-size: 12px; color: var(--t3) }
   .pv-f { font-size: 11px; color: var(--t3); padding: 6px 10px; border-top: 1px solid var(--line) }
   .pv.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: 100%; height: 82vh !important; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom) }
   .pv-veil { position: fixed; inset: 0; z-index: 199; background: rgba(15, 23, 42, .35) }
@@ -282,7 +318,9 @@
     .add-in input { font-size: 16px; height: 40px }   /* 아이폰이 칸을 누를 때 화면을 키우지 않게 16px */
     .add-in .btn { height: 40px }
     .bd { height: 34px }
-    .lk-me, .note textarea, .addp input, .addp select { font-size: 16px }
+    .lk-me, .note .memo, .addp input, .addp select { font-size: 16px }
+    .shot-b { min-height: 42px } .shot-b i { display: none }
+    .mch { height: 32px }
     .save-st { display: none }
     .save-st.err { display: inline }
   }
@@ -324,7 +362,7 @@
     <section class="rule">
       <div class="rule-1">
         <b>매주 수요일 오후 2시까지</b>
-        <span class="how">브랜드별로 벤치마킹 · 레퍼런스 인스타 주소 넣기 — 넣을 때 어떤 브랜드인지 고르기</span>
+        <span class="how">브랜드별로 벤치마킹 · 레퍼런스 인스타 주소 · 이미지 넣기 — 넣을 때 어떤 브랜드인지 고르기</span>
         <span class="due" id="due"></span>
       </div>
       <div class="bstrip" id="bstrip"></div>
@@ -335,18 +373,18 @@
       <button class="bnav r" id="bnavR" type="button" aria-label="오른쪽 칸 보기" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
     <div class="notes">
-      <div class="note"><label for="mNotes">회의 메모 <span class="s">누구나 · 바로 저장</span></label>
-        <textarea id="mNotes" placeholder="오늘 나온 이야기, 참고할 점…" maxlength="50000"></textarea></div>
-      <div class="note"><label for="mDec">결정 · 할 일</label>
-        <textarea id="mDec" placeholder="- 이름: 할 일" maxlength="50000"></textarea></div>
+      <div class="note"><div class="note-h"><label for="mNotes">회의 메모 <span class="s">누구나 · 바로 저장</span></label><button type="button" class="btn sm" data-pic="notes"></button></div>
+        <textarea id="mNotes" placeholder="오늘 나온 이야기, 참고할 점… (사진은 붙여넣기 · 끌어다 놓기)" maxlength="50000"></textarea><div class="mlinks" data-ml="notes"></div></div>
+      <div class="note"><div class="note-h"><label for="mDec">결정 · 할 일</label><button type="button" class="btn sm" data-pic="decisions"></button></div>
+        <textarea id="mDec" placeholder="- 이름: 할 일" maxlength="50000"></textarea><div class="mlinks" data-ml="decisions"></div></div>
     </div>
   </main>
 </div>
 
 <div class="pv" id="pv" hidden>
   <div class="pv-h"><b id="pvT"></b><a id="pvOpen" href="#" target="_blank" rel="noopener">인스타에서 열기 ↗</a><button type="button" id="pvX" aria-label="닫기">×</button></div>
-  <div class="pv-b" id="pvB"><div class="pv-spin" id="pvSpin"><div><i></i>불러오는 중…</div></div></div>
-  <div class="pv-f">안 보이면 비공개 계정이거나 인스타가 막은 거예요 — 위 '인스타에서 열기'</div>
+  <div class="pv-b" id="pvB"><div class="pv-o" id="pvO" hidden></div><div class="pv-spin" id="pvSpin"><div><i></i>불러오는 중…</div></div></div>
+  <div class="pv-f" id="pvF">안 보이면 비공개 계정이거나 인스타가 막은 거예요 — 위 '인스타에서 열기'</div>
 </div>
 <div class="pv-veil" id="pvVeil" hidden></div>
 
@@ -366,6 +404,7 @@
 
 <div class="toast" id="toast" hidden></div>
 
+<script src="shots.js?v=1"></script><!-- 사진 올리기 · 마우스 올리면 크게 · 글 사이 사진 메모 칸 (주간 회의록과 같이 씀) -->
 <script>
 (function () {
   'use strict';
@@ -424,13 +463,14 @@
     post: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></svg>',
     reel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4.5"/><path d="M3 8.5h18M8.5 3l3 5.5M14.5 3l3 5.5"/><path d="M10 12v5.2l4.5-2.6z" fill="currentColor" stroke="none"/></svg>',
     story: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3 2.2"/><circle cx="12" cy="12" r="4"/></svg>',
+    image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.7"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
     open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z"/></svg>',
     del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
   };
-  const KIND_NAME = {account: '계정', post: '피드', reel: '릴스', story: '스토리', link: '링크'};
+  const KIND_NAME = {account: '계정', post: '피드', reel: '릴스', story: '스토리', link: '링크', image: '이미지'};
 
   /* ══════════════════════ 도우미 ══════════════════════ */
   const $ = id => document.getElementById(id);
@@ -548,11 +588,13 @@
   function dupKey(l) {
     if ((l.kind === 'account' || l.kind === 'story') && l.ig_user) return 'u:' + l.ig_user;
     if ((l.kind === 'post' || l.kind === 'reel') && l.ig_code) return 'c:' + l.ig_code;
+    if (l.kind === 'image' && MtgShots.hash(l.url)) return 'i:' + MtgShots.hash(l.url);   // 같은 사진 파일
     return 'url:' + normUrl(l.url);
   }
   function keyLabel(k) {
     if (k.startsWith('u:')) return '@' + k.slice(2);
     if (k.startsWith('c:')) return '게시물 ' + k.slice(2);
+    if (k.startsWith('i:')) return '같은 이미지';
     return k.slice(4);
   }
   function linkTitle(l) {
@@ -560,6 +602,7 @@
     if (l.kind === 'story') return '스토리 · @' + l.ig_user;
     if (l.kind === 'post') return l.ig_user ? '피드 · @' + l.ig_user : '피드 게시물';
     if (l.kind === 'reel') return l.ig_user ? '릴스 · @' + l.ig_user : '릴스';
+    if (l.kind === 'image') return '이미지';
     try { return new URL(l.url).hostname.replace(/^www\./, ''); } catch (e) { return l.url; }
   }
   function linkSub(l) {
@@ -584,15 +627,15 @@
     filter: null,          // 이 브랜드 주소만 보기 (안내 띠에서 고름)
     curM: '', curL: '',    // 마지막으로 받은 updated_at
   };
-  const drafts = new Map();   // 사람 → {text, brand, ask, warn:[글]} (칸 입력 · 고른 브랜드 · 브랜드 묻는 중 · 중복 안내)
-  const draftOf = p => { if (!drafts.has(p)) drafts.set(p, {text: '', brand: null, ask: false, warn: []}); return drafts.get(p); };
+  const drafts = new Map();   // 주|사람 → {text, brand, ask, warn:[글], shots:[올릴 사진]} (칸 입력 · 고른 브랜드 · 브랜드 묻는 중 · 중복 안내)
+  const draftOf = p => { const k = S.wk + '|' + p; if (!drafts.has(k)) drafts.set(k, {text: '', brand: null, ask: false, warn: [], shots: []}); return drafts.get(k); };
   let editMemo = null;        // 메모 고치는 주소 id
   let boardPending = false;
 
   /* ══════════════════════ 직원 명단 ══════════════════════ */
   async function loadStaff() {
     const col = new Map(BASE_STAFF.map(s => [s.name, s.color]));
-    const order = BASE_STAFF.map(s => s.name);
+    const order = BASE_STAFF.map(s => s.name), gone = new Set();
     try {
       const [added, ovr, hid] = await Promise.all([
         rest('staff_added?select=name,color&order=created_at.asc'),
@@ -601,9 +644,9 @@
       ]);
       (added || []).forEach(r => { if (r.name && !col.has(r.name)) { col.set(r.name, r.color); order.push(r.name); } });
       (ovr || []).forEach(r => { if (r.staff_name && r.color && col.has(r.staff_name)) col.set(r.staff_name, r.color); });
-      (hid || []).forEach(r => col.delete(r.staff_name));
+      (hid || []).forEach(r => { col.delete(r.staff_name); gone.add(r.staff_name); });
     } catch (e) { console.warn('staff', e); }
-    const out = {design: [], mkt: [], md: []};
+    const out = {design: [], mkt: [], md: [], gone};
     order.forEach(n => { const t = COLOR_TEAM[col.get(n)]; if (t && !EXCLUDE.has(n) && !out[t].includes(n)) out[t].push(n); });
     S.staff = out;
   }
@@ -614,7 +657,7 @@
     const lastMem = last && Array.isArray(last.members) ? last.members.filter(m => m && m.name) : [];
     const list = [];
     ['design', 'mkt', 'md'].forEach(t => st[t].forEach(n => list.push({name: n, team: t})));
-    lastMem.forEach(m => { if (!EXCLUDE.has(m.name) && !list.some(x => x.name === m.name) && !isStaffName(m.name)) list.push({name: m.name, team: m.team || 'etc'}); });
+    lastMem.forEach(m => { if (!EXCLUDE.has(m.name) && !(st.gone && st.gone.has(m.name)) && !list.some(x => x.name === m.name) && !isStaffName(m.name)) list.push({name: m.name, team: m.team || 'etc'}); });
     return memberOrder(list);
   }
   function isStaffName(n) { const st = S.staff; return !!st && (st.design.includes(n) || st.mkt.includes(n) || st.md.includes(n)); }
@@ -747,8 +790,9 @@
 
   function pickWeek(wk) {
     const changed = S.wk !== wk;
+    if (changed && (ED.notes.busy || ED.decisions.busy)) { toast('메모 사진을 올리는 중이에요 — 끝나면 옮겨 주세요', true); return; }
     S.wk = wk; S.month = monthOf(wk);
-    if (changed) { EST.forEach(e => { if (Object.keys(e.dirty).length) saveText(e); }); drafts.clear(); S.filter = null; editMemo = null; hidePreview(); paintText(); }
+    if (changed) { EST.forEach(e => { if (Object.keys(e.dirty).length) saveText(e); }); S.filter = null; editMemo = null; hidePreview(); paintText(); }
     renderAll(true);
     showTab();
   }
@@ -762,11 +806,11 @@
   }
   function paintDue() {
     if (!S.wk) return;
-    const m = cur(), left = dueMs(S.wk) - Date.now(), miss = m ? missing(m) : [];
+    const m = cur(), left = dueMs(S.wk) - Date.now(), miss = m ? missing(m) : S.staff && S.wk >= thisWeek() ? defaultMembers(S.wk).map(x => x.name) : [];
     let h = `${mdw(S.wk)} ${dueTxt}`;
     if (left > 0) {
       h += left < 3 * 3600e3 ? ` · <span class="red">${leftTxt(left)}</span>` : ` · ${leftTxt(left)}`;
-      if (miss.length) h += ` · 아직 ${miss.length}명`;
+      if (miss.length) h += todayKST() === S.wk ? ` · <span class="red">아직 ${miss.map(esc).join(', ')}</span>` : ` · 아직 ${miss.length}명`;   // 회의 날은 이름까지
     } else {
       h += ' 마감';
       if (miss.length) h += ` · <span class="red">못 넣은 사람 ${miss.map(esc).join(', ')}</span>`;
@@ -797,15 +841,36 @@
     }
     return e;
   }
-  function setField(f, v) {
-    const el = $(FEL[f]);
-    if (el.value === (v || '')) return;
-    const focused = document.activeElement === el, a = el.selectionStart, b = el.selectionEnd;
-    el.value = v || '';
-    if (focused && a != null) { try { el.setSelectionRange(Math.min(a, el.value.length), Math.min(b, el.value.length)); } catch (e) { /* noop */ } }
-    autoGrow(el);
+  // 칸 = 글 + 사진 (shots.js memo). 사진은 글 속에 한 줄 표시로 저장돼 합치기 · 되돌리기 · 복사가 그대로 된다
+  const ED = {};
+  MtgShots.init({url: SB_URL, key: SB_KEY, toast});
+  const COLS = MtgShots.columns(document.querySelector('.notes'), () => [ED.notes, ED.decisions]);   // 사진을 칸보다 크게 키우면 두 칸을 위아래로
+  Object.keys(FEL).forEach((f, i) => {
+    ED[f] = MtgShots.memo($(FEL[f]), Object.assign(COLS.opts(i), {
+      label: f === 'notes' ? '회의 메모' : '결정 · 할 일',
+      onInput: () => {
+        const e = est(S.wk);
+        e.val[f] = ED[f].value; e.dirty[f] = true;
+        setSt('saving'); paintChips(f);
+        clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 700);
+      },
+      onBlur: () => { const e = est(S.wk); if (Object.keys(e.dirty).length) saveText(e); },
+    }));
+    const b = document.querySelector(`[data-pic="${f}"]`);
+    b.innerHTML = ICON.image + ' 이미지 넣기';
+    b.addEventListener('mousedown', ev => ev.preventDefault());   // 적던 커서 자리를 잃지 않게
+    b.addEventListener('click', () => ED[f].pick());
+  });
+  // 메모에 적은 주소 — 아래에 단추로 모아 마우스를 올리면 미리보기
+  const URLS = /(^|[\s(\[,·:>])((?:https?:\/\/|www\.|instagram\.com\/)[^\s<>"'\])]+|@[A-Za-z0-9._]{2,30})/g;
+  function urlsIn(t) { const out = [], seen = new Set(); let m; URLS.lastIndex = 0; while ((m = URLS.exec(t))) { const l = parseLink(m[2]); if (!l) continue; const k = dupKey(l); if (!seen.has(k)) { seen.add(k); out.push({raw: m[2], l}); } } return out; }
+  function paintChips(f) {
+    const box = document.querySelector(`[data-ml="${f}"]`), e = est(S.wk);
+    const h = urlsIn(e.val[f].replace(/^\[\[img:.*$/gm, '')).slice(0, 30).map(x => `<a class="mch" href="${esc(x.l.url)}" target="_blank" rel="noopener" data-u="${esc(x.l.url)}">${ICON[x.l.kind] || ICON.link}<span>${esc(linkTitle(x.l))}</span></a>`).join('');
+    if (box._h !== h) { box._h = h; box.innerHTML = h; }
   }
-  function paintText() { const e = est(S.wk); Object.keys(FEL).forEach(f => { $(FEL[f]).value = e.val[f]; autoGrow($(FEL[f])); }); setSt(Object.keys(e.dirty).length ? 'saving' : ''); }
+  function setField(f, v) { ED[f].value = v || ''; paintChips(f); }
+  function paintText() { const e = est(S.wk); Object.keys(FEL).forEach(f => setField(f, e.val[f])); COLS.layout(); setSt(Object.keys(e.dirty).length ? 'saving' : ''); }
   function syncFields(r) {   // 다른 PC 에서 고친 것 — 내가 고치는 중인 칸은 그대로 두고 저장할 때 합친다
     const wk = isDay(r.day) ? weekOf(r.day) : '', e = EST.get(wk);
     if (!e || r.deleted_at) return;
@@ -835,16 +900,6 @@
     }
     return out.join('\n');
   }
-  Object.keys(FEL).forEach(f => {
-    const el = $(FEL[f]);
-    el.addEventListener('input', () => {
-      const e = est(S.wk);
-      e.val[f] = el.value; e.dirty[f] = true;
-      setSt('saving'); autoGrow(el);
-      clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 700);
-    });
-    el.addEventListener('blur', () => { const e = est(S.wk); if (Object.keys(e.dirty).length) saveText(e); });
-  });
   async function saveText(e) {
     clearTimeout(e.timer); clearTimeout(e.retryT);
     if (e.saving) { e.again = true; return; }
@@ -858,7 +913,7 @@
       for (let tries = 0; tries < 4 && !ok; tries++) {
         srv = S.meetings.get(srv.id) || srv;
         const body = {updated_by: ME()}, sent = {};
-        fs.forEach(f => { sent[f] = e.val[f]; body[f] = merge3(e.base[f], sent[f], srv[f]); });
+        fs.forEach(f => { sent[f] = e.val[f]; body[f] = MtgShots.mergeFix(merge3(e.base[f], sent[f], srv[f]), sent[f]).slice(0, 50000); });
         const r = await rest(`${T_M}?id=eq.${srv.id}&updated_at=eq.${encodeURIComponent(srv.updated_at)}`, {method: 'PATCH', headers: RET, body: JSON.stringify(body)});
         if (r && r.length) {
           const row = r[0];
@@ -893,7 +948,8 @@
     el.textContent = k === 'saving' ? '저장 중…' : k === 'err' ? '저장 안 됨 · 누르면 다시' : k === 'ok' ? '저장됨' : '';
   }
   $('saveSt').addEventListener('click', () => { if ($('saveSt').classList.contains('err')) saveText(est(S.wk)); });
-  function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.max(140, el.scrollHeight + 2) + 'px'; }
+  const anyUp = () => ED.notes.busy || ED.decisions.busy || [...drafts.values()].some(d => d.shots.length);
+  window.addEventListener('beforeunload', ev => { if (anyUp() || [...EST.values()].some(e => Object.keys(e.dirty).length)) { ev.preventDefault(); ev.returnValue = ''; } });
 
   /* ══════════════════════ 사람별 세로 칸 ══════════════════════ */
   function columnsOf(m) {
@@ -950,15 +1006,18 @@
     const d = draftOf(c.name), late = hasRow && Date.now() > dueMs(S.wk);
     const ct = ls.length ? `${ls.length}개` : late && !c.off ? '못 넣음' : '';
     const show = S.filter ? ls.filter(l => l.brand === S.filter) : ls;
+    const pic = d.shots.length && !d.text.trim();
     const warn = d.warn.length ? `<div class="add-warn" role="alert">${d.warn.map(w => `<div>${w}</div>`).join('')}<button type="button" data-act="okwarn" aria-label="닫기">×</button></div>` : '';
     return `<div class="col" data-p="${esc(c.name)}">
       <div class="col-h"><span class="av">${esc(c.name.slice(-2))}</span><span class="nm">${esc(c.name)}</span>${c.off ? '<span class="muted" style="font-size:11px">(참여자 아님)</span>' : ''}
         <span class="ct${ct === '못 넣음' ? ' w' : ''}">${ct}</span></div>
       <div class="ent${d.ask ? ' need' : ''}">
-        <div class="ask">${d.ask ? '이 주소는 어떤 브랜드예요?' : '어떤 브랜드예요?'}</div>
+        <div class="ask">${d.ask ? (pic ? '이 이미지는 어떤 브랜드예요?' : '이 주소는 어떤 브랜드예요?') : '어떤 브랜드예요?'}</div>
         <div class="bds" role="radiogroup" aria-label="${esc(c.name)} 브랜드 고르기">${BRANDS.map(b => `<button type="button" class="bd${d.brand === b.k ? ' on' : ''}" role="radio" aria-checked="${d.brand === b.k}" data-act="brand" data-b="${b.k}">${bDot(b.k)}${esc(b.name)}</button>`).join('')}</div>
         <button type="button" class="kindb" data-act="kind">벤치마킹 · 레퍼런스</button>
         <form class="add-in" data-p="${esc(c.name)}"><input type="text" inputmode="url" enterkeyhint="done" autocomplete="off" autocapitalize="off" placeholder="인스타 주소 · @아이디" value="${esc(d.text)}" aria-label="${esc(c.name)} 주소 넣기"><button class="btn" type="submit">넣기</button></form>
+        <button type="button" class="shot-b" data-act="shot" aria-label="${esc(c.name)} 이미지 넣기">${ICON.image}이미지 넣기 <i>붙여넣기 · 끌어놓기</i></button>
+        ${d.shots.length ? `<div class="pend">${d.shots.map(x => `<span class="pd${x.res && !x.brand ? '' : ' up'}" data-s="${x.id}"><img src="${esc(x.local)}" data-big="${esc(x.local)}" alt="올릴 이미지">${x.brand ? '' : '<button type="button" data-act="unshot" aria-label="이 이미지 빼기">×</button>'}</span>`).join('')}</div>` : ''}
         ${warn}
       </div>
       <div class="lks">${show.map(l => linkHtml(l, A)).join('')}</div>
@@ -980,10 +1039,11 @@
     const by = l.created_by && l.created_by !== l.person ? ` · ${l.created_by} 넣음` : '', note = (late + by).replace(/^ · /, '');
     const memo = editMemo === l.id
       ? `<textarea class="lk-me" data-id="${esc(l.id)}" maxlength="2000" placeholder="메모 (Enter 저장 · Esc 취소)">${esc(l.memo || '')}</textarea>`
-      : (l.memo ? `<div class="lk-m">${esc(l.memo)}</div>` : '');
+      : (l.memo ? `<div class="lk-m">${linkify(l.memo)}</div>` : '');
+    const im = l.kind === 'image' ? l.img || {} : null;
     return `<div class="lk k-${esc(l.kind)}" data-id="${esc(l.id)}">
-      <div class="lk-ic">${ICON[l.kind] || ICON.link}</div>
-      <div class="lk-b"><div class="lk-t">${esc(linkTitle(l))}</div>
+      ${im ? `<div class="lk-im"><img src="${esc(im.p ? MtgShots.thumb(im.p) : l.url)}" data-big="${esc(l.url)}" data-lb="board" data-cap="${esc([l.person, bName(l.brand), l.memo].filter(Boolean).join(' · ').replace(/\s+/g, ' ').slice(0, 120))}"${im.w && im.h ? ` style="aspect-ratio:${+im.w}/${+im.h}"` : ''} alt="${esc(l.person)} 이미지" loading="lazy"></div>` : `<div class="lk-ic">${ICON[l.kind] || ICON.link}</div>`}
+      <div class="lk-b">${im ? '' : `<div class="lk-t">${esc(linkTitle(l))}</div>`}
         <div class="lk-s"><button type="button" class="bb${BMAP[l.brand] ? '' : ' none'}" data-act="cbrand" title="누르면 브랜드 바꾸기">${BMAP[l.brand] ? bDot(l.brand) : ''}${esc(BMAP[l.brand] ? bName(l.brand) : '브랜드 고르기')}</button>${note ? `<span>${esc(note)}</span>` : ''}</div>${memo}${p}</div>
       <div class="lk-a">
         <a href="${esc(l.url)}" target="_blank" rel="noopener" title="새 탭으로 열기" aria-label="새 탭으로 열기">${ICON.open}</a>
@@ -991,6 +1051,16 @@
         <button type="button" class="del" data-act="del" title="지우기" aria-label="지우기">${ICON.del}</button>
       </div>
     </div>`;
+  }
+  // 카드 메모 속 주소도 마우스를 올리면 미리보기
+  function linkify(t) {
+    let out = '', at = 0, m; URLS.lastIndex = 0;
+    while ((m = URLS.exec(t))) {
+      const l = parseLink(m[2]); if (!l) continue;
+      const i = m.index + m[1].length;
+      out += esc(t.slice(at, i)) + `<a href="${esc(l.url)}" target="_blank" rel="noopener" data-u="${esc(l.url)}">${esc(m[2])}</a>`; at = i + m[2].length;
+    }
+    return out + esc(t.slice(at));
   }
   function paintMemN() {
     const m = cur(), n = m && Array.isArray(m.members) ? m.members.length : defaultMembers(S.wk).length;
@@ -1018,14 +1088,19 @@
     const d = draftOf(person), parts = splitWords(text), parsed = parts.map(parseLink).filter(Boolean);
     if (!parsed.length) { if (parts.length) toast('인스타 주소나 링크 모양이 아니에요', true); return; }
     const {ok, warn} = sift(parsed, person, (cur() || {}).id);
-    if (!ok.length) { d.text = ''; d.ask = false; d.warn = warn; renderBoard(true); focusAdd(person); return; }
+    if (!ok.length) { d.text = ''; d.ask = d.shots.some(x => !x.brand); d.warn = warn; renderBoard(true); focusAdd(person); return; }
     if (d.brand) { addLinks(person, d.brand, text); return; }
     d.text = ok.map(p => p.url).join(' '); d.ask = true; d.warn = warn;
     renderBoard(true);
   }
   function pickBrand(person, brand) {
-    const d = draftOf(person);
-    if (d.ask && d.text.trim()) { d.brand = brand; addLinks(person, brand, d.text); return; }   // 주소를 먼저 넣어 둠 → 고르는 순간 저장
+    const d = draftOf(person), pend = d.shots.filter(x => !x.brand), txt = d.ask && d.text.trim();
+    if (pend.length || txt) {   // 주소 · 이미지를 먼저 넣어 둠 → 고르는 순간 저장
+      d.brand = brand;
+      if (pend.length) { pend.forEach(x => { x.brand = brand; }); flushShots(S.wk, person); }
+      if (txt) addLinks(person, brand, d.text); else { d.ask = false; renderBoard(true); }
+      return;
+    }
     d.brand = d.brand === brand ? null : brand; d.ask = false;
     renderBoard(true);
     focusAdd(person);
@@ -1046,7 +1121,7 @@
         const r = await rest(T_L, {method: 'POST', headers: RET, body: JSON.stringify(rows)});
         (r || []).forEach(x => { S.links.set(x.id, x); if (later(x.updated_at, S.curL)) S.curL = x.updated_at; });
       }
-      d.text = ''; d.ask = false; d.brand = null; d.warn = kept.concat(warn.filter(w => !kept.includes(w)));   // 다음 주소도 브랜드를 다시 고르게
+      d.text = ''; d.ask = d.shots.some(x => !x.brand); d.brand = null; d.warn = kept.concat(warn.filter(w => !kept.includes(w)));   // 다음 주소도 브랜드를 다시 고르게
       if (S.filter && S.filter !== brand) S.filter = null;   // 다른 브랜드만 보던 중이면 방금 넣은 것이 보이게
       if (ok.length && !d.warn.length) toast(`${bName(brand)} ${ok.length > 1 ? ok.length + '개 ' : ''}넣었어요`);
     } catch (e) {
@@ -1064,17 +1139,125 @@
     focusAdd(person);
   }
 
+  /* ── 이미지 넣기 — 주소 없이 사진만 (2026-11-24 "세일 래퍼런스 이미지만 넣고싶다"). 고르자마자 올리기 시작하고, 브랜드를 골라야 저장 ── */
+  function addShots(person, files) {
+    const wk = S.wk, d = draftOf(person), list = files.filter(MtgShots.isImg);
+    if (!list.length) { toast('사진 파일만 넣을 수 있어요', true); return; }
+    const made = list.slice(0, 20).map(f => {
+      const x = {id: Math.random().toString(36).slice(2, 10), local: URL.createObjectURL(f), res: null, err: '', brand: d.brand || null};
+      x.up = MtgShots.upload(f).then(r => { x.res = r; }, e => { x.err = (e && e.message) || '사진을 올리지 못했어요'; });
+      return x;
+    });
+    d.shots.push(...made); d.warn = [];
+    if (d.brand) flushShots(wk, person); else d.ask = true;
+    renderBoard(true);
+    made.forEach(x => x.up.then(() => {
+      if (x.err) { toast(x.err, true); dropShot(d, x); }
+      if (S.wk === wk) renderBoard();
+    }));
+  }
+  function dropShot(d, x) {
+    d.shots = d.shots.filter(y => y !== x);
+    URL.revokeObjectURL(x.local);
+    if (!d.shots.length && !d.text.trim()) d.ask = false;
+  }
+  async function flushShots(wk, person) {   // 브랜드를 고른 사진을 저장
+    const key = wk + '|' + person, d = drafts.get(key), bk = key + '|s';
+    if (!d || busy.has(bk)) return;
+    busy.add(bk);
+    let tries = 0, n = 0, brand = null;
+    try {
+      for (;;) {
+        const xs = d.shots.filter(x => x.brand);
+        if (!xs.length) break;
+        await Promise.all(xs.map(x => x.up));
+        const okx = xs.filter(x => x.res), m = await ensureMeeting(wk), warn = [], rows = [], base = Date.now();
+        okx.forEach((x, i) => {
+          const r = {meeting_id: m.id, person, brand: x.brand, url: MtgShots.url(x.res.p), kind: 'image', img: x.res, memo: '', pos: base + i, created_by: ME()};
+          const hit = linksOf(m.id).concat(rows).find(l => dupKey(l) === dupKey(r));
+          if (hit) warn.push(dupMsg(r, hit, person)); else rows.push(r);
+        });
+        try {
+          if (rows.length) {
+            const r = await rest(T_L, {method: 'POST', headers: RET, body: JSON.stringify(rows)});
+            (r || []).forEach(x => { S.links.set(x.id, x); if (later(x.updated_at, S.curL)) S.curL = x.updated_at; });
+            n += rows.length; brand = rows[0].brand;
+          }
+        } catch (e) {
+          if (e.status === 409 && tries++ < 2) { await poll(); continue; }   // 방금 다른 사람이 같은 사진을 넣음 → 새로 받아 다시 가름
+          throw e;
+        }
+        xs.forEach(x => dropShot(d, x));
+        d.warn = d.warn.concat(warn);
+      }
+      d.brand = null;
+      if (!d.shots.length && !d.text.trim()) d.ask = false;
+      if (n && S.filter && S.filter !== brand) S.filter = null;   // 다른 브랜드만 보던 중이면 방금 넣은 것이 보이게
+      if (n && !d.warn.length) toast(`${bName(brand)} 이미지 ${n > 1 ? n + '장 ' : ''}넣었어요`);
+    } catch (e) {
+      console.warn('shots', e);
+      d.shots.forEach(x => { x.brand = null; }); d.brand = null; d.ask = d.shots.length > 0;   // 사진은 그대로 남겨 두고 브랜드를 다시 누르면 한 번 더
+      toast('이미지를 저장하지 못했어요 — 브랜드를 다시 눌러 주세요', true);
+    } finally { busy.delete(bk); }
+    if (S.wk === wk) renderAll(true);
+  }
+  function pickShots(person) {
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = 'image/*'; i.multiple = true; i.hidden = true;
+    document.body.appendChild(i);
+    i.addEventListener('change', () => { if (i.files.length) addShots(person, [...i.files]); i.remove(); });
+    i.click();
+  }
+  // 붙여넣기 — 칸 안이면 그 칸, 아니면 마우스가 올라가 있는 칸, 그것도 아니면 내 칸
+  let hoverCol = '';
+  document.addEventListener('mouseover', e => { const c = e.target.closest && e.target.closest('.col'); hoverCol = c ? c.dataset.p : ''; });
+  const myCol = () => (ME() && document.querySelector(`.col[data-p="${cssEsc(ME())}"]`) ? ME() : '');
+  document.addEventListener('paste', e => {
+    if (e.defaultPrevented || $('app').hidden || !$('memDlg').hidden) return;
+    const t = e.target, fs = MtgShots.filesOf(e.clipboardData); if (!fs.length) return;
+    if (ED.notes.has(t) || ED.decisions.has(t) || (t.closest && t.closest('.lk-me'))) return;
+    if (/^(INPUT|TEXTAREA)$/.test(t.tagName || '') && (e.clipboardData.getData('text/plain') || '').trim()) return;   // 글이 같이 있으면 글로
+    const col = t.closest && t.closest('.col'), person = col ? col.dataset.p : hoverCol || myCol();
+    e.preventDefault();
+    if (!person) { toast('넣을 사람 칸에 마우스를 올리고 붙여 넣어 주세요', true); return; }
+    addShots(person, fs);
+  });
+  // 끌어다 놓기 — 사진 파일, 또는 다른 창의 주소
+  const dtHas = (e, t) => !!e.dataTransfer && [...(e.dataTransfer.types || [])].includes(t);
+  const dropCol = c => document.querySelectorAll('.col.drop').forEach(x => { if (x !== c) x.classList.remove('drop'); });
+  document.addEventListener('dragover', e => {
+    const c = e.target.closest && e.target.closest('.col'), file = dtHas(e, 'Files'), url = dtHas(e, 'text/uri-list');
+    if (!file && !(url && c)) return;
+    e.preventDefault();   // 칸 밖에 놓아도 사진이 화면을 덮어 열리지 않게
+    e.dataTransfer.dropEffect = c ? 'copy' : 'none';
+    dropCol(c); if (c) c.classList.add('drop');
+  });
+  document.addEventListener('dragleave', e => { if (!e.relatedTarget) dropCol(null); });
+  document.addEventListener('dragenter', e => { const c = e.target.closest && e.target.closest('.col'); if (!c) dropCol(null); });
+  document.addEventListener('drop', e => {
+    dropCol(null);
+    const c = e.target.closest && e.target.closest('.col'), file = dtHas(e, 'Files');
+    if (!file && !(c && dtHas(e, 'text/uri-list'))) return;
+    e.preventDefault();
+    if (!c) return;
+    const fs = MtgShots.filesOf(e.dataTransfer);
+    if (fs.length) { addShots(c.dataset.p, fs); return; }
+    const u = (e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain') || '').split('\n').filter(x => x && x[0] !== '#')[0];
+    if (u) submitLinks(c.dataset.p, u.trim()); else toast('사진 파일만 넣을 수 있어요', true);
+  });
+
   const board = $('board');
   board.addEventListener('submit', e => {
     const f = e.target.closest('.add-in'); if (!f) return;
     e.preventDefault();
     submitLinks(f.dataset.p, f.querySelector('input').value);
   });
-  board.addEventListener('input', e => { const f = e.target.closest('.add-in'); if (!f) return; const d = draftOf(f.dataset.p); d.text = e.target.value; if (!d.text.trim() && d.ask) { d.ask = false; const box = f.closest('.ent'); if (box) box.classList.remove('need'); } });
+  board.addEventListener('input', e => { const f = e.target.closest('.add-in'); if (!f) return; const d = draftOf(f.dataset.p); d.text = e.target.value; if (!d.text.trim() && d.ask && !d.shots.length) { d.ask = false; const box = f.closest('.ent'); if (box) box.classList.remove('need'); } });
   // 붙여 넣으면 바로 넣기 (주소가 맞을 때만). 여러 줄을 붙여도 줄마다 따로
   board.addEventListener('paste', e => {
     const f = e.target.closest('.add-in'); if (!f) return;
     const raw = e.clipboardData ? e.clipboardData.getData('text') : '', parts = splitWords(raw);
+    if (!parts.length) return;   // 사진만 붙여넣음 → 아래 document paste 가 넣는다
     if (parts.length > 1 && parts.every(x => parseLink(x))) { e.preventDefault(); submitLinks(f.dataset.p, parts.join(' ')); return; }
     setTimeout(() => {
       const v = e.target.value.trim(), ps = splitWords(v);
@@ -1089,6 +1272,8 @@
       if (a === 'brand') { pickBrand(person, act.dataset.b); return; }
       if (a === 'kind') { const i = col.querySelector('.add-in input'); if (i) i.focus(); return; }
       if (a === 'okwarn') { draftOf(person).warn = []; renderBoard(true); return; }
+      if (a === 'shot') { pickShots(person); return; }
+      if (a === 'unshot') { const d = draftOf(person), id = act.closest('.pd').dataset.s, x = d.shots.find(y => y.id === id); if (x) dropShot(d, x); MtgShots.hide(); renderBoard(true); return; }
       const card = act.closest('.lk'); if (!card) return;
       const l = S.links.get(card.dataset.id); if (!l) return;
       if (a === 'cbrand') { e.stopPropagation(); brandMenu(act, l); }
@@ -1099,7 +1284,8 @@
     if (e.target.closest('a, textarea, input, button')) return;
     const card = e.target.closest('.lk'); if (!card) return;
     const l = S.links.get(card.dataset.id); if (!l) return;
-    if (!canHover.matches && embedSrc(l)) showPreview(card, l, true);
+    if (l.kind === 'image') { const im = card.querySelector('[data-lb]'); if (im) im.click(); }
+    else if (!canHover.matches && previewOf(l)) showPreview(card, l, true);
     else window.open(l.url, '_blank', 'noopener');
   });
   board.addEventListener('keydown', e => {
@@ -1138,69 +1324,132 @@
     catch (e) { toast('지우지 못했어요: ' + e.message, true); }
   }
 
-  /* ══════════════════════ 인스타 미리보기 ══════════════════════
-     PC = 링크 위에 마우스를 0.3초 올리면 옆에 인스타 화면(인스타 공식 퍼가기 embed), 미리보기 위로 옮겨도 그대로.
-     휴대폰 = 링크를 누르면 아래에서 올라옴. 한 번 연 미리보기는 몇 개 기억해 다시 올리면 바로 뜬다. */
+  /* ══════════════════════ 미리보기 ══════════════════════
+     PC = 주소(카드 · 메모 속 주소 모두)에 마우스를 0.3초 올리면 옆에, 미리보기 위로 옮겨도 그대로. 휴대폰 = 누르면 아래에서 올라옴.
+     인스타 · 유튜브 · 틱톡 = 공식 퍼가기 화면, 사진 주소 = 그 사진, 그 밖 = 제목 · 설명 · 대표 이미지(엣지 함수 link-peek). 이미지 카드는 shots.js 가 크게.
+     한 번 연 미리보기는 몇 개 기억해 다시 올리면 바로 뜬다. */
   const canHover = matchMedia('(hover: hover) and (pointer: fine)');
-  const pv = $('pv'), pvB = $('pvB'), pvCache = new Map();
-  let pvCard = null, pvShowT = 0, pvHideT = 0;
+  const pv = $('pv'), pvB = $('pvB'), pvO = $('pvO'), pvCache = new Map(), peeks = new Map();
+  let pvCard = null, pvShowT = 0, pvHideT = 0, pvAt = null;
+  function previewOf(l) {
+    const ig = embedSrc(l);
+    if (ig) return {src: ig, w: 360, h: l.kind === 'account' || l.kind === 'story' ? 560 : 640, ig: true};
+    if (l.kind === 'image') return null;
+    let u; try { u = new URL(l.url); } catch (e) { return null; }
+    const host = u.hostname.replace(/^(www|m)\./, ''), yt = host === 'youtu.be' ? u.pathname.slice(1) : /(^|\.)youtube\.com$/.test(host) ? u.searchParams.get('v') || (/^\/(shorts|embed|live)\/([\w-]+)/.exec(u.pathname) || [])[2] : '';
+    if (yt && /^[\w-]{6,20}$/.test(yt)) return /\/shorts\//.test(u.pathname) ? {src: `https://www.youtube.com/embed/${yt}`, w: 340, h: 640} : {src: `https://www.youtube.com/embed/${yt}`, w: 520, h: 350};
+    const tk = /(^|\.)tiktok\.com$/.test(host) && (/\/video\/(\d+)/.exec(u.pathname) || [])[1];
+    if (tk) return {src: `https://www.tiktok.com/embed/v2/${tk}`, w: 340, h: 700};
+    return {peek: u.href, w: 360, h: 0, img: /\.(jpe?g|png|webp|gif|avif)$/i.test(u.pathname)};
+  }
   function frameFor(src) {
     let f = pvCache.get(src);
     if (f) { pvCache.delete(src); pvCache.set(src, f); return f; }
     f = document.createElement('iframe');
     f.src = src; f.loading = 'eager'; f.referrerPolicy = 'strict-origin-when-cross-origin';
-    f.setAttribute('allow', 'encrypted-media; picture-in-picture; clipboard-write');
-    f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox');
-    f.title = '인스타 미리보기';
+    f.setAttribute('allow', 'encrypted-media; picture-in-picture; clipboard-write; fullscreen');
+    f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation');
+    f.title = '미리보기';
     f.addEventListener('load', () => { f.dataset.loaded = '1'; if (f.style.display !== 'none') $('pvSpin').hidden = true; });
     pvB.appendChild(f);
     pvCache.set(src, f);
     while (pvCache.size > 8) { const [k, old] = pvCache.entries().next().value; pvCache.delete(k); old.remove(); }
     return f;
   }
-  function showPreview(card, l, sheet) {
-    const src = embedSrc(l); if (!src) return;
-    clearTimeout(pvHideT);
-    if (pvCard && pvCard !== card) pvCard.classList.remove('pv-on');
-    pvCard = card; card.classList.add('pv-on');
-    $('pvT').textContent = linkTitle(l);
-    $('pvOpen').href = l.url;
-    const f = frameFor(src);
-    pvCache.forEach(x => { x.style.display = x === f ? 'block' : 'none'; });
-    $('pvSpin').hidden = f.dataset.loaded === '1';
-    pv.classList.toggle('sheet', !!sheet);
-    $('pvVeil').hidden = !sheet;
-    pv.hidden = false;
-    if (sheet) { pv.style.height = ''; return; }
-    const r = card.getBoundingClientRect(), W = 360, vw = innerWidth, vh = innerHeight;
-    const H = Math.min(l.kind === 'account' || l.kind === 'story' ? 560 : 640, vh - 24);
+  function peek(url) {
+    if (!peeks.has(url)) {
+      const p = fetch(`${SB_URL}/functions/v1/link-peek?u=${encodeURIComponent(url)}`, {headers: {apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY}}).then(r => r.json()).catch(() => ({ok: false, error: '미리보기를 못 받았어요'}));
+      peeks.set(url, p);
+      p.then(d => { if (!d || !d.ok) setTimeout(() => peeks.delete(url), 60000); });   // 잠깐 막힌 것은 나중에 다시
+    }
+    return peeks.get(url);
+  }
+  const ogHtml = d => (d.ok
+    ? `${d.image ? `<img src="${esc(d.image)}" alt="" referrerpolicy="no-referrer">` : ''}<div>${d.title ? `<b>${esc(d.title)}</b>` : ''}${d.desc ? `<p>${esc(d.desc)}</p>` : ''}<span>${esc(d.site || '')}</span></div>`
+    : `<div><b>미리보기를 안 주는 사이트예요</b><p>${esc(d.error || '')} — 위 '새 탭으로 열기'로 봐 주세요</p></div>`);
+  function pvPlace() {
+    if (!pvAt || pv.classList.contains('sheet') || !pvAt.el.isConnected) return;
+    const r = pvAt.el.getBoundingClientRect(), vw = innerWidth, vh = innerHeight, W = Math.min(pvAt.w, vw - 16);
+    pv.style.width = W + 'px';
+    pv.style.height = pvAt.h ? Math.min(pvAt.h, vh - 24) + 'px' : '';
+    pv.style.maxHeight = (vh - 24) + 'px';
+    const H = pvAt.h ? Math.min(pvAt.h, vh - 24) : pv.offsetHeight;
     let x = r.right + 10;
     if (x + W > vw - 8) x = r.left - W - 10;
     if (x < 8) x = clamp(r.left, 8, vw - W - 8);
     pv.style.left = x + 'px';
-    pv.style.top = clamp(r.top - 60, 12, vh - H - 12) + 'px';
-    pv.style.height = H + 'px';
+    pv.style.top = clamp(r.top - 60, 12, Math.max(12, vh - H - 12)) + 'px';
+  }
+  function showPreview(card, l, sheet) {
+    const P = previewOf(l); if (!P) return;
+    clearTimeout(pvHideT);
+    if (pvCard && pvCard !== card) pvCard.classList.remove('pv-on');
+    pvCard = card; card.classList.add('pv-on');
+    $('pvT').textContent = linkTitle(l);
+    $('pvOpen').href = l.url; $('pvOpen').textContent = P.ig ? '인스타에서 열기 ↗' : '새 탭으로 열기 ↗';
+    $('pvF').hidden = !P.ig;
+    const f = P.src ? frameFor(P.src) : null;
+    pvCache.forEach(x => { x.style.display = x === f ? 'block' : 'none'; });
+    pvO.hidden = !P.peek;
+    pv.classList.toggle('sheet', !!sheet);
+    $('pvVeil').hidden = !sheet;
+    pv.hidden = false;
+    pvAt = {el: card, w: P.w, h: P.h};
+    if (sheet) { pv.style.height = pv.style.width = pv.style.maxHeight = ''; }
+    if (f) $('pvSpin').hidden = f.dataset.loaded === '1';
+    else {
+      $('pvSpin').hidden = false; pvO.innerHTML = '<div style="min-height:120px"></div>';
+      const now = pvCard;
+      (P.img ? Promise.resolve({ok: true, image: l.url, title: '', desc: '', site: linkTitle(l)}) : peek(P.peek)).then(d => {
+        if (pvCard !== now || pv.hidden) return;
+        $('pvSpin').hidden = true; pvO.innerHTML = ogHtml(d || {});
+        const im = pvO.querySelector('img'); if (im) { im.addEventListener('load', pvPlace); im.addEventListener('error', () => { im.remove(); pvPlace(); }); }
+        pvPlace();
+      });
+    }
+    pvPlace();
   }
   function hidePreview() {
-    clearTimeout(pvShowT); clearTimeout(pvHideT);
-    pv.hidden = true; $('pvVeil').hidden = true;
+    clearTimeout(pvShowT); clearTimeout(pvHideT); pvShowT = 0;
+    pv.hidden = true; $('pvVeil').hidden = true; pvAt = null;
     if (pvCard) { pvCard.classList.remove('pv-on'); pvCard = null; }
   }
-  board.addEventListener('mouseover', e => {
-    if (!canHover.matches) return;
-    const card = e.target.closest('.lk'); if (!card || card.contains(e.relatedTarget)) return;
-    if (e.target.closest('.lk-a')) return;
-    const l = S.links.get(card.dataset.id); if (!l || !embedSrc(l)) return;
-    clearTimeout(pvShowT); clearTimeout(pvHideT);
-    pvShowT = setTimeout(() => showPreview(card, l, false), pv.hidden ? 300 : 80);
+  // 마우스를 올릴 수 있는 것 = 주소 카드 · 메모 속 주소
+  function hoverOf(t) {
+    if (!t || !t.closest) return null;
+    const a = t.closest('[data-u]');
+    if (a) { const l = parseLink(a.dataset.u); return l ? {el: a, l} : null; }
+    const card = t.closest('#board .lk'); if (!card || t.closest('.lk-a')) return null;
+    const l = S.links.get(card.dataset.id);
+    return l && l.kind !== 'image' ? {el: card, l} : null;
+  }
+  const pvArm = h => { clearTimeout(pvShowT); pvShowT = setTimeout(() => { pvShowT = 0; if (h.el.isConnected && h.el.matches(':hover')) showPreview(h.el, h.l, false); }, pv.hidden ? 300 : 80); };
+  document.addEventListener('mouseover', e => {
+    if (!canHover.matches || e.buttons) return;
+    const h = hoverOf(e.target), from = hoverOf(e.relatedTarget);
+    if (!h || (from && from.el === h.el) || !previewOf(h.l)) return;
+    clearTimeout(pvHideT);
+    if (pvCard === h.el && !pv.hidden) { clearTimeout(pvShowT); pvShowT = 0; return; }
+    pvArm(h);
   });
-  board.addEventListener('mouseout', e => {
+  // 휠로 내리다 닫힌 뒤에도 그 카드 위에서 마우스를 움직이면 다시
+  document.addEventListener('mousemove', e => {
+    if (pvShowT || !pv.hidden || e.buttons || !canHover.matches) return;
+    const h = hoverOf(e.target); if (h && previewOf(h.l)) pvArm(h);
+  }, {passive: true});
+  document.addEventListener('mouseout', e => {
     if (!canHover.matches) return;
-    const card = e.target.closest('.lk'); if (!card || card.contains(e.relatedTarget)) return;
-    clearTimeout(pvShowT);
-    if (pv.contains(e.relatedTarget)) return;
-    pvHideT = setTimeout(hidePreview, 250);
+    const h = hoverOf(e.target); if (!h) return;
+    const to = hoverOf(e.relatedTarget); if (to && to.el === h.el) return;
+    clearTimeout(pvShowT); pvShowT = 0;
+    if (e.relatedTarget && pv.contains(e.relatedTarget)) return;
+    clearTimeout(pvHideT); pvHideT = setTimeout(hidePreview, 250);
   });
+  document.addEventListener('click', e => {   // 휴대폰: 메모 속 주소도 누르면 미리보기
+    const a = !canHover.matches && e.target.closest && e.target.closest('[data-u]'); if (!a) return;
+    const l = parseLink(a.dataset.u); if (!l || !previewOf(l)) return;
+    e.preventDefault(); e.stopPropagation(); showPreview(a, l, true);
+  }, true);
   pv.addEventListener('mouseenter', () => clearTimeout(pvHideT));
   pv.addEventListener('mouseleave', e => { if (pv.classList.contains('sheet')) return; if (pvCard && pvCard.contains(e.relatedTarget)) return; pvHideT = setTimeout(hidePreview, 250); });
   $('pvX').addEventListener('click', hidePreview);
@@ -1289,6 +1538,7 @@
     if (menuEl) closeMenu();
     else if (!$('memDlg').hidden) $('memDlg').hidden = true;
     else if (!pv.hidden) hidePreview();
+    else MtgShots.hide();
   });
   async function copyText() {
     const m = cur(), cols = columnsOf(m), all = m ? linksOf(m.id) : [];
@@ -1299,8 +1549,8 @@
       ls.forEach(l => out.push(`- [${bName(l.brand)}] ${l.url}${l.memo ? '  ' + l.memo.replace(/\n/g, ' ') : ''}`));
     }));
     const e = est(S.wk), notes = e.val.notes.trim(), dec = e.val.decisions.trim();
-    if (notes) out.push('', '■ 회의 메모', notes);
-    if (dec) out.push('', '■ 결정 · 할 일', dec);
+    if (notes) out.push('', '■ 회의 메모', MtgShots.plain(notes));
+    if (dec) out.push('', '■ 결정 · 할 일', MtgShots.plain(dec));
     const txt = out.join('\n');
     try { await navigator.clipboard.writeText(txt); toast('복사했어요 — 카톡에 붙여 넣으면 돼요'); }
     catch (err) {
@@ -1351,7 +1601,7 @@
     pollLoop();
     if (window.OfficeLive) liveBoot(); else { window.addEventListener('load', liveBoot); setTimeout(liveBoot, 5000); }
   }
-  window.__mtgTest = {parseLink, dupKey, merge3, weekOf, weeksOf, weekName};   // 확인용
+  window.__mtgTest = {parseLink, dupKey, merge3, weekOf, weeksOf, weekName, previewOf, urlsIn, linkify, defaultMembers, ED, S, addShots};   // 확인용
   if (isUnlocked()) start(); else { $('lock').hidden = false; setTimeout(() => $('lockPin').focus(), 50); }
 })();
 </script>
