@@ -14599,7 +14599,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <div class="cjb-bh">라벨 크기 · 위치</div>
               <div class="cjb-fields">
                 <label class="cjb-f s4"><span>크기</span><select class="cjb-in" id="cjbP_preset" onchange="cjbPreset(this.value)">
-                  <option value="123x100">5인치 · CJ 표준 (123 × 100 mm, 가로형)</option><option value="100x150">4 × 6 인치 (100 × 150 mm)</option><option value="100x100">100 × 100 mm</option><option value="102x76">102 × 76 mm (4 × 3 인치)</option><option value="custom">직접 입력</option>
+                  <option value="104x123">CJ 전용 용지 · 라벨 프린터 (104 × 123 mm, 세로로 나옴 — 프린터 용지 'CJ 운송장 100x123')</option><option value="123x100">5인치 · CJ 표준 (123 × 100 mm, 가로형)</option><option value="100x150">4 × 6 인치 (100 × 150 mm)</option><option value="100x100">100 × 100 mm</option><option value="102x76">102 × 76 mm (4 × 3 인치)</option><option value="custom">직접 입력</option>
                 </select></label>
                 <div class="cjb-f s2"><span>&nbsp;</span><button type="button" class="cjb-btn" onclick="cjbSwapWH()">가로 ↔ 세로</button></div>
                 <label class="cjb-f s2"><span>가로 (mm)</span><input class="cjb-in" id="cjbP_w" type="number" min="40" max="220" step="1"></label>
@@ -14615,7 +14615,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <div class="cjb-box" style="margin-top:12px">
               <div class="cjb-bh">운송장에 찍을 것</div>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_preprint"> 용지에 CJ 파란 틀이 이미 인쇄돼 있어요 (CJ 전용 운송장 용지) — 글자만 찍기</label>
-              <p class="cjb-note" style="margin:0 0 6px 22px">처음 한 번 아래 <b>📐 위치 맞춤 시험</b>을 찍어 보세요. 검은 테두리가 파란 칸보다 오른쪽으로 2mm 나가 있으면 '오른쪽으로 밀기'를 −2, 아래로 나가 있으면 '아래로 밀기'를 − 로 고치고 저장해요.</p>
+              <label class="cjb-chk"><input type="checkbox" id="cjbP_flip"> 위아래 뒤집어 찍기 (용지의 파란 틀과 거꾸로 나오면 켜요)</label>
+              <p class="cjb-note" style="margin:0 0 6px 22px">처음 한 번 아래 <b>📐 위치 맞춤 시험</b>을 찍어 보세요 (크롬 인쇄 창: 프린터 Xprinter · 용지 <b>CJ 운송장 100x123</b> · 여백 없음 · 배율 기본값). 거꾸로 나오면 위 '위아래 뒤집어 찍기'를 켜고, 운송장을 바로 세워 봤을 때 검은 테두리가 파란 칸보다 오른쪽으로 2mm 나가 있으면 '오른쪽으로 밀기'를 −2, 아래로 나가 있으면 '아래로 밀기'를 − 로 고치고 저장해요.</p>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_mask_nm"> 받는 분 이름 가운데 가리기 (홍*동)</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_mask_tel"> 받는 분 전화 뒷자리 가리기 (010-1234-****)</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_show_goods"> 상품명</label>
@@ -19664,8 +19665,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // ---- 운송장 출력 (2026-11-24 사장님 "오피스에서 바로 출력 가능하다면 기능 넣어주고. 우리가 설정 할 수 있게 해줘") ----
   // 자료 = 함수 cj labels (받는 분 전체 정보 + CJ 주소정제 분류코드), 설정 = cj_config.print (출력 설정 탭, 모든 PC 공통).
   // 인쇄 = 숨은 iframe 에 mm 단위 라벨 페이지를 써서 print() — 프린터 · 용지는 인쇄 창에서. 바코드 = JsBarcode(SVG).
-  const CJB_PRINT_DEF={w:123,h:100,mt:0,ml:0,pad:0,scale:100,bc:'CODE128',preprint:true,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'02',box_def:'01'};
-  const CJB_P_NUM=['w','h','mt','ml','pad','scale','copies'], CJB_P_BOOL=['mask_nm','mask_tel','show_goods','show_memo','show_order','show_saddr','use_brand','auto','preprint'], CJB_P_STR=['bc','note','box_def'];   // prt_def 뺌 — 발송은 자체 출력만
+  const CJB_PRINT_DEF={w:104,h:123,mt:0,ml:0,flip:false,pad:0,scale:100,bc:'CODE128',preprint:true,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'02',box_def:'01'};
+  const CJB_P_NUM=['w','h','mt','ml','pad','scale','copies'], CJB_P_BOOL=['mask_nm','mask_tel','show_goods','show_memo','show_order','show_saddr','use_brand','auto','preprint','flip'], CJB_P_STR=['bc','note','box_def'];   // prt_def 뺌 — 발송은 자체 출력만
   const CJB_BOX_NM=Object.fromEntries(CJB_BOX), CJB_FRT_NM={'01':'선불','02':'착불','03':'신용'};
   const _cjbPrint=()=>({...CJB_PRINT_DEF, ...(_cjb.print||{})});
   function _cjbPrintFill(){
@@ -19728,7 +19729,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const W=Number(p.w)||123, H=Number(p.h)||100, pad=Number(p.pad)||0;
     const aw=Math.max(10,W-2*pad), ah=Math.max(10,H-2*pad), port=W<H;
     const s=port ? Math.min(aw/100, ah/123) : Math.min(aw/123, ah/100);
-    const tf=port ? `translate(${(100*s).toFixed(3)}mm,0) rotate(90deg) scale(${s.toFixed(4)})` : `scale(${s.toFixed(4)})`;
+    const S=s.toFixed(4), F=!!p.flip;
+    // 세로 용지(라벨 프린터에 100 폭으로 들어가는 CJ 용지)면 판을 90° 돌린다 — 기본은 윈도우 "가로" 인쇄와 같은 반시계, 뒤집기를 켜면 시계 방향
+    const tf=port ? (F ? `translate(${(100*s).toFixed(3)}mm,0) rotate(90deg) scale(${S})` : `translate(0,${(123*s).toFixed(3)}mm) rotate(-90deg) scale(${S})`)
+      : (F ? `translate(${(123*s).toFixed(3)}mm,${(100*s).toFixed(3)}mm) rotate(180deg) scale(${S})` : `scale(${S})`);
+    // 남는 칸(라이너 등)은 가운데로, 밀기(mm)는 운송장을 바로 세워 본 방향 기준
+    const offX=((aw-(port ? 100 : 123)*s)/2).toFixed(2), offY=((ah-(port ? 123 : 100)*s)/2).toFixed(2);
+    const nudge=` translate(${Number(p.ml)||0}mm,${Number(p.mt)||0}mm)`;
     const em=((Number(p.scale)||100)/100).toFixed(3);
     const blue=pv ? '#1d5bbf' : '#000';
     return `@page{size:${W}mm ${H}mm;margin:0}
@@ -19736,7 +19743,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .lb{position:relative;width:${W}mm;height:${H}mm;overflow:hidden;page-break-after:always;break-after:page}
 .lb:last-child{page-break-after:auto;break-after:auto}
-.in{position:absolute;left:${pad+(Number(p.ml)||0)}mm;top:${pad+(Number(p.mt)||0)}mm;width:123mm;height:100mm;transform-origin:0 0;transform:${tf};font-size:${em}mm;line-height:1.15;font-weight:700${pv ? '' : ';-webkit-text-stroke:.09mm #000'}}
+.in{position:absolute;left:${(pad+Number(offX)).toFixed(2)}mm;top:${(pad+Number(offY)).toFixed(2)}mm;width:123mm;height:100mm;transform-origin:0 0;transform:${tf}${nudge};font-size:${em}mm;line-height:1.15;font-weight:700${pv ? '' : ';-webkit-text-stroke:.09mm #000'}}
 .in>*{position:absolute;margin:0}
 .one{white-space:nowrap;overflow:hidden}
 .num{font-family:Arial,Helvetica,'Malgun Gothic',sans-serif}
@@ -19878,7 +19885,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   }
   async function cjbPrintPreview(){
     const box=document.getElementById('cjbPrev'); if(!box || document.getElementById('cjbPaneSet')?.hidden) return;
-    const p={..._cjbPrint(),..._cjbPrintRead(),copies:1};
+    let p={..._cjbPrint(),..._cjbPrintRead(),copies:1};
+    if(Number(p.w)<Number(p.h)) p={...p,w:p.h,h:p.w,flip:false};   // 미리보기는 바로 세워서
     try{
       const html=await _cjbLabelDoc([_cjbSampleLabel()],p,true);
       const pxW=p.w*3.7795, pxH=p.h*3.7795, maxW=Math.max(260,(box.clientWidth||340)-24), sc=Math.min(1, maxW/pxW, 560/pxH);
