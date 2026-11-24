@@ -34197,6 +34197,9 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       if(!plans) throw new Error('load');
       _dsl.data = {plans: plans.filter(r => String(r.text || '').trim()), leave, out: new Set([...gone, ...off].map(r => r.staff_name))};
       _dsl.at = Date.now();
+      // 퇴사자가 업무일지 카드 · LIVE 미작성에 섞이지 않게 — 연차 동기화를 기다리지 않고 여기서 받은 명단으로 바로 숨긴다
+      if(typeof window.addStaffHidden === 'function' && window.addStaffHidden(gone.map(r => r.staff_name))
+         && !document.getElementById('viewDiary')?.hidden && !(typeof _diaryIsEditing === 'function' && _diaryIsEditing())) _diaryRenderBoard();
     }catch(e){ _dsl.at = Date.now() - 4*60*1000; }   // 1분 뒤 다시
     finally{ _dsl.loading = false; }
     _dslRender();
@@ -38845,6 +38848,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   function activeStaff(){return STAFF.filter(s=>!_hiddenStaff.has(s.name) && !s.ceo)}
   window.activeStaff=activeStaff;
   window.isStaffHidden=isStaffHidden;
+  /* 업무일지가 따로 받아온 퇴사자 명단도 바로 반영 — 연차 묶음이 늦거나 실패해도 퇴사자가 '미작성'에 뜨지 않게 (2026-11-24). 새로 추가된 게 있으면 true */
+  window.addStaffHidden=function(names){let n=0;for(const x of (names||[])) if(x && !_hiddenStaff.has(x)){_hiddenStaff.add(x);n++}return n>0};
 
   /* 직책(팀장 등) — staff_titles 테이블에서 동기화. 마스터가 인사팀 편집 모드에서 입력/삭제.
      조직도 pill · 연차 카드 이름 옆에 표시되고, 직책 있는 사람이 팀 맨 위로 온다. */
