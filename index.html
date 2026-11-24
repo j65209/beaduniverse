@@ -14588,7 +14588,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
       <!-- 출력 설정 (2026-11-24 사장님 "오피스에서 바로 출력 가능하다면 기능 넣어주고. 우리가 설정 할 수 있게 해줘") — 저장 = 함수 cj print_save (모든 PC 공통) -->
       <div class="cjb-pane" id="cjbPaneSet" role="tabpanel" aria-labelledby="cjbTabSet" hidden>
-        <p class="cjb-note"><b>자체 출력</b>으로 접수한 건(운송장번호가 바로 붙은 건)을 오피스에서 바로 인쇄해요. 여기 설정은 <b>모든 PC 에 같이</b> 적용돼요. 프린터는 인쇄 창에서 골라요 — 처음 한 번은 인쇄 창 '설정 더보기'에서 <b>여백 없음 · 배율 100% · 용지 크기 = 라벨 크기</b>로 맞춰 주세요. 도착지 분류코드는 CJ 주소정제로 받아 찍어요. CJ 표준 운송장 샘플 검증 전이라, 운영 전에 견본을 CJ 에 보내 확인받아야 해요.</p>
+        <p class="cjb-note"><b>자체 출력</b>으로 접수한 건(운송장번호가 바로 붙은 건)을 오피스에서 바로 인쇄해요. 여기 설정은 <b>모든 PC 에 같이</b> 적용돼요. 프린터는 인쇄 창에서 골라요 — 처음 한 번은 인쇄 창 '설정 더보기'에서 <b>여백 없음 · 배율 100% · 용지 크기 = 라벨 크기</b>로 맞춰 주세요. 모양은 <b>CJ 프로그램이 찍는 5인치 운송장</b>과 같게 맞췄어요 (분류코드 · 주소 약칭 · 배송 구역은 CJ 주소정제로). CJ 파란 틀이 인쇄된 전용 용지를 쓰면 아래 &lsquo;글자만 찍기&rsquo;를 켜고, 어긋나면 밀기(mm)로 맞춰요. 운영 전에 견본을 CJ 에 보내 확인받아야 해요.</p>
         <div class="cjb-set">
           <div class="cjb-set-form">
             <div class="cjb-box">
@@ -14600,19 +14600,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
                 <div class="cjb-f s2"><span>&nbsp;</span><button type="button" class="cjb-btn" onclick="cjbSwapWH()">가로 ↔ 세로</button></div>
                 <label class="cjb-f s2"><span>가로 (mm)</span><input class="cjb-in" id="cjbP_w" type="number" min="40" max="220" step="1"></label>
                 <label class="cjb-f s2"><span>세로 (mm)</span><input class="cjb-in" id="cjbP_h" type="number" min="40" max="220" step="1"></label>
-                <label class="cjb-f s2"><span>안쪽 여백 (mm)</span><input class="cjb-in" id="cjbP_pad" type="number" min="0" max="15" step="0.5"></label>
+                <label class="cjb-f s2"><span>바깥 여백 (mm, 0 = 라벨 끝까지)</span><input class="cjb-in" id="cjbP_pad" type="number" min="0" max="15" step="0.5"></label>
                 <label class="cjb-f s2"><span>아래로 밀기 (mm, − 는 위로)</span><input class="cjb-in" id="cjbP_mt" type="number" min="-20" max="20" step="0.5"></label>
                 <label class="cjb-f s2"><span>오른쪽으로 밀기 (mm, − 는 왼쪽)</span><input class="cjb-in" id="cjbP_ml" type="number" min="-20" max="20" step="0.5"></label>
                 <label class="cjb-f s2"><span>글자 크기 (%)</span><input class="cjb-in" id="cjbP_scale" type="number" min="60" max="150" step="5"></label>
                 <label class="cjb-f s2"><span>바코드 종류</span><select class="cjb-in" id="cjbP_bc"><option value="CODE128">CODE128</option><option value="ITF">ITF (2 of 5)</option></select></label>
-                <label class="cjb-f s2"><span>바코드 높이 (mm)</span><input class="cjb-in" id="cjbP_bch" type="number" min="6" max="30" step="1"></label>
                 <label class="cjb-f s2"><span>한 건에 몇 장</span><input class="cjb-in" id="cjbP_copies" type="number" min="1" max="3" step="1"></label>
               </div>
             </div>
             <div class="cjb-box" style="margin-top:12px">
               <div class="cjb-bh">운송장에 찍을 것</div>
+              <label class="cjb-chk"><input type="checkbox" id="cjbP_preprint"> 용지에 CJ 파란 틀이 이미 인쇄돼 있어요 (CJ 전용 운송장 용지) — 글자만 찍기</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_mask_nm"> 받는 분 이름 가운데 가리기 (홍*동)</label>
-              <label class="cjb-chk"><input type="checkbox" id="cjbP_mask_tel"> 받는 분 전화 가운데 가리기 (010-****-5678)</label>
+              <label class="cjb-chk"><input type="checkbox" id="cjbP_mask_tel"> 받는 분 전화 뒷자리 가리기 (010-1234-****)</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_show_goods"> 상품명</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_show_memo"> 배송 메시지</label>
               <label class="cjb-chk"><input type="checkbox" id="cjbP_show_order"> 주문번호</label>
@@ -19654,8 +19654,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // ---- 운송장 출력 (2026-11-24 사장님 "오피스에서 바로 출력 가능하다면 기능 넣어주고. 우리가 설정 할 수 있게 해줘") ----
   // 자료 = 함수 cj labels (받는 분 전체 정보 + CJ 주소정제 분류코드), 설정 = cj_config.print (출력 설정 탭, 모든 PC 공통).
   // 인쇄 = 숨은 iframe 에 mm 단위 라벨 페이지를 써서 print() — 프린터 · 용지는 인쇄 창에서. 바코드 = JsBarcode(SVG).
-  const CJB_PRINT_DEF={w:123,h:100,mt:0,ml:0,pad:3,scale:100,bc:'CODE128',bch:14,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'01',box_def:'01'};
-  const CJB_P_NUM=['w','h','mt','ml','pad','scale','bch','copies'], CJB_P_BOOL=['mask_nm','mask_tel','show_goods','show_memo','show_order','show_saddr','use_brand','auto'], CJB_P_STR=['bc','note','prt_def','box_def'];
+  const CJB_PRINT_DEF={w:123,h:100,mt:0,ml:0,pad:0,scale:100,bc:'CODE128',preprint:false,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'01',box_def:'01'};
+  const CJB_P_NUM=['w','h','mt','ml','pad','scale','copies'], CJB_P_BOOL=['mask_nm','mask_tel','show_goods','show_memo','show_order','show_saddr','use_brand','auto','preprint'], CJB_P_STR=['bc','note','prt_def','box_def'];
   const CJB_BOX_NM=Object.fromEntries(CJB_BOX), CJB_FRT_NM={'01':'선불','02':'착불','03':'신용'};
   const _cjbPrint=()=>({...CJB_PRINT_DEF, ...(_cjb.print||{})});
   function _cjbPrintFill(){
@@ -19685,7 +19685,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ if(msg) msg.textContent=(e && e.message) || String(e); }
   }
   const _cjbMaskNm=s=>{ const t=String(s||'').trim(); if(t.length<=1) return t; if(t.length===2) return t[0]+'*'; return t[0]+'*'.repeat(t.length-2)+t[t.length-1]; };
-  const _cjbMaskTel=s=>String(s||'').replace(/^(\d{2,4})-(\d{3,4})-(\d{4})$/,(_,a,b,c)=>`${a}-${'*'.repeat(b.length)}-${c}`);
+  // CJ 표준 운송장처럼 뒷자리 4개를 가린다 (010-1234-****)
+  const _cjbMaskTel=s=>String(s||'').replace(/^(\d{2,4})-?(\d{3,4})-?(\d{4})$/,(_,a,b)=>`${a}-${b}-****`);
   const _cjbInvFmt=s=>String(s||'').replace(/^(\d{4})(\d{4})(\d{4})$/,'$1-$2-$3');
   function _cjbLoadBarcode(){
     return new Promise((res,rej)=>{
@@ -19696,81 +19697,133 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       document.head.appendChild(s);
     });
   }
-  function _cjbBarcode(text,p){
+  // 바코드 SVG — 칸 크기(mm)에 꽉 차게 늘린다
+  function _cjbBarcode(text,fmt,wmm,hmm){
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    try{ window.JsBarcode(svg,String(text),{format:p.bc==='ITF' ? 'ITF' : 'CODE128',displayValue:false,margin:0,width:2,height:100,background:'#ffffff',lineColor:'#000000'}); }
-    catch(e){ return `<div class="warn">바코드를 못 만들었어요 (${_cjbEsc(text)} · ${_cjbEsc(p.bc)})</div>`; }
+    try{ window.JsBarcode(svg,String(text),{format:fmt==='ITF' ? 'ITF' : 'CODE128',displayValue:false,margin:0,width:2,height:100,background:'#ffffff',lineColor:'#000000'}); }
+    catch(e){ return `<div class="warn">바코드를 못 만들었어요 (${_cjbEsc(text)} · ${_cjbEsc(fmt)})</div>`; }
     const w=parseFloat(svg.getAttribute('width')), h=parseFloat(svg.getAttribute('height'));
     if(w && h) svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
     svg.removeAttribute('width'); svg.removeAttribute('height'); svg.removeAttribute('style');
     svg.setAttribute('preserveAspectRatio','none');
-    svg.setAttribute('style',`width:100%;height:${Number(p.bch)||14}mm;display:block`);
+    svg.setAttribute('shape-rendering','crispEdges');
+    svg.setAttribute('style',`width:${wmm}mm;height:${hmm}mm;display:block`);
     return svg.outerHTML;
   }
-  function _cjbLabelCss(p){
-    const W=p.w, H=p.h, f=(3.5*(p.scale||100)/100).toFixed(2);
+  // ---- CJ대한통운 표준 운송장 (2026-11-24 사장님 "운송장 출력 양식 디자인이 이상해. 내가 이미지 줄게. 디자인 맞춰줘") ----
+  // CJ 프로그램이 찍은 5인치 운송장 사진을 재서 123 × 100 mm 판 위에 칸마다 mm 로 놓았다. 다른 용지 크기는 이 판을 줄이거나 돌려서 맞춘다.
+  // .pp = CJ 전용 용지에 미리 인쇄된 부분(파란 틀 · 받는분/보내는분 · 수량/운임/정산 · 안내 문구 · 오네) — '용지에 파란 틀이 있음'이면 안 찍는다.
+  // 미리보기에선 파랑 · 노랑 바탕까지 사진처럼, 실제 인쇄는 감열 프린터용으로 검정만 (노랑 바탕은 안 찍음).
+  function _cjbLabelCss(p, pv){
+    const W=Number(p.w)||123, H=Number(p.h)||100, pad=Number(p.pad)||0;
+    const aw=Math.max(10,W-2*pad), ah=Math.max(10,H-2*pad), port=W<H;
+    const s=port ? Math.min(aw/100, ah/123) : Math.min(aw/123, ah/100);
+    const tf=port ? `translate(${(100*s).toFixed(3)}mm,0) rotate(90deg) scale(${s.toFixed(4)})` : `scale(${s.toFixed(4)})`;
+    const em=((Number(p.scale)||100)/100).toFixed(3);
+    const blue=pv ? '#1d5bbf' : '#000';
     return `@page{size:${W}mm ${H}mm;margin:0}
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}
-body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:'Gulim','굴림','Dotum','돋움','Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .lb{position:relative;width:${W}mm;height:${H}mm;overflow:hidden;page-break-after:always;break-after:page}
 .lb:last-child{page-break-after:auto;break-after:auto}
-.in{position:absolute;left:${p.ml}mm;top:${p.mt}mm;width:${W}mm;height:${H}mm;padding:${p.pad}mm;display:flex;flex-direction:column;gap:1mm;font-size:${f}mm;line-height:1.25}
-.r{border:.3mm solid #000;padding:.9mm 1.3mm}
-.hd{display:flex;align-items:baseline;gap:2mm;border:0;padding:0 .3mm;white-space:nowrap}
-.hd .cj{font-weight:900;font-size:1.2em;letter-spacing:-.02em}
-.hd .no{font-weight:800;font-size:1.12em;letter-spacing:.03em}
-.hd .dt{margin-left:auto;font-size:.82em}
-.cl{display:flex;align-items:center;gap:2.4mm;min-height:${(3.4*f).toFixed(1)}mm}
-.cl .code{font-weight:900;font-size:3.1em;letter-spacing:-.02em;line-height:1;white-space:nowrap}
-.cl .br{display:flex;flex-direction:column;font-size:1.05em;font-weight:800;line-height:1.2}
-.cl .br span{font-weight:600;font-size:.86em}
-.lab{display:inline-block;font-size:.76em;font-weight:800;margin-right:1.2mm;padding:0 .8mm;border:.25mm solid #000}
-.who{font-size:1.15em;font-weight:900}
-.addr{font-size:1.18em;font-weight:800;margin-top:.5mm;word-break:keep-all;overflow-wrap:anywhere}
-.sub{font-size:.84em;margin-top:.3mm;word-break:keep-all}
-.gd{font-size:.92em;word-break:keep-all;overflow-wrap:anywhere}
-.bc{margin-top:auto;padding:0 2mm}
-.bc .t{text-align:center;font-size:1.08em;font-weight:800;letter-spacing:.12em;margin-top:.6mm}
-.ft{display:flex;flex-wrap:wrap;gap:.4mm 2.4mm;font-size:.8em;padding:0 .3mm}
-.mk{color:#c00;font-weight:900;font-size:.72em;border:.3mm solid #c00;padding:0 .8mm;white-space:nowrap}
-.warn{color:#c00;font-size:.85em;font-weight:700}
-.gm{display:flex;flex-direction:column;gap:1mm;min-width:0}
-/* 가로형 (5인치 · CJ 123 × 100 등 가로가 긴 라벨) — 분류코드 옆에 바코드, 아래 두 칸 */
-.land .in{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);grid-template-areas:"hd hd" "cl bc" "rv rv" "sd gm" "ft ft";grid-template-rows:auto auto auto 1fr auto;gap:1mm 1.4mm}
-.land .cl .br{white-space:nowrap;font-size:.95em}
-.land .cl .code{font-size:2.6em}.land .addr{font-size:1.34em}.land .who{font-size:1.25em}.land .cl{overflow:hidden}
-.land .a-hd{grid-area:hd}.land .a-cl{grid-area:cl}.land .a-bc{grid-area:bc;margin-top:0;align-self:center;padding:0 .5mm}
-.land .a-rv{grid-area:rv}.land .a-sd{grid-area:sd;align-self:start}.land .a-gm{grid-area:gm;align-self:start}.land .a-ft{grid-area:ft}`;
+.in{position:absolute;left:${pad+(Number(p.ml)||0)}mm;top:${pad+(Number(p.mt)||0)}mm;width:123mm;height:100mm;transform-origin:0 0;transform:${tf};font-size:${em}mm;line-height:1.15}
+.in>*{position:absolute;margin:0}
+.one{white-space:nowrap;overflow:hidden}
+.num{font-family:Arial,Helvetica,'Malgun Gothic',sans-serif}
+.b{font-weight:700}.bb{font-weight:900}
+.cb{color:${blue}}
+.bx{background:${blue};color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05;border-radius:.35mm}
+.tint{background:#fff3c4;display:${pv ? 'block' : 'none'}}
+.frame{border:.45mm solid ${blue};border-radius:.7mm}
+.code{display:flex;align-items:baseline;white-space:nowrap;line-height:1;font-family:Arial,Helvetica,sans-serif;font-weight:900;letter-spacing:-.02em}
+.c1{font-size:9.4em}.c2{font-size:15em}.c3{font-size:7.8em}
+.gd div{word-break:break-all}
+.mks{display:flex;gap:1.4mm;align-items:center}
+.mk{border:.3mm solid #000;padding:0 .8mm;font-weight:800;border-radius:.4mm}
+.mk.r{color:${pv ? '#c00' : '#000'};border-color:${pv ? '#c00' : '#000'}}
+.warn{color:${pv ? '#c00' : '#000'};font-weight:700;white-space:normal}
+.pre .pp{visibility:hidden}
+${pv ? '.pre .pp{visibility:visible;opacity:.28}' : ''}`;
   }
-  function _cjbLabelHtml(lb,p,bc){
-    const r=lb.rcvr||{}, s=lb.sendr||{}, c=lb.clsf;
-    const nm=p.mask_nm ? _cjbMaskNm(r.nm) : r.nm, tel=p.mask_tel ? _cjbMaskTel(r.tel) : r.tel;
-    const cell=r.cell && r.cell!==r.tel ? (p.mask_tel ? _cjbMaskTel(r.cell) : r.cell) : '';
+  function _cjbLabelHtml(lb,p,o){
+    const e=_cjbEsc, r=lb.rcvr||{}, s=lb.sendr||{}, c=lb.clsf;
+    const nm=p.mask_nm ? _cjbMaskNm(r.nm) : r.nm;
+    const tl=x=>p.mask_tel ? _cjbMaskTel(x) : x;
+    const tels=[r.tel, r.cell].filter(Boolean).map(tl);
     const brandNm=lb.brand && lb.brand!=='etc' ? (CJB_BRANDS.find(b=>b[0]===lb.brand)||[])[1] : '';
     const snm=p.use_brand && brandNm ? brandNm : s.nm;
-    const goods=lb.goods||[], gtxt=goods.slice(0,3).map(g=>`${g.nm}${g.qty>1 ? ' ×'+g.qty : ''}`).join(', ')+(goods.length>3 ? ` 외 ${goods.length-3}건` : '');
-    const ymd=String(lb.rcpt_ymd||''), d=ymd.length===8 ? `${ymd.slice(0,4)}.${ymd.slice(4,6)}.${ymd.slice(6)}` : '';
-    const det=x=>x && x!=='.' ? ' '+_cjbEsc(x) : '';
-    const code=c ? `${_cjbEsc(String(c.CLSFCD).slice(0,1))} ${_cjbEsc(String(c.CLSFCD).slice(1))}${c.SUBCLSFCD ? '-'+_cjbEsc(c.SUBCLSFCD) : ''}` : '';
-    const mark=lb.env==='dev' ? '시험' : lb.env==='sample' ? '견본' : '';
-    const gm=(p.show_goods && gtxt ? `<div class="r gd"><span class="lab">상품</span>${_cjbEsc(gtxt)}</div>` : '')
-      + (p.show_memo && lb.memo ? `<div class="r gd"><span class="lab">배송 메시지</span>${_cjbEsc(lb.memo)}</div>` : '');
-    return `<div class="lb${Number(p.w)>Number(p.h) ? ' land' : ''}"><div class="in">`
-      + `<div class="r hd a-hd"><span class="cj">CJ대한통운</span><span class="no">${_cjbEsc(_cjbInvFmt(lb.invc_no))}</span>${mark ? `<span class="mk">${mark}</span>` : ''}<span class="dt">${d}${lb.print_count ? ` · 재출력 ${Number(lb.print_count)}` : ''}</span></div>`
-      + `<div class="r cl a-cl">${c ? `<span class="code">${code}</span><span class="br">${_cjbEsc(c.CLLDLVBRANNM||'')}<span>${_cjbEsc([c.CLLDLVEMPNICKNM,c.P2PCD].filter(Boolean).join(' · '))}</span></span>` : `<span class="warn">도착지 분류코드 없음 — ${_cjbEsc(lb.clsf_err||'CJ 주소정제 실패')}</span>`}</div>`
-      + `<div class="r a-rv"><span class="lab">받는 분</span><span class="who">${_cjbEsc(nm)}</span> ${_cjbEsc(tel)}${cell ? ' / '+_cjbEsc(cell) : ''}`
-      + `<div class="addr">${_cjbEsc(r.addr)}${det(r.detail)}</div><div class="sub">${_cjbEsc(r.zip||'')}${c && c.CLSFADDR ? ' · '+_cjbEsc(c.CLSFADDR) : ''}</div></div>`
-      + `<div class="r a-sd"><span class="lab">보내는 분</span><b>${_cjbEsc(snm)}</b> ${_cjbEsc(s.tel)}${p.show_saddr ? `<div class="sub">${_cjbEsc(s.addr)}${det(s.detail)}</div>` : ''}</div>`
-      + (gm ? `<div class="gm a-gm">${gm}</div>` : '')
-      + `<div class="bc a-bc">${bc}<div class="t">${_cjbEsc(_cjbInvFmt(lb.invc_no))}</div></div>`
-      + `<div class="ft a-ft"><span>운임 ${_cjbEsc(CJB_FRT_NM[lb.frt_dv]||'신용')}</span><span>박스 ${_cjbEsc(CJB_BOX_NM[lb.box_type]||'')} × ${_cjbEsc(lb.box_qty||1)}</span>${lb.rcpt_dv==='02' ? '<span>반품</span>' : ''}${p.show_order && lb.cust_use_no ? `<span>주문 ${_cjbEsc(lb.cust_use_no)}</span>` : ''}${p.note ? `<span>${_cjbEsc(p.note)}</span>` : ''}</div>`
+    const det=x=>x && x!=='.' ? ' '+e(x) : '';
+    const ymd=String(lb.rcpt_ymd||''), d=ymd.length===8 ? `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6)}` : '';
+    const frt=CJB_FRT_NM[lb.frt_dv]||'신용';
+    const goods=lb.goods||[], gl=goods.slice(0,12).map((g,i)=>`<div>${i+1}. ${e(g.nm)} -${Number(g.qty)||1}개</div>`).join('')+(goods.length>12 ? `<div>… 외 ${goods.length-12}건</div>` : '');
+    const memo=[p.show_memo ? lb.memo : '', p.note].filter(x=>String(x||'').trim()).join(' · ');
+    const mks=[lb.env==='dev' ? '<span class="mk r">시험</span>' : lb.env==='sample' ? '<span class="mk r">견본</span>' : '',
+      lb.rcpt_dv==='02' ? '<span class="mk">반품</span>' : '',
+      lb.print_count ? `<span>재출력 ${Number(lb.print_count)}</span>` : '',
+      p.show_order && lb.cust_use_no ? `<span>주문 ${e(lb.cust_use_no)}</span>` : ''].filter(Boolean).join('');
+    const sub=c && c.SUBCLSFCD ? '-'+e(c.SUBCLSFCD) : '';
+    const zone=c ? [c.CLLDLVBRANNM, c.CLLDLVEMPNICKNM].filter(Boolean).map(e).join('-') : '';
+    const at=(l,t,w,h)=>`left:${l}mm;top:${t}mm${w!=null ? `;width:${w}mm` : ''}${h!=null ? `;height:${h}mm` : ''}`;
+    return `<div class="lb"><div class="in">`
+      // 미리 인쇄된 바탕 (노랑 = 미리보기만)
+      + `<div class="pp tint" style="${at(47.6,7.7,53,17.4)}"></div><div class="pp tint" style="${at(7.6,32.6,114.8,12.6)}"></div>`
+      + `<div class="pp tint" style="${at(7.6,45.4,114.8,7.6)}"></div><div class="pp tint" style="${at(5.4,83.6,72.6,15.8)}"></div>`
+      // 맨 위 — 운송장번호 · 접수일 · CJ대한통운 1588-1255
+      + `<div class="pp frame" style="${at(1.8,.6,120.8,6.6)}"></div>`
+      + `<div class="pp bx" style="${at(2.7,1.55,11.2,3.9)};font-size:2.05em;letter-spacing:-.06em;white-space:nowrap">운송장번호</div>`
+      + `<div class="num bb one" style="${at(14.5,.75)};font-size:5em;letter-spacing:-.01em;transform:scaleX(.8);transform-origin:0 0">${e(_cjbInvFmt(lb.invc_no))}</div>`
+      + (mks ? `<div class="mks one fit" style="${at(52.5,1.75,42,3.6)};font-size:2.3em">${mks}</div>` : '')
+      + `<div class="num one" style="${at(95.6,.95)};font-size:2.15em">${e(d)}</div>`
+      + `<div class="pp cb bb one" style="${at(95.6,3.95)};font-size:1.75em;letter-spacing:-.02em">CJ대한통운</div>`
+      + `<div class="pp cb num bb one" style="${at(105.1,3.5)};font-size:2.95em">1588-1255</div>`
+      // 분류코드 — 바코드(왼쪽) · 큰 글씨 · 운송장 바코드(오른쪽)
+      + (c ? `<div style="${at(6.3,8.4,18.8,10.4)}">${o.cbc}</div><div class="num one" style="${at(6.3,19.2,18.8)};font-size:2.1em;text-align:center">${e(c.CLSFCD)}</div>`
+           + `<div class="code" style="${at(48.1,8.1)}"><span class="c1">${e(String(c.CLSFCD).slice(0,1))}</span><span class="c2">${e(String(c.CLSFCD).slice(1))}</span><span class="c3">${sub}</span></div>`
+         : `<div class="warn" style="${at(48.4,10,48)};font-size:2.6em">도착지 분류코드 없음<br>${e(lb.clsf_err||'CJ 주소정제 실패')}</div>`)
+      + `<div style="${at(84.6,21.3,30,6.1)}">${o.bc1}</div>`
+      // 받는분
+      + `<div class="pp bx" style="${at(2.8,26.2,4.6,18.4)};font-size:2.6em;writing-mode:vertical-rl;letter-spacing:.35em">받는분</div>`
+      + `<div class="b one fit" style="${at(11.3,26.7,72.5,3.9)};font-size:3.05em">${e(nm)} ${tels.map(e).join(' /')}</div>`
+      + `<div class="one fit" style="${at(11.3,30.4,110.8,3.9)};font-size:3.05em">${e(r.addr)}${det(r.detail)}</div>`
+      + `<div class="bb one fit" style="${at(11.3,35.4,110.8,8.8)};font-size:6.7em;letter-spacing:-.02em">${c ? e(c.CLSFADDR||'') : ''}</div>`
+      // 보내는분 · 수량 · 운임 · 정산
+      + `<div class="pp bx" style="${at(2.8,45.6,4.6,7.2)};font-size:1.95em">보내<br>는분</div>`
+      + `<div class="one fit" style="${at(11.3,45.95,32,3.6)};font-size:2.9em">${e(snm)}</div>`
+      + `<div class="num one fit" style="${at(44.4,45.95,21.5,3.6)};font-size:2.9em">${e(s.tel)}</div>`
+      + `<div class="pp bx" style="${at(66.5,45.75,4.9,3.05)};font-size:1.9em">수량</div>`
+      + `<div class="one fit" style="${at(73.2,45.95,15.8,3.6)};font-size:2.9em">${e(CJB_BOX_NM[lb.box_type]||'')} / ${e(lb.box_qty||1)}</div>`
+      + `<div class="pp bx" style="${at(89.5,45.75,4.9,3.05)};font-size:1.9em">운임</div>`
+      + `<div class="pp bx" style="${at(107.9,45.75,4.9,3.05)};font-size:1.9em">정산</div>`
+      + `<div class="one" style="${at(114.3,45.95)};font-size:2.9em">${e(frt)}</div>`
+      + (p.show_saddr ? `<div class="one fit" style="${at(11.3,49.4,110.8,3.5)};font-size:2.75em">${e(s.addr)}${det(s.detail)}</div>` : '')
+      // 상품
+      + (p.show_goods && gl ? `<div class="gd fit" style="${at(6.3,53.5,115.8,19.6)};font-size:2.95em;line-height:1.2;overflow:hidden">${gl}</div>` : '')
+      // 안내 문구 · 총 건수 · 오네 (미리 인쇄된 부분)
+      + `<div class="pp" style="${at(7.4,76.9,19.6,7.2)};display:flex;align-items:center;gap:.8mm"><span style="width:5.6mm;height:5.6mm;border:.35mm solid ${o.blue};border-radius:50%;flex:0 0 auto"></span><span class="cb" style="font-size:1.35em;line-height:1.15;font-weight:700">GRP<br>Eco-friendly<br>Certification</span></div>`
+      + `<div class="pp cb" style="${at(27.6,77.1,52)};font-size:1.72em;font-weight:800;line-height:1.35;white-space:nowrap">고객님(받는 분)의 소중한 상품을 안전하게 배송하겠습니다.<br>개인정보 유출우려가 있으니 운송장은 폐기바랍니다.</div>`
+      + `<div class="one" style="${at(82.6,77.3)};font-size:2.85em">총 ${goods.length}건 <span class="num">[${o.i}/${o.n}]</span></div>`
+      + `<div class="pp bx" style="${at(99,73.4,22.6,8.3)};justify-content:flex-start;gap:1.2mm;padding:0 1.4mm"><span class="num" style="font-size:4.4em;font-weight:900;line-height:.9;letter-spacing:-.04em">O<br>NE</span><span style="font-size:1.45em;font-weight:700;line-height:1.25;text-align:left">모두를 위한<br>단 하나의 배송,<br>오네</span></div>`
+      // 맨 아래 — 주소 약칭 · 배송 메시지 · 배송 집배점-구역 · 정산 · 운송장 바코드
+      + `<div class="b one fit" style="${at(6.3,84.5,72,3.9)};font-size:3.15em">${c ? e(c.CLSFADDR||'') : ''}</div>`
+      + `<div class="one fit" style="${at(6.3,88.3,62,3.8)};font-size:3.05em">${e(memo)}</div>`
+      + `<div class="bb one" style="${at(69.6,90.6)};font-size:3.8em">${e(frt)}</div>`
+      + `<div class="bb one fit" style="${at(8.2,93.7,60.5,4.9)};font-size:3.9em">${zone}</div>`
+      + `<div style="${at(80.4,82.3,39,8.9)}">${o.bc2}</div>`
+      + `<div class="num one" style="${at(80.4,91.5,39)};font-size:2.15em;text-align:center;letter-spacing:.06em">${e(lb.invc_no)}</div>`
       + `</div></div>`;
   }
-  async function _cjbLabelDoc(labels,p){
+  // 칸에 넘치는 글자는 줄여서 맞춘다 (긴 주소 · 상품 여러 개)
+  const CJB_FIT_JS=`(function(){document.querySelectorAll('.fit').forEach(function(e){var f=parseFloat(getComputedStyle(e).fontSize),m=f*.5,i=0;while(i++<60&&f>m&&(e.scrollWidth>e.clientWidth+.5||e.scrollHeight>e.clientHeight+.5)){f*=.96;e.style.fontSize=f+'px';}});})();`;
+  async function _cjbLabelDoc(labels,p,pv){
     await _cjbLoadBarcode();
-    const pages=[];
-    labels.forEach(lb=>{ const bc=_cjbBarcode(lb.invc_no,p); for(let i=0;i<Math.max(1,Number(p.copies)||1);i++) pages.push(_cjbLabelHtml(lb,p,bc)); });
-    return `<!doctype html><html><head><meta charset="utf-8"><title>CJ대한통운 운송장</title><style>${_cjbLabelCss(p)}</style></head><body>${pages.join('')}</body></html>`;
+    const pages=[], n=labels.length, blue=pv ? '#1d5bbf' : '#000';
+    labels.forEach((lb,i)=>{
+      const o={i:i+1,n,blue,
+        bc1:_cjbBarcode(lb.invc_no,p.bc,30,6.1), bc2:_cjbBarcode(lb.invc_no,p.bc,39,8.9),
+        cbc:lb.clsf && lb.clsf.CLSFCD ? _cjbBarcode(lb.clsf.CLSFCD,'CODE128',18.8,10.4) : ''};
+      for(let k=0;k<Math.max(1,Number(p.copies)||1);k++) pages.push(_cjbLabelHtml(lb,p,o));
+    });
+    return `<!doctype html><html><head><meta charset="utf-8"><title>CJ대한통운 운송장</title><style>${_cjbLabelCss(p,pv)}</style></head><body class="${pv ? 'pv' : ''}${p.preprint ? ' pre' : ''}">${pages.join('')}<script>${CJB_FIT_JS}<\/script></body></html>`;
   }
   function _cjbPrintFrame(html){
     return new Promise(res=>{
@@ -19806,17 +19859,17 @@ body{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto San
   function _cjbSampleLabel(){
     const s=_cjb.sender||{};
     return {id:0,env:'sample',brand:'kop',invc_no:'660041856091',cust_use_no:'2026112400123',rcpt_ymd:new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,''),rcpt_dv:'01',box_type:_cjbV('cjbP_box_def')||'01',box_qty:'1',frt_dv:'03',memo:'문 앞에 놓아 주세요',
-      rcvr:{nm:'홍길동',tel:'010-1234-5678',cell:'',zip:'04513',addr:'서울특별시 중구 세종대로9길 53',detail:'101동 1001호'},
+      rcvr:{nm:'홍길동',tel:'010-1234-5678',cell:'010-1234-5678',zip:'04513',addr:'서울특별시 중구 세종대로9길 53',detail:'101동 1001호'},
       sendr:{nm:s.nm||'(주)비드유니버스',tel:s.tel||'02-000-0000',zip:s.zip||'',addr:s.addr||'보내는 분 주소 (건별접수 탭에서 기본값 저장)',detail:s.detail||''},
-      goods:[{nm:'견본 상품 / 옵션',qty:1},{nm:'두 번째 상품',qty:2}],
-      clsf:{CLSFCD:'5R67',SUBCLSFCD:'1g',CLSFADDR:'서소문 58-12',CLLDLVBRANNM:'중구소공',CLLDLVEMPNICKNM:'E25-1구역',P2PCD:'P18'},print_count:0};
+      goods:[{nm:'[Daily Bloom] 견본 오픈링 (실버925) / 옵션 없음',qty:1},{nm:'BEST PICK!! 견본 레이어드 반지 세트 데일리 반지 / 9호(최소) ~ 20호(최대) [SILVER925]/선택안함',qty:1},{nm:'견본 상품 / .',qty:2}],
+      clsf:{CLSFCD:'5R67',SUBCLSFCD:'1g',CLSFADDR:'서소문 58-12 대한통운',CLLDLVBRANNM:'중구소공',CLLDLVEMPNICKNM:'E25-1구역',P2PCD:'P18'},print_count:0};
   }
   async function cjbPrintPreview(){
     const box=document.getElementById('cjbPrev'); if(!box || document.getElementById('cjbPaneSet')?.hidden) return;
     const p={..._cjbPrint(),..._cjbPrintRead(),copies:1};
     try{
-      const html=await _cjbLabelDoc([_cjbSampleLabel()],p);
-      const pxW=p.w*3.7795, pxH=p.h*3.7795, sc=Math.min(1, 300/pxW, 440/pxH);
+      const html=await _cjbLabelDoc([_cjbSampleLabel()],p,true);
+      const pxW=p.w*3.7795, pxH=p.h*3.7795, maxW=Math.max(260,(box.clientWidth||340)-24), sc=Math.min(1, maxW/pxW, 560/pxH);
       box.innerHTML=`<div class="fr" style="width:${(pxW*sc).toFixed(0)}px;height:${(pxH*sc).toFixed(0)}px"><iframe title="운송장 미리보기" style="width:${pxW.toFixed(0)}px;height:${pxH.toFixed(0)}px;transform:scale(${sc.toFixed(3)})"></iframe></div>`;
       box.querySelector('iframe').srcdoc=html;
     }catch(e){ box.textContent=(e && e.message) || String(e); }
