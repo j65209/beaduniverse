@@ -139,7 +139,8 @@ async function uniqueUseNo(base: string): Promise<string> {
 }
 async function book(cfg: Cfg, item: Item, meta: { kind?: string; batch_id?: string; by?: string }) {
   const rcptDv = item.rcpt_dv === '02' ? '02' : '01';
-  const prtSt = rcptDv === '02' ? '01' : item.prt_st === '02' ? '02' : '01'; // 반품은 가이드상 PRT_ST=01
+  // 반품은 가이드상 PRT_ST=01. 발송은 자체 출력이 기본 (2026-11-24 사장님 "건별접수,파일접수 오피스앱에서 출력하는거 자체출력이야") — '01' 을 꼭 집어 보낼 때만 CJ 출력
+  const prtSt = rcptDv === '02' ? '01' : item.prt_st === '01' ? '01' : '02';
   const s = party(item.sender, rcptDv === '02' ? '회수할 곳(보내는 분)' : '보내는 분');
   const r = party(item.rcvr, rcptDv === '02' ? '회수지(받는 분)' : '받는 분');
   const goods = (item.goods || []).map((g) => ({ ...g, nm: cut([g.nm, g.opt].filter((x) => String(x ?? '').trim()).join(' / '), 500) })).filter((g) => g.nm);
@@ -261,7 +262,7 @@ function cleanPrint(p: Record<string, unknown> = {}) {
     mask_nm: b('mask_nm', true), mask_tel: b('mask_tel', true), show_goods: b('show_goods', true), show_memo: b('show_memo', true),
     show_order: b('show_order', true), show_saddr: b('show_saddr', true), use_brand: b('use_brand', false), auto: b('auto', false),
     copies: clampN(p.copies, 1, 3, 1), note: cut(p.note, 120),
-    prt_def: p.prt_def === '02' ? '02' : '01', box_def: BOX.has(String(p.box_def)) ? String(p.box_def) : '01',
+    prt_def: p.prt_def === '01' ? '01' : '02', box_def: BOX.has(String(p.box_def)) ? String(p.box_def) : '01',
   };
 }
 /** CJ 주소정제 — 운송장에 찍는 도착지 분류코드 · 배송집배점 · SM. 실패하면 이유만 (출력은 분류코드 칸만 빈 채로 된다) */

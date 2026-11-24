@@ -14496,7 +14496,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="cjb-pane" id="cjbPaneOne" role="tabpanel" aria-labelledby="cjbTabOne">
         <div class="cjb-row">
           <span class="cjb-seg" id="cjbDv" role="group" aria-label="접수 구분"><button type="button" data-v="01" aria-pressed="true" onclick="cjbSetDv('01')">일반 발송</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbSetDv('02')">반품 회수</button></span>
-          <span class="cjb-seg" id="cjbPrt" role="group" aria-label="운송장 출력"><button type="button" data-v="01" aria-pressed="true" onclick="cjbSetPrt('cjbPrt','01')">CJ 프로그램에서 출력</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbSetPrt('cjbPrt','02')">자체 출력 (운송장번호 바로)</button></span>
+          <!-- 2026-11-24 사장님 "건별접수,파일접수 오피스앱에서 출력하는거 자체출력이야" — 발송은 자체 출력만 (CJ 프로그램 출력 고르기 뺌) -->
+          <span class="cjb-lab" id="cjbPrt" title="접수하면 운송장번호가 바로 붙고, 오피스에서 운송장을 인쇄해요">🖨 운송장 <b>자체 출력</b> (오피스에서 인쇄)</span>
           <label class="cjb-lab">브랜드 <select class="cjb-in" id="cjbBrand" style="width:auto;min-height:32px"></select></label>
         </div>
         <!-- 반품 회수 — 원 운송장번호로 불러오기 (2026-11-24 사장님 "반품회수는 쉽게 운송장 조회만해서 접수 가능하게 해줘" · "반품접수한건 기록 남게") -->
@@ -14554,7 +14555,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       <div class="cjb-pane" id="cjbPaneFile" role="tabpanel" aria-labelledby="cjbTabFile" hidden>
         <p class="cjb-note">CJ 프로그램에서 쓰던 <b>파일접수 엑셀 머리글 그대로</b>(받는분 · 받는분전화번호 · 받는분우편번호 · 받는분주소 · 상품명 · 고객주문번호 · 배송메시지 …) 올리면 돼요. 식스샵 프로 <b>'주문_상품별' 내보내기</b>도 그대로 읽어요. 보내는 분은 건별접수의 기본값을 써요.</p>
         <div class="cjb-row">
-          <span class="cjb-seg" id="cjbFPrt" role="group" aria-label="운송장 출력"><button type="button" data-v="01" aria-pressed="true" onclick="cjbSetPrt('cjbFPrt','01')">CJ 프로그램에서 출력</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbSetPrt('cjbFPrt','02')">자체 출력 (운송장번호 바로)</button></span>
+          <span class="cjb-lab" id="cjbFPrt" title="접수하면 운송장번호가 바로 붙고, 오피스에서 운송장을 인쇄해요">🖨 운송장 <b>자체 출력</b> (오피스에서 인쇄)</span>
           <label class="cjb-lab">브랜드 <select class="cjb-in" id="cjbFBrand" style="width:auto;min-height:32px"></select></label>
           <label class="cjb-lab">박스 <select class="cjb-in" id="cjbFBox" style="width:auto;min-height:32px"></select></label>
           <label class="cjb-lab"><input type="checkbox" id="cjbFGroup" checked onchange="cjbFileRender()"> 같은 주문번호는 한 상자로</label>
@@ -14584,7 +14585,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <button type="button" class="cjb-btn pri" onclick="cjbPrintSel()" title="체크한 줄의 운송장을 인쇄 (운송장번호가 있는 건만)">🖨 선택한 운송장 출력</button>
         </div>
         <div class="cjb-row"><span class="cjb-seg" id="cjbLDv" role="group" aria-label="구분으로 거르기"><button type="button" data-v="" aria-pressed="true" onclick="cjbListDv('')">전체</button><button type="button" data-v="01" aria-pressed="false" onclick="cjbListDv('01')">발송</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbListDv('02')">반품 회수 기록</button></span></div>
-        <p class="cjb-note">취소는 접수가 CJ 에 반영된 뒤(보통 1분, 길면 10분쯤)부터 돼요. 자체 출력으로 접수한 건 · 기사님이 집화한 건 · CJ 에서 출력한 건은 취소가 안 돼요. 운송장 출력은 운송장번호가 있는 건(자체 출력)만 — CJ 프로그램 출력 건은 CJ 프로그램에서 찍어요. CJ 프로그램 출력 건의 운송장번호 · 최근 단계는 <b>30분마다 CJ 에서 가져와</b> 채워요 (기사님이 집화한 뒤부터).</p>
+        <p class="cjb-note">발송(건별 · 파일)은 <b>자체 출력</b>이라 접수하면 운송장번호가 바로 붙고, 체크해서 [운송장 출력]으로 인쇄해요. 자체 출력 건은 CJ 가 취소를 안 받아요 — 안 보내면 운임에서 빠져요. 반품 회수는 기사님이 운송장을 가져가요: 취소는 접수가 CJ 에 반영된 뒤(보통 1분, 길면 10분쯤)부터, 기사님이 집화하면 안 돼요. 운송장번호 · 최근 단계는 <b>30분마다 CJ 에서 가져와</b> 채워요.</p>
         <div class="cjb-out" id="cjbLOut"></div>
         <div class="cjb-tbl-wrap" id="cjbLWrap" hidden><table class="cjb-tbl" id="cjbLTbl"></table></div>
       </div>
@@ -14627,10 +14628,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <div class="cjb-box" style="margin-top:12px">
               <div class="cjb-bh">접수 기본값</div>
               <div class="cjb-fields">
-                <label class="cjb-f s3"><span>출력 방식 기본</span><select class="cjb-in" id="cjbP_prt_def"><option value="01">CJ 프로그램에서 출력</option><option value="02">자체 출력 (오피스에서 인쇄)</option></select></label>
                 <label class="cjb-f s3"><span>박스 기본</span><select class="cjb-in" id="cjbP_box_def"></select></label>
               </div>
-              <label class="cjb-chk" style="margin-top:6px"><input type="checkbox" id="cjbP_auto"> 자체 출력으로 접수하면 바로 인쇄 창 열기</label>
+              <label class="cjb-chk" style="margin-top:6px"><input type="checkbox" id="cjbP_auto"> 발송을 접수하면 바로 인쇄 창 열기</label>
             </div>
             <div class="cjb-act">
               <button type="button" class="cjb-btn pri" onclick="cjbPrintSave()">설정 저장</button>
@@ -19336,7 +19336,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(t==='set') cjbPrintPreview();
   }
   function cjbSetPrt(id,v){ const g=document.getElementById(id); if(!g) return; g.dataset.v=v; g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v))); }
-  const _cjbPrtOf=id=>(document.getElementById(id)||{dataset:{}}).dataset.v==='02' ? '02' : '01';
+  // 발송(건별 · 파일)은 자체 출력만 (2026-11-24 사장님 "건별접수,파일접수 오피스앱에서 출력하는거 자체출력이야"). 반품 회수는 부르는 쪽에서 '01'
+  const _cjbPrtOf=()=>'02';
   function cjbSetDv(v){
     _cjb.dv=v==='02' ? '02' : '01';
     const ret=_cjb.dv==='02';
@@ -19444,7 +19445,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const j=await _cjbCall({action:'book',item,kind:'single',by:_cjbMe()});
       if(j.ok){
         out.innerHTML=`<div class="cjb-msg ok">✅ ${ret ? '회수 ' : ''}접수됐어요 · 주문번호 <b>${_cjbEsc(j.cust_use_no)}</b>`
-          + (j.invc_no ? ` · 운송장 <b>${_cjbEsc(j.invc_no)}</b>` : ' · 운송장번호는 CJ 프로그램에서 출력할 때 생겨요')
+          + (j.invc_no ? ` · 운송장 <b>${_cjbEsc(j.invc_no)}</b>` : (ret ? ' · 운송장은 기사님이 가져가요 (번호는 집화 뒤 채워져요)' : ''))
           + (j.env==='dev' ? ' · <b>개발 서버 시험</b>이라 실제로는 안 나가요' : '')
           + (j.invc_no && j.id ? ` <button type="button" class="cjb-btn sm" onclick="cjbPrintIds([${Number(j.id)}],'cjbOneOut')">🖨 운송장 출력</button>` : '') + `</div>`;
         cjbOneClear(true);
@@ -19663,8 +19664,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   // ---- 운송장 출력 (2026-11-24 사장님 "오피스에서 바로 출력 가능하다면 기능 넣어주고. 우리가 설정 할 수 있게 해줘") ----
   // 자료 = 함수 cj labels (받는 분 전체 정보 + CJ 주소정제 분류코드), 설정 = cj_config.print (출력 설정 탭, 모든 PC 공통).
   // 인쇄 = 숨은 iframe 에 mm 단위 라벨 페이지를 써서 print() — 프린터 · 용지는 인쇄 창에서. 바코드 = JsBarcode(SVG).
-  const CJB_PRINT_DEF={w:123,h:100,mt:0,ml:0,pad:0,scale:100,bc:'CODE128',preprint:true,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'01',box_def:'01'};
-  const CJB_P_NUM=['w','h','mt','ml','pad','scale','copies'], CJB_P_BOOL=['mask_nm','mask_tel','show_goods','show_memo','show_order','show_saddr','use_brand','auto','preprint'], CJB_P_STR=['bc','note','prt_def','box_def'];
+  const CJB_PRINT_DEF={w:123,h:100,mt:0,ml:0,pad:0,scale:100,bc:'CODE128',preprint:true,mask_nm:true,mask_tel:true,show_goods:true,show_memo:true,show_order:true,show_saddr:true,use_brand:false,auto:false,copies:1,note:'',prt_def:'02',box_def:'01'};
+  const CJB_P_NUM=['w','h','mt','ml','pad','scale','copies'], CJB_P_BOOL=['mask_nm','mask_tel','show_goods','show_memo','show_order','show_saddr','use_brand','auto','preprint'], CJB_P_STR=['bc','note','box_def'];   // prt_def 뺌 — 발송은 자체 출력만
   const CJB_BOX_NM=Object.fromEntries(CJB_BOX), CJB_FRT_NM={'01':'선불','02':'착불','03':'신용'};
   const _cjbPrint=()=>({...CJB_PRINT_DEF, ...(_cjb.print||{})});
   function _cjbPrintFill(){
