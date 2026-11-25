@@ -348,7 +348,7 @@
     const cut = Math.max(S.bn, l.findIndex(b => b.pid === S.pid) + 1);
     $('blist').innerHTML = l.slice(0, cut).map((b, i) => {
       const a = b.ads.find(x => x.th) || b.ads[0] || { m: [] }, v = val(b);
-      const sub = S.rank === 'eff' ? `30일 넘게 남은 주력 ${b.m.winners}개 · 최장 ${num(b.m.longest)}일` : S.rank === 'new' ? `최근 7일 새 소재 · 지금 ${num(b.m.live)}개` : S.rank === 'sale' ? `29CM ${c29Line(b)} · 광고비 추정 ${b.spend ?? '–'}` : `광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}${saleN(b) ? ` · 세일 ${saleN(b)}` : ''}`;
+      const sub = S.rank === 'eff' ? `30일 넘게 남은 주력 ${b.m.winners}개 · 최장 ${num(b.m.longest)}일` : S.rank === 'new' ? `최근 7일 새 소재 · 지금 ${num(b.m.live)}개` : S.rank === 'sale' ? `29CM ${c29Line(b)} · 광고비 추정 ${b.spend ?? '–'}` : b.pt ? `광고 ${num(b.m.live)}개 먼저 — 나머지 읽는 중` : `광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}${saleN(b) ? ` · 세일 ${saleN(b)}` : ''}`;
       return `<button class="brow${S.pid === b.pid ? ' on' : ''}" data-pid="${b.pid}"><span class="rk${i < 3 ? ' hi' : ''}">${i + 1}</span><span class="pic"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""></span><span style="min-width:0"><b>${isNew(b) ? '<i class="nw">NEW</i>' : ''}${esc(b.name)}</b><span class="s">${esc(sub)}</span>${S.rank === 'new' ? '' : `<span class="bar"><i style="width:${v}%"></i></span>`}</span><span class="sc"><b>${v}</b></span></button>`;
     }).join('') + (l.length > cut ? `<button class="btn" type="button" data-bmore style="width:calc(100% - 20px);margin:8px 10px 12px">브랜드 더 보기 (${num(l.length - cut)}곳)</button>` : '') || `<div style="padding:28px 12px;text-align:center;color:var(--t3)">${S.rank === 'eff' ? '아직 효율을 가릴 만큼 쌓인 곳이 없어요' : S.rank === 'sale' ? '29CM 에서 찾은 브랜드가 아직 3곳이 안 돼요' : '해당하는 브랜드가 없어요'}</div>`;
   }
