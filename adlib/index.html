@@ -65,7 +65,6 @@
   #app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start }
   .side { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: sticky; top: calc(var(--top) + 16px); max-height: calc(100vh - var(--top) - 32px); display: flex; flex-direction: column; overflow: hidden }
   .side-h { padding: 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none }
-  .brow.off { text-decoration: none; color: inherit } .brow.off b, .brow.off .rk { color: var(--t3) } .brow.off .pic { background: #f1f3f6 } .brow .go { font-size: 12px; color: var(--t3); white-space: nowrap }
   #srcSeg { overflow-x: auto; scrollbar-width: none } #srcSeg button { flex: 1 0 auto; padding: 0 4px; font-size: 12px; letter-spacing: -.02em }
   .side-h .seg { width: 100% } .side-h .seg button { flex: 1; padding: 0 4px }
   .note { font-size: 12px; color: var(--t3); line-height: 1.35 }
@@ -282,20 +281,18 @@
   const SRC = { musinsa: '무신사', amondz: '아몬즈', ably: '에이블리', zigzag: '지그재그', c29: '29CM', hip: '요즘 브랜드' };
   const inView = b => S.src ? !hidden(b) && (S.seedBy[b.pid] || []).some(x => S.src in x.r) : inReg(b);
   const ranksOf = pid => { const r = {}; (S.seedBy[pid] || []).forEach(x => Object.keys(x.r).forEach(k => { if (!(k in r) || x.r[k] < r[k]) r[k] = x.r[k]; })); return Object.keys(SRC).filter(k => k in r).map(k => k === 'hip' ? SRC[k] : `${SRC[k]} ${r[k]}위`).join(' · '); };
-  const ST = { off: '지금 도는 메타 광고 없음', soon: '찾음 — 곧 모아요', none: '메타에서 광고를 못 찾음', wait: '순서대로 찾는 중' };
   function paintSeeds() {
-    const q = S.bq.trim().toLowerCase(), at = ((S.d.seeds || {}).ats || {})[S.src] || (S.d.seeds || {}).at || '', all = S.seeds.filter(x => S.src in x.r), on = all.filter(x => x.pid).length;
-    $('rankNote').textContent = `${((S.d.seeds || {}).src || {})[S.src] || ''}${at ? ` (${+at.slice(5, 7)}/${+at.slice(8)} 기준)` : ''} · ${all.length}곳 중 광고 있는 곳 ${on}`;
-    const l = all.filter(x => !(x.pid && S.byPid[x.pid] && hidden(S.byPid[x.pid])) && (!q || (x.n + ' ' + ((S.byPid[x.pid] || {}).name || '')).toLowerCase().includes(q)));
+    const q = S.bq.trim().toLowerCase(), at = ((S.d.seeds || {}).ats || {})[S.src] || (S.d.seeds || {}).at || '', all = S.seeds.filter(x => S.src in x.r), on = all.filter(x => S.byPid[x.pid]), wait = all.filter(x => x.st === 'wait').length;   // 지금 메타 광고를 하는 곳만 보인다 (사장님 "집행중이지않으면 굳이 필요없는데")
+    $('rankNote').textContent = `${((S.d.seeds || {}).src || {})[S.src] || ''}${at ? ` (${+at.slice(5, 7)}/${+at.slice(8)} 기준)` : ''} · 지금 광고하는 ${on.length}곳${wait ? ` (${all.length}곳 중 ${wait}곳은 확인 전)` : ''}`;
+    const l = on.filter(x => !hidden(S.byPid[x.pid]) && (!q || (x.n + ' ' + ((S.byPid[x.pid] || {}).name || '')).toLowerCase().includes(q)));
     const sp = x => (S.byPid[x.pid] || {}).spend || -1;
     l.sort((x, y) => S.src === 'hip' ? sp(y) - sp(x) : x.r[S.src] - y.r[S.src]);
     $('blist').innerHTML = l.map((x, i) => {
       const b = S.byPid[x.pid], rk = S.src === 'hip' ? i + 1 : x.r[S.src];
       const etc = Object.keys(SRC).filter(k => k !== S.src && k !== 'hip' && k in x.r).map(k => `${SRC[k]} ${x.r[k]}위`).join(' · ');
-      if (!b) return `<a class="brow off" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=KR&media_type=all&search_type=keyword_unordered&q=${encodeURIComponent(x.n)}" title="메타 광고 라이브러리에서 찾아보기"><span class="rk">${rk}</span><span class="pic"></span><span style="min-width:0"><b>${esc(x.n)}</b><span class="s">${esc(ST[x.st] || '')}${etc ? ' · ' + esc(etc) : ''}</span></span><span class="go">메타 ↗</span></a>`;
       const a = b.ads.find(y => y.th) || b.ads[0] || { m: [] };
       return `<button class="brow${S.pid === b.pid ? ' on' : ''}" data-pid="${b.pid}"><span class="rk${rk <= 3 ? ' hi' : ''}">${rk}</span><span class="pic"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""></span><span style="min-width:0"><b>${esc(x.n)}</b><span class="s">광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}${etc ? ' · ' + esc(etc) : ''}</span></span><span class="sc"><b>${b.spend ?? '–'}</b></span></button>`;
-    }).join('') || '<div style="padding:28px 12px;text-align:center;color:var(--t3)">해당하는 브랜드가 없어요</div>';
+    }).join('') || '<div style="padding:28px 12px;text-align:center;color:var(--t3)">' + (q ? '해당하는 브랜드가 없어요' : wait ? '아직 확인 전이에요 — 하루 두 번(7:00 · 15:20) 조금씩 찾아요' : '지금 메타 광고를 하는 곳이 없어요') + '</div>';
   }
   const val = b => S.rank === 'spend' ? b.spend : S.rank === 'eff' ? b.eff : S.rank === 'sale' ? b.sale : b.m.new7;
   /* ── 29CM 판매 신호 (맥미니 adlib/c29.mjs 매일 02:40 — 주간 베스트 · 브랜드 리뷰 흐름. 지그재그 · 무신사 · W컨셉 · 에이블리는 robots.txt 가 막아 29CM 만) ── */
@@ -458,7 +455,7 @@
 
   function help() {
     overlay(`<h3>숫자 읽는 법</h3><p>메타는 남의 <b>광고비 · 매출 · ROAS 를 공개하지 않아요.</b> 아래 점수는 공개된 것(광고 개수 · 기간 · 노출 순서)으로 브랜드끼리 견준 <b>추정</b>이에요 (0~100, 높을수록 앞).</p>
-      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li><b>무신사 · 아몬즈 · 에이블리 · 지그재그</b> — 그 플랫폼 주얼리 순위에 든 브랜드예요. <b>아몬즈 · 29CM 는 매일 아침 7시 새로</b> 보고, 무신사 · 에이블리 · 지그재그는 자동 접속을 막아 두어 손으로 본 날짜(탭 위에 표시) 값이에요. 메타에서 광고주를 찾은 곳만 소재가 나오고, 회색은 아직 찾는 중이거나 지금 메타 광고를 안 하는 곳. <b>요즘 브랜드</b>는 젊은 층에 뜨는 곳을 직접 고른 것</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>하루 두 번(아침 7시 · 오후 3시 20분) 조금씩 모아서 한 바퀴 도는 데 이틀쯤 걸려요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
+      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li><b>무신사 · 아몬즈 · 에이블리 · 지그재그</b> — 그 플랫폼 주얼리 순위에 든 브랜드예요. <b>아몬즈 · 29CM 는 매일 아침 7시 새로</b> 보고, 무신사 · 에이블리 · 지그재그는 자동 접속을 막아 두어 손으로 본 날짜(탭 위에 표시) 값이에요. 그중 <b>지금 메타 광고를 하는 곳만</b> 보여요. <b>요즘 브랜드</b>는 젊은 층에 뜨는 곳을 직접 고른 것</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>하루 두 번(아침 7시 · 오후 3시 20분) 조금씩 모아서 한 바퀴 도는 데 이틀쯤 걸려요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
   }
   function addDlg() {
     const rows = Object.values(S.marks).filter(m => m.st === 'add' && m.v && m.v.q), hid = Object.values(S.marks).filter(m => m.st === 'hide');
