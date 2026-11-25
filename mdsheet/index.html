@@ -4644,11 +4644,14 @@
     if (!(b > a)) b = a + 1;
     toast(`줄 넣는 중 · ${n}줄…`);
     const job = E.q.then(async () => {
-      for (let k = 0; k < n; k++) {
+      if (ent && ent.rows) ent.rows.forEach((x, k) => { if (+k > r) r = +k; });   // 앞 작업이 그사이 만든 줄 다음부터
+      for (let skip = 0; made.length < n;) {
         r++;
-        const x = await mdx('mdx_cell_edit', {p_tk: gid, p_r: r, p_p: p0, p_new: '', p_row: null, p_who: whoAmI() || null});
-        if (!x || !Array.isArray(x.v)) throw new Error('db_error');
+        const x = await mdx('mdx_cell_edit', {p_tk: gid, p_r: r, p_p: p0, p_new: '', p_row: null, p_who: whoAmI() || null, p_old: ''});
+        if (x && x.conflict && ++skip < 300) continue;   // 다른 사람이 방금 쓴 줄 — 건드리지 않고 다음 번호로 (2026-11-25)
+        if (!x || !Array.isArray(x.v) || x.conflict) throw new Error('db_error');
         bumpRows(gid, x);
+        if (x.v.some(y => y != null && String(y) !== '') && ++skip < 300) continue;   // 첫 칸은 비었어도 남이 적은 줄
         made.push(r);
         if (ent && ent.rows) ent.rows.set(r, {r, v: x.v.map(y => y == null ? '' : String(y)), src: 'office', edited_by: whoAmI() || null, edited_at: new Date().toISOString()});
       }

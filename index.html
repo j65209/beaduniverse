@@ -54907,9 +54907,10 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   setInterval(()=>{
     const v=document.getElementById('viewStrategy');
     if(!v || v.hidden || document.hidden || !_strat.inited) return;
+    _sbRollMonth(v);
     if(Date.now()-_strat.loadedAt<10*60*1000) return;
-    const today=_stratToday();
-    if(Object.values(_strat.index).some(i=>i && !i.error && (i.days||[]).some(d=>d.as_of && d.date===today))) _stratQuietRefresh();
+    const yday=_dslAdd(_stratToday(),-1);   // 자정 직후엔 오늘 줄이 아직 없어 어제 줄도 본다 (전엔 자정 뒤로 멈췄다)
+    if(Object.values(_strat.index).some(i=>i && !i.error && (i.days||[]).some(d=>d.as_of && d.date>=yday))) _stratQuietRefresh();
   }, 60*1000);
 
   // 수집기 연결 전 채널 — 실제 보고서와 같은 KPI 틀을 빈 값으로
@@ -55358,17 +55359,25 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   const _sb10=v=>Math.max(0,Math.round(v/10)*10);
   // 아직 안 온 달은 이번 달 값으로
   const _sbKnown=m=>{ const c=_sbCurMonth(); return m>c?c:m<SB_FIRST_MONTH?SB_FIRST_MONTH:m; };
+  // 공홈 결제 수수료 — 이번 달은 매출과 같이 월말 예상으로 (실적만 쓰면 달 초에 세금 예상이 커 보인다)
+  const _sbPayFeeEst=m=>{
+    const p=_sbPayData(m);
+    if(m!==_sbCurMonth()) return p.fee;
+    if(!p.amt){ const pm=_sbPrevMonth(m); return pm>=SB_FIRST_MONTH?_sbPayData(pm).fee:0; }
+    const s=_sbResolve(m).rows.filter(r=>/-home$/.test(r.c.id)).reduce((a,r)=>a+r.vals.sales.v,0);
+    return Math.round(p.fee*Math.max(1,s/p.amt));
+  };
   const _sbVatMonth=m=>_sbMemo('vat'+m,()=>_sbVatCalc(m));
   function _sbVatCalc(m){
     const res=_sbResolve(m), P=f=>res.rows.reduce((a,r)=>a+r.vals[f].v,0);
     const platAd=res.rows.filter(r=>!/-home$/.test(r.c.id)).reduce((a,r)=>a+r.vals.ad.v,0);
     const fx=_sbFixed(m).filter(x=>x.grp!=='people'&&!/대출|차량|4대보험/.test(x.name)&&!SB_VAT_FOREIGN.test(x.name)).reduce((a,x)=>a+x.amount,0);
-    const pay=_sbPayData(m), buy=P('fee')+P('ship')+P('direct')+platAd+fx+pay.fee;
+    const buy=P('fee')+P('ship')+P('direct')+platAd+fx+_sbPayFeeEst(m);
     return {out:res.sales/11, inn:buy/11};
   }
   function _sbProfitMonth(m){
     const fx=_sbFixed(m), fixed=fx.reduce((a,x)=>a+x.amount,0), loan=fx.filter(x=>/대출/.test(x.name)).reduce((a,x)=>a+x.amount,0), v=_sbVatMonth(m);
-    return _sbResolve(m).net-(fixed-loan)-_sbPayData(m).fee-(v.out-v.inn);
+    return _sbResolve(m).net-(fixed-loan)-_sbPayFeeEst(m)-(v.out-v.inn);
   }
   const _sbCorpTax=y=>_sbMemo('corp'+y,()=>_sbCorpCalc(y));
   function _sbCorpCalc(year){
@@ -55764,6 +55773,15 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const sel=document.getElementById('sbMonth');
     sel.innerHTML=_sbMonths().map(m=>`<option value="${m}">${_sbMonthLabel(m)}</option>`).join('');
     sel.value=_sb.month;
+  }
+  // 화면을 켜 둔 채 달이 바뀌면 — 이번 달을 보던 사람은 새 달로 (적는 중이면 다음 차례에)
+  function _sbRollMonth(v){
+    const cur=_sbCurMonth();
+    if(!_sb.seen) _sb.seen=cur;
+    if(_sb.seen===cur || (v.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) return;
+    const was=_sb.seen; _sb.seen=cur;
+    if(_sb.month===was) _sb.month=cur;
+    _sbFillMonths(); if(_sb.ready) _sbRender();
   }
   function sbSetMonth(m){
     _sb.month=m;
@@ -58343,10 +58361,10 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="stock-blank.js?v=1" defer></script><!-- 재고 미기재 알림 — 김성군 · 지희선 · 대표 2명 (stock-blank.js) -->
 <script src="notif-state.js?v=1" defer></script><!-- 알림 승인 상태 (notif-state.js) -->
 <script src="notif-ask.js?v=4" defer></script><!-- 알림 허용 안내 — 전 직원, 허용 안 했거나 보이는지 확인 안 한 PC 에 (notif-ask.js) -->
-<script src="tool-new.js?v=2" defer></script><!-- 업무용 툴 새 도구 표시 — 직원마다 눌러 보기 전까지 (tool-new.js, 슈퍼베이스 tool_news) -->
+<script src="tool-new.js?v=3" defer></script><!-- 업무용 툴 새 도구 표시 — 직원마다 눌러 보기 전까지 (tool-new.js, 슈퍼베이스 tool_news) -->
 <script src="notif-call.js?v=3" defer></script><!-- 알림 확인 요청 — 사장님이 보내면 [확인] 창 (notif-call.js) -->
 <script src="office-thumb.js?v=1" defer></script><!-- 작은 사진에 마우스 → 크게 (office-thumb.js) -->
-<script src="check-alert.js?v=11" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
+<script src="check-alert.js?v=12" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
 <script src="kko-urgent.js?v=1" defer></script><!-- 카톡 급한 호출 — 희선님 PC 컴퓨터 알림, 해결될 때까지 되풀이 (kko-urgent.js) -->
 </body>
 </html>

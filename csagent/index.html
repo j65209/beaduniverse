@@ -194,6 +194,7 @@ const typing = () => { const a = document.activeElement; return (!!a && a.tagNam
 /* ── 고친 것 저장 ── 화면 먼저, 서버는 차례로. 번호가 같아 두 번 안 들어간다 */
 function apply(o) { const m = /^(faq|fact):/.test(o.key) ? S.edits : S.rows; if (o.del) m.delete(o.key); else m.set(o.key, Object.assign({}, o, {snap: o.snap || (m.get(o.key) || {}).snap})); }
 function save(o) {
+  S.savedAt = Date.now();
   o = Object.assign({id: rid(), at: Date.now(), by: me()}, o);
   S.out = S.out.filter(x => !(x.key === o.key && !x.tried)); S.out.push(o); ls(OUT, S.out);
   apply(o); head(); push();
@@ -438,7 +439,7 @@ $('tabLink').onclick = () => { S.tab = 'link'; paint(); loadLinks(); };
 $('close').onclick = () => { try { if (P.document.documentElement.classList.contains('solo-csagent')) P.close(); P.bbToolClose(); } catch (e) { history.back(); } };
 load(); loadLinks();
 setInterval(() => { if (!document.hidden) loadLinks(); }, 300000);
-setInterval(() => { if (!document.hidden && S.tab === 'todo' && !S.out.length && S.d) api('/cs/kakao-review').then(j => { if (typing()) return; const o = JSON.stringify((S.d.items || []).map(x => x.key + (x.rec ? x.rec.st + x.rec.at : ''))), nw = JSON.stringify((j.items || []).map(x => x.key + (x.rec ? x.rec.st + x.rec.at : ''))); S.d = j; S.rows = new Map((j.rows || []).map(r => [r.key, r])); S.edits = new Map((j.edits || []).map(r => [r.key, r])); head(); if (o !== nw) listOnly(!document.querySelector('.it[aria-current=true]')); }).catch(() => {}); }, 120000);
+setInterval(() => { if (!document.hidden && S.tab === 'todo' && !S.out.length && S.d) (t0 => api('/cs/kakao-review').then(j => { if (typing() || S.out.length || (S.savedAt || 0) >= t0) return; const o = JSON.stringify((S.d.items || []).map(x => x.key + (x.rec ? x.rec.st + x.rec.at : ''))), nw = JSON.stringify((j.items || []).map(x => x.key + (x.rec ? x.rec.st + x.rec.at : ''))); S.d = j; S.rows = new Map((j.rows || []).map(r => [r.key, r])); S.edits = new Map((j.edits || []).map(r => [r.key, r])); head(); if (o !== nw) listOnly(!document.querySelector('.it[aria-current=true]')); }).catch(() => {}))(Date.now()); }, 120000);   // 보낸 사이 저장한 것이 옛 응답에 덮이지 않게
 })();
 </script>
 </body>

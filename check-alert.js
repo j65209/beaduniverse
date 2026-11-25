@@ -78,7 +78,7 @@ const SRC = [
     const live = al.filter(x => x.key !== '_beat'), mg = [...new Set(live.filter(x => /^map:\d+:/.test(x.key)).map(x => x.key.split(':')[1]))];
     const [mw, mp] = await Promise.all([
       mg.length ? sb(`erp_rows?select=gid,n:v->>1,o:v->>2&deleted_at=is.null&r=gt.1&gid=in.(${mg.map(encodeURIComponent).join(',')})&v->>0=${encodeURIComponent('like.*⚠*')}&limit=2000`).catch(() => null) : [],
-      live.some(x => /^odd:/.test(x.key)) ? sb('erp_map?select=brand,in_name,in_opt&deleted_at=is.null&limit=10000').catch(() => null) : []
+      live.some(x => /^odd:/.test(x.key)) ? sb('erp_map?select=brand,in_name,in_opt&deleted_at=is.null&order=id.desc&limit=1000').catch(() => null) : []
     ]);
     const wk = mw && new Set(mw.map(x => `map:${x.gid}:${CL(x.n)}|${CL(x.o)}`.slice(0, 190)));
     const mk = mp && new Set(mp.map(m => `${m.brand}|${CL(m.in_name)}|${CL(m.in_opt)}`.toLowerCase()));
@@ -439,7 +439,8 @@ function tick() {
     try { kvPull('check_ack', LS.ack, v => { S.ack = Object.assign({}, v || {}); closePops(all().filter(isAck).map(full)); S.drawn = ''; draw(); }); } catch (e) {}
     if (window.OfficeLive) {
       const soon = (id, ms) => () => { const c = S.src[id]; c.next = Math.min(c.next, Date.now() + (ms || 3000)); };
-      window.OfficeLive.on(['erp_alert', 'erp_ask', 'erp_map'], soon('erp')); window.OfficeLive.on(['erp_rows'], () => { soon('erp', 5e3)(); soon('zero', 15e3)(); soon('blank', 30e3)(); });          // ERP 에서 고치면 곧 다시 읽어 뺀다 window.OfficeLive.on(['leave_comp_requests'], soon('appr')); window.OfficeLive.on(['dlog_pages'], soon('dz', 30e3));
+      window.OfficeLive.on(['erp_alert', 'erp_ask', 'erp_map'], soon('erp')); window.OfficeLive.on(['erp_rows'], () => { soon('erp', 5e3)(); soon('zero', 15e3)(); soon('blank', 30e3)(); });   // ERP 에서 고치면 곧 다시 읽어 뺀다
+      window.OfficeLive.on(['leave_comp_requests'], soon('appr')); window.OfficeLive.on(['dlog_pages'], soon('dz', 30e3));
       window.OfficeLive.on(['app_kv'], () => { try { kvPull('check_ack', LS.ack, v => { S.ack = Object.assign({}, v || {}); closePops(all().filter(isAck).map(full)); S.drawn = ''; draw(); }); } catch (e) {} });
     }
   }

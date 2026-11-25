@@ -35,8 +35,8 @@ async function pull() {
   busy = true;
   try {
     await flush();
-    const x = await rpc('tool_news_open', {p_name: me()}), seen = arr(SEEN);
-    list = (Array.isArray(x) ? x : []).filter(n => !seen.includes(tag(n.key)));
+    const x = await rpc('tool_news_open', {p_name: me()}), done = arr(SEEN);
+    list = (Array.isArray(x) ? x : []).filter(n => !done.includes(tag(n.key)));
     draw();
     const h = (location.hash || '').slice(1).split(/[?&/]/)[0]; if (h && list.some(n => n.key === h)) seen(h);   // 주소로 바로 열어 둔 화면
   } catch (e) { /* 다음 차례에 다시 */ }

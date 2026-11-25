@@ -226,16 +226,16 @@
   }
   let flushing = false;
   async function flush() {
-    if (flushing) return; flushing = true;
+    if (flushing) return; flushing = true; let ok = false;
     try {
       for (const id of Object.keys(dirty)) {
         const p = dirty[id], body = Object.assign({ id, by: ME(), deleted_at: null }, p);
         await rest('adlib_marks?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(body) });
         if (dirty[id] === p) { delete dirty[id]; saveDirty(); }
       }
-      saveState('저장됨');
-    } catch (e) { saveState('아직 저장 안 됨 — 다시 시도 중', true); setTimeout(flush, 8000); }
-    finally { flushing = false; if (Object.keys(dirty).length) setTimeout(flush, 300); }
+      ok = true; saveState('저장됨');
+    } catch (e) { saveState('아직 저장 안 됨 — 다시 시도 중', true); clearTimeout(mark.t); mark.t = setTimeout(flush, 8000); }   // 예약은 하나만 — 실패가 이어져도 요청이 불어나지 않게
+    finally { flushing = false; if (ok && Object.keys(dirty).length) { clearTimeout(mark.t); mark.t = setTimeout(flush, 300); } }
   }
   function mark(id, patch, wait) {
     dirty[id] = Object.assign({}, dirty[id], patch); saveDirty();

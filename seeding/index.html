@@ -2515,7 +2515,8 @@
     if (S.detail && !$('detail').hidden && S.sel && S.list[S.sel.r] && S.list[S.sel.r].id !== S.detail) openDetail(S.list[S.sel.r].id, false);
   }
   function restoreSel() {
-    const s = S.sel;
+    const s = S.sel, ids = S.list.map(x => x.id).join();
+    if (S.multiIds !== ids) { S.multiIds = ids; S.multi = []; }   // 줄 순서가 바뀌면 순번으로 기억한 떨어진 범위는 풀기 — 엉뚱한 줄이 지워지지 않게 (2026-11-25)
     if (!s) { paintSel(); placeEd(); return; }
     let r = s.id ? S.list.findIndex(x => x.id === s.id) : -1;
     let c = s.vk ? S.cols.findIndex(x => x.vk === s.vk) : -1;

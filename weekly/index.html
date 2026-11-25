@@ -184,7 +184,7 @@
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="../meeting/shots.js?v=1"></script><!-- 글 사이 사진 메모 칸 · 마우스 올리면 크게 (마케팅 회의록과 같이 씀) -->
+<script src="../meeting/shots.js?v=2"></script><!-- 글 사이 사진 메모 칸 · 마우스 올리면 크게 (마케팅 회의록과 같이 씀) -->
 <script>
 (function () {
   'use strict';
@@ -372,6 +372,7 @@
         setSt('saving');
         clearTimeout(e.timer); e.timer = setTimeout(() => saveText(e), 700);
       },
+      onHeld: () => { const e = est(S.wk); if (!e.dirty[f]) e.base[f] = e.val[f] = ED[f].value; },
       onBlur: () => { const e = est(S.wk); if (isDirty(e)) saveText(e); },
     }));
     const b = document.querySelector(`[data-pic="${f}"]`);
@@ -391,10 +392,15 @@
   });
   function setField(f, v) { ED[f].value = v || ''; }
   function paintText() { const e = est(S.wk); Object.keys(FEL).forEach(f => setField(f, e.val[f])); COLS.layout(); setSt(isDirty(e) ? 'saving' : ''); }
+  // 기준본 = 화면에 실제로 들어간 글. 한글 조합 중이면 남의 글이 나중에 들어가는데, 먼저 '본 것'으로 치면 다음 저장에서 그 줄이 지워진다 (2026-11-25)
+  function adopt(e, f, v) {
+    if (S.wk !== e.wk) { e.base[f] = e.val[f] = v || ''; return; }
+    setField(f, v); e.base[f] = e.val[f] = ED[f].value;
+  }
   function syncFields(r) {   // 다른 PC 에서 고친 것 — 내가 고치는 중인 칸은 그대로 두고 저장할 때 합친다
     const wk = isDay(r.day) ? weekOf(r.day) : '', e = EST.get(wk);
     if (!e || r.deleted_at) return;
-    Object.keys(FEL).forEach(f => { if (e.dirty[f]) return; e.base[f] = r[f] || ''; e.val[f] = r[f] || ''; if (S.wk === wk) setField(f, r[f]); });
+    Object.keys(FEL).forEach(f => { if (e.dirty[f]) return; adopt(e, f, r[f]); });
   }
   function merge3(base, mine, theirs) {
     base = base || ''; mine = mine || ''; theirs = theirs || '';
@@ -438,7 +444,7 @@
           const row = r[0];
           takeRow(row);
           fs.forEach(f => {
-            if (e.val[f] === sent[f]) { delete e.dirty[f]; e.base[f] = e.val[f] = row[f] || ''; if (S.wk === e.wk) setField(f, row[f]); }
+            if (e.val[f] === sent[f]) { delete e.dirty[f]; adopt(e, f, row[f]); }
             else e.base[f] = sent[f];   // 보내는 사이 더 적음 — 다음 저장은 '보낸 글' 기준으로 합친다
           });
           ok = true;

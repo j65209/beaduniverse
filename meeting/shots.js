@@ -343,7 +343,7 @@
     function fit() { texts().forEach(grow); if (opt.onFit) opt.onFit(); }
     // 글자 하나하나는 조각만, 사진을 넣고 뺄 때만 다시 그린다
     function read() { texts().forEach(t => { const s = segs[+t.dataset.i]; if (s) s.v = t.value; }); }
-    function changed() { raw = build(segs.map(s => (s.t === 'row' ? {t: 'row', list: s.list.filter(x => !x.local)} : s)).filter(s => s.t !== 'row' || s.list.length)); if (opt.onInput) opt.onInput(); }
+    function changed() { hold = null; /* 기다리던 남의 글은 저장할 때 다시 합쳐진다 — 옛 것을 덮어쓰지 않게 */ raw = build(segs.map(s => (s.t === 'row' ? {t: 'row', list: s.list.filter(x => !x.local)} : s)).filter(s => s.t !== 'row' || s.list.length)); if (opt.onInput) opt.onInput(); }
 
     function caret() {   // 다시 그린 뒤에도 커서가 같은 줄에 있게 — 글 전체에서 몇째 글자인지 + 그 줄 글
       const t = document.activeElement; if (!t || !root.contains(t) || !t.classList.contains('mt')) return null;
@@ -362,7 +362,7 @@
     function shape(ss) { return ss.map(s => (s.t === 'row' ? 'r:' + s.list.map(x => x.id).join(',') : 't')).join('|'); }
     function setValue(v) {
       v = v || '';
-      if (v === raw) return;
+      if (v === raw) { hold = null; return; }
       if (comp || drag) { hold = v; return; }   // 한글 조합 중 · 크기 바꾸는 중이면 끝난 뒤에
       hold = null;
       const next = parse(v);
@@ -383,6 +383,7 @@
       const c = caret();
       raw = v; segs = next; paint(); putCaret(c);
     }
+    function applyHold() { if (hold == null || comp || drag) return; setValue(hold); if (opt.onHeld) opt.onHeld(); }
     // 올리는 중인 사진(아직 글에 없음)은 다른 사람 글이 들어와도 맨 끝에 남긴다
     function pend(next) {
       const ups = imgsIn().filter(x => x.local); if (!ups.length) return;
@@ -486,7 +487,7 @@
       d.f.classList.remove('rs');
       const w = d.f.getBoundingClientRect().width;
       if (Math.abs(w - d.w) >= 1) setW(d.id, w, true); else if (opt.onFit) opt.onFit();
-      if (hold != null) setValue(hold);
+      applyHold();
     };
     root.addEventListener('pointerup', end);
     root.addEventListener('pointercancel', end);
@@ -521,7 +522,7 @@
     /* ── 적기 ── */
     root.addEventListener('input', e => { if (!e.target.classList.contains('mt')) return; grow(e.target); read(); changed(); });
     root.addEventListener('compositionstart', () => { comp = true; });
-    root.addEventListener('compositionend', () => { comp = false; setTimeout(() => { if (hold != null && !comp && !drag) setValue(hold); }, 60); });
+    root.addEventListener('compositionend', () => { comp = false; setTimeout(applyHold, 60); });
     root.addEventListener('focusout', () => { setTimeout(() => { if (!root.contains(document.activeElement) && opt.onBlur) opt.onBlur(); }, 0); });
     root.addEventListener('keydown', e => {
       const t = e.target;
