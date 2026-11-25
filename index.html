@@ -5259,7 +5259,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-brands button.on small{color:#fecaca}
   /* 상담 목록 = 카카오톡 채팅 목록 (사장님 11-20). 프로필(브랜드 = 오른쪽 아래 작은 점) · 이름 + 브랜드 / 배지 + 마지막 글 ·
      오른쪽 위 = 시각(직원 호출 · 답 기다림이면 기다린 시간), 아래 = 빨간 안 읽음 숫자.
-     묶음 = 직원 호출 → 답 기다림(오래 기다린 순, 맨 아래가 가장 최근). 답 완료는 가려 두고 '답 완료' 칩(탭)에서만(11-20 저녁). 줄을 누르면 오피스 안 채팅방 창(#kkoChat) */
+     묶음 = 직원 호출 → 답 기다림(오래 기다린 순, 맨 아래가 가장 최근). 답이 끝난 방은 안 보임(11-25). 줄을 누르면 오피스 안 채팅방 창(#kkoChat) */
   .kko-list{display:flex;flex-direction:column;margin:2px -8px 0}
   .kko-grp{display:flex;align-items:center;gap:6px;min-height:32px;margin:10px 8px 2px;font-size:12px;font-weight:800;color:var(--kko-gray)}
   .kko-grp:first-child{margin-top:2px}
@@ -14380,7 +14380,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <!-- ============ 카카오톡 상담 — CS팀 맨 위, 탭과 상관없이 늘 보임 (2026-11-19 사장님 "카카오채널 상담 에이전트 … cs팀 최상단에 제작
          (모든 브랜드 전부 통합시켜서 한번에 볼 수 있게 배지만 달게)" · "연결부터하자"). 서버 /cs/kakao = 맥미니 kakao-live 2분 (톡채널, 읽기만) ·
          주문 찾기 /cs/order = 식스샵프로 색인. kko* 함수 · _kko 상태. 에이전트는 꺼 둠(11-19 사장님, 설계 중) — 고객에게 보내지 않는다.
-         11-20 사장님: 카카오톡 모양 · 채팅 / 에이전트 학습 탭 · 직원 호출 · 답 기다림 + 답 완료 탭(완료된 건 가려 둠) · 이미지 확인 필요 배지 ============ -->
+         11-20 사장님: 카카오톡 모양 · 채팅 / 에이전트 학습 탭 · 직원 호출 · 답 기다림(답이 끝난 방은 안 보임) · 이미지 확인 필요 배지 ============ -->
     <!-- CS 데스크 (2026-11-24 사장님 "cs팀 안에서 좌측은 채팅을 하고 우측에서 주문찾기,운송장조회,상세조회,건별접수,파일접수 이런기능 넣자")
          넓은 창(1400px+) = 왼쪽 카카오톡 상담(목록 | 대화창) · 오른쪽 CS 도구(#csTools). 좁은 창은 위아래 -->
     <div class="cs-desk" id="csDesk">
@@ -17933,7 +17933,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
      · 2026-11-20 사장님 "답변 완료 상담은 그냥 없애자. 어차피 답변 안오면 자동으로 그냥 밑에 쌓이니까" → 목록 = 직원 호출 · 답 기다림만
        (답변 완료 묶음 · '이전 상담 더 보기' 버튼 뺌). 고객이 다시 쓰면 답 기다림 맨 아래로 들어옴.
      · 같은 날 저녁 "답변을 해야하는것만 띄우주고. 답 기다림 옆에 답 완료 탭에 완료된건 가려주고 완료탭으로 이동" → 칩 '답 완료'
-       (기본 목록 = 답해야 하는 것만, 누르면 답 완료만 · 오래된 것 위, 브랜드 숫자도 그 탭 기준). */
+       (기본 목록 = 답해야 하는 것만, 누르면 답 완료만 · 오래된 것 위, 브랜드 숫자도 그 탭 기준).
+     · 2026-11-25 사장님 "cs에이전트에서 답 완료는 없애도될듯" → '답 완료' 칩(탭)도 없앰. 답이 끝난 방은 어디에도 안 보이고, 고객이 다시 쓰면 답 기다림으로 들어옴. */
   const KKO_LABEL={kop:'코페리',apt:'아페티',koz:'코즈미','6a':'식스에이',yar:'야르',akoi:'아코이하우스',pp:'프로덕트피알',bb:'브라이트비드',ct:'클리어타입'};
   const KKO_TOPIC={delivery:'배송',restock:'재입고 · 품절',size:'사이즈',color:'색상',claim:'교환 · 반품 · 취소',defect:'불량',usage:'사용 · 호환',price:'가격 · 쿠폰'};
   const KKO_KANANA={ON_DUTY:'채팅 시간에만',OFF_DUTY:'채팅 시간 밖에만',ALL_DAY:'24시간'};
@@ -18128,7 +18129,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return !!(c && c.chatOn && _kkoOpenNow(c.hours)) && Date.now()-(r.waitingSince||r.lastAt)>KKO_LATE_MIN*60000;
   }
   // 채팅방 창 머리의 상태 — 직원 호출 · 기다린 시간 · 답변 완료 (사장님 11-20 "답한 상담 -> 답변 완료 상담으로 변경").
-  // 답 완료 탭(11-20 저녁)에서 연 채팅방 · 열어 둔 채팅방에 직원이 답하면 머리가 '답변 완료'
+  // 열어 둔 채팅방에 직원이 답하면 머리가 '답변 완료'
   function _kkoRowState(r){
     const oc=_kkoOpenCall(r), w=_kkoAgo((oc && oc.since) || r.waitingSince || r.lastAt), wt=w==='방금' ? '방금 옴' : w+' 기다림';
     if(_kkoIsStaff(r)) return {text:'직원 호출 · '+wt, cls:'call'};
@@ -18162,7 +18163,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     },60000);
   }
   function kkoBrand(b){ _kko.brand=b; kkoRender(); }
-  function kkoOnly(k){ _kko.only=_kko.only===k ? '' : k; kkoRender(); }   // 직원 호출 · 답 기다림 · 답 완료 칩 — 그것만 보기 (다시 누르면 풀림 = 답해야 하는 것)
+  function kkoOnly(k){ _kko.only=_kko.only===k ? '' : k; kkoRender(); }   // 직원 호출 · 답 기다림 칩 — 그것만 보기 (다시 누르면 풀림 = 답해야 하는 것)
   function kkoToggleCh(){ _kko.showCh=!_kko.showCh; kkoRender(); }
   // 채팅 · 에이전트 학습 탭 (사장님 11-20 "에이전트 학습은 따로 탭을 빼줘") — 왼쪽 · 오른쪽 화살표로도 넘김
   function kkoTab(t, focus){
@@ -18223,19 +18224,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(dr && !off && dAge>KKO_AGENT_STALE_SEC) w.push(`에이전트 판정이 ${Math.round(dAge/60)}분째 멈췄어요 — 직원 호출 표시와 보낼 답이 늦어요 (맥미니 카카오 에이전트 확인)`);
     warn.innerHTML=w.map(t=>`<div class="kko-warn">${_kkoEsc(t)}</div>`).join('');
     // 묶음 (사장님 11-20 "직원호출, 답 기다림 2개만"): 직원 호출(관리자 호출 · 에이전트가 직원 몫으로 본 기다림) → 답 기다림(그 밖에 고객 글이 마지막).
-    // 기본 목록 = 답해야 하는 것만. 답 완료(직원이 답했고 그 뒤 고객 글이 없는 방 · 고객 마무리 인사)는 가려 두고 '답 완료' 칩(탭)으로만
-    // (11-20 사장님 "답변 완료 상담은 그냥 없애자" → 같은 날 저녁 "답변을 해야하는것만 띄우주고. 답 기다림 옆에 답 완료 탭에 완료된건 가려주고 완료탭으로 이동").
+    // 목록 = 답해야 하는 것만. 답이 끝난 방(직원이 답했고 그 뒤 고객 글이 없는 방 · 고객 마무리 인사)은 안 보임 (11-25 사장님 "답 완료는 없애도될듯").
     // 고객이 다시 쓰면 답 기다림 맨 아래로 돌아옴
     const needs=r=>_kkoIsStaff(r) || _kkoTodo(r) || _kkoWaiting(r), isTodo=r=>!_kkoIsStaff(r) && !!_kkoTodo(r), isWait=r=>!_kkoIsStaff(r) && !_kkoTodo(r) && _kkoWaiting(r);
-    if(!['staff','todo','wait','done','pick'].includes(_kko.only)) _kko.only='';
+    if(!['staff','todo','wait','pick'].includes(_kko.only)) _kko.only='';
     const pickTab=_kko.only==='pick', pickRows=_kkoColAll().filter(p=>_kko.brand==='all' || p.brand===_kko.brand).sort((a,b)=>(_kkoColHot(b)-_kkoColHot(a)) || a.at-b.at), pickHot=pickRows.filter(_kkoColHot);
-    const doneTab=_kko.only==='done', inView=doneTab ? r=>!needs(r) : needs;
     const base=_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand);
     const since=r=>((_kkoOpenCall(r)||{}).since||r.waitingSince||r.lastAt)||0;
     const staffRows=base.filter(_kkoIsStaff).sort((a,b)=>since(a)-since(b));
     const waitRows=base.filter(isWait).sort((a,b)=>since(a)-since(b));
     const todoRows=base.filter(isTodo).sort((a,b)=>((_kkoTodo(a)||{}).since||0)-((_kkoTodo(b)||{}).since||0));
-    const doneRows=base.filter(r=>!needs(r)).sort((a,b)=>(a.lastAt||0)-(b.lastAt||0));   // 오래된 것 위 · 맨 아래가 가장 최근
     const late=waitRows.filter(_kkoLate).length;
     const drNote=off ? '' : dr ? `서버 판정 ${Math.max(0,Math.round(dAge/60))}분 전` : (_kko.draftsErr ? '서버 판정을 아직 못 받아 관리자 호출만 셈' : '');
     // 누르면 그것만 보는 칩 (먹색 = 지금 거르는 중)
@@ -18244,22 +18242,21 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         : '직원이 답해야 하는 채팅방 — 관리자 호출 · 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화')+(drNote ? ` (${drNote})` : ''))
       + (todoRows.length || _kko.only==='todo' ? pick('todo','처리할 일',todoRows.length,false,'대화는 에이전트가 했고 사람 손으로 할 일이 남은 채팅방 — 수거 접수 · 환불 · 입금 확인 · 재발송') : '')
       + (pickRows.length || pickTab ? pick('pick','수거',pickRows.length,pickHot.length>0,'반품 · 교환 회수 — 요청 → 기사님 수거 → 물류 도착 → 물건 확인', pickHot.length ? `<small>확인 ${pickHot.length}</small>` : '') : '')
-      + pick('wait','답 기다림',waitRows.length,late>0,`고객 글이 마지막인 채팅방 (최근 ${d.windowDays}일, 마무리 인사 · 직원 호출 뺌) — 빨강은 상담 시간 중 ${KKO_LATE_MIN}분 넘게 기다린 곳`, late ? `<small>${KKO_LATE_MIN}분 넘음 ${late}</small>` : '')
-      + pick('done','답 완료',doneRows.length,false,`직원이 답했고 그 뒤 고객 글이 없는 채팅방 (최근 ${d.windowDays}일, 고객 마무리 인사 포함) — 기본 목록에서는 가려 둠`);
+      + pick('wait','답 기다림',waitRows.length,late>0,`고객 글이 마지막인 채팅방 (최근 ${d.windowDays}일, 마무리 인사 · 직원 호출 뺌) — 빨강은 상담 시간 중 ${KKO_LATE_MIN}분 넘게 기다린 곳`, late ? `<small>${KKO_LATE_MIN}분 넘음 ${late}</small>` : '');
     // 채팅 탭 빨간 숫자 = 모든 브랜드의 직원 호출 + 답 기다림
     if(tabC){ const n=rows.filter(needs).length, h=`채팅${n ? ` <small>${n}</small>` : ''}`; if(tabC.innerHTML!==h) tabC.innerHTML=h; }
-    // 브랜드 — 채널 순서대로, 숫자 = 직원 호출 + 답 기다림 (답 완료 탭에서는 답 완료 수)
+    // 브랜드 — 채널 순서대로, 숫자 = 직원 호출 + 답 기다림
     const ordIdx=b=>{ const i=KKO_ORDER.indexOf(b); return i<0?99:i; };
     const seen=[];
     for(const c of chans){ if(!seen.some(x=>x.brand===c.brand)) seen.push({brand:c.brand,label:KKO_LABEL[c.brand]||c.label}); }
     seen.sort((a,b)=>ordIdx(a.brand)-ordIdx(b.brand));
-    const ncount=b=>rows.filter(r=>r.brand===b && inView(r)).length;
-    brands.innerHTML=`<button type="button" class="${_kko.brand==='all'?'on':''}" onclick="kkoBrand('all')">전체 ${rows.filter(inView).length}</button>`
+    const ncount=b=>rows.filter(r=>r.brand===b && needs(r)).length;
+    brands.innerHTML=`<button type="button" class="${_kko.brand==='all'?'on':''}" onclick="kkoBrand('all')">전체 ${rows.filter(needs).length}</button>`
       + seen.filter(b=>!(typeof PAUSED_BRANDS!=='undefined' && PAUSED_BRANDS.has(b.brand)) || rows.some(r=>r.brand===b.brand) || _kko.brand===b.brand).map(b=>`<button type="button" class="reo-b-${_kkoEsc(b.brand)}${_kko.brand===b.brand?' on':''}" onclick="kkoBrand('${_kkoEsc(b.brand)}')">${_kkoEsc(b.label)} ${ncount(b.brand)}</button>`).join('')
       + `<button type="button" onclick="kkoToggleCh()" aria-expanded="${_kko.showCh}">채널 ${chans.length}개 ${_kko.showCh?'▴':'▾'}</button>`;
     // 줄 순서 (사장님 11-19 "오래 기다린사람부터 맨위로 · 제일 최근에 연락온사람은 하단으로"): 직원 호출 · 답 기다림 모두 오래 기다린 것부터 —
-    // 맨 아래가 가장 최근. 칩을 눌렀으면 그 묶음만 (답 완료도 오래된 것 위 · 맨 아래가 가장 최근).
-    const qS=doneTab || ['wait','todo','pick'].includes(_kko.only) ? [] : staffRows, qT=doneTab || ['wait','staff','pick'].includes(_kko.only) ? [] : todoRows, qW=doneTab || ['staff','todo','pick'].includes(_kko.only) ? [] : waitRows;
+    // 맨 아래가 가장 최근. 칩을 눌렀으면 그 묶음만.
+    const qS=['wait','todo','pick'].includes(_kko.only) ? [] : staffRows, qT=['wait','staff','pick'].includes(_kko.only) ? [] : todoRows, qW=['staff','todo','pick'].includes(_kko.only) ? [] : waitRows;
     const qP=pickTab ? pickRows : !_kko.only ? pickRows.filter(p=>p.state==='arrived') : [];   // 기본 목록 맨 위 = 물류에 도착한 수거
     const ae=document.activeElement, focusK=(ae && ae.classList && ae.classList.contains('kko-row')) ? ae.dataset.k : '';
     const openK=_kko.chat ? _kko.chat.key : '';
@@ -18280,8 +18277,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(qS.length) html+=head('call','직원 호출',qS.length)+qS.map(rowHtml).join('');
     if(qT.length) html+=head('','처리할 일',qT.length)+qT.map(rowHtml).join('');
     if(qW.length) html+=head('','답 기다림',qW.length)+qW.map(rowHtml).join('');
-    if(doneTab && doneRows.length) html+=head('done','답 완료',doneRows.length)+doneRows.map(rowHtml).join('');
-    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({pick:'진행 중인 수거가 없어요',staff:'직원 호출이 필요한 채팅이 없어요',todo:'처리할 일이 없어요',wait:'답을 기다리는 채팅이 없어요',done:`최근 ${d.windowDays}일 안에 답 완료된 채팅이 없어요`})[_kko.only] || '지금 직원 호출 · 답 기다리는 상담이 없어요'}</div>`;
+    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({pick:'진행 중인 수거가 없어요',staff:'직원 호출이 필요한 채팅이 없어요',todo:'처리할 일이 없어요',wait:'답을 기다리는 채팅이 없어요'})[_kko.only] || '지금 직원 호출 · 답 기다리는 상담이 없어요'}</div>`;
     if(focusK){ const el=[...list.querySelectorAll('.kko-row')].find(x=>x.dataset.k===focusK); if(el) el.focus({preventScroll:true}); }
     // 에이전트 학습 탭 — 바뀐 게 있을 때만 다시 그림
     const ln=document.getElementById('kkoLearn');
