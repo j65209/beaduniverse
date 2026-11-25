@@ -55016,7 +55016,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   }
 
   /* ===== 전략팀 월간 손익 메인보드 — 한 달 실제 남는 돈 =====
-     남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가) − 월 고정비. 부가세 예상 = 매출 ÷ 11.
+     남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가) − 월 고정비. 부가세 예상 = 매출세액(매출 ÷ 11) − 매입세액(택배 · 수수료 · 플랫폼 광고 · 월세 등 ÷ 11).
      칸 값 우선순위: 직접 입력 → 자동(일일 보고서 — 지그재그는 수수료 · 직배 이용료까지) → 지난달 비율 × 이번 달 매출 → 지난달 값.
      진행 중인 달의 자동 값 = 어제까지 실적 + 남은 날 × 최근 14일 평균.
      공홈 · 에이블리 수수료는 자동으로 빼지 않는다 — 사장님 시트 기준 (2026-11-02 결정). 칸에 직접 넣으면 그 값만 뺀다.
@@ -55904,7 +55904,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     _sb.memo={};
     const w=_stratW, m=_sb.month, cur=m===_sbCurMonth(), res=_sbResolve(m);
     const fixed=_sbFixed(m), fixedSum=fixed.reduce((a,r)=>a+r.amount,0), todo=fixed.filter(r=>r.todo).length;
-    const left=res.net-fixedSum, vat=Math.round(res.sales/11), active=document.activeElement;
+    const left=res.net-fixedSum, vm=_sbVatMonth(m), vat=Math.max(0,Math.round(vm.out-vm.inn)), active=document.activeElement;
     const money=v=>`<span class="${v<0?'neg':''}">₩${w(v)}</span>`;
     const rate=(net,sales)=>sales?_stratPct(net/sales):'-';
     document.getElementById('sbTitle').innerHTML='월간 손익 메인보드 '+(cur?'<small class="strat-live">● 진행 중 · 월말 예상</small>':'<small>마감된 달</small>');
@@ -55914,12 +55914,13 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       kpi(cur?'예상 매출':'매출', '₩'+w(res.sales), cur?`오늘까지 자동 수집 ₩${w(res.actual)}`:'전 채널 합계'),
       kpi('채널 순수익', money(res.net), '매출의 '+rate(res.net,res.sales)),
       kpi('고정 지출', '₩'+w(fixedSum), `${fixed.length}개 항목`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'')),
-      kpi('부가세 예상', '₩'+w(vat), '매출 ÷ 11 · 매입 공제 전'),
+      kpi('부가세 예상', '₩'+w(vat), `매출세액 ${w(vm.out)} − 매입세액 ${w(vm.inn)}`),   // 아래 법인 세금 표의 부가세와 같은 계산 (2026-11-25 사장님 "네, 맞춰줘", 그전엔 매출 ÷ 11)
     ].join('');
     const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 고정 지출 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
     if(cur) lines.push(`월말 예상: 자동 수집 채널은 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
     lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 29CM 수수료는 배송비를 뺀 상품 매출의 30%로 계산해요. 지그재그 매출은 스토어 부담 쿠폰을 뺀 값이에요. 그 밖의 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
+    lines.push('부가세 예상은 아래 법인 세금 표와 같은 계산이에요 — 매출 ÷ 11 에서 택배 · 수수료 · 플랫폼 광고 · 월세 등의 매입세액을 뺀 값. 물건 수입 부가세 · 메타 광고는 공제로 안 잡았어요.');
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정 지출의 택배비(공홈 배송 건수 × 단가 예상)에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
     if(res.partial.length) lines.push(`<span class="sb-warn">⚠ 이 달 중간부터 보고서가 있는 채널: ${_stratEsc(res.partial.join(', '))} — 있는 날만 합산했어요.</span>`);
