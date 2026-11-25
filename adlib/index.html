@@ -65,6 +65,8 @@
   #app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start }
   .side { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: sticky; top: calc(var(--top) + 16px); max-height: calc(100vh - var(--top) - 32px); display: flex; flex-direction: column; overflow: hidden }
   .side-h { padding: 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none }
+  .brow.off { text-decoration: none; color: inherit } .brow.off b, .brow.off .rk { color: var(--t3) } .brow.off .pic { background: #f1f3f6 } .brow .go { font-size: 12px; color: var(--t3); white-space: nowrap }
+  #srcSeg { overflow-x: auto; scrollbar-width: none } #srcSeg button { flex: 1 0 auto; padding: 0 9px }
   .side-h .seg { width: 100% } .side-h .seg button { flex: 1; padding: 0 4px }
   .note { font-size: 12px; color: var(--t3); line-height: 1.35 }
   .row2 { display: flex; gap: 6px } .row2 .inp { flex: 1 }
@@ -159,6 +161,7 @@
       <div class="seg" id="rankSeg"><button data-v="spend">광고비 많은</button><button data-v="eff">효율 좋은</button><button data-v="new">새 소재 많은</button></div>
       <div class="note" id="rankNote"></div>
       <div class="seg" id="regSeg"><button data-v="kr">국내</button><button data-v="global">해외</button><button data-v="own">우리 브랜드</button></div>
+      <div class="seg scroll" id="srcSeg" aria-label="플랫폼 순위 브랜드"><button data-v="">전체</button><button data-v="musinsa">무신사</button><button data-v="amondz">아몬즈</button><button data-v="ably">에이블리</button><button data-v="zigzag">지그재그</button><button data-v="hip">요즘 브랜드</button></div>
       <div class="row2"><input class="inp" id="bq" placeholder="브랜드 찾기" aria-label="브랜드 찾기"><button class="btn" id="addBtn" type="button">＋ 브랜드</button></div>
     </div>
     <div class="blist" id="blist"></div>
@@ -193,7 +196,7 @@
   const num = n => Number(n || 0).toLocaleString('ko-KR');
   const md = t => { const d = new Date(t); return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`; };
   const KIND = { video: '영상', image: '사진', carousel: '여러 장' };
-  const S = { d: null, base: '', marks: {}, rank: lsGet('adlib_rank') || 'spend', reg: 'kr', pid: '', view: 'win', fmt: '', q: '', bq: '', n: PAGE, list: [] };
+  const S = { d: null, base: '', marks: {}, rank: lsGet('adlib_rank') || 'spend', reg: 'kr', src: '', pid: '', view: 'win', fmt: '', q: '', bq: '', n: PAGE, list: [] };
   const DIRTY = 'adlib_dirty_v1';
   let dirty = {}; try { dirty = JSON.parse(lsGet(DIRTY) || '{}') || {}; } catch (e) { dirty = {}; }
   const saveDirty = () => lsSet(DIRTY, JSON.stringify(dirty));
@@ -255,6 +258,7 @@
     const j = await r.json();
     if (!r.ok || !j.ok) throw new Error(j.error || 'HTTP ' + r.status);
     S.d = j;
+    S.seeds = (j.seeds && j.seeds.list) || []; S.seedBy = {}; S.seeds.forEach(x => { if (x.pid) (S.seedBy[x.pid] = S.seedBy[x.pid] || []).push(x); });
     S.byPid = {}; j.brands.forEach(b => { S.byPid[b.pid] = b; b.ads = (j.ads[b.pid] || []).map(a => Object.assign(a, { pid: b.pid, bn: b.name })); });
     S.all = j.brands.reduce((x, b) => x.concat(b.ads), []).concat((j.lost || []));
     const h = (Date.now() - j.at) / 36e5, d = new Date(j.at), st = $('stamp');
@@ -271,6 +275,24 @@
   const hidden = b => b.pids.some(p => (S.marks['pg:' + p] || {}).st === 'hide');
   const regionOf = b => b.own ? 'own' : ((S.marks['pg:' + b.pid] || {}).v || {}).region || b.region;
   const inReg = b => !hidden(b) && regionOf(b) === S.reg;
+  const SRC = { musinsa: '무신사', amondz: '아몬즈', ably: '에이블리', zigzag: '지그재그', hip: '요즘 브랜드' };
+  const inView = b => S.src ? !hidden(b) && (S.seedBy[b.pid] || []).some(x => S.src in x.r) : inReg(b);
+  const ranksOf = pid => { const r = {}; (S.seedBy[pid] || []).forEach(x => Object.keys(x.r).forEach(k => { if (!(k in r) || x.r[k] < r[k]) r[k] = x.r[k]; })); return Object.keys(SRC).filter(k => k in r).map(k => k === 'hip' ? SRC[k] : `${SRC[k]} ${r[k]}위`).join(' · '); };
+  const ST = { off: '지금 도는 메타 광고 없음', soon: '찾음 — 곧 모아요', none: '메타에서 광고를 못 찾음', wait: '순서대로 찾는 중' };
+  function paintSeeds() {
+    const q = S.bq.trim().toLowerCase(), at = (S.d.seeds || {}).at || '', all = S.seeds.filter(x => S.src in x.r), on = all.filter(x => x.pid).length;
+    $('rankNote').textContent = `${((S.d.seeds || {}).src || {})[S.src] || ''}${at ? ` (${+at.slice(5, 7)}/${+at.slice(8)} 기준)` : ''} · ${all.length}곳 중 광고 있는 곳 ${on}`;
+    const l = all.filter(x => !(x.pid && S.byPid[x.pid] && hidden(S.byPid[x.pid])) && (!q || (x.n + ' ' + ((S.byPid[x.pid] || {}).name || '')).toLowerCase().includes(q)));
+    const sp = x => (S.byPid[x.pid] || {}).spend || -1;
+    l.sort((x, y) => S.src === 'hip' ? sp(y) - sp(x) : x.r[S.src] - y.r[S.src]);
+    $('blist').innerHTML = l.map((x, i) => {
+      const b = S.byPid[x.pid], rk = S.src === 'hip' ? i + 1 : x.r[S.src];
+      const etc = Object.keys(SRC).filter(k => k !== S.src && k !== 'hip' && k in x.r).map(k => `${SRC[k]} ${x.r[k]}위`).join(' · ');
+      if (!b) return `<a class="brow off" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=KR&media_type=all&search_type=keyword_unordered&q=${encodeURIComponent(x.n)}" title="메타 광고 라이브러리에서 찾아보기"><span class="rk">${rk}</span><span class="pic"></span><span style="min-width:0"><b>${esc(x.n)}</b><span class="s">${esc(ST[x.st] || '')}${etc ? ' · ' + esc(etc) : ''}</span></span><span class="go">메타 ↗</span></a>`;
+      const a = b.ads.find(y => y.th) || b.ads[0] || { m: [] };
+      return `<button class="brow${S.pid === b.pid ? ' on' : ''}" data-pid="${b.pid}"><span class="rk${rk <= 3 ? ' hi' : ''}">${rk}</span><span class="pic"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""></span><span style="min-width:0"><b>${esc(x.n)}</b><span class="s">광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}${etc ? ' · ' + esc(etc) : ''}</span></span><span class="sc"><b>${b.spend ?? '–'}</b></span></button>`;
+    }).join('') || '<div style="padding:28px 12px;text-align:center;color:var(--t3)">해당하는 브랜드가 없어요</div>';
+  }
   const val = b => S.rank === 'spend' ? b.spend : S.rank === 'eff' ? b.eff : b.m.new7;
   function brandsNow() {
     const q = S.bq.trim().toLowerCase();
@@ -278,6 +300,7 @@
     return l.sort((x, y) => (val(y) - val(x)) || (y.m.live - x.m.live));
   }
   function paintBrands() {
+    if (S.src) return paintSeeds();
     const l = brandsNow();
     $('rankNote').textContent = S.rank === 'spend' ? '추정 점수 0~100 — 실제 금액은 메타가 공개하지 않아요' : S.rank === 'eff' ? '추정 점수 0~100 — 오래 안 끄고 노출 상위인 광고가 많은 곳' : '최근 7일 안에 새로 시작한 소재 수';
     $('blist').innerHTML = l.map((b, i) => {
@@ -289,7 +312,7 @@
   function paintHead() {
     const b = S.byPid[S.pid], h = $('bhead'); h.hidden = !b; if (!b) return;
     const live = b.h && b.h.length > 4 ? spark(b.h) : '';
-    h.innerHTML = `<div style="min-width:0"><h2>${esc(b.name)}</h2><div class="sub">${b.dom ? `<a href="https://${esc(b.dom)}" target="_blank" rel="noopener noreferrer">${esc(b.dom)}</a>` : esc((b.cats || []).join(' · '))}${b.likes ? ` · 페이지 좋아요 ${num(b.likes)}` : ''}</div></div>
+    h.innerHTML = `<div style="min-width:0"><h2>${esc(b.name)}</h2><div class="sub">${b.dom ? `<a href="https://${esc(b.dom)}" target="_blank" rel="noopener noreferrer">${esc(b.dom)}</a>` : esc((b.cats || []).join(' · '))}${b.likes ? ` · 페이지 좋아요 ${num(b.likes)}` : ''}${ranksOf(b.pid) ? ' · ' + esc(ranksOf(b.pid)) : ''}</div></div>
       <div class="stat"><b>${b.spend ?? '–'}</b><span>광고비 추정</span></div><div class="stat"><b>${b.eff ?? '–'}</b><span>효율 추정</span></div>
       <div class="stat"><b>${num(b.m.live)}</b><span>지금 광고</span></div><div class="stat"><b>${b.m.new7}</b><span>7일 새 소재</span></div><div class="stat"><b>${b.m.winners}</b><span>30일+ 주력</span></div><div class="stat"><b>${num(b.m.longest)}일</b><span>가장 오래</span></div>
       <div class="stat"><b>${b.m.video}·${b.m.image}·${b.m.car}</b><span>영상·사진·여러 장</span></div>${live}
@@ -307,7 +330,7 @@
     let l;
     if (S.view === 'star') l = S.all.filter(isStar);
     else if (S.pid) l = S.byPid[S.pid].ads.slice();
-    else l = S.d.brands.filter(inReg).reduce((x, b) => x.concat(b.ads), []);
+    else l = S.d.brands.filter(inView).reduce((x, b) => x.concat(b.ads), []);
     if (S.fmt) l = l.filter(a => a.f === S.fmt);
     if (q) l = l.filter(a => (a.bn + ' ' + a.b + ' ' + a.t + ' ' + (a.alt || []).join(' ') + ' ' + (markOf(a).memo || '')).toLowerCase().includes(q));
     const sp = a => (S.byPid[a.pid] || {}).spend || 0;
@@ -337,7 +360,7 @@
   }
   function paintSegs() {
     const set = (id, v) => $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
-    set('rankSeg', S.rank); set('regSeg', S.reg); set('viewSeg', S.view); set('fmtSeg', S.fmt);
+    set('rankSeg', S.rank); set('regSeg', S.src ? '-' : S.reg); set('srcSeg', S.src); set('viewSeg', S.view); set('fmtSeg', S.fmt);
     $('mtabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === document.body.dataset.m));
   }
   function paint(keepN) { if (!keepN) S.n = PAGE; paintSegs(); paintBrands(); paintHead(); paintGrid(); }
@@ -398,7 +421,7 @@
 
   function help() {
     overlay(`<h3>숫자 읽는 법</h3><p>메타는 남의 <b>광고비 · 매출 · ROAS 를 공개하지 않아요.</b> 아래 점수는 공개된 것(광고 개수 · 기간 · 노출 순서)으로 브랜드끼리 견준 <b>추정</b>이에요 (0~100, 높을수록 앞).</p>
-      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>하루 두 번(새벽 3시 20분 · 오후 3시 20분) 조금씩 모아서 한 바퀴 도는 데 이틀쯤 걸려요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
+      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li><b>무신사 · 아몬즈 · 에이블리 · 지그재그</b> — 그 플랫폼 주얼리 순위에 든 브랜드예요(11/25 하루 기준). 메타에서 광고주를 찾은 곳만 소재가 나오고, 회색은 아직 찾는 중이거나 지금 메타 광고를 안 하는 곳. <b>요즘 브랜드</b>는 젊은 층에 뜨는 곳을 직접 고른 것</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>하루 두 번(새벽 3시 20분 · 오후 3시 20분) 조금씩 모아서 한 바퀴 도는 데 이틀쯤 걸려요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
   }
   function addDlg() {
     const rows = Object.values(S.marks).filter(m => m.st === 'add' && m.v && m.v.q), hid = Object.values(S.marks).filter(m => m.st === 'hide');
@@ -411,8 +434,9 @@
 
   /* ── 누르기 ── */
   const seg = (id, fn) => $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { fn(b.dataset.v ?? b.dataset.m); } });
-  seg('rankSeg', v => { S.rank = v; lsSet('adlib_rank', v); paintSegs(); paintBrands(); });
-  seg('regSeg', v => { S.reg = v; S.pid = ''; paint(); });
+  seg('rankSeg', v => { const was = S.src; S.src = ''; S.rank = v; lsSet('adlib_rank', v); if (was) { S.pid = ''; paint(); } else { paintSegs(); paintBrands(); } });
+  seg('regSeg', v => { S.reg = v; S.src = ''; S.pid = ''; paint(); });
+  seg('srcSeg', v => { S.src = v; S.pid = ''; if (v && S.view === 'star') S.view = 'win'; paint(); });
   seg('viewSeg', v => { S.view = v; paint(); });
   seg('fmtSeg', v => { S.fmt = v; paint(); });
   seg('mtabs', v => mtab(v));
