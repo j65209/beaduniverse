@@ -140,9 +140,10 @@ const SRC = [
   // 에이전트 학습 — 정할 시나리오 (2026-11-25 사장님 "전승훈한테 알림을 띄워서 시나리오 매칭하거나 수정해야하는거 클로드를 껴서 맞추고") — 새로 생겼을 때만 한 줄
   {id: 'csl', nm: '에이전트 학습', ev: 5, async run() {
     const d = await px('/cs/kakao-review', {arr: 'items'}); if (d.staff || d.outside) return [];
-    const has = new Set((d.rows || []).map(r => r.key)), xs = d.items.filter(x => !has.has(x.key)), wait = (d.claude || []).filter(c => c.out && c.out.st === 'done' && !has.has(c.key) && !(d.claude || []).some(y => y.key === c.key && y.at > c.at));
-    const nw = d.items.reduce((m, x) => Math.max(m, x.at || 0), 0), r = [];
-    if (xs.length) r.push({k: 'csl', a: '에이전트 학습', t: `시나리오 정할 것 ${n(xs.length)}건`, b: '대충 말하면 클로드가 정리해 시나리오북에 넣어요', list: xs.slice(0, 40).map(x => `${x.label || x.brand || ''} · ${cut(x.title || x.q, 60)}`), sig: String(nw), go: 'csl'});
+    // 클로드가 추천을 정리해 둔 것만 센다 (11-25 사장님 "나한테 알림을 줄때 클로드가 먼저 추천 답변을 정리해서 나에게 보여줘") — 정리를 못 한 것도 묻어 두지 않는다
+    const has = new Set((d.rows || []).map(r => r.key)), xs = d.items.filter(x => !has.has(x.key) && x.rec && (x.rec.st === 'done' || x.rec.st === 'err')), wait = (d.claude || []).filter(c => c.out && c.out.st === 'done' && !has.has(c.key) && !(d.claude || []).some(y => y.key === c.key && y.at > c.at));
+    const nw = d.items.reduce((m, x) => Math.max(m, x.rec ? x.at || 0 : 0), 0), r = [];
+    if (xs.length) r.push({k: 'csl', a: '에이전트 학습', t: `시나리오 정할 것 ${n(xs.length)}건`, b: '클로드가 추천을 정리해 두었어요' + (xs[0].rec.reply ? ` — ${cut(xs[0].title || xs[0].q, 40)}: ${cut(xs[0].rec.reply, 70)}` : ''), list: xs.slice(0, 40).map(x => `${x.label || x.brand || ''} · ${cut(x.title || x.q, 50)}${x.rec.reply ? ' → ' + cut(x.rec.reply, 60) : ''}`), sig: String(nw), go: 'csl'});
     if (wait.length) r.push({k: 'cslw', a: '에이전트 학습', t: `클로드가 정리한 것 ${n(wait.length)}건`, b: '보고 시나리오북에 넣어 주세요', list: wait.slice(0, 40).map(c => cut(c.say, 60)), sig: wait.map(c => c.id).sort().join().slice(0, 400), go: 'csl'});
     return r;
   }},
