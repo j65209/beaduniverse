@@ -106,11 +106,18 @@
   .rowb b { font-size:13.5px; font-weight:700; overflow-wrap:anywhere } .rowb .a { font-size:13px; color:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .rowb .n { font-size:12px; color:var(--t3); white-space:nowrap; font-variant-numeric:tabular-nums }
   .rowx { padding:2px 18px 18px } .rowx .full { padding:12px 14px; border-radius:12px; background:var(--soft); font-size:13.5px; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere }
   .rowx .v { margin-top:8px; font-size:12.5px; color:var(--t3) } .rowx .acts .btn { flex:none } .rowx .acts .btn.p { flex:none; min-height:42px; font-size:13.5px }
+  .ltop { display:flex; align-items:center; gap:12px; margin-bottom:14px; font-size:13px; color:var(--t3) }
+  .lks { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr)); gap:16px }
+  .lk { padding:18px 20px 10px; border:1px solid var(--line); border-radius:16px; background:#fff } .lk h2 { display:flex; align-items:center; gap:8px; margin:0 0 8px; font-size:15.5px; font-weight:800 }
+  .lr { display:grid; grid-template-columns:auto minmax(120px,36%) minmax(0,1fr) auto; gap:10px; align-items:baseline; padding:10px 0; border-top:1px solid var(--line); font-size:13px }
+  .lr i { width:8px; height:8px; border-radius:50%; background:#c3c8d0 } .lr.ok i { background:var(--ink) } .lr.bad i { background:var(--red) } .lr.wait i { background:#fff; box-shadow:inset 0 0 0 2px #c3c8d0 }
+  .lr b { font-weight:700 } .lr span { color:var(--t2); overflow-wrap:anywhere } .lr em { font-style:normal; font-size:12px; font-weight:700; color:var(--t3) } .lr.bad em,.lr.bad span { color:var(--red) }
   .warn { margin:0 0 12px; padding:10px 14px; border-radius:10px; background:#fdecec; color:var(--red); font-size:13px; font-weight:600 }
   @media (max-width:1180px) { .todo { grid-template-columns:minmax(280px,34%) minmax(0,1fr) } .todo .c2 { grid-column:2; grid-row:1 } .todo .c3 { grid-column:2; grid-row:2; border-top:1px solid var(--line) } .todo { grid-template-rows:minmax(0,1fr) minmax(0,1.1fr) } .todo .c1 { grid-row:1 / span 2 } .nums span { display:none } }
   @media (max-width:760px) {
     .top { flex-wrap:wrap; padding:8px 12px; gap:8px 12px } .top h1 { font-size:16px } .nums,.off { display:none } .top .seg { order:3; width:100% } .top .seg button { flex:1; justify-content:center } .top .x { margin-left:auto }
     .todo { display:block; overflow:auto; background:var(--panel) } .todo .col { display:none } .todo .c1 { display:flex; height:100% } .todo.open .c1 { display:none } .todo.open .c2,.todo.open .c3 { display:flex; border:0 } .todo.open .talk { max-height:46vh } .back { display:block }
+    .lr { grid-template-columns:auto 1fr auto } .lr span { grid-column:2 / -1; grid-row:2 }
     .rowb { grid-template-columns:1fr auto; gap:4px 10px } .rowb .a { grid-column:1 / -1; white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical } textarea,select,input[type=search] { font-size:16px } .btn,.chips button,.mini { min-height:44px }
   }
 </style>
@@ -121,6 +128,7 @@
   <div class="seg" role="tablist" aria-label="보기">
     <button type="button" role="tab" id="tabTodo" aria-selected="true">볼 것 <em id="tabN"></em></button>
     <button type="button" role="tab" id="tabBook" aria-selected="false">정리된 답</button>
+    <button type="button" role="tab" id="tabLink" aria-selected="false">연결 <em id="linkN"></em></button>
   </div>
   <div class="nums" id="nums"></div>
   <span class="off" id="off" hidden></span>
@@ -142,7 +150,7 @@ const KIND = {fix: ['수정 필요', '답이 아쉽거나 틀렸어요'], learn:
 const ACT = {answer: '바로 답', ask: '정보를 물음', todo: '답하고 처리할 일로', staff: '직원을 부름'};
 const WHO = {staff: '직원', ai: '카나나', bot: '자동응답'};
 const FV = {text: '답을 고쳤어요', ok: '이대로 맞아요', staff: '직원이 맡아요', drop: '볼 필요 없음'};
-const S = {d: null, err: '', book: null, bookErr: '', tab: 'todo', f: 'all', brand: '', q: '', cur: '', b2: '', q2: '', sub: 'qa', open: new Set(), rows: new Map(), edits: new Map(), out: ls(OUT) || [], sending: false, wait: 0, tm: 0};
+const S = {d: null, err: '', book: null, bookErr: '', links: null, linkErr: '', tab: 'todo', f: 'all', brand: '', q: '', cur: '', b2: '', q2: '', sub: 'qa', open: new Set(), rows: new Map(), edits: new Map(), out: ls(OUT) || [], sending: false, wait: 0, tm: 0};
 
 /* ── 서버 ── */
 async function api(path, body) {
@@ -166,7 +174,7 @@ async function load() {
     S.out.forEach(o => apply(o));
     if (j.staff && S.tab === 'todo') S.tab = 'book';
   } catch (e) { S.err = (e && e.message) || String(e); }
-  if (S.tab === 'todo' || !S.book) paint();
+  if (S.tab === 'todo' || (S.tab === 'book' && !S.book)) paint();
   head(); push();
   if (S.tab === 'book') loadBook();
 }
@@ -223,7 +231,7 @@ const left = k => (S.d && S.d.items || []).filter(x => !isDone(x.key) && (!k || 
 function head() {
   const d = S.d;
   $('tabTodo').hidden = !!(d && d.staff);
-  $('tabTodo').setAttribute('aria-selected', S.tab === 'todo'); $('tabBook').setAttribute('aria-selected', S.tab === 'book');
+  $('tabTodo').setAttribute('aria-selected', S.tab === 'todo'); $('tabBook').setAttribute('aria-selected', S.tab === 'book'); $('tabLink').setAttribute('aria-selected', S.tab === 'link'); $('linkN').textContent = S.links && S.links.counts.bad ? N(S.links.counts.bad) : '';
   $('tabN').textContent = d && !d.staff ? (d.outside ? N((d.counts.fix || 0) + (d.counts.learn || 0) + (d.counts.new || 0)) : left() ? N(left()) : '') : '';
   const s = d && d.sums && (d.sums.new || d.sums.all);
   if (s) {
@@ -237,7 +245,7 @@ function head() {
 }
 
 /* ── 그리기 ── */
-function paint() { if (S.tab === 'todo') paintTodo(); else paintBook(); head(); }
+function paint() { if (S.tab === 'todo') paintTodo(); else if (S.tab === 'link') paintLink(); else paintBook(); head(); }
 function shown() {
   const q = S.q.trim().toLowerCase();
   return items().filter(x => (S.f === 'done' ? isDone(x.key) : !isDone(x.key) && (S.f === 'all' || x.kind === S.f)) && (!S.brand || x.brand === S.brand) && (!q || (x.title + ' ' + x.q + ' ' + x.draft).toLowerCase().includes(q)));
@@ -365,11 +373,27 @@ function rowHtml(key, title, full, n, tpl, can, vars) {
     + (can ? `<div class="acts"><button type="button" class="btn" data-do="edit"${dr ? ' hidden' : ''}>고치기</button>${ed ? '<button type="button" class="btn" data-do="reset">원래대로</button>' : ''}</div><div class="ed"${dr ? '' : ' hidden'}><div class="lb">답 글 ${/:common:/.test(key) ? '<small>모든 브랜드에 같이 바뀌어요</small>' : '<small>이 브랜드만 바뀌어요</small>'}</div><textarea maxlength="1500" data-o="${E(tpl)}">${E(dr ? dr.text : tpl)}</textarea>${slots ? '<div class="v">{ } 안은 브랜드 정보가 저절로 들어가는 자리예요. 그대로 두시면 돼요.</div>' : ''}<div class="acts"><button type="button" class="btn p" data-do="save">저장</button></div></div><div class="state" data-k="${E(key)}"></div>` : '') + `</div></div>`;
 }
 
+/* ── 연결 (11-25 사장님 "식스샵프로, 대한통운, cs에이전트, 플랫폼 이렇게 다 연결고리를 확실하게 해줘야해") — 맥미니 cs-links 가 15분마다 실제로 불러 본 결과 */
+async function loadLinks() {
+  try { S.links = await api('/cs/kakao-links'); S.linkErr = ''; } catch (e) { S.linkErr = (e && e.message) || String(e); }
+  head(); if (S.tab === 'link') paintLink();
+}
+function paintLink() {
+  const m = $('main'), d = S.links;
+  if (!d) { m.innerHTML = `<div class="none" style="flex:1">${S.linkErr ? '불러오지 못했어요. ' + E(S.linkErr) : '불러오는 중…'}</div>`; return; }
+  const ST = {ok: '정상', wait: '대기', bad: '끊김'}, gs = [...new Set(d.items.map(x => x.group))], old = (d.fileAgeSec || 0) > 45 * 60, t = new Date(d.at);
+  const card = g => { const xs = d.items.filter(x => x.group === g), b = xs.filter(x => x.st === 'bad').length, w = xs.filter(x => x.st === 'wait').length;
+    return `<section class="lk"><h2>${E(g)} <span class="tag${b ? ' r' : ''}">${b ? '끊김 ' + b : w ? '대기 ' + w : '모두 정상'}</span></h2>${xs.map(x => `<div class="lr ${x.st}"><i></i><b>${E(x.name)}</b><span>${E(x.note)}</span><em>${ST[x.st]}</em></div>`).join('')}</section>`; };
+  m.innerHTML = `<div class="book"><div class="bin"><div class="ltop">${old ? '<span class="warn" style="margin:0">점검이 늦어지고 있어요</span>' : ''}<span>${p2(t.getHours())}:${p2(t.getMinutes())}에 실제로 불러 본 결과예요. 15분마다 다시 확인하고, 끊기면 알림이 가요.</span></div><div class="lks">${gs.map(card).join('')}</div></div></div>`;
+}
+
 /* ── 시작 ── */
 $('tabTodo').onclick = () => { if (S.tab !== 'todo') { S.tab = 'todo'; paint(); } };
 $('tabBook').onclick = () => { if (S.tab !== 'book') { S.tab = 'book'; paint(); loadBook(); } };
+$('tabLink').onclick = () => { S.tab = 'link'; paint(); loadLinks(); };
 $('close').onclick = () => { try { if (P.document.documentElement.classList.contains('solo-csagent')) P.close(); P.bbToolClose(); } catch (e) { history.back(); } };
-load();
+load(); loadLinks();
+setInterval(() => { if (!document.hidden) loadLinks(); }, 300000);
 setInterval(() => { if (!document.hidden && S.tab === 'todo' && !S.out.length && S.d) api('/cs/kakao-review').then(j => { if (typing()) return; const o = JSON.stringify((S.d.items || []).map(x => x.key)), nw = JSON.stringify((j.items || []).map(x => x.key)); S.d = j; S.rows = new Map((j.rows || []).map(r => [r.key, r])); S.edits = new Map((j.edits || []).map(r => [r.key, r])); head(); if (o !== nw) listOnly(!document.querySelector('.it[aria-current=true]')); }).catch(() => {}); }, 120000);
 })();
 </script>
