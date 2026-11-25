@@ -1144,6 +1144,8 @@
     '발주일및수량', '발주수량', '제작소요일', '메모', '입고일', '입고수량', '잔량', '입고예정일', '이슈체크', '판매번호', '품절/예정', '재고체크필요', '재고체크완료'];
   const STOCK_KEEP = new Set(['카테고리', '상품명', '옵션', '식스샵', '에이블리', '지그재그', '29cm', '스마트스토어', '쿠팡', 'W컨셉', '오늘의집', 'EQL', '합계', '남은재고', '리오더알림',
     '발주일및수량', '발주수량', '제작소요일', '메모', '입고일', '입고수량', '잔량', '이슈체크', '품절/예정']);
+  // 퇴점한 판매처 칸은 화면에서만 숨긴다 (2026-11-25 사장님 "네, 숨겨줘") — 값은 저장소에 그대로라 합계 · 남은 재고 셈은 안 바뀐다
+  const STOCK_CLOSED = new Set(['쿠팡']);
   // 한 칸에 날짜가 여러 번 쌓이는 칸 (예: '2026-09-30 695개⏎2026-11-09') — 칸엔 최근 것만 '11/9', 그 전은 '이전 N회' 에 마우스 · 상세 창
   const HIST = {'발주일및수량': '발주', '입고일': '입고', '입고예정일': '입고 예정'};
 
@@ -1850,6 +1852,7 @@
     cols.sort((a, b) => a.rk - b.rk || a.p - b.p);
     cols.forEach(c => {
       const n = norm(c.name);
+      if (STOCK_CLOSED.has(n)) { c.closed = true; return; }
       if (STOCK_KEEP.has(n)) c.keep = true;
       if (HIST[n]) {
         c.hist = HIST[n];
@@ -2328,7 +2331,7 @@
     // 휴대폰: 상품 이름 열을 맨 앞에 고정하고 옵션 · 남은 재고 · 합계 · 리오더 알림을 바로 뒤로 (옆으로 안 밀어도 보이게), 줄 번호 열은 뺌
     const nar = narrow.matches, showRn = !nar, vw = grid.clientWidth || 1000;
     const hcs = nar ? new Set() : hidColSet();   // 더보기 ▾ 로 숨긴 열 (이 PC 에서만)
-    let cols = d.cols.filter(c => ((S.showEmpty && !nar) || !c.empty || c.key || c.keep) && (c.key || !hcs.has(norm(c.name)))), stickN = 0, keyFirst = false, mgOpt = null;   // keep = 재고 탭 기본 칸 (비어도 보임)
+    let cols = d.cols.filter(c => !c.closed && ((S.showEmpty && !nar) || !c.empty || c.key || c.keep) && (c.key || !hcs.has(norm(c.name)))), stickN = 0, keyFirst = false, mgOpt = null;   // keep = 재고 탭 기본 칸 (비어도 보임)
     if (nar && cols.some(c => c.key)) {
       const pri = c => c.key ? 0 : OPT_RE.test(norm(c.name)) ? 1 : norm(c.name) === '남은재고' ? 2 : c.pro ? 2.5 : c.strong ? 3 : c.status ? 4 : 5;   // 휴대폰: 식스샵프로 상태는 남은 재고 바로 뒤
       cols = cols.map((c, i) => [c, i]).sort((x, y) => pri(x[0]) - pri(y[0]) || x[1] - y[1]).map(x => x[0]);
@@ -2537,10 +2540,10 @@
     $('hcTog').hidden = !nHc; $('hcTog').textContent = `숨긴 열 ${nHc}개 보기`;
     $('hrTog').hidden = !nHr; $('hrTog').textContent = `숨긴 줄 ${nHr}개 보기`;
     fmtBar();
-    const nEmpty = d ? d.cols.filter(c => c.empty && !c.key && !c.keep).length : 0, et = $('eTog');
+    const nEmpty = d ? d.cols.filter(c => c.empty && !c.key && !c.keep && !c.closed).length : 0, et = $('eTog');
     et.hidden = !nEmpty;
     et.textContent = S.showEmpty ? `빈 열 ${nEmpty}개 숨기기` : `빈 열 ${nEmpty}개 보기`;
-    et.title = nEmpty ? `내용이 하나도 없는 열: ${d.cols.filter(c => c.empty && !c.key && !c.keep).map(c => c.name).join(', ')}` : '';
+    et.title = nEmpty ? `내용이 하나도 없는 열: ${d.cols.filter(c => c.empty && !c.key && !c.keep && !c.closed).map(c => c.name).join(', ')}` : '';
     const all = curAll(), pt = $('parts');
     if (all && all.parts.length > 1) {
       const isSum = x => /SUM|합계|총계/i.test(x.caption + ' ' + x.cols.map(c => c.name).join(' '));   // 구글시트 피벗 = 집계 표
@@ -3319,7 +3322,7 @@
     $('dSheet').hidden = !secretOk() || !!row.past || cutTab(S.cur);   // 끊긴 탭은 시트가 옛 값이라 안 보임
     // 휴대폰 재고 탭: 남은 재고 · 식스샵프로 · 판매가 · 합계 · 리오더 알림부터, 제목에 이미 있는 상품명 · 옵션 · 카테고리는 맨 아래 (고치기는 그대로)
     const dpri = c => c.stock ? 0 : c.pro ? 1 : c.price ? 2 : c.cost ? 2.5 : c.strong && !c.key ? 3 : c.status ? 4 : c.key || /^(옵션|상품옵션정보|카테고리)$/.test(norm(c.name)) ? 9 : 5;
-    const dcols = narrow.matches && d.sec === 'stock' && !d.side ? d.cols.map((c, i) => [c, i]).sort((a, b) => dpri(a[0]) - dpri(b[0]) || a[1] - b[1]).map(x => x[0]) : d.cols;
+    const dcols = (narrow.matches && d.sec === 'stock' && !d.side ? d.cols.map((c, i) => [c, i]).sort((a, b) => dpri(a[0]) - dpri(b[0]) || a[1] - b[1]).map(x => x[0]) : d.cols).filter(c => !c.closed);
     // 이름 · 카테고리 확인할 것 (재고 탭) — 맨 위에 빨간 글로
     $('dList').innerHTML = (row.iss ? `<dt class="iss">확인할 것</dt><dd class="iss">${row.iss.map(esc).join('<br>')}${row.map ? `<br><button type="button" class="mapb" data-map="${row.r}">⚠ 매핑하기</button>` : ''}</dd>` : '')
       + dcols.map(c => `<dt>${esc(c.name)}</dt><dd data-p="${c.p}"${c.type === 'num' || (c.stock && row.redStk) ? ` class="${[c.type === 'num' ? 'r' : '', c.stock && row.redStk ? 'stk-red' : ''].filter(Boolean).join(' ')}"` : ''}>${c.cost ? costHtml(row.cost) : c.price ? (priceText(row.pro) ? esc(priceText(row.pro)) : '<span class="none">-</span>') : c.pro ? (row.pro ? `${proBadge(row.pro, row.pin === 1)}<span class="pro-sub">${esc(proText(row.pro).replace(/^식스샵프로 \S+ — /, ''))}</span>` : '<span class="none">식스샵에 연결된 상품 없음</span>') : detailVal(c, row.byP[c.p], row)}</dd>`).join('');
