@@ -146,7 +146,7 @@ const DRAFT = 'bb_csagent_draft_v1', OUT = 'bb_csagent_out_v1';
 const ls = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } };
 const me = () => { try { return (localStorage.getItem('brightbeed_diary_me') || '').trim().slice(0, 20); } catch (e) { return ''; } };
 const rid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
-const KIND = {fix: ['수정 필요', '답이 아쉽거나 틀렸어요'], learn: ['학습 필요', '답을 몰라 직원을 불렀어요'], new: ['처음 보는 시나리오', '예상 질문에 없던 문의예요']};
+const KIND = {staff: ['직원 답 확인', '직원이 실제로 한 답이 기준과 달라요'], fix: ['수정 필요', '답이 아쉽거나 틀렸어요'], learn: ['학습 필요', '답을 몰라 직원을 불렀어요'], new: ['처음 보는 시나리오', '예상 질문에 없던 문의예요']};
 const ACT = {answer: '바로 답', ask: '정보를 물음', todo: '답하고 처리할 일로', staff: '직원을 부름'};
 const WHO = {staff: '직원', ai: '카나나', bot: '자동응답'};
 const FV = {text: '답을 고쳤어요', ok: '이대로 맞아요', staff: '직원이 맡아요', drop: '볼 필요 없음'};
@@ -255,7 +255,7 @@ function paintTodo() {
   if (!d) { m.innerHTML = `<div class="none" style="flex:1">${S.err ? '불러오지 못했어요. ' + E(S.err) + '<br><br><button type="button" class="btn" id="again">다시</button>' : '불러오는 중…'}</div>`; const a = $('again'); if (a) a.onclick = load; return; }
   if (d.outside) { m.innerHTML = `<div class="none" style="flex:1">볼 것 ${N(d.counts.fix + d.counts.learn + d.counts.new)}건이 있어요.<br>고객 대화라 사무실 인터넷에서만 열려요.</div>`; return; }
   const bs = new Map(); items().forEach(x => bs.set(x.brand, x.label || x.brand));
-  m.innerHTML = `<div class="todo" id="todo"><section class="col c1"><div class="lhead"><div class="chips">${[['all', '전체'], ['fix', '수정 필요'], ['learn', '학습 필요'], ['new', '처음 보는'], ['done', '고친 것']].map(f => `<button type="button" data-f="${f[0]}">${f[1]} <em></em></button>`).join('')}</div>`
+  m.innerHTML = `<div class="todo" id="todo"><section class="col c1"><div class="lhead"><div class="chips">${[['all', '전체'], ['staff', '직원 답 확인'], ['fix', '수정 필요'], ['learn', '학습 필요'], ['new', '처음 보는'], ['done', '고친 것']].map(f => `<button type="button" data-f="${f[0]}">${f[1]} <em></em></button>`).join('')}</div>`
     + `<div class="bar"><select id="fb" aria-label="브랜드"><option value="">모든 브랜드</option>${[...bs].map(b => `<option value="${E(b[0])}"${S.brand === b[0] ? ' selected' : ''}>${E(b[1])}</option>`).join('')}</select><input type="search" id="fq" placeholder="찾기" value="${E(S.q)}" aria-label="찾기" autocomplete="off"></div></div><div class="list" id="list"></div></section>`
     + `<section class="col c2" id="c2"></section><section class="col c3" id="c3"></section></div>`;
   m.querySelector('.chips').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.f = b.dataset.f; head(); listOnly(true); };
@@ -268,7 +268,7 @@ function listOnly(reset) {
   const L = $('list'); if (!L) return;
   const xs = shown();
   L.innerHTML = xs.map(x => { const r = S.rows.get(x.key), dt = new Date(x.at);
-    return `<button type="button" class="it${r ? ' done' : ''}" data-k="${E(x.key)}" aria-current="${x.key === S.cur}"><span class="m"><b>${E(x.label || x.brand)}</b><span class="tag${x.kind === 'fix' && !r ? ' r' : ''}">${r ? E(FV[r.v] || '고침') : E(KIND[x.kind][0])}</span>${x.like > 1 ? `<span>비슷한 문의 ${N(x.like)}번</span>` : ''}<span class="t">${dt.getMonth() + 1}/${dt.getDate()}</span></span><span class="q" style="display:-webkit-box">${E(x.title || x.q)}</span></button>`; }).join('')
+    return `<button type="button" class="it${r ? ' done' : ''}" data-k="${E(x.key)}" aria-current="${x.key === S.cur}"><span class="m"><b>${E(x.label || x.brand)}</b><span class="tag${(x.kind === 'fix' || x.kind === 'staff') && !r ? ' r' : ''}">${r ? E(FV[r.v] || '고침') : E(KIND[x.kind][0])}</span>${x.like > 1 ? `<span>비슷한 문의 ${N(x.like)}번</span>` : ''}<span class="t">${dt.getMonth() + 1}/${dt.getDate()}</span></span><span class="q" style="display:-webkit-box">${E(x.title || x.q)}</span></button>`; }).join('')
     || `<div class="none">${S.f === 'done' ? '아직 고친 것이 없어요.' : S.q || S.brand ? '맞는 것이 없어요.' : '볼 것이 없어요. 모두 정상이에요.'}</div>`;
   if (reset) { if (!xs.some(x => x.key === S.cur)) pick(xs.length && innerWidth > 760 ? xs[0].key : '', false); }
 }
@@ -295,7 +295,7 @@ function pick(key, user) {
   const r = S.rows.get(key), dr = getDraft(key), start = dr ? dr.text : r && r.v === 'text' ? r.text : x.draft || '', note0 = dr ? dr.note : r ? r.note || '' : '';
   const real = x.real && x.real !== x.draft && x.realWho === 'staff' ? x.real : '';
   c3.innerHTML = `<div class="edit">${r ? `<div class="fixed"><button type="button" class="mini" id="un">되돌리기</button><b>${E(FV[r.v])}</b>${r.by ? ' · ' + E(r.by) : ''}</div>` : ''}`
-    + `<div class="why${x.kind === 'fix' ? ' r' : ''}"><b>${E(KIND[x.kind][0])}${x.act ? ' · ' + E(ACT[x.act] || '') : ''}</b>${E(x.kind === 'new' ? KIND.new[1] + '. ' + (x.draft ? '직원이 실제로 보낸 답을 넣어 두었어요.' : '아직 직원 답이 없어요.') : x.why || KIND[x.kind][1])}</div>`
+    + `<div class="why${x.kind === 'fix' || x.kind === 'staff' ? ' r' : ''}"><b>${E(KIND[x.kind][0])}${x.act ? ' · ' + E(ACT[x.act] || '') : ''}</b>${E(x.kind === 'new' ? KIND.new[1] + '. ' + (x.draft ? '직원이 실제로 보낸 답을 넣어 두었어요.' : '아직 직원 답이 없어요.') : x.why || KIND[x.kind][1])}</div>`
     + `<div class="lb">에이전트가 보낼 답${real ? '<button type="button" class="mini" id="useReal">직원 답 가져오기</button>' : ''}</div><textarea id="ans" maxlength="1500" placeholder="이 문의에 에이전트가 보낼 답을 적어 주세요">${E(start)}</textarea>`
     + (real ? `<div class="ref">${E('직원이 실제로 보낸 답\n' + real)}</div>` : '')
     + `<div class="lb">에이전트에게 알려 줄 것 <small>선택</small></div><textarea id="nt" class="sm" maxlength="800" placeholder="이런 문의에는 언제나 이렇게 한다는 기준이 있으면 적어 주세요">${E(note0)}</textarea>`
