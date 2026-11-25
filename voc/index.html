@@ -44,7 +44,9 @@
        '문의 · 리뷰 (자동 수집)' 메뉴(한눈에 · 목록)를 새로, 편집이 있는 개선 요청 · CS 작업 보드 · 메모장 · 자주 묻는 질문은 오피스 화면을 그대로
        본문 자리에 띄움(메뉴 'CS 업무'). "voc 코드표, 기존 자료는 숨김처리 해주고. 시트 또한 숨김해줘" → SHEET_ON = false (걷어내지 않고 숨김만).
      · 같은 날 밤 "제품의 불량 이미지가 채팅으로 유입되면 자동으로 채팅내용을 보고 상품명을 보고 상품 분석에 넣어줘. 이미지" →
-       상품 분석에 '📷 카톡 불량' 칸 · '상품 확인 필요' 목록 · 상세 창 사진 (맥미니 kakao-defects → /cs/kakao-defects, bbVocShare().defects · csImg). */
+       상품 분석에 '📷 카톡 불량' 칸 · '상품 확인 필요' 목록 · 상세 창 사진 (맥미니 kakao-defects → /cs/kakao-defects, bbVocShare().defects · csImg).
+     · 2026-11-25 "플랫폼 문의들을 플레이오토에서 불러와서 에이전트로 처리가 가능한가" → "네, 만들어줘" → 문의 상세에 답 초안 · [보내기] · [다른 곳에서 답했어요],
+       목록에 '답' 칸 · '답할 문의' (맥미니 inq-agent 15분 → /cs/inq-drafts, bbVocShare().inqDrafts · inqSend · inqDone — 사무실 인터넷만, 저절로 보내지 않음). */
   :root{
     --ui:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
     --bg:#f3f5f8; --card:#fff; --line:#e3e8ef; --line-2:#edf1f5; --head:#f7f9fb;
@@ -289,6 +291,18 @@
   .dl .muted{color:var(--text-3);font-size:12.5px}
   .dthumbs{display:flex;flex-wrap:wrap;gap:6px;white-space:normal}
   .dthumbs img{width:76px;height:76px;border-radius:8px;object-fit:cover;cursor:zoom-in;background:#f1f5f9}
+  .ia{white-space:normal;display:grid;gap:8px}
+  .ia textarea{width:100%;min-height:132px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;line-height:1.55;color:var(--text);background:#fff;resize:vertical}
+  .ia textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .ia .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .ia .go{padding:7px 14px;border-radius:8px;background:var(--text);color:#fff;font-weight:700;font-size:13px}
+  .ia .go[disabled]{opacity:.45;cursor:default}
+  .ia .sub2{padding:7px 12px;border-radius:8px;border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--text-2)}
+  .ia .why{font-size:12.5px;color:var(--text-3);line-height:1.5}
+  .ia .bad{font-size:12.5px;color:var(--danger);font-weight:600;line-height:1.5}
+  .ia .ref{border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.5;color:var(--text-2)}
+  .ia .ref b{display:block;color:var(--text-3);font-weight:600}
+  .ia .ref button{margin-top:4px;font-weight:700;color:var(--accent-ink)}
   .hist{display:grid;gap:2px;white-space:normal}
   .hist button{display:grid;grid-template-columns:62px 44px 1fr;gap:8px;align-items:baseline;width:100%;text-align:left;padding:5px 6px;border-radius:6px;font-size:12.5px;line-height:1.4}
   .hist button:hover{background:#f1f5f9}
@@ -680,6 +694,8 @@
   const SRC_L = {sixshop: '식스샵 프로 (공홈 · 네이버페이)', playauto: '플레이오토', zigzag: '지그재그 파트너센터'};
   const CLAIMS_MS = 5 * 60e3;
   const C = {data: null, sales: null, lines: [], at: 0, err: '', salesErr: '', busy: null, pidx: null, firstBatch: 0, off: !(SH && typeof SH.claims === 'function')};
+  // 답 초안 (2026-11-25) — map = 문의 번호 → 초안, sent = 보낸 기록, text = 직원이 고치고 있는 글(다시 그려도 안 지워지게)
+  const IA = {map: new Map(), sent: {}, sendOn: false, at: 0, gen: '', note: '', err: '', outside: false, busy: null, off: !(SH && typeof SH.inqDrafts === 'function'), text: {}, sure: '', sending: '', msg: {}};
   const Q = {data: null, items: [], at: 0, err: '', busy: null, off: !(SH && typeof SH.inq === 'function')};   // 💬 문의 · 리뷰
   const K = {data: null, items: [], at: 0, err: '', busy: null, outside: false, off: !(SH && typeof SH.defects === 'function')};   // 📷 카카오톡 불량 사진
   /* 시트 · 코드표 숨김 (2026-11-20 저녁 사장님 "voc 코드표, 기존 자료는 숨김처리 해주고. 시트 또한 숨김해줘") — 걷어내지 않고 숨김만.
@@ -1611,7 +1627,7 @@
     // 상세 창 — 같은 줄이 아직 있으면 다시 그림
     if (!$('detail').hidden && S.selObj) {
       const i = S.list.findIndex(x => sameObj(x, S.selObj));
-      if (i >= 0) openDetail(i, true); else if (!['case', 'defect', 'code', 'claim', 'inq', 'kdef'].includes(S.selObj.kind)) closeDetail();
+      if (i >= 0) openDetail(i, true); else if (!['case', 'defect', 'code', 'claim', 'inq', 'kdef'].includes(S.selObj.kind)) closeDetail(); else if (S.selObj.kind === 'inq') iaCell();
     }
     if (V.view === 'x:req') closeDetail();
     const sec = secretOk();
@@ -2292,7 +2308,7 @@
      맥미니 sixshop-collector inquiries-live 30분마다, 규칙은 그 레포 docs/INQUIRIES.md)을 읽기만 한다.
      한 줄 = 문의 하나: brand · channel · type(question 상품문의 / review 상품평) · date · at · title · text · product · order_no · topics[] · cat · neg(불만 상품평).
      플레이오토 문의 상태는 늘 '신규문의'라 답변 여부는 모른다 (답은 각 채널 판매자 화면에서). ── */
-  const IQ_TYPES = [['', '문의 · 리뷰'], ['question', '상품문의'], ['review', '상품평'], ['neg', '불만']];
+  const IQ_TYPES = [['', '문의 · 리뷰'], ['question', '상품문의'], ['review', '상품평'], ['neg', '불만'], ['todo', '답할 문의']];
   // 수집기 INQ_TOPICS 와 같은 순서 · 이름 (none = 주제 못 찾음)
   const IQ_TOPICS = [['delivery', '배송'], ['restock', '재입고 · 품절'], ['size', '사이즈 · 핏'], ['color', '색상 · 디자인'], ['claim', '교환 · 반품 · 취소'], ['defect', '불량 · 하자'], ['usage', '소재 · 사용 · 호환'], ['price', '가격 · 쿠폰'], ['none', '기타']];
   const IQ_TOPIC_L = Object.fromEntries(IQ_TOPICS);
@@ -2301,7 +2317,97 @@
   const iPill = i => `<span class="tp ${i.type === 'review' ? (i.neg ? 'ret' : 'zero') : 'exc'}">${esc(iType(i))}</span>`;
   const iHm = i => String(i.at || '').slice(11, 16);
   const iText = i => [i.date, md(i.date), bName(i.brand), chL(i.channel), iType(i), i.title, i.text, i.product, i.order_no, i.cat, iTopics(i).map(k => IQ_TOPIC_L[k] || k).join(' ')].join(' ').toLowerCase();
+  /* ── 답 초안 · 보내기 — 2026-11-25 "네, 만들어줘". 저절로 보내지 않는다: 직원이 글을 보고 [보내기] → [이대로 올리기] 두 번 누를 때만.
+     답했는지는 프로덕트피알 스마트스토어만 안다(네이버 조회), 다른 채널은 [다른 곳에서 답했어요]로 닫는다. ── */
+  const IA_SENT = {sending: '보내는 중', saved: '보내는 중', queued: '쇼핑몰로 보내는 중', sent: '보냈어요', done: '다른 곳에서 답함', failed: '전송 실패', unknown: '확인 필요'};
+  const IA_OWNER = {ready: '바로 답', check: '확인하고 답', staff: '직원이 직접'};
+  const iaOf = i => IA.map.get(String(i.id));
+  const iaSent = i => IA.sent[String(i.id)];
+  // 답할 문의 — 최근 14일 상품문의 중 답한 것으로 확인되지 않은 것 (실패 · 확인 필요도 남김)
+  const iaTodo = i => { const d = iaOf(i), x = iaSent(i); return i.type === 'question' && !!d && (x ? x.state === 'failed' || x.state === 'unknown' : d.answered !== true); };
+  function iaLabel(i) {
+    if (i.type !== 'question') return '';
+    const d = iaOf(i), x = iaSent(i);
+    if (x) return IA_SENT[x.state] || '';
+    if (!d) return '';
+    if (d.answered === true) return '답함';
+    return IA_OWNER[d.owner] || '';
+  }
+  function iaPill(i) {
+    const l = iaLabel(i);
+    if (!l) return '<span class="none">—</span>';
+    const c = l === '전송 실패' || l === '확인 필요' ? 'ret' : iaTodo(i) ? 'exc' : 'zero';
+    return `<span class="tp ${c}">${esc(l)}</span>`;
+  }
+  function loadIA(force) {
+    if (IA.off) return Promise.resolve();
+    if (IA.busy) return IA.busy;
+    if (!force && IA.at && Date.now() - IA.at < CLAIMS_MS) return Promise.resolve();
+    IA.busy = (async () => {
+      try {
+        const j = await SH.inqDrafts();
+        if (j && j.ok && Array.isArray(j.drafts)) {
+          IA.map = new Map(j.drafts.map(d => [String(d.id), d])); IA.sent = j.sent || {}; IA.sendOn = !!j.sendOn; IA.gen = j.generatedAt || ''; IA.note = j.ppNote || ''; IA.err = ''; IA.outside = false;
+        } else { IA.err = (j && j.error) || '답 초안을 못 읽었어요'; IA.outside = !!(j && j.outside); if (IA.outside) { IA.map = new Map(); IA.sent = {}; } }
+      } catch (e) { IA.err = (e && e.message) || String(e); }
+      finally { IA.at = Date.now(); IA.busy = null; }
+      render(true);
+    })();
+    return IA.busy;
+  }
+  function iaBlock(it) { return iaBlock0(it).replace('<dd>', '<dd id="iaCell">'); }
+  function iaBlock0(it) {
+    if (it.type !== 'question') return dlRow('답', '상품평에는 답을 보낼 수 없어요 — ' + chL(it.channel) + ' 판매자 화면에서');
+    const d = iaOf(it), x = iaSent(it), id = String(it.id);
+    if (!d) return dlRow('답', IA.off ? '' : IA.outside ? '답 초안은 사무실 인터넷에서만 보여요' : IA.err ? `답 초안을 못 읽었어요 (${IA.err})` : IA.at ? '최근 14일 문의만 답 초안이 있어요' : '답 초안을 불러오는 중…');
+    const msg = IA.msg[id] ? `<div class="bad">${esc(IA.msg[id])}</div>` : '';
+    if (x && x.state !== 'failed' && x.state !== 'unknown') {
+      const t = new Date(x.at || 0), when = `${t.getMonth() + 1}/${t.getDate()} ${pad2(t.getHours())}:${pad2(t.getMinutes())}`;
+      return dlRow('답', `<div class="ia"><div class="why"><b>${esc(IA_SENT[x.state] || x.state)}</b> · ${esc(when)}${x.by ? ' · ' + esc(x.by) : ''}</div>${x.text ? `<div class="ref">${esc(x.text).replace(/\n/g, '<br>')}</div>` : ''}${x.state === 'done' ? `<div class="row"><button type="button" class="sub2" data-iaundo="${esc(id)}">되돌리기</button></div>` : ''}${msg}</div>`, {html: true});
+    }
+    if (x) return dlRow('답', `<div class="ia"><div class="bad">${x.state === 'failed' ? '쇼핑몰이 답을 받지 않았어요' : '나갔는지 알 수 없어요'} — 다시 보내지 않았어요. 플레이오토 문의 관리 · 작업 내역에서 확인해 주세요${x.note ? `<br>${esc(x.note)}` : ''}</div>${x.text ? `<div class="ref">${esc(x.text).replace(/\n/g, '<br>')}</div>` : ''}${msg}</div>`, {html: true});
+    if (d.answered === true) return dlRow('답', '네이버에서 이미 답한 문의예요');
+    const txt = id in IA.text ? IA.text[id] : d.reply, busy = IA.sending === id, sure = IA.sure === id;
+    const can = d.canSend && IA.sendOn;
+    let h = `<div class="ia"><div class="why"><b>${esc(IA_OWNER[d.owner] || '')}</b> · ${esc(d.why)}${d.answered === null ? `<br>${esc(chL(it.channel))}에서 이미 답했는지는 알 수 없어요. 보내기 전에 확인해 주세요` : ''}</div>`;
+    h += `<textarea id="iaText" data-iaid="${esc(id)}" aria-label="보낼 답" placeholder="직접 적어 주세요" ${busy ? 'disabled' : ''}>${esc(txt)}</textarea>`;
+    if (/kakao|연락처|성함/.test(txt)) h += '<div class="why">문의 글은 다른 고객에게도 보일 수 있어요. 고객 이름 · 연락처를 적지 말아 주세요</div>';
+    h += '<div class="row">';
+    if (!can) h += `<span class="why">${d.canSend ? '보내기가 꺼져 있어요' : '이 채널은 플레이오토로 답을 못 보내요'}</span>`;
+    else if (busy) h += '<button type="button" class="go" disabled>보내는 중… (최대 1분)</button>';
+    else if (sure) h += `<button type="button" class="go" data-iasend="${esc(id)}">${esc(chL(it.channel))}에 이대로 올리기</button><button type="button" class="sub2" data-iano="${esc(id)}">취소</button>`;
+    else h += `<button type="button" class="go" data-iasure="${esc(id)}">보내기</button>`;
+    if (!busy && !sure) h += `<button type="button" class="sub2" data-iadone="${esc(id)}">다른 곳에서 답했어요</button>`;
+    h += '</div>' + msg;
+    if (d.refs && d.refs.length) h += '<div class="why">비슷한 문의에 예전에 직원이 한 답 (날짜를 보고 쓰세요)</div>' + d.refs.map((f, k) => `<div class="ref"><b>${esc(f.at)} · ${esc(cut(f.q, 70))}</b>${esc(f.a).replace(/\n/g, '<br>')}<br><button type="button" data-iaref="${k}" data-iafor="${esc(id)}">이 답 쓰기</button></div>`).join('');
+    return dlRow('답', h + '</div>', {html: true});
+  }
+  // 목록에서 빠진 문의(방금 보낸 것)라도 열린 상세의 '답' 칸은 지금 상태로 — 보낸 뒤 [보내기]가 남아 있지 않게
+  function iaCell() {
+    const c = $('iaCell'), o = S.selObj;
+    if (!c || !o || o.kind !== 'inq' || $('detail').hidden || (document.activeElement && document.activeElement.id === 'iaText')) return;
+    const t = document.createElement('dl');
+    t.innerHTML = iaBlock(o);
+    const d = t.querySelector('dd');
+    c.innerHTML = d ? d.innerHTML : '';
+  }
+  const iaRedraw = () => { if (document.activeElement && document.activeElement.id === 'iaText') document.activeElement.blur(); render(true); };
+  async function iaAct(id, kind, undo) {
+    const d = IA.map.get(id);
+    if (!d || IA.sending) return;
+    const text = (id in IA.text ? IA.text[id] : d.reply).trim();
+    IA.msg[id] = ''; IA.sure = ''; IA.sending = id; iaRedraw();
+    try {
+      const j = kind === 'send' ? await SH.inqSend({id, text, hash: d.hash}) : await SH.inqDone({id, undo: !!undo});
+      if (j && j.ok) { delete IA.text[id]; toast(kind === 'send' ? (j.state === 'sent' ? '답을 보냈어요' : '쇼핑몰로 보내는 중이에요') : undo ? '되돌렸어요' : '답한 것으로 적었어요'); }
+      else IA.msg[id] = (j && j.error) || '하지 못했어요';
+    } catch (e) { IA.msg[id] = kind === 'send' ? '결과를 못 들었어요 — 다시 누르지 말고 잠시 뒤 새로 확인해 주세요' : '저장하지 못했어요 — ' + ((e && e.message) || e); }
+    IA.sending = '';
+    await loadIA(true);
+    iaRedraw();
+  }
   function loadInq(force) {
+    loadIA(force);
     if (Q.off) return Promise.resolve();
     if (Q.busy) return Q.busy;
     if (!force && Q.at && Date.now() - Q.at < CLAIMS_MS) return Promise.resolve();
@@ -2326,7 +2432,7 @@
     o = o || {};
     const b = o.b !== undefined ? o.b : V.cb, ty = o.t !== undefined ? o.t : V.qt;
     return Q.items.filter(i => i.date >= from && i.date <= to && (!b || i.brand === b) && (!V.cc || i.channel === V.cc)
-      && (!ty || (ty === 'neg' ? i.type === 'review' && i.neg : i.type === ty)));
+      && (!ty || (ty === 'todo' ? iaTodo(i) : ty === 'neg' ? i.type === 'review' && i.neg : i.type === ty)));
   }
   function iHead(title, o) {
     o = o || {};
@@ -2403,7 +2509,8 @@
       <b>플레이오토 '문의 관리'</b>에 쌓이는 상품문의 · 상품평 (스마트스토어 · 오늘의집 · 지그재그 · EQL · 쿠팡) · 30분마다 · 180일 보관<br>
       <b>29CM · W컨셉 · 에이블리 문의는 없어요</b> — 플레이오토가 이 세 곳의 문의는 가져오지 못해요. 각 판매자 화면에서 봐야 해요.<br>
       ${s2 && s2.ok && !has2 ? '<b>코페리 · 아페티는 아직 0건</b> — 플레이오토 2번 아이디는 상품문의 · 상품평 수집이 꺼져 있어요. 플레이오토에서 켜면 다음 수집부터 들어와요.<br>' : ''}
-      <b>답변 여부는 몰라요</b> — 플레이오토는 문의 상태를 늘 '신규문의'로 둬요. 답은 각 채널 판매자 화면에서 해요.<br>
+      <b>답 초안</b> — 최근 14일 상품문의에 15분마다 (목록의 '답' 칸). 저절로 나가지 않고 직원이 [보내기]를 눌러야 나가요. 사무실 인터넷에서만 보여요.<br>
+      <b>답변 여부</b>는 프로덕트피알 스마트스토어만 알 수 있어요 — 다른 채널은 [다른 곳에서 답했어요]로 닫아 주세요.<br>
       <b>주제</b>는 글에 나온 말로 나눈 것 · <b>불만</b>은 별로 · 실망 · 불량 · 아쉽 같은 말이 든 상품평 · 고객 아이디 · 이름 · 연락처는 받지 않고, 글 속 전화번호 · 이메일 · 계좌번호는 가려요.</div>`, {wide: true});
     grid.innerHTML = h + '</div>';
     S.list = [];
@@ -2422,9 +2529,9 @@
       {v: fmt(base.filter(i => i.type === 'question').length), u: '건', l: '상품문의', go: {qt: tog('question')}, on: V.qt === 'question'},
       {v: fmt(base.filter(i => i.type === 'review').length), u: '건', l: '상품평', go: {qt: tog('review')}, on: V.qt === 'review'},
       {v: fmt(base.filter(i => i.type === 'review' && i.neg).length), u: '건', l: '불만 상품평', go: {qt: tog('neg')}, on: V.qt === 'neg', cls: base.some(i => i.neg) ? 'red' : ''},
-      {v: fmt(base.filter(i => i.date >= y).length), u: '건', l: '오늘 · 어제 새로'},
+      {v: fmt(base.filter(iaTodo).length), u: '건', l: '답할 문의', go: {qt: tog('todo')}, on: V.qt === 'todo', tip: IA.outside ? '사무실 인터넷에서만 보여요' : '최근 14일 상품문의 중 답한 것으로 확인되지 않은 것'},
     ]);
-    const rows = base.filter(i => !V.qt || (V.qt === 'neg' ? i.type === 'review' && i.neg : i.type === V.qt));
+    const rows = base.filter(i => !V.qt || (V.qt === 'todo' ? iaTodo(i) : V.qt === 'neg' ? i.type === 'review' && i.neg : i.type === V.qt));
     if (V.q) $('qn').textContent = `${rows.length}건`;
     const anyNew = rows.some(i => i.date >= y);
     const cols = [
@@ -2434,6 +2541,7 @@
     cols.push(
       {k: 'ch', l: '채널', get: i => ({t: chL(i.channel) + (i.cat ? ' ' + i.cat : ''), h: esc(chL(i.channel)) + (i.cat ? ` <span class="mut">${esc(i.cat)}</span>` : '')})},
       {k: 'type', l: '구분', get: i => ({t: iType(i), h: iPill(i), f: F_TAG, pad: 16})},
+      {k: 'ans', l: '답', get: i => ({t: iaLabel(i) || '—', s: (iaTodo(i) ? 0 : 1) + iaLabel(i), h: iaPill(i), f: F_TAG, pad: 16})},
       {k: 'topic', l: '주제', max: 200, get: i => { const ks = iTopics(i).filter(k => k !== 'none'); return {t: ks.map(k => IQ_TOPIC_L[k]).join(' · '), h: ks.length ? esc(ks.map(k => IQ_TOPIC_L[k]).join(' · ')) : '<span class="none">—</span>'}; }},
       {k: 'product', l: '상품', wrap: true, flex: 1, min: 160, max: 320, get: i => ({t: i.product || '', h: i.product ? hl(i.product) : '<span class="none">상품 없이 남긴 문의</span>'})},
       {k: 'text', l: '고객이 쓴 글', wrap: true, flex: 1, min: 220, max: 520, get: i => ({t: (i.title ? i.title + ' — ' : '') + (i.text || ''), h: (i.title ? `<b>${hl(i.title)}</b> ` : '') + hl(i.text || '')})},
@@ -2763,6 +2871,8 @@
     const it = S.list[i];
     if (!it) return;
     S.sel = i; S.selObj = it;
+    // 답을 적는 중이면 다시 그리지 않는다 (글자가 사라지지 않게)
+    if (keep && it.kind === 'inq' && document.activeElement && document.activeElement.id === 'iaText' && document.activeElement.dataset.iaid === String(it.id)) return;
     const d = $('detail');
     d.hidden = false; app.classList.add('has-detail');
     $('dscrim').hidden = !matchMedia('(max-width:720px)').matches;
@@ -2869,7 +2979,7 @@
       dl += dlRow('제목', it.title);
       dl += dlRow('고객이 쓴 글', it.text);
       dl += dlRow('주문번호', it.order_no);
-      dl += dlRow('답변', '플레이오토는 답변 여부를 몰라요 — 답은 ' + chL(it.channel) + ' 판매자 화면에서');
+      dl += iaBlock(it);
       if (it.product) {
         const pk = kname(it.product);
         const cl = C.lines.filter(l => l.brand === it.brand && kname(l.product) === pk && cLive(l)).sort((a, b) => String(b.requested_at || b.date).localeCompare(String(a.requested_at || a.date)));
@@ -2964,6 +3074,17 @@
     if (cl0) { openClaim(cl0.dataset.claim); return; }
     const iq0 = e.target.closest('[data-inq]');
     if (iq0) { openInq(iq0.dataset.inq); return; }
+    const ia0 = e.target.closest('[data-iasure],[data-iano],[data-iasend],[data-iadone],[data-iaundo],[data-iaref]');
+    if (ia0) {
+      const D = ia0.dataset;
+      if (D.iasure) { IA.sure = D.iasure; IA.msg[D.iasure] = ''; iaRedraw(); }
+      else if (D.iano) { IA.sure = ''; iaRedraw(); }
+      else if (D.iasend) iaAct(D.iasend, 'send');
+      else if (D.iadone) iaAct(D.iadone, 'done');
+      else if (D.iaundo) iaAct(D.iaundo, 'done', true);
+      else if (D.iaref) { const dr = IA.map.get(D.iafor), f = dr && dr.refs[+D.iaref]; if (f) { IA.text[D.iafor] = f.a; IA.sure = ''; iaRedraw(); } }
+      return;
+    }
     const kd0 = e.target.closest('[data-kdef]');
     if (kd0) { openKdef(kd0.dataset.kdef); return; }
     const csf = e.target.closest('img[data-csfull]');
@@ -3049,6 +3170,12 @@
     app.classList.add('side-off'); lsSet(LS_SIDE, '1'); render(true);
   };
   $('btnDense').onclick = () => { const on = !app.classList.contains('dense'); app.classList.toggle('dense', on); $('btnDense').classList.toggle('on', on); lsSet(LS_DENSE, on ? '1' : ''); };
+  // 고치는 글을 기억 — 다시 그려도 그대로, 고치면 '이대로 올리기'는 다시 물음
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'iaText') return;
+    IA.text[e.target.dataset.iaid] = e.target.value;
+    if (IA.sure) { IA.sure = ''; const b = document.querySelector('[data-iasend]'), n = document.querySelector('[data-iano]'); if (n) n.remove(); if (b) { b.dataset.iasure = b.dataset.iasend; delete b.dataset.iasend; b.textContent = '보내기'; } }
+  });
   $('btnFull').onclick = () => {
     try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) { /* noop */ }
   };

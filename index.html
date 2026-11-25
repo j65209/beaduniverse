@@ -42626,6 +42626,10 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       // 같은 날 밤 "문의, 리뷰 목록도 같이 voc에 넣어줘" · "카카오톡 채널을 제외한 cs에 관한건 voc 전산에서 다 관리" —
       // inq(force) = 오피스가 받아 둔 문의 · 리뷰(inqLoad, 5분), ext = 개선 요청 · 작업 보드 칸을 VOC 본문 자리에, reqOpen = 아직 안 끝난 개선 요청 수(메뉴 숫자)
       inq:force=>Promise.resolve(inqLoad(!!force)).then(()=>({data:_inq.data, err:_inq.err})),
+      // 2026-11-25 쇼핑몰 문의 답 초안 · 보내기 (사장님 "네, 만들어줘") — 사무실 인터넷만, 직원이 누를 때만
+      inqDrafts:()=>bbInqCall('GET','/cs/inq-drafts'),
+      inqSend:o=>bbInqCall('POST','/cs/inq-send',o),
+      inqDone:o=>bbInqCall('POST','/cs/inq-done',o),
       ext:bbVocExt,
       reqOpen:()=>{ try{ return [..._csi.rq.byId.values()].filter(x=>CSI_REQ_OPEN.has(x.status)).length; }catch(e){ return 0; } },
       // 같은 날 밤 "제품의 불량 이미지가 채팅으로 유입되면 … 상품 분석에 넣어줘. 이미지" — defects = 카톡 불량 사진 건(/cs/kakao-defects, 5분),
@@ -42633,6 +42637,17 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       defects:force=>bbKakaoDefects(!!force),
       csImg:bbCsImg,
       openChat:key=>{ const b=document.getElementById('kkoBox'); if(b) b.scrollIntoView({behavior:'smooth', block:'start'}); try{ if(typeof kkoTab==='function') kkoTab('chat'); kkoOpenChat(key); }catch(e){ console.warn('카카오톡 채팅방', e); } }};
+  }
+  async function bbInqCall(method, path, body){
+    const base=await loadProxyBase(); if(!base) throw new Error('서버 연결 안 됨');
+    const o={method, headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'}, cache:'no-store'};
+    if(body){
+      let me=''; try{ me=(localStorage.getItem('brightbeed_diary_me')||'').trim().slice(0,20); }catch(e){}
+      o.headers['Content-Type']='application/json'; o.body=JSON.stringify({...body, by:me});
+    }
+    const r=await fetch(base+path,o), j=await r.json().catch(()=>null);
+    if(!j) throw new Error('HTTP '+r.status);
+    return j;
   }
   // 📷 카톡 불량 사진 건 — 맥미니 sixshop-collector kakao-defects(5분) → 프록시 /cs/kakao-defects. 사무실 밖이면 outside:true + 글 · 사진이 빈다
   const _kdf={data:null, at:0, loading:null, err:''};
