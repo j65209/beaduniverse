@@ -5284,6 +5284,25 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-bd svg{flex:none;width:12px;height:12px}
   .kko-bd.call{background:var(--kko-red);color:#fff}
   .kko-bd.img{background:var(--kko-yellow);color:var(--kko-ink)}
+  .kko-pc{margin:4px 0 8px;padding:12px 14px;border:1px solid #e7e7e7;border-radius:14px;background:#fff}
+  .kko-pc.hot{border-color:var(--kko-red)}
+  .kko-pc .h{display:flex;align-items:center;gap:8px;min-width:0}
+  .kko-pc .h .kko-av{width:30px;height:30px;flex:none}
+  .kko-pc .h b{font-size:14px;font-weight:800;white-space:nowrap}
+  .kko-pc .h .kko-bn{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kko-pc .g{margin-top:6px;font-size:13px;color:#555;overflow-wrap:anywhere}
+  .kko-pc .st{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:12px;font-weight:700;color:#b0b0b0}
+  .kko-pc .st span::before{content:'';display:inline-block;width:7px;height:7px;margin-right:5px;border-radius:50%;background:#d6d6d6}
+  .kko-pc .st .on{color:var(--kko-ink)}
+  .kko-pc .st .on::before{background:var(--kko-ink)}
+  .kko-pc .st i{font-style:normal;font-weight:600;color:var(--kko-gray)}
+  .kko-pc .w{margin-top:6px;font-size:12px;color:var(--kko-gray);overflow-wrap:anywhere}
+  .kko-pc .e{margin-top:6px;font-size:12px;font-weight:700;color:var(--kko-redt)}
+  .kko-pc .b{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .kko-pc .b:empty{display:none}
+  .kko-pc .b button{min-height:36px;padding:0 14px;border:1px solid #d6d6d6;border-radius:10px;background:#fff;font:inherit;font-size:12.5px;font-weight:700;color:var(--kko-ink);cursor:pointer}
+  .kko-pc .b button.main{border-color:var(--kko-ink);background:var(--kko-ink);color:#fff}
+  .kko-pc .b button:disabled{opacity:.5}
   .kko-bd.ready{background:#fff;color:#555;box-shadow:inset 0 0 0 1px #d6d6d6}
   .kko-side{align-self:stretch;display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:40px;padding-top:2px}
   .kko-tm{font-size:11.5px;color:#a3a3a3;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -17929,7 +17948,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(!base) throw new Error('서버 연결 안 됨');
       const opt={headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'};
       // 답장 초안(직원 몫 판정)은 같이 읽되, 못 받아도 목록은 그대로 — 마지막으로 받은 판정을 쓴다
-      const [r, rd]=await Promise.all([fetch(`${base}/cs/kakao`,opt), fetch(`${base}/cs/kakao-drafts`,opt).catch(()=>null)]);
+      const [r, rd, rp]=await Promise.all([fetch(`${base}/cs/kakao`,opt), fetch(`${base}/cs/kakao-drafts`,opt).catch(()=>null), fetch(`${base}/cs/kakao-pickup`,opt).catch(()=>null)]);
+      const jp=rp && rp.ok ? await rp.json().catch(()=>null) : null; if(jp && jp.ok) _kko.pickup=jp;   // 자동 수거 현황 (11-25) — 못 받으면 마지막 것
       const j=await r.json().catch(()=>({}));
       if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
       _kko.data=j; _kko.err='';
@@ -17972,6 +17992,41 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const x=_kkoDraft(r.pid,r.chatId), oc=_kkoOpenCall(r);
     if(oc) return (oc.why||oc.topic||'')+(oc.more>0 ? ` · 그 뒤 이어 쓴 글 ${oc.more}번` : '');
     return (x && (x.why||[])[0]) || '';
+  }
+  /* ===== 수거 (2026-11-25 사장님 "무상반품이나 교환 요청하면 정보 확인하고 에이전트가 자동으로 자동수거 요청하고 자동수거 완료되면 배지 변경이나 신호를 꼭 보내줘. 물류에 도착한거 체크 후")
+     서버 /cs/kakao-pickup = 맥미니 kakao-pickup(10분) — 대한통운 회수 접수 → 기사님 수거 → 물류 도착(배송 완료를 두 번 보고). 에이전트가 접수한 것 + 직원이 CS 도구에서 접수한 운영 회수.
+     줄 배지 · [수거] 칩 · 도착하면 기본 목록 맨 위 '수거 완료' 묶음(+ CS팀 알림 check-alert 'pick'). 누르기는 사무실에서만, 고객에게 나가지 않음. */
+  const KKO_COL={wait:['수거 요청 대기',''],asking:['수거 접수 중',''],asked:['수거 요청됨',''],picked:['수거 중',''],arrived:['수거 완료 · 물류 도착','call'],checked:['물건 확인됨',''],stop:['수거 확인 필요','call']};
+  function _kkoColAll(){ return ((_kko.pickup||{}).items||[]).filter(p=>KKO_COL[p.state]); }
+  function _kkoColHot(p){ return p.state==='arrived' || p.state==='stop' || (p.state==='asked' && p.late); }
+  function _kkoCol(r){ return r ? _kkoColAll().filter(p=>p.chatId && p.pid===r.pid && p.chatId===r.chatId).sort((a,b)=>b.at-a.at)[0]||null : null; }
+  function _kkoColBadge(p){ if(!p) return ''; const k=KKO_COL[p.state], late=p.state==='asked' && p.late; return `<span class="kko-bd ${late ? 'call' : k[1]}">${late ? '수거 늦음' : k[0]}</span>`; }
+  function _kkoColCard(p){
+    const E=_kkoEsc, ord=['asked','picked','arrived','checked'], at=ord.indexOf(p.state), day=t=>{ const d=new Date(t); return t ? `${d.getMonth()+1}/${d.getDate()}` : ''; };
+    const step=(i,l,t)=>`<span class="${at>=i ? 'on' : ''}${at===i ? ' now' : ''}">${l}${t ? ` <i>${day(t)}</i>` : ''}</span>`;
+    const key=p.pid+':'+p.chatId, has=p.chatId && ((_kko.data||{}).chats||[]).some(r=>r.pid===p.pid && r.chatId===p.chatId), busy=(_kko.colBusy||'')===p.id;
+    const btn=(act,l,main)=>`<button type="button" class="${main ? 'main' : ''}" onclick="kkoColAct('${E(p.id)}','${act}')"${busy ? ' disabled' : ''}>${l}</button>`;
+    return `<div class="kko-pc${_kkoColHot(p) ? ' hot' : ''}"><div class="h"><span class="kko-av reo-b-${E(p.brand)}" aria-hidden="true"><i>${KKO_AV}</i></span><b>${E(p.nick || p.title)}</b><span class="kko-bn">${E(p.label || KKO_LABEL[p.brand] || p.brand || '')}${p.nick ? ' · '+E(p.title) : ''}</span>${_kkoColBadge(p)}</div>`
+      + (p.goods ? `<div class="g">${E(p.goods)}</div>` : '')
+      + (at>=0 ? `<div class="st">${step(0,'요청',p.askedAt)}${step(1,'기사님 수거',p.pickedAt)}${step(2,'물류 도착',p.arrivedAt)}${step(3,'물건 확인',p.checkedAt)}</div>` : '')
+      + (p.why ? `<div class="w">${E(p.why)}</div>` : p.trk && p.trk.name && p.state!=='checked' ? `<div class="w">${E(p.trk.name)}${p.trk.at ? ' · '+E(String(p.trk.at).slice(0,16).replace('T',' ')) : ''}</div>` : p.state==='checked' ? `<div class="w">${E(p.checkedBy||'')} 확인 — 교환 · 환불을 끝내면 [처리 끝]을 눌러 주세요</div>` : '')
+      + `<div class="b">${p.state==='arrived' ? btn('check','물건 확인함',true) : ''}${['arrived','checked','stop'].includes(p.state) ? btn('done','처리 끝',p.state==='checked') : ''}${['wait','stop'].includes(p.state) ? btn('drop','빼기') : ''}${has ? `<button type="button" onclick="kkoOpenChat('${E(key)}')">대화 보기</button>` : ''}</div>`
+      + ((_kko.colErr||{})[p.id] ? `<div class="e">${E(_kko.colErr[p.id])}</div>` : '') + `</div>`;
+  }
+  async function kkoColAct(id, act){
+    if(_kko.colBusy) return;
+    if(act==='drop' && !confirm('이 건을 수거 목록에서 뺄까요?')) return;
+    _kko.colBusy=id; (_kko.colErr=_kko.colErr||{})[id]=''; kkoRender();
+    let me=''; try{ me=(localStorage.getItem('brightbeed_diary_me')||'').trim().slice(0,20); }catch(e){}
+    try{
+      const base=await loadProxyBase(); if(!base) throw new Error('서버 연결 안 됨');
+      const r=await fetch(`${base}/cs/kakao-pickup`,{method:'POST',headers:{'X-Brightbeed-PIN':ghPin(),'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({id,act,by:me})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      const p=((_kko.pickup||{}).items||[]).find(x=>x.id===id);
+      if(p){ p.state=act==='check' ? 'checked' : act==='done' ? 'done' : 'cancelled'; if(act==='check'){ p.checkedAt=Date.now(); p.checkedBy=me; } }
+    }catch(e){ _kko.colErr[id]=(e && e.message) || String(e); }
+    finally{ _kko.colBusy=''; kkoRender(); }
   }
   // 이미지 확인 필요 (사장님 11-20 "이미지가 있는것들은 이미지 확인 필요를 채팅창에 배지를 달아줘") — 직원이 마지막으로 답한 뒤 고객이 보낸 사진(영상)이 있는 채팅방.
   // 서버 줄의 photos · videos (kakao-live — 카나나 · 자동응답 답은 사진을 못 보니 끊지 않음). 사진이 있으면 '이미지', 영상만이면 '영상'
@@ -18150,7 +18205,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     // (11-20 사장님 "답변 완료 상담은 그냥 없애자" → 같은 날 저녁 "답변을 해야하는것만 띄우주고. 답 기다림 옆에 답 완료 탭에 완료된건 가려주고 완료탭으로 이동").
     // 고객이 다시 쓰면 답 기다림 맨 아래로 돌아옴
     const needs=r=>_kkoIsStaff(r) || _kkoTodo(r) || _kkoWaiting(r), isTodo=r=>!_kkoIsStaff(r) && !!_kkoTodo(r), isWait=r=>!_kkoIsStaff(r) && !_kkoTodo(r) && _kkoWaiting(r);
-    if(!['staff','todo','wait','done'].includes(_kko.only)) _kko.only='';
+    if(!['staff','todo','wait','done','pick'].includes(_kko.only)) _kko.only='';
+    const pickTab=_kko.only==='pick', pickRows=_kkoColAll().filter(p=>_kko.brand==='all' || p.brand===_kko.brand).sort((a,b)=>(_kkoColHot(b)-_kkoColHot(a)) || a.at-b.at), pickHot=pickRows.filter(_kkoColHot);
     const doneTab=_kko.only==='done', inView=doneTab ? r=>!needs(r) : needs;
     const base=_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand);
     const since=r=>((_kkoOpenCall(r)||{}).since||r.waitingSince||r.lastAt)||0;
@@ -18165,6 +18221,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     chips.innerHTML=pick('staff','직원 호출',staffRows.length,true,(off ? '에이전트를 꺼 둔 동안은 고객이 관리자 호출을 누른 채팅방만 — 다시 켜면 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화도'
         : '직원이 답해야 하는 채팅방 — 관리자 호출 · 돈 · 수거 · 불량 · 화남 · 예상 질문에 없는 내용 · 직원이 상담하던 대화')+(drNote ? ` (${drNote})` : ''))
       + (todoRows.length || _kko.only==='todo' ? pick('todo','처리할 일',todoRows.length,false,'대화는 에이전트가 했고 사람 손으로 할 일이 남은 채팅방 — 수거 접수 · 환불 · 입금 확인 · 재발송') : '')
+      + (pickRows.length || pickTab ? pick('pick','수거',pickRows.length,pickHot.length>0,'반품 · 교환 회수 — 요청 → 기사님 수거 → 물류 도착 → 물건 확인', pickHot.length ? `<small>확인 ${pickHot.length}</small>` : '') : '')
       + pick('wait','답 기다림',waitRows.length,late>0,`고객 글이 마지막인 채팅방 (최근 ${d.windowDays}일, 마무리 인사 · 직원 호출 뺌) — 빨강은 상담 시간 중 ${KKO_LATE_MIN}분 넘게 기다린 곳`, late ? `<small>${KKO_LATE_MIN}분 넘음 ${late}</small>` : '')
       + pick('done','답 완료',doneRows.length,false,`직원이 답했고 그 뒤 고객 글이 없는 채팅방 (최근 ${d.windowDays}일, 고객 마무리 인사 포함) — 기본 목록에서는 가려 둠`);
     // 채팅 탭 빨간 숫자 = 모든 브랜드의 직원 호출 + 답 기다림
@@ -18180,7 +18237,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + `<button type="button" onclick="kkoToggleCh()" aria-expanded="${_kko.showCh}">채널 ${chans.length}개 ${_kko.showCh?'▴':'▾'}</button>`;
     // 줄 순서 (사장님 11-19 "오래 기다린사람부터 맨위로 · 제일 최근에 연락온사람은 하단으로"): 직원 호출 · 답 기다림 모두 오래 기다린 것부터 —
     // 맨 아래가 가장 최근. 칩을 눌렀으면 그 묶음만 (답 완료도 오래된 것 위 · 맨 아래가 가장 최근).
-    const qS=doneTab || ['wait','todo'].includes(_kko.only) ? [] : staffRows, qT=doneTab || ['wait','staff'].includes(_kko.only) ? [] : todoRows, qW=doneTab || ['staff','todo'].includes(_kko.only) ? [] : waitRows;
+    const qS=doneTab || ['wait','todo','pick'].includes(_kko.only) ? [] : staffRows, qT=doneTab || ['wait','staff','pick'].includes(_kko.only) ? [] : todoRows, qW=doneTab || ['staff','todo','pick'].includes(_kko.only) ? [] : waitRows;
+    const qP=pickTab ? pickRows : !_kko.only ? pickRows.filter(p=>p.state==='arrived') : [];   // 기본 목록 맨 위 = 물류에 도착한 수거
     const ae=document.activeElement, focusK=(ae && ae.classList && ae.classList.contains('kko-row')) ? ae.dataset.k : '';
     const openK=_kko.chat ? _kko.chat.key : '';
     // 카카오톡 채팅 목록 한 줄: 프로필(브랜드 점) · 이름 + 브랜드 / 배지(직원 호출 · 이미지 확인 필요) + 마지막 글 · 오른쪽 시각 + 빨간 안 읽음 숫자
@@ -18191,16 +18249,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<button type="button" class="kko-row${r.unread>0?' unread':''}${key===openK?' on':''}" data-k="${_kkoEsc(key)}" onclick="kkoOpenChat(this.dataset.k)" title="${_kkoEsc(tip)}">`
         + `<span class="kko-av reo-b-${_kkoEsc(r.brand)}" aria-hidden="true"><i>${KKO_AV}</i></span>`
         + `<span class="kko-main"><span class="kko-l1"><b>${_kkoEsc(r.nick)}</b><span class="kko-bn">${_kkoEsc(label)}</span></span>`
-        + `<span class="kko-l2">${staff ? '<span class="kko-bd call">직원 호출</span>' : _kkoTodo(r) ? `<span class="kko-bd">${_kkoEsc(_kkoTodo(r).todo)}</span>` : ''}${mb ? `<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>` : ''}<span class="kko-pv">${_kkoEsc(r.preview||'(사진 · 파일)')}</span></span></span>`
+        + `<span class="kko-l2">${staff ? '<span class="kko-bd call">직원 호출</span>' : _kkoTodo(r) ? `<span class="kko-bd">${_kkoEsc(_kkoTodo(r).todo)}</span>` : ''}${_kkoColBadge(_kkoCol(r))}${mb ? `<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>` : ''}<span class="kko-pv">${_kkoEsc(r.preview||'(사진 · 파일)')}</span></span></span>`
         + `<span class="kko-side"><span class="kko-tm ${tm.cls}">${_kkoEsc(tm.text)}</span>${r.unread>0 ? `<span class="kko-ur" title="안 읽은 메시지 ${r.unread}">${r.unread>299 ? '300+' : r.unread}</span>` : ''}</span></button>`;
     };
     const head=(cls,label,n)=>`<div class="kko-grp${cls ? ' '+cls : ''}"><span>${label}</span><em>${n}</em></div>`;
     let html='';
+    if(qP.length) html+=head(pickTab ? '' : 'call',pickTab ? '수거' : '수거 완료 · 물류 도착',qP.length)+qP.map(_kkoColCard).join('');
     if(qS.length) html+=head('call','직원 호출',qS.length)+qS.map(rowHtml).join('');
     if(qT.length) html+=head('','처리할 일',qT.length)+qT.map(rowHtml).join('');
     if(qW.length) html+=head('','답 기다림',qW.length)+qW.map(rowHtml).join('');
     if(doneTab && doneRows.length) html+=head('done','답 완료',doneRows.length)+doneRows.map(rowHtml).join('');
-    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({staff:'직원 호출이 필요한 채팅이 없어요',todo:'처리할 일이 없어요',wait:'답을 기다리는 채팅이 없어요',done:`최근 ${d.windowDays}일 안에 답 완료된 채팅이 없어요`})[_kko.only] || '지금 직원 호출 · 답 기다리는 상담이 없어요'}</div>`;
+    list.innerHTML=html || `<div class="kko-none">${_kko.brand==='all'?'':'이 브랜드는 '}${({pick:'진행 중인 수거가 없어요',staff:'직원 호출이 필요한 채팅이 없어요',todo:'처리할 일이 없어요',wait:'답을 기다리는 채팅이 없어요',done:`최근 ${d.windowDays}일 안에 답 완료된 채팅이 없어요`})[_kko.only] || '지금 직원 호출 · 답 기다리는 상담이 없어요'}</div>`;
     if(focusK){ const el=[...list.querySelectorAll('.kko-row')].find(x=>x.dataset.k===focusK); if(el) el.focus({preventScroll:true}); }
     // 에이전트 학습 탭 — 바뀐 게 있을 때만 다시 그림
     const ln=document.getElementById('kkoLearn');
@@ -18316,6 +18375,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const top=[], mb=_kkoMediaBadge(r);
       if(_kkoIsStaff(r)) top.push('<span class="kko-bd call">직원 호출</span>');
       else if(x && x.owner==='agent' && x.reply) top.push('<span class="kko-bd ready">답 준비</span>');
+      if(_kkoCol(r)) top.push(_kkoColBadge(_kkoCol(r)));
       if(mb) top.push(`<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>`);
       if(x && x.intentTitle) top.push(`<em>${_kkoEsc(x.intentTitle)}</em>`);
       if(top.length) info+=`<div class="kko-mk">${top.join('')}</div>`;
@@ -57743,6 +57803,6 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="tool-new.js?v=2" defer></script><!-- 업무용 툴 새 도구 표시 — 직원마다 눌러 보기 전까지 (tool-new.js, 슈퍼베이스 tool_news) -->
 <script src="notif-call.js?v=3" defer></script><!-- 알림 확인 요청 — 사장님이 보내면 [확인] 창 (notif-call.js) -->
 <script src="office-thumb.js?v=1" defer></script><!-- 작은 사진에 마우스 → 크게 (office-thumb.js) -->
-<script src="check-alert.js?v=8" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
+<script src="check-alert.js?v=9" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
 </body>
 </html>
