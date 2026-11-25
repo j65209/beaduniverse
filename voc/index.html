@@ -2325,11 +2325,11 @@
   const iaOf = i => IA.map.get(String(i.id));
   const iaSent = i => IA.sent[String(i.id)];
   // 답할 문의 — 최근 14일 상품문의 중 답한 것으로 확인되지 않은 것 (실패 · 확인 필요도 남김)
-  const iaTodo = i => { const d = iaOf(i), x = iaSent(i); return i.type === 'question' && !!d && (x ? x.state === 'failed' || x.state === 'unknown' : d.answered !== true); };
+  const iaTodo = i => { const d = iaOf(i), x = iaSent(i); return i.type === 'question' && !!d && (x ? x.state === 'failed' || x.state === 'unknown' || x.seen === 'none' || x.seen === 'diff' : d.answered !== true); };
   function iaLabel(i) {
     if (i.type !== 'question') return '';
     const d = iaOf(i), x = iaSent(i);
-    if (x) return IA_SENT[x.state] || '';
+    if (x) return x.seen === 'none' || x.seen === 'diff' ? '확인 필요' : IA_SENT[x.state] || '';
     if (!d) return '';
     if (d.answered === true) return '답함';
     return IA_OWNER[d.owner] || '';
@@ -2364,7 +2364,7 @@
     const msg = IA.msg[id] ? `<div class="bad">${esc(IA.msg[id])}</div>` : '';
     if (x && x.state !== 'failed' && x.state !== 'unknown') {
       const t = new Date(x.at || 0), when = `${t.getMonth() + 1}/${t.getDate()} ${pad2(t.getHours())}:${pad2(t.getMinutes())}`;
-      return dlRow('답', `<div class="ia"><div class="why"><b>${esc(IA_SENT[x.state] || x.state)}</b> · ${esc(when)}${x.by ? ' · ' + esc(x.by) : ''}</div>${x.text ? `<div class="ref">${esc(x.text).replace(/\n/g, '<br>')}</div>` : ''}${x.state === 'done' ? `<div class="row"><button type="button" class="sub2" data-iaundo="${esc(id)}">되돌리기</button></div>` : ''}${msg}</div>`, {html: true});
+      return dlRow('답', `<div class="ia"><div class="why"><b>${esc(IA_SENT[x.state] || x.state)}</b> · ${esc(when)}${x.by ? ' · ' + esc(x.by) : ''}${x.seen === 'ok' ? '<br>쇼핑몰에 그대로 올라간 것을 확인했어요' : ''}</div>${x.seen === 'none' || x.seen === 'diff' ? `<div class="bad">${x.seen === 'none' ? '쇼핑몰에 아직 안 올라갔어요' : '쇼핑몰에 다른 답이 올라가 있어요'} — 판매자 화면에서 확인해 주세요</div>` : ''}${x.text ? `<div class="ref">${esc(x.text).replace(/\n/g, '<br>')}</div>` : ''}${x.state === 'done' ? `<div class="row"><button type="button" class="sub2" data-iaundo="${esc(id)}">되돌리기</button></div>` : ''}${msg}</div>`, {html: true});
     }
     if (x) return dlRow('답', `<div class="ia"><div class="bad">${x.state === 'failed' ? '쇼핑몰이 답을 받지 않았어요' : '나갔는지 알 수 없어요'} — 다시 보내지 않았어요. 플레이오토 문의 관리 · 작업 내역에서 확인해 주세요${x.note ? `<br>${esc(x.note)}` : ''}</div>${x.text ? `<div class="ref">${esc(x.text).replace(/\n/g, '<br>')}</div>` : ''}${msg}</div>`, {html: true});
     if (d.answered === true) return dlRow('답', '네이버에서 이미 답한 문의예요');
