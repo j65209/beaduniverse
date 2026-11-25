@@ -1,7 +1,7 @@
-/* 업무용 툴 '새 도구' 표시 — 직원마다 눌러 보기 전까지
-   (2026-11-25 사장님 "업무용 툴 새로 개발하면 해당 직원이 눌러보기 전까지 표시하기" · "모든 직원들 컴퓨터에 뜨게")
+/* 업무용 툴 '새로운 툴!' 표시 — 직원마다 눌러 보기 전까지
+   (2026-11-25 사장님 "업무용 툴 새로 개발하면 해당 직원이 눌러보기 전까지 표시하기" · "모든 직원들 컴퓨터에 뜨게" · "알림보단 새로운 툴! 이런식으로 보이게" — 알림 창 · 크롬 알림은 보내지 않는다)
    · 새 도구를 만들면 슈퍼베이스 tool_news 에 한 줄(key = 카드 class m-<key> 의 key, title, sub, icon) — 그것만 하면 모든 직원 화면에 뜬다.
-   · 뜨는 곳: ① 홈 맨 위 한 줄(대표 PC 는 대표 캘린더 아래) ② 업무용 툴 머리 '새 도구 n' ③ 카드 '새 도구' 딱지 + 고정 카드 바로 뒤 자리.
+   · 뜨는 곳: ① 홈 맨 위 한 줄(대표 PC 는 대표 캘린더 아래) ② 업무용 툴 머리 '새로운 툴! n' ③ 카드 '새로운 툴!' 딱지 + 고정 카드 바로 뒤 자리.
    · 카드 · 한 줄을 누르거나 그 화면을 열면 그 사람 것만 사라진다. 기록 = tool_news_seen(사람 이름) 이라 다른 PC · 휴대폰에서도 같이 사라진다.
      이름을 안 고른 기기는 그 브라우저에만 기억. 60일 지나면 저절로 끝. 권한이 없어 카드가 안 보이는 사람에게는 안 뜬다.
    · 열어 둔 화면도 실시간 알림선(OfficeLive)으로 바로 뜬다 — 아직 카드가 없는 옛 화면이면 한 줄의 단추가 새로고침. 누가 봤는지는 화면에 안 보인다(SQL 로만). */
@@ -73,7 +73,7 @@ function draw() {
   if (!xs.length) { if (bar) bar.remove(); }
   else {
     if (!bar) { bar = document.createElement('div'); bar.id = 'toolNew'; bar.setAttribute('role', 'status'); const ceo = document.getElementById('homeCeoCalCard'); if (ceo && ceo.parentNode === home) ceo.after(bar); else home.prepend(bar); bar.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) open(b.dataset.k); }); }
-    const h = xs.map(n => `<button type="button" data-k="${E(n.key)}"><span class="tn-p">새 도구</span><span class="tn-i" aria-hidden="true">${E(n.icon)}</span><span class="tn-t"><b>${E(n.title)}</b><span>${E(n.sub)}</span></span><span class="tn-go">${cardOf(n.key) ? '열어보기' : '새로고침하고 보기'}</span></button>`).join('');
+    const h = xs.map(n => `<button type="button" data-k="${E(n.key)}"><span class="tn-p">새로운 툴!</span><span class="tn-i" aria-hidden="true">${E(n.icon)}</span><span class="tn-t"><b>${E(n.title)}</b><span>${E(n.sub)}</span></span><span class="tn-go">${cardOf(n.key) ? '열어보기' : '새로고침하고 보기'}</span></button>`).join('');
     if (bar.dataset.h !== h) { bar.dataset.h = h; bar.innerHTML = h; }
   }
   // ③ 카드 딱지
@@ -83,13 +83,13 @@ function draw() {
     const c = cardOf(n.key); if (!c) return;
     if (c.closest('.sub-modules-tools')) tools++;
     if (c.classList.contains('tn-on')) return;
-    c.classList.add('tn-on'); const t = document.createElement('div'); t.className = 'tn-tag'; t.textContent = '새 도구'; c.appendChild(t);
+    c.classList.add('tn-on'); const t = document.createElement('div'); t.className = 'tn-tag'; t.textContent = '새로운 툴!'; c.appendChild(t);
     const host = c.parentNode, pins = [...host.children].filter(x => x.dataset && x.dataset.pin && x !== c), last = pins[pins.length - 1];   // 고정 카드(data-pin) 바로 뒤
     if (!c.dataset.pin) { if (last) last.after(c); else host.prepend(c); }
   });
   // ② 업무용 툴 머리
   const meta = document.querySelector('#viewHome .sub-modules-tools .folder-meta'); let cnt = document.getElementById('tnCnt');
-  if (meta && tools) { if (!cnt) { cnt = document.createElement('button'); cnt.id = 'tnCnt'; cnt.type = 'button'; cnt.className = 'tn-cnt'; cnt.addEventListener('click', e => { e.stopPropagation(); const c = document.querySelector('.sub-modules-tools .tn-on'); if (c) c.scrollIntoView({block: 'center', behavior: 'smooth'}); }); meta.after(cnt); } const tx = '새 도구 ' + tools; if (cnt.textContent !== tx) cnt.textContent = tx; } else if (cnt) cnt.remove();
+  if (meta && tools) { if (!cnt) { cnt = document.createElement('button'); cnt.id = 'tnCnt'; cnt.type = 'button'; cnt.className = 'tn-cnt'; cnt.addEventListener('click', e => { e.stopPropagation(); const c = document.querySelector('.sub-modules-tools .tn-on'); if (c) c.scrollIntoView({block: 'center', behavior: 'smooth'}); }); meta.after(cnt); } const tx = '새로운 툴! ' + tools; if (cnt.textContent !== tx) cnt.textContent = tx; } else if (cnt) cnt.remove();
 }
 function seen(key) {
   if (!list.some(n => n.key === key)) return;
