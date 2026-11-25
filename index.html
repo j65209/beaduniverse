@@ -16359,7 +16359,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <summary><h2 id="sbTaxPaidSum"></h2></summary>
               <div class="ably-tbl-wrap"><table class="ably-tbl sb-tax" id="sbTaxPaid"></table></div>
             </details>
-            <div class="sb-fx-foot"><span>금액 칸의 회색은 예상이에요 — 실제 고지액을 넣으면 그 값을 보여 줘요. 기한은 12월 결산 법인 · 매월 신고 기준이고 주말 · 공휴일이면 다음 영업일이에요. 원천세 · 지방소득세 · 4대보험은 인건비에 이미 들어 있고, 이 표는 남는 돈에서 따로 빼지 않아요. 정확한 세액은 세무사 확인이 필요해요.</span></div>
+            <div class="sb-fx-foot"><span>금액 칸의 회색은 예상이에요 — 실제 고지액을 넣으면 그 값을 보여 줘요. 기한은 12월 결산 법인 · 매월 신고 기준이고 주말 · 공휴일이면 다음 영업일이에요. 원천세 · 지방소득세 · 4대보험 직원분은 세전 월급에, 4대보험 회사분은 고정 지출에 이미 들어 있어서 이 표는 남는 돈에서 따로 빼지 않아요(납부 확인용). 정확한 세액은 세무사 확인이 필요해요.</span></div>
           </details>
         </div>
       </section>
@@ -55137,7 +55137,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     return res;
   }
   // 고정 지출 묶음 — 항목 이름으로 나눔 (묶음의 ＋ 로 새로 넣은 항목은 cat 에 적힌 묶음)
-  const SB_GROUPS=[['people','인건비'],['place','사무실 · 창고'],['ship','택배'],['tool','프로그램 · 구독'],['run','차량 · 통신'],['money','세무 · 금융'],['etc','기타']];
+  const SB_GROUPS=[['people','인건비'],['place','사무실 · 창고'],['ship','택배'],['tool','프로그램 · 구독'],['run','차량 · 통신'],['money','4대보험 · 세무 · 금융'],['etc','기타']];
   function _sbGroupOf(name){
     const n=String(name||'');
     if(/인건비|월급|급여|건보료|연금/.test(n)) return 'people';
@@ -55169,7 +55169,9 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     }).filter(Boolean);
     // 인건비 명세 합계 — 직원별 회사 실부담을 한 줄로 (입력칸 없음, 아래 명세에서 고침)
     const lb=_sbLabor(month);
-    if(lb.rows.length) rows.unshift({id:SB_LABOR_ROW, name:`직원 ${lb.active}명 실부담`, memo:'', raw:lb.total, cycle:'month', amount:lb.total, grp:'people', todo:false, auto:true});
+    // 4대보험 회사분은 인건비에 넣지 않고 여기 한 줄로만 센다 — 아래 법인 세금 · 4대보험 표와 두 번 안 겹치게 (2026-11-25 사장님)
+    if(lb.rows.length) rows.push({id:SB_INS_ROW, name:'4대보험 회사분', memo:'아래 법인 세금 · 4대보험에서 내는 돈 중 회사 몫 · 남는 돈에는 여기서 한 번만 빼요', raw:lb.ins, cycle:'month', amount:lb.ins, grp:'money', todo:false, auto:true});
+    if(lb.rows.length) rows.unshift({id:SB_LABOR_ROW, name:`직원 ${lb.active}명 월급 + 퇴직 적립`, memo:'아래 인건비에서 고쳐요', raw:lb.total, cycle:'month', amount:lb.total, grp:'people', todo:false, auto:true});
     return rows;
   }
 
@@ -55177,10 +55179,12 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
      저장: 같은 비공개 strategy/month-board.json 의 staff[] — 공개 레포 · 앱 키 표에 두지 않는다.
        staff[] = {id, name, co(소속), team, kind('salary' 근로자 | 'freelance' 3.3% 프리랜서), start(근무 시작 · 일할), end(퇴사일), meal(비과세 식대), memo, pay{달: 세전 월급}}
        pay 는 고정비처럼 "그 달부터" — 연봉이 바뀌면 그 달 칸만 고친다. null = 그 달부터 명세에서 뺌.
-     월 실부담 = 세전 월급 + 회사 몫 4대보험((월급 − 비과세 식대) × 요율) + 퇴직 적립(월급 ÷ 12). 입사 · 퇴사 달은 일한 날 비율.
+     월 인건비 = 세전 월급 + 퇴직 적립(월급 ÷ 12). 회사 몫 4대보험((월급 − 비과세 식대) × 요율)은 고정 지출 '4대보험 회사분' 한 줄로 따로(2026-11-25 중복 정리). 입사 · 퇴사 달은 일한 날 비율.
      프리랜서는 보수만 (3.3% 는 본인 몫에서 떼고 회사 보험 · 퇴직금 없음).
      11월부터 이 합계가 사장님 시트의 '직원 월급' · '건보료 · 연금 보험료' 두 줄을 대신한다 (그 두 줄은 2026-11 부터 null). */
-  const SB_LABOR_ROW='labor-auto';
+  const SB_LABOR_ROW='labor-auto', SB_INS_ROW='ins-auto';
+  // 전략팀은 법인(비드유니버스)만 — 브라이트비드 소속 직원은 인건비 · 세금 · 4대보험 · 퇴직금에서 모두 뺀다 (2026-11-25 사장님 "브라이트비드 고정비용은 다 지워줘"). 저장된 값은 남아 있고 소속을 바꾸면 다시 센다
+  const SB_SKIP_CO=/브라이트비드/;
   // 2026년 사업주 부담 요율 — 국민연금 9.5% 의 절반, 건강 7.19% 의 절반, 장기요양 = 건강보험료의 13.14%,
   // 고용 = 실업급여 0.9% + 고용안정 · 직업능력개발 0.25%(150인 미만), 산재 등 = 도소매 0.8% + 출퇴근 0.06% + 임금채권 0.09%
   const SB_LABOR_RATE={pension:0.0475, health:0.03595, care:0.1314, employ:0.0115, injury:0.0095};
@@ -55245,11 +55249,12 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     }
     const k=v=>Math.round(v*f);
     const net=k(pay)-own-wht-loc;
-    return {own, wht, loc, net, pay:k(pay), ins:k(ins), sev:k(sev), total:k(pay+ins+sev), full:pay+ins+sev, days, dim, off:days===0, noSev:s.kind!=='freelance'&&!sev};
+    return {own, wht, loc, net, pay:k(pay), ins:k(ins), sev:k(sev), total:k(pay+sev), full:pay+sev, days, dim, off:days===0, noSev:s.kind!=='freelance'&&!sev};
   }
   function _sbLabor(month){
     const out={rows:[], pay:0, ins:0, sev:0, total:0, active:0, own:0, wht:0, loc:0, net:0, due:0, dueN:0};
     (((_sb.view||{}).staff)||[]).forEach(s=>{
+      if(SB_SKIP_CO.test(s.co||'')) return;
       const c=_sbStaffCost(s,month);
       if(!c) return;
       out.rows.push({s,c});
@@ -55325,7 +55330,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   function _sbVatCalc(m){
     const res=_sbResolve(m), P=f=>res.rows.reduce((a,r)=>a+r.vals[f].v,0);
     const platAd=res.rows.filter(r=>!/-home$/.test(r.c.id)).reduce((a,r)=>a+r.vals.ad.v,0);
-    const fx=_sbFixed(m).filter(x=>x.grp!=='people'&&!/대출|차량/.test(x.name)&&!SB_VAT_FOREIGN.test(x.name)).reduce((a,x)=>a+x.amount,0);
+    const fx=_sbFixed(m).filter(x=>x.grp!=='people'&&!/대출|차량|4대보험/.test(x.name)&&!SB_VAT_FOREIGN.test(x.name)).reduce((a,x)=>a+x.amount,0);
     const pay=_sbPayData(m), buy=P('fee')+P('ship')+P('direct')+platAd+fx+pay.fee;
     return {out:res.sales/11, inn:buy/11};
   }
@@ -55351,7 +55356,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       const by=f=>{ const o={}; lb.rows.forEach(({s,c})=>{ const k=s.co||'소속 없음'; o[k]=(o[k]||0)+f(c); }); const e=Object.entries(o).filter(([,v])=>v); return e.length>1?' · '+e.map(([k,v])=>`${k} ${w(v)}`).join(' / '):''; };
       if(id==='wht') return {v:lb.wht, why:`직원 ${lb.active}명 급여에서 떼는 소득세 (간이세액표 · 부양가족 1명, 프리랜서 3%)`+by(c=>c.wht)};
       if(id==='whtloc') return {v:lb.loc, why:'소득세의 10%'+by(c=>c.loc)};
-      return {v:lb.ins+lb.own, why:`회사분 ${w(lb.ins)} + 직원 본인분 ${w(lb.own)}`+by(c=>c.ins+c.own)};
+      return {v:lb.ins+lb.own, why:`회사분 ${w(lb.ins)}(고정 지출에 이미 든 돈) + 직원 본인분 ${w(lb.own)}(세전 월급에서 뗀 돈)`+by(c=>c.ins+c.own)};
     }
     if(id==='prop') return {v:0, why:'사무실 · 창고가 모두 월세라 낼 것이 없어 보여요'};
     if(id==='resid') return {v:62500*SB_TAX_SITES, why:`사업소 ${SB_TAX_SITES}곳(향동 · 청초로 · 합정) × 기본 5만 원 + 지방교육세 25%, 330㎡ 이하 가정`};
@@ -55770,7 +55775,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     if(sig===_sb.fixedSig) return;
     _sb.fixedSig=sig;
     const item=r=>r.auto
-      ? `<tr class="sb-it is-auto" data-in="${r.grp}"><td class="sb-fx-auto-name" id="sbLaborRowName"></td><td></td><td></td><td class="n" data-mon="${r.id}"></td><td class="n" data-yr="${r.id}"></td><td class="sb-fx-memo">월급 + 회사 4대보험 + 퇴직 적립 · 아래 인건비에서 고쳐요</td><td></td></tr>`
+      ? `<tr class="sb-it is-auto" data-in="${r.grp}"><td class="sb-fx-auto-name" data-autoname="${r.id}"></td><td></td><td></td><td class="n" data-mon="${r.id}"></td><td class="n" data-yr="${r.id}"></td><td class="sb-fx-memo">${esc(r.memo)}</td><td></td></tr>`
       : `<tr class="sb-it" data-in="${r.grp}"><td><input class="sb-in sb-fx-name" data-fx="name" data-id="${esc(r.id)}" autocomplete="off" placeholder="항목 이름" aria-label="고정비 항목 이름"></td>`
         +`<td><select class="sb-in" data-fx="cycle" data-txt="1" data-id="${esc(r.id)}" aria-label="${esc(r.name)} 내는 주기"><option value="month">매달</option><option value="year">1년에 한 번</option></select></td>`
         +`<td><input class="sb-in sb-fx-amt" data-fx="amt" data-id="${esc(r.id)}" inputmode="numeric" autocomplete="off" aria-label="${esc(r.name)} 금액"></td>`
@@ -55803,8 +55808,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       document.querySelectorAll(`#sbFixed tr[data-in="${g}"]`).forEach(x=>{ if(!x.contains(active)) x.hidden=!open; });
     });
     fixed.forEach(r=>{ const k=CSS.escape(r.id); q(`[data-mon="${k}"]`,w(r.amount)); q(`[data-yr="${k}"]`,w(yr(r))); });
-    const lbRow=fixed.find(x=>x.auto);
-    if(lbRow) q('#sbLaborRowName',lbRow.name);
+    fixed.filter(x=>x.auto).forEach(x=>q(`[data-autoname="${x.id}"]`,x.name));
     document.querySelectorAll('#sbFixed .sb-in').forEach(el=>{
       const r=fixed.find(x=>x.id===el.dataset.id);
       if(!r||el===active) return;
@@ -55826,18 +55830,18 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const esc=_stratEsc;
     const txt=(s,f,ph,cls)=>`<td><input class="sb-in sb-lb-txt ${cls||''}" data-st="${f}" data-id="${esc(s.id)}" data-txt="1" autocomplete="off" placeholder="${ph}" aria-label="${esc(s.name)} ${ph}"></td>`;
     // 돈 칸(월급 → 실부담)을 이름 바로 뒤에 — 좁은 화면에서도 옆으로 밀지 않고 실부담이 보이게
-    document.getElementById('sbLabor').innerHTML='<thead><tr><th>이름</th><th class="n">세전 월급</th><th class="n">예상 세후</th><th class="n">4대보험 회사분</th><th class="n">퇴직 적립</th><th class="n">월 실부담</th><th class="n">지금 퇴직금</th><th class="sb-lb-x">소속</th><th class="sb-lb-x">업무</th><th class="sb-lb-x">구분</th><th class="n sb-lb-x">비과세 식대</th><th class="sb-lb-x">근무 시작</th><th class="sb-lb-x">퇴사일</th><th class="sb-lb-x">메모</th><th></th></tr></thead><tbody>'
+    document.getElementById('sbLabor').innerHTML='<thead><tr><th>이름</th><th class="n">세전 월급</th><th class="n">예상 세후</th><th class="n">퇴직 적립</th><th class="n">월 인건비</th><th class="n">지금 퇴직금</th><th class="sb-lb-x">소속</th><th class="sb-lb-x">업무</th><th class="sb-lb-x">구분</th><th class="n sb-lb-x">비과세 식대</th><th class="sb-lb-x">근무 시작</th><th class="sb-lb-x">퇴사일</th><th class="sb-lb-x">메모</th><th></th></tr></thead><tbody>'
       +lb.rows.map(({s})=>`<tr id="sb-lb-${esc(s.id)}">`
         +txt(s,'name','이름','sb-lb-name')
         +`<td><input class="sb-in" data-st="pay" data-id="${esc(s.id)}" inputmode="numeric" autocomplete="off" aria-label="${esc(s.name)} 세전 월급"></td>`
-        +`<td class="n sb-lb-net" data-lb="net"></td><td class="n" data-lb="ins"></td><td class="n" data-lb="sev"></td><td class="n sb-lb-total" data-lb="total"></td><td class="n" data-lb="due"></td>`
+        +`<td class="n sb-lb-net" data-lb="net"></td><td class="n" data-lb="sev"></td><td class="n sb-lb-total" data-lb="total"></td><td class="n" data-lb="due"></td>`
         +(txt(s,'co','소속')+txt(s,'team','업무')
         +`<td><select class="sb-in" data-st="kind" data-id="${esc(s.id)}" data-txt="1" aria-label="${esc(s.name)} 구분"><option value="salary">근로자</option><option value="freelance">프리랜서</option></select></td>`
         +`<td><input class="sb-in" data-st="meal" data-id="${esc(s.id)}" inputmode="numeric" autocomplete="off" aria-label="${esc(s.name)} 비과세 식대"></td>`
         +txt(s,'start','YYYY-MM-DD','sb-lb-date')+txt(s,'end','재직 중','sb-lb-date')
         +txt(s,'memo','메모','sb-lb-memo')).replace(/<td>/g,'<td class="sb-lb-x">')
         +`<td><button type="button" class="sb-fx-del" data-stdel="${esc(s.id)}" aria-label="${esc(s.name)} 빼기" title="이 달부터 명세에서 빼기">×</button></td></tr>`).join('')
-      +'<tr class="is-total"><td>합계</td><td class="n" id="sbLbPay"></td><td class="n" id="sbLbNet"></td><td class="n" id="sbLbIns"></td><td class="n" id="sbLbSev"></td><td class="n sb-lb-total" id="sbLbTotal"></td><td class="n" id="sbLbDue"></td><td class="sb-lb-x" colspan="7"></td><td></td></tr></tbody>';
+      +'<tr class="is-total"><td>합계</td><td class="n" id="sbLbPay"></td><td class="n" id="sbLbNet"></td><td class="n" id="sbLbSev"></td><td class="n sb-lb-total" id="sbLbTotal"></td><td class="n" id="sbLbDue"></td><td class="sb-lb-x" colspan="7"></td><td></td></tr></tbody>';
   }
   function _sbPaintLabor(active){
     const box=document.getElementById('sbLaborBox');
@@ -55862,19 +55866,18 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       netTd.title=c.off?'':`세전 ${w(c.pay)}${c.own?` − 4대보험 본인 몫 ${w(c.own)}`:''} − 소득세 ${w(c.wht)} − 지방소득세 ${w(c.loc)}`;
       const dueTd=tr.querySelector('[data-lb="due"]'), q=c.sv;
       dueTd.innerHTML=!q?'-':q.amount?`<b>${w(q.amount)}</b><small>근속 ${Math.floor(q.days/365)}년 ${q.days%365}일</small>`:`<small>${Number(q.year.slice(2,4))}년 ${Number(q.year.slice(5,7))}/${Number(q.year.slice(8))} 부터</small>`;
-      tr.querySelector('[data-lb="ins"]').textContent=s.kind==='freelance'?'-':w(c.ins);
       const sevTd=tr.querySelector('[data-lb="sev"]');
       sevTd.textContent=s.kind==='freelance'?'-':c.noSev?'1년 미만':w(c.sev);
       sevTd.title=c.noSev?'퇴사일 기준 근속 1년 미만이라 퇴직금이 생기지 않아요':'';
       tr.querySelector('[data-lb="total"]').innerHTML=(c.off?'0':'₩'+w(c.total))+part;
     });
     const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
-    set('sbLbPay',w(lb.pay)); set('sbLbNet',w(lb.net)); set('sbLbDue',w(lb.due)); set('sbLbIns',w(lb.ins)); set('sbLbSev',w(lb.sev)); set('sbLbTotal','₩'+w(lb.total));
-    document.getElementById('sbLaborSum').textContent=`월 실부담 ₩${w(lb.total)} · ${lb.active}명 · 세후 합 ₩${w(lb.net)}`+(lb.dueN?` · 1년 넘은 ${lb.dueN}명 퇴직금 ₩${w(lb.due)}`:'');
+    set('sbLbPay',w(lb.pay)); set('sbLbNet',w(lb.net)); set('sbLbDue',w(lb.due)); set('sbLbSev',w(lb.sev)); set('sbLbTotal','₩'+w(lb.total));
+    document.getElementById('sbLaborSum').textContent=`한 달 ₩${w(lb.total)} · ${lb.active}명 · 세후 합 ₩${w(lb.net)}`+(lb.dueN?` · 1년 넘은 ${lb.dueN}명 퇴직금 ₩${w(lb.due)}`:'');
     document.getElementById('sbLabor').classList.toggle('is-more',!!_sb.lbMore);
     document.getElementById('sbLbMore').textContent=_sb.lbMore?'소속 · 근무일 · 메모 접기':'소속 · 근무일 · 메모 보기';
     document.getElementById('sbLaborNote').innerHTML=
-      `월 실부담 = 세전 월급 + 회사 몫 4대보험 + 퇴직 적립(월급 ÷ 12). 4대보험은 (월급 − 비과세 식대) × 국민연금 ${pct(R.pension)} · 건강 ${pct(R.health)} · 장기요양(건강보험료의 ${pct(R.care)}) · 고용 ${pct(R.employ)} · 산재 등 ${pct(R.injury)} — 2026년 요율 추정이에요. 입사 · 퇴사 달은 일한 날만큼, 프리랜서는 보수만 셉니다. 월급을 고치면 보고 있는 달부터 적용돼요.`
+      `월 인건비 = 세전 월급 + 퇴직 적립(월급 ÷ 12). 회사 몫 4대보험은 여기 넣지 않고 고정 지출의 '4대보험 회사분' 한 줄로만 세요(국민연금 ${pct(R.pension)} · 건강 ${pct(R.health)} · 장기요양 건강보험료의 ${pct(R.care)} · 고용 ${pct(R.employ)} · 산재 등 ${pct(R.injury)}, 2026년 요율). 브라이트비드 소속은 세지 않아요. 입사 · 퇴사 달은 일한 날만큼, 프리랜서는 보수만 셉니다. 월급을 고치면 보고 있는 달부터 적용돼요.`
       +'<br>예상 세후 = 세전 − 본인 몫 4대보험(국민연금 4.75% · 건강 3.595% · 장기요양 · 고용 0.9%) − 소득세(2026 간이세액표, 부양가족 1명) − 지방소득세. 프리랜서는 3.3%를 뺀 값이에요. 지금 퇴직금 = 1년 넘은 근로자가 오늘 퇴사하면 받을 예상액(1일 평균임금 × 30 × 근속일 ÷ 365, 상여 · 연차수당 제외) — 매달의 퇴직 적립과 따로 남는 돈에서 빼지 않아요.';
   }
   function _sbPaint(){
@@ -55902,7 +55905,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정 지출의 택배비(공홈 배송 건수 × 단가 예상)에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
     if(res.partial.length) lines.push(`<span class="sb-warn">⚠ 이 달 중간부터 보고서가 있는 채널: ${_stratEsc(res.partial.join(', '))} — 있는 날만 합산했어요.</span>`);
-    if(fixed.some(x=>x.auto)) lines.push('월 고정비의 인건비는 근로계약서 기준 직원별 회사 실부담(세전 월급 + 4대보험 회사분 + 퇴직 적립) 추정이에요 — 아래 인건비에 직원별로 있어요.');
+    if(fixed.some(x=>x.auto)) lines.push('월 고정비의 인건비는 근로계약서 기준 세전 월급 + 퇴직 적립이고, 4대보험 회사분은 고정 지출에 따로 한 줄이에요 — 직원별은 아래 인건비에 있어요.');
     lines.push(`플랫폼 택배비 = 주문수 × ₩${w(res.unit)} (우리가 직접 보내 정산 때 나가는 비용). 지그재그 주문수는 스토어배송만 — 직진배송은 창고에서 나가고 출고비가 직배 이용료에 들어 있어요.`);
     document.getElementById('sbBasis').innerHTML=lines.join('<br>');
     document.getElementById('sbChBasis').textContent=cur?`· ${_sbMonthLabel(m)} 월말 예상`:`· ${_sbMonthLabel(m)} 한 달 합계`;
