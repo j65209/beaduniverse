@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>/* 아이폰은 글씨 16px 미만 입력 칸을 누르면 화면을 자동 확대함 → iOS 에서만 끔 (손가락으로 확대는 계속 가능) */
 try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}   /* 아이폰에서 혼자 열린 화면 — 맨 위 흐림 막기 (.ios-top) */
-try{var m=/[?&]app=(design|md|cs)(&|$)/.exec(location.search);if(m)document.documentElement.classList.add('solo-app','solo-'+m[1])}catch(e){}   /* 디자인팀 · MD팀 · CS팀 새 탭 (홈 카드 → openSoloPage) — 위 막대 없이 그 팀만 */
+try{var m=/[?&]app=(design|md|csagent|cs)(&|$)/.exec(location.search);if(m)document.documentElement.classList.add('solo-app','solo-'+m[1])}catch(e){}   /* 디자인팀 · MD팀 · CS팀 새 탭 (홈 카드 → openSoloPage) — 위 막대 없이 그 팀만 */
 if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){var _vp=document.querySelector('meta[name=viewport]');if(_vp)_vp.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';}</script>
 <title>Bead Universe Co., Ltd. · Office</title>
 <script src="boss-guard.js?v=2"></script><script>window.BossGuard||document.write('<script src="boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
@@ -5664,103 +5664,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .kko-chip,.kko-brands button,.kko-find select,.kko-find input,.kko-find button{min-height:38px}
     .kko-tabs button{min-height:44px}
   }
-  /* ===== 시나리오 북 (11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") — 에이전트 학습 탭 [시나리오 북] → 화면 전체 창.
-     왼쪽 차례 · 위 브랜드 고르기 · 찾기. 고객에게 나가는 말 = 노란 말풍선(카카오톡 우리 쪽), 고객이 하는 말 = 회색 ===== */
+  /* 에이전트 학습 열기 단추 (11-25, csagent/) */
   .kko-bookbtn{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;padding:14px 16px;border:0;border-radius:12px;background:var(--kko-yellow);color:var(--kko-ink);font:inherit;text-align:left;cursor:pointer}
   .kko-bookbtn:hover{background:var(--kko-yellow-h)}
   .kko-bookbtn .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   .kko-bookbtn b{font-size:15px;font-weight:800}
   .kko-bookbtn small{font-size:12px;font-weight:600;color:#4d4400}
   .kko-bookbtn .go{flex:none;font-size:13px;font-weight:800;white-space:nowrap}
-  .kbk{position:fixed;inset:0;z-index:9992;background:#fff;color:var(--kko-ink)}
-  .kbk[hidden]{display:none}
-  .kbk-in{display:flex;flex-direction:column;height:100%}
-  .kbk-head{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #ececec}
-  .kbk-head h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.3px}
-  .kbk-head .sub{font-size:12px;color:var(--kko-gray)}
-  .kbk-head .ctl{margin-left:auto;display:flex;align-items:center;gap:8px}
-  .kbk-head select,.kbk-head input{min-height:36px;padding:4px 12px;border:1px solid transparent;border-radius:8px;background:var(--kko-pill);color:var(--kko-ink);font:inherit;font-size:13px}
-  .kbk-head input{width:220px}
-  .kbk-head select:focus,.kbk-head input:focus{outline:none;border-color:var(--kko-ink);background:#fff}
-  .kbk-found{font-size:12px;font-weight:700;color:var(--kko-gray);white-space:nowrap}
-  .kbk-found:empty{display:none}
-  .kbk-x{flex:none;width:36px;height:36px;border:0;border-radius:999px;background:var(--kko-pill);color:var(--kko-ink);font-size:15px;font-family:inherit;cursor:pointer}
-  .kbk-x:hover{background:#e8e8e8}
-  .kbk-body{flex:1;min-height:0;display:grid;grid-template-columns:230px minmax(0,1fr)}
-  .kbk-nav{overflow:auto;padding:12px 8px 24px;border-right:1px solid #f0f0f0}
-  .kbk-nav button{display:flex;justify-content:space-between;align-items:center;gap:6px;width:100%;min-height:32px;padding:6px 10px;border:0;border-radius:8px;background:none;color:#333;font:inherit;font-size:13px;font-weight:800;text-align:left;cursor:pointer}
-  .kbk-nav button:hover{background:#f6f6f6}
-  .kbk-nav button.sub{padding-left:22px;font-size:12.5px;font-weight:600;color:#666}
-  .kbk-nav button em{font-style:normal;font-weight:600;color:#aaa;font-variant-numeric:tabular-nums}
-  .kbk-main{overflow:auto;overscroll-behavior:contain;padding:16px 24px 56px}
-  .kbk-sec{max-width:980px;margin:0 0 30px;scroll-margin-top:8px}
-  .kbk-sec[hidden],.kbk-gw[hidden],.kbk-it[hidden]{display:none}
-  .kbk-sec>h3{margin:0 0 4px;font-size:16px;font-weight:800}
-  .kbk-sec>p{margin:0 0 12px;font-size:12.5px;line-height:1.55;color:var(--kko-gray)}
-  .kbk-grp{margin:18px 0 8px;font-size:13px;font-weight:800;color:#555;scroll-margin-top:8px}
-  .kbk-card{margin-bottom:8px;padding:12px 14px;border:1px solid #ececec;border-radius:12px;background:#fff}
-  .kbk-h{display:flex;align-items:baseline;gap:6px 8px;flex-wrap:wrap}
-  .kbk-h b{font-size:14px;font-weight:800}
-  .kbk-n{flex:none;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--kko-ink);color:#fff;font-size:11.5px;font-weight:800}
-  .kbk-tag{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--kko-pill);color:#555;font-size:11px;font-weight:800;white-space:nowrap}
-  .kbk-tag.agent{background:var(--kko-ink);color:#fff}
-  .kbk-tag.staff{background:var(--kko-red);color:#fff}
-  .kbk-tag.none{background:#fff;color:#777;box-shadow:inset 0 0 0 1px #ddd}
-  .kbk-say{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
-  .kbk-say span{padding:3px 10px;border-radius:12px;background:#f2f2f2;color:#333;font-size:12.5px}
-  .kbk-lbl{margin-top:10px;font-size:11.5px;font-weight:800;color:var(--kko-gray)}
-  .kbk-bub{display:inline-block;max-width:min(600px,100%);margin-top:4px;padding:8px 12px;border-radius:12px;border-top-right-radius:3px;background:var(--kko-yellow);font-size:13.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
-  .kbk-bub.c{background:#f2f2f2;border-top-right-radius:12px;border-top-left-radius:3px}
-  .kbk-note{margin-top:6px;font-size:12px;line-height:1.5;color:#666}
-  .kbk-miss{color:var(--kko-redt);font-weight:700}
-  .kbk-num{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#666;font-variant-numeric:tabular-nums}
-  .kbk-bar{flex:0 0 110px;height:6px;border-radius:999px;background:#f3c7c3;overflow:hidden}
-  .kbk-bar i{display:block;height:100%;background:var(--kko-ink)}
-  .kbk-ex{margin-top:6px}
-  .kbk-ex summary{display:flex;align-items:center;min-height:30px;font-size:12.5px;font-weight:700;color:#444;cursor:pointer}
-  .kbk-exi{margin-top:6px;padding:8px 10px;border-radius:10px;background:#f6f8fa;font-size:12.5px;line-height:1.5}
-  .kbk-exi .m{font-size:11px;color:#999}
-  .kbk-exi .q{color:#222}
-  .kbk-exi .r{color:#5c5200}
-  .kbk-exi .x{color:#555}
-  .kbk-over{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
-  .kbk-tbl{overflow:auto;border:1px solid #ececec;border-radius:10px}
-  .kbk-tbl table{border-collapse:collapse;min-width:100%;font-size:12px}
-  .kbk-tbl th,.kbk-tbl td{min-width:110px;max-width:280px;padding:6px 8px;border-bottom:1px solid #f0f0f0;text-align:left;vertical-align:top;overflow-wrap:anywhere}
-  .kbk-tbl thead th{position:sticky;top:0;background:#fafafa;font-weight:800;white-space:nowrap}
-  .kbk-tbl tbody th{font-weight:700;color:#444;white-space:nowrap}
-  .kbk-tbl .on{background:#fffbd6}
-  .kbk-tbl thead .on{background:#fff3a3}
-  .kbk-tbl td i{font-style:normal;font-weight:700;color:var(--kko-redt)}
-  .kbk-tbl td.own::before{content:'';display:inline-block;width:6px;height:6px;margin-right:5px;border-radius:50%;background:#c9a500;vertical-align:2px}
-  .kbk-empty{padding:16px;font-size:13px;color:var(--kko-gray)}
-  .kbk ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.6;color:#444}
-  /* 시험 답변 (11-23) — 시나리오 북 창 모양 그대로, 답 세 줄만 더 */
-  .kko-testbtn{margin-top:8px;background:var(--kko-pill)}
-  .kko-testbtn:hover{background:#e8e8e8}
-  .kko-testbtn small{color:#666}
-  .kko-testbtn[hidden]{display:none}
-  .kts-row{margin-top:8px}
-  .kts-row .kbk-lbl{display:flex;align-items:center;gap:6px;margin-top:0}
-  .kts-g{font-weight:700;color:#666}
-  .kts-g.bad{color:var(--kko-redt)}
-  .kts-bub{display:inline-block;max-width:min(680px,100%);margin-top:3px;padding:7px 11px;border-radius:12px;background:#f6f8fa;font-size:13px;line-height:1.55;color:#444;white-space:pre-wrap;overflow-wrap:anywhere}
-  @media (max-width:760px){ #kkoTest .ctl{flex-wrap:wrap} #kkoTest .ctl select{flex:1 1 0;min-width:0} #kkoTest .ctl input{flex:1 1 0;width:auto;min-width:0;order:3} #kkoTest .ctl .kbk-x{order:4} }
-  .kts-more{display:block;width:100%;margin:4px 0 0;min-height:40px;border:0;border-radius:10px;background:var(--kko-pill);color:var(--kko-ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
-  @media (max-width:760px){
-    .kbk-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
-    .kbk-nav{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;border-right:0;border-bottom:1px solid #f0f0f0}
-    .kbk-nav button{flex:none;width:auto;white-space:nowrap;padding:6px 12px;border-radius:999px;background:var(--kko-pill)}
-    .kbk-nav button.sub{display:none}
-    .kbk-main{padding:12px 14px 40px}
-    .kbk-head{padding:10px 12px}
-    .kbk-head .ctl{margin-left:0;width:100%}
-    .kbk-head input{flex:1;width:auto;min-width:0}
-  }
-  @media (pointer:coarse), (max-width:600px){
-    .kbk-nav button,.kbk-head select,.kbk-head input{min-height:38px}
-    .kbk-ex summary{min-height:36px}
-  }
+  .kko-agent-n{display:inline-block;margin-left:4px;padding:0 8px;border-radius:999px;background:var(--kko-red);color:#fff;font-size:11.5px;font-style:normal;font-weight:800;line-height:1.6;font-variant-numeric:tabular-nums}
+  .kko-agent-n[hidden]{display:none}
   .reo-name b{font-weight:700;color:var(--text-0)}
   .reo-name i{font-style:normal;color:var(--text-3);margin-left:4px}
   .reo-name .tag{display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:0 6px;border-radius:6px;background:var(--bg-3);color:var(--text-2)}
@@ -12933,11 +12845,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== ERP전산팀(erp/) · 시딩 마스터(seeding/) — MD팀 시트 창처럼 가장자리에서 살짝 띄운 둥근 창 (2026-11-20 사용자 "MD팀처럼 erp도 좌/우 여백 조금만,
      erp 디자인과 동일한 서식들도"). 상단 바 아래를 꽉 채우던 iframe 둘레에 오피스 바탕색 여백 + 둥근 테두리. VOC 전산 · MD팀 시트는 이미 이 모양 ===== */
-  #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewMeeting,#viewWeekly,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
-  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewCsagent,#viewMeeting,#viewWeekly,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
+  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewCsagent > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
   @media (max-width:720px){
-    #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewMeeting,#viewWeekly,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
-    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
+    #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewCsagent,#viewMeeting,#viewWeekly,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
+    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewCsagent > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
   }
 
   /* ===== 물류팀 다듬기 (2026-11-20 사용자 "모서리 자연스럽게 둥글게 · 텍스트 위치 최적화") — 틀 모서리를 위 출고 전광판(14px)에 맞추고,
@@ -14466,19 +14378,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <!-- 주문 찾기 · 운송장 조회 칸은 2026-11-24 오른쪽 'CS 도구'(#csTools)로 옮김 (사장님 "좌측은 채팅 · 우측에서 주문찾기, 운송장조회 …") -->
       </div>
       <div class="kko-pane" id="kkoPaneLearn" role="tabpanel" aria-labelledby="kkoTabLearn" hidden>
-        <!-- 시나리오 북 (2026-11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") — 누르면 화면 전체 창 #kkoBook -->
-        <button type="button" class="kko-bookbtn" onclick="kkoBookOpen()"><span class="t"><b>시나리오 북</b><small>아직 답을 준비 못 한 질문을 대화창으로 · 에이전트가 어떤 글에 무엇을 하는지 · 브랜드별로 나가는 말 · 지난 6개월 대화 예시</small></span><span class="go">열기 ›</span></button>
-        <!-- 시험 답변 (2026-11-23 사장님 "너가 테스트 답변을 우선 오피스앱에서 먼저 해볼래?") — AI 두뇌가 같은 문의에 쓴 답, 고객에게 안 나감. 관리자만 (kkoTab 이 보이게 함) -->
-        <button type="button" class="kko-bookbtn kko-testbtn" id="kkoTestBtn" onclick="kkoTestOpen()" hidden><span class="t"><b>시험 답변</b><small>직원 · 카나나 실제 답을 학습한 AI 가 새 문의에 써 본 답 · 실제 나간 답 · 직원 지침 · 고객에게는 안 나가요</small></span><span class="go">열기 ›</span></button>
+        <!-- 에이전트 학습 창 (2026-11-25 사장님 "에이전트 학습을 아예 새창으로 키워서 … 시나리오북이랑 시험답변 합쳐주고") — csagent/, 시나리오 북 · 시험 답변 창은 걷어 냄 -->
+        <button type="button" class="kko-bookbtn" onclick="openCsAgentPage()"><span class="t"><b>에이전트 학습 열기 <em id="kkoAgentN" class="kko-agent-n" hidden></em></b><small>고치거나 가르칠 시나리오만 · 정리된 질문과 답</small></span><span class="go">새 창 ↗</span></button>
         <div class="kko-learn" id="kkoLearn" aria-label="에이전트 학습"></div>
         <div class="kko-faq" id="kkoFaq" hidden></div>
       </div>
       <!-- 채팅방 창 (줄을 누르면) — 오피스 안에서 대화 보기, 카카오로 넘어가지 않음 (2026-11-19 사장님). kkoOpenChat · _kkoChatPaint 가 채운다 -->
       <div class="kko-chat" id="kkoChat" hidden></div>
-      <!-- 시나리오 북 창 — kkoBookOpen · _kkoBookPaint 가 채운다 -->
-      <div class="kbk" id="kkoBook" hidden></div>
-      <!-- 시험 답변 창 — kkoTestOpen · _kkoTestPaint 가 채운다 -->
-      <div class="kbk" id="kkoTest" hidden></div>
     </section>
     <!-- ============ 택배 접수 · CJ대한통운 (2026-11-23 사장님 "cs팀에 기능을 넣어줘. 건별접수. 파일접수 파일 추가하기 (레이아웃 기존꺼 가져오기) 운송장조회 연결")
          서버 = 슈퍼베이스 엣지 함수 cj (CJ 택배 표준 API — 고객ID · 1Day 토큰 · 개발/운영은 함수 쪽 표 cj_config, 기록은 cj_bookings · 둘 다 공개 키로 못 읽음).
@@ -16853,6 +16759,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <div class="view view-tool" id="viewSeeding" hidden></div>
   <div class="view view-tool" id="viewFeed" hidden></div>
   <div class="view view-tool" id="viewAdlib" hidden></div>
+  <div class="view view-tool" id="viewCsagent" hidden></div>
   <div class="view view-tool" id="viewMeeting" hidden></div>
   <div class="view view-tool" id="viewWeekly" hidden></div>
   <div class="view view-tool" id="viewMileage" hidden></div>
@@ -18195,8 +18102,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       if(p) p.hidden=!on;
     });
     if(L && !_kko.faq && !_kko.faqLoading) kkoFaqLoad();
-    const tb=document.getElementById('kkoTestBtn'); if(tb) tb.hidden=localStorage.getItem(ROLE_KEY)!=='master';
+    if(L) kkoAgentCount();
     kkoRenderFaq();
+  }
+  // 에이전트 학습 단추의 볼 것 수 — 관리자만 (csagent/ 와 같은 자료)
+  async function kkoAgentCount(){
+    const el=document.getElementById('kkoAgentN'); if(!el || localStorage.getItem(ROLE_KEY)!=='master') return;
+    try{
+      const base=await loadProxyBase(); if(!base) return;
+      const j=await (await fetch(`${base}/cs/kakao-review`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'})).json();
+      if(!j || !j.ok || !j.counts) return;
+      const done=new Set((j.rows||[]).map(r=>r.key)), n=j.outside ? Object.values(j.counts).reduce((a,x)=>a+x,0) : (j.items||[]).filter(x=>!done.has(x.key)).length;
+      el.textContent=n; el.hidden=!n;
+    }catch(e){}
   }
   function kkoTabKey(e){
     if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
@@ -18883,7 +18801,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function kkoRenderFaq(){
     const box=document.getElementById('kkoFaq');
     if(!box) return;
-    const on=_kko.tab==='learn';   // 에이전트 학습 탭에서만 (사장님 11-20)
+    const on=false;   // 예상 질문 · 답은 에이전트 학습 창(csagent/)의 '정리된 답'에서 (2026-11-25) — 자료(_kko.faq)는 다른 곳에서도 씀
     box.hidden=!on;
     if(!on) return;
     const f=_kko.faq;
@@ -18919,302 +18837,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + (own.length ? `<div class="kko-qa-group">${_kkoEsc(KKO_LABEL[b]||b)} 전용</div>${own.map(it=>_kkoQaHtml(it,facts)).join('')}` : '')
       + Object.keys(groups).map(k=>`<div class="kko-qa-group">${_kkoEsc(KKO_INTENT[k]||k)}</div>${groups[k].map(it=>_kkoQaHtml(it,facts)).join('')}`).join('');
     if(html!==_kko.faqHtml){ box.innerHTML=html; _kko.faqHtml=html; }
-  }
-
-  /* ===== 시나리오 북 (2026-11-20 사장님 "시나리오 북? 그런걸 내가 들어가서 데이터들 다 볼 수 있게 해줘") =====
-     서버 /cs/kakao-book = 맥미니 kakao-book(sixshop-collector, 10분마다 보고 바뀔 때만 새로) — 에이전트가 어떤 글에 무엇을 하는지 한 권:
-     한눈에 · 판단 순서 · 시나리오(항목별 고객 말 · 할 일 · 고객에게 나가는 말 · 횟수 · 예시) · 주문을 찾아 답하는 말 · 고정 문장 · 직원 호출 이유 · 기준 · 브랜드 정보 · 말투.
-     에이전트 학습 탭 [시나리오 북] → 화면 전체 창(#kkoBook). 브랜드를 고르면 그 브랜드 정보로 채운 문장, 찾기는 다시 그리지 않고 숨기기만.
-     예시 글은 가린 지난 대화 — 사무실 밖이면 서버가 비워서 준다(outside). 보기만 한다 (고치기는 아직 없음). */
-  const _kkoBk={data:null,err:'',loading:false,brand:'',q:'',open:false,ret:null,t:null,ov:'',view:'book'};
-  // 확인할 것 (2026-11-24 사장님 "시나리오 북에 … 확인해야하는거 대화창처럼 다 띄워줘") — 시나리오 북 안 첫 화면, kko-check.js 가 그린다 (관리자는 열면 여기부터)
-  function _kkoCheckOn(){ return _kkoBk.open && _kkoBk.view==='check'; }
-  function kkoBookView(v){
-    if(!_kkoBk.open || _kkoBk.view===v) return;
-    _kkoBk.view=v;
-    const box=document.getElementById('kkoBook'); if(box) box.innerHTML='';
-    _kkoBookPaint();
-  }
-  const KBK_WHO={agent:'에이전트',staff:'직원',none:'끼어들지 않음',both:'에이전트 · 직원'};
-  async function kkoBookLoad(){
-    if(_kkoBk.loading) return;
-    _kkoBk.loading=true;
-    try{
-      const base=await loadProxyBase();
-      if(!base) throw new Error('서버 연결 안 됨');
-      const r=await fetch(`${base}/cs/kakao-book`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      _kkoBk.data=j; _kkoBk.err='';
-    }catch(e){ _kkoBk.err=(e && e.message) || String(e); }
-    finally{ _kkoBk.loading=false; if(_kkoBk.open) _kkoBookPaint(); }
-  }
-  function kkoBookOpen(){
-    const box=document.getElementById('kkoBook');
-    if(!box) return;
-    _kkoBk.open=true; _kkoBk.ret=document.activeElement;
-    box.hidden=false;
-    _kkoBk.ov=document.body.style.overflow; document.body.style.overflow='hidden';   // 뒤 화면이 같이 스크롤되지 않게
-    const K=window.KkoCheck;
-    _kkoBk.view=K && K.master() ? 'check' : 'book';
-    if(K) K.open(box);   // 확인할 것 — 열 때마다 새로
-    _kkoBookPaint();
-    const x=document.getElementById('kbkX'); if(x) x.focus({preventScroll:true});
-    kkoBookLoad();   // 열 때마다 새로 (맥미니가 10분마다 바뀐 걸 반영)
-  }
-  function kkoBookClose(){
-    const box=document.getElementById('kkoBook');
-    if(!box || !_kkoBk.open) return;
-    _kkoBk.open=false; box.hidden=true; box.innerHTML='';
-    document.body.style.overflow=_kkoBk.ov||'';
-    const r=_kkoBk.ret; if(r && r.focus && r.isConnected) r.focus({preventScroll:true});
-  }
-  // Esc = 시나리오 북 먼저 닫기 (뒤에 채팅방 창이 떠 있어도 그건 그대로)
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kkoBk.open){ e.preventDefault(); e.stopImmediatePropagation(); if(window.KkoCheck && KkoCheck.typing()) document.activeElement.blur(); else kkoBookClose(); } }, true);
-  function kkoBookBrand(b){ _kkoBk.brand=b; _kkoBookPaint(); }
-  function kkoBookFind(v){ _kkoBk.q=String(v||''); clearTimeout(_kkoBk.t); _kkoBk.t=setTimeout(_kkoBookFilter,120); }
-  function kkoBookGo(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({block:'start'}); }
-  // 찾기 — 다시 그리지 않고 data-s(찾을 글)로 숨기기만. 찾은 게 없는 묶음 · 칸도 숨김
-  function _kkoBookFilter(){
-    const root=document.getElementById('kkoBook');
-    if(!root || !_kkoBk.open) return;
-    const q=_kkoBk.q.trim().toLowerCase();
-    let n=0;
-    root.querySelectorAll('.kbk-it').forEach(el=>{ const hit=!q || (el.dataset.s||'').includes(q); el.hidden=!hit; if(hit && q) n++; });
-    root.querySelectorAll('.kbk-gw').forEach(g=>{ g.hidden=!!q && !g.querySelector('.kbk-it:not([hidden])'); });
-    root.querySelectorAll('.kbk-sec[data-f]').forEach(s=>{ s.hidden=!!q && !s.querySelector('.kbk-it:not([hidden])'); });
-    const f=document.getElementById('kbkFound');
-    if(f) f.textContent=q ? `찾은 것 ${n}개` : '';
-  }
-  function _kkoBookPaint(){
-    const box=document.getElementById('kkoBook');
-    if(!box || !_kkoBk.open) return;
-    if(_kkoBk.view==='check' && window.KkoCheck){ KkoCheck.show(box); return; }
-    const E=_kkoEsc, d=_kkoBk.data, brands=d ? (d.brands||[]) : [];
-    if(d && !brands.some(b=>b.brand===_kkoBk.brand)) _kkoBk.brand=(brands.find(b=>b.brand===_kko.brand)||brands[0]||{}).brand||'';
-    const B=_kkoBk.brand, L=b=>((brands.find(x=>x.brand===b)||{}).label||KKO_LABEL[b]||b);
-    const N=v=>Number(v||0).toLocaleString('ko-KR');
-    const when=s=>{ const t=new Date(s); return isNaN(t) ? '' : `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; };
-    const fid=(document.activeElement && box.contains(document.activeElement)) ? document.activeElement.id : '';
-    const head=`<div class="kbk-head"><h2 id="kbkTitle">시나리오 북</h2>${window.KkoCheck ? KkoCheck.seg('book') : ''}`
-      + `<span class="sub">${d ? `${E(when(d.generatedAt))} 기준 · 예상 질문 · 답 ${E(d.faq.status||'')}${d.faq.updatedAt ? ' ('+E(d.faq.updatedAt)+')' : ''}` : ''}</span>`
-      + `<div class="ctl">${d ? `<select id="kbkBrand" aria-label="브랜드" onchange="kkoBookBrand(this.value)">${brands.map(b=>`<option value="${E(b.brand)}"${b.brand===B ? ' selected' : ''}>${E(b.label)}</option>`).join('')}</select>` : ''}`
-      + `<input type="search" id="kbkQ" placeholder="찾기 — 변색 · 환불 · 송장" value="${E(_kkoBk.q)}" oninput="kkoBookFind(this.value)" aria-label="시나리오 북에서 찾기" autocomplete="off"><span class="kbk-found" id="kbkFound" aria-live="polite"></span>`
-      + `<button type="button" class="kbk-x" id="kbkX" onclick="kkoBookClose()" aria-label="닫기" title="닫기 (Esc)">✕</button></div></div>`;
-    if(!d){
-      box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="kbkTitle">${head}<div class="kbk-empty">${_kkoBk.err ? '불러오지 못했어요 — '+E(_kkoBk.err) : '불러오는 중…'}</div></div>`;
-      return;
-    }
-    // 찾을 글 붙은 칸 (kbk-it) — 찾기는 data-s 만 본다
-    const it=(s, inner, cls='kbk-card')=>`<article class="${cls} kbk-it" data-s="${E(String(s||'').toLowerCase())}">${inner}</article>`;
-    const tag=(who, text)=>`<span class="kbk-tag ${who||''}">${E(text||KBK_WHO[who]||who)}</span>`;
-    const num=(st, onlyN)=>{
-      if(!st || !st.n) return '<div class="kbk-num">지난 대화에서 0번</div>';
-      const by=Object.entries(st.byBrand||{}).sort((a,b)=>b[1]-a[1]).map(([b,n])=>`${L(b)} ${N(n)}`).join(' · ');
-      return `<div class="kbk-num" title="${E(by)}"><span>지난 대화 ${N(st.n)}번${onlyN ? '' : ` · 에이전트 ${N(st.agent)} · 직원 ${N(st.staff)}`}</span>`
-        + (onlyN ? '' : `<span class="kbk-bar" aria-hidden="true"><i style="width:${Math.round(st.agent/st.n*100)}%"></i></span>`) + `</div>`;
-    };
-    const exs=xs=>!xs || !xs.length ? '' : `<details class="kbk-ex"><summary>지난 대화 예시 ${xs.length}개</summary>`
-      + xs.map(x=>`<div class="kbk-exi"><div class="m">${E(x.day)} · ${E(L(x.brand))} · ${x.owner==='agent' ? '에이전트 몫' : '직원 몫'+(x.why ? ' — '+E(x.why) : '')}</div>`
-        + `<div class="q">고객: ${E(x.q)}</div>${x.reply ? `<div class="r">에이전트 초안: ${E(x.reply)}</div>` : ''}${x.real ? `<div class="x">실제 ${E(x.realWho)} 답: ${E(x.real)}</div>` : ''}</div>`).join('') + `</details>`;
-    const off=!!((_kko.drafts||{}).off);
-    // 한눈에
-    const t=d.totals||{}, pct=t.total ? Math.round(t.agent/t.total*100) : 0;
-    const ov=`<section class="kbk-sec" id="kbk-ov"><h3>한눈에</h3><p>지난 대화(${E(t.from)} ~ ${E(t.to)})를 지금 규칙으로 다시 돌려 본 결과입니다. 실제로 보낸 답이 아니고, 에이전트는 ${off ? '지금 꺼 둔 상태(설계 중)' : '아직 고객에게 보내지 않는 상태'}예요.</p>`
-      + `<div class="kbk-over">${[['채팅방',N(t.chats)+'방',''],['고객이 묻고 채널이 답한 순간',N(t.moments)+'번',''],['직원이 상담하던 대화',N(t.staffActive)+'번','끼어들지 않음'],['그 밖',N(t.total)+'번',`에이전트 ${N(t.agent)} (${pct}%) · 직원 ${N(t.staff)}`]]
-        .map(([k,v,s])=>`<div class="kko-stat"><span class="k">${E(k)}</span><b>${E(v)}</b>${s ? `<span class="s">${E(s)}</span>` : ''}</div>`).join('')}</div>`
-      + (d.outside ? '<p class="kbk-note">사무실 밖이라 지난 대화 예시 글은 숨겼어요 — 숫자 · 규칙 · 답 문장은 그대로예요.</p>' : '') + `</section>`;
-    // 판단 순서
-    const flow=`<section class="kbk-sec" id="kbk-flow" data-f><h3>판단 순서</h3><p>고객 글이 오면 위에서부터 보고 처음 맞는 줄대로 합니다. 숫자는 지난 대화에서 그 줄로 간 횟수예요.</p>`
-      + (d.flow||[]).map((f,i)=>it(`${f.when} ${f.then}`, `<div class="kbk-h"><span class="kbk-n">${i+1}</span><b>${E(f.when)}</b>${tag(f.who)}</div><div class="kbk-note">→ ${E(f.then)}</div>${num(f.stats, f.who==='none' || f.who==='staff' || f.who==='agent')}${exs(f.examples)}`)).join('')
-      + `</section>`;
-    // 시나리오 — 고른 브랜드에 쓰는 항목만
-    const facts=((d.facts||{}).byBrand||{})[B]||{};
-    const sc=(d.scenarios||[]).filter(s=>(s.brands||[]).includes(B)), hidN=(d.scenarios||[]).length-sc.length;
-    const scCard=s=>{
-      const x=s.byBrand[B]||{};
-      const who=x.owner==='agent' ? tag('agent','에이전트가 답') : tag('staff','직원이 처리');
-      return it(`${s.title} ${(s.variants||[]).join(' ')} ${x.sent||''} ${x.text||''} ${s.note||''} ${s.group}`,
-        `<div class="kbk-h"><b>${E(s.title)}</b>${tag('',s.actionTitle)}${who}${s.source==='brand' ? tag('',L(B)+' 전용') : ''}${s.forKind==='jewelry' ? tag('','주얼리만') : ''}</div>`
-        + ((s.variants||[]).length ? `<div class="kbk-lbl">고객이 이렇게도 말해요</div><div class="kbk-say">${s.variants.map(v=>`<span>${E(v)}</span>`).join('')}</div>` : '')
-        + `<div class="kbk-lbl">고객에게 나가는 말</div><div><div class="kbk-bub">${E(x.sent||'')}</div></div>`
-        + (x.note ? `<div class="kbk-note">${E(x.note)}</div>` : '')
-        + ((x.missing||[]).length ? `<div class="kbk-note"><span class="kbk-miss">브랜드 정보 빈칸: ${x.missing.map(E).join(', ')}</span></div>` : '')
-        + (x.text && x.text!==x.sent ? `<details class="kbk-ex"><summary>원래 답 문구 보기</summary><div class="kbk-bub c">${_kkoFill(s.answer, facts)}</div></details>` : '')
-        + (s.note ? `<div class="kbk-note">에이전트 메모: ${E(s.note)}</div>` : '')
-        + ((s.collect||[]).length ? `<div class="kbk-note">받을 정보: ${s.collect.map(E).join(' · ')}</div>` : '')
-        + ((s.choices||[]).length ? `<div class="kbk-note">고르게 할 것: ${s.choices.map(E).join(' · ')}</div>` : '')
-        + num(s.stats) + exs(s.examples));
-    };
-    const scHtml=`<section class="kbk-sec" id="kbk-sc" data-f><h3>시나리오 — ${E(L(B))}</h3><p>예상 질문 · 답 항목마다 고객이 하는 말, 에이전트가 하는 일, 고객에게 실제로 나가는 말이에요.${hidN ? ` 이 브랜드에 안 쓰는 항목 ${hidN}개는 숨김 (위에서 브랜드를 바꾸면 보여요).` : ''}</p>`
-      + (d.groups||[]).map(g=>{ const xs=sc.filter(s=>s.intent===g.id); return xs.length ? `<div class="kbk-gw"><div class="kbk-grp" id="kbk-g-${E(g.id)}">${E(g.title)}</div>${xs.map(scCard).join('')}</div>` : ''; }).join('')
-      + `</section>`;
-    // 주문을 찾아 답하는 말
-    const cases=((d.orders||{}).cases||[]).filter(c=>c.byBrand && c.byBrand[B]);
-    const cg=[...new Set(cases.map(c=>c.group))];
-    const orHtml=`<section class="kbk-sec" id="kbk-or" data-f><h3>주문을 찾아 답하는 말 — ${E(L(B))}</h3><p>${E((d.orders||{}).note||'')}</p>`
-      + cg.map(g=>`<div class="kbk-gw"><div class="kbk-grp">${E(g)}</div>${cases.filter(c=>c.group===g).map(c=>{ const x=c.byBrand[B];
-          return it(`${g} ${c.title} ${x.reply} ${x.why}`, `<div class="kbk-h"><b>${E(c.title)}</b>${x.owner==='agent' ? tag('agent','에이전트가 답') : tag('staff','직원이 처리')}</div><div><div class="kbk-bub">${E(x.reply)}</div></div>`
-            + (x.why ? `<div class="kbk-note">${E(x.why)}</div>` : '') + ((x.choices||[]).length ? `<div class="kbk-note">고르게 할 것: ${x.choices.map(E).join(' · ')}</div>` : '')); }).join('')}</div>`).join('')
-      + `</section>`;
-    // 고정 문장
-    const lnHtml=`<section class="kbk-sec" id="kbk-ln" data-f><h3>고정 문장</h3><p>항목 답 말고 에이전트가 쓰는 말이에요. 같은 말이 매번 똑같으면 티가 나서 몇 가지를 돌려 써요.</p>`
-      + (d.lines||[]).map(l=>{ const xs=l.byBrand ? (l.byBrand[B]||[]) : (l.items||[]); return xs.length ? it(`${l.title} ${l.note} ${xs.join(' ')}`, `<div class="kbk-h"><b>${E(l.title)}</b></div>${l.note ? `<div class="kbk-note">${E(l.note)}</div>` : ''}${xs.map(s=>`<div><div class="kbk-bub">${E(s)}</div></div>`).join('')}`) : ''; }).join('')
-      + `</section>`;
-    // 직원 호출 이유
-    const stHtml=`<section class="kbk-sec" id="kbk-st" data-f><h3>직원 호출 이유</h3><p>에이전트가 답하지 않고 직원에게 넘긴 이유와 지난 대화 횟수예요 (직원이 상담하던 대화는 빼고).</p>`
-      + (d.staff||[]).map(s=>it(s.why, `<div class="kbk-h"><b>${E(s.why)}</b></div>${num(s.stats, true)}${exs(s.examples)}`)).join('')
-      + `</section>`;
-    // 기준 · 결정 · 확인 목록 · 배운 값
-    const P=d.policies||{};
-    const ck=(Array.isArray(d.checks) ? d.checks : []).filter(c=>!c.brand || c.brand===B), lr=(Array.isArray(d.learned) ? d.learned : []).filter(x=>x.brand===B);
-    const poHtml=`<section class="kbk-sec" id="kbk-po" data-f><h3>기준 · 결정</h3><p>사장님이 정한 기준과 결정이에요${P.decidedAt ? ` (${E(P.decidedAt)}${P.by ? ' · '+E(P.by) : ''})` : ''}.</p>`
-      + (P.rules||[]).map(r=>it(`${r.title||''} ${r.rule||''} ${r.agent||''}`, `<div class="kbk-h"><b>${E(r.title||r.id)}</b></div><div class="kbk-note">기준: ${E(r.rule||'')}</div>${r.agent ? `<div class="kbk-note">에이전트: ${E(r.agent)}</div>` : ''}${r.data ? `<div class="kbk-note">근거: ${E(r.data)}</div>` : ''}`)).join('')
-      + ((P.choices||[]).length ? `<div class="kbk-gw"><div class="kbk-grp">고객에게 고르게 할 것</div>${P.choices.map(c=>it(`${c.when} ${(c.options||[]).join(' ')}`, `<div class="kbk-h"><b>${E(c.when)}</b></div><div class="kbk-say">${(c.options||[]).map(o=>`<span>${E(o)}</span>`).join('')}</div>`)).join('')}</div>` : '')
-      + ((Array.isArray(d.decisions) ? d.decisions : []).length ? `<div class="kbk-gw"><div class="kbk-grp">결정 기록</div>${d.decisions.map(x=>it(String(x), `<div class="kbk-note" style="margin:0">${E(String(x))}</div>`)).join('')}</div>` : '')
-      + (ck.length ? `<div class="kbk-gw"><div class="kbk-grp">확인 필요 — ${E(L(B))} · 공통</div>${ck.map(c=>it(c.text, `<div class="kbk-note" style="margin:0"><span class="kbk-miss">확인 필요</span> ${E(c.text)}</div>`)).join('')}</div>` : '')
-      + (lr.length ? `<div class="kbk-gw"><div class="kbk-grp">배운 값 — ${E(L(B))}</div>${lr.map(x=>it(`${x.key} ${x.value} ${x.src||''}`, `<div class="kbk-h"><b>${E(x.key)}</b><span>${E(x.value)}</span></div>${x.src ? `<div class="kbk-note">근거: ${E(x.src)}</div>` : ''}`)).join('')}</div>` : '')
-      + `</section>`;
-    // 브랜드 정보 — 줄 = 항목, 칸 = 브랜드 (고른 브랜드 노랑, 점 = 공통과 다르게 이 브랜드만 쓰는 값)
-    const F=d.facts||{}, keys=(F.keys||[]).filter(k=>k!=='분류');
-    const fcHtml=`<section class="kbk-sec" id="kbk-fc" data-f><h3>브랜드 정보</h3><p>답 속 {자리}에 들어가는 값이에요. 노란 칸 = 고른 브랜드, 점 = 공통과 다르게 이 브랜드만 쓰는 값, 빨강 = 빈칸(그 답은 직원에게).</p>`
-      + `<div class="kbk-tbl"><table><thead><tr><th>항목</th><th>공통</th>${brands.map(b=>`<th class="${b.brand===B ? 'on' : ''}">${E(b.label)}</th>`).join('')}</tr></thead><tbody>`
-      + keys.map(k=>`<tr class="kbk-it" data-s="${E((k+' '+brands.map(b=>String(((F.byBrand||{})[b.brand]||{})[k] ?? '')).join(' ')).toLowerCase())}"><th>${E(k)}</th><td>${(F.common||{})[k]!=null && (F.common||{})[k]!=='' ? E((F.common||{})[k]) : '—'}</td>`
-        + brands.map(b=>{ const v=((F.byBrand||{})[b.brand]||{})[k], own=((F.own||{})[b.brand]||[]).includes(k); return `<td class="${b.brand===B ? 'on ' : ''}${own ? 'own' : ''}">${v==null || v==='' ? '<i>빈칸</i>' : E(v)}</td>`; }).join('') + `</tr>`).join('')
-      + `</tbody></table></div></section>`;
-    // 말투 · 원칙
-    const toHtml=`<section class="kbk-sec" id="kbk-to" data-f><h3>말투 · 원칙</h3>`
-      + it((d.tone||[]).join(' '), `<div class="kbk-h"><b>말투</b></div><ul>${(d.tone||[]).map(x=>`<li>${E(x)}</li>`).join('')}</ul>`)
-      + it((d.principles||[]).join(' '), `<div class="kbk-h"><b>에이전트 원칙</b></div><ul>${(d.principles||[]).map(x=>`<li>${E(x)}</li>`).join('')}</ul>`)
-      + `</section>`;
-    // 차례
-    const nb=(id,label,n,sub)=>`<button type="button"${sub ? ' class="sub"' : ''} onclick="kkoBookGo('${id}')">${E(label)}${n!=null ? `<em>${N(n)}</em>` : ''}</button>`;
-    const nav=`<nav class="kbk-nav" aria-label="시나리오 북 차례">${nb('kbk-ov','한눈에')}${nb('kbk-flow','판단 순서',(d.flow||[]).length)}${nb('kbk-sc','시나리오',sc.length)}`
-      + (d.groups||[]).filter(g=>sc.some(s=>s.intent===g.id)).map(g=>nb('kbk-g-'+g.id,g.title,sc.filter(s=>s.intent===g.id).length,true)).join('')
-      + `${nb('kbk-or','주문을 찾아 답하는 말',cases.length)}${nb('kbk-ln','고정 문장')}${nb('kbk-st','직원 호출 이유',(d.staff||[]).length)}${nb('kbk-po','기준 · 결정')}${nb('kbk-fc','브랜드 정보')}${nb('kbk-to','말투 · 원칙')}</nav>`;
-    const main=document.getElementById('kbkMain'), top=main ? main.scrollTop : 0;
-    box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="kbkTitle">${head}<div class="kbk-body">${nav}<div class="kbk-main" id="kbkMain">${ov}${flow}${scHtml}${orHtml}${lnHtml}${stHtml}${poHtml}${fcHtml}${toHtml}</div></div></div>`;
-    const m2=document.getElementById('kbkMain'); if(m2) m2.scrollTop=top;
-    _kkoBookFilter();
-    if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); if(el.id==='kbkQ'){ const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} } } }
-  }
-
-  /* ===== 시험 답변 (2026-11-23 사장님 "너가 테스트 답변을 우선 오피스앱에서 먼저 해볼래?") =====
-     서버 /cs/kakao-test = 맥미니 state/kakao/learn/test.json — 가린 실제 문의(지금 답 기다리는 문의 · 학습에 안 쓴 새 대화 · 지난 대화)에 AI 두뇌가 쓴 답 · 지금 규칙 답 · 실제 나간 답과 채점.
-     고객에게 나가지 않는다 · 보기만. 관리자만(서버도 막음), 고객 글은 사무실 인터넷에서만(밖이면 숫자만). 창 모양은 시나리오 북(.kbk) 그대로. */
-  const _kts={data:null,err:'',loading:false,open:false,ret:null,ov:'',f:'all',q:'',n:20,t:null};
-  const KTS_ACT={answer:'바로 답',ask:'정보를 물음',staff:'직원에게 넘김',todo:'답하고 처리할 일로'};
-  const KTS_G={good:'맞음',weak:'아쉬움',bad:'틀림'};
-  // 11-23 2차 — 사장님 기준(직접 변경 · 취소 · 배송 확인) + 직원 · 카나나 실제 답 학습. 지금 규칙 답은 보여 주지 않음(사장님 "규칙이 틀린건 바로 지워줘")
-  const KTS_SET=[['wait','지금 답 기다리는 문의','시험을 돌린 때 답을 기다리던 문의예요. 채점은 없어요.'],['new','새 문의','학습에 쓰지 않은 11-20 오후 뒤 문의 전부예요 (직원이 이미 상담하던 대화와 인사만 한 글은 빼고).']];
-  const KTS_BR={kop:'코페리',apt:'아페티',koz:'코즈미','6a':'식스에이',yar:'야르',akoi:'아코이하우스',pp:'프로덕트피알',ct:'클리어타입'};
-  const KTS_F=[['all','전체'],['answer','바로 답한 것'],['ask','정보를 물은 것'],['staff','직원에게 넘긴 것'],['weak','아쉽거나 틀린 것']];
-  async function kkoTestLoad(){
-    if(_kts.loading) return;
-    _kts.loading=true;
-    try{
-      const base=await loadProxyBase();
-      if(!base) throw new Error('서버 연결 안 됨');
-      const r=await fetch(`${base}/cs/kakao-test`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      _kts.data=j; _kts.err='';
-    }catch(e){ _kts.err=(e && e.message) || String(e); }
-    finally{ _kts.loading=false; if(_kts.open) _kkoTestPaint(); }
-  }
-  function kkoTestOpen(){
-    const box=document.getElementById('kkoTest');
-    if(!box) return;
-    _kts.open=true; _kts.ret=document.activeElement; _kts.n=20;
-    box.hidden=false;
-    _kts.ov=document.body.style.overflow; document.body.style.overflow='hidden';
-    _kkoTestPaint();
-    const x=document.getElementById('ktsX'); if(x) x.focus({preventScroll:true});
-    kkoTestLoad();
-  }
-  function kkoTestClose(){
-    const box=document.getElementById('kkoTest');
-    if(!box || !_kts.open) return;
-    _kts.open=false; box.hidden=true; box.innerHTML='';
-    document.body.style.overflow=_kts.ov||'';
-    const r=_kts.ret; if(r && r.focus && r.isConnected) r.focus({preventScroll:true});
-  }
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _kts.open){ e.preventDefault(); e.stopImmediatePropagation(); kkoTestClose(); } }, true);
-  function kkoTestSet(k,v){ _kts[k]=v; _kts.n=20; _kkoTestPaint(); }
-  function kkoTestFind(v){ _kts.q=String(v||''); clearTimeout(_kts.t); _kts.t=setTimeout(()=>{ _kts.n=20; _kkoTestPaint(); },250); }
-  function kkoTestMore(){ _kts.n+=40; _kkoTestPaint(); }
-  function kkoTestGo(id){ let el=document.getElementById(id); if(!el){ _kts.n=999; _kkoTestPaint(); el=document.getElementById(id); } if(el) el.scrollIntoView({block:'start'}); }
-  function _kkoTestPaint(){
-    const box=document.getElementById('kkoTest');
-    if(!box || !_kts.open) return;
-    const E=_kkoEsc, d=_kts.data;
-    const when=s=>{ const t=new Date(s); return isNaN(t) ? '' : `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; };
-    const N=v=>Number(v||0).toLocaleString('ko-KR');
-    const fid=(document.activeElement && box.contains(document.activeElement)) ? document.activeElement.id : '';
-    const opt=(v,l,cur)=>`<option value="${E(v)}"${v===cur ? ' selected' : ''}>${E(l)}</option>`;
-    const head=`<div class="kbk-head"><h2 id="ktsTitle">시험 답변</h2><span class="sub">${d ? E(when(d.at))+' 기준 · ' : ''}고객에게 나가지 않아요</span>`
-      + `<div class="ctl">${d ? `<select id="ktsF" aria-label="걸러 보기" onchange="kkoTestSet('f',this.value)">${KTS_F.map(f=>opt(f[0],f[1],_kts.f)).join('')}</select>` : ''}`
-      + `<input type="search" id="ktsQ" placeholder="찾기 — 배송 · 환불 · 야르" value="${E(_kts.q)}" oninput="kkoTestFind(this.value)" aria-label="시험 답변에서 찾기" autocomplete="off">`
-      + `<button type="button" class="kbk-x" id="ktsX" onclick="kkoTestClose()" aria-label="닫기" title="닫기 (Esc)">✕</button></div></div>`;
-    if(!d || !(Number(d.version)>=2)){   // 4차(11-24)부터 version 4 — 2로 딱 맞는 것만 열던 탓에 새 결과가 안 떴음
-      box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="ktsTitle">${head}<div class="kbk-empty">${_kts.err ? '불러오지 못했어요 — '+E(_kts.err) : d ? '새 시험 결과를 기다리는 중이에요.' : '불러오는 중…'}</div></div>`;
-      return;
-    }
-    const S=(d.sums||{}).new||{}, L=d.learned||{}, B=d.before||{};
-    const tot=['answer','ask','todo','staff'].reduce((a,k)=>a+((S[k]||{}).n||0),0);
-    const row=(k)=>{ const x=S[k]||{}; return `<tr><th>${E(KTS_ACT[k])}</th><td>${x.n||0}</td><td>${x.good||0}</td><td>${x.weak||0}</td><td>${x.bad ? `<i>${x.bad}</i>` : 0}</td></tr>`; };
-    const pct=v=>tot ? Math.round(v/tot*100)+'%' : '';
-    const self=((S.answer||{}).n||0)+((S.ask||{}).n||0)+((S.todo||{}).n||0);
-    const ov=`<section class="kbk-sec" id="kts-ov"><h3>한눈에</h3><p>${d.intro ? E(d.intro) : `사장님 기준(배송지 변경 · 취소 · 배송 확인은 고객이 직접, 운송장 출력 뒤 변경 불가)을 넣고, 지난 대화의 직원 답 ${N(L.staff)}건 · 카나나 답 ${N(L.kanana)}건을 브랜드별 직원 지침 ${N(L.guides)}개로 정리해 학습시켰어요. 학습에 쓰지 않은 새 문의 ${tot}건을 풀게 했고, 실제 나간 답은 안 보여 줬어요.`}</p>`
-      + `<div class="kbk-over"><div class="kbk-card"><div class="kbk-h"><b>직원 없이 끝냄</b></div><div class="kbk-num"><span>${self} / ${tot} (${pct(self)})</span></div></div><div class="kbk-card"><div class="kbk-h"><b>직원에게 넘김</b></div><div class="kbk-num"><span>${(S.staff||{}).n||0} / ${tot} (${pct((S.staff||{}).n||0)})</span></div></div>${d.calls ? `<div class="kbk-card"><div class="kbk-h"><b>새로 부르는 직원 호출</b></div><div class="kbk-num"><span>${d.calls.new} / ${d.calls.total} (${Math.round(d.calls.new/d.calls.total*100)}%)</span></div></div>` : ''}<div class="kbk-card"><div class="kbk-h"><b>${E(B.short||'1차 시험 때')}</b></div><div class="kbk-num"><span>넘김 ${B.staff||0} / ${(B.auto||0)+(B.staff||0)} (${(B.auto||0)+(B.staff||0) ? Math.round((B.staff||0)/((B.auto||0)+(B.staff||0))*100) : 0}%)</span></div></div></div>`
-      + `<div class="kbk-tbl" style="margin-top:8px"><table><thead><tr><th></th><th>건수</th><th>맞음</th><th>아쉬움</th><th>틀림</th></tr></thead><tbody>${row('answer')}${row('ask')}${S.todo ? row('todo') : ''}${row('staff')}</tbody></table></div>`
-      + `<div class="kbk-note">채점: ${E(d.grader||'')}. 한 달 비용 어림 ${d.monthLow ? `약 ${Math.round(d.monthLow/10000)}만~${Math.round(d.monthHigh/10000)}만 원` : ''} (하루 새 문의 ${E(d.perDay)}건 · 1달러 1,400원). ${E(d.compareNote||'1차 시험은 규칙이 답하던 쉬운 문의만이라 그대로 비교하기는 어려워요.')}</div></section>`;
-    // 고정 시험지 (11-23 사장님 "고정 시험지 만들기") — 규칙을 고칠 때마다 맥미니 kakao-exam 이 다시 채점. 고객 글 없음
-    const x=d.exam;
-    const ex=x && x.total ? `<section class="kbk-sec" id="kts-exam"><h3>고정 시험지</h3><p>시험에서 맞은 답이 규칙을 고치다 다시 틀어지지 않게, 규칙이 바뀌면 자동으로 다시 풀어요.</p>`
-      + `<div class="kbk-over"><div class="kbk-card"><div class="kbk-h"><b>맞은 답 그대로</b></div><div class="kbk-num"><span>${N(x.pass)} / ${N(x.total)}</span></div></div><div class="kbk-card"><div class="kbk-h"><b>바뀐 답</b></div><div class="kbk-num"><span class="${(x.broken||[]).length ? 'kbk-miss' : ''}">${(x.broken||[]).length}건</span></div></div><div class="kbk-card"><div class="kbk-h"><b>아직 못 맞힌 것</b></div><div class="kbk-num"><span>${N((x.open||0)-(x.openNow||0))}건</span></div></div></div>`
-      + ((x.broken||[]).length ? `<div class="kbk-tbl" style="margin-top:8px"><table><thead><tr><th>번호</th><th>브랜드</th><th>정답</th><th>지금</th></tr></thead><tbody>${x.broken.map(b=>`<tr><th>${E(b.id)}</th><td>${E(KTS_BR[b.brand]||b.brand)}</td><td><i>${E(b.want)}</i></td><td>${E(b.got)}</td></tr>`).join('')}</tbody></table></div>` : '')
-      + `<div class="kbk-note">${E(when(x.at))} 채점${(x.missing||[]).length ? ` · 글을 못 찾은 문제 ${(x.missing||[]).length}` : ''}</div></section>` : '';
-    const pick=c=>{
-      const a=c.ai||{}, g=(a.g||{}).s;
-      if(['answer','ask','staff'].includes(_kts.f) && a.action!==_kts.f) return false;
-      if(_kts.f==='weak' && !(g==='weak' || g==='bad')) return false;
-      const q=_kts.q.trim().toLowerCase();
-      return !q || [c.label,c.q,a.reply,a.note,c.real].join(' ').toLowerCase().includes(q);
-    };
-    const gr=g=>g && KTS_G[g.s] ? `<span class="kts-g${g.s==='bad' ? ' bad' : ''}" title="${E(g.why||'')}">${KTS_G[g.s]}${g.extra ? ' · 넘길 필요 없었음' : ''}</span>` : '';
-    const WHO={staff:'직원',ai:'카나나',bot:'자동응답'};
-    const card=c=>{
-      const a=c.ai||{};
-      const why=a.g && (a.g.s!=='good' || a.g.extra) && a.g.why ? `<div class="kbk-note">채점: ${E(a.g.why)}</div>` : '';
-      const ord=(c.orders||[]).length ? `<div class="kbk-note">주문 찾기: ${(c.orders||[]).map(o=>`${E(o.orderedAt)} · 운송장 ${o.printed==='yes' ? '출력됨' : o.printed==='no' ? '출력 전' : '모름'}`).join(' / ')}</div>` : c.gave ? '<div class="kbk-note">주문 찾기: 홈페이지 주문에 없음</div>' : '';
-      const ex=(c.examples||[]).length ? `<details class="kbk-ex"><summary>참고한 비슷한 지난 답 ${c.examples.length}개</summary>${c.examples.map(x=>`<div class="kbk-exi"><div class="m">${x.by==='staff' ? '직원' : '카나나'}</div><div class="q">${E(x.q)}</div><div class="r">${E(x.a)}</div></div>`).join('')}</details>` : '';
-      const ctx=(c.ctx||[]).length>1 ? `<details class="kbk-ex"><summary>앞 대화 ${c.ctx.length}줄</summary><div class="kbk-exi">${c.ctx.map(x=>`<div class="${/\] 고객:/.test(x) ? 'q' : 'x'}">${E(x)}</div>`).join('')}</div></details>` : '';
-      return `<article class="kbk-card"><div class="kbk-h"><b>${E(c.label)}</b><span class="kbk-tag">${E(when(c.at))}</span><span class="kbk-tag ${a.action==='staff' ? 'none' : 'agent'}">${E(KTS_ACT[a.action]||'')}</span></div>`
-        + `<div class="kts-row"><div class="kbk-lbl">고객</div><div class="kbk-bub c">${E(c.q)}</div></div>`
-        + `<div class="kts-row"><div class="kbk-lbl">AI 시험 답 ${gr(a.g)}</div><div class="kbk-bub">${E(a.reply)}</div>${a.note ? `<div class="kbk-note">직원에게: ${E(a.note)}</div>` : ''}${ord}${why}</div>`
-        + (c.real ? `<div class="kts-row"><div class="kbk-lbl">실제 나간 답 · ${E(WHO[c.actual]||c.actual)}</div><div class="kts-bub">${E(c.real)}</div></div>` : '')
-        + ex + ctx + `</article>`;
-    };
-    let left=_kts.n, hidden=0; const cnt={};
-    const secs=d.outside ? '<div class="kbk-empty">고객 글은 사무실 인터넷에서만 보여요 — 밖에서는 숫자만 보여요.</div>' : KTS_SET.map(([k,t,p])=>{
-      const xs=(d.cases||[]).filter(c=>c.set===k).filter(pick); cnt[k]=xs.length;
-      if(!xs.length) return '';
-      const show=xs.slice(0,Math.max(0,left)); left-=show.length; hidden+=xs.length-show.length;
-      return show.length ? `<section class="kbk-sec" id="kts-${k}"><h3>${E(t)} ${xs.length}건</h3><p>${E(p)}</p>${show.map(card).join('')}</section>` : '';
-    }).join('') + (hidden>0 ? `<button type="button" class="kts-more" onclick="kkoTestMore()">더 보기 (${hidden}건 남음)</button>` : '');
-    // 직원 지침 — 지난 대화에서 정리한 것 (브랜드별, 보기만)
-    const KL={kop:'코페리',apt:'아페티',koz:'코즈미','6a':'식스에이',yar:'야르',akoi:'아코이하우스',pp:'프로덕트피알'};
-    const gd=Object.entries(d.guides||{});
-    const guide=d.outside || !gd.length ? '' : `<section class="kbk-sec" id="kts-guide"><h3>직원 지침 ${gd.reduce((a,[,v])=>a+v.length,0)}개</h3><p>지난 대화의 직원 · 카나나 실제 답에서 브랜드별로 정리했어요. 사장님 기준과 다른 것은 뺐어요.</p>`
-      + gd.map(([b,v])=>`<details class="kbk-ex"><summary>${E(KL[b]||b)} ${v.length}개</summary>${v.map(g=>`<div class="kbk-exi"><div class="m">${E(g.topic||'')} · ${g.hand==='staff' ? '직원 처리' : g.hand==='ask' ? '정보 먼저' : '안내로 끝'}${g.n ? ' · 약 '+E(g.n)+'번' : ''}</div><div class="q">${E(g.when||'')}</div><div class="r">${E(g.say||'')}</div></div>`).join('')}</details>`).join('') + `</section>`;
-    const none=!d.outside && !KTS_SET.some(x=>cnt[x[0]]) ? '<div class="kbk-empty">맞는 것이 없어요.</div>' : '';
-    const nb=(id,label,n)=>`<button type="button" onclick="kkoTestGo('${id}')">${E(label)}${n!=null ? `<em>${n}</em>` : ''}</button>`;
-    const nav=`<nav class="kbk-nav" aria-label="시험 답변 차례">${nb('kts-ov','한눈에')}${ex ? nb('kts-exam','고정 시험지',(d.exam.broken||[]).length ? `바뀜 ${d.exam.broken.length}` : null) : ''}${d.outside ? '' : KTS_SET.filter(x=>cnt[x[0]]).map(x=>nb('kts-'+x[0],x[1],cnt[x[0]])).join('')}${guide ? nb('kts-guide','직원 지침') : ''}</nav>`;
-    const main=document.getElementById('ktsMain'), top=main ? main.scrollTop : 0;
-    box.innerHTML=`<div class="kbk-in" role="dialog" aria-modal="true" aria-labelledby="ktsTitle">${head}<div class="kbk-body">${nav}<div class="kbk-main" id="ktsMain">${ov}${ex}${secs}${none}${guide}</div></div></div>`;
-    const m2=document.getElementById('ktsMain'); if(m2) m2.scrollTop=top;
-    if(fid){ const el=document.getElementById(fid); if(el){ el.focus({preventScroll:true}); if(el.id==='ktsQ'){ const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} } } }
   }
 
   // 주문 찾기 — 주문번호 / 이름 + 전화 뒷 4자리 / 전화 전체
@@ -24196,8 +23818,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewAdlib','viewMeeting','viewWeekly','viewMileage'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewAdlib:'adlib',viewMeeting:'meeting',viewWeekly:'weekly',viewMileage:'mileage'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewAdlib','viewCsagent','viewMeeting','viewWeekly','viewMileage'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewAdlib:'adlib',viewCsagent:'csagent',viewMeeting:'meeting',viewWeekly:'weekly',viewMileage:'mileage'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -24507,7 +24129,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     try{ w.focus(); }catch(e){}
   }
   // 디자인팀 · MD팀 · CS팀 탭에서 다른 화면(홈 · 알림 눌러 업무일지 등)으로 가면 보통 오피스로 — 위 막대를 되살리고 주소의 ?app= 을 뺀다
-  const SOLO_VIEW={design:'viewDesign',md:'viewMd',cs:'viewCs'}, SOLO_TITLE={design:'디자인팀 · Bead Universe',md:'MD팀 · Bead Universe',cs:'CS팀 · Bead Universe'};
+  const SOLO_VIEW={design:'viewDesign',md:'viewMd',cs:'viewCs',csagent:'viewCsagent'}, SOLO_TITLE={design:'디자인팀 · Bead Universe',md:'MD팀 · Bead Universe',cs:'CS팀 · Bead Universe',csagent:'에이전트 학습 · Bead Universe'};
   function _soloExit(id){
     const h=document.documentElement, app=Object.keys(SOLO_VIEW).find(k=>h.classList.contains('solo-'+k));
     if(!app || SOLO_VIEW[app]===id) return;
@@ -25042,6 +24664,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     feed:{view:'viewFeed',path:'feed/',title:'인스타 피드 시뮬레이터',keep:true,bridge:false},
     // 주얼리 광고 라이브러리(adlib/, 업무용 툴 카드, 2026-11-25) — 맥미니가 매일 새벽 메타 광고 라이브러리에서 모은 자료(프록시 /adlib/list), 보관 · 메모 = 슈퍼베이스 adlib_marks
     adlib:{view:'viewAdlib',path:'adlib/',title:'주얼리 광고 라이브러리',keep:true,bridge:false},
+    // 에이전트 학습(csagent/, CS팀 카카오톡 상담 → 에이전트 학습 탭의 버튼, 2026-11-25) — 볼 것(수정 · 학습 · 처음 보는 시나리오)만 · 정리된 답. 프록시 /cs/kakao-review · /cs/kakao-book. 시나리오 북 · 시험 답변을 합침
+    csagent:{view:'viewCsagent',path:'csagent/',title:'에이전트 학습',keep:true,bridge:false},
     // 마케팅 회의록(meeting/, 업무용 툴 '주간&마케팅 회의록' 카드의 탭, 2026-11-24) — 사람별 세로 칸에 인스타 링크 · 미리보기 · 중복 경고. 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links
     meeting:{view:'viewMeeting',path:'meeting/',title:'마케팅 회의록',keep:true,bridge:false},
     // 주간 회의록(weekly/, 마케팅 회의록과 같은 카드 '주간&마케팅 회의록' · 맨 위 탭으로 오감, 2026-11-24) — 주차마다 글 두 칸. 저장 = 슈퍼베이스 weekly_meetings
@@ -25383,6 +25007,9 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   window.openSeedingPage=openSeedingPage;
   /* 인스타 피드 시뮬레이터 — feed/ (브랜드별 피드 배치 미리보기 · 지금 인스타 피드는 함수 ig-feed · 계획 저장 feed_plans, 전 직원) */
   function openFeedPage(){ openToolPage('feed'); }
+  // 에이전트 학습 = PC 는 새 탭 · 휴대폰은 이 창 (2026-11-25 사장님 "에이전트 학습을 아예 새창으로 키워서")
+  function openCsAgentPage(){ openSoloPage('csagent',()=>openToolPage('csagent')); }
+  window.openCsAgentPage=openCsAgentPage;
   function openAdlibPage(){ openToolPage('adlib'); }   // 주얼리 광고 라이브러리 (2026-11-25)
   /* 마케팅 회의록 — meeting/ (디자인 · 마케팅 · MD팀 사람별 칸 · 인스타 미리보기 · 중복 계정 경고) */
   function openMeetingPage(){ openToolPage('meeting'); }
@@ -58114,7 +57741,6 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="erp-alert.js?v=2" defer></script><!-- ERP 문제 알림 (erp-alert.js) -->
 <script src="po-list.js?v=3" defer></script><!-- 발주 상품 리스트 (po-list.js) -->
 <script src="po-map.js?v=3" defer></script><!-- 발주 매핑하기 (po-map.js) -->
-<script src="kko-check.js?v=2" defer></script><!-- 확인할 것 — 시나리오 북 안 대화창 (kko-check.js) -->
 <script src="stock-out.js?v=1" defer></script><!-- 출고 입력 — 지그재그 직진배송 (stock-out.js) -->
 <script src="stock-blank.js?v=1" defer></script><!-- 재고 미기재 알림 — 김성군 · 지희선 · 대표 2명 (stock-blank.js) -->
 <script src="notif-state.js?v=1" defer></script><!-- 알림 승인 상태 (notif-state.js) -->
