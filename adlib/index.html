@@ -65,6 +65,7 @@
   #app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start }
   .side { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: sticky; top: calc(var(--top) + 16px); max-height: calc(100vh - var(--top) - 32px); display: flex; flex-direction: column; overflow: hidden }
   .side-h { padding: 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none }
+  .brow .nw { font-style: normal; font-size: 10px; font-weight: 800; background: var(--ink); color: #fff; border-radius: 4px; padding: 1px 4px; margin-right: 5px; vertical-align: 1px }
   .side-h .seg { width: 100% } .side-h .seg button { flex: 1; padding: 0 4px }
   .note { font-size: 12px; color: var(--t3); line-height: 1.35 }
   .row2 { display: flex; gap: 6px } .row2 .inp { flex: 1 }
@@ -162,7 +163,7 @@
     <div class="side-h">
       <div class="seg" id="rankSeg"><button data-v="spend">광고비 많은</button><button data-v="eff">효율 좋은</button><button data-v="new">새 소재 많은</button><button data-v="sale" title="29CM 주간 베스트 · 리뷰 흐름 — 광고 추정이 실제 판매와 맞는지">판매 신호</button></div>
       <div class="note" id="rankNote"></div>
-      <div class="seg" id="regSeg"><button data-v="kr">국내</button><button data-v="global">해외</button><button data-v="own">우리 브랜드</button></div>
+      <div class="seg" id="regSeg"><button data-v="all">전체</button><button data-v="kr">주얼리</button><button data-v="etc">패션 등</button><button data-v="global">해외</button><button data-v="own">우리</button></div>
       <div class="row2"><input class="inp" id="bq" placeholder="브랜드 찾기" aria-label="브랜드 찾기"><button class="btn" id="addBtn" type="button">＋ 브랜드</button></div>
     </div>
     <div class="blist" id="blist"></div>
@@ -170,7 +171,7 @@
   <main class="main">
     <div class="bhead" id="bhead" hidden></div>
     <div class="tools">
-      <div class="seg scroll" id="viewSeg"><button data-v="win">잘 되는 광고</button><button data-v="new">새 광고</button><button data-v="old">오래 도는</button><button data-v="star">보관함</button></div>
+      <div class="seg scroll" id="viewSeg"><button data-v="win">잘 되는 광고</button><button data-v="promo">세일 소재</button><button data-v="new">새 광고</button><button data-v="old">오래 도는</button><button data-v="star">보관함</button></div>
       <div class="seg scroll" id="fmtSeg"><button data-v="">전체</button><button data-v="video">영상</button><button data-v="image">사진</button><button data-v="carousel">여러 장</button></div>
       <input class="inp" id="q" placeholder="문구 · 상품 찾기" aria-label="문구 찾기">
       <span class="cnt" id="cnt"></span>
@@ -197,7 +198,7 @@
   const num = n => Number(n || 0).toLocaleString('ko-KR');
   const md = t => { const d = new Date(t); return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`; };
   const KIND = { video: '영상', image: '사진', carousel: '여러 장' };
-  const S = { d: null, base: '', marks: {}, rank: lsGet('adlib_rank') || 'spend', reg: 'kr', pid: '', view: 'win', fmt: '', q: '', bq: '', n: PAGE, list: [] };
+  const S = { d: null, base: '', marks: {}, rank: lsGet('adlib_rank') || 'spend', reg: 'all', pid: '', view: 'win', fmt: '', q: '', bq: '', n: PAGE, list: [] };
   const DIRTY = 'adlib_dirty_v1';
   let dirty = {}; try { dirty = JSON.parse(lsGet(DIRTY) || '{}') || {}; } catch (e) { dirty = {}; }
   const saveDirty = () => lsSet(DIRTY, JSON.stringify(dirty));
@@ -259,12 +260,13 @@
     const j = await r.json();
     if (!r.ok || !j.ok) throw new Error(j.error || 'HTTP ' + r.status);
     S.d = j;
+    S.first0 = j.brands.map(b => b.first).filter(Boolean).sort()[0] || '';
     S.seedBy = {}; ((j.seeds && j.seeds.list) || []).forEach(x => { if (x.pid) S.seedBy[x.pid] = (S.seedBy[x.pid] || '') + ' ' + x.n; });   // 한글 이름으로도 찾기 (메타 페이지 이름이 영문인 곳)
     S.byPid = {}; j.brands.forEach(b => { S.byPid[b.pid] = b; b.ads = (j.ads[b.pid] || []).map(a => Object.assign(a, { pid: b.pid, bn: b.name })); });
     S.all = j.brands.reduce((x, b) => x.concat(b.ads), []).concat((j.lost || []));
     const h = (Date.now() - j.at) / 36e5, d = new Date(j.at), st = $('stamp');
     st.className = 'stamp' + (h > 40 ? ' bad' : '');
-    st.innerHTML = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준<span class="long"> · 국내 ${num(j.counts.kr)}곳 · 소재 ${num(j.counts.ads)}개 · 하루 9번 갱신</span>${h > 40 ? ' · 갱신이 밀렸어요' : ''}`;
+    st.innerHTML = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준<span class="long"> · 주얼리 ${num(j.counts.kr)}곳${j.counts.etc ? ` · 패션 등 ${num(j.counts.etc)}곳` : ''} · 소재 ${num(j.counts.ads)}개${j.counts.fresh ? ` · 오늘 새 브랜드 ${num(j.counts.fresh)}곳` : ''} · 하루 9번 갱신</span>${h > 40 ? ' · 갱신이 밀렸어요' : ''}`;
   }
   const mediaUrl = (k, ext) => `${S.base}/adlib/m/${k}.${ext}`;
   const thumb = a => a.th ? mediaUrl(a.th, 'jpg') : (a.m[0] || {}).p || '';
@@ -275,7 +277,11 @@
   /* ── 브랜드 순위 ── */
   const hidden = b => b.pids.some(p => (S.marks['pg:' + p] || {}).st === 'hide');
   const regionOf = b => b.own ? 'own' : ((S.marks['pg:' + b.pid] || {}).v || {}).region || b.region;
-  const inReg = b => !hidden(b) && regionOf(b) === S.reg;
+  const isEtc = b => b.kind === 'etc';   // 주얼리가 아닌 플랫폼 입점 브랜드 (사장님 "꼭 주얼리 아니더라도 플랫폼 입점 브랜드들도 그냥 불러와서")
+  const inReg = b => { if (hidden(b)) return false; const r = regionOf(b); return S.reg === 'all' ? r === 'kr' : S.reg === 'kr' ? r === 'kr' && !isEtc(b) : S.reg === 'etc' ? r === 'kr' && isEtc(b) : r === S.reg; };
+  const saleN = b => b.ads.filter(a => a.sl && !a.e).length;
+  // 새로 찾은 브랜드 (이틀 안) — 모으기 시작한 첫 닷새는 모두 새것이라 표시하지 않는다
+  const dnum = d => Math.floor(Date.parse(d) / 864e5), isNew = b => b.first && S.first0 && dnum(b.first) - dnum(S.first0) >= 5 && Date.now() / 864e5 - dnum(b.first) < 2.6;
   const val = b => S.rank === 'spend' ? b.spend : S.rank === 'eff' ? b.eff : S.rank === 'sale' ? b.sale : b.m.new7;
   /* ── 29CM 판매 신호 (맥미니 adlib/c29.mjs 매일 02:40 — 주간 베스트 · 브랜드 리뷰 흐름. 지그재그 · 무신사 · W컨셉 · 에이블리는 robots.txt 가 막아 29CM 만) ── */
   const C29_BRAND = bid => `https://www.29cm.co.kr/store/brand/${encodeURIComponent(bid)}`;
@@ -320,8 +326,8 @@
     $('rankNote').textContent = S.rank === 'spend' ? '추정 점수 0~100 — 실제 금액은 메타가 공개하지 않아요' : S.rank === 'eff' ? '추정 점수 0~100 — 오래 안 끄고 노출 상위인 광고가 많은 곳' : S.rank === 'sale' ? (m29.at ? `29CM 주간 베스트 · 리뷰 흐름 0~100 — 29CM 에 있는 ${m29.on}곳만 (없는 곳 ${m29.miss}) · ${md(m29.at)} 기준` : '29CM 판매 신호를 처음 모으는 중이에요 — 내일 새벽부터 보여요') : '최근 7일 안에 새로 시작한 소재 수';
     $('blist').innerHTML = l.map((b, i) => {
       const a = b.ads.find(x => x.th) || b.ads[0] || { m: [] }, v = val(b);
-      const sub = S.rank === 'eff' ? `30일 넘게 남은 주력 ${b.m.winners}개 · 최장 ${num(b.m.longest)}일` : S.rank === 'new' ? `최근 7일 새 소재 · 지금 ${num(b.m.live)}개` : S.rank === 'sale' ? `29CM ${c29Line(b)} · 광고비 추정 ${b.spend ?? '–'}` : `광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}`;
-      return `<button class="brow${S.pid === b.pid ? ' on' : ''}" data-pid="${b.pid}"><span class="rk${i < 3 ? ' hi' : ''}">${i + 1}</span><span class="pic"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""></span><span style="min-width:0"><b>${esc(b.name)}</b><span class="s">${esc(sub)}</span>${S.rank === 'new' ? '' : `<span class="bar"><i style="width:${v}%"></i></span>`}</span><span class="sc"><b>${v}</b></span></button>`;
+      const sub = S.rank === 'eff' ? `30일 넘게 남은 주력 ${b.m.winners}개 · 최장 ${num(b.m.longest)}일` : S.rank === 'new' ? `최근 7일 새 소재 · 지금 ${num(b.m.live)}개` : S.rank === 'sale' ? `29CM ${c29Line(b)} · 광고비 추정 ${b.spend ?? '–'}` : `광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}${saleN(b) ? ` · 세일 ${saleN(b)}` : ''}`;
+      return `<button class="brow${S.pid === b.pid ? ' on' : ''}" data-pid="${b.pid}"><span class="rk${i < 3 ? ' hi' : ''}">${i + 1}</span><span class="pic"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""></span><span style="min-width:0"><b>${isNew(b) ? '<i class="nw">NEW</i>' : ''}${esc(b.name)}</b><span class="s">${esc(sub)}</span>${S.rank === 'new' ? '' : `<span class="bar"><i style="width:${v}%"></i></span>`}</span><span class="sc"><b>${v}</b></span></button>`;
     }).join('') || `<div style="padding:28px 12px;text-align:center;color:var(--t3)">${S.rank === 'eff' ? '아직 효율을 가릴 만큼 쌓인 곳이 없어요' : S.rank === 'sale' ? '29CM 에서 찾은 브랜드가 아직 3곳이 안 돼요' : '해당하는 브랜드가 없어요'}</div>`;
   }
   function paintHead() {
@@ -329,7 +335,7 @@
     const live = b.h && b.h.length > 4 ? spark(b.h) : '';
     h.innerHTML = `<div style="min-width:0"><h2>${esc(b.name)}</h2><div class="sub">${b.dom ? `<a href="https://${esc(b.dom)}" target="_blank" rel="noopener noreferrer">${esc(b.dom)}</a>` : esc((b.cats || []).join(' · '))}${b.likes ? ` · 페이지 좋아요 ${num(b.likes)}` : ''}</div></div>
       <div class="stat"><b>${b.spend ?? '–'}</b><span>광고비 추정</span></div><div class="stat"><b>${b.eff ?? '–'}</b><span>효율 추정</span></div>${b.region === 'global' ? '' : `<div class="stat" title="29CM 주간 베스트 · 리뷰 흐름 (0~100)"><b>${b.sale ?? '–'}</b><span>판매 신호</span></div>`}
-      <div class="stat"><b>${num(b.m.live)}</b><span>지금 광고</span></div><div class="stat"><b>${b.m.new7}</b><span>7일 새 소재</span></div><div class="stat"><b>${b.m.winners}</b><span>30일+ 주력</span></div><div class="stat"><b>${num(b.m.longest)}일</b><span>가장 오래</span></div>
+      <div class="stat"><b>${num(b.m.live)}</b><span>지금 광고</span></div><div class="stat"><b>${b.m.new7}</b><span>7일 새 소재</span></div><div class="stat"><b>${saleN(b)}</b><span>세일 소재</span></div><div class="stat"><b>${b.m.winners}</b><span>30일+ 주력</span></div><div class="stat"><b>${num(b.m.longest)}일</b><span>가장 오래</span></div>
       <div class="stat"><b>${b.m.video}·${b.m.image}·${b.m.car}</b><span>영상·사진·여러 장</span></div>${live}
       <div class="acts"><a class="btn" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=KR&media_type=all&search_type=page&view_all_page_id=${esc(b.pid)}">메타에서 보기</a>${b.own ? '' : `<button class="btn" data-act="region">${regionOf(b) === 'kr' ? '해외로 옮기기' : '국내로 옮기기'}</button><button class="btn danger" data-act="hide">빼기</button>`}<button class="btn" data-act="clear">전체 브랜드 보기</button></div>${c29Row(b)}`;
   }
@@ -347,11 +353,14 @@
     else if (S.pid) l = S.byPid[S.pid].ads.slice();
     else l = S.d.brands.filter(inReg).reduce((x, b) => x.concat(b.ads), []);
     if (S.fmt) l = l.filter(a => a.f === S.fmt);
-    if (q) l = l.filter(a => (a.bn + ' ' + a.b + ' ' + a.t + ' ' + (a.alt || []).join(' ') + ' ' + (markOf(a).memo || '')).toLowerCase().includes(q));
+    if (q) l = l.filter(a => (a.bn + ' ' + a.b + ' ' + a.t + ' ' + (a.tx || '') + ' ' + (a.alt || []).join(' ') + ' ' + (markOf(a).memo || '')).toLowerCase().includes(q));
     const sp = a => (S.byPid[a.pid] || {}).spend || 0;
     if (S.view === 'win') {
       l = l.filter(a => a.w != null && !a.e).sort((x, y) => (y.w * .7 + sp(y) * .3) - (x.w * .7 + sp(x) * .3));
       if (!S.pid && !q) { const c = {}; l = l.map((a, i) => { c[a.pid] = (c[a.pid] || 0) + 1; return [a, i + Math.max(0, c[a.pid] - 2) * 14]; }).sort((x, y) => x[1] - y[1]).map(x => x[0]); }   // 한 브랜드가 첫 화면을 다 차지하지 않게
+    } else if (S.view === 'promo') {   // 세일 이미지 · 영상 — 새것 · 잘 되는 것 먼저
+      l = l.filter(a => a.sl && !a.e).map(a => [a, (a.sl === 2 ? 40 : 0) + (a.d < 14 ? 25 : a.d < 30 ? 12 : 0) + (a.w == null ? 45 : a.w) * .5 + sp(a) * .3 - a.r * .3]).sort((x, y) => y[1] - x[1]).map(x => x[0]);
+      if (!S.pid && !q) { const c = {}; l = l.map((a, i) => { c[a.pid] = (c[a.pid] || 0) + 1; return [a, i + Math.max(0, c[a.pid] - 2) * 14]; }).sort((x, y) => x[1] - y[1]).map(x => x[0]); }
     } else if (S.view === 'new') {
       l = l.filter(a => !a.e && a.d < 14).sort((x, y) => S.pid ? (x.d - y.d || x.r - y.r) : (Math.floor(x.d / 3) - Math.floor(y.d / 3)) || (sp(y) - sp(x)) || (x.r - y.r));
       if (!S.pid && !q) { const c = {}; l = l.map((a, i) => { c[a.pid] = (c[a.pid] || 0) + 1; return [a, i + Math.max(0, c[a.pid] - 3) * 12]; }).sort((x, y) => x[1] - y[1]).map(x => x[0]); }
@@ -362,7 +371,7 @@
   const why = a => a.e ? `${num(a.d)}일 돌고 꺼짐 (${md(a.e)})` : a.d < 14 ? `${a.d}일째 · 브랜드 안 노출 ${a.r}위` : `${num(a.d)}일째 안 끄고 · 브랜드 안 노출 ${a.r}위`;
   function card(a, i) {
     const m0 = a.m[0] || {}, mm = markOf(a).memo;
-    return `<div class="card" tabindex="0" role="button" data-i="${i}" aria-label="${esc(a.bn)} 광고"><div class="shot"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""><span class="tag${a.e ? ' off' : ''}">${a.e ? '꺼짐' : num(a.d) + '일째'}</span><span class="kind">${KIND[a.f] || ''}${m0.t === 'v' && m0.d ? ' ' + Math.round(m0.d) + '초' : a.f === 'carousel' ? ' ' + a.m.length : ''}</span><button class="star${isStar(a) ? ' on' : ''}" type="button" aria-label="보관" title="보관">${starSvg}</button></div>
+    return `<div class="card" tabindex="0" role="button" data-i="${i}" aria-label="${esc(a.bn)} 광고"><div class="shot"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""><span class="tag${a.e ? ' off' : ''}">${a.e ? '꺼짐' : num(a.d) + '일째'}</span><span class="kind">${KIND[a.f] || ''}${m0.t === 'v' && m0.d ? ' ' + Math.round(m0.d) + '초' : a.f === 'carousel' ? ' ' + a.m.length : ''}${a.sl ? ' · 세일' : ''}</span><button class="star${isStar(a) ? ' on' : ''}" type="button" aria-label="보관" title="보관">${starSvg}</button></div>
       <div class="cbody"><div class="nm"><span>${esc(a.bn)}</span>${a.n > 1 ? `<em>같은 소재 ${a.n}</em>` : ''}</div><div class="tx">${esc(a.b || a.t)}</div><div class="why">${why(a)}</div>${S.view === 'star' && mm ? `<div class="memo">${esc(mm)}</div>` : ''}</div></div>`;
   }
   function paintGrid() {
@@ -371,7 +380,7 @@
     $('cnt').textContent = `${num(l.length)}개`;
     $('more').hidden = l.length <= S.n;
     $('empty').hidden = l.length > 0;
-    $('empty').textContent = S.view === 'star' ? '보관한 광고가 없어요 — 카드의 ☆ 를 누르면 여기 모이고, 광고가 꺼진 뒤에도 남아요' : S.q ? '찾는 문구가 있는 광고가 없어요' : S.view === 'win' ? '2주 넘게 남은 광고가 아직 없어요 — [새 광고] 를 봐 주세요' : '해당하는 광고가 없어요';
+    $('empty').textContent = S.view === 'promo' ? (S.pid ? '이 브랜드는 지금 세일 소재가 없어요' : '세일 소재가 없어요') : S.view === 'star' ? '보관한 광고가 없어요 — 카드의 ☆ 를 누르면 여기 모이고, 광고가 꺼진 뒤에도 남아요' : S.q ? '찾는 문구가 있는 광고가 없어요' : S.view === 'win' ? '2주 넘게 남은 광고가 아직 없어요 — [새 광고] 를 봐 주세요' : '해당하는 광고가 없어요';
   }
   function paintSegs() {
     const set = (id, v) => $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
@@ -436,7 +445,7 @@
 
   function help() {
     overlay(`<h3>숫자 읽는 법</h3><p>메타는 남의 <b>광고비 · 매출 · ROAS 를 공개하지 않아요.</b> 아래 점수는 공개된 것(광고 개수 · 기간 · 노출 순서)으로 브랜드끼리 견준 <b>추정</b>이에요 (0~100, 높을수록 앞).</p>
-      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li>브랜드는 주얼리 낱말 검색과 무신사 · 아몬즈 · 에이블리 · 지그재그 · 29CM 순위권 · 요즘 뜨는 브랜드 이름으로 찾아요. <b>지금 메타 광고를 하는 곳만</b> 보여요</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>매일 아침 7시부터 밤 11시까지 하루 9번 조금씩 모아요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
+      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li>브랜드는 주얼리 낱말 검색과 무신사 · 아몬즈 · 에이블리 · 지그재그 · 29CM 순위권 · 요즘 뜨는 브랜드 이름으로 찾아요. <b>지금 메타 광고를 하는 곳만</b> 보여요. 매일 아침 7시에 새 브랜드를 더 찾아요</li><li><b>세일 소재</b> — 문구나 <b>사진 속 글자</b>에 할인 · 특가 · 블랙프라이데이 · 00% 가 있는 이미지 · 영상이에요(영상은 첫 장면 글자). 왼쪽에서 브랜드를 누르면 그 브랜드 세일 소재만 보여요</li><li><b>패션 등</b> — 주얼리는 아니지만 무신사 · 지그재그 · 에이블리 · 29CM 에 입점한 브랜드예요. 점수는 주얼리와 따로 견줘요</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>매일 아침 7시부터 밤 11시까지 하루 9번 조금씩 모아요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
   }
   function addDlg() {
     const rows = Object.values(S.marks).filter(m => m.st === 'add' && m.v && m.v.q), hid = Object.values(S.marks).filter(m => m.st === 'hide');
