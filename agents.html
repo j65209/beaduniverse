@@ -712,10 +712,10 @@ const CHARACTERS = [
     id:'adlib', name:'소라', team:'기획팀',
     hairColor:'#2c1810', cloth:'#475569',
     agentIds:['adlib'],
-    taskLabel:'주얼리 광고 라이브러리 모으기', scheduleLabel:'매일 새벽 3:20', intervalSec:86400,
+    taskLabel:'주얼리 광고 라이브러리 모으기', scheduleLabel:'매일 3:20 · 15:20', intervalSec:43200,
     role:'메타 · 인스타 주얼리 광고 레퍼런스',
     knows:[
-      '매일 새벽 메타 광고 라이브러리에서 주얼리 낱말 27개를 노출 많은 순으로 훑어 광고주를 찾고, 주얼리 브랜드마다 지금 도는 광고를 모아요',
+      '하루 두 번(3:20 · 15:20) 조금씩 메타 광고 라이브러리에서 주얼리 낱말을 노출 많은 순으로 훑어 광고주를 찾고, 주얼리 브랜드마다 지금 도는 광고를 모아요',
       '광고비 추정 · 효율 추정 순위와 잘 되는 광고(오래 안 끄고 노출 상위)를 업무용 툴 [주얼리 광고 라이브러리] 에 정리해요',
       '메타는 남의 광고비 · 매출 · ROAS 를 공개하지 않아요 — 숫자는 광고 개수 · 기간 · 노출 순서로 낸 추정이에요',
       '꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남겨요',
@@ -1721,7 +1721,7 @@ async function adlibAgent(c, raw, t){
   let d;
   try{ d = await api('/adlib/list'); }
   catch(e){ say('agent', `광고 자료를 못 읽었어요. 서버 연결을 확인해 주세요. (${e.message||e})`, {kind:'err'}); return; }
-  if(!d || !d.brands){ say('agent', (d && d.error) || '아직 모은 자료가 없어요. 매일 새벽 3시 20분에 모아요.'); return; }
+  if(!d || !d.brands){ say('agent', (d && d.error) || '아직 모은 자료가 없어요. 하루 두 번(3:20 · 15:20) 모아요.'); return; }
   const kr = d.brands.filter(b => b.region === 'kr' && !b.own), at = new Date(d.at);
   const chips = c.quick.filter(q => q.cmd !== raw && q.cmd !== '전문 분야');
   const head = `${at.getMonth() + 1}/${at.getDate()} 기준 국내 ${kr.length}곳`;
