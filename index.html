@@ -2791,8 +2791,19 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .md-gantt-auto-st{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:10.5px;font-weight:700;vertical-align:middle;white-space:nowrap}
   .md-gantt-auto-st.is-on{background:#dcfce7;color:#15803d}
   .md-gantt-auto-st.is-wait{background:#fef3c7;color:#92400e}
-  .md-gantt-auto-st.is-applied{background:#e6eefa;color:#3b64a8}
-  .md-gantt-auto-st.is-offer{background:transparent;color:#64748b;border:1px dashed #cbd5e1}
+  /* 29CM · W컨셉 신청대기 · [신청완료] 버튼 (2026-11-25) */
+  .md-gantt-auto-st.is-todo{background:#fff;color:#64748b;border:1px dashed #cbd5e1}
+  .md-gantt-apply{display:inline-flex;align-items:center;gap:3px;height:22px;margin-left:6px;padding:0 9px;border:1px solid #94a3b8;border-radius:6px;background:#fff;color:#334155;font-family:var(--sans);font-size:11px;font-weight:700;line-height:1;white-space:nowrap;vertical-align:middle;cursor:pointer;transition:background .12s ease,border-color .12s ease,color .12s ease}
+  .md-gantt-apply:hover{border-color:#059669;color:#047857;background:#f0fdf4}
+  .md-gantt-apply.is-done{border-color:#059669;background:#059669;color:#fff}
+  .md-gantt-apply.is-done:hover{border-color:#047857;background:#047857;color:#fff}
+  .md-gantt-apply svg{display:block;width:11px;height:11px}
+  /* 이름 칸이 좁으면(휴대폰 · 좁은 창) 상태 · 버튼 · 기간이 이름 아래 줄로 — 버튼이 칸 밖으로 잘리지 않게 */
+  .md-gantt-mail{display:flex;flex-wrap:wrap;align-items:center;gap:5px 8px}
+  .md-gantt-mail-name{flex:0 1 auto;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .md-gantt-mail-st{flex:none;display:inline-flex;align-items:center}
+  .md-gantt-mail-st > :first-child{margin-left:0}
+  .md-gantt-row-nested.is-mail .md-gantt-fill::before,.md-gantt-row-nested.is-mail .md-gantt-td-fold.is-cont::before{top:calc(50% - 11px);bottom:auto;height:22px}   /* 두 줄이 돼도 막대 굵기는 그대로 */
   .md-gantt-row-nested.is-auto .md-gantt-fill{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px)}
   .md-gantt-ckl-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;margin-right:8px;border:1.5px solid var(--line-2);background:#fff;color:transparent;border-radius:5px;cursor:pointer;vertical-align:middle;transition:all .12s ease;flex-shrink:0}
   .md-gantt-ckl-btn:hover{border-color:#059669;background:#f0fdf4}
@@ -12443,10 +12454,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .ar-card-del,.ar-img-edit,.leave-staff-hide{width:32px;height:32px}
     /* 촘촘한 줄의 아이콘 — 모양은 그대로 두고 손가락이 닿는 영역만 넓힌다 */
     .dcs-prev-check,.dcs-req-check,.dcs-plan-check,.dcs-task-check,.dcs-prio,.dcs-prev-del,.dcs-req-del,.dcs-plan-del,
-    .md-gantt-ckl-btn,.dsg-blk-check,.dsg-blk-prio,.dsg-blk-del,.dsg-blk-plus,.dsg-sec-caret,.cs-act-del,
+    .md-gantt-ckl-btn,.md-gantt-apply,.dsg-blk-check,.dsg-blk-prio,.dsg-blk-del,.dsg-blk-plus,.dsg-sec-caret,.cs-act-del,
     .dcs-move-btn,.dsg-blk-move-btn{position:relative}
     .dcs-prev-check::after,.dcs-req-check::after,.dcs-plan-check::after,.dcs-task-check::after,.dcs-prio::after,
-    .dcs-prev-del::after,.dcs-req-del::after,.dcs-plan-del::after,.md-gantt-ckl-btn::after,.dsg-blk-check::after,
+    .dcs-prev-del::after,.dcs-req-del::after,.dcs-plan-del::after,.md-gantt-ckl-btn::after,.md-gantt-apply::after,.dsg-blk-check::after,
     .dsg-blk-prio::after,.dsg-blk-del::after,.dsg-blk-plus::after,.dsg-sec-caret::after,.cs-act-del::after{content:"";position:absolute;inset:-7px -3px}
     /* 위 · 아래 이동 버튼은 서로 맞닿아 있어 옆으로만 넓힌다 */
     .dcs-move-btn::after,.dsg-blk-move-btn::after{content:"";position:absolute;inset:0 -7px}
@@ -12485,7 +12496,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   @media (max-width:600px){
     /* ④ 작은 글씨 — 11-02 목록 뒤에 생긴 것 + 더 구체적인 규칙이 10px 로 덮던 것 (그래프 안 글자는 그대로) */
     #hrPhoneMeta,#hrBdayMeta,.leave-cal-daynum,.diary-scoreboard-live,.dcs-stat span,
-    .kd-hist-chip,.kd-hist-chip em,.ar-stat .unit,.md-gantt-auto,.md-gantt-auto-st,.best-delta,.signage-brand-pill .pill-camps,
+    .kd-hist-chip,.kd-hist-chip em,.ar-stat .unit,.md-gantt-auto,.md-gantt-auto-st,.md-gantt-apply,.best-delta,.signage-brand-pill .pill-camps,
     .lsb-badge small,.vm-pending-badge,.sixstock-tbl .sixstock-cat,.sixstock-parent .sixstock-opts-tag,
     .ig-fixed-body code{font-size:11px}
     /* 글자 크기를 HTML 안(style)이나 더 좁은 규칙(.om-mem.is-lead small · .adsh-tbl th small)이 정해 둔 것 */
@@ -37783,8 +37794,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       call(uePull);
       if(typeof loadAgentsMini==='function') call(loadAgentsMini);
     });
-    // 메일로 들어온 기획전
-    L.on(['md_mail_events'], ()=>{ if(_bbLiveShown('viewMd')) return call(mdAutoLoad,true); });
+    // 메일로 들어온 기획전 · 신청완료 누른 것
+    L.on(['md_mail_events','md_mail_marks'], ()=>call(mdMailSignal));
     // 깃허브 파일
     L.on(['gh:md-events'], ()=>{ _bbLiveFresh['md-events']=Date.now()+6*60*1000; return call(syncMdEventsFromRemote); });
     L.on(['gh:notice'], ()=>call(syncNoticeFromRemote));
@@ -45624,7 +45635,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
      전략팀 일일 보고서(비공개 brightbeed-reports {플랫폼}/{브랜드}/daily/{날짜}.json, 프록시 ghFetch)의 events
      — 셀러센터에서 신청 · 승인된 기획전 — 를 캘린더에 '자동' 줄로 같이 보여 준다.
      md-events.json 에는 넣지 않는다 → 고치거나 지울 대상이 아니고, 수집기가 돌 때마다(맥미니 약 30분) 새로 맞춰진다.
-     지금 기획전을 모으는 곳: 에이블리 4개 마켓 · 지그재그 3개 스토어 · 29CM · W컨셉(메일로 신청한 것 + 받은 제안, 표 md_mail_events). 다른 플랫폼 수집기가 events 를 채우면 MD_AUTO_SOURCES 에 한 줄 추가. */
+     지금 기획전을 모으는 곳: 에이블리 4개 마켓 · 지그재그 3개 스토어 · 29CM · W컨셉(메일로 신청한 것 + 메일로 받은 기획전 = 신청대기, 표 md_mail_events). 다른 플랫폼 수집기가 events 를 채우면 MD_AUTO_SOURCES 에 한 줄 추가. */
   const MD_AUTO_SOURCES=[
     {plat:'ably', brand:'kop', path:'ably/daily'},
     {plat:'ably', brand:'6a',  path:'ably/6a/daily'},
@@ -45637,7 +45648,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   ];
   const MD_AUTO_CACHE='brightbeed_md_auto_events_v1';
   const _mdAuto={events:[], fetchedAt:0, loading:false, updatedAt:0, asOf:{}, failed:[]};
-  try{ const c=JSON.parse(localStorage.getItem(MD_AUTO_CACHE)||'null'); if(c && Array.isArray(c.events)){ _mdAuto.events=c.events; _mdAuto.updatedAt=c.updatedAt||0; _mdAuto.asOf=c.asOf||{}; } }catch(e){}
+  try{ const c=JSON.parse(localStorage.getItem(MD_AUTO_CACHE)||'null'); if(c && Array.isArray(c.events)){ _mdAuto.events=c.events; _mdAuto.updatedAt=c.updatedAt||0; _mdAuto.asOf=c.asOf||{}; _mdAuto.marks0=c.marks||null; } }catch(e){}
   /* 갱신 시각 (2026-11-13 사장님 "기획전 캘린더는 30분마다 최신화") — 메일 · 에이블리 · 지그재그는 서버가 30분마다 새로 넣고
      이 화면은 열려 있으면 10분마다 다시 받는다. 30분 넘게 못 받았거나 일부를 못 받았으면 경고색 */
   const _mdHm=t=>{ const d=new Date(t); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
@@ -45680,10 +45691,133 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     }
     return j;
   }
+  /* ----- 29CM · W컨셉 신청대기 / 신청완료 (2026-11-25 사장님 "29cm 옆에 제안받음 없애주고 신청완료 버튼으로 · 신청 완료 안하면 신청대기상태로") -----
+     메일로 받은 기획전은 '신청대기'로 시작하고 [신청완료] 를 누르면 '신청완료' (다시 누르면 신청대기). 신청 메일이 잡힌 것(status '신청함')은 저절로 신청완료.
+     누른 기록은 표 md_mail_marks (key = md_mail_events.key, RPC md_mail_mark · 이력 표 있음) — 메일을 다시 뽑아 일정 id 가 바뀌어도 그대로 남는다.
+     아직 못 보낸 것은 브라우저에 적어 두고 될 때까지 다시 보낸다. 다른 화면엔 실시간 알림(L.on md_mail_marks)으로 바로 보인다. */
+  const MD_MARK_DIRTY='brightbeed_md_mail_mark_dirty_v1';
+  const _mdMark={map:{}, dirty:{}, pushing:false, timer:0, fail:0, pushedAt:0, tookAt:0};   // map[key]={done,by,at} 서버 값 · dirty[key]={done,by} 아직 못 보낸 것
+  const _mdMail={busy:false, again:false, stale:false};
+  function _mdMarkLs(){ try{ const d=JSON.parse(localStorage.getItem(MD_MARK_DIRTY)||'null'); return (d && typeof d==='object') ? d : {}; }catch(e){ return {}; } }
+  if(_mdAuto.marks0 && typeof _mdAuto.marks0==='object') _mdMark.map=_mdAuto.marks0;   // 지난번 사본 — 새로 받기 전까지
+  Object.entries(_mdMarkLs()).forEach(([k,v])=>{ if(v && typeof v.done==='boolean') _mdMark.dirty[k]={done:v.done, by:String(v.by||''), ls:true}; });
+  function _mdMarkPersist(key){   // 이 줄만 고쳐 쓴다 — 같은 브라우저 다른 창이 적어 둔 것을 지우지 않게
+    try{
+      const all=_mdMarkLs(), d=_mdMark.dirty[key];
+      if(d) all[key]={done:d.done, by:d.by}; else delete all[key];
+      if(Object.keys(all).length) localStorage.setItem(MD_MARK_DIRTY, JSON.stringify(all)); else localStorage.removeItem(MD_MARK_DIRTY);
+      if(d) d.ls=true;
+    }catch(e){}
+  }
+  function _mdMarkState(ev){
+    const m=_mdMark.map[ev.mkey], d=_mdMark.dirty[ev.mkey], mail=ev.status==='신청함';
+    if(d) return {done:d.done, by:d.by, at:0};
+    if(m && !(mail && !m.done && (ev.sentAt||0)>m.at)) return {done:m.done, by:m.by, at:m.at};   // 신청대기로 되돌린 뒤에 새 신청 메일을 보냈으면 신청완료
+    return {done:mail, mail};
+  }
+  function _mdMarkTake(rows, t0){
+    if(t0<_mdMark.tookAt) return;   // 늦게 온 옛 응답
+    const map={};
+    rows.forEach(r=>{ if(r && r.key) map[r.key]={done:!!r.done, by:r.updated_by||'', at:Date.parse(r.updated_at)||0}; });
+    // 방금 저장하기 전에 시작한 조회면 이 창이 저장한 것을 되돌리지 않는다
+    if(t0<=_mdMark.pushedAt) Object.entries(_mdMark.map).forEach(([k,m])=>{ if(!map[k] || map[k].at<m.at) map[k]=m; });
+    _mdMark.map=map; _mdMark.tookAt=t0;
+  }
+  function mdMailApplyToggle(id){
+    const ev=(_mdAuto.events||[]).find(x=>x.id===id);
+    if(!ev || !ev.mkey) return;
+    let by=''; try{ by=(localStorage.getItem('brightbeed_diary_me')||'').trim().slice(0,40); }catch(e){}
+    _mdMark.dirty[ev.mkey]={done:!_mdMarkState(ev).done, by};
+    _mdMarkPersist(ev.mkey);
+    renderMdCal();   // 저장을 기다리지 않고 바로 표시
+    _mdMarkPush();
+  }
+  async function _mdMarkPush(){
+    clearTimeout(_mdMark.timer);
+    if(_mdMark.pushing) return;
+    _mdMark.pushing=true;
+    let bad=false;
+    try{
+      for(const key of Object.keys(_mdMark.dirty)){
+        const d=_mdMark.dirty[key];
+        if(d.ls && d.tried && !_mdMarkLs()[key]){ delete _mdMark.dirty[key]; continue; }   // 같은 브라우저 다른 창이 이미 보냈다
+        d.tried=(d.tried||0)+1;
+        let r=null, j=null;
+        try{
+          r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/md_mail_mark`,{method:'POST',headers:_sbHeaders(),keepalive:true,body:JSON.stringify({p_key:key,p_done:d.done,p_by:d.by||null})});
+          if(r.ok) j=await r.json();
+        }catch(e){ r=null; }
+        const same=_mdMark.dirty[key]===d;   // 보내는 사이 다시 눌렀으면 그대로 두고 또 보낸다
+        if(r && r.ok){
+          _mdMark.map[key]={done:d.done, by:d.by, at:Date.parse(j&&j.updated_at)||Date.now()};
+          _mdMark.pushedAt=Date.now();
+          if(same){ delete _mdMark.dirty[key]; _mdMarkPersist(key); }
+        }else if(r && r.status>=400 && r.status<500 && d.tried>=4){   // 서버에서 사라진 기획전
+          if(same){ delete _mdMark.dirty[key]; _mdMarkPersist(key); }
+          toast('저장하지 못했어요 — 목록을 새로 불러올게요','error');
+          mdMailRefresh();
+        }else bad=true;
+      }
+    }finally{ _mdMark.pushing=false; }
+    if(bad){
+      _mdMark.fail=Math.min(_mdMark.fail+1,6);
+      if(_mdMark.fail===2) toast('아직 저장하지 못했어요 — 연결되는 대로 다시 저장해요','error');
+      _mdMark.timer=setTimeout(_mdMarkPush, Math.min(1000*2**(_mdMark.fail-1),30000));
+    }else{
+      _mdMark.fail=0;
+      if(Object.keys(_mdMark.dirty).length) return _mdMarkPush();
+      _mdAutoCacheSave();
+    }
+    renderMdCal();
+  }
+  function _mdAutoCacheSave(){
+    try{ localStorage.setItem(MD_AUTO_CACHE, JSON.stringify({events:_mdAuto.events, updatedAt:_mdAuto.updatedAt, asOf:_mdAuto.asOf, marks:_mdMark.map})); }catch(e){}
+  }
+  // 29CM · W컨셉 — 메일 기획전 (shinebead0 지메일: 보낸 신청 메일 = '신청함', 받은 기획전 메일 = '제안받음' → Apps Script → 함수 md-mail-events → 표 md_mail_events). 화면엔 신청완료 · 신청대기로만 보인다
+  async function _mdMailFetch(){
+    const t0=Date.now();
+    const get=async q=>{ const r=await fetch(`${SUPABASE_URL}/rest/v1/${q}`,{headers:_sbHeaders(),cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); };
+    const [rows,marks]=await Promise.all([
+      get('md_mail_events?select=id,key,platform,brand,name,start_date,end_date,status,memo,subject,sent_at&hidden=eq.false&start_date=not.is.null&order=start_date.desc&limit=500'),
+      get('md_mail_marks?select=key,done,updated_by,updated_at&order=updated_at.desc&limit=1000').catch(()=>null),   // 못 읽으면 지난 값 그대로
+    ]);
+    if(Array.isArray(marks)) _mdMarkTake(marks,t0);
+    return rows.map(e=>{
+      const pf=_mdPlatMap[e.platform], label=pf?pf.label:e.platform;
+      return {
+        id:`auto:mail:${e.id}`, auto:true, title:`[${label}] ${_mdAutoTitle(e.name)}`, rawTitle:e.subject||e.name,
+        start:e.start_date, end:e.end_date||e.start_date, brands:e.brand?[e.brand]:[], platforms:[e.platform], color:'slate',
+        status:e.status||'신청함', mkey:e.key, sentAt:Date.parse(e.sent_at)||0,
+        memo:e.status==='제안받음' ? `${label}에서 메일로 받은 기획전 — 신청했으면 [신청완료] 를 눌러 주세요 (받은 메일: ${e.subject||e.name})` : (e.memo||''),
+      };
+    });
+  }
+  // 메일 일정 · 신청 표시만 다시 받기 (다른 사람이 누르면 바로)
+  async function mdMailRefresh(){
+    if(_mdAuto.loading || _mdMail.busy){ _mdMail.again=true; return; }
+    _mdMail.busy=true; _mdMail.again=false;
+    try{
+      const list=await _mdMailFetch();
+      _mdMail.stale=false;
+      _mdAuto.events=(_mdAuto.events||[]).filter(e=>!String(e.id||'').startsWith('auto:mail:')).concat(list);
+      _mdAutoCacheSave();
+      renderMdCal();
+    }catch(e){ _mdMail.stale=true; }
+    finally{
+      _mdMail.busy=false;
+      if(_mdMail.again){ _mdMail.again=false; mdMailRefresh(); }
+    }
+  }
+  function mdMailSignal(){
+    if(!_bbLiveShown('viewMd')){ _mdMail.stale=true; return; }   // 다음에 MD팀을 열 때
+    return mdMailRefresh();
+  }
+  if(Object.keys(_mdMark.dirty).length) setTimeout(_mdMarkPush,3000);   // 지난번에 못 보낸 것
+
   async function mdAutoLoad(force){
     _mdFreshRender();
     if(_mdAuto.loading) return;
-    if(!force && Date.now()-_mdAuto.fetchedAt < 10*60*1000) return;
+    if(!force && Date.now()-_mdAuto.fetchedAt < 10*60*1000){ if(_mdMail.stale) mdMailRefresh(); return; }
     _mdAuto.loading=true;
     try{
       const kst=d=>new Date(d.getTime()+9*3600e3).toISOString().slice(0,10);
@@ -45712,20 +45846,10 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
           });
         }catch(err){ failed.push(src); }
       }).concat([(async()=>{
-        // 29CM · W컨셉 — 메일 기획전 (shinebead0 지메일: 보낸 신청 메일 = '신청함', 받은 제안 메일 = '제안받음' → Apps Script → 함수 md-mail-events → 표 md_mail_events)
+        // 29CM · W컨셉 — 메일 기획전
         try{
-          const K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
-          const r=await fetch('https://ckyjkxbqsyjoqpuqwoce.supabase.co/rest/v1/md_mail_events?select=id,platform,brand,name,start_date,end_date,status,memo,subject&hidden=eq.false&start_date=not.is.null&limit=500',{headers:{apikey:K,Authorization:'Bearer '+K},cache:'no-store'});
-          if(!r.ok){ failed.push({plat:'mail'}); return; }
-          okCount++;
-          (await r.json()).forEach(e=>{
-            const pf=_mdPlatMap[e.platform];
-            out.push({
-              id:`auto:mail:${e.id}`, auto:true, title:`[${pf?pf.label:e.platform}] ${_mdAutoTitle(e.name)}`, rawTitle:e.subject||e.name,
-              start:e.start_date, end:e.end_date||e.start_date, brands:e.brand?[e.brand]:[], platforms:[e.platform], color:'slate',
-              status:e.status||'신청함', memo:e.memo||'',
-            });
-          });
+          out.push(...await _mdMailFetch());
+          okCount++; _mdMail.stale=false;
         }catch(err){ failed.push({plat:'mail'}); }
       })()]));
       _mdAuto.fetchedAt=Date.now();
@@ -45737,11 +45861,15 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       if(keep.length) (_mdAuto.events||[]).forEach(e=>{ if(keep.some(p=>String(e.id||'').startsWith(p))) out.push(e); });
       Object.entries(_mdAuto.asOf||{}).forEach(([p,at])=>{ if(!asOf[p] && failed.some(s=>s.plat===p)) asOf[p]=at; });
       _mdAuto.events=out; _mdAuto.updatedAt=Date.now(); _mdAuto.asOf=asOf;
-      try{ localStorage.setItem(MD_AUTO_CACHE, JSON.stringify({events:out, updatedAt:_mdAuto.updatedAt, asOf})); }catch(e){}
+      _mdAutoCacheSave();
       renderMdCal();
-    }finally{ _mdAuto.loading=false; _mdFreshRender(); }
+    }finally{
+      _mdAuto.loading=false; _mdFreshRender();
+      if(_mdMail.again){ _mdMail.again=false; mdMailRefresh(); }   // 받는 사이 누가 눌렀다
+    }
   }
   window.mdAutoLoad=mdAutoLoad;
+  window.mdMailSignal=mdMailSignal;
   const _mdIsAuto=id=>String(id||'').startsWith('auto:');
 
   function loadMdEvents(){
@@ -46077,6 +46205,16 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       groups.push({brand:{key:'_none', label:'브랜드 미지정', color:'#94a3b8'}, events:orphans});
     }
 
+    // 29CM · W컨셉 — 신청대기 [신청완료] → 누르면 [✓ 신청완료]
+    const _mdApplyHtml = ev=>{
+      const st=_mdMarkState(ev);
+      const when=st.at ? (d=>`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`)(new Date(st.at)) : '';
+      const who=[st.by,when].filter(Boolean).join(' · ');
+      const tip=st.done ? `신청완료${st.mail?' — 신청 메일 확인됨':who?` (${who})`:''}\n다시 누르면 신청대기로 돌아가요` : '기획전을 신청했으면 눌러 주세요';
+      const todo=st.done ? '' : '<span class="md-gantt-auto-st is-todo">신청대기</span>';
+      if(!ev.mkey) return st.done ? '<span class="md-gantt-auto-st">신청완료</span>' : todo;   // 새 목록을 받기 전(옛 사본)
+      return `${todo}<button type="button" class="md-gantt-apply${st.done?' is-done':''}" data-md-apply="${escapeHTML(ev.id)}" aria-pressed="${st.done?'true':'false'}" title="${escapeHTML(tip)}">${st.done?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>':''}신청완료</button>`;
+    };
     const _eventRowHtml = (ev, brandColor)=>{
       const barColor = brandColor || _mdEvColor(ev.color).hex;
       const evStart=ev.start;
@@ -46108,10 +46246,13 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       const chkBtnHtml = `<button type="button" class="md-gantt-ckl-btn${chkClass}" data-md-chk-toggle="${escapeHTML(ev.id||'')}" title="${escapeHTML(chkTitle)}" aria-label="정상확인" aria-pressed="${checked?'true':'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></button>`;
       // 플랫폼에서 자동으로 가져온 일정 — 체크 대신 '자동' 표시, 상태(진행 중 · 예정 · 승인 대기) 같이
       const lead = ev.auto ? `<span class="md-gantt-auto" title="플랫폼 셀러센터에서 자동으로 가져온 일정">자동</span>` : chkBtnHtml;
-      const stTag = ev.auto && ev.status ? `<span class="md-gantt-auto-st${ev.status==='승인 대기'?' is-wait':ev.status==='진행 중'?' is-on':ev.status==='신청함'?' is-applied':ev.status==='제안받음'?' is-offer':''}">${escapeHTML(ev.status)}</span>` : '';
-      return `<tr class="md-gantt-row-nested${ev.auto?' is-auto':''}" data-ev-id="${escapeHTML(ev.id||'')}">
+      const mail = String(ev.id||'').startsWith('auto:mail:');
+      const stTag = mail ? _mdApplyHtml(ev) : ev.auto && ev.status ? `<span class="md-gantt-auto-st${ev.status==='승인 대기'?' is-wait':ev.status==='진행 중'?' is-on':''}">${escapeHTML(ev.status)}</span>` : '';
+      const name = `${lead}<span class="md-gantt-rowlabel-dot" style="background:${barColor}"></span><span class="md-gantt-rowlabel-title">${escapeHTML(ev.title||'')}</span>`;
+      const tail = `${stTag}<span class="md-gantt-rowlabel-range">${escapeHTML(range)}</span>`;
+      return `<tr class="md-gantt-row-nested${ev.auto?' is-auto':''}${mail?' is-mail':''}" data-ev-id="${escapeHTML(ev.id||'')}">
         <td class="md-gantt-td-label" title="${escapeHTML(ev.auto ? (ev.rawTitle||ev.title||'')+'\n'+(ev.memo||'') : (ev.title||''))}">
-          ${lead}<span class="md-gantt-rowlabel-dot" style="background:${barColor}"></span><span class="md-gantt-rowlabel-title">${escapeHTML(ev.title||'')}</span>${stTag}<span class="md-gantt-rowlabel-range">${escapeHTML(range)}</span>
+          ${mail ? `<div class="md-gantt-mail"><span class="md-gantt-mail-name">${name}</span><span class="md-gantt-mail-st">${tail}</span></div>` : name+tail}
         </td>
         ${cellsHtml}
       </tr>`;
@@ -46175,6 +46316,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
           if(chkId) mdCalToggleCheck(chkId);
           return;
         }
+        const apBtn = e.target.closest('[data-md-apply]');
+        if(apBtn){ e.stopPropagation(); mdMailApplyToggle(apBtn.dataset.mdApply); return; }
         const id=tr.dataset.evId; if(!id) return;
         if(_mdIsAuto(id)){ const a=(_mdAuto.events||[]).find(x=>x.id===id); toast((a&&a.memo)||'플랫폼에서 자동으로 가져온 일정이에요','info'); return; }
         mdCalOpenEdit(id);
