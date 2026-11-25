@@ -6223,6 +6223,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-fx tr.is-auto td{background:var(--bg-2)}
   .sb-fx .sb-fx-auto-name{padding-left:10px;font-weight:600;color:var(--text-1)}
   .sb-fx .sb-fx-auto-amt{padding-right:10px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text-2)}
+  .sb-tax td{padding:3px 8px;vertical-align:middle}
+  .sb-tax .sb-tax-name{white-space:nowrap;font-weight:600;color:var(--text-1)}
+  .sb-tax .sb-tax-name small{display:block;font-size:11px;font-weight:400;color:var(--text-3)}
+  .sb-tax .sb-tax-due{white-space:nowrap;color:var(--text-1)}
+  .sb-tax .sb-tax-due small{display:block;font-size:11px;color:var(--text-3)}
+  .sb-tax .sb-tax-due small.is-near{font-weight:700;color:var(--danger)}
+  .sb-tax .sb-tax-memo{text-align:left;font-weight:400;color:var(--text-2);min-width:160px}
+  .sb-tax .sb-tax-ck{width:17px;height:17px;margin:0;cursor:pointer;accent-color:var(--text-1)}
+  .sb-tax tr.is-paid td{opacity:.5}
+  @media (max-width:600px){ .sb-tax td,.sb-tax th{padding-left:5px;padding-right:5px} .sb-tax .sb-tax-ck{width:22px;height:22px} }
+  .sb-tax-all{margin-top:14px}
+  .sb-tax-all>summary h2{font-size:12.5px}
   .sb-lb{margin-top:22px}
   .sb-lb-h{margin:0 0 8px;font-size:13.5px;font-weight:700;color:var(--text-1)}
   .sb-lb-h span{margin-left:6px;font-size:12px;font-weight:500;color:var(--text-3)}
@@ -16259,6 +16271,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="sb-body" id="sbBody" hidden>
           <div class="sb-kpis" id="sbKpis"></div>
           <div class="ably-formula" id="sbBasis"></div>
+          <!-- 법인 세금 · 4대보험 — 납부 기한 자동 (2026-11-25 사장님 "다 전략팀에 추가해줘" · "기한을 자동으로 넣어줘") -->
+          <details class="ably-sec ably-fold" id="sbTaxFold" open>
+            <summary><h2>법인 세금 · 4대보험 <span id="sbTaxNext"></span></h2></summary>
+            <div class="ably-tbl-wrap"><table class="ably-tbl sb-tax" id="sbTax"></table></div>
+            <div class="sb-fx-foot"><span>기한은 12월 결산 법인 · 매월 신고 기준이고, 주말 · 공휴일이면 다음 영업일로 나와요. 납부를 체크하면 다음 기한으로 넘어가요. 원천세 · 4대보험은 인건비에 이미 들어 있어 이 표의 금액은 남는 돈에서 따로 빼지 않아요.</span></div>
+            <details class="ably-fold sb-tax-all">
+              <summary><h2>앞으로 1년 일정 · 납부한 것</h2></summary>
+              <div class="ably-tbl-wrap"><table class="ably-tbl sb-tax" id="sbTaxAll"></table></div>
+            </details>
+          </details>
           <section class="ably-sec">
             <h2>채널별 순수익 <span class="sb-basis-tag" id="sbChBasis"></span></h2>
             <div class="sb-unit">플랫폼 택배비 <b>주문 1건당 ₩</b><input class="sb-in" id="sbShipUnit" data-unit="1" inputmode="numeric" autocomplete="off" aria-label="주문 1건당 택배비"><span>보고 있는 달부터 적용 · 에이블리 · 지그재그 · 스마트스토어 · 29CM · W컨셉 · 오늘의집 · EQL (공홈은 고정비)</span></div>
@@ -54972,7 +54994,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     {id:'akoi-wconcept',brand:'akoi',label:'W컨셉',    report:'wconcept-akoi', perOrderShip:true, noAutoAd:true},
   ].filter(c=>!PAUSED_BRANDS.has(c.brand));
   const _sb={month:'', doc:null, view:null, ready:false, loadError:'', loadedAt:0, seq:0, saveGen:0,
-             ops:null, inflight:0, saving:false, fail:0, timer:null, built:false, fixedSig:'', laborSig:'', bound:false, paintQueued:false};
+             ops:null, inflight:0, saving:false, fail:0, timer:null, built:false, fixedSig:'', laborSig:'', taxSig:'', bound:false, paintQueued:false};
 
   const _sbCurMonth=()=>_stratToday().slice(0,7);
   function _sbPrevMonth(m){ const [y,mo]=m.split('-').map(Number); return mo===1?`${y-1}-12`:`${y}-${String(mo-1).padStart(2,'0')}`; }
@@ -55125,6 +55147,96 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     });
     return out;
   }
+  /* ===== 법인 세금 · 4대보험 납부 기한 (2026-11-25 사장님 "다 전략팀에 추가해줘" · "기한을 자동으로 넣어줘") =====
+     기한은 법정일에서 계산 — 토 · 일 · 공휴일이면 다음 영업일 (국세기본법 5조 · 지방세기본법 24조, 4대보험도 같음). 12월 결산 법인 · 매월 원천 신고 기준.
+     저장: 같은 비공개 month-board.json 의 taxes['항목|법정 달'] = {amount, memo, paid(납부 체크한 날)}. 열쇠는 밀리기 전 법정 달이라 공휴일 목록이 바뀌어도 값이 안 떨어진다.
+     남는 돈에는 안 넣는다 — 원천세 · 지방소득세 · 4대보험은 인건비(세전 월급 + 회사분)에 이미 있어 두 번 빠진다. */
+  const SB_TAX_FIRST='2026-12';   // 이 표를 만든 다음 기한부터 (그 전 달은 납부 여부를 몰라 '기한 지남'으로 띄우지 않는다)
+  const SB_TAX_EVERY=[1,2,3,4,5,6,7,8,9,10,11,12];
+  // months = 법정 기한이 있는 달, day = 날짜(0 = 말일), of(해, 달) = 무엇에 대한 것인지
+  const SB_TAXES=[
+    {id:'wht',     name:'원천세',             months:SB_TAX_EVERY, day:10, of:(y,m)=>`${m===1?12:m-1}월 급여분`},
+    {id:'whtloc',  name:'지방소득세',         months:SB_TAX_EVERY, day:10, of:(y,m)=>`${m===1?12:m-1}월 급여분 · 특별징수`},
+    {id:'ins',     name:'4대보험료',          months:SB_TAX_EVERY, day:10, of:(y,m)=>`${m===1?12:m-1}월분`},
+    {id:'vat',     name:'부가세',             months:[1,4,7,10],   day:25, of:(y,m)=>({1:`${y-1}년 2기 확정 · 10~12월`,4:`${y}년 1기 예정 · 1~3월`,7:`${y}년 1기 확정 · 4~6월`,10:`${y}년 2기 예정 · 7~9월`})[m]},
+    {id:'corp',    name:'법인세',             months:[3],          day:0,  of:y=>`${y-1}년분`},
+    {id:'corploc', name:'법인지방소득세',     months:[4],          day:0,  of:y=>`${y-1}년분`},
+    {id:'corpmid', name:'법인세 중간예납',    months:[8],          day:0,  of:y=>`${y}년 상반기분`},
+    {id:'resid',   name:'주민세 사업소분',    months:[8],          day:0,  of:y=>`${y}년분`},
+    {id:'car',     name:'자동차세',           months:[6,12],       day:0,  of:(y,m)=>`${y}년 ${m===6?'1기':'2기'}`},
+    {id:'prop',    name:'재산세',             months:[7,9],        day:0,  of:(y,m)=>`${y}년 ${m===7?'건물분':'토지분'}`},
+  ];
+  // 쉬는 날 — 구글 공휴일(설 · 추석 · 대체휴일 · 임시공휴일까지, 업무일지와 같은 목록) + 날짜가 정해진 공휴일(목록을 못 받았을 때 대비)
+  const SB_TAX_OFF=new Set(['01-01','03-01','05-01','05-05','06-06','07-17','08-15','10-03','10-09','12-25']);
+  const SB_TAX_SUBST=new Set(['03-01','05-05','08-15','10-03','10-09','12-25']);   // 주말과 겹치면 다음 평일이 대체공휴일
+  function _sbTaxIsOff(d){
+    const dow=new Date(d+'T00:00:00').getDay();
+    if(dow===0||dow===6||SB_TAX_OFF.has(d.slice(5))||_dslHol().has(d)) return true;
+    return dow===1&&(SB_TAX_SUBST.has(_dslAdd(d,-1).slice(5))||SB_TAX_SUBST.has(_dslAdd(d,-2).slice(5)));
+  }
+  function _sbTaxItem(t,y,mo){
+    const ym=`${y}-${String(mo).padStart(2,'0')}`;
+    const legal=`${ym}-${String(t.day||_sbDaysIn(ym)).padStart(2,'0')}`;
+    let due=legal;
+    for(let i=0;i<15&&_sbTaxIsOff(due);i++) due=_dslAdd(due,1);
+    return {key:`${t.id}|${ym}`, t, legal, due, of:t.of(y,mo)};
+  }
+  // 첫 기한부터 앞으로 13달까지 모든 납부 건 (기한 순)
+  function _sbTaxAll(){
+    const out=[], end=Number(_stratToday().slice(0,4))*12+Number(_stratToday().slice(5,7))-1+13;
+    const [fy,fm]=SB_TAX_FIRST.split('-').map(Number);
+    for(let n=fy*12+fm-1;n<=end;n++){
+      const y=Math.floor(n/12), mo=n%12+1;
+      SB_TAXES.forEach(t=>{ if(t.months.includes(mo)) out.push(_sbTaxItem(t,y,mo)); });
+    }
+    return out.map((x,i)=>[x,i]).sort((a,b)=>a[0].due<b[0].due?-1:a[0].due>b[0].due?1:a[1]-b[1]).map(([x])=>x);
+  }
+  function _sbTaxSaved(key){ return (((_sb.view||{}).taxes)||{})[key]||{}; }
+  // 항목마다 아직 안 낸 가장 빠른 기한 하나
+  function _sbTaxNext(all){
+    const seen=new Set();
+    return all.filter(x=>{ if(seen.has(x.t.id)||_sbTaxSaved(x.key).paid) return false; seen.add(x.t.id); return true; });
+  }
+  function _sbTaxDate(d){
+    const [y,m,day]=d.split('-').map(Number);
+    return `${y!==Number(_stratToday().slice(0,4))?y+'년 ':''}${m}월 ${day}일 (${'일월화수목금토'[new Date(d+'T00:00:00').getDay()]})`;
+  }
+  function _sbTaxDday(d){ const n=_sbDaysBetween(_stratToday(),d)-1; return {n, text:n<0?`기한 ${-n}일 지남`:n===0?'오늘까지':`D-${n}`}; }
+  function _sbBuildTax(){
+    const all=_sbTaxAll(), next=_sbTaxNext(all), from=_dslAdd(_stratToday(),-366), full=all.filter(x=>x.due>=from||!_sbTaxSaved(x.key).paid);
+    const sig=_stratToday()+'|'+next.map(x=>x.key+x.due).join(',')+'|'+full.map(x=>x.due).join(',');
+    if(sig===_sb.taxSig) return;
+    _sb.taxSig=sig;
+    const esc=_stratEsc;
+    const row=x=>{
+      const k=esc(x.key), nm=esc(x.t.name);
+      const moved=x.due!==x.legal?` · ${Number(x.legal.slice(5,7))}/${Number(x.legal.slice(8))} 휴일`:'';
+      return `<tr data-taxrow="${k}"><td class="sb-tax-name">${nm}<small>${esc(x.of)}</small></td>`
+        +`<td class="sb-tax-due">${_sbTaxDate(x.due)}<small data-due="${x.due}" data-moved="${moved}"></small></td>`
+        +`<td><input type="checkbox" class="sb-tax-ck" data-taxck="${k}" aria-label="${nm} ${esc(x.of)} 납부"></td>`   // 휴대폰에서 옆으로 안 밀어도 기한 · 납부가 보이게
+        +`<td><input class="sb-in" data-tax="amount" data-id="${k}" inputmode="numeric" autocomplete="off" placeholder="금액" aria-label="${nm} 금액"></td>`
+        +`<td><input class="sb-in sb-tax-memo" data-tax="memo" data-txt="1" data-id="${k}" autocomplete="off" placeholder="메모" aria-label="${nm} 메모"></td></tr>`;
+    };
+    const head='<thead><tr><th>항목</th><th>납부 기한</th><th>납부</th><th class="n">금액</th><th>메모</th></tr></thead>';
+    document.getElementById('sbTax').innerHTML=head+'<tbody>'+next.map(row).join('')+'</tbody>';
+    document.getElementById('sbTaxAll').innerHTML=head+'<tbody>'+full.map(row).join('')+'</tbody>';
+    const first=next[0], same=first?next.filter(x=>x.due===first.due):[];
+    document.getElementById('sbTaxNext').textContent=first?`다음 ${_sbTaxDate(first.due)} · ${same.map(x=>x.t.name).join(' · ')} · ${_sbTaxDday(first.due).text}`:'';
+  }
+  function _sbPaintTax(active){
+    document.querySelectorAll('#sbTaxFold [data-taxrow]').forEach(tr=>{
+      const v=_sbTaxSaved(tr.dataset.taxrow);
+      tr.classList.toggle('is-paid',!!v.paid);
+      tr.querySelectorAll('.sb-in').forEach(el=>{
+        if(el===active) return;
+        el.value=el.dataset.tax==='amount'?(v.amount?_stratW(v.amount):''):(v.memo||'');
+      });
+      tr.querySelector('.sb-tax-ck').checked=!!v.paid;
+      const sm=tr.querySelector('[data-due]'), dd=_sbTaxDday(sm.dataset.due);
+      sm.textContent=(v.paid?`${Number(v.paid.slice(5,7))}/${Number(v.paid.slice(8))} 납부`:dd.text)+sm.dataset.moved;
+      sm.classList.toggle('is-near',!v.paid&&dd.n<=7);
+    });
+  }
   // 작업을 저장본에 적용 — 칸 · 항목이 독립적이라 서버 최신본 위에 그대로 얹는다
   function _sbApply(doc,ops){
     const d=JSON.parse(JSON.stringify(doc||{}));
@@ -55139,6 +55251,10 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       }else if(o.k==='shipUnit'){
         d.shipUnit=d.shipUnit||{};
         if(o.v==null) delete d.shipUnit[o.m]; else d.shipUnit[o.m]=o.v;
+      }else if(o.k==='tax'){
+        d.taxes=d.taxes||{};
+        const t=d.taxes[o.id]=d.taxes[o.id]||{};
+        if(o.v==null||o.v==='') delete t[o.f]; else t[o.f]=o.v;
       }else if(o.k==='stAdd'){
         d.staff=Array.isArray(d.staff)?d.staff:[];
         if(!d.staff.some(x=>x.id===o.id)) d.staff.push({id:o.id, name:'', co:'', team:'', kind:'salary', start:'', end:'', meal:200000, memo:'', pay:{[o.m]:0}});
@@ -55275,6 +55391,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     document.getElementById('sbBody').hidden=false;
     _sbRender();
     if(_sb.ops.length) _sbFlush();
+    _dslLoadHol().then(()=>_sbRender());   // 공휴일을 받으면 세금 기한을 다시 계산 (대체 · 임시공휴일)
   }
   function _sbFillMonths(){
     const sel=document.getElementById('sbMonth');
@@ -55293,7 +55410,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   const _sbEditing=()=>{ const a=document.activeElement; return !!(a&&a.classList&&a.classList.contains('sb-in')); };
   function _sbRender(){
     _sbBuildChannels();
-    if(!_sbEditing()){ _sbBuildFixed(); _sbBuildLabor(); }
+    if(!_sbEditing()){ _sbBuildTax(); _sbBuildFixed(); _sbBuildLabor(); }
     _sbPaint();
   }
   function _sbBuildChannels(){
@@ -55452,6 +55569,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       if(am) am.textContent=w(lbRow.amount);
     }
     _sbPaintLabor(active);
+    _sbPaintTax(active);
     document.querySelectorAll('#sbFixed .sb-in').forEach(el=>{
       const r=fixed.find(x=>x.id===el.dataset.id);
       if(!r||el===active) return;
@@ -55480,7 +55598,11 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     box.addEventListener('input',e=>{
       const el=e.target;
       if(!el.classList.contains('sb-in')) return;
-      if(el.dataset.st){
+      if(el.dataset.tax){
+        const f=el.dataset.tax;
+        _sbOp({k:'tax', id:el.dataset.id, f, v:f==='amount'?(_sbNum(el.value)||null):String(el.value||'').trim()});
+      }
+      else if(el.dataset.st){
         const f=el.dataset.st;
         if(f==='pay') _sbOp({k:'st', id:el.dataset.id, f, m:_sb.month, v:_sbNum(el.value)||0});
         else if(f==='meal') _sbOp({k:'st', id:el.dataset.id, f, v:_sbNum(el.value)||0});
@@ -55493,6 +55615,12 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       else _sbOp({k:'cell', m:_sb.month, c:el.dataset.c, f:el.dataset.f, v:_sbNum(el.value)});
     });
     box.addEventListener('focusout',()=>setTimeout(()=>{ if(!_sbEditing()) _sbRender(); },0));
+    box.addEventListener('change',e=>{
+      const key=e.target.dataset&&e.target.dataset.taxck;
+      if(!key) return;
+      _sbOp({k:'tax', id:key, f:'paid', v:e.target.checked?_stratToday():null});
+      _sbRender();
+    });
     box.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.classList.contains('sb-in')) e.target.blur(); });
     box.addEventListener('click',e=>{
       const sid=e.target.dataset&&e.target.dataset.stdel;
