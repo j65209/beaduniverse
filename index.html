@@ -55069,7 +55069,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const idx=c.report&&_strat.index[c.report];
     if(!idx||idx.error) return null;
     // 스마트스토어 index 에는 수수료 칸이 없어 보고서 순이익 식(실결제 − 수수료 − 택배비 − 광고비 − 원가)에서 되짚는다 — 일별 보고서의 네이버 실제 수수료와 일치
-    const feeOf=d=>c.feeRate?Math.round((Number(d.paid)||0)*c.feeRate):c.feeFromNet?Math.max(0,(Number(d.paid)||0)-(Number(d.net)||0)-(Number(d.ad_spend)||0)-(Number(d.cost)||0)-(Number(d.orders)||0)*SB_SHIP_DEFAULT):Number(d.fees_est)||0;
+    // 29CM 수수료는 고객이 낸 배송비를 뺀 상품 금액에만 (2026-11-25 사장님 확인)
+    const feeOf=d=>c.feeRate?Math.round(((Number(d.paid)||0)-((d.ship&&Number(d.ship.income))||0))*c.feeRate):c.feeFromNet?Math.max(0,(Number(d.paid)||0)-(Number(d.net)||0)-(Number(d.ad_spend)||0)-(Number(d.cost)||0)-(Number(d.orders)||0)*SB_SHIP_DEFAULT):Number(d.fees_est)||0;
     // 주문수는 택배비 계산용 — 지그재그는 ship_orders (직진배송은 창고에서 나가고 출고비가 직배 이용료에 있어 뺌, 사장님 결정 2026-11-02)
     return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.ship_orders??d.orders)||0, fee:feeOf(d), direct:Number(d.direct_fee)||0}));
   }
@@ -55901,7 +55902,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const lines=[];
     if(cur) lines.push(`월말 예상: 자동 수집 채널은 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
-    lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 29CM 수수료는 매출의 30%로 계산해요. 그 밖의 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
+    lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 29CM 수수료는 배송비를 뺀 상품 매출의 30%로 계산해요. 지그재그 매출은 스토어 부담 쿠폰을 뺀 값이에요. 그 밖의 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
     lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정 지출의 택배비(공홈 배송 건수 × 단가 예상)에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
     if(res.partial.length) lines.push(`<span class="sb-warn">⚠ 이 달 중간부터 보고서가 있는 채널: ${_stratEsc(res.partial.join(', '))} — 있는 날만 합산했어요.</span>`);
