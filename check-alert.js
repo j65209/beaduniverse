@@ -71,7 +71,20 @@ const SRC = [
       sb('erp_ask?select=k,gid,brand,in_name,in_opt,kind,why&state=eq.open&order=first_at.asc&limit=500'),
       sb(`erp_rows?select=gid,r,v&deleted_at=is.null&v->>0=${encodeURIComponent('like.*매핑*')}&limit=300`)
     ]);
-    const out = al.filter(x => x.key !== '_beat').map(x => ({k: 'ea:' + x.key, a: '재고 ERP', t: x.title, b: x.body, at: x.since, hot: x.level === 'stop', q: 1, go: 'erp'}));
+    /* 오피스 ERP 에서 매핑 · 수정한 것은 맥미니 지킴이가 두 번(약 10분) 다시 볼 때까지 기다리지 않고 바로 뺀다 (2026-11-25 사장님 "오피스앱에서 매핑했거나 수정했거나 … 알림에서 지워줘")
+       · 매핑 필요(map:) = 그 ⚠ 줄이 ERP 에서 없어졌거나 고쳐졌으면 뺌. 같은 줄이 아래 '매핑 확인 필요'(⚠ 줄 직접)로도 보이면 한 번만
+       · 차감 확인 필요(odd:) = 그 상품 · 옵션을 매핑 창에서 정했으면(erp_map) 뺌 — 지킴이와 같은 기준 */
+    const CL = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+    const live = al.filter(x => x.key !== '_beat'), mg = [...new Set(live.filter(x => /^map:\d+:/.test(x.key)).map(x => x.key.split(':')[1]))];
+    const [mw, mp] = await Promise.all([
+      mg.length ? sb(`erp_rows?select=gid,n:v->>1,o:v->>2&deleted_at=is.null&r=gt.1&gid=in.(${mg.map(encodeURIComponent).join(',')})&v->>0=${encodeURIComponent('like.*⚠*')}&limit=2000`).catch(() => null) : [],
+      live.some(x => /^odd:/.test(x.key)) ? sb('erp_map?select=brand,in_name,in_opt&deleted_at=is.null&limit=10000').catch(() => null) : []
+    ]);
+    const wk = mw && new Set(mw.map(x => `map:${x.gid}:${CL(x.n)}|${CL(x.o)}`.slice(0, 190)));
+    const mk = mp && new Set(mp.map(m => `${m.brand}|${CL(m.in_name)}|${CL(m.in_opt)}`.toLowerCase()));
+    const dup = new Set(warn.filter(x => /⚠/.test((x.v || [])[0] || '') && !/처리 완료/.test((x.v || [])[0] || '')).map(x => `map:${x.gid}:${CL((x.v || [])[1])}|${CL((x.v || [])[2])}`.slice(0, 190)));
+    const gone = x => (wk && /^map:\d+:/.test(x.key) && (!wk.has(x.key) || dup.has(x.key))) || (mk && /^odd:/.test(x.key) && mk.has(x.key.slice(4).split('|').slice(1).join('|')));
+    const out = live.filter(x => !gone(x)).map(x => ({k: 'ea:' + x.key, a: '재고 ERP', t: x.title, b: x.body, at: x.since, hot: x.level === 'stop', q: 1, go: 'erp'}));
     const by = new Map(); ask.forEach(x => { const k = x.brand + '|' + x.in_name; if (!by.has(k)) by.set(k, []); by.get(k).push(x); });
     by.forEach((xs, k) => out.push({k: 'ask:' + k, a: '재고 ERP', t: `매핑 요청 — ${xs[0].in_name || '상품'}`, b: `${BR[xs[0].brand] || xs[0].brand || ''} · 옵션 ${xs.length}개 — 어느 재고 줄에서 뺄지 정해 주세요`, list: xs.map(x => [x.in_opt, x.why].filter(Boolean).join(' — ')), sig: String(xs.length), go: 'erp'}));
     const w = warn.filter(x => /⚠/.test((x.v || [])[0] || '') && !/처리 완료/.test((x.v || [])[0] || ''));
@@ -250,7 +263,7 @@ if (BC) BC.onmessage = e => {
 const shut = p => { drop(p); post({shut: p.x ? full(p.x) : '*'}); };
 function notify(xs, sum) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const fire = (title, body, tag, x) => { try { const no = new Notification(title, {body, tag, icon: 'assets/icon-192.png?v=2', requireInteraction: !!(x && x.hot)}); no.onclick = () => { window.focus(); no.close(); if (x) go(x); else openPanel(true); }; } catch (e) {} };
+  const fire = (title, body, tag, x) => { try { const no = new Notification(title, {body, tag, icon: 'assets/icon-192.png?v=2', requireInteraction: !!(x && x.hot)}); no.onclick = () => { window.focus(); no.close(); if (x) { seenIt(x); go(x); } else openPanel(true); }; } catch (e) {} };
   if (sum) { const by = AREAS.map(a => [a, sum.filter(x => x.a === a).length]).filter(x => x[1]); if (by.length) fire(`확인 필요 ${sum.length}건`, by.map(([a, c]) => `${a} ${c}`).join(' · '), 'bbchk-sum'); return; }
   xs.forEach(x => fire(`확인 필요 · ${x.a}`, `${x.t}${x.b ? '\n' + cut(x.b, 120) : ''}`, 'bbchk-' + hash(full(x)), x));
 }
@@ -266,7 +279,7 @@ function wrap() {
   w.addEventListener('click', e => {
     const c = e.target.closest('.bc-pop'), a = e.target.closest('[data-c]'); if (!c || !a) return;
     const p = S.pops.find(x => x.el === c), k = a.dataset.c; if (!p) return;
-    if (k === 'go') { shut(p); go(p.x); }
+    if (k === 'go') { shut(p); seenIt(p.x); go(p.x); }
     if (k === 'ack') { shut(p); setAck([p.x], true); }
     if (k === 'all') { shut(p); openPanel(true); }
     if (k === 'x') shut(p);
@@ -291,7 +304,8 @@ function summary(xs) {
   const L = xs || todo(), by = AREAS.map(a => [a, L.filter(x => x.a === a)]).filter(x => x[1].length); if (!L.length) return;
   card(`<header><em>${xs ? '새로 확인할 것' : '확인할 것'}</em><button type="button" data-c="x" aria-label="닫기">×</button></header><b>확인 필요 ${L.length}건</b><ul>${by.map(([a, v]) => `<li><span>${E(a)}</span><i>${E(cut(v[0].t, 30))}${v.length > 1 ? ` 외 ${v.length - 1}` : ''}</i></li>`).join('')}</ul><footer><button type="button" class="pri" data-c="all">모두 보기</button></footer>`, null, true);
 }
-/* ── 가기 ── */
+/* ── 가기 ── 눌러서 열어 본 것은 '확인한 것'으로 내린다 (2026-11-25 사장님 "내가 들어가서 버튼누르고 열람한건 알림에서 지워줘") — 아래 '확인한 것'에서 되돌릴 수 있고, 내용이 바뀌거나 새로 생기면 다시 뜬다 */
+const seenIt = x => { if (x && !isAck(x)) setAck([x], true); };
 const scrollTo_ = (id, ms) => setTimeout(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }, ms || 350);
 function go(x) {
   openPanel(false);
@@ -352,7 +366,7 @@ function onPanel(e) {
   const a = e.target.closest('[data-c]'); if (!a) return;
   const r = a.closest('.bc-r'), x = r && all().find(q => hash(full(q)) === r.dataset.h), k = a.dataset.c;
   if (k === 'close') return openPanel(false);
-  if (k === 'go' && x) return go(x);
+  if (k === 'go' && x) { seenIt(x); return go(x); }
   if (k === 'ack' && x) return setAck([x], true);
   if (k === 'unack' && x) return setAck([x], false);
   if (k === 'ackall') { const L = todo(); setAck(L, true); say(`${L.length}건 확인했어요 — 아래 ‘확인한 것’ 에서 되돌릴 수 있어요`); return; }
@@ -412,7 +426,7 @@ function tick() {
     try { kvPull('check_ack', LS.ack, v => { S.ack = Object.assign({}, v || {}); closePops(all().filter(isAck).map(full)); S.drawn = ''; draw(); }); } catch (e) {}
     if (window.OfficeLive) {
       const soon = (id, ms) => () => { const c = S.src[id]; c.next = Math.min(c.next, Date.now() + (ms || 3000)); };
-      window.OfficeLive.on(['erp_alert', 'erp_ask'], soon('erp')); window.OfficeLive.on(['erp_rows'], () => { soon('erp', 20e3)(); soon('zero', 60e3)(); }); window.OfficeLive.on(['leave_comp_requests'], soon('appr')); window.OfficeLive.on(['dlog_pages'], soon('dz', 30e3));
+      window.OfficeLive.on(['erp_alert', 'erp_ask', 'erp_map'], soon('erp')); window.OfficeLive.on(['erp_rows'], () => { soon('erp', 5e3)(); soon('zero', 15e3)(); soon('blank', 30e3)(); });          // ERP 에서 고치면 곧 다시 읽어 뺀다 window.OfficeLive.on(['leave_comp_requests'], soon('appr')); window.OfficeLive.on(['dlog_pages'], soon('dz', 30e3));
       window.OfficeLive.on(['app_kv'], () => { try { kvPull('check_ack', LS.ack, v => { S.ack = Object.assign({}, v || {}); closePops(all().filter(isAck).map(full)); S.drawn = ''; draw(); }); } catch (e) {} });
     }
   }
