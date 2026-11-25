@@ -55018,7 +55018,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   /* ===== 전략팀 월간 손익 메인보드 — 한 달 실제 남는 돈 =====
      남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가) − 월 고정비. 부가세 예상 = 매출세액(매출 ÷ 11) − 매입세액(택배 · 수수료 · 플랫폼 광고 · 월세 등 ÷ 11).
      칸 값 우선순위: 직접 입력 → 자동(일일 보고서 — 지그재그는 수수료 · 직배 이용료까지) → 지난달 비율 × 이번 달 매출 → 지난달 값.
-     진행 중인 달의 자동 값 = 어제까지 실적 + 남은 날 × 최근 14일 평균.
+     진행 중인 달의 자동 값 = 어제까지 실적 + 남은 날 × 최근 7일 평균 − 앞으로 들어올 반품.
      공홈 · 에이블리 수수료는 자동으로 빼지 않는다 — 사장님 시트 기준 (2026-11-02 결정). 칸에 직접 넣으면 그 값만 뺀다.
      저장: 비공개 레포 strategy/month-board.json — 금액이라 공개 레포나 앱 키로 읽히는 표에 두지 않는다.
        months[달].cells[채널][칸] = 직접 입력값 (없으면 자동) · fixed[].amounts[달] = 그 달부터 적용할 금액 (null = 그 달부터 없음)
@@ -55090,6 +55090,9 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     // 주문수는 택배비 계산용 — 지그재그는 ship_orders (직진배송은 창고에서 나가고 출고비가 직배 이용료에 있어 뺌, 사장님 결정 2026-11-02)
     return (idx.days||[]).map(d=>({date:d.date, sales:Number(d.paid)||0, ad:Number(d.ad_spend)||0, cost:Number(d.cost)||0, orders:Number(d.ship_orders??d.orders)||0, fee:feeOf(d), direct:Number(d.direct_fee)||0}));
   }
+  // 결제 다음 날 값 → 열흘쯤 뒤 값의 줄어든 비율 (2026-10-30 ~ 11-14 열여섯 날을 실제로 재 봄, 2026-11-25 사장님 "정확도를 더 높혀줘")
+  const SB_SHRINK={'kop-home':.036,'apt-home':.013,'6a-home':.007,'yar-home':.034,'kop-ably':.031,'apt-ably':.01,'6a-ably':0,'kop-29cm':.012,'pp-smartstore':.022,'kop-zigzag':.035};
+  const _sbShrink=c=>SB_SHRINK[c.id]??.02;
   // 채널 · 달의 자동 값 {fields, actual(실적 매출), left(예상으로 채운 날 수)}. 쓸 데이터가 없으면 null.
   function _sbAuto(c,month){
     const s=_sbSeries(c);
@@ -55102,10 +55105,16 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const out={fields:{}, actual:sum(rows,'sales'), left:0};
     if(month===today.slice(0,7)){
       const done=rows.filter(d=>d.date<today);
-      const recent=s.filter(d=>d.date<today).sort((a,b)=>a.date<b.date?1:-1).slice(0,14);
+      const recent=s.filter(d=>d.date<today).sort((a,b)=>a.date<b.date?1:-1).slice(0,7);
       if(!recent.length) return null;
       out.left=days-done.length;
-      fields.forEach(f=>{ out.fields[f]=Math.round(sum(done,f)+sum(recent,f)/recent.length*out.left); });
+      // 결제 다음 날 이후 들어오는 반품 · 취소 — 매출 · 원가 · 수수료를 그만큼 낮춰 잡는다(이미 지난 14일은 남은 몫만). 주문수(택배)는 이미 보낸 것이라 그대로
+      const shrink=_sbShrink(c), back=()=>d=>shrink*Math.max(0,1-(_sbDaysBetween(d.date,today)-1)/14);
+      fields.forEach(f=>{
+        const cut=f==='sales'||f==='cost'||f==='fee'?shrink:0;
+        const late=cut?done.reduce((a,d)=>a+(Number(d[f])||0)*back()(d),0):0;
+        out.fields[f]=Math.round(sum(done,f)-late+sum(recent,f)/recent.length*out.left*(1-cut));
+      });
       return out;
     }
     if(rows.length<20){
@@ -55166,8 +55175,14 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     return 'etc';
   }
   function _sbHomeShip(month){
-    const res=_sbResolve(month), n=res.rows.filter(r=>/-home$/.test(r.c.id)).reduce((a,r)=>a+r.vals.orders.v,0);
-    return {n, unit:res.unit, amount:n*res.unit};
+    const res=_sbResolve(month);
+    let orders=0, sent=0, extra=0;
+    res.rows.filter(r=>/-home$/.test(r.c.id)).forEach(r=>{
+      orders+=r.vals.orders.v;
+      _sbIdxDays(r.c,month).forEach(d=>{ if(d.ship&&d.ship.extra!=null){ sent+=d.ship.free+d.ship.paid; extra+=d.ship.extra; } });
+    });
+    const ex=sent?Math.round(orders*extra/sent):0, n=orders+ex;   // 전부 반품된 주문 · 교환 다시 보내기도 택배는 나갔다
+    return {n, ex, unit:res.unit, amount:n*res.unit};
   }
   function _sbFixed(month){
     const rows=(((_sb.view||{}).fixed)||[]).map(it=>{
@@ -55180,7 +55195,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       // 택배비 — autoFrom 달부터는 공홈 배송 건수 × 택배 단가로 저절로 (2026-11-25 사장님 "배송건수로 예상금액 넣어주던지"). 그 달 뒤에 금액을 직접 넣으면 그 값
       if(it.auto==='homeShip'&&month>=it.autoFrom&&(keys[keys.length-1]<it.autoFrom||!raw)){
         const q=_sbHomeShip(month);
-        raw=q.amount; est=`공홈 배송 ${_stratW(q.n)}건${month===_sbCurMonth()?'(월말 예상)':''} × ₩${_stratW(q.unit)}`;
+        raw=q.amount; est=`공홈 배송 ${_stratW(q.n)}건(반품 · 교환 ${_stratW(q.ex)}건 포함)${month===_sbCurMonth()?'(월말 예상)':''} × ₩${_stratW(q.unit)}`;
       }
       return {id:it.id, name:it.name||'', memo:it.memo||'', est, raw, cycle:year?'year':'month', amount:year?Math.round(raw/12):raw, grp:it.cat||_sbGroupOf(it.name), todo:!!it.todo&&!raw};
     }).filter(Boolean);
@@ -55530,8 +55545,9 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     document.getElementById('sbShipSum').textContent=rows.length?`무료배송 ${w(A.free)}건 · 배송비 받은 ${w(A.paid)}건 ₩${w(A.income)} · 오늘까지 실적`.replace(' · 오늘까지',m===_sbCurMonth()?' · 오늘까지':' · 한 달'):'';
     document.getElementById('sbShipNote').textContent=`실적 기준(예상 아님). 무료배송 = 고객이 기본 배송비를 안 낸 건, 받은 배송비에는 도서산간 추가비도 들어 있어요. 무료배송 택배비 = 무료배송 건 × ₩${w(unit)} (우리 부담). 에이블리는 전 상품 무료배송이고, 지그재그 직진배송은 뺐어요. 받은 배송비는 공홈 · 스마트스토어 · 플레이오토 채널 매출에 이미 들어 있어요(지그재그 매출은 상품 금액만).`;
   }
-  // 요율 (%, 부가세 별도) — 식스샵 프로 공식 안내 "결제 수단별 수수료" (help.pro.sixshop.com/orders/payment-fee, 2026-11-25 확인). 카드만 사업자 매출 등급에 따라 다르다
-  const SB_PAY_GRADES=[['g1','영세 · 연 매출 3억 미만',1.9,1.7],['g2','중소1 · 3억~5억',2.5,2.3],['g3','중소2 · 5억~10억',2.65,2.45],['g4','중소3 · 10억~30억',2.9,2.7],['g5','일반 · 30억 이상',3.4,3.4]];
+  // 요율 — [등급, 이름, 토스 카드 %(부가세 별도, 식스샵 프로 공식 안내), 네이버페이 주문형 %(부가세 포함, 결제수단과 상관없이 하나)]
+  // 네이버 중소3 3.003% 는 프로덕트피알 스마트스토어 정산(결제수수료, 모든 결제수단)에서 실측(2026-11-25). 다른 등급은 공시 요율에 2025-10 인하분 반영
+  const SB_PAY_GRADES=[['g1','영세 · 연 매출 3억 미만',1.9,1.947],['g2','중소1 · 3억~5억',2.5,2.563],['g3','중소2 · 5억~10억',2.65,2.728],['g4','중소3 · 10억~30억',2.9,3.003],['g5','일반 · 30억 이상',3.4,3.63]];
   const SB_PAY_LABEL={CARD:'카드','EASY_PAY-TOSSPAY':'토스페이','EASY_PAY-KAKAOPAY':'카카오페이',BANK:'계좌이체',PASSBOOK:'무통장',VIRTUAL_ACCOUNT:'가상계좌',POINT:'포인트 · 머니',PAYLATER:'후불결제',MOBIL:'휴대폰',UNKNOWN:'기타'};
   function _sbPayGrade(){ const g=(_sb.view||{}).payGrade; return SB_PAY_GRADES.find(x=>x[0]===g)||SB_PAY_GRADES[3]; }
   // 한 결제수단의 수수료 {text, fee(부가세 포함)}
@@ -55545,11 +55561,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       if(type==='EASY_PAY-KAKAOPAY') return p(g[0]==='g5'?3.4:g[2]+0.1);
       return p(g[2]);
     }
-    if(type==='BANK') return p(1.5);
-    if(type==='PASSBOOK'||type==='VIRTUAL_ACCOUNT') return {text:'0.99% (건당 최대 275원)', fee:Math.round(Math.min(amt*0.009,n*250)*V)};
-    if(type==='POINT'||type==='PAYLATER') return p(3.4);
-    if(type==='MOBIL') return p(3.5);
-    return p(g[3]);
+    return {text:`${g[3]}%`, fee:Math.round(amt*g[3]/100)};
   }
   function _sbPayData(month){
     const out={brands:[], how:{}, fee:0, amt:0, toss:{n:0,amt:0,fee:0}, naver:{n:0,amt:0,fee:0}};
@@ -55577,7 +55589,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const w=_stratW, m=_sb.month, d=_sbPayData(m), esc=_stratEsc, pct=(f,a)=>a?_stratPct(f/a):'-';
     const el=document.getElementById('sbPayGrade');
     if(el!==active) el.value=_sbPayGrade()[0];
-    document.getElementById('sbPayGradeNote').textContent=(_sb.view||{}).payGrade?'':'추정이에요 — 토스페이먼츠 · 네이버페이센터에 적힌 등급으로 바꿔 주세요';
+    document.getElementById('sbPayGradeNote').textContent=(_sb.view||{}).payGrade?'':'네이버 정산 수수료 3.0%로 본 등급이에요 — 다르면 바꿔 주세요';
     const line=(name,r,cls)=>`<tr class="${cls||''}"><td class="sb-ch">${name}</td><td class="n">${w(r.toss.amt)}</td><td class="n">${w(r.toss.fee)}</td><td class="n">${w(r.naver.amt)}</td><td class="n">${w(r.naver.fee)}</td><td class="n"><b>${w(r.toss.fee+r.naver.fee)}</b></td><td class="n">${pct(r.toss.fee+r.naver.fee,r.toss.amt+r.naver.amt)}</td></tr>`;
     document.getElementById('sbPayTbl').innerHTML=d.brands.length?'<thead><tr><th>공홈</th><th class="n">토스페이먼츠 결제</th><th class="n">수수료</th><th class="n">네이버페이 결제</th><th class="n">수수료</th><th class="n">수수료 합</th><th class="n">비율</th></tr></thead><tbody>'
       +d.brands.map(r=>line(`${esc(_sbBrand(r.c.brand).display)}${r.from?`<small>${r.from}</small>`:''}`,r)).join('')+line('합계',d,'is-total')+'</tbody>':'<tbody><tr><td class="ably-empty">이 달 결제수단 자료가 아직 없어요.</td></tr></tbody>';
@@ -55585,7 +55597,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     document.getElementById('sbPayHow').innerHTML='<thead><tr><th>결제수단</th><th class="n">건수</th><th class="n">결제 금액</th><th class="n">요율 (부가세 포함)</th><th class="n">수수료</th></tr></thead><tbody>'
       +keys.map(k=>{ const [s,t]=k.split(':'), h=d.how[k]; return `<tr><td class="sb-ch">${s==='toss'?'토스페이먼츠':'네이버페이'} ${esc(SB_PAY_LABEL[t]||t)}</td><td class="n">${w(h.n)}</td><td class="n">${w(h.amt)}</td><td class="n">${h.text}</td><td class="n">${w(h.fee)}</td></tr>`; }).join('')+'</tbody>';
     document.getElementById('sbPaySum').textContent=d.brands.length?`토스 ₩${w(d.toss.fee)} + 네이버페이 ₩${w(d.naver.fee)} = ₩${w(d.fee)} · ${m===_sbCurMonth()?'오늘까지':'한 달'} 실적`:'';
-    document.getElementById('sbPayNote').textContent='실적 기준(예상 아님), 식스샵 프로 공식 요율에 부가세 10%를 더한 값이에요. 정산서의 실제 값과 조금 다를 수 있어요. 공홈 수수료는 지금까지처럼 남는 돈에서 빼지 않았고(칸에 직접 넣으면 뺌), 스마트스토어의 네이버 수수료는 채널 표의 수수료에 이미 들어 있어요.';
+    document.getElementById('sbPayNote').textContent='실적 기준(예상 아님), 토스는 식스샵 프로 공식 요율 + 부가세, 네이버페이는 실제 정산에서 잰 요율(부가세 포함)이에요. 정산서의 실제 값과 조금 다를 수 있어요. 공홈 수수료는 지금까지처럼 남는 돈에서 빼지 않았고(칸에 직접 넣으면 뺌), 스마트스토어의 네이버 수수료는 채널 표의 수수료에 이미 들어 있어요.';
   }
   // 작업을 저장본에 적용 — 칸 · 항목이 독립적이라 서버 최신본 위에 그대로 얹는다
   function _sbApply(doc,ops){
@@ -55917,7 +55929,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       kpi('부가세 예상', '₩'+w(vat), `매출세액 ${w(vm.out)} − 매입세액 ${w(vm.inn)}`),   // 아래 법인 세금 표의 부가세와 같은 계산 (2026-11-25 사장님 "네, 맞춰줘", 그전엔 매출 ÷ 11)
     ].join('');
     const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 고정 지출 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
-    if(cur) lines.push(`월말 예상: 자동 수집 채널은 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요.`);
+    if(cur) lines.push(`월말 예상: 자동 수집 채널은 어제까지 실적 + 남은 ${res.left}일 × 최근 7일 평균이고, 결제 뒤 들어오는 반품 · 취소(채널별 실측 0~3.6%)를 미리 뺐어요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
     lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 29CM 수수료는 배송비를 뺀 상품 매출의 30%로 계산해요. 지그재그 매출은 스토어 부담 쿠폰을 뺀 값이에요. 그 밖의 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
     lines.push('부가세 예상은 아래 법인 세금 표와 같은 계산이에요 — 매출 ÷ 11 에서 택배 · 수수료 · 플랫폼 광고 · 월세 등의 매입세액을 뺀 값. 물건 수입 부가세 · 메타 광고는 공제로 안 잡았어요.');
