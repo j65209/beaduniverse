@@ -6244,6 +6244,23 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sb-fx tr.sb-it td{background:var(--bg-0)}
   .sb-fx tr.sb-it td:first-child{padding-left:22px}
   .sb-fx tr.sb-it[hidden]{display:none}
+  .sb-fx:not(.has-open) tr>:nth-child(2),.sb-fx:not(.has-open) tr>:nth-child(3){display:none}
+  .sb-mini tr.sb-grp td{font-weight:600;color:var(--text-1);cursor:pointer}
+  .sb-mini tr.sb-grp:hover td{background:var(--bg-2)}
+  .sb-mini tr.sb-grp .sb-ch::before{content:'▸';display:inline-block;width:16px;font-size:11px;color:var(--text-3)}
+  .sb-mini tr.sb-grp.is-open .sb-ch::before{content:'▾'}
+  .sb-mini tr.sb-it td{background:var(--bg-0)}
+  .sb-mini tr.sb-it .sb-ch{padding-left:24px;font-weight:500}
+  .sb-note{margin-top:10px}
+  .sb-note>summary h2{font-size:11.5px;font-weight:500;color:var(--text-3)}
+  .sb-note>div{font-size:11.5px;line-height:1.7;color:var(--text-3)}
+  @media (max-width:600px){
+    .sb-mini .sb-ch,.sb-fx tr>:first-child,.sb-lb-tbl tr>:first-child{position:sticky;left:0;z-index:1;background:var(--bg-1)}
+    .sb-mini tr.is-total .sb-ch,.sb-mini tr.sb-sub .sb-ch,.sb-fx tr.is-total>:first-child,.sb-lb-tbl tr.is-total>:first-child,.sb-mini thead th:first-child,.sb-fx thead th:first-child,.sb-lb-tbl thead th:first-child{background:var(--bg-2)}
+    .sb-mini tr.sb-it .sb-ch,.sb-fx tr.sb-it>:first-child{background:var(--bg-0)}
+    .sb-fx .sb-fx-name{min-width:130px}
+    .sb-fx-memo{white-space:nowrap}
+  }
   .sb-fx td.n{padding-right:8px;font-variant-numeric:tabular-nums}
   .sb-fx select.sb-in{min-width:84px;text-align:left;font-weight:500;cursor:pointer}
   .sb-fx tr.sb-fx-tax td{padding:9px 8px;color:var(--text-2)}
@@ -16305,7 +16322,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="sb-body" id="sbBody" hidden>
           <div class="sb-kpis" id="sbKpis"></div>
           <button type="button" class="sb-duebar" id="sbDueBar" onclick="sbGoTax()" hidden></button>
-          <div class="ably-formula" id="sbBasisTop"></div>
           <details class="ably-fold sb-basis-fold"><summary><h2>계산 기준 보기</h2></summary><div class="ably-formula" id="sbBasis"></div></details>
           <!-- 순서: 채널별 순수익 → 고정 지출 → 인건비 → 배송비 · 결제 수수료 → 세금 (2026-11-25 사장님 "채널별 순수익을 위로", "세금은 하단으로") -->
           <section class="ably-sec">
@@ -16317,7 +16333,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <details class="ably-sec ably-fold" id="sbFixedFold" open>
             <summary><h2>고정 지출 <span id="sbFixedSum"></span></h2></summary>
             <div class="ably-tbl-wrap"><table class="ably-tbl sb-fx" id="sbFixed"></table></div>
-            <div class="sb-fx-foot"><span>묶음을 누르면 항목이 펼쳐져요. 금액을 고치면 보고 있는 달부터 적용되고, 1년에 한 번 내는 항목은 12로 나눠 한 달 값으로 셉니다.</span></div>
+            <div class="sb-fx-foot"><button type="button" class="sb-fx-add" data-fxadd="etc">＋ 기타 항목</button><span>묶음을 누르면 항목이 펼쳐져요. 금액을 고치면 보고 있는 달부터 적용되고, 1년에 한 번 내는 항목은 12로 나눠 한 달 값으로 셉니다.</span></div>
           </details>
           <!-- 인건비 명세 — 근로계약서 기준 직원별 회사 실부담 (2026-11-23 사장님 "실부담 예상액") + 세후 · 퇴직금 (11-25). 합계가 위 표의 '인건비' 로 들어간다 -->
           <details class="ably-sec ably-fold" id="sbLaborBox" open hidden>
@@ -16326,15 +16342,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <div class="sb-fx-foot">
               <button type="button" class="sb-fx-add" onclick="sbStaffAdd()">＋ 직원 추가</button>
               <button type="button" class="sb-fx-add" id="sbLbMore" onclick="sbLaborMore()">소속 · 근무일 · 메모 보기</button>
-              <span id="sbLaborNote"></span>
             </div>
+            <details class="ably-fold sb-note"><summary><h2>계산 기준 보기</h2></summary><div id="sbLaborNote"></div></details>
           </details>
           <div class="sb-duo">
             <!-- 배송비 · 결제 수수료 (2026-11-25 사장님 "무료배송인 건수들, 배송비를 지급한 건수 합계" · "토스페이먼츠, 네이버페이 수수료들 정보") -->
             <details class="ably-sec ably-fold" open>
               <summary><h2>배송비 <span id="sbShipSum"></span></h2></summary>
               <div class="ably-tbl-wrap"><table class="ably-tbl sb-mini" id="sbShipTbl"></table></div>
-              <div class="sb-fx-foot"><span id="sbShipNote"></span></div>
+              <details class="ably-fold sb-note"><summary><h2>계산 기준 보기</h2></summary><div id="sbShipNote"></div></details>
             </details>
             <details class="ably-sec ably-fold" open>
               <summary><h2>공홈 결제 수수료 <span id="sbPaySum"></span></h2></summary>
@@ -16344,7 +16360,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
                 <summary><h2>결제수단별</h2></summary>
                 <div class="ably-tbl-wrap"><table class="ably-tbl sb-mini" id="sbPayHow"></table></div>
               </details>
-              <div class="sb-fx-foot"><span id="sbPayNote"></span></div>
+              <details class="ably-fold sb-note"><summary><h2>계산 기준 보기</h2></summary><div id="sbPayNote"></div></details>
             </details>
           </div>
           <!-- 법인 세금 · 4대보험 — 기한 · 예상액 자동, 30일 안 것만 펼침 (2026-11-25 사장님 "예상으로 다 분석해서 · 30일전부터 알림 · 많이 남은건 접어두기 · 하단으로") -->
@@ -16359,7 +16375,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
               <summary><h2 id="sbTaxPaidSum"></h2></summary>
               <div class="ably-tbl-wrap"><table class="ably-tbl sb-tax" id="sbTaxPaid"></table></div>
             </details>
-            <div class="sb-fx-foot"><span>금액 칸의 회색은 예상이에요 — 실제 고지액을 넣으면 그 값을 보여 줘요. 기한은 12월 결산 법인 · 매월 신고 기준이고 주말 · 공휴일이면 다음 영업일이에요. 원천세 · 지방소득세 · 4대보험 직원분은 세전 월급에, 4대보험 회사분은 고정 지출에 이미 들어 있어서 이 표는 남는 돈에서 따로 빼지 않아요(납부 확인용). 정확한 세액은 세무사 확인이 필요해요.</span></div>
+            <details class="ably-fold sb-note"><summary><h2>계산 기준 보기</h2></summary><div>금액 칸의 회색은 예상이에요 — 실제 고지액을 넣으면 그 값을 보여 줘요. 기한은 12월 결산 법인 · 매월 신고 기준이고 주말 · 공휴일이면 다음 영업일이에요. 원천세 · 지방소득세 · 4대보험 직원분은 세전 월급에, 4대보험 회사분은 고정 지출에 이미 들어 있어서 이 표는 남는 돈에서 따로 빼지 않아요(납부 확인용). 정확한 세액은 세무사 확인이 필요해요.</div></details>
           </details>
         </div>
       </section>
@@ -55042,7 +55058,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     {id:'pp-ohou',      brand:'pp',  label:'오늘의집', report:'ohou-pp', perOrderShip:true, noAutoAd:true},
     {id:'pp-eql',       brand:'pp',  label:'EQL',      report:'eql-pp', perOrderShip:true, noAutoAd:true},
     {id:'pp-ably',      brand:'pp',  label:'에이블리', report:'ably-pp', perOrderShip:true, noAutoAd:true},
-    {id:'pp-wconcept',  brand:'pp',  label:'W컨셉',    report:'wconcept-pp', perOrderShip:true, noAutoAd:true},
+    {id:'pp-wconcept',  brand:'pp',  label:'W컨셉',    report:'wconcept-pp', perOrderShip:true, noAutoAd:true, hideUntilData:true},
     {id:'akoi-29cm',    brand:'akoi',label:'29CM',     report:'29cm-akoi', perOrderShip:true, noAutoAd:true, feeRate:SB_29CM_FEE},
     {id:'akoi-ohou',    brand:'akoi',label:'오늘의집', report:'ohou-akoi', perOrderShip:true, noAutoAd:true},
     {id:'akoi-wconcept',brand:'akoi',label:'W컨셉',    report:'wconcept-akoi', perOrderShip:true, noAutoAd:true},
@@ -55506,11 +55522,12 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     }).filter(r=>r.free+r.paid>0);
     const sum=l=>l.reduce((a,r)=>({free:a.free+r.free,paid:a.paid+r.paid,income:a.income+r.income}),{free:0,paid:0,income:0});
     const tr=(name,r,cls)=>{ const n=r.free+r.paid; return `<tr class="${cls||''}"><td class="sb-ch">${name}</td><td class="n">${w(n)}</td><td class="n">${w(r.free)} <small>${n?_stratPct(r.free/n):''}</small></td><td class="n">${w(r.paid)}</td><td class="n">${w(r.income)}</td><td class="n">${w(r.free*unit)}</td></tr>`; };
-    const block=(title,l)=>!l.length?'':l.map(r=>tr(`${esc(_sbBrand(r.c.brand).display)} ${esc(r.c.label)}${r.from?`<small>${r.from}</small>`:''}`,r)).join('')+tr(title,sum(l),'sb-sub');
+    const block=(title,g,l)=>!l.length?'':tr(`${title}<small>${l.length}곳</small>`,sum(l),`sb-grp${_sb.grpOpen.has(g)?' is-open':''}" data-grp="${g}`)
+      +(_sb.grpOpen.has(g)?l.map(r=>tr(`${esc(_sbBrand(r.c.brand).display)} ${esc(r.c.label)}${r.from?`<small>${r.from}</small>`:''}`,r,'sb-it')).join(''):'');
     const H=rows.filter(r=>r.home), P=rows.filter(r=>!r.home), A=sum(rows);
     document.getElementById('sbShipTbl').innerHTML=rows.length?'<thead><tr><th>채널</th><th class="n">배송 건</th><th class="n">무료배송</th><th class="n">배송비 받은 건</th><th class="n">받은 배송비</th><th class="n">무료배송 택배비</th></tr></thead><tbody>'
-      +block('공홈 합계',H)+block('플랫폼 합계',P)+tr('전체 합계',A,'is-total')+'</tbody>':'<tbody><tr><td class="ably-empty">이 달 배송비 자료가 아직 없어요.</td></tr></tbody>';
-    document.getElementById('sbShipSum').textContent=rows.length?`무료배송 ${w(A.free)}건 · 배송비 받은 ${w(A.paid)}건 ₩${w(A.income)}`:'';
+      +block('공홈','ship-home',H)+block('플랫폼','ship-plat',P)+tr('전체 합계',A,'is-total')+'</tbody>':'<tbody><tr><td class="ably-empty">이 달 배송비 자료가 아직 없어요.</td></tr></tbody>';
+    document.getElementById('sbShipSum').textContent=rows.length?`무료배송 ${w(A.free)}건 · 배송비 받은 ${w(A.paid)}건 ₩${w(A.income)} · 오늘까지 실적`.replace(' · 오늘까지',m===_sbCurMonth()?' · 오늘까지':' · 한 달'):'';
     document.getElementById('sbShipNote').textContent=`실적 기준(예상 아님). 무료배송 = 고객이 기본 배송비를 안 낸 건, 받은 배송비에는 도서산간 추가비도 들어 있어요. 무료배송 택배비 = 무료배송 건 × ₩${w(unit)} (우리 부담). 에이블리는 전 상품 무료배송이고, 지그재그 직진배송은 뺐어요. 받은 배송비는 공홈 · 스마트스토어 · 플레이오토 채널 매출에 이미 들어 있어요(지그재그 매출은 상품 금액만).`;
   }
   // 요율 (%, 부가세 별도) — 식스샵 프로 공식 안내 "결제 수단별 수수료" (help.pro.sixshop.com/orders/payment-fee, 2026-11-25 확인). 카드만 사업자 매출 등급에 따라 다르다
@@ -55567,7 +55584,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const keys=Object.keys(d.how).sort((a,b)=>b.startsWith('toss')-a.startsWith('toss')||d.how[b].amt-d.how[a].amt);
     document.getElementById('sbPayHow').innerHTML='<thead><tr><th>결제수단</th><th class="n">건수</th><th class="n">결제 금액</th><th class="n">요율 (부가세 포함)</th><th class="n">수수료</th></tr></thead><tbody>'
       +keys.map(k=>{ const [s,t]=k.split(':'), h=d.how[k]; return `<tr><td class="sb-ch">${s==='toss'?'토스페이먼츠':'네이버페이'} ${esc(SB_PAY_LABEL[t]||t)}</td><td class="n">${w(h.n)}</td><td class="n">${w(h.amt)}</td><td class="n">${h.text}</td><td class="n">${w(h.fee)}</td></tr>`; }).join('')+'</tbody>';
-    document.getElementById('sbPaySum').textContent=d.brands.length?`토스 ₩${w(d.toss.fee)} + 네이버페이 ₩${w(d.naver.fee)} = ₩${w(d.fee)}`:'';
+    document.getElementById('sbPaySum').textContent=d.brands.length?`토스 ₩${w(d.toss.fee)} + 네이버페이 ₩${w(d.naver.fee)} = ₩${w(d.fee)} · ${m===_sbCurMonth()?'오늘까지':'한 달'} 실적`:'';
     document.getElementById('sbPayNote').textContent='실적 기준(예상 아님), 식스샵 프로 공식 요율에 부가세 10%를 더한 값이에요. 정산서의 실제 값과 조금 다를 수 있어요. 공홈 수수료는 지금까지처럼 남는 돈에서 빼지 않았고(칸에 직접 넣으면 뺌), 스마트스토어의 네이버 수수료는 채널 표의 수수료에 이미 들어 있어요.';
   }
   // 작업을 저장본에 적용 — 칸 · 항목이 독립적이라 서버 최신본 위에 그대로 얹는다
@@ -55782,10 +55799,10 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         +`<td><input class="sb-in sb-fx-amt" data-fx="amt" data-id="${esc(r.id)}" inputmode="numeric" autocomplete="off" aria-label="${esc(r.name)} 금액"></td>`
         +`<td class="n" data-mon="${esc(r.id)}"></td><td class="n" data-yr="${esc(r.id)}"></td>`
         +`<td class="sb-fx-memo"><input class="sb-in sb-fx-memo-in" data-fx="memo" data-id="${esc(r.id)}" autocomplete="off" placeholder="메모" aria-label="${esc(r.name)} 메모"></td><td><button type="button" class="sb-fx-del" data-del="${esc(r.id)}" aria-label="${esc(r.name)} 빼기" title="이 달부터 빼기">×</button></td></tr>`;
-    document.getElementById('sbFixed').innerHTML='<thead><tr><th>구분</th><th>주기</th><th class="n">금액</th><th class="n">한 달</th><th class="n">1년</th><th>메모</th><th></th></tr></thead><tbody>'
+    document.getElementById('sbFixed').innerHTML='<thead><tr><th>구분</th><th>주기</th><th class="n">금액</th><th class="n">한 달</th><th class="n">1년</th><th>비중 · 메모</th><th></th></tr></thead><tbody>'
       +SB_GROUPS.map(([g,name])=>{
         const l=rows.filter(r=>r.grp===g);
-        if(!l.length&&g!=='etc') return '';
+        if(!l.length) return '';
         return `<tr class="sb-grp" data-grp="${g}"><td class="sb-grp-n">${name}<small data-grpn="${g}"></small></td><td></td><td></td><td class="n" data-grpm="${g}"></td><td class="n" data-grpy="${g}"></td><td><small data-grpw="${g}"></small></td><td>${g==='people'?'':`<button type="button" class="sb-fx-add" data-fxadd="${g}" aria-label="${name} 항목 추가">＋</button>`}</td></tr>`+l.map(item).join('');
       }).join('')
       +'<tr class="is-total"><td>고정 지출 합계</td><td></td><td></td><td class="n" id="sbFixedTotal"></td><td class="n" id="sbFixedYear"></td><td></td><td></td></tr>'
@@ -55795,6 +55812,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const w=_stratW, sum=l=>l.reduce((a,r)=>a+r.amount,0), yr=r=>r.cycle==='year'?r.raw:r.amount*12, ysum=l=>l.reduce((a,r)=>a+yr(r),0);
     const q=(s,v)=>{ const el=document.querySelector('#sbFixed '+s); if(el) el.textContent=v; };
     document.getElementById('sbFixedSum').innerHTML=`한 달 ₩${w(fixedSum)} · 1년 ₩${w(ysum(fixed))}`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'');
+    document.getElementById('sbFixed').classList.toggle('has-open',SB_GROUPS.some(([g])=>_sb.grpOpen.has(g)));
     q('#sbFixedTotal','₩'+w(fixedSum)); q('#sbFixedYear','₩'+w(ysum(fixed)));
     const taxY=_sbTaxYear();
     q('#sbFixedTaxM',w(taxY/12)); q('#sbFixedTaxY',w(taxY));
@@ -55898,8 +55916,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       kpi('고정 지출', '₩'+w(fixedSum), `${fixed.length}개 항목`+(todo?` · <span class="sb-warn">금액 미입력 ${todo}개</span>`:'')),
       kpi('부가세 예상', '₩'+w(vat), '매출 ÷ 11 · 매입 공제 전'),
     ].join('');
-    document.getElementById('sbBasisTop').innerHTML=`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 고정 지출 ₩${w(fixedSum)} = <b>${money(left)}</b>`;
-    const lines=[];
+    const lines=[`<b>남는 돈</b> = 채널 순수익 ₩${w(res.net)} − 고정 지출 ₩${w(fixedSum)} = <b>${money(left)}</b>`];
     if(cur) lines.push(`월말 예상: 자동 수집 채널은 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
     lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 29CM 수수료는 배송비를 뺀 상품 매출의 30%로 계산해요. 지그재그 매출은 스토어 부담 쿠폰을 뺀 값이에요. 그 밖의 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
@@ -55930,7 +55947,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       // 아직 연결 전 채널 — 그 달 자동 자료도, 칸 값(입력 · 지난달 기준)도 없으면 숨김. 입력 중인 칸이 있으면 그대로 둠
       if(c.hideUntilData){
         const tr=document.getElementById(`sb-row-${c.id}`);
-        if(tr&&!tr.contains(active)) tr.hidden=!auto&&!SB_FIELDS.some(([f])=>vals[f].v);
+        if(tr&&!tr.contains(active)) tr.hidden=!SB_FIELDS.some(([f])=>vals[f].v);
       }
     });
     const paintTotal=(p,rows)=>{
