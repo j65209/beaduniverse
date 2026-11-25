@@ -26,7 +26,7 @@ const OFF = new Set(['faq', 'clm', 'cjb', 'dz', 'mdp', 'dm']);
 const QUIET = new Set(['appr']);          // 목록에만 — 띄우지 않음
 const STOCK_JOB = /^(pro-stock|erp|po-|reorder|kd-|stock|new-products|link-watch|office-(stock|defects|reorder|report))/, STOCK_NAME = /재고|ERP|매핑|발주|리오더|입고/i;          // 자동 업무 가운데 재고 쪽만
 const stockJob = x => STOCK_JOB.test(String(x.id || '')) || STOCK_NAME.test(String(x.name || x.label || ''));
-const AREAS = ['재고 ERP', '발주', '신상', '리오더', '승인 · 출금', 'CS팀', '디자인팀', 'MD팀', '자동 업무'];
+const AREAS = ['재고 ERP', '발주', '신상', '리오더', '승인 · 출금', '에이전트 학습', 'CS팀', '디자인팀', 'MD팀', '자동 업무'];
 const BR = {kop: '코페리', apt: '아페티', koz: '코즈미', '6a': '식스에이', '6A': '식스에이', yar: '야르', akoi: '아코이하우스', pp: '프로덕트피알', bb: '브라이트비드', ct: '클리어타입', sb: '샤인비드'};
 const CHN = {home: '공홈', smartstore: '스마트스토어', ably: '에이블리', zigzag: '지그재그', '29cm': '29CM', wconcept: 'W컨셉', coupang: '퇴점 채널', ohou: '오늘의집', eql: 'EQL'};
 const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -136,6 +136,15 @@ const SRC = [
     const [c, w] = await Promise.all([sb('leave_comp_requests?select=id,staff_name,work_date,days,reason,requested_at&status=eq.pending&deleted_at=is.null&order=requested_at.asc&limit=100'), sb('withdrawal_requests?select=id,requested_by,requested_at,rows&status=eq.notified&notify_muted=is.false&order=requested_at.asc&limit=100')]);
     return c.map(x => ({k: 'comp:' + x.id, a: '승인 · 출금', t: `대체휴무 승인 대기 — ${x.staff_name}`, b: [x.work_date && md(x.work_date) + ' 근무', x.days && x.days + '일', x.reason].filter(Boolean).join(' · '), at: x.requested_at, go: 'comp'}))
       .concat(w.map(x => ({k: 'wd:' + x.id, a: '승인 · 출금', t: `출금 요청 — ${x.requested_by || '벤더팀'}`, b: `${(x.rows || []).length}건`, at: x.requested_at, q: 1, go: 'vendor'})));
+  }},
+  // 에이전트 학습 — 정할 시나리오 (2026-11-25 사장님 "전승훈한테 알림을 띄워서 시나리오 매칭하거나 수정해야하는거 클로드를 껴서 맞추고") — 새로 생겼을 때만 한 줄
+  {id: 'csl', nm: '에이전트 학습', ev: 5, async run() {
+    const d = await px('/cs/kakao-review', {arr: 'items'}); if (d.staff || d.outside) return [];
+    const has = new Set((d.rows || []).map(r => r.key)), xs = d.items.filter(x => !has.has(x.key)), wait = (d.claude || []).filter(c => c.out && c.out.st === 'done' && !has.has(c.key) && !(d.claude || []).some(y => y.key === c.key && y.at > c.at));
+    const nw = d.items.reduce((m, x) => Math.max(m, x.at || 0), 0), r = [];
+    if (xs.length) r.push({k: 'csl', a: '에이전트 학습', t: `시나리오 정할 것 ${n(xs.length)}건`, b: '대충 말하면 클로드가 정리해 시나리오북에 넣어요', list: xs.slice(0, 40).map(x => `${x.label || x.brand || ''} · ${cut(x.title || x.q, 60)}`), sig: String(nw), go: 'csl'});
+    if (wait.length) r.push({k: 'cslw', a: '에이전트 학습', t: `클로드가 정리한 것 ${n(wait.length)}건`, b: '보고 시나리오북에 넣어 주세요', list: wait.slice(0, 40).map(c => cut(c.say, 60)), sig: wait.map(c => c.id).sort().join().slice(0, 400), go: 'csl'});
+    return r;
   }},
   {id: 'kko', to: 'cs', nm: '카카오톡 직원 호출', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && r.managerCall && !(r.photos > 0 || r.videos > 0) && !(typeof KKO_HIDE !== 'undefined' && KKO_HIDE.has(r.brand))).map(r => ({k: `kko:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — 고객이 직원을 불렀어요`, b: r.nick || '', sig: 'call', at: r.lastAt, hot: 1, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},          // 사진도 있는 방은 아래 이미지 한 장에 같이(한 방 = 한 장)
   {id: 'kkoimg', to: 'cs', nm: '카카오톡 이미지', ev: 2, run: async () => (await px('/cs/kakao', {arr: 'chats'})).chats.filter(r => !r.done && (r.photos > 0 || r.videos > 0) && !(typeof KKO_HIDE !== 'undefined' && KKO_HIDE.has(r.brand))).map(r => ({k: `kkoimg:${r.pid}:${r.chatId}`, a: 'CS팀', t: `${BR[r.brand] || r.brand} 카톡 — ${r.photos > 0 ? '이미지' : '영상'} 확인 필요${r.managerCall ? ' · 직원 호출' : ''}`, b: [r.nick, r.photos > 0 && `사진 ${r.photos}장`, r.videos > 0 && `영상 ${r.videos}개`].filter(Boolean).join(' · '), sig: `${r.photos || 0}/${r.videos || 0}${r.managerCall ? '/call' : ''}`, at: r.lastAt, hot: r.managerCall ? 1 : 0, go: 'kko', arg: `${r.pid}:${r.chatId}`}))},          // 사진이 더 오면(sig) 다시 뜸, 직원이 답하면 저절로 빠짐
@@ -321,6 +330,7 @@ function go(x) {
     case 'comp': return call(() => hrOpenCompReq());
     case 'vendor': return call(() => triggerVendor());
     case 'kko': call(() => triggerCs()); scrollTo_('kkoBox', 500); return setTimeout(() => call(() => { if (x.arg) kkoOpenChat(x.arg); }), 900);
+    case 'csl': return call(() => openCsAgentPage());
     case 'faq': call(() => triggerCs()); setTimeout(() => call(() => kkoTab('learn')), 500); return scrollTo_('kkoBox', 700);
     case 'cjb': call(() => triggerCs()); setTimeout(() => call(() => cjbTab('list')), 600); return scrollTo_('cjbBox', 700);
     case 'voc': call(() => triggerCs()); scrollTo_('vocEmbed', 700); return setTimeout(() => { try { const fr = document.querySelector('#vocEmbed iframe'); if (fr && fr.contentWindow.vocGo) fr.contentWindow.vocGo(x.arg); } catch (e) {} }, 2500);

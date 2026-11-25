@@ -26,6 +26,7 @@
      시나리오북이랑 시험답변 합쳐주고. 예상질문 답 이런것도 요약으로 다 저장해두고. 학습이 필요하거나 수정이 필요한 시나리오 처음보는 시나리오 이런것만 보이게 해줘. 내가 개입해서 수정하게"
      · 볼 것 = 수정 필요 · 학습 필요 · 처음 보는 시나리오만 (맞은 답 · 정해진 대로 간 것은 안 보임 — 되살리지 말 것). GET · POST /cs/kakao-review (관리자, 대화는 사무실 인터넷만)
      · 정리된 답 = 예상 질문 · 답 요약 + 브랜드 정보 (GET /cs/kakao-book). 고치면 에이전트가 바로 그 답을 쓴다(10분 안). 고객에게 나가는 것은 아님
+     · 고치기는 무조건 클로드를 거친다 (11-25 사장님 "무조건 중간에 클로드를 끼고 수정해야할듯해. 내가 대충 말해도 클로드가 정리해서 시나리오북에 넣을거니까") — 대충 말하기 → 맥미니 kakao-match 가 답 · 기준으로 정리(1~2분) → [이대로 넣기] → 시나리오북. 답을 손으로 고치는 칸은 두지 않는다
      · 적는 중에는 다시 그리지 않는다. 적다 만 글은 이 브라우저에(DRAFT), 못 보낸 것은 OUT 에 두었다가 다시 보낸다(번호가 같아 두 번 안 들어감)
      · 색은 아낌 — 무채색 + 빨강 하나, 대화창만 카카오톡 색 */
   :root { --bg:#f4f5f7; --panel:#fff; --line:#e6e8ec; --line2:#d3d7de; --ink:#191919; --t2:#4b5563; --t3:#8b93a1; --soft:#f3f4f6; --red:#c62828; --sky:#b2c7da; --yel:#fee500; --top:60px;
@@ -93,6 +94,10 @@
   .btn.p { flex:1 0 100%; min-height:48px; border-color:var(--ink); background:var(--ink); color:#fff; font-size:14.5px; font-weight:800 } .btn.p:hover { background:#000 } .btn:disabled { opacity:.45; cursor:default }
   .acts .btn:not(.p) { flex:1 }
   .state { margin-top:10px; min-height:20px; font-size:12.5px; color:var(--t3) } .state.bad { color:var(--red); font-weight:700 }
+  .cur { margin-top:8px; padding:12px 14px; border:1px solid var(--line); border-radius:12px; font-size:13.5px; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere }
+  .th { margin-top:18px; display:flex; flex-direction:column; gap:10px } .say { align-self:flex-end; max-width:88%; padding:9px 13px; border-radius:14px; background:var(--soft); font-size:13.5px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere }
+  .out { padding:14px 16px; border:1px solid var(--line2); border-radius:14px; font-size:13.5px; line-height:1.6 } .out.last { border-color:var(--ink) } .out h4 { margin:0 0 4px; font-size:12px; font-weight:800; color:var(--t3) } .out h4:not(:first-child) { margin-top:12px } .out p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere } .out .bad { color:var(--red); font-weight:600 } .out.wait { border-style:dashed; color:var(--t3) }
+  .sc { padding:14px 18px } .sc + .sc { border-top:1px solid var(--line) } .sc .m { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--t3) } .sc .m b { color:var(--t2) } .sc .m .mini { margin-left:auto } .sc h3 { margin:4px 0 6px; font-size:14px; font-weight:700 } .sc p { margin:0; font-size:13.5px; line-height:1.6; color:var(--t2); white-space:pre-wrap; overflow-wrap:anywhere } .sc p.r { margin-top:6px; font-size:12.5px; color:var(--t3) }
   .fixed { margin-bottom:14px; padding:12px 14px; border:1px solid var(--ink); border-radius:12px; font-size:13px } .fixed b { font-weight:800 } .fixed .mini { float:right }
 
   /* 정리된 답 */
@@ -146,11 +151,12 @@ const DRAFT = 'bb_csagent_draft_v1', OUT = 'bb_csagent_out_v1';
 const ls = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } };
 const me = () => { try { return (localStorage.getItem('brightbeed_diary_me') || '').trim().slice(0, 20); } catch (e) { return ''; } };
 const rid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
-const KIND = {staff: ['직원 답 확인', '직원이 실제로 한 답이 기준과 달라요'], fix: ['수정 필요', '답이 아쉽거나 틀렸어요'], learn: ['학습 필요', '답을 몰라 직원을 불렀어요'], new: ['처음 보는 시나리오', '예상 질문에 없던 문의예요']};
+const KIND = {staff: ['직원 답 확인', '직원이 실제로 한 답이 기준과 달라요'], fix: ['수정 필요', '답이 아쉽거나 틀렸어요'], learn: ['학습 필요', '답을 몰라 직원을 불렀어요'], new: ['처음 보는 시나리오', '예상 질문에 없던 문의예요'], say: ['새로 말하기', '고객 문의와 상관없이 기준을 말해 주세요']};
+const BR = {all: '모든 브랜드', kop: '코페리', apt: '아페티', koz: '코즈미', '6a': '식스에이', yar: '야르', akoi: '아코이하우스', pp: '프로덕트피알'};
 const ACT = {answer: '바로 답', ask: '정보를 물음', todo: '답하고 처리할 일로', staff: '직원을 부름'};
 const WHO = {staff: '직원', ai: '카나나', bot: '자동응답'};
 const FV = {text: '답을 고쳤어요', ok: '이대로 맞아요', staff: '직원이 맡아요', drop: '볼 필요 없음'};
-const S = {d: null, err: '', book: null, bookErr: '', links: null, linkErr: '', tab: 'todo', f: 'all', brand: '', q: '', cur: '', b2: '', q2: '', sub: 'qa', open: new Set(), rows: new Map(), edits: new Map(), out: ls(OUT) || [], sending: false, wait: 0, tm: 0};
+const S = {cl: [], clT: 0, d: null, err: '', book: null, bookErr: '', links: null, linkErr: '', tab: 'todo', f: 'all', brand: '', q: '', cur: '', b2: '', q2: '', sub: 'qa', open: new Set(), rows: new Map(), edits: new Map(), out: ls(OUT) || [], sending: false, wait: 0, tm: 0};
 
 /* ── 서버 ── */
 async function api(path, body) {
@@ -171,7 +177,7 @@ async function load() {
     S.d = j; S.err = '';
     S.rows = new Map(); (j.rows || []).forEach(r => S.rows.set(r.key, r));
     S.edits = new Map(); (j.edits || []).forEach(r => S.edits.set(r.key, r));
-    S.out.forEach(o => apply(o));
+    S.cl = j.claude || []; S.out.forEach(o => apply(o)); watch();
     if (j.staff && S.tab === 'todo') S.tab = 'book';
   } catch (e) { S.err = (e && e.message) || String(e); }
   if (S.tab === 'todo' || (S.tab === 'book' && !S.book)) paint();
@@ -182,7 +188,7 @@ async function loadBook() {
   try { S.book = await api('/cs/kakao-book'); S.bookErr = ''; } catch (e) { S.bookErr = (e && e.message) || String(e); }
   if (S.tab === 'book' && !typing()) paint();
 }
-const typing = () => { const a = document.activeElement; return !!a && a.tagName === 'TEXTAREA' && !!a.value; };
+const typing = () => { const a = document.activeElement; return (!!a && a.tagName === 'TEXTAREA' && !!a.value) || !!($('cs') && $('cs').value.trim()); };
 
 /* ── 고친 것 저장 ── 화면 먼저, 서버는 차례로. 번호가 같아 두 번 안 들어간다 */
 function apply(o) { const m = /^(faq|fact):/.test(o.key) ? S.edits : S.rows; if (o.del) m.delete(o.key); else m.set(o.key, Object.assign({}, o, {snap: o.snap || (m.get(o.key) || {}).snap})); }
@@ -223,6 +229,8 @@ function toast(t) { try { if (P.toast) P.toast(t); } catch (e) { /* noop */ } }
 /* ── 머리 ── */
 const items = () => {
   const xs = (S.d && S.d.items || []).slice(), has = new Set(xs.map(x => x.key));
+  S.cl.forEach(c => { if (!has.has(c.key) && !S.rows.has(c.key) && /^t:(all|[a-z0-9]{2,5}):/.test(c.key) && !xs.some(x => x.key === c.key)) { has.add(c.key); xs.unshift({key: c.key, kind: 'say', brand: c.brand || 'all', label: c.label || BR[c.brand] || '모든 브랜드', at: c.at, title: c.say, q: c.say, ctx: [], draft: '', act: ''}); } });
+  if (S.mine && !has.has(S.mine.key)) xs.unshift(S.mine);
   S.rows.forEach(r => { if (!has.has(r.key) && r.snap) xs.push(Object.assign({key: r.key}, r.snap)); });   // 목록에서 빠진 뒤에도 고친 것은 볼 수 있게
   return xs;
 };
@@ -256,12 +264,13 @@ function paintTodo() {
   if (d.outside) { m.innerHTML = `<div class="none" style="flex:1">볼 것 ${N(d.counts.fix + d.counts.learn + d.counts.new)}건이 있어요.<br>고객 대화라 사무실 인터넷에서만 열려요.</div>`; return; }
   const bs = new Map(); items().forEach(x => bs.set(x.brand, x.label || x.brand));
   m.innerHTML = `<div class="todo" id="todo"><section class="col c1"><div class="lhead"><div class="chips">${[['all', '전체'], ['staff', '직원 답 확인'], ['fix', '수정 필요'], ['learn', '학습 필요'], ['new', '처음 보는'], ['done', '고친 것']].map(f => `<button type="button" data-f="${f[0]}">${f[1]} <em></em></button>`).join('')}</div>`
-    + `<div class="bar"><select id="fb" aria-label="브랜드"><option value="">모든 브랜드</option>${[...bs].map(b => `<option value="${E(b[0])}"${S.brand === b[0] ? ' selected' : ''}>${E(b[1])}</option>`).join('')}</select><input type="search" id="fq" placeholder="찾기" value="${E(S.q)}" aria-label="찾기" autocomplete="off"></div></div><div class="list" id="list"></div></section>`
+    + `<div class="bar"><select id="fb" aria-label="브랜드"><option value="">모든 브랜드</option>${[...bs].map(b => `<option value="${E(b[0])}"${S.brand === b[0] ? ' selected' : ''}>${E(b[1])}</option>`).join('')}</select><input type="search" id="fq" placeholder="찾기" value="${E(S.q)}" aria-label="찾기" autocomplete="off"><button type="button" class="mini" id="nw" style="min-height:36px">+ 새로 말하기</button></div></div><div class="list" id="list"></div></section>`
     + `<section class="col c2" id="c2"></section><section class="col c3" id="c3"></section></div>`;
   m.querySelector('.chips').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.f = b.dataset.f; head(); listOnly(true); };
   $('fb').onchange = e => { S.brand = e.target.value; listOnly(true); };
   let t; $('fq').oninput = e => { clearTimeout(t); t = setTimeout(() => { S.q = e.target.value; listOnly(true); }, 150); };
   $('list').onclick = e => { const b = e.target.closest('.it'); if (b) pick(b.dataset.k, true); };
+  $('nw').onclick = () => { const b = S.brand || 'all', k = `t:${b}:${Date.now()}`; S.mine = {key: k, kind: 'say', brand: b, label: BR[b] || '모든 브랜드', at: Date.now(), title: '새로 말하기', q: '', ctx: [], draft: '', act: ''}; pick(k, true); const t = $('cs'); if (t) t.focus(); };
   listOnly(true);
 }
 function listOnly(reset) {
@@ -291,36 +300,62 @@ function pick(key, user) {
   c2.innerHTML = `<div class="chead"><button type="button" class="back" id="bk" aria-label="목록으로">‹</button><b>${E(x.label || x.brand)}</b><span class="s">${new Date(x.at).getMonth() + 1}/${new Date(x.at).getDate()} 문의 · 이름과 번호는 가렸어요</span></div><div class="talk" id="talk">${html || `<div class="msg ask"><div class="b">${E(x.q)}</div></div>`}</div>`;
   const tk = $('talk'); tk.scrollTop = tk.scrollHeight;
   $('bk').onclick = () => { T.classList.remove('open'); };
-  // 고치기
-  const r = S.rows.get(key), dr = getDraft(key), start = dr ? dr.text : r && r.v === 'text' ? r.text : x.draft || '', note0 = dr ? dr.note : r ? r.note || '' : '';
-  const real = x.real && x.real !== x.draft && x.realWho === 'staff' ? x.real : '';
-  c3.innerHTML = `<div class="edit">${r ? `<div class="fixed"><button type="button" class="mini" id="un">되돌리기</button><b>${E(FV[r.v])}</b>${r.by ? ' · ' + E(r.by) : ''}</div>` : ''}`
-    + `<div class="why${x.kind === 'fix' || x.kind === 'staff' ? ' r' : ''}"><b>${E(KIND[x.kind][0])}${x.act ? ' · ' + E(ACT[x.act] || '') : ''}</b>${E(x.kind === 'new' ? KIND.new[1] + '. ' + (x.draft ? '직원이 실제로 보낸 답을 넣어 두었어요.' : '아직 직원 답이 없어요.') : x.why || KIND[x.kind][1])}</div>`
-    + `<div class="lb">에이전트가 보낼 답${real ? '<button type="button" class="mini" id="useReal">직원 답 가져오기</button>' : ''}</div><textarea id="ans" maxlength="1500" placeholder="이 문의에 에이전트가 보낼 답을 적어 주세요">${E(start)}</textarea>`
+  // 클로드와 맞추기
+  right(x);
+}
+const clOf = k => S.cl.filter(c => c.key === k).sort((a, b) => a.at - b.at);
+function right(x) {
+  const c3 = $('c3'), key = x.key, r = S.rows.get(key), dr = getDraft(key), th = clOf(key), last = th[th.length - 1], o = last && last.out && last.out.st === 'done' ? last.out : null;
+  const K = KIND[x.kind] || KIND.learn, real = x.real && x.real !== x.draft && x.realWho === 'staff' ? x.real : '';
+  const outHtml = (c, isLast) => { const q = c.out || {};
+    if (q.st === 'err') return `<div class="out"><p class="bad">정리하지 못했어요. ${E(q.why || '')} 다시 말해 주세요.</p></div>`;
+    if (q.st !== 'done') return `<div class="out wait">클로드가 정리하는 중이에요. ${E(q.why || '1~2분쯤 걸려요.')}</div>`;
+    return `<div class="out${isLast ? ' last' : ''}"><h4>${q.act === 'staff' ? '직원이 맡음' : '고객에게 보낼 답 · ' + E(ACT[q.act] || '')}</h4><p>${E(q.reply || '')}</p>${q.rule ? `<h4>앞으로 쓸 기준 · ${q.scope === 'all' ? '모든 브랜드' : E(x.label || x.brand)}</h4><p>${E(q.rule)}</p>` : ''}${(q.also || []).length ? `<h4>같이 쓸 문의</h4><p>${E(q.also.join('\n'))}</p>` : ''}${q.conflict ? `<h4>앞 기준과 다른 점</h4><p class="bad">${E(q.conflict)}</p>` : ''}${q.ask ? `<h4>확인할 것</h4><p class="bad">${E(q.ask)}</p>` : ''}</div>`; };
+  c3.innerHTML = `<div class="edit">${r ? `<div class="fixed"><button type="button" class="mini" id="un">되돌리기</button><b>${E(FV[r.v])}</b>${r.by ? ' · ' + E(r.by) : ''}${r.text ? `<div class="cur">${E(r.text)}</div>` : ''}${r.note ? `<div class="state">${E(r.note)}</div>` : ''}</div>` : ''}`
+    + `<div class="why${x.kind === 'fix' || x.kind === 'staff' ? ' r' : ''}"><b>${E(K[0])}${x.act ? ' · ' + E(ACT[x.act] || '') : ''}</b>${E(x.why || K[1])}</div>`
+    + (x.draft ? `<div class="lb">에이전트가 보낼 답</div><div class="cur">${E(x.draft)}</div>` : '')
     + (real ? `<div class="ref">${E('직원이 실제로 보낸 답\n' + real)}</div>` : '')
-    + `<div class="lb">에이전트에게 알려 줄 것 <small>선택</small></div><textarea id="nt" class="sm" maxlength="800" placeholder="이런 문의에는 언제나 이렇게 한다는 기준이 있으면 적어 주세요">${E(note0)}</textarea>`
-    + `<div class="acts"><button type="button" class="btn p" id="sv">저장하고 다음</button><button type="button" class="btn" data-v="staff">직원이 맡기</button><button type="button" class="btn" data-v="drop">볼 필요 없음</button></div><div class="state" data-k="${E(key)}"></div></div>`;
-  const ans = $('ans'), nt = $('nt'), sv = $('sv');
-  const label = () => { sv.textContent = ans.value.trim() && ans.value.trim() === (x.draft || '').trim() && !nt.value.trim() ? '이대로 맞아요' : '저장하고 다음'; sv.disabled = !ans.value.trim(); };
-  const keep = () => { const same = ans.value === (r && r.v === 'text' ? r.text : x.draft || '') && nt.value === (r ? r.note || '' : ''); draft(key, same ? null : ans.value, same ? '' : nt.value); label(); };
-  ans.oninput = nt.oninput = keep; label();
-  const done = (v) => {
-    const text = ans.value.trim(), note = nt.value.trim();
-    if (v === 'text' && text === (x.draft || '').trim() && !note) v = 'ok';
+    + (th.length ? `<div class="th">${th.map((c, i) => `<div class="say">${E(c.say)}</div>${outHtml(c, i === th.length - 1)}`).join('')}</div>` : '')
+    + (o ? `<div class="acts"><button type="button" class="btn p" id="put">이대로 시나리오북에 넣기</button></div>` : '')
+    + `<div class="lb">클로드에게 말하기 <small>대충 적어도 정리해 줘요</small></div><textarea id="cs" class="sm" maxlength="1200" placeholder="${th.length ? '아니면 이렇게 고쳐 줘' : '예) 이럴땐 사진 먼저 받고 재배송할지 부분취소할지 물어봐'}">${E(dr ? dr.note : '')}</textarea>`
+    + `<div class="acts"><button type="button" class="btn${o ? '' : ' p'}" id="cl">클로드가 정리</button>${x.draft && !th.length ? '<button type="button" class="btn" data-v="ok">지금 답이 맞아요</button>' : ''}${x.kind === 'say' ? '' : '<button type="button" class="btn" data-v="staff">직원이 맡기</button><button type="button" class="btn" data-v="drop">볼 필요 없음</button>'}</div><div class="state" data-k="${E(key)}"></div></div>`;
+  const ta = $('cs'), snap = Object.fromEntries(['kind', 'brand', 'label', 'at', 'title', 'q', 'ctx', 'act', 'draft', 'note', 'why', 'real', 'realWho'].map(k => [k, x[k]]));
+  ta.oninput = () => draft(key, null, ta.value);
+  const go = async () => {
+    const say1 = ta.value.trim(); if (!say1) { say(key, '말할 것을 적어 주세요', true); ta.focus(); return; }
+    const b = $('cl'); b.disabled = true; b.textContent = '보내는 중';
+    const one = S.saying && S.saying.key === key && S.saying.say === say1 ? S.saying : {id: rid(), key, say: say1, at: Date.now(), by: me()}; S.saying = one;
+    try {
+      await api('/cs/kakao-review', {id: one.id, key, v: 'claude', say: say1, by: one.by});
+      S.saying = null; draft(key, null); S.cl.push(Object.assign({brand: x.brand, label: x.label}, one)); if (S.mine && S.mine.key === key) { S.mine = null; listOnly(); }
+      if (S.cur === key) right(items().find(y => y.key === key) || x); watch();
+    } catch (e) { draft(key, null, say1); b.disabled = false; b.textContent = '클로드가 정리'; say(key, '보내지 못했어요: ' + ((e && e.message) || e) + ' 글은 남겨 두었어요.', true); }
+  };
+  $('cl').onclick = go;
+  ta.onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing) { e.preventDefault(); go(); } };
+  const next = row => {
     const order = shown().map(y => y.key), at = order.indexOf(key);
-    draft(key, null);
-    save({key, v, text: v === 'text' ? text : '', note, snap: Object.fromEntries(['kind', 'brand', 'label', 'at', 'title', 'q', 'ctx', 'act', 'draft', 'note', 'why', 'real', 'realWho'].map(k => [k, x[k]]))});
-    listOnly();
+    draft(key, null); save(Object.assign({key, snap}, row)); listOnly();
     const nx = S.f === 'done' ? key : order[at + 1] || order[at - 1] || '';
     pick(nx && nx !== key ? nx : S.f === 'done' ? key : '', innerWidth <= 760 && !!nx && nx !== key);
     const b = document.querySelector('.it[aria-current=true]'); if (b) b.scrollIntoView({block: 'nearest'});
   };
-  sv.onclick = () => done('text');
-  ans.onkeydown = nt.onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing && !sv.disabled) { e.preventDefault(); done('text'); } };
-  c3.querySelectorAll('.btn[data-v]').forEach(b => { b.onclick = () => done(b.dataset.v); });
-  const ur = $('useReal'); if (ur) ur.onclick = () => { ans.value = real; keep(); ans.focus(); };
+  const pt = $('put'); if (pt) pt.onclick = () => next({v: o.act === 'staff' && !o.reply ? 'staff' : 'text', text: o.reply || '', note: (o.scope === 'all' ? '[모든 브랜드] ' : '') + (o.rule || '')});
+  c3.querySelectorAll('.btn[data-v]').forEach(b => { b.onclick = () => next({v: b.dataset.v, text: '', note: ''}); });
   const un = $('un'); if (un) un.onclick = () => { save({key, del: true}); listOnly(); pick(shown().some(y => y.key === key) ? key : (shown()[0] || {}).key || '', false); };
-  if (S.out.some(o => o.key === key)) say(key, '저장하는 중');
+  if (S.out.some(q => q.key === key)) say(key, '저장하는 중');
+}
+/* 정리를 기다리는 것이 있으면 6초마다 — 적는 중이면 그 칸은 그대로 두고 결과만 */
+function watch() {
+  clearTimeout(S.clT);
+  if (!S.cl.some(c => !c.out || c.out.st === 'wait')) return;
+  S.clT = setTimeout(async () => {
+    if (!document.hidden) try {
+      const j = await api('/cs/kakao-review'), was = JSON.stringify(clOf(S.cur)); if (j.claude) { const mine = S.cl.filter(c => !j.claude.some(y => y.id === c.id) && Date.now() - c.at < 60000); S.cl = j.claude.concat(mine); }
+      if (S.tab === 'todo' && S.cur && JSON.stringify(clOf(S.cur)) !== was) { const x = items().find(y => y.key === S.cur), a = document.activeElement && document.activeElement.id === 'cs'; if (x) { const ta = $('cs'), v = ta ? ta.value : ''; right(x); const t2 = $('cs'); if (t2) { t2.value = v; if (a) { t2.focus(); t2.setSelectionRange(v.length, v.length); } } } }
+    } catch (e) { /* 다음 차례 */ }
+    watch();
+  }, 6000);
 }
 
 /* ── 정리된 답 ── */
@@ -331,7 +366,7 @@ function paintBook() {
   if (!B) { m.innerHTML = `<div class="none" style="flex:1">${S.bookErr ? '불러오지 못했어요. ' + E(S.bookErr) : '불러오는 중…'}</div>`; return; }
   const bs = (B.brands || []).filter(b => b.brand !== 'ct'); if (!bs.some(b => b.brand === S.b2)) S.b2 = (bs[0] || {}).brand || '';
   const keep = m.querySelector('.book') ? m.querySelector('.book').scrollTop : 0;
-  m.innerHTML = `<div class="book"><div class="bin"><div class="bar"><div class="seg"><button type="button" data-s="qa" aria-selected="${S.sub === 'qa'}">질문과 답</button><button type="button" data-s="facts" aria-selected="${S.sub === 'facts'}">브랜드 정보</button></div><select id="bb" aria-label="브랜드">${bs.map(b => `<option value="${E(b.brand)}"${b.brand === S.b2 ? ' selected' : ''}>${E(b.label)}</option>`).join('')}</select><input type="search" id="bq" placeholder="찾기" value="${E(S.q2)}" aria-label="정리된 답에서 찾기" autocomplete="off"></div><div id="bl"></div></div></div>`;
+  m.innerHTML = `<div class="book"><div class="bin"><div class="bar"><div class="seg"><button type="button" data-s="qa" aria-selected="${S.sub === 'qa'}">질문과 답</button><button type="button" data-s="sc" aria-selected="${S.sub === 'sc'}">시나리오북</button><button type="button" data-s="facts" aria-selected="${S.sub === 'facts'}">브랜드 정보</button></div><select id="bb" aria-label="브랜드">${bs.map(b => `<option value="${E(b.brand)}"${b.brand === S.b2 ? ' selected' : ''}>${E(b.label)}</option>`).join('')}</select><input type="search" id="bq" placeholder="찾기" value="${E(S.q2)}" aria-label="정리된 답에서 찾기" autocomplete="off"></div><div id="bl"></div></div></div>`;
   m.querySelector('.seg').onclick = e => { const b = e.target.closest('button'); if (b) { S.sub = b.dataset.s; S.open.clear(); paintBook(); } };
   $('bb').onchange = e => { S.b2 = e.target.value; bookList(); };
   let t; $('bq').oninput = e => { clearTimeout(t); t = setTimeout(() => { S.q2 = e.target.value; bookList(); }, 150); };
@@ -339,6 +374,12 @@ function paintBook() {
 }
 function bookList() {
   const L = $('bl'), B = S.book, b = S.b2, f = factsOf(b), q = S.q2.trim().toLowerCase(), can = S.d && !S.d.staff && !S.d.outside;
+  if (S.sub === 'sc') {   // 사장님이 클로드와 맞춰 넣은 것 (11-25)
+    const xs = [...S.rows.values()].filter(r => ['text', 'ok', 'staff'].includes(r.v) && r.snap && (r.snap.brand === b || r.snap.brand === 'all' || /^\[모든 브랜드\]/.test(r.note || '')) && (!q || [r.snap.title, r.snap.q, r.text, r.note].join(' ').toLowerCase().includes(q))).sort((a, c) => c.at - a.at);
+    L.innerHTML = `<div class="bg">사장님이 정한 시나리오 <em>${N(xs.length)}</em></div>` + (xs.length ? `<div class="card">${xs.map(r => `<div class="sc"><div class="m"><b>${E(/^\[모든 브랜드\]/.test(r.note || '') ? '모든 브랜드' : r.snap.label || '')}</b><span>${E(FV[r.v])} · ${new Date(r.at).getMonth() + 1}/${new Date(r.at).getDate()}</span><button type="button" class="mini" data-sc="${E(r.key)}">다시 맞추기</button></div><h3>${E(r.snap.title || r.snap.q || '')}</h3><p>${E(r.v === 'staff' ? '직원이 맡아요' : r.text || r.snap.draft || '')}</p>${r.note ? `<p class="r">${E(r.note.replace(/^\[모든 브랜드\]\s*/, ''))}</p>` : ''}</div>`).join('')}</div>` : '<div class="none">아직 넣은 시나리오가 없어요.</div>');
+    L.onclick = e => { const k = e.target.closest('[data-sc]'); if (!k) return; S.tab = 'todo'; S.f = 'done'; paint(); pick(k.dataset.sc, true); };
+    return;
+  }
   if (S.sub === 'facts') {
     const own = new Set(((B.facts || {}).own || {})[b] || []), skip = new Set(['분류', '브랜드']);
     const keys = Object.keys(f).filter(k => !skip.has(k) && f[k] && (!q || (k + ' ' + f[k]).toLowerCase().includes(q)));
