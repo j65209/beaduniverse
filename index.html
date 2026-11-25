@@ -16310,7 +16310,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <!-- 순서: 채널별 순수익 → 고정 지출 → 인건비 → 배송비 · 결제 수수료 → 세금 (2026-11-25 사장님 "채널별 순수익을 위로", "세금은 하단으로") -->
           <section class="ably-sec">
             <h2>채널별 순수익 <span class="sb-basis-tag" id="sbChBasis"></span></h2>
-            <div class="sb-unit">플랫폼 택배비 <b>주문 1건당 ₩</b><input class="sb-in" id="sbShipUnit" data-unit="1" inputmode="numeric" autocomplete="off" aria-label="주문 1건당 택배비"><span>보고 있는 달부터 적용 · 에이블리 · 지그재그 · 스마트스토어 · 29CM · W컨셉 · 오늘의집 · EQL (공홈은 고정비)</span></div>
+            <div class="sb-unit">플랫폼 택배비 <b>주문 1건당 ₩</b><input class="sb-in" id="sbShipUnit" data-unit="1" inputmode="numeric" autocomplete="off" aria-label="주문 1건당 택배비"><span>보고 있는 달부터 적용 · 에이블리 · 지그재그 · 스마트스토어 · 29CM · W컨셉 · 오늘의집 · EQL (공홈도 같은 단가로 고정 지출의 택배비에)</span></div>
             <div class="ably-tbl-wrap"><table class="ably-tbl sb-tbl" id="sbChannels"></table></div>
           </section>
           <!-- 고정 지출 — 묶음마다 한 달 · 1년 (2026-11-25 사장님 "고정지출이나 연 지출 이런게 다 제각각 … 깔끔하고 가독성 좋게") -->
@@ -55148,14 +55148,24 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     if(/지피티|GPT|마그네픽|디스크앤|플레이오토|클로드|깃허브|파트너|Workspace|드롭박스|식스샵|도메인|구독|이용권/i.test(n)) return 'tool';
     return 'etc';
   }
+  function _sbHomeShip(month){
+    const res=_sbResolve(month), n=res.rows.filter(r=>/-home$/.test(r.c.id)).reduce((a,r)=>a+r.vals.orders.v,0);
+    return {n, unit:res.unit, amount:n*res.unit};
+  }
   function _sbFixed(month){
     const rows=(((_sb.view||{}).fixed)||[]).map(it=>{
       const keys=Object.keys(it.amounts||{}).filter(k=>k<=month).sort();
       if(!keys.length) return null;
       const a=it.amounts[keys[keys.length-1]];
       if(a===null) return null;
-      const raw=Number(a)||0, year=it.cycle==='year';
-      return {id:it.id, name:it.name||'', memo:it.memo||'', raw, cycle:year?'year':'month', amount:year?Math.round(raw/12):raw, grp:it.cat||_sbGroupOf(it.name), todo:!!it.todo&&!raw};
+      let raw=Number(a)||0, est='';
+      const year=it.cycle==='year';
+      // 택배비 — autoFrom 달부터는 공홈 배송 건수 × 택배 단가로 저절로 (2026-11-25 사장님 "배송건수로 예상금액 넣어주던지"). 그 달 뒤에 금액을 직접 넣으면 그 값
+      if(it.auto==='homeShip'&&month>=it.autoFrom&&(keys[keys.length-1]<it.autoFrom||!raw)){
+        const q=_sbHomeShip(month);
+        raw=q.amount; est=`공홈 배송 ${_stratW(q.n)}건${month===_sbCurMonth()?'(월말 예상)':''} × ₩${_stratW(q.unit)}`;
+      }
+      return {id:it.id, name:it.name||'', memo:it.memo||'', est, raw, cycle:year?'year':'month', amount:year?Math.round(raw/12):raw, grp:it.cat||_sbGroupOf(it.name), todo:!!it.todo&&!raw};
     }).filter(Boolean);
     // 인건비 명세 합계 — 직원별 회사 실부담을 한 줄로 (입력칸 없음, 아래 명세에서 고침)
     const lb=_sbLabor(month);
@@ -55783,9 +55793,9 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       const r=fixed.find(x=>x.id===el.dataset.id);
       if(!r||el===active) return;
       if(el.dataset.fx==='name') el.value=r.name;
-      else if(el.dataset.fx==='memo') el.value=r.memo;
+      else if(el.dataset.fx==='memo'){ el.value=r.memo; if(r.est) el.placeholder=r.est; }
       else if(el.dataset.fx==='cycle') el.value=r.cycle;
-      else{ el.value=r.raw?w(r.raw):''; el.placeholder=r.todo?'금액 입력':'0'; el.classList.toggle('is-todo',r.todo); }
+      else{ el.value=r.raw&&!r.est?w(r.raw):''; el.placeholder=r.est?'예상 '+w(r.raw):r.todo?'금액 입력':'0'; el.title=r.est||''; el.classList.toggle('is-todo',r.todo); }
     });
   }
   // 인건비 명세 표 뼈대 — 값은 _sbPaintLabor 가 칸별로 넣는다 (입력 중 캐럿 보호)
@@ -55873,7 +55883,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     if(cur) lines.push(`월말 예상: 자동 수집 채널은 어제까지 실적 + 남은 ${res.left}일 × 최근 14일 평균이에요. 아페티 W컨셉은 자동 수집이 없어 지난달 기준으로 잡았어요 — 주문수를 넣으면 택배비가 바로 계산돼요.`);
     else if(res.est) lines.push(`<span class="sb-warn">지난달 기준으로 추정한 칸이 ${res.est}개 있어요.</span> 실제 금액을 넣으면 더 정확해져요.`);
     lines.push('29CM · W컨셉 · 오늘의집 · EQL · 프로덕트피알 에이블리는 플레이오토에서 매출 · 주문수를 받아요. 29CM 수수료는 매출의 30%로 계산해요. 그 밖의 수수료 · 광고비는 플레이오토에 없어서 지난달 비율로 계산하고, 칸에 넣으면 그 값을 써요.');
-    lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정비의 택배비에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
+    lines.push('칸 글자색: 회색 자동 · 주황 지난달 기준 추정 · 검정 직접 입력 (지우면 자동으로 돌아가요). 공홈 택배비는 고정 지출의 택배비(공홈 배송 건수 × 단가 예상)에 들어 있고, 공홈 · 에이블리 수수료는 시트처럼 빼지 않아요.');
     if(res.unread.length) lines.push(`<span class="sb-warn">⚠ 못 읽은 채널: ${_stratEsc(res.unread.join(', '))} — 지난달 기준으로 계산했어요.</span>`);
     if(res.partial.length) lines.push(`<span class="sb-warn">⚠ 이 달 중간부터 보고서가 있는 채널: ${_stratEsc(res.partial.join(', '))} — 있는 날만 합산했어요.</span>`);
     if(fixed.some(x=>x.auto)) lines.push('월 고정비의 인건비는 근로계약서 기준 직원별 회사 실부담(세전 월급 + 4대보험 회사분 + 퇴직 적립) 추정이에요 — 아래 인건비에 직원별로 있어요.');
