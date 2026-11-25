@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>1점 리뷰 관리 · 비드유니버스</title>
+<script src="../boss-guard.js?v=2"></script><script>window.BossGuard||document.write('<script src="../boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
+<script src="../office-undo.js?v=1"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<script>
+  /* 오피스 안 화면(iframe, index.html 의 TOOL_PAGES 'review')이면 '← 오피스' 는 그 화면을 닫는다 (bbToolClose). 혼자 열면 이 페이지의 잠금 화면. */
+  (function () {
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    window.__inOffice = inOffice;
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) {
+        a.href = home;
+        if (inOffice) a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
+        });
+      });
+    });
+  })();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  /* 1점 리뷰 관리 — 오피스 업무용 툴 (2026-11-25)
+     사장님 "코페리,아페티,코즈미 입점된 플랫폼 모두 리뷰중에 1개짜리 리뷰가 있으면 그 리뷰 작성 내용,이미지,리뷰작성자 연락처를 주문에서 추출해서 정리해주는 업무용 툴"
+     · 자료 = 맥미니 sixshop-collector src/review-one.ts(60분) → 프록시 GET /cs/reviews. 진행 상태 · 메모 = POST /cs/review-mark (맥미니에만, 사무실 인터넷에서만)
+     · 이름 · 전화는 사무실 인터넷에서만 온다 — 이 파일 · 슈퍼베이스 · 깃허브에 고객 정보를 두지 않는다
+     · 여기서 고객에게 자동으로 나가는 것은 없다 (복사 · 전화 앱 열기만) */
+  :root { --bg: #f3f5f8; --panel: #fff; --line: #e5e7eb; --line2: #d5dae2; --text: #0f172a; --t2: #475569; --t3: #7a8698; --ink: #0f172a; --red: #e11d48; --top: 58px;
+    --font: Pretendard, -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif }
+  * { box-sizing: border-box }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased }
+  button, input, textarea, select { font-family: inherit; font-size: inherit; color: inherit }
+  button { cursor: pointer } [hidden] { display: none !important }
+  :focus-visible { outline: 2px solid #4f7fcf; outline-offset: 2px }
+  .top { position: sticky; top: 0; z-index: 30; min-height: var(--top); display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
+  .back { color: var(--t2); text-decoration: none; font-weight: 600; font-size: 13px; white-space: nowrap; padding: 6px 8px; border-radius: 8px } .back:hover { background: var(--bg) }
+  .ttl { font-weight: 800; font-size: 15px; letter-spacing: -.2px; white-space: nowrap }
+  .stamp { font-size: 12px; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 } .stamp.bad { color: var(--red); font-weight: 600 }
+  .top-r { margin-left: auto; display: flex; gap: 8px; flex: none }
+  .btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; color: var(--text); text-decoration: none }
+  .btn:hover { border-color: var(--line2); background: #fafbfc } .btn.pri { background: var(--ink); border-color: var(--ink); color: #fff }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; flex: none; max-width: 100%; overflow-x: auto; scrollbar-width: none }
+  .seg button { height: 32px; padding: 0 12px; border: 0; background: transparent; font-weight: 600; font-size: 13px; color: var(--t2); white-space: nowrap } .seg button + button { border-left: 1px solid var(--line) }
+  .seg button.on { background: var(--ink); color: #fff } .seg em { font-style: normal; font-weight: 500; opacity: .7; margin-left: 5px; font-variant-numeric: tabular-nums }
+  .inp { height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: #fff; min-width: 0; outline: none; font-size: 13px } .inp:focus { border-color: #4f7fcf }
+  #app { padding: 14px 16px 40px; display: flex; flex-direction: column; gap: 12px }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center } .tools .inp { flex: 0 1 220px } .cnt { margin-left: auto; font-size: 12.5px; color: var(--t3); white-space: nowrap }
+  .notice { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--t2) } .notice b { color: var(--text) } .notice.bad { border-color: #f5b5c2; color: var(--red) }
+  .list { display: flex; flex-direction: column; gap: 10px }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; display: grid; grid-template-columns: minmax(0, 1fr) 300px 270px; gap: 0 }
+  .card > div { padding: 14px 16px; min-width: 0 } .card > div + div { border-left: 1px solid #f0f2f5 }
+  .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--t3) } .meta b { color: var(--text); font-size: 13px } .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none }
+  .prod { display: flex; gap: 10px; align-items: center; margin: 8px 0 8px; min-width: 0 } .prod img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #eef1f5; flex: none } .prod div { min-width: 0 } .prod a, .prod span.n { font-weight: 600; font-size: 13px; color: var(--text); text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .prod a:hover { text-decoration: underline } .prod span.o { font-size: 12.5px; color: var(--t3); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .txt { font-size: 14.5px; white-space: pre-wrap; word-break: break-word } .txt.no { color: var(--t3); font-size: 13px }
+  .pics { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px } .pics button { width: 92px; height: 92px; padding: 0; border: 0; border-radius: 8px; overflow: hidden; background: #eef1f5 } .pics img { width: 100%; height: 100%; object-fit: cover; display: block }
+  .k { font-size: 12px; color: var(--t3) } .nm { font-weight: 700; font-size: 15px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap } .how { font-size: 12px; font-weight: 600; color: var(--t3) } .how.warn { color: var(--red) }
+  .tel { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0 8px; letter-spacing: -.2px }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap } .acts .btn { height: 30px; padding: 0 10px; font-size: 12.5px }
+  .ord { font-size: 12.5px; color: var(--t2); margin-top: 8px; word-break: break-all } .ord span { color: var(--t3) }
+  .cands { display: flex; flex-direction: column; margin-top: 6px; max-height: 260px; overflow: auto } .cands button { border: 0; border-top: 1px solid #f0f2f5; background: none; text-align: left; padding: 7px 2px; font-size: 12.5px } .cands button:hover { background: #fafbfc } .cands b { font-variant-numeric: tabular-nums } .cands span { color: var(--t3); display: block }
+  .st { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px } .st button { height: 32px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-weight: 600; font-size: 12.5px; color: var(--t2); padding: 0 } .st button.on { background: var(--ink); border-color: var(--ink); color: #fff }
+  .card textarea { width: 100%; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 58px; resize: vertical; outline: none; font-size: 13px } .card textarea:focus { border-color: #4f7fcf }
+  .by { font-size: 12px; color: var(--t3); margin-top: 4px; min-height: 18px } .by.err { color: var(--red) }
+  .badge { font-size: 12px; font-weight: 700; border: 1px solid var(--line2); border-radius: 999px; padding: 0 8px; color: var(--t2) }
+  .empty { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 44px 20px; text-align: center; color: var(--t3) } .more { align-self: center; height: 40px; padding: 0 22px; margin-top: 4px }
+  .ov { position: fixed; inset: 0; z-index: 200; background: rgba(15, 23, 42, .72); display: flex; align-items: center; justify-content: center; padding: 20px } .ov > img { max-width: 100%; max-height: calc(100dvh - 40px); border-radius: 8px; object-fit: contain } .ov .box { background: #fff; border-radius: 16px; padding: 22px; width: min(560px, 100%); max-height: calc(100dvh - 40px); overflow: auto } .ov h3 { margin: 0 0 10px; font-size: 17px } .ov .box p, .ov .box li { color: var(--t2); margin: 5px 0 } .ov ul { padding-left: 18px; margin: 0 0 12px }
+  .ov .x { position: absolute; right: 18px; top: 18px; width: 42px; height: 42px; border-radius: 50%; border: 0; background: #fff; font-size: 20px; line-height: 1 }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 500; max-width: calc(100vw - 32px) } .toast.err { background: var(--red) }
+  .lock { position: fixed; inset: 0; z-index: 400; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px } .lock-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 26px; width: min(340px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: center } .lock-box input { height: 42px; border: 1px solid var(--line); border-radius: 10px; text-align: center; font-size: 18px; letter-spacing: 4px; outline: none } .lock-box .err { color: var(--red); font-size: 12.5px; min-height: 18px }
+  .ios-top { display: none }
+  @media (min-width: 1600px) { .list { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch } .card { grid-template-columns: minmax(0, 1fr) 276px 226px } .card > div { padding: 14px } .st button { font-size: 12px } }
+  @media (max-width: 1080px) { .card { grid-template-columns: minmax(0, 1fr) 280px } .card > div:last-child { grid-column: 1 / -1; border-left: 0; border-top: 1px solid #f0f2f5 } .st { grid-template-columns: repeat(5, 1fr) } }
+  @media (max-width: 720px) {
+    .top { padding: 6px 10px; gap: 6px } .stamp { flex: 1 } #app { padding: 10px 10px 30px } .card { grid-template-columns: minmax(0, 1fr) } .card > div { padding: 12px } .card > div + div { border-left: 0; border-top: 1px solid #f0f2f5 }
+    .tools .inp { flex: 1 1 100% } .cnt { margin-left: 0 } .seg { width: 100% } .seg button { flex: 1; padding: 0 8px } .inp, .card textarea { font-size: 16px } .st button { font-size: 12px } .xl { display: none }
+  }
+  @media (max-width: 960px) and (min-height: 521px) { html.ios-solo .ios-top { display: block; position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: calc(env(safe-area-inset-top, 0px) + 12px); background: #fff } html.ios-solo body { padding-top: calc(env(safe-area-inset-top, 0px) + 12px) } html.ios-solo .top { top: calc(env(safe-area-inset-top, 0px) + 12px) } }
+</style>
+<script>try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}</script>
+</head>
+<body>
+<div class="ios-top" aria-hidden="true"></div>
+<div class="lock" id="lock" hidden>
+  <form class="lock-box" id="lockForm" autocomplete="off">
+    <b style="font-size:16px">1점 리뷰 관리</b>
+    <span style="font-size:13px;color:var(--t3)">오피스 접속 코드를 넣어 주세요</span>
+    <input id="lockPin" type="password" inputmode="numeric" aria-label="접속 코드">
+    <div class="err" id="lockErr"></div>
+    <button class="btn pri" type="submit" style="height:40px">열기</button>
+  </form>
+</div>
+<header class="top">
+  <a class="back" href="../">← 오피스</a>
+  <div class="ttl">1점 리뷰 관리</div>
+  <div class="stamp" id="stamp">불러오는 중…</div>
+  <div class="top-r"><button class="btn xl" id="xlBtn" type="button">엑셀로 받기</button><button class="btn" id="helpBtn" type="button">도움말</button></div>
+</header>
+<div id="app" hidden>
+  <div class="tools">
+    <div class="seg" id="viewSeg"></div>
+    <div class="seg" id="brandSeg"></div>
+    <div class="seg" id="mallSeg"></div>
+    <div class="seg" id="daySeg"></div>
+    <input class="inp" id="q" placeholder="글 · 상품 · 이름 · 번호 찾기" aria-label="찾기">
+    <span class="cnt" id="cnt"></span>
+  </div>
+  <div class="notice" id="notice" hidden></div>
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty" hidden></div>
+  <button class="btn more" id="more" type="button" hidden>더 보기</button>
+</div>
+<div id="ovs"></div>
+<div class="toast" id="toast" hidden role="status"></div>
+<script>
+(function () {
+  'use strict';
+  const PIN_HASH = { ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf: 'viewer', '61bac9d4e564d8096a969a0af7ec131066991620a2807be2b6b889cf8b24193e': 'master' };
+  const AUTH_VERSION = '4', MASTER_PIN_VER = '1', PAGE = 30;
+  const $ = id => document.getElementById(id);
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* noop */ } };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const safe = u => /^https?:\/\//.test(String(u || '')) ? String(u) : '';
+  const ME = () => (lsGet('brightbeed_diary_me') || lsGet('seed_me_v1') || '').trim().slice(0, 40);
+  const BR = { kop: ['코페리', '#1d4ed8'], apt: ['아페티', '#b45309'], koz: ['코즈미', '#0f766e'] };
+  const MALL = { ably: '에이블리', zigzag: '지그재그', '29cm': '29CM', home: '홈페이지' };
+  const STS = [['', '연락 전'], ['try', '연락함'], ['done', '삭제됨'], ['no', '거절'], ['skip', '제외']];
+  const DAY = 864e5, S = { d: null, base: '', marks: {}, view: 'todo', brand: '', mall: '', days: Number(lsGet('review_days') || 90), q: '', n: PAGE };
+  const DIRTY = 'review_dirty_v1';
+  let dirty = {}; try { dirty = JSON.parse(lsGet(DIRTY) || '{}') || {}; } catch (e) { dirty = {}; }
+  const saveDirty = () => lsSet(DIRTY, JSON.stringify(dirty));
+
+  let toastT = 0;
+  function toast(msg, err) { const t = $('toast'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, err ? 4500 : 2200); }
+  function overlay(html) { const o = document.createElement('div'); o.className = 'ov'; o.innerHTML = html + '<button class="x" type="button" aria-label="닫기">×</button>'; $('ovs').innerHTML = ''; $('ovs').appendChild(o); o.addEventListener('click', e => { if (e.target === o || e.target.closest('.x') || e.target.tagName === 'IMG') o.remove(); }); return o; }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('ovs').innerHTML = ''; });
+  async function copy(t, msg) { try { await navigator.clipboard.writeText(t); toast(msg); } catch (e) { toast('복사가 막혀 있어요 — 글을 끌어서 복사해 주세요', true); } }
+
+  /* ── 자료 · 저장 ── */
+  function pin() { for (const w of [window.parent !== window ? window.parent : null, window.opener]) { try { if (w && typeof w.ghPin === 'function') return w.ghPin(); } catch (e) { /* 다른 출처 */ } } return '2580'; }
+  async function api(path, opt) {
+    if (!S.base) { const t = await fetch('https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json?cb=' + Date.now(), { cache: 'no-store' }).then(r => r.json()); S.base = String(t.url || '').replace(/\/$/, ''); }
+    const r = await fetch(S.base + path, Object.assign({ cache: 'no-store' }, opt, { headers: Object.assign({ 'X-Brightbeed-PIN': pin() }, opt && opt.body ? { 'Content-Type': 'application/json' } : {}) }));
+    const j = await r.json().catch(() => ({})); if (!r.ok || !j.ok) { const e = new Error(j.error || 'HTTP ' + r.status); e.status = r.status; throw e; } return j;
+  }
+  async function load() {
+    const j = await api('/cs/reviews?cb=' + Date.now());
+    S.d = j; S.marks = j.marks || {};
+    Object.keys(dirty).forEach(id => { S.marks[id] = Object.assign({}, S.marks[id], dirty[id]); });
+    S.tels = {}; j.rows.forEach(r => { if (r.tel) S.tels[r.tel] = (S.tels[r.tel] || 0) + 1; });
+    const h = (Date.now() - j.at) / 36e5, d = new Date(j.at), st = $('stamp');
+    st.className = 'stamp' + (h > 4 ? ' bad' : '');
+    st.textContent = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준 · 1시간마다${h > 4 ? ' · 갱신이 밀렸어요' : ''}`;
+  }
+  let flushing = false, flushT = 0;
+  async function flush() {
+    if (flushing) return; flushing = true;
+    try {
+      for (const id of Object.keys(dirty)) {
+        const p = dirty[id];
+        try {
+          const j = await api('/cs/review-mark', { method: 'POST', body: JSON.stringify(Object.assign({ id, by: ME() }, p)) });
+          if (dirty[id] === p) { delete dirty[id]; saveDirty(); S.marks[id] = j.mark; note(id, '저장됨'); }
+        } catch (e) {
+          if (e.status === 400 || e.status === 403) { delete dirty[id]; saveDirty(); toast(e.message, true); note(id, '저장 안 됨', true); continue; }
+          throw e;
+        }
+      }
+    } catch (e) { Object.keys(dirty).forEach(id => note(id, '아직 저장 안 됨 — 다시 시도 중', true)); clearTimeout(flushT); flushT = setTimeout(flush, 8000); flushing = false; return; }
+    flushing = false;
+    if (Object.keys(dirty).length) { clearTimeout(flushT); flushT = setTimeout(flush, 300); }
+  }
+  function mark(id, patch, wait) { dirty[id] = Object.assign({}, dirty[id], patch); saveDirty(); S.marks[id] = Object.assign({}, S.marks[id], patch); note(id, '저장 중…'); clearTimeout(flushT); flushT = setTimeout(flush, wait || 0); }
+  function note(id, t, err) { const c = document.querySelector(`.card[data-id="${CSS.escape(id)}"] .by`); if (c) { c.textContent = t; c.className = 'by' + (err ? ' err' : ''); } }
+
+  /* ── 거르기 ── */
+  const M = r => S.marks[r.id] || {};
+  const msOf = t => Date.parse(String(t).replace(' ', 'T') + ':00+09:00');
+  const isGone = r => !!r.gone;
+  const viewOf = r => { const st = M(r).st || ''; if (st === 'done' || isGone(r)) return 'done'; if (st === 'no' || st === 'skip') return 'no'; return st === 'try' ? 'try' : 'todo'; };
+  const VIEWS = [['todo', '연락 전'], ['try', '연락함'], ['done', '삭제됨'], ['no', '거절 · 제외']];
+  const base = () => { const q = S.q.trim().toLowerCase(); return S.d.rows.filter(r => (!S.brand || r.b === S.brand) && (!S.mall || r.m === S.mall) && Date.now() - msOf(r.at) <= S.days * DAY && (!q || [r.text, r.product, r.opt, r.name, r.tel, String(r.tel).replace(/-/g, ''), r.orderNo, M(r).memo].join(' ').toLowerCase().includes(q))); };
+  const cur = () => base().filter(r => viewOf(r) === S.view).sort((a, b) => (a.at < b.at ? 1 : -1));
+  const seg = (id, list, on, count) => { $(id).innerHTML = list.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(on) === String(v) ? 'on' : ''}">${t}${count ? `<em>${count(v)}</em>` : ''}</button>`).join(''); };
+
+  /* ── 그리기 ── */
+  const HOW = { exact: ['주문번호로 확인', ''], guess: ['추정 — 본인 확인 먼저', 'warn'] };
+  function contact(r) {
+    if (S.d.outside) return '<div class="k">이름 · 연락처는 사무실 인터넷에서만 보여요</div>';
+    if (r.purged) return '<div class="k">삭제된 지 30일이 지나 연락처를 지웠어요</div>';
+    const m = M(r), p = m.pick && (r.cands || []).find(c => c.orderNo === m.pick), x = p || r;
+    if ((r.how === 'cands') && !p) return `<div class="nm">후보 ${r.cands.length}명 <span class="how warn">누군지 확실하지 않음</span></div><div class="k">리뷰에 주문번호가 없어, 같은 상품을 산 주문이에요. 맞는 사람을 누르면 정해져요.</div><div class="cands">${r.cands.map(c => `<button type="button" data-pick="${esc(c.orderNo)}"><b>${esc(c.name)} ${esc(c.tel)}</b><span>${esc(c.orderedAt)} 주문${c.opt ? ' · ' + esc(c.opt) : ''}</span></button>`).join('')}</div>`;
+    if (!x.tel && !x.name) return `<div class="nm">연락처 없음</div><div class="k">${r.how === 'wait' ? '주문을 찾는 중이에요 — 다음 갱신 때 나와요' : '맞는 주문을 못 찾았어요'}</div>${r.who ? `<div class="ord"><span>아이디</span> ${esc(r.who)}</div>` : ''}`;
+    const how = p ? ['직접 고른 주문', 'warn'] : HOW[r.how] || ['', ''], n = S.tels[x.tel] || 0;
+    return `<div class="nm">${esc(x.name || '이름 없음')} <span class="how ${how[1]}">${how[0]}</span></div><div class="tel">${esc(x.tel || '번호 없음')}</div>
+      <div class="acts">${x.tel ? `<button class="btn" type="button" data-copy="${esc(x.tel)}">번호 복사</button><a class="btn" href="tel:${esc(String(x.tel).replace(/[^0-9]/g, ''))}">전화</a><a class="btn" href="sms:${esc(String(x.tel).replace(/[^0-9]/g, ''))}">문자</a>` : ''}<button class="btn" type="button" data-msg>안내 글 복사</button>${p ? '<button class="btn" type="button" data-unpick>다시 고르기</button>' : ''}</div>
+      <div class="ord"><span>주문</span> ${esc(x.orderedAt)}<br><span>주문번호</span> ${esc(x.orderNo)}${r.rtel ? `<br><span>받는 분</span> ${esc(r.rname)} ${esc(r.rtel)}` : ''}${n > 1 ? `<br><b>같은 고객의 1점 리뷰 ${n}건</b>` : ''}</div>`;
+  }
+  function card(r) {
+    const m = M(r), b = BR[r.b] || [r.b, '#64748b'], st = m.st || '', img = safe(r.pimg), url = safe(r.url);
+    return `<article class="card" data-id="${esc(r.id)}"><div>
+      <div class="meta"><span class="dot" style="background:${b[1]}"></span><b>${esc(b[0])}</b><span>${esc(MALL[r.m] || r.m)}</span><span>${esc(r.at)}</span><span class="badge">${r.m === 'ably' ? '별로예요' : '★ 1점'}</span>${r.gone ? `<span class="badge">${r.hidden ? '쇼핑몰이 숨김' : '목록에서 사라짐'}</span>` : ''}</div>
+      <div class="prod">${img ? `<img src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<div>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(r.product)}</a>` : `<span class="n">${esc(r.product)}</span>`}${r.opt ? `<span class="o">${esc(r.opt)}</span>` : ''}</div></div>
+      <div class="txt${r.text ? '' : ' no'}">${r.text ? esc(r.text) : '글 없이 별점만 남겼어요'}</div>
+      ${r.imgs.length ? `<div class="pics">${r.imgs.map(safe).filter(Boolean).map(u => `<button type="button" data-img="${esc(u)}" aria-label="사진 크게"><img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`).join('')}</div>` : ''}
+    </div><div>${contact(r)}</div><div>
+      <div class="st">${STS.map(([v, t]) => `<button type="button" data-st="${v}" class="${v === st ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <textarea maxlength="1000" placeholder="${S.d.outside ? '메모는 사무실에서만 보여요' : '통화 내용 · 메모'}"${S.d.outside ? ' disabled' : ''} aria-label="메모">${esc(m.memo || '')}</textarea>
+      <div class="by">${m.at ? esc((m.by ? m.by + ' · ' : '') + new Date(m.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })) : ''}</div>
+    </div></article>`;
+  }
+  function paint() {
+    const all = base(), by = {}; all.forEach(r => { const v = viewOf(r); by[v] = (by[v] || 0) + 1; });
+    seg('viewSeg', VIEWS, S.view, v => by[v] || 0);
+    seg('brandSeg', [['', '전체'], ...Object.entries(BR).map(([k, v]) => [k, v[0]])], S.brand);
+    seg('mallSeg', [['', '모든 곳'], ...Object.entries(MALL)], S.mall);
+    seg('daySeg', [[30, '30일'], [90, '90일'], [365, '1년']], S.days);
+    const list = cur(); S.list = list;
+    $('cnt').textContent = `${list.length}건`;
+    $('list').innerHTML = list.slice(0, S.n).map(card).join('');
+    $('empty').hidden = !!list.length; $('empty').textContent = S.view === 'todo' ? '연락할 1점 리뷰가 없어요' : '여기에 해당하는 리뷰가 없어요';
+    $('more').hidden = list.length <= S.n;
+    const bad = Object.entries(S.d.sources || {}).filter(([, s]) => !s.ok), n = $('notice'), nm = k => { const [m, b] = k.split(':'); return `${(BR[b] || [b])[0]} ${MALL[m] || m}`; };
+    n.hidden = !(S.d.outside || bad.length); n.className = 'notice' + (bad.length ? ' bad' : '');
+    n.innerHTML = [S.d.outside ? '<b>사무실 밖이라</b> 이름 · 연락처 · 메모는 안 보이고 저장도 안 돼요.' : '', bad.length ? '이번에 못 읽은 곳: ' + esc(bad.map(([k]) => nm(k)).join(', ')) + ' — 다음 차례에 다시 읽어요 (지난 자료는 그대로)' : ''].filter(Boolean).join('<br>');
+  }
+  const guide = r => `안녕하세요, ${(BR[r.b] || ['저희'])[0]}입니다.\n${MALL[r.m] || ''}에서 구매하신 '${r.product}' 상품으로 불편을 드려 정말 죄송합니다.\n남겨 주신 리뷰를 보고 직접 사과드리고 해결해 드리고 싶어 연락드렸습니다.\n어떤 점이 불편하셨는지 말씀해 주시면 교환 · 반품 등 가능한 방법으로 도와드리겠습니다.\n문제가 잘 해결되셨다면, 괜찮으실 때 리뷰를 한 번 다시 살펴봐 주시면 감사하겠습니다.`;
+  const rowOf = e => { const c = e.target.closest('.card'); return c && S.d.rows.find(r => r.id === c.dataset.id); };
+  $('list').addEventListener('click', e => {
+    const r = rowOf(e), t = e.target.closest('button'); if (!r || !t) return;
+    if (t.dataset.img) return void overlay(`<img src="${esc(t.dataset.img)}" alt="리뷰 사진" referrerpolicy="no-referrer">`);
+    if (t.dataset.copy) return copy(t.dataset.copy, '번호를 복사했어요');
+    if ('msg' in t.dataset) return copy(guide(r), '안내 글을 복사했어요');
+    if (S.d.outside && ('st' in t.dataset)) return toast('저장은 사무실에서만 할 수 있어요', true);
+    if (t.dataset.pick) { mark(r.id, { pick: t.dataset.pick }); paint(); }
+    if ('unpick' in t.dataset) { mark(r.id, { pick: '' }); paint(); }
+    if ('st' in t.dataset) { const was = viewOf(r); mark(r.id, { st: t.dataset.st }); paint(); if (viewOf(r) !== was) toast(`'${(VIEWS.find(v => v[0] === viewOf(r)) || [])[1]}'(으)로 옮겼어요`); }
+  });
+  $('list').addEventListener('input', e => { if (e.target.tagName !== 'TEXTAREA') return; const r = rowOf(e); if (r) mark(r.id, { memo: e.target.value }, 800); });
+  const on = (id, fn) => $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { fn(b.dataset.v); S.n = PAGE; paint(); } });
+  on('viewSeg', v => { S.view = v; }); on('brandSeg', v => { S.brand = v; }); on('mallSeg', v => { S.mall = v; }); on('daySeg', v => { S.days = Number(v); lsSet('review_days', v); });
+  let qt = 0; $('q').addEventListener('input', e => { S.q = e.target.value; clearTimeout(qt); qt = setTimeout(() => { S.n = PAGE; paint(); }, 180); });
+  $('more').addEventListener('click', () => { S.n += PAGE; paint(); });
+  document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG') t.style.visibility = 'hidden'; }, true);
+
+  $('xlBtn').addEventListener('click', () => {
+    if (!S.d) return; if (S.d.outside) return toast('연락처가 있어 사무실에서만 받을 수 있어요', true);
+    const cell = v => { let s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+    const head = ['브랜드', '쇼핑몰', '리뷰 날짜', '상품', '옵션', '리뷰 글', '사진', '이름', '연락처', '연락처 근거', '주문일', '주문번호', '상태', '메모'];
+    const how = { exact: '주문번호로 확인', guess: '추정', cands: '후보 여럿', none: '못 찾음', wait: '찾는 중' };
+    const out = S.list.map(r => { const m = M(r), p = m.pick && (r.cands || []).find(c => c.orderNo === m.pick), x = p || r; return [(BR[r.b] || [r.b])[0], MALL[r.m] || r.m, r.at, r.product, r.opt, r.text, r.imgs.join(' '), x.name, x.tel, p ? '직접 고름' : how[r.how], x.orderedAt, x.orderNo, (STS.find(s => s[0] === (m.st || '')) || [])[1] + (r.gone ? ' (사라짐)' : ''), m.memo || ''].map(cell).join(','); });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + [head.map(cell).join(','), ...out].join('\r\n')], { type: 'text/csv' })); a.download = `1점리뷰_${new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  $('helpBtn').addEventListener('click', () => overlay(`<div class="box"><h3>1점 리뷰 관리</h3><ul>
+    <li><b>에이블리</b>는 별점이 없어 '별로예요'를 1점으로 봐요. 주문번호로 정확히 이어져요.</li><li><b>지그재그</b> 1점 · 직진배송 포함, 주문번호로 정확히 이어져요.</li>
+    <li><b>29CM</b>(코페리)는 하루 한 번 읽어요. 리뷰에 주문번호가 없어 상품 · 기간 · 아이디 앞 글자로 <b>추정</b>해요.</li><li><b>홈페이지</b> 네이버페이 리뷰는 작성자가 안 나와 같은 상품을 산 주문을 <b>후보</b>로 보여요.</li>
+    <li>W컨셉 · 스마트스토어 리뷰는 자동으로 읽을 수 없어 빠져 있어요.</li><li>리뷰가 지워지면 저절로 '삭제됨'으로 넘어가요 (두 번 연달아 안 보일 때).</li><li>이름 · 연락처 · 메모는 사무실 인터넷에서만 보여요.</li><li>여기서 고객에게 자동으로 나가는 것은 없어요.</li></ul>
+    <p><b>연락할 때</b> — 먼저 사과하고 해결해 드리는 게 순서예요. 리뷰를 지우는 대가로 적립금 · 현금을 주거나, 거듭 연락해 재촉하면 쇼핑몰 규정 위반 · 신고가 될 수 있어요. 거절하시면 '거절'로 두고 다시 연락하지 마세요.</p></div>`));
+  window.addEventListener('online', flush); window.addEventListener('pagehide', () => { if (Object.keys(dirty).length) flush(); });
+
+  /* ── 잠금 · 시작 ── */
+  function isUnlocked() { if (window.__inOffice) return true; return lsGet('brightbeed_unlocked') === '1' && lsGet('brightbeed_auth_ver') === AUTH_VERSION && !(lsGet('brightbeed_role') === 'master' && lsGet('brightbeed_master_ver') !== MASTER_PIN_VER); }
+  async function sha256hex(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  $('lockForm').addEventListener('submit', async e => {
+    e.preventDefault(); const v = $('lockPin').value.trim(); let role = null;
+    try { role = PIN_HASH[await sha256hex(v)] || null; } catch (err) { role = null; }
+    if (!role) { $('lockErr').textContent = '접속 코드가 올바르지 않아요'; $('lockPin').value = ''; $('lockPin').focus(); return; }
+    if (role !== 'master' && window.BossGuard) BossGuard.drop();
+    lsSet('brightbeed_role', role); lsSet('brightbeed_auth_ver', AUTH_VERSION); if (role === 'master') lsSet('brightbeed_master_ver', MASTER_PIN_VER); lsSet('brightbeed_unlocked', '1');
+    $('lock').hidden = true; start();
+  });
+  async function start() {
+    try { await load(); $('app').hidden = false; paint(); if (Object.keys(dirty).length) flush(); } catch (e) {
+      $('stamp').className = 'stamp bad'; $('stamp').innerHTML = '자료를 못 불러왔어요 — ' + esc(e.message) + ' <button class="btn" id="retry" type="button">다시</button>'; $('retry').onclick = () => { S.base = ''; $('stamp').textContent = '불러오는 중…'; start(); }; return;
+    }
+    if (start.on) return; start.on = true;
+    // 다른 사람이 적은 상태를 1분마다 — 메모 쓰는 중 · 저장 중 · 안 보일 때는 다시 그리지 않는다
+    setInterval(() => { const a = document.activeElement; if (document.hidden || flushing || Object.keys(dirty).length || (a && /TEXTAREA|INPUT/.test(a.tagName))) return; load().then(() => { const b = document.activeElement; if (!Object.keys(dirty).length && !(b && /TEXTAREA|INPUT/.test(b.tagName))) paint(); }).catch(() => {}); }, 60e3);
+  }
+  if (isUnlocked()) start(); else { $('lock').hidden = false; setTimeout(() => $('lockPin').focus(), 50); }
+})();
+</script>
+</body>
+</html>
