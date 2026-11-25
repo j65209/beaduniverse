@@ -229,6 +229,12 @@
   .tk .fl { margin-top: 7px; gap: 6px 7px }
   .tk .fl .fn, .tk .fl .tm { font-size: 15.5px; font-weight: 800; letter-spacing: -.2px }
   .tk .fl .tm { font-weight: 700 }
+  /* 도착 시각 (현지) — 출발 시각 옆 '→ 18:20', 다음 날이면 +1 (11-25) */
+  .ar { color: var(--t2); font-weight: 600; white-space: nowrap }
+  .ar sup { font-size: .68em; font-weight: 800; margin-left: 1px; color: var(--warn) }
+  .tk .fl .ar { font-size: 14px; font-weight: 700; margin-left: -2px }
+  .rf .ar { color: inherit; opacity: .8; margin-left: 3px }
+  .rf .ar sup { color: inherit }
   .tag.cab { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: var(--p); color: #fff }
   .tag.cab.A { background: var(--f) }
   /* 절취선 — 양옆 반원 홈이 테두리를 끊는다 */
@@ -582,6 +588,78 @@
   const fnTxt = s => String(s.fn || '').replace(/\+/g, ' + ');
   const durTxt = m => m ? `${Math.floor(m / 60)}시간${m % 60 ? ' ' + m % 60 + '분' : ''}` : '';
   const viaTxt = s => s.segs ? `${s.segs.slice(0, -1).map(x => cityOf(x[2])).join(' · ')} 경유` : '';
+  /* ── 도착 시각 (11-25 사장님 "인천 출발시각 현지 도착시간도") — 자료엔 출발 시각만 있어서, 공항 시간대 + 노선별 보통 비행시간(분)으로 계산한 예상값.
+     [시간대, 한국→그 도시, 그 도시→한국] · 표에 없는 공항은 도착 시각을 안 띄운다. 경유편은 자료의 실제 도착 시각을 쓴다. */
+  const APT = {
+    AKL: ['Pacific/Auckland', 680, 720], ALA: ['Asia/Almaty', 420, 380], AMS: ['Europe/Amsterdam', 850, 740], AOJ: ['Asia/Tokyo', 150, 165],
+    ATL: ['America/New_York', 830, 900], BCN: ['Europe/Madrid', 870, 770], BKI: ['Asia/Kuching', 310, 290], BKK: ['Asia/Bangkok', 345, 320],
+    BNE: ['Australia/Brisbane', 600, 615], BOM: ['Asia/Kolkata', 590, 540], BOS: ['America/New_York', 800, 900], BUD: ['Europe/Budapest', 790, 700],
+    CAN: ['Asia/Shanghai', 220, 200], CDG: ['Europe/Paris', 845, 750], CEB: ['Asia/Manila', 285, 265], CGK: ['Asia/Jakarta', 420, 410],
+    CGO: ['Asia/Shanghai', 150, 130], CMB: ['Asia/Colombo', 530, 500], CNX: ['Asia/Bangkok', 340, 310], CPH: ['Europe/Copenhagen', 810, 720],
+    CRK: ['Asia/Manila', 240, 225], CSX: ['Asia/Shanghai', 165, 145], CTS: ['Asia/Tokyo', 160, 175], CXR: ['Asia/Ho_Chi_Minh', 315, 285],
+    DAD: ['Asia/Ho_Chi_Minh', 280, 260], DEL: ['Asia/Kolkata', 520, 480], DFW: ['America/Chicago', 765, 880], DLC: ['Asia/Shanghai', 95, 80],
+    DPS: ['Asia/Makassar', 425, 410], DXB: ['Asia/Dubai', 600, 540], FCO: ['Europe/Rome', 860, 765], FRA: ['Europe/Berlin', 840, 735],
+    FUK: ['Asia/Tokyo', 80, 90], GUM: ['Pacific/Guam', 260, 280], HAN: ['Asia/Ho_Chi_Minh', 270, 250], HGH: ['Asia/Shanghai', 125, 110],
+    HKG: ['Asia/Hong_Kong', 220, 200], HKT: ['Asia/Bangkok', 385, 365], HND: ['Asia/Tokyo', 135, 150], HNL: ['Pacific/Honolulu', 490, 600],
+    IAD: ['America/New_York', 800, 870], IST: ['Europe/Istanbul', 720, 630], JFK: ['America/New_York', 830, 900], KHH: ['Asia/Taipei', 165, 150],
+    KIJ: ['Asia/Tokyo', 115, 130], KIX: ['Asia/Tokyo', 105, 120], KMG: ['Asia/Shanghai', 270, 240], KMJ: ['Asia/Tokyo', 85, 95],
+    KMQ: ['Asia/Tokyo', 115, 125], KOJ: ['Asia/Tokyo', 90, 100], KTM: ['Asia/Kathmandu', 470, 420], KUL: ['Asia/Kuala_Lumpur', 395, 375],
+    LAS: ['America/Los_Angeles', 650, 780], LAX: ['America/Los_Angeles', 660, 780], LHR: ['Europe/London', 875, 765], LIS: ['Europe/Lisbon', 930, 840],
+    MAD: ['Europe/Madrid', 900, 800], MLE: ['Indian/Maldives', 560, 520], MNL: ['Asia/Manila', 235, 220], MXP: ['Europe/Rome', 835, 745],
+    NAN: ['Pacific/Fiji', 600, 610], NGO: ['Asia/Tokyo', 110, 125], NKG: ['Asia/Shanghai', 120, 105], NRT: ['Asia/Tokyo', 140, 155],
+    OIT: ['Asia/Tokyo', 90, 100], OKA: ['Asia/Tokyo', 140, 130], ORD: ['America/Chicago', 760, 850], PEK: ['Asia/Shanghai', 125, 110],
+    PNH: ['Asia/Phnom_Penh', 330, 305], PQC: ['Asia/Ho_Chi_Minh', 345, 315], PRG: ['Europe/Prague', 805, 720], PVG: ['Asia/Shanghai', 115, 100],
+    RGN: ['Asia/Yangon', 380, 350], ROR: ['Pacific/Palau', 300, 290], RUH: ['Asia/Riyadh', 660, 600], SAI: ['Asia/Phnom_Penh', 330, 300],
+    SEA: ['America/Los_Angeles', 600, 720], SFO: ['America/Los_Angeles', 630, 760], SGN: ['Asia/Ho_Chi_Minh', 320, 285], SHA: ['Asia/Shanghai', 110, 100],
+    SHE: ['Asia/Shanghai', 105, 95], SIN: ['Asia/Singapore', 395, 380], SPN: ['Pacific/Saipan', 255, 270], SYD: ['Australia/Sydney', 625, 640],
+    SZX: ['Asia/Shanghai', 220, 200], TAO: ['Asia/Shanghai', 80, 75], TAS: ['Asia/Tashkent', 470, 430], TLV: ['Asia/Jerusalem', 700, 640],
+    TNA: ['Asia/Shanghai', 95, 85], TPE: ['Asia/Taipei', 150, 140], TSA: ['Asia/Taipei', 150, 140], TSN: ['Asia/Shanghai', 110, 95],
+    ULN: ['Asia/Ulaanbaatar', 210, 190], VIE: ['Europe/Vienna', 800, 715], VTE: ['Asia/Vientiane', 330, 300], WUH: ['Asia/Shanghai', 170, 150],
+    XIY: ['Asia/Shanghai', 180, 155], XMN: ['Asia/Shanghai', 175, 160], YNJ: ['Asia/Shanghai', 110, 95], YVR: ['America/Vancouver', 580, 690],
+    YYZ: ['America/Toronto', 770, 875], ZAG: ['Europe/Zagreb', 820, 720], ZRH: ['Europe/Zurich', 835, 740],
+  };
+  const KST = 'Asia/Seoul';
+  const tzFmt = {};
+  function wall(ms, tz) {   // UTC ms → 그 시간대 벽시계 [y, m, d, h, mi]
+    const f = tzFmt[tz] || (tzFmt[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }));
+    const o = {}; for (const p of f.formatToParts(new Date(ms))) o[p.type] = +p.value;
+    return [o.year, o.month, o.day, o.hour % 24, o.minute];
+  }
+  function toUtc(date, t, tz) {   // 그 시간대 'YYYY-MM-DD' + 'HH:MM' → UTC ms
+    const [y, m, d] = date.split('-').map(Number), [h, mi] = t.split(':').map(Number), guess = Date.UTC(y, m - 1, d, h, mi);
+    let ms = guess;
+    for (let i = 0; i < 2; i++) { const w = wall(ms, tz); ms = guess - (Date.UTC(w[0], w[1] - 1, w[2], w[3], w[4]) - ms); }
+    return ms;
+  }
+  const memoArr = new Map();
+  // 도착 { t: 'HH:MM', plus: 날짜 차이(+1 = 다음 날), est: 계산값인지 }
+  function arrOf(s) {
+    if (!s || !s.t || !/^\d{1,2}:\d{2}$/.test(s.t)) return null;
+    if (s.arr) {   // 경유편 — 자료의 도착 시각 (도착 도시 현지)
+      const m = String(s.arr).match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+      return m ? { t: m[2], plus: dayDiff(s.date, m[1]), est: false } : null;
+    }
+    const key = s.o + s.d + s.date + s.t;
+    if (memoArr.has(key)) return memoArr.get(key);
+    let r = null;
+    try {
+      const out = !!HUBS[s.o], a = APT[out ? s.d : s.o];
+      if (a) {
+        const w = wall(toUtc(s.date, s.t, out ? KST : a[0]) + (out ? a[1] : a[2]) * 6e4, out ? a[0] : KST);
+        r = { t: pad(w[3]) + ':' + pad(w[4]), plus: dayDiff(s.date, `${w[0]}-${pad(w[1])}-${pad(w[2])}`), est: true };
+      }
+    } catch (e) { r = null; }
+    memoArr.set(key, r);
+    return r;
+  }
+  // '→ 18:20' (도착 도시 현지 시각, 다음 날이면 +1)
+  function arrHtml(s) {
+    const a = arrOf(s);
+    if (!a) return '';
+    const rt = S.routes.get(s.o + '-' + s.d), where = HUBS[s.d] || cityOf(rt ? rt.p : s.d);
+    const tip = `${where} 도착 ${a.t}${a.plus === 1 ? ' (다음 날)' : a.plus > 1 ? ` (${a.plus}일 뒤)` : a.plus < 0 ? ' (전날)' : ''} · 현지 시각${a.est ? ' · 보통 비행시간으로 계산한 예상' : ''}`;
+    return `<span class="num ar" title="${esc(tip)}">→ ${a.t}${a.plus > 0 ? `<sup>+${a.plus}</sup>` : a.plus < 0 ? `<sup>${a.plus}</sup>` : ''}</span>`;
+  }
   // 확인 시각 (로마일 자료만) — '6시간 안' · '24시간 안'을 고르면 그보다 오래된 건 뺀다 (흐리게는 안 함 — 11-22 사장님 "흐리게 안 해도 되는데 자주 체크해줘")
   const within = (s, h) => !s.obs || Date.now() - Date.parse(s.obs) < h * 3600e3;
   const keClosed = s => !!(s.ke && s.ke.st === 'closed');   // 로마일 뒤에 대한항공 공개 현황이 닫힘으로 봄
@@ -647,7 +725,7 @@
         for (const s of h.list) { const k = s.o + s.fn + '|' + s.c, x = m.get(k); if (!x || (s.n || 0) > (x.n || 0)) m.set(k, s); }
         const fl = [...m.values()]
           .sort((a, b) => (skyOn() ? (a.segs ? 1 : 0) - (b.segs ? 1 : 0) : 0) || (a.t || '').localeCompare(b.t || '') || (a.c === 'O' ? -1 : 1))
-          .map(s => `<span class="rf ${s.c === 'A' ? 'A' : 'O'}${skyOn() ? ' long' : ''}">${skyOn() && isSky(s) ? esc(s.al) + ' ' : ''}<b>${esc(fnTxt(s))}</b> ${esc(s.t || '')}` +
+          .map(s => `<span class="rf ${s.c === 'A' ? 'A' : 'O'}${skyOn() ? ' long' : ''}">${skyOn() && isSky(s) ? esc(s.al) + ' ' : ''}<b>${esc(fnTxt(s))}</b> ${esc(s.t || '')}${arrHtml(s)}` +
             `${s.n ? ` <b>${seatTxt(s.n)}</b>` : ''}${s.segs ? ' ' + esc(viaTxt(s)) : ''}${s.hub === 'GMP' ? ' 김포' : ''}</span>`).join('');
         return `<div class="rr"><div class="dt">${esc(fmtD(h.date))}<small>${h.n}박</small></div><div class="rfs">${fl}</div></div>`;
       }).join('')}</div>`;
@@ -838,7 +916,7 @@
       const via = s.segs ? `<span class="tag hub">${esc(viaTxt(s))}</span><span class="mi num">${esc(durTxt(s.dur))}</span>` : '';
       const kx = g.find(x => x.ke && x.ke.st === 'open');
       const keTag = kx ? `<span class="tag ke" title="대한항공 공개 현황에서도 이 편 보너스 좌석이 열려 있어요 · ${esc(hm(kx.ke.at))}">대한항공 ✓</span>` : '';
-      return `<div class="fl"><b class="num fn">${esc(fnTxt(s))}</b><span class="num tm">${esc(s.t || '')}</span>${cabs}${al}${via}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}</div>`;
+      return `<div class="fl"><b class="num fn">${esc(fnTxt(s))}</b><span class="num tm">${esc(s.t || '')}</span>${arrHtml(s)}${cabs}${al}${via}${hub}${g.some(isNew) ? '<span class="tag new">새로 열림</span>' : ''}${keTag}</div>`;
     }).join('');
   }
   function tksNav() {
