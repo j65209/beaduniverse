@@ -55119,16 +55119,17 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const sum=(rows,f)=>rows.reduce((a,d)=>a+(Number(d[f])||0),0);
     const rows=s.filter(d=>d.date.startsWith(month));
     const out={fields:{}, actual:sum(rows,'sales'), left:0};
+    // 아직 안 들어온 늦은 반품 · 취소 — 14일 지난 날은 0. 지난달도 같이 빼서 1일에 숫자가 튀지 않게 (2026-11-25 사장님 "네, 빼줘")
+    const shrink=_sbShrink(c), LATE=new Set(['sales','cost','fee']);
+    const lateOf=(list,f)=>LATE.has(f)?list.reduce((a,d)=>a+(Number(d[f])||0)*shrink*Math.max(0,1-(_sbDaysBetween(d.date,today)-1)/14),0):0;
     if(month===today.slice(0,7)){
       const done=rows.filter(d=>d.date<today);
       const recent=s.filter(d=>d.date<today).sort((a,b)=>a.date<b.date?1:-1).slice(0,7);
       if(!recent.length) return null;
       out.left=days-done.length;
       // 결제 다음 날 이후 들어오는 반품 · 취소 — 매출 · 원가 · 수수료를 그만큼 낮춰 잡는다(이미 지난 14일은 남은 몫만). 주문수(택배)는 이미 보낸 것이라 그대로
-      const shrink=_sbShrink(c), back=()=>d=>shrink*Math.max(0,1-(_sbDaysBetween(d.date,today)-1)/14);
       fields.forEach(f=>{
-        const cut=f==='sales'||f==='cost'||f==='fee'?shrink:0;
-        const late=cut?done.reduce((a,d)=>a+(Number(d[f])||0)*back()(d),0):0;
+        const cut=LATE.has(f)?shrink:0, late=lateOf(done,f);
         out.fields[f]=Math.round(sum(done,f)-late+sum(recent,f)/recent.length*out.left*(1-cut));
       });
       return out;
@@ -55137,11 +55138,11 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       // 그 달 중간에 수집을 시작한 채널 — 없는 날을 늘려 잡지 않고 있는 날만 합산 (화면에 따로 알림). 그 밖의 빈 달은 지난달 기준으로 넘긴다.
       const first=s.reduce((a,d)=>d.date<a?d.date:a,'9999-99-99');
       if(!rows.length||!first.startsWith(month)) return null;  // 달의 2/3 도 안 남은 데이터
-      fields.forEach(f=>{ out.fields[f]=Math.round(sum(rows,f)); });
+      fields.forEach(f=>{ out.fields[f]=Math.round(sum(rows,f)-lateOf(rows,f)); });
       out.partial=rows.length;
       return out;
     }
-    fields.forEach(f=>{ out.fields[f]=Math.round(sum(rows,f)*days/rows.length); });
+    fields.forEach(f=>{ out.fields[f]=Math.round((sum(rows,f)-lateOf(rows,f))*days/rows.length); });
     return out;
   }
   function _sbResolve(month,memo){
