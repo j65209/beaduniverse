@@ -666,8 +666,8 @@
      오피스 밖(/voc/ 바로)에서 열면 이 부분은 비어 있다 (데이터 통로가 오피스에 있음). ── */
   const CB = SH && Array.isArray(SH.brands) && SH.brands.length ? SH.brands.map(b => ({id: b.id, name: b.name, color: b.color || '#cbd5e1'}))
     : BRANDS.map(b => ({id: b.id, name: b.name, color: b.color}));   // 브랜드 칩 순서 = 오피스 BRAND_SECTIONS (쉬는 브랜드 빼고)
-  const CH = [['home', '공홈'], ['smartstore', '스마트스토어'], ['ably', '에이블리'], ['zigzag', '지그재그'], ['29cm', '29CM'], ['wconcept', 'W컨셉'], ['ohou', '오늘의집'], ['eql', 'EQL'], ['coupang', '쿠팡']];
-  const CH_L = Object.fromEntries(CH);
+  const CH = [['home', '공홈'], ['smartstore', '스마트스토어'], ['ably', '에이블리'], ['zigzag', '지그재그'], ['29cm', '29CM'], ['wconcept', 'W컨셉'], ['ohou', '오늘의집'], ['eql', 'EQL']];
+  const CH_L = Object.assign(Object.fromEntries(CH), {coupang: '퇴점 채널'});   // 지난 기록에만 남은 줄
   const chL = k => CH_L[k] || k || '—';
   // 사유 → 회사 사유(co) / 고객 사유(cu) / 모름(na) — 수집기 claims-report.ts REASON_FAULT 와 같음
   const RS = {
@@ -1926,7 +1926,7 @@
     h += j.html;
     if (j.alert) { const a = $('alert'); alertBox((a.hidden ? '' : a.querySelector('div').innerHTML + '<br>') + j.alert); }
     if (C.data) h += card('숫자 기준', '', `<div class="note">
-      <b>어디서 오나요</b> — 공홈(자사몰 · 네이버페이)은 식스샵 프로, 지그재그는 파트너센터, 그 밖(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL · 쿠팡)은 플레이오토에서 30분마다 자동으로 받아요.<br>
+      <b>어디서 오나요</b> — 공홈(자사몰 · 네이버페이)은 식스샵 프로, 지그재그는 파트너센터, 그 밖(스마트스토어 · 에이블리 · 29CM · W컨셉 · 오늘의집 · EQL)은 플레이오토에서 30분마다 자동으로 받아요.<br>
       <b>반품률</b> = 반품 · 교환 수량 ÷ 같은 기간 판매 수량 (결제일 기준) — 판매 기록이 있는 브랜드 · 채널만, 기록이 시작된 날부터 (공홈 코페리 10/20 · 아페티 10/22 · 야르 11/2 · 식스에이 11/3). 상품별 판매는 최근 92일만 있어요.<br>
       <b>건</b> = 상품 줄 (한 주문에 상품이 여럿이면 여러 건) · <b>날짜</b> = 접수일 (공홈의 지난 완료 건은 처리일) · <b>금액</b> = 반품한 상품의 결제 금액 (배송비 빼고) · 철회 · 거부는 빼요.<br>
       <b>사유 없음</b> — 공홈은 11/13 전에 끝난 반품, W컨셉은 몰이 사유를 주지 않아요. 고객 이름 · 연락처 · 주소 · 환불 계좌는 받지 않고, 고객 글 속 전화번호 · 이메일 · 계좌번호는 가려요.${SHEET_ON ? `<br>
@@ -2507,7 +2507,7 @@
       : '<div class="card-e">이 기간에는 상품이 붙은 문의 · 리뷰가 없어요</div>');
     const dd = Q.data, s2 = (dd.sources || {})['playauto:2'], has2 = (dd.items || []).some(i => String(i.id).startsWith('pa2:'));
     h += card('어디서 오나요', '', `<div class="note">
-      <b>플레이오토 '문의 관리'</b>에 쌓이는 상품문의 · 상품평 (스마트스토어 · 오늘의집 · 지그재그 · EQL · 쿠팡) · 30분마다 · 180일 보관<br>
+      <b>플레이오토 '문의 관리'</b>에 쌓이는 상품문의 · 상품평 (스마트스토어 · 오늘의집 · 지그재그 · EQL) · 30분마다 · 180일 보관<br>
       <b>29CM · W컨셉 · 에이블리 문의는 없어요</b> — 플레이오토가 이 세 곳의 문의는 가져오지 못해요. 각 판매자 화면에서 봐야 해요.<br>
       ${s2 && s2.ok && !has2 ? '<b>코페리 · 아페티는 아직 0건</b> — 플레이오토 2번 아이디는 상품문의 · 상품평 수집이 꺼져 있어요. 플레이오토에서 켜면 다음 수집부터 들어와요.<br>' : ''}
       <b>답 초안</b> — 최근 14일 상품문의에 15분마다 (목록의 '답' 칸). 저절로 나가지 않고 직원이 [보내기]를 눌러야 나가요. 사무실 인터넷에서만 보여요.<br>

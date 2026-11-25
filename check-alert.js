@@ -28,7 +28,7 @@ const STOCK_JOB = /^(pro-stock|erp|po-|reorder|kd-|stock|new-products|link-watch
 const stockJob = x => STOCK_JOB.test(String(x.id || '')) || STOCK_NAME.test(String(x.name || x.label || ''));
 const AREAS = ['재고 ERP', '발주', '신상', '리오더', '승인 · 출금', 'CS팀', '디자인팀', 'MD팀', '자동 업무'];
 const BR = {kop: '코페리', apt: '아페티', koz: '코즈미', '6a': '식스에이', '6A': '식스에이', yar: '야르', akoi: '아코이하우스', pp: '프로덕트피알', bb: '브라이트비드', ct: '클리어타입', sb: '샤인비드'};
-const CHN = {home: '공홈', smartstore: '스마트스토어', ably: '에이블리', zigzag: '지그재그', '29cm': '29CM', wconcept: 'W컨셉', coupang: '쿠팡', ohou: '오늘의집', eql: 'EQL'};
+const CHN = {home: '공홈', smartstore: '스마트스토어', ably: '에이블리', zigzag: '지그재그', '29cm': '29CM', wconcept: 'W컨셉', coupang: '퇴점 채널', ohou: '오늘의집', eql: 'EQL'};
 const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const $ = (s, r) => (r || document).querySelector(s);
 const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
