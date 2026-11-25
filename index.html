@@ -55000,7 +55000,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   }
 
   /* ===== 전략팀 월간 손익 메인보드 — 한 달 실제 남는 돈 =====
-     남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가 − 부자재) − 월 고정비. 부가세 예상 = 매출 ÷ 11.
+     남는 돈 = Σ 채널 순수익(매출 − 광고비 − 수수료 − 택배비 − 직배 이용료 − 원가) − 월 고정비. 부가세 예상 = 매출 ÷ 11.
      칸 값 우선순위: 직접 입력 → 자동(일일 보고서 — 지그재그는 수수료 · 직배 이용료까지) → 지난달 비율 × 이번 달 매출 → 지난달 값.
      진행 중인 달의 자동 값 = 어제까지 실적 + 남은 날 × 최근 14일 평균.
      공홈 · 에이블리 수수료는 자동으로 빼지 않는다 — 사장님 시트 기준 (2026-11-02 결정). 칸에 직접 넣으면 그 값만 뺀다.
@@ -55012,7 +55012,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   const SB_QUEUE_KEY='brightbeed_strat_board_queue_v1';
   const SB_SHIP_DEFAULT=2200;       // 단가를 한 번도 안 넣었을 때 (일일 보고서와 같은 가정)
   // 주문수는 택배비 계산용 — 돈이 아니라 순수익에서 빼지 않는다
-  const SB_FIELDS=[['sales','매출'],['orders','주문수'],['ad','광고비'],['fee','수수료'],['ship','택배비'],['direct','직배 이용료'],['cost','원가'],['material','부자재']];
+  const SB_FIELDS=[['sales','매출'],['orders','주문수'],['ad','광고비'],['fee','수수료'],['ship','택배비'],['direct','직배 이용료'],['cost','원가']];   // 부자재 칸은 뺌 (2026-11-25 사장님 "부자재는 좀 이상해. 빼자 그냥" — 10월 시트 값 · 비율 추정이었다. 저장된 옛 값은 그대로 두고 안 쓴다)
   const SB_COST_FIELDS=SB_FIELDS.filter(([f])=>f!=='sales'&&f!=='orders');
   // 공홈 택배비는 시트처럼 고정비의 "택배비" 한 줄로 계산 — 플랫폼은 우리가 직접 보내니 전부 주문수 × 단가를 채널에서 뺀다
   const SB_29CM_FEE=0.3; // 29CM 수수료 — 매출의 30% 고정 (사장님 확인 2026-11-09)
@@ -55326,7 +55326,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const res=_sbResolve(m), P=f=>res.rows.reduce((a,r)=>a+r.vals[f].v,0);
     const platAd=res.rows.filter(r=>!/-home$/.test(r.c.id)).reduce((a,r)=>a+r.vals.ad.v,0);
     const fx=_sbFixed(m).filter(x=>x.grp!=='people'&&!/대출|차량/.test(x.name)&&!SB_VAT_FOREIGN.test(x.name)).reduce((a,x)=>a+x.amount,0);
-    const pay=_sbPayData(m), buy=P('fee')+P('ship')+P('direct')+P('material')+platAd+fx+pay.fee;
+    const pay=_sbPayData(m), buy=P('fee')+P('ship')+P('direct')+platAd+fx+pay.fee;
     return {out:res.sales/11, inn:buy/11};
   }
   function _sbProfitMonth(m){
