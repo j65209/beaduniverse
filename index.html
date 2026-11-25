@@ -20158,17 +20158,6 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   function brepStep(dir){ const [a,b]=_brepStepRange(_brep.start,_brep.end,dir); _brepSetRange(a,b); }
   window.brepPreset=brepPreset; window.brepOnDate=brepOnDate; window.brepStep=brepStep;
 
-  /* 데이터분석관 통로 (analyst.js · 2026-11-23 사장님 "데이터분석관을 플로팅배너에") — 읽기만. 숫자 계산은 analyst.js 가 이 기록들로 한다.
-     sales = 직원용 사본 sales-index.json (원가 · 순이익 없음). 바깥 AI 는 안 쓴다 — 질문 글도 숫자도 회사 밖으로 안 나감 */
-  window.AnalystData={
-    brands:()=>BREP_BRANDS.map(b=>({key:b.key, name:b.display})),
-    channels:b=>_brepChannels(b),
-    sales:path=>_brepLoadIdx(path),
-    products:b=>_pixLoadIdx(b),
-    adSheet:async id=>{ const f=await ghGetFile(ADSH_API(id)); if(f.error) throw new Error(f.error); return f.sha ? JSON.parse(f.text) : null; },
-    adReport:async b=>{ const r=await metaAdsFetch(b); return r ? (typeof r.json==='function' ? r.json() : r) : null; },
-  };
-
   /* ── 불러오기 ── */
   function _brepChannels(brand){
     const out=[{id:'home-'+brand, kind:'home', path:'home/'+brand}];
@@ -58102,6 +58091,5 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="notif-call.js?v=3" defer></script><!-- 알림 확인 요청 — 사장님이 보내면 [확인] 창 (notif-call.js) -->
 <script src="office-thumb.js?v=1" defer></script><!-- 작은 사진에 마우스 → 크게 (office-thumb.js) -->
 <script src="check-alert.js?v=7" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
-<script src="analyst.js?v=2" defer></script><!-- 데이터분석관 — 떠 있는 분석 대화 (analyst.js) -->
 </body>
 </html>
