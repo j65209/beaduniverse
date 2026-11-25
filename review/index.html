@@ -34,7 +34,7 @@
 <style>
   /* 1점 리뷰 관리 — 오피스 업무용 툴 (2026-11-25)
      사장님 "코페리,아페티,코즈미 입점된 플랫폼 모두 리뷰중에 1개짜리 리뷰가 있으면 그 리뷰 작성 내용,이미지,리뷰작성자 연락처를 주문에서 추출해서 정리해주는 업무용 툴"
-     · 자료 = 맥미니 sixshop-collector src/review-one.ts(60분) → 프록시 GET /cs/reviews. 진행 상태 · 메모 = POST /cs/review-mark (맥미니에만, 사무실 인터넷에서만)
+     · 자료 = 맥미니 sixshop-collector src/review-one.ts(30분) → 프록시 GET /cs/reviews. 진행 상태 · 메모 = POST /cs/review-mark (맥미니에만, 사무실 인터넷에서만)
      · 이름 · 전화는 사무실 인터넷에서만 온다 — 이 파일 · 슈퍼베이스 · 깃허브에 고객 정보를 두지 않는다
      · 여기서 고객에게 자동으로 나가는 것은 없다 (복사 · 전화 앱 열기만) */
   :root { --bg: #f3f5f8; --panel: #fff; --line: #e5e7eb; --line2: #d5dae2; --text: #0f172a; --t2: #475569; --t3: #7a8698; --ink: #0f172a; --red: #e11d48; --top: 58px;
@@ -162,7 +162,7 @@
     S.tels = {}; j.rows.forEach(r => { if (r.tel) S.tels[r.tel] = (S.tels[r.tel] || 0) + 1; });
     const h = (Date.now() - j.at) / 36e5, d = new Date(j.at), st = $('stamp');
     st.className = 'stamp' + (h > 4 ? ' bad' : '');
-    st.textContent = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준 · 1시간마다${h > 4 ? ' · 갱신이 밀렸어요' : ''}`;
+    st.textContent = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준 · 30분마다${h > 4 ? ' · 갱신이 밀렸어요' : ''}`;
   }
   let flushing = false, flushT = 0;
   async function flush() {

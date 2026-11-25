@@ -573,7 +573,7 @@ CS 직원이 매일 적는 구글시트 **비드유니버스 VOC**(링크 보기
 2026-11-25 사장님 "코페리,아페티,코즈미 입점된 플랫폼 모두 리뷰중에 1개짜리 리뷰가 있으면 그 리뷰 작성 내용,이미지,리뷰작성자 연락처를 주문에서 추출해서 정리해주는 업무용 툴".
 
 - 여는 곳: 홈 업무용 툴 **1점 리뷰 관리**(`#review`) · `beaduniverse.kr/office/review/` — 전 직원.
-- 자료: 맥미니 `sixshop-collector` `src/review-one.ts` 1시간마다(29CM 하루 한 번, docs/REVIEW-ONE.md) → 프록시 `GET /cs/reviews`. 상태 · 메모 `POST /cs/review-mark`(맥미니 `state/reviews/marks.json`).
+- 자료: 맥미니 `sixshop-collector` `src/review-one.ts` 30분마다(29CM 하루 한 번, docs/REVIEW-ONE.md) → 프록시 `GET /cs/reviews`. 상태 · 메모 `POST /cs/review-mark`(맥미니 `state/reviews/marks.json`).
 - **이름 · 전화 · 주문번호 · 메모는 사무실 인터넷에서만** 온다. 이 레포 · 슈퍼베이스 · 깃허브에 고객 정보를 두지 않는다.
 - 에이블리 '별로예요' · 지그재그 1점 = 주문번호로 정확. 29CM = 추정, 홈페이지 네이버페이 = 후보. W컨셉 · 스마트스토어는 자동으로 못 읽는다(우회하지 말 것).
 - 고객에게 자동으로 나가는 것은 없다(번호 · 안내 글 복사, 전화 앱 열기만). 자동 발송을 붙이지 말 것 — 사장님 말씀 뒤에만.
