@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>주얼리 광고 라이브러리 · 비드유니버스</title>
+<script src="../boss-guard.js?v=2"></script><script>window.BossGuard||document.write('<script src="../boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
+<script src="../office-undo.js?v=1"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
+<script>
+  /* 오피스 안 화면(iframe, index.html 의 TOOL_PAGES 'adlib')이면 '← 오피스' 는 그 화면을 닫는다 (bbToolClose). 혼자 열면 이 페이지의 잠금 화면. */
+  (function () {
+    var inOffice = false, home = '';
+    try { inOffice = window.parent !== window && typeof window.parent.bbToolClose === 'function'; } catch (e) { /* 다른 출처 */ }
+    if (inOffice) { try { home = window.parent.location.href.split('#')[0]; } catch (e) { /* noop */ } }
+    if (!home) { try { home = new URL('../', location.href).href; } catch (e) { home = '../'; } }
+    window.__inOffice = inOffice;
+    document.addEventListener('DOMContentLoaded', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('a[href="../"]'), function (a) {
+        a.href = home;
+        if (inOffice) a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+          e.preventDefault();
+          try { window.parent.bbToolClose(); } catch (err) { location.href = home; }
+        });
+      });
+    });
+  })();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<style>
+  /* 주얼리 광고 라이브러리 — 오피스 업무용 툴 (2026-11-25)
+     사장님 "메타(인스타)라이브러리에서 주얼리 브랜드 국내에서 광고비를 많이 쓰거나 효율이 좋은 브랜드들 컨텐츠 모으는 에이전트 작업해줘. 업무용 툴에"
+     · 자료 = 맥미니 sixshop-collector adlib/ (매일 03:20) → 프록시 GET /adlib/list, 사진 · 동영상 /adlib/m/…
+     · 메타는 광고비 · 매출을 공개하지 않는다 → 점수는 모두 추정(게재 개수 · 기간 · 노출 순서). 화면에 '추정' 을 꼭 적는다.
+     · 보관 ☆ · 메모 · 브랜드 빼기/넣기 = 슈퍼베이스 adlib_marks (브라우저마다 밀린 저장은 adlib_dirty_v1 에 두었다가 다시) */
+  :root { --bg: #f3f5f8; --panel: #fff; --line: #e5e7eb; --line2: #d5dae2; --text: #0f172a; --t2: #475569; --t3: #8793a5; --ink: #0f172a; --red: #e11d48; --top: 58px;
+    --font: Pretendard, -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif }
+  * { box-sizing: border-box }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased }
+  button, input, textarea, select { font-family: inherit; font-size: inherit; color: inherit }
+  button { cursor: pointer }
+  [hidden] { display: none !important }
+  :focus-visible { outline: 2px solid #4f7fcf; outline-offset: 2px }
+  .top { position: sticky; top: 0; z-index: 30; min-height: var(--top); display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--line) }
+  .back { color: var(--t2); text-decoration: none; font-weight: 600; font-size: 13px; white-space: nowrap; padding: 6px 8px; border-radius: 8px }
+  .back:hover { background: var(--bg) }
+  .ttl { font-weight: 800; font-size: 15px; letter-spacing: -.2px; white-space: nowrap }
+  .stamp { font-size: 12px; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+  .stamp.bad { color: var(--red); font-weight: 600 }
+  .top-r { margin-left: auto; display: flex; gap: 8px; flex: none }
+  .btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; color: var(--text); text-decoration: none }
+  .btn:hover { border-color: var(--line2); background: #fafbfc }
+  .btn.pri { background: var(--ink); border-color: var(--ink); color: #fff }
+  .btn.danger { color: var(--red) }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; flex: none }
+  .seg button { height: 32px; padding: 0 11px; border: 0; background: transparent; font-weight: 600; font-size: 13px; color: var(--t2); white-space: nowrap }
+  .seg button + button { border-left: 1px solid var(--line) }
+  .seg button.on { background: var(--ink); color: #fff }
+  .inp { height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: #fff; min-width: 0; outline: none; font-size: 13px }
+  .inp:focus { border-color: #4f7fcf; box-shadow: 0 0 0 3px rgba(79, 127, 207, .14) }
+  #app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start }
+  .side { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: sticky; top: calc(var(--top) + 16px); max-height: calc(100vh - var(--top) - 32px); display: flex; flex-direction: column; overflow: hidden }
+  .side-h { padding: 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none }
+  .side-h .seg { width: 100% } .side-h .seg button { flex: 1; padding: 0 4px }
+  .note { font-size: 12px; color: var(--t3); line-height: 1.35 }
+  .row2 { display: flex; gap: 6px } .row2 .inp { flex: 1 }
+  .blist { overflow: auto; flex: 1; min-height: 0 }
+  .brow { display: grid; grid-template-columns: 24px 44px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 9px 12px; border: 0; border-bottom: 1px solid #f0f2f5; background: #fff; text-align: left }
+  .brow:hover { background: #fafbfc } .brow.on { background: #f1f4f8 }
+  .brow .rk { font-weight: 800; font-size: 13px; color: var(--t3); text-align: center; font-variant-numeric: tabular-nums } .brow .rk.hi { color: var(--ink) }
+  .brow .pic { width: 44px; height: 44px; border-radius: 8px; overflow: hidden; background: #eef1f5 } .brow .pic img { width: 100%; height: 100%; object-fit: cover; display: block }
+  .brow b { display: block; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .brow span.s { display: block; font-size: 12px; color: var(--t3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+  .brow .sc { text-align: right; font-size: 12px; color: var(--t3); white-space: nowrap } .brow .sc b { font-size: 15px; font-variant-numeric: tabular-nums }
+  .bar { display: block; height: 4px; border-radius: 2px; background: #eceff3; margin-top: 4px; overflow: hidden } .bar i { display: block; height: 100%; background: var(--ink); border-radius: 2px }
+  .main { min-width: 0; display: flex; flex-direction: column; gap: 12px }
+  .bhead { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center }
+  .bhead h2 { margin: 0; font-size: 18px; letter-spacing: -.3px } .bhead .sub { font-size: 12.5px; color: var(--t3) } .bhead .sub a { color: var(--t2) }
+  .stat { min-width: 64px } .stat b { display: block; font-size: 17px; font-variant-numeric: tabular-nums } .stat span { font-size: 12px; color: var(--t3) }
+  .bhead .acts { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center } .tools .cnt { font-size: 12.5px; color: var(--t3); margin-left: auto; white-space: nowrap }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; position: relative; cursor: pointer; text-align: left; padding: 0 }
+  .card:hover { border-color: var(--line2); box-shadow: 0 6px 20px rgba(15, 23, 42, .07) }
+  .shot { position: relative; aspect-ratio: 4 / 5; background: #eef1f5; overflow: hidden }
+  .shot img, .shot video { width: 100%; height: 100%; object-fit: cover; display: block; position: absolute; inset: 0 }
+  .tag { position: absolute; left: 8px; top: 8px; background: rgba(15, 23, 42, .78); color: #fff; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums }
+  .tag.off { background: rgba(255, 255, 255, .92); color: var(--t2) }
+  .kind { position: absolute; left: 8px; bottom: 8px; background: rgba(15, 23, 42, .62); color: #fff; font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px }
+  .star { position: absolute; right: 6px; top: 6px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .9); display: flex; align-items: center; justify-content: center; color: var(--t2) }
+  .star svg { width: 18px; height: 18px } .star.on { background: var(--ink); color: #fff } .star.on svg { fill: currentColor }
+  .cbody { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0 }
+  .cbody .nm { font-weight: 700; font-size: 13px; display: flex; gap: 6px; align-items: baseline; min-width: 0 } .cbody .nm span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .cbody .nm em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--t3); font-weight: 600; flex: none }
+  .cbody .tx { font-size: 12.5px; color: var(--t2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word }
+  .cbody .why { font-size: 12px; color: var(--t3) }
+  .cbody .memo { font-size: 12px; color: var(--text); border-left: 2px solid var(--line2); padding-left: 7px; white-space: pre-wrap; word-break: break-word }
+  .empty { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--t3) }
+  .more { align-self: center; margin: 6px 0 24px; height: 40px; padding: 0 22px }
+  .ov { position: fixed; inset: 0; z-index: 200; background: rgba(15, 23, 42, .5); display: flex; align-items: center; justify-content: center; padding: 20px }
+  .dlg { background: #fff; border-radius: 16px; width: min(1040px, 100%); max-height: calc(100dvh - 40px); display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); overflow: hidden; position: relative }
+  .dlg.small { display: block; width: min(520px, 100%); padding: 22px; overflow: auto }
+  .dlg .x { position: absolute; right: 10px; top: 10px; z-index: 3; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .92); font-size: 20px; line-height: 1; color: var(--t2) }
+  .dm { background: #0b1220; display: flex; flex-direction: column; min-height: 0 } .dm .view { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative }
+  .dm .view img, .dm .view video { max-width: 100%; max-height: calc(100dvh - 130px); display: block; object-fit: contain }
+  .dm .strip { display: flex; gap: 6px; padding: 8px; overflow: auto; flex: none } .dm .strip button { width: 52px; height: 52px; border-radius: 6px; overflow: hidden; padding: 0; border: 2px solid transparent; background: #1e293b; flex: none } .dm .strip button.on { border-color: #fff } .dm .strip img { width: 100%; height: 100%; object-fit: cover; display: block }
+  .di { padding: 18px 20px; overflow: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0 }
+  .di h3 { margin: 0; font-size: 17px; padding-right: 44px } .di .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px } .di .facts dt { color: var(--t3) } .di .facts dd { margin: 0 }
+  .copy { background: #f6f8fa; border-radius: 10px; padding: 12px; font-size: 13.5px; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto }
+  .lb { font-size: 12px; font-weight: 700; color: var(--t2); display: flex; align-items: center; gap: 8px } .lb button { border: 0; background: none; color: var(--t3); font-size: 12px; font-weight: 600; padding: 4px; text-decoration: underline } .lb .st { margin-left: auto; font-weight: 500; color: var(--t3) } .lb .st.err { color: var(--red) }
+  .di textarea { border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-height: 64px; resize: vertical; outline: none; width: 100% } .di textarea:focus { border-color: #4f7fcf }
+  .di .acts { display: flex; gap: 6px; flex-wrap: wrap }
+  .dlg.small h3 { margin: 0 0 10px; font-size: 17px } .dlg.small p { margin: 0 0 10px; color: var(--t2) } .dlg.small li { margin: 4px 0; color: var(--t2) } .dlg.small ul { padding-left: 18px; margin: 0 0 12px }
+  .adds { display: flex; flex-direction: column; gap: 6px; margin-top: 12px } .adds div { display: flex; align-items: center; gap: 8px; font-size: 13px; border-top: 1px solid #f0f2f5; padding-top: 6px } .adds span { color: var(--t3); font-size: 12px } .adds button { margin-left: auto }
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 500; max-width: calc(100vw - 32px); display: flex; gap: 12px; align-items: center } .toast.err { background: var(--red) } .toast button { border: 0; background: none; color: #fff; text-decoration: underline; font-weight: 700; padding: 0 }
+  .lock { position: fixed; inset: 0; z-index: 400; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px }
+  .lock-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 26px; width: min(340px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: center }
+  .lock-box input { height: 42px; border: 1px solid var(--line); border-radius: 10px; text-align: center; font-size: 18px; letter-spacing: 4px; outline: none } .lock-box .err { color: var(--red); font-size: 12.5px; min-height: 18px }
+  .mtabs { display: none } .ios-top { display: none }
+  @media (max-width: 960px) {
+    .top { padding: 6px 10px; gap: 6px } .stamp { flex: 1 } .stamp .long { display: none }
+    #app { display: block; padding: 10px } .side { position: static; max-height: none; margin-bottom: 10px } .blist { overflow: visible }
+    .mtabs { display: flex; padding: 8px 10px 0 } .mtabs .seg { width: 100% } .mtabs .seg button { flex: 1; height: 38px }
+    body[data-m="ads"] .side { display: none } body[data-m="brands"] .main { display: none }
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px } .tools { gap: 6px } .tools .inp { flex: 1 1 130px } .seg.scroll { max-width: 100%; overflow-x: auto; scrollbar-width: none }
+    .inp, .di textarea { font-size: 16px } .bhead { padding: 12px; gap: 8px 10px } .bhead > div:first-child { width: 100% } .bhead .stat { min-width: 0; flex: 1 0 21% } .bhead .acts { margin-left: 0 } .card .why { font-size: 11.5px }
+    .ov { padding: 0; align-items: flex-end } .dlg { max-height: 94dvh; border-radius: 16px 16px 0 0; display: block; overflow: auto } .dlg.small { border-radius: 16px 16px 0 0; padding-bottom: calc(22px + env(safe-area-inset-bottom)) }
+    .dm .view img, .dm .view video { max-height: 58dvh } .di { overflow: visible; padding-bottom: calc(20px + env(safe-area-inset-bottom)) }
+    .dlg .x { position: sticky; float: right; top: 8px; margin: 8px 8px -48px 0 }
+  }
+  @media (max-width: 960px) and (min-height: 521px) { html.ios-solo .ios-top { display: block; position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: calc(env(safe-area-inset-top, 0px) + 12px); background: #fff } html.ios-solo body { padding-top: calc(env(safe-area-inset-top, 0px) + 12px) } html.ios-solo .top { top: calc(env(safe-area-inset-top, 0px) + 12px) } }
+</style>
+<script>try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout','none'))document.documentElement.classList.add('ios-solo')}catch(e){}</script>
+</head>
+<body data-m="ads">
+<div class="ios-top" aria-hidden="true"></div>
+<div class="lock" id="lock" hidden>
+  <form class="lock-box" id="lockForm" autocomplete="off">
+    <b style="font-size:16px">주얼리 광고 라이브러리</b>
+    <span style="font-size:13px;color:var(--t3)">오피스 접속 코드를 넣어 주세요</span>
+    <input id="lockPin" type="password" inputmode="numeric" aria-label="접속 코드">
+    <div class="err" id="lockErr"></div>
+    <button class="btn pri" type="submit" style="height:40px">열기</button>
+  </form>
+</div>
+<header class="top">
+  <a class="back" href="../">← 오피스</a>
+  <div class="ttl">주얼리 광고 라이브러리</div>
+  <div class="stamp" id="stamp">불러오는 중…</div>
+  <div class="top-r"><button class="btn" id="helpBtn" type="button">숫자 읽는 법</button></div>
+</header>
+<div class="mtabs"><div class="seg" id="mtabs"><button data-m="ads" class="on">소재</button><button data-m="brands">브랜드 순위</button></div></div>
+<div id="app" hidden>
+  <aside class="side">
+    <div class="side-h">
+      <div class="seg" id="rankSeg"><button data-v="spend">광고비 많은</button><button data-v="eff">효율 좋은</button><button data-v="new">새 소재 많은</button></div>
+      <div class="note" id="rankNote"></div>
+      <div class="seg" id="regSeg"><button data-v="kr">국내</button><button data-v="global">해외</button><button data-v="own">우리 브랜드</button></div>
+      <div class="row2"><input class="inp" id="bq" placeholder="브랜드 찾기" aria-label="브랜드 찾기"><button class="btn" id="addBtn" type="button">＋ 브랜드</button></div>
+    </div>
+    <div class="blist" id="blist"></div>
+  </aside>
+  <main class="main">
+    <div class="bhead" id="bhead" hidden></div>
+    <div class="tools">
+      <div class="seg scroll" id="viewSeg"><button data-v="win">잘 되는 광고</button><button data-v="new">새 광고</button><button data-v="old">오래 도는</button><button data-v="star">보관함</button></div>
+      <div class="seg scroll" id="fmtSeg"><button data-v="">전체</button><button data-v="video">영상</button><button data-v="image">사진</button><button data-v="carousel">여러 장</button></div>
+      <input class="inp" id="q" placeholder="문구 · 상품 찾기" aria-label="문구 찾기">
+      <span class="cnt" id="cnt"></span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+    <button class="btn more" id="more" type="button" hidden>더 보기</button>
+  </main>
+</div>
+<div id="ovs"></div>
+<div class="toast" id="toast" hidden role="status"></div>
+<script>
+(function () {
+  'use strict';
+  const SB_URL = 'https://ckyjkxbqsyjoqpuqwoce.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNreWpreGJxc3lqb3FwdXF3b2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MjI2NzEsImV4cCI6MjA5Mzk5ODY3MX0.C8WIGqf-zIYkCq0dGWTMjIYuPM-IVInMn1p6FaWbVKA';
+  const PIN_HASH = { ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf: 'viewer', '61bac9d4e564d8096a969a0af7ec131066991620a2807be2b6b889cf8b24193e': 'master' };
+  const AUTH_VERSION = '4', MASTER_PIN_VER = '1', PAGE = 40;
+  const $ = id => document.getElementById(id);
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* noop */ } };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ME = () => (lsGet('brightbeed_diary_me') || lsGet('seed_me_v1') || '').trim().slice(0, 40);
+  const num = n => Number(n || 0).toLocaleString('ko-KR');
+  const md = t => { const d = new Date(t); return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`; };
+  const KIND = { video: '영상', image: '사진', carousel: '여러 장' };
+  const S = { d: null, base: '', marks: {}, rank: lsGet('adlib_rank') || 'spend', reg: 'kr', pid: '', view: 'win', fmt: '', q: '', bq: '', n: PAGE, list: [] };
+  const DIRTY = 'adlib_dirty_v1';
+  let dirty = {}; try { dirty = JSON.parse(lsGet(DIRTY) || '{}') || {}; } catch (e) { dirty = {}; }
+  const saveDirty = () => lsSet(DIRTY, JSON.stringify(dirty));
+  const starSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8z"/></svg>';
+
+  let toastT = 0;
+  function toast(msg, err, undo) {
+    const t = $('toast'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; t.hidden = false;
+    if (undo) { const b = document.createElement('button'); b.textContent = '되돌리기'; b.onclick = () => { t.hidden = true; undo(); }; t.appendChild(b); }
+    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, undo ? 7000 : err ? 4500 : 2200);
+  }
+
+  /* ── 저장 (adlib_marks) : 화면 먼저, 실패하면 밀린 것으로 두고 다시 ── */
+  async function rest(path, opt) {
+    const r = await fetch(SB_URL + '/rest/v1/' + path, Object.assign({ cache: 'no-store' }, opt, { headers: Object.assign({ apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' }, (opt || {}).headers || {}) }));
+    const txt = await r.text(); if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + txt.slice(0, 120)); return txt ? JSON.parse(txt) : null;
+  }
+  async function loadMarks() {
+    const rows = await rest('adlib_marks?select=id,star,memo,st,v,by,updated_at&deleted_at=is.null&order=updated_at.desc&limit=1000');
+    const m = {}; rows.forEach(r => { m[r.id] = r; });
+    Object.keys(dirty).forEach(id => { if (dirty[id].deleted_at) delete m[id]; else m[id] = Object.assign({ id, star: false, memo: '', st: '', v: {} }, m[id], dirty[id]); });
+    S.marks = m;
+  }
+  let flushing = false;
+  async function flush() {
+    if (flushing) return; flushing = true;
+    try {
+      for (const id of Object.keys(dirty)) {
+        const p = dirty[id], body = Object.assign({ id, by: ME(), deleted_at: null }, p);
+        await rest('adlib_marks?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(body) });
+        if (dirty[id] === p) { delete dirty[id]; saveDirty(); }
+      }
+      saveState('저장됨');
+    } catch (e) { saveState('아직 저장 안 됨 — 다시 시도 중', true); setTimeout(flush, 8000); }
+    finally { flushing = false; if (Object.keys(dirty).length) setTimeout(flush, 300); }
+  }
+  function mark(id, patch, wait) {
+    dirty[id] = Object.assign({}, dirty[id], patch); saveDirty();
+    if (patch.deleted_at) delete S.marks[id]; else S.marks[id] = Object.assign({ id, star: false, memo: '', st: '', v: {} }, S.marks[id], patch);
+    saveState('저장 중…'); clearTimeout(mark.t); mark.t = setTimeout(flush, wait || 0);
+  }
+  function saveState(t, err) { const e = $('memoSt'); if (e) { e.textContent = t; e.className = 'st' + (err ? ' err' : ''); } }
+  const M = id => S.marks['ad:' + id] || {};
+  const idsOf = a => [a.id].concat(a.ids || []);
+  const markOf = a => { for (const i of idsOf(a)) { const m = M(i); if (m.star || m.memo) return m; } return {}; };
+  const isStar = a => idsOf(a).some(i => M(i).star);
+  function toggleStar(a) {
+    const on = isStar(a);
+    if (on) idsOf(a).filter(i => M(i).star).forEach(i => mark('ad:' + i, { star: false })); else mark('ad:' + a.id, { star: true });
+    toast(on ? '보관함에서 뺐어요' : '보관함에 넣었어요 — 꺼진 뒤에도 남아요');
+  }
+
+  /* ── 자료 ── */
+  function pin() { for (const w of [window.parent !== window ? window.parent : null, window.opener]) { try { if (w && typeof w.ghPin === 'function') return w.ghPin(); } catch (e) { /* 다른 출처 */ } } return '2580'; }
+  async function loadList() {
+    const t = await fetch('https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json?cb=' + Date.now(), { cache: 'no-store' }).then(r => r.json());
+    S.base = String(t.url || '').replace(/\/$/, '');
+    const r = await fetch(S.base + '/adlib/list?cb=' + Date.now(), { headers: { 'X-Brightbeed-PIN': pin() }, cache: 'no-store' });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    S.d = j;
+    S.byPid = {}; j.brands.forEach(b => { S.byPid[b.pid] = b; b.ads = (j.ads[b.pid] || []).map(a => Object.assign(a, { pid: b.pid, bn: b.name })); });
+    S.all = j.brands.reduce((x, b) => x.concat(b.ads), []).concat((j.lost || []));
+    const h = (Date.now() - j.at) / 36e5, d = new Date(j.at), st = $('stamp');
+    st.className = 'stamp' + (h > 40 ? ' bad' : '');
+    st.innerHTML = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준<span class="long"> · 국내 ${num(j.counts.kr)}곳 · 소재 ${num(j.counts.ads)}개 · 매일 새벽 갱신</span>${h > 40 ? ' · 갱신이 밀렸어요' : ''}`;
+  }
+  const mediaUrl = (k, ext) => `${S.base}/adlib/m/${k}.${ext}`;
+  const thumb = a => a.th ? mediaUrl(a.th, 'jpg') : (a.m[0] || {}).p || '';
+  const thumb2 = a => a.th ? (a.m[0] || {}).p || '' : '';
+  const gone = img => { const n = img.dataset.alt; if (n) { img.dataset.alt = ''; img.src = n; } else img.style.visibility = 'hidden'; };
+  document.addEventListener('error', e => { const t = e.target; if (t && t.tagName === 'IMG' && 'alt2' in t.dataset) { t.dataset.alt = t.dataset.alt2; t.removeAttribute('data-alt2'); gone(t); } }, true);
+
+  /* ── 브랜드 순위 ── */
+  const hidden = b => b.pids.some(p => (S.marks['pg:' + p] || {}).st === 'hide');
+  const regionOf = b => b.own ? 'own' : ((S.marks['pg:' + b.pid] || {}).v || {}).region || b.region;
+  const inReg = b => !hidden(b) && regionOf(b) === S.reg;
+  const val = b => S.rank === 'spend' ? b.spend : S.rank === 'eff' ? b.eff : b.m.new7;
+  function brandsNow() {
+    const q = S.bq.trim().toLowerCase();
+    let l = S.d.brands.filter(q ? b => !hidden(b) && (b.name + ' ' + b.dom).toLowerCase().includes(q) : inReg).filter(b => val(b) != null);
+    return l.sort((x, y) => (val(y) - val(x)) || (y.m.live - x.m.live));
+  }
+  function paintBrands() {
+    const l = brandsNow();
+    $('rankNote').textContent = S.rank === 'spend' ? '추정 점수 0~100 — 실제 금액은 메타가 공개하지 않아요' : S.rank === 'eff' ? '추정 점수 0~100 — 오래 안 끄고 노출 상위인 광고가 많은 곳' : '최근 7일 안에 새로 시작한 소재 수';
+    $('blist').innerHTML = l.map((b, i) => {
+      const a = b.ads.find(x => x.th) || b.ads[0] || { m: [] }, v = val(b);
+      const sub = S.rank === 'eff' ? `30일 넘게 남은 주력 ${b.m.winners}개 · 최장 ${num(b.m.longest)}일` : S.rank === 'new' ? `최근 7일 새 소재 · 지금 ${num(b.m.live)}개` : `광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}`;
+      return `<button class="brow${S.pid === b.pid ? ' on' : ''}" data-pid="${b.pid}"><span class="rk${i < 3 ? ' hi' : ''}">${i + 1}</span><span class="pic"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""></span><span style="min-width:0"><b>${esc(b.name)}</b><span class="s">${esc(sub)}</span>${S.rank === 'new' ? '' : `<span class="bar"><i style="width:${v}%"></i></span>`}</span><span class="sc"><b>${v}</b></span></button>`;
+    }).join('') || `<div style="padding:28px 12px;text-align:center;color:var(--t3)">${S.rank === 'eff' ? '아직 효율을 가릴 만큼 쌓인 곳이 없어요' : '해당하는 브랜드가 없어요'}</div>`;
+  }
+  function paintHead() {
+    const b = S.byPid[S.pid], h = $('bhead'); h.hidden = !b; if (!b) return;
+    const live = b.h && b.h.length > 4 ? spark(b.h) : '';
+    h.innerHTML = `<div style="min-width:0"><h2>${esc(b.name)}</h2><div class="sub">${b.dom ? `<a href="https://${esc(b.dom)}" target="_blank" rel="noopener noreferrer">${esc(b.dom)}</a>` : esc((b.cats || []).join(' · '))}${b.likes ? ` · 페이지 좋아요 ${num(b.likes)}` : ''}</div></div>
+      <div class="stat"><b>${b.spend ?? '–'}</b><span>광고비 추정</span></div><div class="stat"><b>${b.eff ?? '–'}</b><span>효율 추정</span></div>
+      <div class="stat"><b>${num(b.m.live)}</b><span>지금 광고</span></div><div class="stat"><b>${b.m.new7}</b><span>7일 새 소재</span></div><div class="stat"><b>${b.m.winners}</b><span>30일+ 주력</span></div><div class="stat"><b>${num(b.m.longest)}일</b><span>가장 오래</span></div>
+      <div class="stat"><b>${b.m.video}·${b.m.image}·${b.m.car}</b><span>영상·사진·여러 장</span></div>${live}
+      <div class="acts"><a class="btn" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=KR&media_type=all&search_type=page&view_all_page_id=${esc(b.pid)}">메타에서 보기</a>${b.own ? '' : `<button class="btn" data-act="region">${regionOf(b) === 'kr' ? '해외로 옮기기' : '국내로 옮기기'}</button><button class="btn danger" data-act="hide">빼기</button>`}<button class="btn" data-act="clear">전체 브랜드 보기</button></div>`;
+  }
+  function spark(h) {
+    const v = h.map(x => x[1]), mx = Math.max(...v, 1), mn = Math.min(...v), W = 120, H = 30;
+    const p = v.map((y, i) => `${(i / (v.length - 1) * W).toFixed(1)},${(H - 3 - (mx === mn ? .5 : (y - mn) / (mx - mn)) * (H - 6)).toFixed(1)}`).join(' ');
+    return `<div class="stat"><svg width="${W}" height="${H}" role="img" aria-label="광고 수 흐름 ${v[0]} 에서 ${v[v.length - 1]}"><polyline points="${p}" fill="none" stroke="#0f172a" stroke-width="1.8" stroke-linejoin="round"/></svg><span style="display:block">광고 수 ${h.length}일</span></div>`;
+  }
+
+  /* ── 소재 ── */
+  function adsNow() {
+    const q = S.q.trim().toLowerCase();
+    let l;
+    if (S.view === 'star') l = S.all.filter(isStar);
+    else if (S.pid) l = S.byPid[S.pid].ads.slice();
+    else l = S.d.brands.filter(inReg).reduce((x, b) => x.concat(b.ads), []);
+    if (S.fmt) l = l.filter(a => a.f === S.fmt);
+    if (q) l = l.filter(a => (a.bn + ' ' + a.b + ' ' + a.t + ' ' + (a.alt || []).join(' ') + ' ' + (markOf(a).memo || '')).toLowerCase().includes(q));
+    const sp = a => (S.byPid[a.pid] || {}).spend || 0;
+    if (S.view === 'win') {
+      l = l.filter(a => a.w != null && !a.e).sort((x, y) => (y.w * .7 + sp(y) * .3) - (x.w * .7 + sp(x) * .3));
+      if (!S.pid && !q) { const c = {}; l = l.map((a, i) => { c[a.pid] = (c[a.pid] || 0) + 1; return [a, i + Math.max(0, c[a.pid] - 2) * 14]; }).sort((x, y) => x[1] - y[1]).map(x => x[0]); }   // 한 브랜드가 첫 화면을 다 차지하지 않게
+    } else if (S.view === 'new') {
+      l = l.filter(a => !a.e && a.d < 14).sort((x, y) => S.pid ? (x.d - y.d || x.r - y.r) : (Math.floor(x.d / 3) - Math.floor(y.d / 3)) || (sp(y) - sp(x)) || (x.r - y.r));
+      if (!S.pid && !q) { const c = {}; l = l.map((a, i) => { c[a.pid] = (c[a.pid] || 0) + 1; return [a, i + Math.max(0, c[a.pid] - 3) * 12]; }).sort((x, y) => x[1] - y[1]).map(x => x[0]); }
+    } else if (S.view === 'old') l = l.sort((x, y) => (x.e ? 1 : 0) - (y.e ? 1 : 0) || y.d - x.d);
+    else l = l.sort((x, y) => String(markOf(y).updated_at || '9').localeCompare(String(markOf(x).updated_at || '9')));
+    return l;
+  }
+  const why = a => a.e ? `${num(a.d)}일 돌고 꺼짐 (${md(a.e)})` : a.d < 14 ? `${a.d}일째 · 브랜드 안 노출 ${a.r}위` : `${num(a.d)}일째 안 끄고 · 브랜드 안 노출 ${a.r}위`;
+  function card(a, i) {
+    const m0 = a.m[0] || {}, mm = markOf(a).memo;
+    return `<div class="card" tabindex="0" role="button" data-i="${i}" aria-label="${esc(a.bn)} 광고"><div class="shot"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""><span class="tag${a.e ? ' off' : ''}">${a.e ? '꺼짐' : num(a.d) + '일째'}</span><span class="kind">${KIND[a.f] || ''}${m0.t === 'v' && m0.d ? ' ' + Math.round(m0.d) + '초' : a.f === 'carousel' ? ' ' + a.m.length : ''}</span><button class="star${isStar(a) ? ' on' : ''}" type="button" aria-label="보관" title="보관">${starSvg}</button></div>
+      <div class="cbody"><div class="nm"><span>${esc(a.bn)}</span>${a.n > 1 ? `<em>같은 소재 ${a.n}</em>` : ''}</div><div class="tx">${esc(a.b || a.t)}</div><div class="why">${why(a)}</div>${S.view === 'star' && mm ? `<div class="memo">${esc(mm)}</div>` : ''}</div></div>`;
+  }
+  function paintGrid() {
+    const l = S.list = adsNow(), part = l.slice(0, S.n);
+    $('grid').innerHTML = part.map(card).join('');
+    $('cnt').textContent = `${num(l.length)}개`;
+    $('more').hidden = l.length <= S.n;
+    $('empty').hidden = l.length > 0;
+    $('empty').textContent = S.view === 'star' ? '보관한 광고가 없어요 — 카드의 ☆ 를 누르면 여기 모이고, 광고가 꺼진 뒤에도 남아요' : S.q ? '찾는 문구가 있는 광고가 없어요' : S.view === 'win' ? '2주 넘게 남은 광고가 아직 없어요 — [새 광고] 를 봐 주세요' : '해당하는 광고가 없어요';
+  }
+  function paintSegs() {
+    const set = (id, v) => $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    set('rankSeg', S.rank); set('regSeg', S.reg); set('viewSeg', S.view); set('fmtSeg', S.fmt);
+    $('mtabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === document.body.dataset.m));
+  }
+  function paint(keepN) { if (!keepN) S.n = PAGE; paintSegs(); paintBrands(); paintHead(); paintGrid(); }
+  function mtab(m) { document.body.dataset.m = m; paintSegs(); window.scrollTo(0, 0); }
+
+  /* ── 마우스 올리면 영상 재생 ── */
+  const fine = matchMedia('(hover:hover) and (pointer:fine)').matches;
+  function vidSrcs(a, m) { const cdn = m.u, own = a.vd && m === a.m[0] ? mediaUrl(a.vd, 'mp4') : ''; return (a.e ? [own, cdn] : [cdn, own]).filter(Boolean); }
+  function setVid(v, srcs) { let i = 0; v.onerror = () => { i++; if (srcs[i]) v.src = srcs[i]; else v.remove(); }; v.src = srcs[0]; }
+  if (fine) $('grid').addEventListener('mouseover', e => {
+    const c = e.target.closest('.card'); if (!c || c.contains(e.relatedTarget)) return;
+    const a = S.list[+c.dataset.i], m = a && a.m[0]; if (!m || m.t !== 'v' || c.querySelector('video')) return;
+    clearTimeout(c._t); c._t = setTimeout(() => { const v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; setVid(v, vidSrcs(a, m)); c.querySelector('.shot img').after(v); v.play().catch(() => {}); }, 180);
+  });
+  if (fine) $('grid').addEventListener('mouseout', e => { const c = e.target.closest('.card'); if (!c || c.contains(e.relatedTarget)) return; clearTimeout(c._t); const v = c.querySelector('video'); if (v) { v.pause(); v.remove(); } });
+
+  /* ── 상세 ── */
+  const cleanLink = l => { if (!l) return ''; try { const u = new URL(l); if (!/^https?:$/.test(u.protocol)) return ''; [...u.searchParams.keys()].forEach(k => { if (/^(utm_|fbclid|cafe_mkt|ref$)/i.test(k) || /\{\{/.test(u.searchParams.get(k))) u.searchParams.delete(k); }); return u.href; } catch (e) { return ''; } };
+  let closeFn = null;
+  function overlay(html, small) {
+    closeOv(); const ov = document.createElement('div'); ov.className = 'ov'; ov.innerHTML = `<div class="dlg${small ? ' small' : ''}" role="dialog" aria-modal="true"><button class="x" type="button" aria-label="닫기">×</button>${html}</div>`;
+    const back = document.activeElement; $('ovs').appendChild(ov); document.body.style.overflow = 'hidden'; ov.querySelector('.x').focus({ preventScroll: true });
+    let down = null; ov.addEventListener('pointerdown', e => { down = e.target; });
+    ov.addEventListener('click', e => { if ((e.target === ov && down === ov) || e.target.closest('.x')) closeOv(); });
+    closeFn = () => { ov.querySelectorAll('video').forEach(v => v.pause()); ov.remove(); document.body.style.overflow = ''; closeFn = null; try { back && back.focus({ preventScroll: true }); } catch (e) { /* noop */ } };
+    return ov;
+  }
+  function closeOv() { if (closeFn) closeFn(); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOv(); if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('card')) { e.preventDefault(); openAd(S.list[+e.target.dataset.i]); } });
+  function openAd(a) {
+    if (!a) return;
+    const mk = markOf(a), mid = (mk.id && mk.id.startsWith('ad:')) ? mk.id : 'ad:' + a.id, link = cleanLink(a.l);
+    const ov = overlay(`<div class="dm"><div class="view"></div>${a.m.length > 1 ? `<div class="strip">${a.m.map((m, i) => `<button type="button" data-k="${i}" aria-label="${i + 1}번째"><img src="${esc(m.p)}" alt=""></button>`).join('')}</div>` : ''}</div>
+      <div class="di"><h3>${esc(a.bn)}</h3>
+      <dl class="facts"><dt>기간</dt><dd>${md(a.s)} 부터 ${a.e ? md(a.e) + ' 까지 ' : ''}${num(a.d)}일${a.e ? '' : '째'}</dd>${a.e ? '' : `<dt>노출 순서</dt><dd>이 브랜드 안에서 ${a.r}위</dd>`}<dt>같은 소재</dt><dd>${a.n}개로 돌리는 중</dd><dt>형식</dt><dd>${KIND[a.f] || ''}${a.m[0] && a.m[0].t === 'v' && a.m[0].d ? ` · ${Math.round(a.m[0].d)}초` : ''}${a.o ? ' · 여러 소재 자동 조합' : ''} · ${a.ig ? '인스타 포함' : '인스타 제외'}</dd>${a.w != null && !a.e ? `<dt>잘 되는 점수</dt><dd>${a.w} / 100 <span style="color:var(--t3)">(추정)</span></dd>` : ''}${a.dm ? `<dt>보내는 곳</dt><dd>${esc(a.dm)}</dd>` : ''}${a.c ? `<dt>버튼</dt><dd>${esc(a.c)}</dd>` : ''}</dl>
+      ${a.b ? `<div class="lb">광고 문구 <button type="button" data-copy>복사</button></div><div class="copy">${esc(a.b)}</div>` : ''}${a.t ? `<div class="lb">제목</div><div class="copy">${esc(a.t)}</div>` : ''}
+      ${(a.alt || []).length ? `<div class="lb">같이 쓰는 다른 문구 ${a.alt.length}</div><div class="copy">${a.alt.map(esc).join('\n\n')}</div>` : ''}
+      <div class="lb">메모 <span class="st" id="memoSt"></span></div><textarea id="memo" maxlength="2000" placeholder="어떤 점을 참고할지 적어 두기">${esc(mk.memo || '')}</textarea>
+      <div class="acts"><button class="btn pri" data-star type="button">${isStar(a) ? '보관 중 — 빼기' : '☆ 보관'}</button>${link ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(link)}">상품 페이지</a>` : ''}<a class="btn" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/ads/library/?id=${esc(a.id)}">메타에서 보기</a>${S.byPid[a.pid] ? '<button class="btn" data-brand type="button">이 브랜드 전체</button>' : ''}</div></div>`);
+    const view = ov.querySelector('.view');
+    const show = k => {
+      const m = a.m[k] || {}; view.innerHTML = '';
+      ov.querySelectorAll('.strip button').forEach((b, i) => b.classList.toggle('on', i === k));
+      if (m.t === 'v') { const v = document.createElement('video'); v.controls = true; v.playsInline = true; v.autoplay = true; v.loop = true; v.poster = k === 0 ? thumb(a) : m.p; setVid(v, vidSrcs(a, m)); view.appendChild(v); }
+      else { const im = document.createElement('img'); im.alt = ''; im.onerror = () => { im.onerror = null; if (a.th && k === 0) im.src = thumb(a); }; im.src = m.u || m.p || thumb(a); view.appendChild(im); }
+    };
+    show(0);
+    ov.addEventListener('click', async e => {
+      const k = e.target.closest('[data-k]'); if (k) return show(+k.dataset.k);
+      if (e.target.closest('[data-copy]')) { try { await navigator.clipboard.writeText(a.b); toast('문구를 복사했어요'); } catch (err) { toast('복사가 막혀 있어요 — 글을 끌어서 복사해 주세요', true); } }
+      if (e.target.closest('[data-star]')) { toggleStar(a); e.target.closest('[data-star]').textContent = isStar(a) ? '보관 중 — 빼기' : '☆ 보관'; paintGrid(); }
+      if (e.target.closest('[data-brand]')) { closeOv(); pickBrand(a.pid); }
+    });
+    const ta = ov.querySelector('#memo');
+    ta.addEventListener('input', () => { const p = { memo: ta.value }; if (ta.value.trim() && !isStar(a)) p.star = true; mark(mid, p, 700); if (p.star) { ov.querySelector('[data-star]').textContent = '보관 중 — 빼기'; } });
+  }
+  function pickBrand(pid) { S.pid = S.pid === pid ? '' : pid; if (S.view === 'star') S.view = 'win'; const b = S.byPid[S.pid]; if (b && S.view === 'win' && !b.ads.some(a => a.w != null && !a.e)) S.view = 'new'; document.body.dataset.m = 'ads'; paint(); window.scrollTo(0, 0); }
+
+  function help() {
+    overlay(`<h3>숫자 읽는 법</h3><p>메타는 남의 <b>광고비 · 매출 · ROAS 를 공개하지 않아요.</b> 아래 점수는 공개된 것(광고 개수 · 기간 · 노출 순서)으로 브랜드끼리 견준 <b>추정</b>이에요 (0~100, 높을수록 앞).</p>
+      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>매일 새벽 3시 20분에 새로 모아요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
+  }
+  function addDlg() {
+    const rows = Object.values(S.marks).filter(m => m.st === 'add' && m.v && m.v.q), hid = Object.values(S.marks).filter(m => m.st === 'hide');
+    const stOf = m => { const s = (S.d.adds || {})[m.id]; return !s ? '내일 새벽에 모아요' : s.pid ? '모으는 중' : s.why || '못 찾음'; };
+    const ov = overlay(`<h3>브랜드 넣기</h3><p>자동으로 안 잡힌 브랜드를 적어 두면 다음 새벽부터 같이 모아요. 메타 라이브러리 광고주 주소가 가장 정확하고, 인스타 주소나 브랜드 이름도 돼요.</p><form class="row2"><input class="inp" id="addQ" maxlength="300" placeholder="메타 라이브러리 주소 · 인스타 주소 · 이름" style="flex:1"><button class="btn pri">넣기</button></form>
+      <div class="adds">${rows.map(m => `<div><b>${esc(m.v.q.slice(0, 60))}</b><span>${esc(stOf(m))}</span><button class="btn" data-del="${esc(m.id)}">지우기</button></div>`).join('')}${hid.length ? `<div><b>뺀 브랜드 ${hid.length}</b></div>` + hid.map(m => `<div>${esc((m.v || {}).name || m.id.slice(3))}<button class="btn" data-unhide="${esc(m.id)}">다시 보기</button></div>`).join('') : ''}</div>`, true);
+    ov.querySelector('form').addEventListener('submit', e => { e.preventDefault(); const q = $('addQ').value.trim(); if (!q) return; mark('add:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), { st: 'add', v: { q } }); toast('넣었어요 — 다음 새벽부터 모아요'); addDlg(); });
+    ov.addEventListener('click', e => { const d = e.target.closest('[data-del]'), u = e.target.closest('[data-unhide]'); if (d) { mark(d.dataset.del, { deleted_at: new Date().toISOString() }); addDlg(); } if (u) { mark(u.dataset.unhide, { st: '' }); paint(true); addDlg(); } });
+  }
+
+  /* ── 누르기 ── */
+  const seg = (id, fn) => $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { fn(b.dataset.v ?? b.dataset.m); } });
+  seg('rankSeg', v => { S.rank = v; lsSet('adlib_rank', v); paintSegs(); paintBrands(); });
+  seg('regSeg', v => { S.reg = v; S.pid = ''; paint(); });
+  seg('viewSeg', v => { S.view = v; paint(); });
+  seg('fmtSeg', v => { S.fmt = v; paint(); });
+  seg('mtabs', v => mtab(v));
+  $('blist').addEventListener('click', e => { const b = e.target.closest('.brow'); if (b) pickBrand(b.dataset.pid); });
+  $('bhead').addEventListener('click', e => {
+    const b = S.byPid[S.pid], act = (e.target.closest('[data-act]') || { dataset: {} }).dataset.act; if (!b || !act) return;
+    if (act === 'clear') { S.pid = ''; paint(); }
+    if (act === 'region') { const r = regionOf(b) === 'kr' ? 'global' : 'kr', k = 'pg:' + b.pid; mark(k, { v: Object.assign({}, (S.marks[k] || {}).v, { region: r, name: b.name }) }); S.pid = ''; paint(); toast(`${b.name} — ${r === 'kr' ? '국내' : '해외'}로 옮겼어요`); }
+    if (act === 'hide') { b.pids.forEach(p => mark('pg:' + p, { st: 'hide', v: { name: b.name } })); S.pid = ''; paint(); toast(`${b.name} 을(를) 뺐어요`, false, () => { b.pids.forEach(p => mark('pg:' + p, { st: '' })); paint(); }); }
+  });
+  $('grid').addEventListener('click', e => {
+    const c = e.target.closest('.card'); if (!c) return; const a = S.list[+c.dataset.i];
+    if (e.target.closest('.star')) { toggleStar(a); if (S.view === 'star') paintGrid(); else e.target.closest('.star').classList.toggle('on', isStar(a)); return; }
+    openAd(a);
+  });
+  $('more').addEventListener('click', () => { S.n += PAGE; paintGrid(); });
+  let qt = 0; $('q').addEventListener('input', e => { S.q = e.target.value; clearTimeout(qt); qt = setTimeout(() => { S.n = PAGE; paintGrid(); }, 180); });
+  $('bq').addEventListener('input', e => { S.bq = e.target.value; paintBrands(); });
+  $('helpBtn').addEventListener('click', help); $('addBtn').addEventListener('click', addDlg);
+  window.addEventListener('online', flush); window.addEventListener('pagehide', () => { if (Object.keys(dirty).length) flush(); });
+
+  /* ── 잠금 · 시작 ── */
+  function isUnlocked() { if (window.__inOffice) return true; return lsGet('brightbeed_unlocked') === '1' && lsGet('brightbeed_auth_ver') === AUTH_VERSION && !(lsGet('brightbeed_role') === 'master' && lsGet('brightbeed_master_ver') !== MASTER_PIN_VER); }
+  async function sha256hex(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+  $('lockForm').addEventListener('submit', async e => {
+    e.preventDefault(); const v = $('lockPin').value.trim(); let role = null;
+    try { role = PIN_HASH[await sha256hex(v)] || null; } catch (err) { role = null; }
+    if (!role) { $('lockErr').textContent = '접속 코드가 올바르지 않아요'; $('lockPin').value = ''; $('lockPin').focus(); return; }
+    if (role !== 'master' && window.BossGuard) BossGuard.drop();
+    lsSet('brightbeed_role', role); lsSet('brightbeed_auth_ver', AUTH_VERSION); if (role === 'master') lsSet('brightbeed_master_ver', MASTER_PIN_VER); lsSet('brightbeed_unlocked', '1');
+    $('lock').hidden = true; start();
+  });
+  async function start() {
+    try {
+      await Promise.all([loadList(), loadMarks().catch(e => toast('보관 · 메모를 못 불러왔어요: ' + e.message, true))]);
+      $('app').hidden = false; paint(); if (Object.keys(dirty).length) flush();
+    } catch (e) {
+      $('stamp').className = 'stamp bad'; $('stamp').innerHTML = '자료를 못 불러왔어요 — ' + esc(e.message) + ' <button class="btn" id="retry" type="button">다시</button>'; $('retry').onclick = () => { $('stamp').textContent = '불러오는 중…'; start(); }; return;
+    }
+    const live = () => { if (!window.OfficeLive || live.on) return; live.on = true; OfficeLive.on(['adlib_marks'], async () => { if (flushing || Object.keys(dirty).length) return; try { await loadMarks(); paint(true); } catch (e) { /* 다음에 */ } }); };
+    live(); setTimeout(live, 1500);
+    setInterval(() => { if (!document.hidden && S.d && Date.now() - S.d.at > 20 * 36e5 && Date.now() - (start.at || 0) > 30 * 6e4) { start.at = Date.now(); const at = S.d.at; loadList().then(() => { if (S.d.at !== at) paint(true); }).catch(() => {}); } }, 60e3);
+  }
+  if (isUnlocked()) start(); else { $('lock').hidden = false; setTimeout(() => $('lockPin').focus(), 50); }
+})();
+</script>
+<script src="../office-live.js?v=1" defer></script>
+</body>
+</html>
