@@ -8,6 +8,7 @@ try{if(window.parent===window&&window.CSS&&CSS.supports('-webkit-touch-callout',
 try{var m=/[?&]app=(design|md|cs)(&|$)/.exec(location.search);if(m)document.documentElement.classList.add('solo-app','solo-'+m[1])}catch(e){}   /* 디자인팀 · MD팀 · CS팀 새 탭 (홈 카드 → openSoloPage) — 위 막대 없이 그 팀만 */
 if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)){var _vp=document.querySelector('meta[name=viewport]');if(_vp)_vp.content='width=device-width, initial-scale=1.0, maximum-scale=1.0';}</script>
 <title>Bead Universe Co., Ltd. · Office</title>
+<script src="boss-guard.js?v=1"></script><script>window.BossGuard||document.write('<script src="boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
 <script src="office-undo.js?v=1" data-skip="rpc/dlog_|app_kv\?key=eq\.check_ack"></script><!-- 어디서든 되돌리기 (office-undo.js) — 디자인팀 업무일지(dlog_*)는 적는 대로 저장되고 자체 되돌리기가 있어 뺌 · 확인 필요 알림의 '확인했어요'(check_ack)도 목록 안에서 되돌림 -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -8632,6 +8633,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .dsm-input.is-bad{border-color:#ef4444}
   .dsm-hint{min-height:18px;margin-top:8px;font-size:12px;font-weight:600;color:#b91c1c;letter-spacing:-.01em}
   .dsm-note{margin-top:2px;font-size:11.5px;color:#78716c;line-height:1.5;letter-spacing:-.01em}
+  .dsm-relog{margin-top:14px;font-size:12px;color:#78716c;letter-spacing:-.01em}
+  .dsm-relog[hidden]{display:none}
+  .dsm-relog button{border:0;background:none;padding:6px 2px;font:700 12px var(--sans);color:#57534e;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
   @media (max-width:480px){
     .dsm-card{padding:28px 22px 22px}
@@ -13083,7 +13087,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     <div class="lock-sub">접속 코드를 입력해 주세요.</div>
     <input class="lock-input" id="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••">
     <button class="lock-btn" id="unlock">인증하기</button>
-    <div class="lock-err" id="err"></div>
+    <div class="lock-err" id="err" style="white-space:pre-line"></div>
   </div>
 </div>
 
@@ -23790,6 +23794,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     // '관리자 전용' 폴더의 명단 카드(대표 전용 금고 · 꿀꿀집 · 송년회)도 관리자 PIN 여부로 다시 판정 — 금고는 권한이 없어지면 잠근다
     if(typeof execRefreshAccess==='function') execRefreshAccess();   // 안에서 snsRefreshAccess 도 부름
     if(typeof yeRefreshAccess==='function') yeRefreshAccess();
+    if(typeof _diaryRefreshSetupOptions==='function') _diaryRefreshSetupOptions();   // 열려 있던 이름 고르기 창도 지금 PIN 기준으로
   }
   function requireMaster(action){
     if(!isMaster()){toast(`마스터 권한이 필요합니다${action?` (${action})`:''}`,'err');return false}
@@ -23851,7 +23856,10 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     // 화면 수정 모드 (전승훈) 로 바꾼 글자 · 정렬 · 지운 곳 — 전 직원 화면에 입힘 (app_kv 'ui_edits')
     if(typeof ueBoot==='function') ueBoot();
   }
-  function showLock(){app.classList.remove('show');lock.classList.add('show');setTimeout(()=>pin.focus(),50)}
+  function showLock(){
+    app.classList.remove('show');lock.classList.add('show');setTimeout(()=>pin.focus(),50);
+    const m=document.getElementById('diarySetupModal'); if(m) m.hidden=true;   // 이름 고르기 창이 잠금화면을 덮지 않게 (들어오면 다시 뜬다)
+  }
 
   async function init(){
     applyRole();
@@ -23867,6 +23875,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     }
     if(localStorage.getItem(KEY)==='1'){show();return}
     showLock();
+    if(window.BossGuard) err.textContent=BossGuard.note();   // 2580 으로 들어와 있던 대표 컴퓨터를 로그아웃시킨 안내
   }
 
   document.getElementById('unlock').onclick=()=>{
@@ -23877,16 +23886,20 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       catch(e){ try{ if(typeof _bbFreeLocalSpace==='function') _bbFreeLocalSpace(); localStorage.setItem(k,val); }catch(e2){} }
     };
     if(v===PIN_MASTER){
-      lsSet(KEY,'1');
-      lsSet(ROLE_KEY,'master');
-      lsSet(VER_KEY,AUTH_VERSION);
+      lsSet(ROLE_KEY,'master');   // 권한을 먼저 — 다른 탭의 대표 이름 지킴이(boss-guard.js)가 '풀렸는데 관리자 아님' 으로 보지 않게
       lsSet(MVER_KEY,MASTER_PIN_VER);
+      lsSet(VER_KEY,AUTH_VERSION);
+      lsSet(KEY,'1');
       err.textContent='';show();
     }else if(v===PIN_VIEWER){
+      // 대표 이름으로 해 둔 PC 도 2580 으로는 대표로 안 들어간다 — 이름을 지우고, 그려 둔 대표 화면이 안 남게 새로 연다 (boss-guard.js)
+      const wasBoss=!!window.BossGuard&&BossGuard.drop();
       lsSet(KEY,'1');
       lsSet(ROLE_KEY,'viewer');
       lsSet(VER_KEY,AUTH_VERSION);
-      err.textContent='';show();
+      err.textContent='';
+      if(wasBoss){ location.reload(); return; }
+      show();
     }else{
       err.textContent='접속 코드가 올바르지 않습니다.';
       pin.value='';pin.focus();
@@ -33704,7 +33717,11 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   /* ===== 이 PC의 주인 (로컬 세팅) + 크롬 알림 권한 ===== */
   const DIARY_ME_KEY = 'brightbeed_diary_me';
   function _diaryGetMe(){ try{return localStorage.getItem(DIARY_ME_KEY)||''}catch(e){return ''} }
-  function _diarySetMe(v){ try{localStorage.setItem(DIARY_ME_KEY, v||'')}catch(e){} }
+  function _diarySetMe(v){
+    if(v && !isMaster() && (STAFF.some(s=>s.ceo && s.name===v) || _diaryPrivName(v))) return false;   // 2580 으로는 대표 · 기밀 명단 이름을 쓸 수 없다
+    try{localStorage.setItem(DIARY_ME_KEY, v||'')}catch(e){}
+    return true;
+  }
   function _diaryInitMeBox(){
     const nameEl = document.getElementById('diaryMeName');
     const notifBtn = document.getElementById('diaryNotifBtn');
@@ -33870,6 +33887,15 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     sel.innerHTML = '<option value="">— 이름 선택 —</option>' +
       staffOptions.map(s=>`<option value="${_esc(s.name)}">${_esc(s.name)} · ${_esc(s.dept)}${s.team?' '+_esc(s.team):''}</option>`).join('');
     if(cur && staffOptions.some(s=>s.name===cur)) sel.value=cur;
+    else{ const sv=document.getElementById('dsmSave'); if(sv) sv.disabled=true; }
+    _diarySetupRelog();
+  }
+  /* 보기 PIN 이면 대표 이름이 안 나오므로 다른 PIN 으로 다시 들어갈 길 — 이 창이 로그아웃 단추를 덮고 있다 */
+  function _diarySetupRelog(){
+    const p = document.getElementById('dsmRelogRow'), b = document.getElementById('dsmRelog');
+    if(!p || !b) return;
+    p.hidden = isMaster();
+    b.onclick = ()=>{ try{ localStorage.removeItem(KEY); localStorage.removeItem(ROLE_KEY); }catch(e){} location.reload(); };
   }
   window._diaryRefreshSetupOptions = _diaryRefreshSetupOptions;
 
@@ -33882,6 +33908,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     if(!modal) return;
     // 이미 로그인된 상태면 팝업 다시 안 뜸 (변경 불가)
     if(_diaryGetMe()) return;
+    _diarySetupRelog();
     /* 뷰어(비마스터) PC 에서는 대표 두 분(전승훈·전수빈) 이름 아예 노출 안 함 — 2026-11-20 부터 기밀 · 디자인팀 명단 이름(지희선 · 박시호)도 (_diaryPrivName).
        마스터 PIN 을 아는 대표 본인만 CEO 로 선택 가능. */
     const isM = (typeof isMaster === 'function') && isMaster();
@@ -33930,7 +33957,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       if(!name) return;
       // 최종 확인 — 잘못 누르면 되돌릴 수 없음
       if(!confirm(`${name} 계정으로 로그인합니다.\n한 번 로그인하면 이 PC에서는 변경할 수 없습니다.\n계속하시겠습니까?`)) return;
-      _diarySetMe(name);
+      if(!_diarySetMe(name)){ toast('대표 PIN 으로 들어와야 고를 수 있는 이름이에요','err'); _diaryRefreshSetupOptions(); return; }
       // 알림 권한 요청 (사용자가 체크했고 아직 결정 안 된 경우)
       const notifSupported = 'Notification' in window;
       if(notifSupported && notifChk.checked && Notification.permission === 'default'){
@@ -57867,6 +57894,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     <div class="dsm-actions">
       <button id="dsmSave" class="dsm-btn dsm-btn-primary" type="button" disabled>로그인</button>
     </div>
+    <div class="dsm-relog" id="dsmRelogRow" hidden>이름이 안 보이나요? <button type="button" id="dsmRelog">다른 PIN 으로 다시 들어가기</button></div>
   </div>
 </div>
 
