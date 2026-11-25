@@ -65,7 +65,6 @@
   #app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start }
   .side { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; position: sticky; top: calc(var(--top) + 16px); max-height: calc(100vh - var(--top) - 32px); display: flex; flex-direction: column; overflow: hidden }
   .side-h { padding: 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none }
-  #srcSeg { overflow-x: auto; scrollbar-width: none } #srcSeg button { flex: 1 0 auto; padding: 0 4px; font-size: 12px; letter-spacing: -.02em }
   .side-h .seg { width: 100% } .side-h .seg button { flex: 1; padding: 0 4px }
   .note { font-size: 12px; color: var(--t3); line-height: 1.35 }
   .row2 { display: flex; gap: 6px } .row2 .inp { flex: 1 }
@@ -164,7 +163,6 @@
       <div class="seg" id="rankSeg"><button data-v="spend">광고비 많은</button><button data-v="eff">효율 좋은</button><button data-v="new">새 소재 많은</button><button data-v="sale" title="29CM 주간 베스트 · 리뷰 흐름 — 광고 추정이 실제 판매와 맞는지">판매 신호</button></div>
       <div class="note" id="rankNote"></div>
       <div class="seg" id="regSeg"><button data-v="kr">국내</button><button data-v="global">해외</button><button data-v="own">우리 브랜드</button></div>
-      <div class="seg scroll" id="srcSeg" aria-label="플랫폼 순위 브랜드"><button data-v="">전체</button><button data-v="musinsa">무신사</button><button data-v="amondz">아몬즈</button><button data-v="ably">에이블리</button><button data-v="zigzag">지그재그</button><button data-v="c29">29CM</button><button data-v="hip">요즘</button></div>
       <div class="row2"><input class="inp" id="bq" placeholder="브랜드 찾기" aria-label="브랜드 찾기"><button class="btn" id="addBtn" type="button">＋ 브랜드</button></div>
     </div>
     <div class="blist" id="blist"></div>
@@ -199,7 +197,7 @@
   const num = n => Number(n || 0).toLocaleString('ko-KR');
   const md = t => { const d = new Date(t); return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`; };
   const KIND = { video: '영상', image: '사진', carousel: '여러 장' };
-  const S = { d: null, base: '', marks: {}, rank: lsGet('adlib_rank') || 'spend', reg: 'kr', src: '', pid: '', view: 'win', fmt: '', q: '', bq: '', n: PAGE, list: [] };
+  const S = { d: null, base: '', marks: {}, rank: lsGet('adlib_rank') || 'spend', reg: 'kr', pid: '', view: 'win', fmt: '', q: '', bq: '', n: PAGE, list: [] };
   const DIRTY = 'adlib_dirty_v1';
   let dirty = {}; try { dirty = JSON.parse(lsGet(DIRTY) || '{}') || {}; } catch (e) { dirty = {}; }
   const saveDirty = () => lsSet(DIRTY, JSON.stringify(dirty));
@@ -261,12 +259,12 @@
     const j = await r.json();
     if (!r.ok || !j.ok) throw new Error(j.error || 'HTTP ' + r.status);
     S.d = j;
-    S.seeds = (j.seeds && j.seeds.list) || []; S.seedBy = {}; S.seeds.forEach(x => { if (x.pid) (S.seedBy[x.pid] = S.seedBy[x.pid] || []).push(x); });
+    S.seedBy = {}; ((j.seeds && j.seeds.list) || []).forEach(x => { if (x.pid) S.seedBy[x.pid] = (S.seedBy[x.pid] || '') + ' ' + x.n; });   // 한글 이름으로도 찾기 (메타 페이지 이름이 영문인 곳)
     S.byPid = {}; j.brands.forEach(b => { S.byPid[b.pid] = b; b.ads = (j.ads[b.pid] || []).map(a => Object.assign(a, { pid: b.pid, bn: b.name })); });
     S.all = j.brands.reduce((x, b) => x.concat(b.ads), []).concat((j.lost || []));
     const h = (Date.now() - j.at) / 36e5, d = new Date(j.at), st = $('stamp');
     st.className = 'stamp' + (h > 40 ? ' bad' : '');
-    st.innerHTML = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준<span class="long"> · 국내 ${num(j.counts.kr)}곳 · 소재 ${num(j.counts.ads)}개 · 하루 두 번 갱신</span>${h > 40 ? ' · 갱신이 밀렸어요' : ''}`;
+    st.innerHTML = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} 기준<span class="long"> · 국내 ${num(j.counts.kr)}곳 · 소재 ${num(j.counts.ads)}개 · 하루 9번 갱신</span>${h > 40 ? ' · 갱신이 밀렸어요' : ''}`;
   }
   const mediaUrl = (k, ext) => `${S.base}/adlib/m/${k}.${ext}`;
   const thumb = a => a.th ? mediaUrl(a.th, 'jpg') : (a.m[0] || {}).p || '';
@@ -278,22 +276,6 @@
   const hidden = b => b.pids.some(p => (S.marks['pg:' + p] || {}).st === 'hide');
   const regionOf = b => b.own ? 'own' : ((S.marks['pg:' + b.pid] || {}).v || {}).region || b.region;
   const inReg = b => !hidden(b) && regionOf(b) === S.reg;
-  const SRC = { musinsa: '무신사', amondz: '아몬즈', ably: '에이블리', zigzag: '지그재그', c29: '29CM', hip: '요즘 브랜드' };
-  const inView = b => S.src ? !hidden(b) && (S.seedBy[b.pid] || []).some(x => S.src in x.r) : inReg(b);
-  const ranksOf = pid => { const r = {}; (S.seedBy[pid] || []).forEach(x => Object.keys(x.r).forEach(k => { if (!(k in r) || x.r[k] < r[k]) r[k] = x.r[k]; })); return Object.keys(SRC).filter(k => k in r).map(k => k === 'hip' ? SRC[k] : `${SRC[k]} ${r[k]}위`).join(' · '); };
-  function paintSeeds() {
-    const q = S.bq.trim().toLowerCase(), at = ((S.d.seeds || {}).ats || {})[S.src] || (S.d.seeds || {}).at || '', all = S.seeds.filter(x => S.src in x.r), on = all.filter(x => S.byPid[x.pid]), wait = all.filter(x => x.st === 'wait').length;   // 지금 메타 광고를 하는 곳만 보인다 (사장님 "집행중이지않으면 굳이 필요없는데")
-    $('rankNote').textContent = `${((S.d.seeds || {}).src || {})[S.src] || ''}${at ? ` (${+at.slice(5, 7)}/${+at.slice(8)} 기준)` : ''} · 지금 광고하는 ${on.length}곳${wait ? ` (${all.length}곳 중 ${wait}곳은 확인 전)` : ''}`;
-    const l = on.filter(x => !hidden(S.byPid[x.pid]) && (!q || (x.n + ' ' + ((S.byPid[x.pid] || {}).name || '')).toLowerCase().includes(q)));
-    const sp = x => (S.byPid[x.pid] || {}).spend || -1;
-    l.sort((x, y) => S.src === 'hip' ? sp(y) - sp(x) : x.r[S.src] - y.r[S.src]);
-    $('blist').innerHTML = l.map((x, i) => {
-      const b = S.byPid[x.pid], rk = S.src === 'hip' ? i + 1 : x.r[S.src];
-      const etc = Object.keys(SRC).filter(k => k !== S.src && k !== 'hip' && k in x.r).map(k => `${SRC[k]} ${x.r[k]}위`).join(' · ');
-      const a = b.ads.find(y => y.th) || b.ads[0] || { m: [] };
-      return `<button class="brow${S.pid === b.pid ? ' on' : ''}" data-pid="${b.pid}"><span class="rk${rk <= 3 ? ' hi' : ''}">${rk}</span><span class="pic"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""></span><span style="min-width:0"><b>${esc(x.n)}</b><span class="s">광고 ${num(b.m.live)}개 · 새 소재 ${b.m.new7}${etc ? ' · ' + esc(etc) : ''}</span></span><span class="sc"><b>${b.spend ?? '–'}</b></span></button>`;
-    }).join('') || '<div style="padding:28px 12px;text-align:center;color:var(--t3)">' + (q ? '해당하는 브랜드가 없어요' : wait ? '아직 확인 전이에요 — 하루 두 번(7:00 · 15:20) 조금씩 찾아요' : '지금 메타 광고를 하는 곳이 없어요') + '</div>';
-  }
   const val = b => S.rank === 'spend' ? b.spend : S.rank === 'eff' ? b.eff : S.rank === 'sale' ? b.sale : b.m.new7;
   /* ── 29CM 판매 신호 (맥미니 adlib/c29.mjs 매일 02:40 — 주간 베스트 · 브랜드 리뷰 흐름. 지그재그 · 무신사 · W컨셉 · 에이블리는 robots.txt 가 막아 29CM 만) ── */
   const C29_BRAND = bid => `https://www.29cm.co.kr/store/brand/${encodeURIComponent(bid)}`;
@@ -329,11 +311,10 @@
   }
   function brandsNow() {
     const q = S.bq.trim().toLowerCase();
-    let l = S.d.brands.filter(q ? b => !hidden(b) && (b.name + ' ' + b.dom).toLowerCase().includes(q) : inReg).filter(b => val(b) != null);
+    let l = S.d.brands.filter(q ? b => !hidden(b) && (b.name + ' ' + b.dom + (S.seedBy[b.pid] || '')).toLowerCase().includes(q) : inReg).filter(b => val(b) != null);
     return l.sort((x, y) => (val(y) - val(x)) || (y.m.live - x.m.live));
   }
   function paintBrands() {
-    if (S.src) return paintSeeds();
     const l = brandsNow();
     const m29 = S.d.c29 || {};
     $('rankNote').textContent = S.rank === 'spend' ? '추정 점수 0~100 — 실제 금액은 메타가 공개하지 않아요' : S.rank === 'eff' ? '추정 점수 0~100 — 오래 안 끄고 노출 상위인 광고가 많은 곳' : S.rank === 'sale' ? (m29.at ? `29CM 주간 베스트 · 리뷰 흐름 0~100 — 29CM 에 있는 ${m29.on}곳만 (없는 곳 ${m29.miss}) · ${md(m29.at)} 기준` : '29CM 판매 신호를 처음 모으는 중이에요 — 내일 새벽부터 보여요') : '최근 7일 안에 새로 시작한 소재 수';
@@ -346,7 +327,7 @@
   function paintHead() {
     const b = S.byPid[S.pid], h = $('bhead'); h.hidden = !b; if (!b) return;
     const live = b.h && b.h.length > 4 ? spark(b.h) : '';
-    h.innerHTML = `<div style="min-width:0"><h2>${esc(b.name)}</h2><div class="sub">${b.dom ? `<a href="https://${esc(b.dom)}" target="_blank" rel="noopener noreferrer">${esc(b.dom)}</a>` : esc((b.cats || []).join(' · '))}${b.likes ? ` · 페이지 좋아요 ${num(b.likes)}` : ''}${ranksOf(b.pid) ? ' · ' + esc(ranksOf(b.pid)) : ''}</div></div>
+    h.innerHTML = `<div style="min-width:0"><h2>${esc(b.name)}</h2><div class="sub">${b.dom ? `<a href="https://${esc(b.dom)}" target="_blank" rel="noopener noreferrer">${esc(b.dom)}</a>` : esc((b.cats || []).join(' · '))}${b.likes ? ` · 페이지 좋아요 ${num(b.likes)}` : ''}</div></div>
       <div class="stat"><b>${b.spend ?? '–'}</b><span>광고비 추정</span></div><div class="stat"><b>${b.eff ?? '–'}</b><span>효율 추정</span></div>${b.region === 'global' ? '' : `<div class="stat" title="29CM 주간 베스트 · 리뷰 흐름 (0~100)"><b>${b.sale ?? '–'}</b><span>판매 신호</span></div>`}
       <div class="stat"><b>${num(b.m.live)}</b><span>지금 광고</span></div><div class="stat"><b>${b.m.new7}</b><span>7일 새 소재</span></div><div class="stat"><b>${b.m.winners}</b><span>30일+ 주력</span></div><div class="stat"><b>${num(b.m.longest)}일</b><span>가장 오래</span></div>
       <div class="stat"><b>${b.m.video}·${b.m.image}·${b.m.car}</b><span>영상·사진·여러 장</span></div>${live}
@@ -364,7 +345,7 @@
     let l;
     if (S.view === 'star') l = S.all.filter(isStar);
     else if (S.pid) l = S.byPid[S.pid].ads.slice();
-    else l = S.d.brands.filter(inView).reduce((x, b) => x.concat(b.ads), []);
+    else l = S.d.brands.filter(inReg).reduce((x, b) => x.concat(b.ads), []);
     if (S.fmt) l = l.filter(a => a.f === S.fmt);
     if (q) l = l.filter(a => (a.bn + ' ' + a.b + ' ' + a.t + ' ' + (a.alt || []).join(' ') + ' ' + (markOf(a).memo || '')).toLowerCase().includes(q));
     const sp = a => (S.byPid[a.pid] || {}).spend || 0;
@@ -394,7 +375,7 @@
   }
   function paintSegs() {
     const set = (id, v) => $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
-    set('rankSeg', S.src ? '-' : S.rank); set('regSeg', S.src ? '-' : S.reg); set('srcSeg', S.src); set('viewSeg', S.view); set('fmtSeg', S.fmt);
+    set('rankSeg', S.rank); set('regSeg', S.reg); set('viewSeg', S.view); set('fmtSeg', S.fmt);
     $('mtabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === document.body.dataset.m));
   }
   function paint(keepN) { if (!keepN) S.n = PAGE; paintSegs(); paintBrands(); paintHead(); paintGrid(); }
@@ -455,12 +436,12 @@
 
   function help() {
     overlay(`<h3>숫자 읽는 법</h3><p>메타는 남의 <b>광고비 · 매출 · ROAS 를 공개하지 않아요.</b> 아래 점수는 공개된 것(광고 개수 · 기간 · 노출 순서)으로 브랜드끼리 견준 <b>추정</b>이에요 (0~100, 높을수록 앞).</p>
-      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li><b>무신사 · 아몬즈 · 에이블리 · 지그재그</b> — 그 플랫폼 주얼리 순위에 든 브랜드예요. <b>아몬즈 · 29CM 는 매일 아침 7시 새로</b> 보고, 무신사 · 에이블리 · 지그재그는 자동 접속을 막아 두어 손으로 본 날짜(탭 위에 표시) 값이에요. 그중 <b>지금 메타 광고를 하는 곳만</b> 보여요. <b>요즘 브랜드</b>는 젊은 층에 뜨는 곳을 직접 고른 것</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>하루 두 번(아침 7시 · 오후 3시 20분) 조금씩 모아서 한 바퀴 도는 데 이틀쯤 걸려요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
+      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li>브랜드는 주얼리 낱말 검색과 무신사 · 아몬즈 · 에이블리 · 지그재그 · 29CM 순위권 · 요즘 뜨는 브랜드 이름으로 찾아요. <b>지금 메타 광고를 하는 곳만</b> 보여요</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>매일 아침 7시부터 밤 11시까지 하루 9번 조금씩 모아요. 꺼진 광고도 30일 넘게 돌았거나 ☆ 보관한 것은 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
   }
   function addDlg() {
     const rows = Object.values(S.marks).filter(m => m.st === 'add' && m.v && m.v.q), hid = Object.values(S.marks).filter(m => m.st === 'hide');
     const stOf = m => { const s = (S.d.adds || {})[m.id]; return !s ? '다음 차례에 모아요' : s.pid ? '모으는 중' : s.why || '못 찾음'; };
-    const ov = overlay(`<h3>브랜드 넣기</h3><p>자동으로 안 잡힌 브랜드를 적어 두면 다음 차례(7:00 · 15:20)부터 같이 모아요. 메타 라이브러리 광고주 주소가 가장 정확하고, 인스타 주소나 브랜드 이름도 돼요.</p><form class="row2"><input class="inp" id="addQ" maxlength="300" placeholder="메타 라이브러리 주소 · 인스타 주소 · 이름" style="flex:1"><button class="btn pri">넣기</button></form>
+    const ov = overlay(`<h3>브랜드 넣기</h3><p>자동으로 안 잡힌 브랜드를 적어 두면 다음 차례(하루 9번)부터 같이 모아요. 메타 라이브러리 광고주 주소가 가장 정확하고, 인스타 주소나 브랜드 이름도 돼요.</p><form class="row2"><input class="inp" id="addQ" maxlength="300" placeholder="메타 라이브러리 주소 · 인스타 주소 · 이름" style="flex:1"><button class="btn pri">넣기</button></form>
       <div class="adds">${rows.map(m => `<div><b>${esc(m.v.q.slice(0, 60))}</b><span>${esc(stOf(m))}</span><button class="btn" data-del="${esc(m.id)}">지우기</button></div>`).join('')}${hid.length ? `<div><b>뺀 브랜드 ${hid.length}</b></div>` + hid.map(m => `<div>${esc((m.v || {}).name || m.id.slice(3))}<button class="btn" data-unhide="${esc(m.id)}">다시 보기</button></div>`).join('') : ''}</div>`, true);
     ov.querySelector('form').addEventListener('submit', e => { e.preventDefault(); const q = $('addQ').value.trim(); if (!q) return; mark('add:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), { st: 'add', v: { q } }); toast('넣었어요 — 다음 차례부터 모아요'); addDlg(); });
     ov.addEventListener('click', e => { const d = e.target.closest('[data-del]'), u = e.target.closest('[data-unhide]'); if (d) { mark(d.dataset.del, { deleted_at: new Date().toISOString() }); addDlg(); } if (u) { mark(u.dataset.unhide, { st: '' }); paint(true); addDlg(); } });
@@ -468,9 +449,8 @@
 
   /* ── 누르기 ── */
   const seg = (id, fn) => $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { fn(b.dataset.v ?? b.dataset.m); } });
-  seg('rankSeg', v => { const was = S.src; S.src = ''; S.rank = v; lsSet('adlib_rank', v); if (was) { S.pid = ''; paint(); } else { paintSegs(); paintBrands(); } });
-  seg('regSeg', v => { S.reg = v; S.src = ''; S.pid = ''; paint(); });
-  seg('srcSeg', v => { S.src = v; S.pid = ''; if (v && S.view === 'star') S.view = 'win'; paint(); });
+  seg('rankSeg', v => { S.rank = v; lsSet('adlib_rank', v); paintSegs(); paintBrands(); });
+  seg('regSeg', v => { S.reg = v; S.pid = ''; paint(); });
   seg('viewSeg', v => { S.view = v; paint(); });
   seg('fmtSeg', v => { S.fmt = v; paint(); });
   seg('mtabs', v => mtab(v));
