@@ -6,6 +6,8 @@
      (쓰는 곳은 하나: 두 번 안 적힘 · 적기 직전 값 확인 · 입고 휴지통 정리까지 원래 길 그대로). 저장하면 프록시에 바로 한 번 돌려 달라고 해서 1~2분 안에 적힌다.
    · 세트 발주는 줄을 여러 개 고른다 — 줄마다 같은 수량(세트) / 나눠서. 상품이 아니거나 이미 적은 발주는 [안 적기].
    · 아직 안 적힌 것은 [되돌리기] (po_map_off). 적힌 뒤에는 ERP 에서 고친다.
+   · 2026-11-26 품절 옵션도 고름 — 식스샵 꺼진 옵션이라 ERP 줄이 없으면 저장할 때 줄을 만들고 매핑(식스샵 품절은 그대로 · loadSold/makeRow).
+     메모가 옵션만(옐로우/黄色 USB-C)이면 색 · 단자로 맞는 줄을 권하고, 딱 한 줄이면 미리 골라 둠 (conn · optQuery).
    index.html 이 맨 끝에서 부른다. index.html 쪽 손댄 곳: pomLoad(overlay) · renderPoMatchBox · attachPoMatchChips · _poaErpRow · _pomNeedsCheck */
 (function () {
 'use strict';
@@ -29,6 +31,30 @@ const norm = s => strip(s).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
 const words = s => norm(s).replace(/([a-z])([0-9])/g, '$1 $2').replace(/([0-9])([a-z])/g, '$1 $2').replace(/[^0-9a-z가-힣ㄱ-ㅎ]+/g, ' ').trim().split(/\s+/).filter(Boolean);
 const compact = s => norm(s).replace(/[^0-9a-z가-힣]+/g, '');
 const isKo = s => /[가-힣]/.test(s);
+/* 케이블 단자 — 메모 'USB-C' · 'C-C' ↔ ERP 옵션 'USB -> C type' · 'C type -> C type' (2026-11-26 사장님 "옵션명 상품메모에 적혀있는데 권장 매핑 자동으로") */
+const SEP = '\\s*(?:->|→|-|~|to)\\s*', L8 = '(?:라이트닝|아이폰|(?:apple|8\\s*pin|lightning|iphone|l|8)\\b)';
+const CONN = [['cc', `\\bc\\s*(?:type)?${SEP}(?:c\\b|타입\\s*c)`], ['c8', `\\bc\\s*(?:type)?${SEP}${L8}`], ['a8', `usb\\s*(?:-?a\\b)?${SEP}${L8}`], ['ac', `usb\\s*(?:-?a\\b)?(?:${SEP})?(?:c\\b|c\\s*type|타입\\s*c)`]].map(([k, s]) => [k, new RegExp(s, 'i')]);
+const conn = s => { const t = strip(s); for (const [k, re] of CONN) if (re.test(t)) return k; return ''; };
+/* 메모가 옵션만 적은 짧은 글(옐로우/黄色 USB-C)이면 그 옵션 낱말 — 중국어 · 단자 표기는 빼고 */
+function optQuery(m) {
+  let t = strip(m).replace(/[一-鿿]+/g, ' ');
+  for (const [, re] of CONN) t = t.replace(new RegExp(re.source, 'gi'), ' ');
+  const w = words(t.replace(/[\/|,()[\]]/g, ' '));
+  return w.length && w.length <= 4 ? w.join(' ') : '';
+}
+const offerOf = it => { const m = String((it && it.link) || '').match(/offer\/(\d+)|offerId=(\d+)/); return m ? (m[1] || m[2]) : ''; };
+/* 같은 1688 상품의 다른 발주가 이미 이어진 상품 — 같은 상품을 먼저 권함 */
+function sibNames(it) {
+  const o = offerOf(it), out = new Set(); if (!o) return out;
+  try {
+    (_pom.data.items || []).forEach(x => {
+      if (x.sn === it.sn || offerOf(x) !== o) return;
+      if (x.mapLocal && !x.mapLocal.skip) (x.mapLocal.targets || []).forEach(t => out.add(`${t.b}|${clean(t.n)}`));
+      else if (x.b && x.n && !['check', 'ambiguous', 'unmatched', 'ignored'].includes(x.state)) out.add(`${x.b}|${clean(x.n)}`);
+    });
+  } catch (e) {}
+  return out;
+}
 function lev(a, b) {
   if (a === b) return 0;
   if (!a.length || !b.length) return a.length || b.length;
@@ -133,16 +159,21 @@ function memoQuery(it) {
 }
 function suggest(rows, it) {
   const out = [], seen = new Set(), by = new Map(rows.map(r => [key(r), r]));
-  const add = (r, why) => { if (!r || seen.has(key(r)) || out.length >= 8) return; seen.add(key(r)); out.push({r, why}); };
+  const add = (r, why, sib) => { if (!r || seen.has(key(r)) || out.length >= 8) return; seen.add(key(r)); out.push({r, why, sib: !!sib}); };
   if (it.n && it.state === 'check') add(by.get(key(it)), it.how === 'code' ? '같은 업체 코드' : '같은 1688 상품');
   (it.cands || []).forEach(c => add(by.get(key(c)), it.by === 'alias' ? '지난번에 이은 줄' : it.how === 'offer' ? '같은 1688 상품' : it.how === 'code' ? '같은 업체 코드' : '메모에 적힌 이름'));
-  const q = memoQuery(it), hb = String(it.hint || '').split(' · ')[0], mine = /SB/.test(it.acct || '') ? ['apt', 'kop', 'koz'] : ['6a', 'yar', 'pp', 'akoi'];
-  if (q) find(rows, q, r => r.b === hb ? .1 : mine.includes(r.b) ? .04 : 0).filter(x => x.all || x.s >= .58).slice(0, 8).forEach(x => add(x.r, x.all ? '이름이 맞음' : '비슷한 이름'));
+  const hb = String(it.hint || '').split(' · ')[0], mine = /SB/.test(it.acct || '') ? ['apt', 'kop', 'koz'] : ['6a', 'yar', 'pp', 'akoi'];
+  const sib = sibNames(it), isSib = r => sib.has(`${r.b}|${clean(r.n)}`), bon = r => (isSib(r) ? .3 : 0) + (r.b === hb ? .1 : mine.includes(r.b) ? .04 : 0);
+  // 메모 = 옵션(색 · 단자)만 — 단자가 같거나, 같은 1688 상품의 다른 발주가 이어진 상품의 같은 옵션
+  const cm = conn(it.memo), oq = optQuery(it.memo);
+  if (oq && (cm || sib.size)) find(rows, oq, bon).filter(x => x.all && (cm ? conn(x.r.o) === cm : isSib(x.r))).sort((a, b) => isSib(b.r) - isSib(a.r)).slice(0, 8).forEach(x => add(x.r, '메모 옵션이 맞음', isSib(x.r)));
+  const q = memoQuery(it);
+  if (q) find(rows, q, bon).filter(x => x.all || x.s >= .58).slice(0, 8).forEach(x => add(x.r, x.all ? '이름이 맞음' : '비슷한 이름'));
   return out;
 }
 
 /* ── 자료 ── */
-const D = {rows: null, at: 0, busy: null};
+const D = {rows: null, at: 0, busy: null, gid: {}};
 async function get(path) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {headers: _sbHeaders(), cache: 'no-store'});
   if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -154,7 +185,7 @@ async function rpc(fn, body) {
   if (!r.ok) { let m = ''; try { m = (await r.json()).message || ''; } catch (e) {} throw new Error(m || 'HTTP ' + r.status); }
   return r.json();
 }
-const ERR = {already_written: '이미 ERP 에 적힌 발주예요 — 바꾸려면 ERP 에서 고쳐 주세요', no_row: '고른 줄이 방금 바뀌었어요 — 다시 찾아 골라 주세요', bad_qty: '수량을 1 이상 숫자로 적어 주세요', dup_target: '같은 줄을 두 번 골랐어요', bad_targets: '재고 줄을 하나 이상(8줄까지) 골라 주세요'};
+const ERR = {already_written: '이미 ERP 에 적힌 발주예요 — 바꾸려면 ERP 에서 고쳐 주세요', no_row: '고른 줄이 방금 바뀌었어요 — 다시 찾아 골라 주세요', bad_qty: '수량을 1 이상 숫자로 적어 주세요', dup_target: '같은 줄을 두 번 골랐어요', bad_targets: '재고 줄을 하나 이상(8줄까지) 골라 주세요', no_who: "품절 옵션 줄을 만들려면 '나는 ○○○' 이름을 먼저 골라 주세요", read_only_tab: '이 브랜드 재고 탭은 구글시트가 원본이라 줄을 못 만들어요 — ERP 에서 줄을 넣고 다시 골라 주세요', unknown_tab: '이 브랜드 재고 탭을 못 찾았어요', row_new: '품절 옵션 줄을 만들지 못했어요 — 다시 눌러 주세요'};
 const errMsg = e => { const m = String((e && e.message) || e); for (const k in ERR) if (m.includes(k)) return ERR[k]; return '저장하지 못했어요 — 다시 눌러 주세요'; };
 /* 재고 줄 — 서버 판단(po_match.py)과 같은 줄만: ⚠ · 묶음 · 중복 · B급은 뺌 */
 async function loadRows(force) {
@@ -167,14 +198,71 @@ async function loadRows(force) {
     const out = [], gs = [...gb.keys()].map(encodeURIComponent).join(',');
     for (let off = 0; off < 20000; off += 1000) {
       const p = await get(`erp_rows?select=gid,r,c:v->>0,n:v->>1,o:v->>2,L:v->>11,N:v->>13,O:v->>14&deleted_at=is.null&gid=in.(${gs})&v->>1=neq.&order=gid.asc,r.asc&limit=1000&offset=${off}`);
-      p.forEach(x => { const nm = clean(x.n), c = clean(x.c); if (!nm || nm === '상품명' || /^(⚠|묶음|중복)/.test(c) || nm.startsWith('B급')) return; out.push(prep({b: gb.get(String(x.gid)), lab: LABEL[gb.get(String(x.gid))], r: x.r, n: nm, o: clean(x.o), L: String(x.L == null ? '' : x.L).trim(), N: String(x.N == null ? '' : x.N), O: String(x.O == null ? '' : x.O).trim()})); });
+      p.forEach(x => { const nm = clean(x.n), c = clean(x.c); if (!nm || nm === '상품명' || /^(⚠|묶음|중복)/.test(c) || nm.startsWith('B급')) return; out.push(prep({b: gb.get(String(x.gid)), lab: LABEL[gb.get(String(x.gid))], gid: String(x.gid), r: x.r, n: nm, o: clean(x.o), L: String(x.L == null ? '' : x.L).trim(), N: String(x.N == null ? '' : x.N), O: String(x.O == null ? '' : x.O).trim()})); });
       if (p.length < 1000) break;
     }
     if (out.length < 100) throw new Error('재고 줄이 너무 적음');
-    D.rows = out; D.at = Date.now();
+    D.rows = out; D.at = Date.now(); D.gid = {}; gb.forEach((b, g) => { D.gid[b] = g; });
     return out;
   })();
   try { return await D.busy; } finally { D.busy = null; }
+}
+/* 품절 옵션 (2026-11-26 사장님 "품절도 연결할 수 있게" · "품절 풀면 안된다. 매핑만") — 식스샵프로 판매중 상품의 꺼진(inactive) 옵션 중
+   재고 ERP 에 줄이 없는 것. 고르면 저장할 때 그 브랜드 재고 탭 맨 아래에 줄을 만들고(erp_row_new · 남은 재고 0) 거기에 매핑한다.
+   식스샵 옵션은 안 건드린다 — 재고 연동(stock-sync)은 꺼진 옵션을 '일시 품절 옵션'으로 늘 건너뛰어 발주 잔량이 있어도 판매가 안 열린다.
+   판매중지 상품은 그대로 둔다 (사장님 11-19 "판매중지는 냅둬"). 자료 = 맥미니 /sx/pro-stock (10분 기억) */
+const S = {rows: null, at: 0, busy: null};
+const vals = o => String(o || '').split(/\s*[\/|]\s*/).map(p => clean(p.replace(/^[^:：]{1,16}[:：]/, '')).toLowerCase()).filter(Boolean).join('|');
+async function loadSold(rows) {
+  if (S.rows && Date.now() - S.at < 600e3) return S.rows;
+  if (S.busy) return S.busy;
+  if (typeof sxFetch !== 'function') return [];
+  S.busy = (async () => {
+    const have = new Map(), out = [], seen = new Set(rows.map(key));
+    rows.forEach(r => { const k = `${r.b}|${clean(r.n).toLowerCase()}`; if (!have.has(k)) have.set(k, []); have.get(k).push(r); });
+    await Promise.all(Object.keys(LABEL).map(async b => {
+      let j = null;
+      try { const res = await sxFetch('/pro-stock?brand=' + encodeURIComponent(b), {method: 'GET'}); if (res.ok) j = await res.json(); } catch (e) {}
+      if (!j || !Array.isArray(j.products)) return;
+      j.products.forEach(p => {
+        if (p.status !== '판매중') return;
+        const nm = clean(p.name); if (!nm) return;
+        const sib = have.get(`${b}|${nm.toLowerCase()}`) || [];
+        (p.options || []).forEach(op => {
+          if (op.status === 'active') return;
+          const lab = clean(op.label), vs = vals(lab);
+          if (sib.some(r => vals(r.o) === vs)) return;          // 이미 줄이 있음
+          let o = lab;
+          const t = sib.find(r => /[:：]/.test(r.o) && r.o.split(/\s*[\/|]\s*/).length === lab.split(/\s*\/\s*/).length);
+          if (t) { const ks = t.o.split(/\s*[\/|]\s*/).map(x => { const m = x.match(/^\s*([^:：]{1,16})[:：]/); return m ? m[1].trim() : ''; }); o = lab.split(/\s*\/\s*/).map((v, i) => ks[i] ? `${ks[i]}: ${v.trim()}` : v.trim()).join(' / '); }   // 옆 줄 모양 그대로 (컬러: 옐로우 / 기종 옵션: …)
+          const v = {b, lab: LABEL[b], r: 0, n: nm, o, L: '', N: '', O: '', virt: 1, tpl: sib[0] ? {gid: sib[0].gid, r: sib[0].r} : null};
+          if (seen.has(key(v))) return; seen.add(key(v));
+          out.push(prep(v));
+        });
+      });
+    }));
+    S.rows = out; S.at = Date.now();
+    return out;
+  })();
+  try { return await S.busy; } finally { S.busy = null; }
+}
+/* 고른 품절 옵션 → 재고 탭 맨 아래에 줄 (ERP '＋ 새 줄'과 같은 erp_row_new). 그사이 줄이 생겼으면 그 줄로 */
+async function makeRow(p) {
+  const r = p.r; if (!r.virt) return;
+  const fresh = await loadRows(true), ex = fresh.find(x => key(x) === key(r));
+  if (ex) { p.r = ex; return; }
+  const gid = D.gid[r.b]; if (!gid) throw new Error('unknown_tab');
+  const last = fresh.filter(x => x.b === r.b).slice(-1)[0], tr = r.tpl || (last ? {gid: last.gid, r: last.r} : null);
+  let tpl = null;
+  if (tr) { try { const j = await get(`erp_rows?select=v&gid=eq.${encodeURIComponent(tr.gid)}&r=eq.${tr.r}`); tpl = j[0] && Array.isArray(j[0].v) ? j[0].v : null; } catch (e) {} }
+  const w = Math.max(tpl ? tpl.length : 0, 19), v = new Array(w).fill('');
+  v[0] = r.tpl && tpl ? String(tpl[0] || '') : ''; v[1] = r.n; v[2] = r.o;
+  for (let c = 3; c <= 11; c++) v[c] = '0';          // 남은 재고(L)도 0 — 품절이라 0 이 맞고, 재고 미기재 알림도 안 뜸
+  for (let c = 18; c < w; c++) { const t = String((tpl && tpl[c]) || ''); if (/^(TRUE|FALSE)$/.test(t)) v[c] = 'FALSE'; else if (t === '0') v[c] = '0'; }
+  const j = await rpc('erp_row_new', {p_gid: gid, p_v: v, p_who: who()});
+  if (!j || !j.ok) throw new Error('row_new');
+  D.at = 0; S.at = 0;
+  p.made = 1;
 }
 /* 방금 이은 것 — 맥미니 결과(5분 · 바로 돌려도 1~2분)가 오기 전까지 '확인 필요'에 다시 뜨지 않게 저장소의 이은 것을 덧입힌다 (다른 PC 도 같이) */
 async function overlay(d) {
@@ -235,6 +323,7 @@ function css() {
 #pmapDlg .bx{width:18px;height:18px;border-radius:5px;border:1.5px solid #c3c9d2;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800}#pmapDlg .r.on .bx{background:var(--text-1,#1f2329);border-color:var(--text-1,#1f2329)}
 #pmapDlg .tx{min-width:0}#pmapDlg .tx b{display:block;font-size:13.5px;font-weight:700;overflow-wrap:anywhere}#pmapDlg .tx b i{font-style:normal;font-weight:600;color:var(--text-3,#777);margin-right:5px}
 #pmapDlg .tx small{display:block;font-size:12px;color:var(--text-3,#777);overflow-wrap:anywhere}#pmapDlg .tx .w{display:inline-block;margin-left:6px;padding:0 6px;border-radius:5px;background:var(--bg-3,#eceff3);color:var(--text-2,#555);font-size:11px;font-weight:600}
+#pmapDlg .tx .w.so{background:#fde8e8;color:var(--danger,#dc2626)}
 #pmapDlg .q{font-size:12px;color:var(--text-3,#777);white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
 #pmapDlg .none{padding:13px 12px;color:var(--text-3,#777);font-size:12.5px}
 #pmapDlg .p{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:7px 11px;border-bottom:1px solid var(--line,#eef0f3)}#pmapDlg .p:last-child{border-bottom:0}
@@ -256,7 +345,7 @@ const say = (m, k) => { try { toast(m, k || 'ok'); } catch (e) {} };
 const lines = N => String(N || '').split('\n').map(x => x.trim()).filter(x => x && !/^발주\s*필요$/.test(x));
 function rowHTML(x, why) {
   const r = x.r || x, on = M.picks.some(p => key(p.r) === key(r)), ls = lines(r.N);
-  return `<button type="button" class="r${on ? ' on' : ''}" data-k="${E(key(r))}" aria-pressed="${on}"><span class="bx">${on ? '✓' : ''}</span><span class="tx"><b><i>${E(r.lab)}</i>${E(r.n)}${why ? `<span class="w">${E(why)}</span>` : ''}</b><small>${E(r.o || '옵션 없음')}</small></span><span class="q">남은 ${r.L === '' ? '빈칸' : E(r.L)}${ls.length ? `<br>${E(ls[ls.length - 1])}${ls.length > 1 ? ` 외 ${ls.length - 1}` : ''}` : ''}</span></button>`;
+  return `<button type="button" class="r${on ? ' on' : ''}" data-k="${E(key(r))}" aria-pressed="${on}"><span class="bx">${on ? '✓' : ''}</span><span class="tx"><b><i>${E(r.lab)}</i>${E(r.n)}${why ? `<span class="w">${E(why)}</span>` : ''}</b>${r.virt ? '<span class="w so">품절 · ERP 줄 새로</span>' : ''}<small>${E(r.o || '옵션 없음')}</small></span><span class="q">${r.virt ? 'ERP 줄 없음' : `남은 ${r.L === '' ? '빈칸' : E(r.L)}`}${ls.length ? `<br>${E(ls[ls.length - 1])}${ls.length > 1 ? ` 외 ${ls.length - 1}` : ''}` : ''}</span></button>`;
 }
 function listHTML() {
   if (!M.rows) return `<div class="none">${M.bad ? E(M.bad) : '재고 줄을 불러오는 중…'}</div>`;
@@ -275,6 +364,7 @@ function previewHTML() {
   if (!M.picks.length) return '<div>재고 줄을 하나 이상 골라 주세요 — 세트 발주면 여러 줄</div>';
   M.picks.forEach(p => {
     const nm = `<b>${E(p.r.lab)} ${E(p.r.n)}${p.r.o ? ' · ' + E(p.r.o) : ''}</b>`, had = near(p.r, it), o = oNum(p.r.O);
+    if (p.r.virt) { out.push(`${nm} — <b>품절 옵션</b>이라 재고 ERP 에 줄이 없어요. 저장하면 줄을 새로 만들고(남은 재고 0) 발주일에 '${E(it.date)} ${n(p.q).replace(/,/g, '')}개'를 적어요 · 식스샵 품절은 그대로(매핑만 — 판매 안 열림)`); return; }
     if (had) out.push(`${nm} — 이미 '${E(had)}' 줄이 있어 새로 적지 않아요 (이 발주와 이어 두기만)`);
     else if (o === null) out.push(`${nm} — <span class="bad">발주 수량 칸(${E(p.r.O.slice(0, 20))})이 숫자가 아니라 못 적어요. ERP 에서 고치면 적혀요</span>`);
     else out.push(`${nm} — 발주일에 '${E(it.date)} ${n(p.q).replace(/,/g, '')}개' · 발주 수량 ${p.r.O === '' ? '빈칸' : n(o)} → ${n(o + (Number(p.q) || 0))}`);
@@ -334,6 +424,16 @@ async function open(sn) {
   if (M.it !== it || M.el !== el) return;
   if (M.rows && it.state === 'check' && it.n) { const r = M.rows.find(x => key(x) === key(it)); if (r) M.picks = [{r, q: qtyOf(it)}]; }          // 같은 1688 상품 하나 — 미리 골라 둠 (맞으면 바로 누르기)
   draw();
+  if (!M.rows) return;
+  let sold = []; try { sold = await loadSold(M.rows); } catch (e) {}
+  if (M.it !== it || M.el !== el) return;
+  if (sold.length) M.rows = M.rows.concat(sold);
+  // 권장 매핑 자동 — 메모의 옵션(색 · 단자)이 딱 한 줄에 맞으면 미리 골라 둠 (사장님 11-26). 사람이 이미 골랐으면 그대로
+  if (!M.picks.length) {
+    const s = suggest(M.rows, it).filter(x => x.why === '메모 옵션이 맞음'), sb = s.filter(x => x.sib), one = s.length === 1 ? s[0] : sb.length === 1 ? sb[0] : null;
+    if (one) M.picks = [{r: one.r, q: qtyOf(it)}];
+  }
+  draw();
 }
 function close(quiet) {
   if (M.busy && !quiet) return;
@@ -373,10 +473,14 @@ async function save(skip) {
   const one = M.picks.length === 1, tg = skip ? [] : M.picks.map(p => ({b: p.r.b, n: p.r.n, o: p.r.o, q: one && Number(p.q) === qtyOf(it) ? null : Number(p.q)}));
   M.busy = true; M.msg = ''; draw('pick');
   try {
+    if (!skip && M.picks.some(p => p.r.virt)) {          // 품절 옵션 — 줄부터 만들고 그 줄로
+      for (const p of M.picks) await makeRow(p);
+      tg.splice(0, tg.length, ...M.picks.map(p => ({b: p.r.b, n: p.r.n, o: p.r.o, q: one && Number(p.q) === qtyOf(it) ? null : Number(p.q)})));
+    }
     await rpc('po_map_set', {p_sn: it.sn, p_targets: tg, p_skip: skip, p_remember: M.remember, p_who: who()});
     const nm = skip ? '' : M.picks.map(p => `${p.r.lab} ${p.r.n}${p.r.o ? ' · ' + p.r.o : ''}`).join(' + ');
     M.busy = false; close(true);
-    say(skip ? `${it.sn} — 안 적기로 했어요` : `${it.sn} → ${nm} · 1~2분 안에 ERP 발주일에 적어요`);
+    say(skip ? `${it.sn} — 안 적기로 했어요` : `${it.sn} → ${nm}${M.picks.some(p => p.made) ? ' (품절 옵션 줄 새로 만듦 · 식스샵 품절 그대로)' : ''} · 1~2분 안에 ERP 발주일에 적어요`);
     after(it.sn, skip);
   } catch (e) { M.busy = false; M.msg = errMsg(e); draw('pick'); }
 }
@@ -418,5 +522,5 @@ document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === 
 const live = () => { try { if (window.OfficeLive) window.OfficeLive.on(['po_map'], () => { try { if (_pom.data) pomLoad(true).catch(() => {}); } catch (e) {} }); } catch (e) {} };
 if (document.readyState === 'complete') live(); else addEventListener('load', live, {once: true});
 try { css(); } catch (e) {}
-window.PoMap = {open, off, overlay, btn, undo, canMap, canUndo, rows: loadRows, css, _t: {score, find, suggest, memoQuery, prep, sound, bone, lev}};
+window.PoMap = {open, off, overlay, btn, undo, canMap, canUndo, rows: loadRows, css, _t: {score, find, suggest, memoQuery, prep, sound, bone, lev, conn, optQuery, vals, loadSold}};
 })();
