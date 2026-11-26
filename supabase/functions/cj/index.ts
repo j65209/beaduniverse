@@ -15,6 +15,7 @@
 //   POST {action:'list', limit?, q?}               최근 접수 기록 (전화는 가림)
 //   POST {action:'sync'}                           CJ 출력 건 운송장번호 · 최근 단계 채우기 (상품추적 대량) — pg_cron 30분
 //   POST {action:'print_save', print:{…}}          출력 설정 저장 (라벨 크기 · 여백 · 글자 · 바코드 · 가림 · 표시 항목)
+//   POST {action:'refine', addrs:[…]}              주소만 주소정제 (파일접수 시험 출력, 접수 없음)
 //   POST {action:'labels', ids:[…], mark?}         운송장 출력 자료 (운송장번호 있는 건만, 주소정제로 분류코드 — 실패하면 빈 칸) · 출력 횟수 기록
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -424,6 +425,13 @@ Deno.serve(async (req) => {
         return json(await track(cfg, body.invc_no));
       case 'list':
         return json({ ok: true, env: cfg.env, rows: await list(Number(body.limit), String(body.q || ''), String(body.dv || '')) });
+      case 'refine': {
+        // 11-26 파일접수 시험 출력 — 접수 없이 주소만 CJ 주소정제(분류코드 · 집배점 · 구역)에 물어봄. 이름 · 전화는 보내지 않음, 30개까지
+        const addrs = [...new Set((Array.isArray(body.addrs) ? body.addrs : []).map((a: unknown) => cut(String(a ?? '').trim(), 100)).filter(Boolean))].slice(0, 30);
+        const out: Record<string, unknown> = {};
+        for (const a of addrs) out[a as string] = await refine(cfg, a as string);
+        return json({ ok: true, env: cfg.env, clsf: out });
+      }
       case 'from_invc':
         return json(await fromInvc(body.invc_no));
       default:

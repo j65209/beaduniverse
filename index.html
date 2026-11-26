@@ -19651,10 +19651,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       sendr:{nm:s.nm||'', tel:s.tel||'', zip:s.zip||'', addr:s.addr||'', detail:s.detail||''},
       goods:it.goods.length ? it.goods : [{nm:'',qty:1}], clsf:null, print_count:0});
     try{
+      say(`시험 운송장 ${labels.length}장 준비 중… (대한통운 주소정제로 분류코드 받는 중)`);
+      // 건별접수 출력과 같게 — 큰 분류코드 · 도착지 · 구역은 CJ 주소정제에서 (주소만 보냄, 접수 없음)
+      let ref={}, bad=0;
+      try{
+        const addrs=[...new Set(labels.map(l=>`${l.rcvr.addr} ${l.rcvr.detail}`.trim()))];
+        for(let i=0;i<addrs.length;i+=30){ const j=await _cjbCall({action:'refine',addrs:addrs.slice(i,i+30)}); if(j && j.ok) Object.assign(ref,j.clsf||{}); }
+      }catch(e){}
+      labels.forEach(l=>{ const c=ref[`${l.rcvr.addr} ${l.rcvr.detail}`.trim().slice(0,100)]; if(c && c.CLSFCD) l.clsf=c; else bad++; });
       await _cjbPrintRefresh();
       await _cjbPrintFrame(await _cjbLabelDoc(labels,_cjbPrint()));
       const nz=its.filter(x=>x.zipMiss).length;
-      say(`🖨 시험 운송장 ${labels.length}장 인쇄 창을 열었어요 (대한통운 접수 없음 · 운송장번호 0 · '시험' 표시)${nz ? ` · ${nz}건은 우편번호 없이` : ''}`,'ok');
+      say(`🖨 시험 운송장 ${labels.length}장 인쇄 창을 열었어요 (대한통운 접수 없음 · 운송장번호 0 · '시험' 표시)${nz ? ` · ${nz}건은 우편번호 없이` : ''}${bad ? ` · <b>${bad}장은 분류코드 없이</b> (주소를 대한통운이 못 알아봄)` : ''}`,bad ? '' : 'ok');
     }catch(e){ say(_cjbEsc((e && e.message) || String(e)),'err'); }
   }
   function _cjbBoxCode(t){ const s=String(t||'').replace(/\s/g,''); return /^0[1-7]$/.test(s) ? s : (CJB_BOX_KO[s] || ''); }
