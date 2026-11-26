@@ -160,13 +160,14 @@ function memoQuery(it) {
 function suggest(rows, it) {
   const out = [], seen = new Set(), by = new Map(rows.map(r => [key(r), r]));
   const add = (r, why, sib) => { if (!r || seen.has(key(r)) || out.length >= 8) return; seen.add(key(r)); out.push({r, why, sib: !!sib}); };
+  const hb = String(it.hint || '').split(' · ')[0], mine = /SB/.test(it.acct || '') ? ['apt', 'kop', 'koz'] : ['6a', 'yar', 'pp', 'akoi'];
+  const sib = sibNames(it), cset = new Set((it.cands || []).map(c => `${c.b}|${clean(c.n)}`));
+  const isSib = r => sib.has(`${r.b}|${clean(r.n)}`) || cset.has(`${r.b}|${clean(r.n)}`), bon = r => (isSib(r) ? .3 : 0) + (r.b === hb ? .1 : mine.includes(r.b) ? .04 : 0);
+  // 메모 = 옵션(색 · 단자)만 — 단자가 같거나, 같은 1688 상품(서버 후보 · 다른 발주가 이어진 상품)의 같은 옵션. 서버 후보보다 먼저 (사장님 11-26 "오렌지랑 옵션 잘 적혀있는데 왜 매핑을 못해")
+  const cm = conn(it.memo), oq = optQuery(it.memo);
+  if (oq && (cm || sib.size || cset.size)) find(rows, oq, bon).filter(x => x.all && (cm ? conn(x.r.o) === cm : isSib(x.r))).sort((a, b) => isSib(b.r) - isSib(a.r)).slice(0, 8).forEach(x => add(x.r, '메모 옵션이 맞음', isSib(x.r)));
   if (it.n && it.state === 'check') add(by.get(key(it)), it.how === 'code' ? '같은 업체 코드' : '같은 1688 상품');
   (it.cands || []).forEach(c => add(by.get(key(c)), it.by === 'alias' ? '지난번에 이은 줄' : it.how === 'offer' ? '같은 1688 상품' : it.how === 'code' ? '같은 업체 코드' : '메모에 적힌 이름'));
-  const hb = String(it.hint || '').split(' · ')[0], mine = /SB/.test(it.acct || '') ? ['apt', 'kop', 'koz'] : ['6a', 'yar', 'pp', 'akoi'];
-  const sib = sibNames(it), isSib = r => sib.has(`${r.b}|${clean(r.n)}`), bon = r => (isSib(r) ? .3 : 0) + (r.b === hb ? .1 : mine.includes(r.b) ? .04 : 0);
-  // 메모 = 옵션(색 · 단자)만 — 단자가 같거나, 같은 1688 상품의 다른 발주가 이어진 상품의 같은 옵션
-  const cm = conn(it.memo), oq = optQuery(it.memo);
-  if (oq && (cm || sib.size)) find(rows, oq, bon).filter(x => x.all && (cm ? conn(x.r.o) === cm : isSib(x.r))).sort((a, b) => isSib(b.r) - isSib(a.r)).slice(0, 8).forEach(x => add(x.r, '메모 옵션이 맞음', isSib(x.r)));
   const q = memoQuery(it);
   if (q) find(rows, q, bon).filter(x => x.all || x.s >= .58).slice(0, 8).forEach(x => add(x.r, x.all ? '이름이 맞음' : '비슷한 이름'));
   return out;
