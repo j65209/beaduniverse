@@ -1,18 +1,16 @@
 /* 오늘 나갈 재배송 · 교환 · 불량 (2026-11-26 사장님 "오늘 불량 · 교환 · 재배송 나가야 하는 건은 에이전트가 매일매일 다 건별로 모아줘",
    같은 날 "대화내용 텍스트로 정리 및 이미지도 정리. 마우스오버로").
    · 장부 = 맥미니 sixshop-collector kakao-agent 의 drafts.json reship (2분, 14일) + 카톡 불량 사진 건 /cs/kakao-defects (장부에 없는 그날 건은 '확인 필요').
-   · CS팀(#rsBoxCs) · 물류팀(#rsBoxLg) 맨 위. 날짜를 넘겨 지난 날도 봄. 오늘 칸에는 지난 날부터 아직 안 나간 건도 같이(‘N일 전부터’).
+   · CS팀(#rsBoxCs) · 물류팀(#rsBoxLg) 맨 위. 표 하나(11-26 [오늘] · [재배송 목록] 탭 합침) — 아직 안 나간 건만, 날짜 넘기기 없음.
    · 줄에 마우스를 올리면(휴대폰은 누르면) 대화 정리 글 + 고객이 보낸 사진이 크게. 사진 · 글은 사무실 인터넷에서만(프록시가 밖이면 비움).
    · 주문번호 · 받는 분 이름 · 연락처 · 주소는 여기 없다 — [대화]로 채팅방을 열거나 주문 찾기에서. 고객 글은 가린 글. */
 (function () {
-  var S = {drafts: null, defects: null, full: null, marks: {}, mkErr: '', tab: 'day', onlyOpen: true, at: 0, err: '', day: '', loading: false};
+  var S = {drafts: null, defects: null, full: null, marks: {}, mkErr: '', at: 0, err: '', loading: false};
   var BOX = ['rsBoxCs', 'rsBoxLg'];
   var ST = {'정보 대기': 'wait', '발송 대기': 'todo', '발송함': 'done', '확인 필요': 'check'};
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
   function kst(ms) { return new Date(ms + 9 * 3600000).toISOString().slice(0, 10); }
   function today() { return kst(Date.now()); }
-  function addDay(d, n) { return kst(Date.parse(d + 'T00:00:00+09:00') + n * 86400000 + 3600000); }
-  function md(d) { return Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)); }
   function css() {
     if (document.getElementById('rsCss')) return;
     var st = document.createElement('style'); st.id = 'rsCss';
@@ -31,6 +29,7 @@
       + '.rs-warn{font-size:12.5px;color:#8a6100;background:#fff8e6;border-radius:8px;padding:6px 10px;margin:8px 0}.rs-chk{font-size:12.5px;display:flex;align-items:center;gap:4px;margin-right:6px}'
       + '.rs-tblw{overflow:auto;max-height:70vh;margin-top:8px;border:1px solid #eef0f3;border-radius:10px}.rs-tbl{border-collapse:collapse;width:100%;font-size:12.5px;text-align:left}.rs-tbl th{position:sticky;top:0;background:#f6f8fb;font-weight:700;padding:7px 8px;white-space:nowrap;text-align:left}.rs-tbl td{padding:6px 8px;border-top:1px solid #f0f2f5;vertical-align:top;text-align:left}.rs-tbl tr.rs-row{display:table-row;border:0}.rs-tbl .c-day,.rs-tbl .c-brand,.rs-tbl .c-kind,.rs-tbl .c-zip,.rs-tbl .c-tel,.rs-tbl .c-nm,.rs-tbl .c-order,.rs-tbl .rs-st{white-space:nowrap}.rs-tbl .c-addr{min-width:220px}.rs-tbl .c-goods{min-width:180px}.rs-tbl .c-why{min-width:160px;color:#4a5562}.rs-act{white-space:nowrap;display:flex;gap:4px}'
       + '.rs-in{width:118px;border:1px solid #dde2e8;border-radius:6px;padding:3px 6px;font:inherit;font-size:12.5px}.rs-in[data-f="memo"]{width:160px}.rs-sent{background:#4f7fcf;color:#fff;border-color:#4f7fcf}'
+      + '.rs-sub{margin:14px 0 2px;font-size:13px;font-weight:700;color:#4a5562}.rs-sub small{font-weight:600;color:#8a94a0;font-size:12px;margin-left:6px}'
       + '@media (max-width:700px){.rs-row{grid-template-columns:52px 46px minmax(0,1fr) auto}.rs-row .rs-ph,.rs-row .rs-go{display:none}}';
     document.head.appendChild(st);
   }
@@ -52,29 +51,27 @@
     rows.sort(function (a, b) { return (ord[a.r.status] - ord[b.r.status]) || ((a.r.firstAt || 0) - (b.r.firstAt || 0)); });
     return rows;
   }
+  /* 한 화면 (2026-11-26 사장님 "오늘이나 재배송 목록 저걸 합쳐줘 · 출고된건 내역에서 없애줘") —
+     [오늘] · [📦 재배송 목록] 탭을 걷고 표 하나. 나간 건(발송함)은 안 보임. 재배송을 아직 안 정한 문의(확인 필요)는 표 밑 작은 칸 — 복사 · 엑셀에는 안 들어감 */
+  function checkRows() {
+    var t = today();
+    return rowsOf(t).filter(function (x) { return x.r.status === '확인 필요'; }).map(function (x) { var m = (S.marks || {})[x.r.id]; return m && m.sent ? null : x; }).filter(Boolean);
+  }
   function draw() {
     css();
     // 송장번호 · 메모를 쓰는 중이면 다시 그리지 않음 (글자가 날아가지 않게)
     var ae = document.activeElement; if (ae && ae.classList && ae.classList.contains('rs-in')) return;
-    var day = S.day || today();
-    var rows = rowsOf(day);
-    var cnt = {}; rows.forEach(function (x) { cnt[x.r.status] = (cnt[x.r.status] || 0) + 1; });
-    var head = '<div class="rs-head"><span class="rs-title">오늘 나갈 재배송 · 교환 · 불량<small>에이전트 건별 장부 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
-      + '<span class="rs-nav"><button type="button" data-rs="prev" aria-label="전날">‹</button><b>' + esc(md(day)) + (day === today() ? ' 오늘' : '') + '</b><button type="button" data-rs="next" aria-label="다음날"' + (day >= today() ? ' disabled' : '') + '>›</button><button type="button" data-rs="re" title="다시 불러오기" aria-label="다시 불러오기">↻</button></span></div>';
-    var chips = '<div class="rs-cnt">' + ['발송 대기', '정보 대기', '확인 필요', '발송함'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span>' + k + ' ' + cnt[k] + '</span>'; }).join('') + '</div>';
-    var list = rows.length ? rows.map(function (x, i) {
+    var t = listView(), chk = checkRows(), n0 = t.rows.length;
+    var chkHtml = chk.length ? '<div class="rs-sub">재배송 아직 안 정한 문의 · 확인 필요 ' + chk.length + '<small>정해지면 위 표로 올라가요</small></div><div class="rs-list">' + chk.map(function (x, i) {
       var r = x.r, p = (r.products || []);
-      var old = r.day && r.day < day ? '<small>' + Math.round((Date.parse(day) - Date.parse(r.day)) / 86400000) + '일 전부터</small>' : '';
-      return '<div class="rs-row" tabindex="0" data-i="' + i + '"><span class="rs-br">' + esc(r.label || '') + '</span><span class="rs-kd">' + esc(r.kind) + '</span>'
-        + '<span class="rs-pd">' + esc(p.length ? p.join(' / ') : '상품 확인 필요') + old + '</span><span class="rs-ph">' + (r.photos ? '📷 ' + r.photos : '') + '</span>'
-        + '<span class="rs-st ' + (ST[r.status] || 'check') + '">' + esc(r.status) + '</span><button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></div>';
-    }).join('') : '<div class="rs-empty">' + (S.err && !S.drafts ? '불러오지 못했어요 (' + esc(S.err) + ')' : '이날 나갈 건이 없어요') + '</div>';
-    var tabs = '<div class="rs-tabs" role="tablist"><button type="button" role="tab" data-rs="tab-day" aria-selected="' + (S.tab !== 'list') + '">오늘</button><button type="button" role="tab" data-rs="tab-list" aria-selected="' + (S.tab === 'list') + '">📦 재배송 목록</button></div>';
+      return '<div class="rs-row" tabindex="0" data-i="' + (n0 + i) + '"><span class="rs-br">' + esc(r.label || '') + '</span><span class="rs-kd">' + esc(r.kind) + '</span>'
+        + '<span class="rs-pd">' + esc(p.length ? p.join(' / ') : '상품 확인 필요') + '</span><span class="rs-ph">' + (r.photos ? '📷 ' + r.photos : '') + '</span>'
+        + '<span class="rs-st check">확인 필요</span><button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></div>';
+    }).join('') + '</div>' : '';
     BOX.forEach(function (id) {
       var b = document.getElementById(id); if (!b) return;
-      if (S.tab === 'list') { var t = listView(); b.innerHTML = tabs + t.html; b._rows = t.rows; return; }
-      b.innerHTML = tabs + head + chips + '<div class="rs-list">' + list + '</div>';
-      b._rows = rows;
+      b.innerHTML = t.html + chkHtml;
+      b._rows = t.rows.concat(chk);
     });
   }
 
@@ -96,11 +93,15 @@
     };
   }
   var HEAD = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['goods', '보낼 상품'], ['opt', '옵션'], ['qty', '수량'], ['order', '주문번호'], ['why', '사유'], ['status', '상태'], ['inv', '송장번호'], ['memo', '메모']];
+  /** 나갈 것만 — 확인 필요 · 발송함(직원 대화 · [발송함] · 대화 분석) 빼고 */
+  function openRows() { return fullRows().filter(function (r) { return r.status !== '확인 필요' && r.status !== '발송함'; }); }
   function listView() {
-    var rows = fullRows().filter(function (r) { return r.status !== '확인 필요' && (!S.onlyOpen || r.status !== '발송함'); }).sort(function (a, b) { return (a.status === '발송함') - (b.status === '발송함') || (a.firstAt || 0) - (b.firstAt || 0); });
+    var rows = openRows().sort(function (a, b) { return (a.status === '정보 대기') - (b.status === '정보 대기') || (a.firstAt || 0) - (b.firstAt || 0); });
     var shipMiss = !S.full;
-    var top = '<div class="rs-head"><span class="rs-title">재배송 목록<small>대한통운 연결 전 — 직원이 손으로 보낼 것 · 재배송을 아직 안 정한 문의(확인 필요)는 [오늘] 탭에만 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
-      + '<span class="rs-nav"><label class="rs-chk"><input type="checkbox" data-rs="open"' + (S.onlyOpen ? ' checked' : '') + '> 안 보낸 것만</label><button type="button" data-rs="copy">표 복사</button><button type="button" data-rs="csv">엑셀 내려받기</button><button type="button" data-rs="re" aria-label="다시 불러오기">↻</button></span></div>'
+    var cnt = {}; rows.forEach(function (r) { cnt[r.status] = (cnt[r.status] || 0) + 1; });
+    var top = '<div class="rs-head"><span class="rs-title">나갈 재배송 · 교환 · 불량<small>보낸 건은 안 보여요 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
+      + '<span class="rs-nav"><button type="button" data-rs="copy">표 복사</button><button type="button" data-rs="csv">엑셀 내려받기</button><button type="button" data-rs="re" aria-label="다시 불러오기">↻</button></span></div>'
+      + '<div class="rs-cnt">' + ['발송 대기', '정보 대기'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span>' + k + ' ' + cnt[k] + '</span>'; }).join('') + '</div>'
       + (shipMiss ? '<div class="rs-warn">받는 분 · 연락처 · 주소 · 주문번호는 서버(맥미니 프록시 /cs/kakao-reship) 연결 뒤 사무실 인터넷에서 채워져요. 그 전에는 [대화]로 채팅방을 열어 확인해 주세요.</div>' : (S.full.outside ? '<div class="rs-warn">사무실 밖이라 받는 분 정보는 가렸어요.</div>' : ''))
       + (S.mkErr ? '<div class="rs-warn">' + esc(S.mkErr) + '</div>' : '');
     var body = rows.length ? '<div class="rs-tblw"><table class="rs-tbl"><thead><tr>' + HEAD.map(function (h) { return '<th>' + h[1] + '</th>'; }).join('') + '<th></th></tr></thead><tbody>'
@@ -113,11 +114,11 @@
           if (k === 'status') return '<td><span class="rs-st ' + (ST[c.status] || 'check') + '">' + esc(c.status) + '</span></td>';
           return '<td class="c-' + k + '">' + esc(c[k]) + '</td>';
         }).join('') + '<td class="rs-act">' + (r.status === '발송함' ? '' : '<button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">발송함</button>') + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></td></tr>';
-      }).join('') + '</tbody></table></div>' : '<div class="rs-empty">' + (S.onlyOpen ? '안 보낸 재배송 건이 없어요' : '재배송 건이 없어요') + '</div>';
+      }).join('') + '</tbody></table></div>' : '<div class="rs-empty">' + (S.err && !S.drafts ? '불러오지 못했어요 (' + esc(S.err) + ')' : '지금 나갈 건이 없어요') + '</div>';
     return {html: top + body, rows: rows.map(function (r) { return {r: r}; })};
   }
   function tsv(sep) {
-    var rows = fullRows().filter(function (r) { return r.status !== '확인 필요' && (!S.onlyOpen || r.status !== '발송함'); });
+    var rows = openRows();
     var q = function (v) { v = String(v == null ? '' : v); return sep === ',' ? '"' + v.replace(/"/g, '""') + '"' : v.replace(/[\t\n]/g, ' '); };
     return [HEAD.map(function (h) { return q(h[1]); }).join(sep)].concat(rows.map(function (r) { var c = cols(r); return HEAD.map(function (h) { return q(c[h[0]]); }).join(sep); })).join('\n');
   }
@@ -204,8 +205,6 @@
     var b = e.target.closest && e.target.closest('[data-rs],.rs-go');
     if (!b) { if (e.target.closest && e.target.closest('.rs-in')) return; var x = rowAt(e.target); if (x) showTip(x.row, x.r); return; }
     if (b.classList.contains('rs-sent')) { hideTip(); sentClick(b.dataset.id); return; }
-    if (b.dataset.rs === 'tab-day' || b.dataset.rs === 'tab-list') { S.tab = b.dataset.rs === 'tab-list' ? 'list' : 'day'; hideTip(); draw(); return; }
-    if (b.dataset.rs === 'open') return;
     if (b.dataset.rs === 'copy' || b.dataset.rs === 'csv') {
       if (b.dataset.rs === 'copy') { try { navigator.clipboard.writeText(tsv('\t')).then(function () { b.textContent = '복사했어요'; setTimeout(function () { b.textContent = '표 복사'; }, 1500); }); } catch (x) { /* noop */ } return; }
       var blob = new Blob(['﻿' + tsv(',')], {type: 'text/csv;charset=utf-8'}), u = URL.createObjectURL(blob), a2 = document.createElement('a');
@@ -219,15 +218,10 @@
       setTimeout(function () { try { var k = document.getElementById('kkoBox'); if (k) k.scrollIntoView({behavior: 'smooth', block: 'start'}); if (typeof kkoTab === 'function') kkoTab('chat'); kkoOpenChat(key); } catch (x) { console.warn('재배송 장부 대화 열기', x); } }, 400);
       return;
     }
-    var a = b.dataset.rs, day = S.day || today();
-    if (a === 'prev') S.day = addDay(day, -1);
-    else if (a === 'next') S.day = addDay(day, 1) > today() ? today() : addDay(day, 1);
-    else if (a === 're') return load(true);
-    draw();
+    if (b.dataset.rs === 're') return load(true);
   });
   document.addEventListener('change', function (e) {
     var t = e.target;
-    if (t.dataset && t.dataset.rs === 'open') { S.onlyOpen = t.checked; draw(); return; }
     if (!(t.classList && t.classList.contains('rs-in'))) return;
     var p = {}; p[t.dataset.f] = String(t.value || '').trim().slice(0, t.dataset.f === 'inv' ? 20 : 120);
     t.disabled = true;
@@ -236,7 +230,7 @@
   function visible() { return BOX.some(function (id) { var b = document.getElementById(id); return b && b.offsetParent; }); }
   setInterval(function () { if (!document.hidden && visible()) load(false); }, 5000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden && visible()) load(false); });
-  window.Reship = {load: load, rows: function (d) { return rowsOf(d || today()); }, state: S};
+  window.Reship = {load: load, draw: draw, rows: function () { return openRows(); }, state: S};
   function boot() { if (visible()) load(true); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 1500); }); else setTimeout(boot, 1500);
 })();
