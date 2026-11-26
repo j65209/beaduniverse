@@ -5371,7 +5371,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-find select,.kko-find input{min-height:34px;padding:4px 12px;border:1px solid transparent;border-radius:8px;background:var(--kko-pill);color:var(--kko-ink);font-size:12.5px;font-family:inherit}
   .kko-find select:focus,.kko-find input:focus{outline:none;border-color:var(--kko-ink);background:#fff}
   .kko-find #kkoFindQ{flex:1 1 200px;min-width:0}
-  .kko-find #kkoFindP{width:120px}
+  .kko-find #kkoFindP{width:168px}
   .kko-find button{min-height:34px;padding:6px 16px;border-radius:8px;border:0;background:var(--kko-yellow);color:var(--kko-ink);font-size:12.5px;font-weight:800;font-family:inherit;cursor:pointer}
   .kko-find button:hover{background:var(--kko-yellow-h)}
   .kko-find-out{display:flex;flex-direction:column;gap:6px;margin-top:8px}
@@ -13246,7 +13246,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     html.solo-cs #kkoPaneChat>.kko-list{min-height:0;overflow-y:auto;overscroll-behavior:contain}
     html.solo-cs #kkoCh,html.solo-cs #kkoFindOut{max-height:30vh;overflow-y:auto}
     html.solo-cs .kko-find #kkoFindQ{flex:1 1 110px}
-    html.solo-cs .kko-find #kkoFindP{width:112px}
+    html.solo-cs .kko-find #kkoFindP{width:150px}
     /* 대화창 = 오른쪽 칸 (덮는 창 · 어두운 막 없이) */
     html.solo-cs #kkoBox>.kko-chat:not([hidden]){position:relative;inset:auto;z-index:auto;display:flex;grid-column:2;grid-row:2/-1;min-height:0;margin-top:6px}
     html.solo-cs #kkoBox>.kko-chat .kko-chat-dim{display:none}
@@ -14722,8 +14722,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <option value="kop">코페리</option><option value="apt">아페티</option><option value="koz">코즈미</option>
             <option value="6a">식스에이</option><option value="yar">야르</option><option value="pp">프로덕트피알</option><option value="akoi">아코이하우스</option>
           </select>
-          <input id="kkoFindQ" class="kko-fo" type="text" placeholder="주문번호 · 운송장, 또는 이름 (홍길동 1234)" aria-label="주문번호 · 운송장 번호 또는 이름">
-          <input id="kkoFindP" class="kko-fo" type="text" inputmode="numeric" maxlength="13" placeholder="뒷 4자리 (없어도 돼요)" aria-label="전화 뒷 4자리">
+          <input id="kkoFindQ" class="kko-fo" type="text" placeholder="주문번호 · 운송장 · 이름, 또는 전화번호" aria-label="주문번호 · 운송장 번호 · 이름 또는 전화번호">
+          <input id="kkoFindP" class="kko-fo" type="tel" inputmode="tel" maxlength="20" placeholder="전화번호 전체 (010-1234-5678)" aria-label="전화번호 전체">
           <input id="kkoTrackQ" class="kko-fw" type="text" inputmode="numeric" maxlength="200" placeholder="운송장 번호 (CJ대한통운, 여러 개는 띄어서)" aria-label="운송장 번호">
           <button type="submit" id="kkoFindGo">찾기</button>
         </form>
@@ -19253,14 +19253,36 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }
 
   // 주문 찾기 — 주문번호 / 이름 + 전화 뒷 4자리 / 전화 전체
+  /** 글 안의 휴대폰 번호 전체 (하이픈 · 점 · 띄어쓰기 · +82 아무래도) → {digits, rest} */
+  function _kkoPhoneIn(t){
+    const m=String(t||'').match(/(?<![\dA-Za-z])(?:\+?82[-.\s]?|0)1[016789](?:[-.\s)]*\d){7,8}(?![\dA-Za-z])/);  // 주문번호 속 '010…'은 안 잡게 앞뒤에 숫자 · 영문 없을 때만
+    if(!m) return null;
+    let d=m[0].replace(/\D/g,''); if(d.startsWith('82')) d='0'+d.slice(2);
+    if(!/^01[016789]\d{7,8}$/.test(d) || (d.startsWith('010') && d.length!==11)) return null;  // 010 은 11자리 — 치는 도중(10자리)에 찾지 않게
+    return {digits:d, rest:String(t).replace(m[0],' ').replace(/[\s/,·:]+/g,' ').trim()};
+  }
+  // 전화번호 전체를 다 쓰면(붙여넣기 포함) 바로 찾기 — 같은 번호로 두 번은 안 찾음
+  let _kkoAutoT=0, _kkoAutoLast='';
+  function _kkoAutoFind(){
+    const f=document.getElementById('kkoFindForm'); if(!f || f.dataset.mode==='wbl') return;
+    const q=document.getElementById('kkoFindQ').value, pv=document.getElementById('kkoFindP').value;
+    const ph=_kkoPhoneIn(pv) || _kkoPhoneIn(q); if(!ph){ _kkoAutoLast=''; return; }
+    const key=ph.digits+'|'+document.getElementById('kkoFindBrand').value;
+    if(key===_kkoAutoLast) return;
+    clearTimeout(_kkoAutoT);
+    _kkoAutoT=setTimeout(()=>{ _kkoAutoLast=key; kkoFind(); }, 350);
+  }
+  document.addEventListener('input', e=>{ if(e.target && (e.target.id==='kkoFindQ' || e.target.id==='kkoFindP')) _kkoAutoFind(); });
   function kkoFind4(p4){ const el=document.getElementById('kkoFindP'); if(el) el.value=p4; kkoFind(); }
   async function kkoFind(ev){
     if(ev) ev.preventDefault();
     if((document.getElementById('kkoFindForm')||{}).dataset?.mode==='wbl') return kkoTrack();
     const out=document.getElementById('kkoFindOut');
     const brand=document.getElementById('kkoFindBrand').value;
-    const q=document.getElementById('kkoFindQ').value.trim();
-    const p=document.getElementById('kkoFindP').value.replace(/\D/g,'');
+    let q=document.getElementById('kkoFindQ').value.trim();
+    let p=document.getElementById('kkoFindP').value.replace(/\D/g,'');
+    // 전화번호 전체는 어느 칸에 써도 (2026-11-26 사장님 "번호 다 쓰는걸로 · 중간에 - 있어도") — '010-1234-5678' · '010 1234 5678' · '홍길동 01012345678'
+    if(!p){ const ph=_kkoPhoneIn(q); if(ph){ p=ph.digits; q=ph.rest; } }
     const params=new URLSearchParams({brand});
     if(!p && /^[A-Za-z0-9_-]{6,40}$/.test(q)) params.set('orderId',q);
     else if(!q && p.length>=9) params.set('phone',p);
@@ -19268,7 +19290,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     else if(q && p.length>=9){ params.set('name',q); params.set('phone',p); }
     // 이름만 · '홍길동 1234'처럼 한 칸에 (2026-11-26 사장님 "이름 검색하면 뒷번호 매칭") — 나누기는 서버가. 이름만이면 뒷번호 목록을 보여 주고 눌러서 좁힘 (사무실 인터넷에서만)
     else if(q && !p) params.set('name',q);
-    else { out.innerHTML='<div class="kko-find-msg err">주문번호 · 운송장 번호, 또는 이름 (+ 전화 뒷 4자리)을 넣어 주세요</div>'; return; }
+    else { out.innerHTML='<div class="kko-find-msg err">주문번호 · 운송장 번호 · 전화번호, 또는 이름을 넣어 주세요</div>'; return; }
     out.innerHTML='<div class="kko-find-msg">찾는 중…</div>';
     try{
       const base=await loadProxyBase();
