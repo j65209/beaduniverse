@@ -4165,7 +4165,7 @@
     S.sel = null;
     const fields = d.cols.map(c => {
       const fx = fxText(info, r, c.p);
-      if (fx) return `<dt>${esc(c.name)}</dt><dd><span class="nr-auto">자동 계산${fxGuard(fx, S.cur) ? '' : ` · ${esc(fx)}`}</span></dd>`;   // 기밀 명단 밖엔 가린 칸을 쓰는 함수는 안 보임
+      if (fx) return '';   // 수식 칸은 새 줄 창에 안 보임 (시트가 알아서 계산 — 2026-11-26 사장님 "자동계산 삭제")
       if (c.type === 'check') return `<dt>${esc(c.name)}</dt><dd><label><input type="checkbox" class="nr-ck" data-p="${c.p}"${val(c.p) === 'TRUE' ? ' checked' : ''}> 체크</label></dd>`;
       return `<dt>${esc(c.name)}</dt><dd><input class="nr-in" data-p="${c.p}" value="${esc(val(c.p))}" spellcheck="false" autocomplete="off"${c.key ? ' data-key="1"' : ''}></dd>`;
     }).join('');
@@ -4175,7 +4175,7 @@
     const from = opt && opt.from;
     $('dCap').textContent = `${(bookOf(t.book) || {}).title || ''} › ${t.name}`;
     $('dTitle').textContent = from ? `${t.name}로 옮기기` : '새 줄';
-    $('dSub').textContent = from ? `${from.name} › ${from.label} → 시트 ${r}행 · 수식 칸은 자동 계산` : `시트 ${r}행에 적어요 · 수식 칸은 시트가 자동으로 계산`;
+    $('dSub').textContent = from ? `${from.name} › ${from.label} → 시트 ${r}행` : `시트 ${r}행에 적어요`;
     $('dHint').innerHTML = (from ? `<div class="nr-from">${esc(from.name)}에서 가져온 값을 채워 뒀어요${carry.length ? ` (안 보이는 칸 ${carry.length}개도 함께)` : ''}. 상품명 등을 고쳐 저장하면 ${esc(from.name)}에서는 빠져요 · 되돌리기 Ctrl+Z</div>` : '')
       + '<div class="nr-bar"><button type="button" class="nr-save">저장</button><button type="button" class="nr-cancel">취소</button></div>';
     $('dHint').classList.remove('no');
