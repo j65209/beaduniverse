@@ -1485,6 +1485,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .pom-toggle{border:1px solid var(--line);background:var(--bg-2);color:var(--text-2);border-radius:5px;padding:3px 9px;font-size:11.5px;cursor:pointer}
   .pom-toggle:hover{background:var(--bg-3);color:var(--text-1)}
   .pom-list{border-top:1px solid var(--line);padding:6px 14px 10px;max-height:420px;overflow:auto}
+  .pom.pom-alert{border:2px solid var(--danger)}
+  .pom-need{border-top:1px solid var(--line);padding:6px 14px 10px}
+  .pom-need .pom-group{color:var(--danger)}
   .pom-group{margin-top:8px;font-size:11.5px;font-weight:700;color:var(--text-3)}
   .pom-row{display:grid;grid-template-columns:92px 1fr auto;gap:2px 10px;padding:6px 0;border-bottom:1px dashed var(--line)}
   .pom-row:last-child{border-bottom:0}
@@ -14564,6 +14567,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             <span class="pom-stats" id="pomStats"></span>
             <button type="button" class="pom-toggle" id="pomToggle" onclick="pomToggle()" aria-expanded="false">자세히</button>
           </div>
+          <!-- 확인 필요(매핑할 것)는 접지 않고 늘 펼쳐 둔다 (2026-11-26 사장님 "접지말고 계속 펼쳐놔 바로바로 매핑 해야하니까 그리고 강조해줘") — 0건이면 숨김 -->
+          <div class="pom-need" id="pomNeed" hidden></div>
           <div class="pom-list" id="pomList" hidden></div>
         </div>
         <!-- MD 발주리스트 자동 추가 (2026-11-23 사장님 "엠디팀시트 브랜드별 발주 리스트에 자동으로 추가" · "브랜드 고르기 만들어줘") —
@@ -37362,12 +37367,20 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         ${act(it)}
       </div>`;
     const opened=[...list.querySelectorAll('details.pom-more')].filter(x=>x.open).map(x=>x.dataset.k);   // 다시 그려도 펼친 것은 그대로
+    // 확인 필요 = 늘 펼친 칸(pomNeed) + 빨간 테두리. 나머지(적는 중 · 지난 것 · 안 적기)만 [자세히] 안에
+    box.classList.toggle('pom-alert', need.length>0);
+    const needEl=document.getElementById('pomNeed');
+    if(needEl){
+      needEl.hidden=!need.length;
+      needEl.innerHTML=need.length?`<div class="pom-group">확인 필요 ${need.length}건 — [매핑하기]로 상품을 고르면 ERP 발주일에 바로 적어요</div>`+need.map(it=>row(it, _pomWhy(it))).join(''):'';
+    }
+    const tg=document.getElementById('pomToggle');
+    if(tg) tg.hidden=!(going.length||old.length||off.length);
     list.innerHTML=
-      (need.length?`<div class="pom-group">확인 필요 ${need.length}건 — [매핑하기]로 상품을 고르면 ERP 발주일에 바로 적어요</div>`+need.map(it=>row(it, _pomWhy(it))).join(''):'<div class="pom-group">확인 필요 없음</div>')
-      +(going.length?`<div class="pom-group">적는 중 ${going.length}건</div>`+going.map(it=>row(it,'')).join(''):'')
+      (going.length?`<div class="pom-group">적는 중 ${going.length}건</div>`+going.map(it=>row(it,'')).join(''):'')
       +(old.length?`<details class="pom-more" data-k="old"${opened.includes('old')?' open':''}><summary>지난 발주 중 안 이어진 것 ${old.length}건 (이미 출고 · 3주 지남)</summary>`+old.map(it=>row(it, _pomWhy(it))).join('')+'</details>':'')
       +(off.length?`<details class="pom-more" data-k="off"${opened.includes('off')?' open':''}><summary>안 적기로 정한 것 ${off.length}건</summary>`+off.map(it=>row(it, it.why)).join('')+'</details>':'');
-    list.hidden=!_pom.open;
+    list.hidden=!_pom.open||!(going.length||old.length||off.length);
   }
   function pomToggle(){
     _pom.open=!_pom.open;
@@ -37646,7 +37659,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     try{ if(typeof switchLgTab==='function') switchLgTab('recent'); }catch(e){ /* noop */ }
     setTimeout(()=>{
       if(which==='pom'){
-        if(!_pom.open) pomToggle();
+        renderPoMatchBox();   // 확인 필요는 늘 펼쳐져 있다 — [자세히]는 안 연다
         const bx=document.getElementById('pomBox'); if(bx) bx.scrollIntoView({behavior:'instant',block:'start'});
       }else{
         _pmd.open=true; _pmd.tab='need';
@@ -58621,7 +58634,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="tool-new.js?v=3" defer></script><!-- 업무용 툴 새 도구 표시 — 직원마다 눌러 보기 전까지 (tool-new.js, 슈퍼베이스 tool_news) -->
 <script src="notif-call.js?v=4" defer></script><!-- 알림 확인 요청 — 사장님이 보내면 [확인] 창 (notif-call.js) -->
 <script src="office-thumb.js?v=1" defer></script><!-- 작은 사진에 마우스 → 크게 (office-thumb.js) -->
-<script src="check-alert.js?v=12" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
+<script src="check-alert.js?v=13" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
 <script src="kko-urgent.js?v=3" defer></script><script src="reship.js?v=2" defer></script><!-- 재배송 · 교환 · 불량 장부 (11-26) --><!-- 카톡 급한 호출 — 희선님 PC 컴퓨터 알림, 해결될 때까지 되풀이 (kko-urgent.js) -->
 </body>
 </html>

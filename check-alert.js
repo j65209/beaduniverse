@@ -325,7 +325,7 @@ function go(x) {
   switch (x.go) {
     case 'erp': return call(() => openErpPage());
     case 'blank': { const p = document.querySelector('#stockBlank [data-act="open"]'); if (p) return p.click(); return document.querySelector('#stockBlank .sb-card') ? undefined : call(() => openErpPage()); }
-    case 'pom': call(() => triggerLogistics()); setTimeout(() => call(() => { if (!_pom.open) pomToggle(); }), 400); return scrollTo_('pomBox', 700);
+    case 'pom': call(() => triggerLogistics()); return scrollTo_('pomBox', 700);   // 확인 필요는 늘 펼쳐져 있다 (11-26)
     case 'pmd': call(() => triggerLogistics()); setTimeout(() => call(() => { if (!_pmd.open) pmdToggle(); }), 400); return scrollTo_('pmdBox', 700);
     case 'reo': call(() => goHome()); return scrollTo_('homeReorderCard', 400);
     case 'comp': return call(() => hrOpenCompReq());
