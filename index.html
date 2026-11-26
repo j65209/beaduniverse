@@ -18234,7 +18234,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _kkoAgo(ms){ const m=Math.max(0,Math.round((Date.now()-ms)/60000)); if(m<1) return '방금'; if(m<60) return m+'분'; const h=Math.floor(m/60); if(h<24) return h+'시간'; return Math.floor(h/24)+'일'; }
   function _kkoBrand(b,label){ return `<span class="reo-brand reo-b-${_kkoEsc(b)}">${_kkoEsc(label||KKO_LABEL[b]||b)}</span>`; }
   // 답 기다림 = 고객 글이 마지막이고 마무리 인사(네 · 감사합니다 …)가 아님 (서버 isWaiting 과 같음)
-  function _kkoWaiting(r){ return r.lastWho ? (r.lastWho==='customer' && !r.closing) : !r.replied; }
+  // 11-26 사장님 "왜 계속 최신화 안되냐" — 고객이 나간 방(left) · 서버가 못 알아본 끝인사("아... 네네 감사합니다~^^")도 답 기다림에서 뺀다
+  const KKO_BYE_RE=/(감사|고맙|고마워|수고하세요|알겠습니다|알겠어요|확인했습니다|확인했어요|넵|네네|좋은\s*하루)/;
+  function _kkoBye(r){ const t=String(r.preview||'').replace(/\s+/g,' ').trim(); return t.length>0 && t.length<=30 && !/[?？]/.test(t) && KKO_BYE_RE.test(t); }
+  function _kkoWaiting(r){ if(r.left) return false; return r.lastWho ? (r.lastWho==='customer' && !r.closing && !_kkoBye(r)) : !r.replied; }
   function _kkoOpenNow(h){   // KST, 요일 플래그 월~일 (서버 openNow 와 같음)
     const k=new Date(Date.now()+9*3600000), dow=(k.getUTCDay()+6)%7, hm=k.getUTCHours()*100+k.getUTCMinutes(), s=+h.start, e=+h.end;
     if(String(h.days||'')[dow]!=='1') return false;
@@ -18248,7 +18251,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     try{
       const base=await loadProxyBase();
       if(!base) throw new Error('서버 연결 안 됨');
-      const opt={headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'};
+      // 25초 넘게 걸리면 끊음 — 멈춘 요청 하나 때문에 _kko.loading 이 안 풀려 그 뒤 1분 새로고침이 전부 건너뛰지 않게 (11-26)
+      const opt={headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store',signal:(window.AbortSignal && AbortSignal.timeout) ? AbortSignal.timeout(25000) : undefined};
       // 답장 초안(직원 몫 판정)은 같이 읽되, 못 받아도 목록은 그대로 — 마지막으로 받은 판정을 쓴다
       const [r, rd, rp]=await Promise.all([fetch(`${base}/cs/kakao`,opt), fetch(`${base}/cs/kakao-drafts`,opt).catch(()=>null), fetch(`${base}/cs/kakao-pickup`,opt).catch(()=>null)]);
       const jp=rp && rp.ok ? await rp.json().catch(()=>null) : null; if(jp && jp.ok) _kko.pickup=jp;   // 자동 수거 현황 (11-25) — 못 받으면 마지막 것
