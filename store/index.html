@@ -638,7 +638,10 @@
     if (role !== 'master') lsSet('brightbeed_viewer_ver', '2'); lsSet('brightbeed_role', role); lsSet('brightbeed_auth_ver', AUTH_VERSION); if (role === 'master') lsSet('brightbeed_master_ver', MASTER_PIN_VER); lsSet('brightbeed_unlocked', '1');
     $('lock').hidden = true; start();
   });
+  /* 직원에게 열기 전까지 관리자 PIN 기기만 (2026-11-26 사장님 "직원들 안보이게 우선 세팅") — 열 때 STAFF_OPEN = true */
+  const STAFF_OPEN = false;
   async function start() {
+    if (!STAFF_OPEN && !isAdmin()) { $('stamp').textContent = ''; $('cartBtn').hidden = $('tabShop').hidden = $('tabMine').hidden = true; document.body.insertAdjacentHTML('beforeend', '<div class="empty" style="margin:40px 16px">준비 중인 화면이에요</div>'); return; }
     $('tabAdmin').hidden = !isAdmin();
     try { await Promise.all([loadItems(false), loadCfg()]); } catch (e) {
       $('stamp').className = 'stamp bad'; $('stamp').style.display = 'block';

@@ -584,7 +584,7 @@ CS 직원이 매일 적는 구글시트 **비드유니버스 VOC**(링크 보기
 
 | 항목 | 내용 |
 |---|---|
-| 여는 곳 | 홈 업무용 툴 **직원 할인 스토어** (`#store`) · `beaduniverse.kr/office/store/` — 전 직원 주문, **주문 관리(입금 확인 · 취소 · 할인율)는 관리자 PIN 기기만** |
+| 여는 곳 | 홈 업무용 툴 **직원 할인 스토어** (`#store`) · `beaduniverse.kr/office/store/` — **11-26 지금은 관리자 PIN 기기만**(사장님 "직원들 안보이게 우선 세팅"). 직원에게 열 때: index.html `storeCard`(snsRefreshAccess) · TOOL_PAGES store `access` · VIEW_GATES viewStore 를 풀고, store/index.html `STAFF_OPEN = true`, 슈퍼베이스 `tool_news` key 'store' 의 `off_at` 을 null + `created_at=now()` |
 | 상품 | 맥미니 `sixshop-collector` 재고 연동(`erp/stock-sync.mjs`, 5분)이 식스샵프로 **판매중** 옵션 중 주문과 같은 연결로 재고 ERP 줄에 이어지는 것만 `state/staff-store.json` 으로 → 프록시 `GET /erp/store` 가 재고 ERP 지금 값(상품명 · 옵션 · 남은 재고)을 붙여 줌. 판매중지 · 숨김 · B급 · 배송비 같은 것은 빠짐, 남은 재고 0 은 품절 |
 | 가격 | 공홈 판매가(할인가 + 옵션 차액) × (1 − 브랜드 할인율), 10원 단위 버림. 할인율 · 배송비 · 입금 계좌 = 슈퍼베이스 `app_kv` `staff_store` (화면 주문 관리에서 바꿈) |
 | 주문 | 엣지 함수 `staff-store`(원본 `supabase/functions/staff-store/index.ts`) → 표 `staff_orders`(RLS 정책 없음 — 받는 분 전화 · 주소는 공개 키로 못 읽고, 화면엔 가려서만) · 이력 `staff_orders_history`. 같은 주문을 두 번 눌러도 `client_key` 로 한 번만 |
