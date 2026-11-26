@@ -5612,6 +5612,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-mcol{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;max-width:78%}
   .kko-msg.o .kko-mcol{align-items:flex-end}
   .kko-msg .who{padding:0 2px;font-size:12px;color:#3c4853}
+  .kko-msg .who.w-agent{color:#fff;background:#4f7fcf;border-radius:999px;padding:1px 8px;font-weight:700}
+  .kko-msg .who.w-staff{color:#fff;background:#3c4853;border-radius:999px;padding:1px 8px;font-weight:700}
   .kko-mrow{display:flex;align-items:flex-end;gap:5px;max-width:100%}
   .kko-msg.o .kko-mrow{flex-direction:row-reverse}
   .kko-mb{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
@@ -18221,7 +18223,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   const KKO_LATE_MIN=30;
   const KKO_ORDER=['kop','apt','koz','6a','yar','akoi','pp','bb','ct'];   // 브랜드 칩 · 채널 표 순서 (클리어타입은 상담이 있을 때만 칩)
   const KKO_HIDE=new Set(['bb']);   // 화면에서 뺀 브랜드 (사장님 11-19 "브라이트비드는 … 볼필요없어") — 다시 보려면 여기서 지운다
-  const KKO_WHO={customer:'고객',staff:'직원',ai:'카나나',bot:'자동응답',system:'안내',auto:'자동 안내'};
+  const KKO_WHO={customer:'고객',staff:'직원',agent:'에이전트',ai:'카나나',bot:'자동응답',system:'안내',auto:'자동 안내'};
   const KKO_KIND={photo:'사진',video:'동영상',file:'파일',card:'카드',emoticon:'이모티콘',deleted:'지운 글',media:'사진 · 파일'};
   const KKO_FAQ_TTL=10*60000, KKO_AGENT_STALE_SEC=600;   // 예상 질문 · 답은 10분마다 다시 (옆 학습 세션이 고쳐 올림) · 에이전트 판정 10분 넘으면 경고 (2분마다 돎)
   const _kko={data:null,err:'',loading:false,brand:'all',only:'',timer:null,showCh:false,tab:'chat',faq:null,faqErr:'',faqBrand:'',faqAt:0,faqLoading:false,faqHtml:'',drafts:null,draftsAt:0,draftsErr:'',chat:null,chatLocked:false,learnHtml:'',picks:null,picksAt:0,picksErr:'',picksLoading:false};
@@ -19091,10 +19093,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const txt=kind + (m.text ? (kind ? ' ' : '')+_kkoEsc(m.text) : '');
       if(x.side==='s'){ out+=`<div class="kko-msg s"><div class="b">${txt || '<i>(안내)</i>'}</div></div>`; return; }
       const bub=(txt || !ph) ? `<div class="b">${txt || '<i>(빈 글)</i>'}</div>` : '';
-      const name=x.side==='c' ? _kkoEsc(nick||'고객') : x.who!=='staff' ? _kkoEsc(KKO_WHO[x.who]||x.who) : '';
+      // 11-26 사장님 "에이전트답변인지 직원답변인지 적어줘" — 우리 쪽 글은 모두 누가 썼는지 (직원 · 에이전트 · 카나나 · 자동응답)
+      const name=x.side==='c' ? _kkoEsc(nick||'고객') : _kkoEsc(KKO_WHO[x.who]||x.who);
       out+=`<div class="kko-msg ${x.side}${first ? ' g' : ''}">`
         + (x.side==='c' && first ? `<span class="kko-mav" aria-hidden="true">${KKO_AV}</span>` : '')
-        + `<div class="kko-mcol">${first && name ? `<span class="who">${name}</span>` : ''}`
+        + `<div class="kko-mcol">${first && name ? `<span class="who${x.side==='o' ? ' w-'+x.who : ''}">${name}</span>` : ''}`
         + `<div class="kko-mrow"><div class="kko-mb">${ph}${bub}</div>${x.ok && last ? `<span class="t">${_kkoHmKo(x.t)}</span>` : ''}</div></div></div>`;
     });
     return out;
