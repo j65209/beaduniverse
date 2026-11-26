@@ -9264,6 +9264,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     word-break:break-word;letter-spacing:-.01em;font-weight:500;
     min-width:0;  /* 1fr 그리드에서 텍스트가 줄바꿈될 수 있게 */
   }
+  /* 업무일지 글 안 줄바꿈(Shift+Enter) 유지 — 다시 그릴 때 한 줄로 풀리던 것 (2026-11-26) */
+  .dcs-req-text,.dcs-plan-text,.dcs-task-text,.dcs-prev-text{white-space:pre-wrap}
   .dcs-prev-row.done .dcs-prev-text{text-decoration:line-through;color:#a8a29e}
   /* 우측 액션 묶음 — 오늘로 + 삭제 */
   .dcs-prev-actions{display:inline-flex;align-items:center;gap:4px}
@@ -34516,7 +34518,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         _diaryScheduleSaveFor(st.name);
       };
       const txt = row.querySelector('.dcs-plan-text');
-      txt.oninput = ()=>{ it.text = txt.innerText; _diaryScheduleSaveFor(st.name); };
+      txt.oninput = ()=>{ it.text = txt.innerText.replace(/\n+$/,''); _diaryScheduleSaveFor(st.name); };
       txt.onkeydown = (e)=>{
         if(e.key==='Enter' && !e.shiftKey){
           e.preventDefault();
@@ -34627,7 +34629,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         setTimeout(()=>setStatus('saved'), 1400);
       };
       txt.oninput = ()=>{
-        r.text = txt.innerText;
+        r.text = txt.innerText.replace(/\n+$/,'');
         // 입력 즉시 saving 아이콘 → 저장 debounce(500ms) 완료 후 saved 로 전환
         setStatus('saving');
         clearTimeout(r._statusTimer);
@@ -34719,7 +34721,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         _diaryScheduleSaveFor(st.name);
       };
       const txt = row.querySelector('.dcs-task-text');
-      txt.oninput = ()=>{ t.text = txt.innerText; _diaryScheduleSaveFor(st.name); };
+      txt.oninput = ()=>{ t.text = txt.innerText.replace(/\n+$/,''); _diaryScheduleSaveFor(st.name); };
       txt.onkeydown = (e)=>{
         if(e.key==='Enter' && !e.shiftKey){
           e.preventDefault();
