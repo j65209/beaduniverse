@@ -19424,7 +19424,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       ? `<ol class="kko-trk-l">${steps.map((s,i)=>`<li${i===0 ? ' class="now"' : ''}><span class="t">${md(s.at)}</span><b>${_kkoEsc(s.step)}</b><span class="p">${_kkoEsc(s.place)}</span></li>`).join('')}</ol>`
       : `<div class="kko-trk-none">아직 택배사 처리 기록이 없어요 — 운송장만 출력되고 기사님이 가져가기 전(집화 전)일 수 있어요.</div>`;
     // 11-26 사장님 "운송장 조회에서 반품운송장 들어온거 있으면 바로 밑에 같이 보여줘" — 서버 cs-track 의 returns (식스샵프로 반품 · 교환 회수 운송장)
-    const rets=tag ? '' : (j.returns||[]).map(r=>_kkoTrackHtml(r,inner,r.kind||'반품')).join('');
+    const rets=tag ? '' : (j.returns||[]).map(r=>{
+      // 11-26 사장님 "반품 운송장은 왜 없어" — 식스샵프로에 반품 · 교환 요청은 있는데 회수 운송장이 빈칸
+      if(r.missing){ const d=new Date(r.at), ds=isNaN(d)?'':`${d.getMonth()+1}/${d.getDate()} `; return `<div class="kko-trk-box ret"><div class="kko-trk-h"><span class="kko-trk-tag">↩ ${_kkoEsc(r.kind||'반품')} 회수</span><b>회수 운송장 없음</b></div><div class="kko-trk-src">${_kkoEsc(ds)}${_kkoEsc(r.kind||'반품')} 요청만 있고 식스샵프로에 회수 운송장이 비어 있어요 — 수거 접수가 됐는지 확인해 주세요</div></div>`; }
+      return _kkoTrackHtml(r,inner,r.kind||'반품');
+    }).join('');
     return `<div class="kko-trk-box${tag ? ' ret' : ''}">${head}${body}${tag ? '' : `<div class="kko-trk-src">${j.source==='cj-api' ? '대한통운 API' : 'CJ대한통운 공개 조회'} 기준${j.cached ? ' · 3분 안에 조회한 결과' : ''}</div>`}</div>${rets}`;
   }
 
