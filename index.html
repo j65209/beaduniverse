@@ -6099,6 +6099,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-feed {--m-color:#c026d3;--m-border:rgba(192,38,211,.42)}
   .sub-module.m-feed .sub-module-tag{color:#a21caf;border-color:rgba(192,38,211,.5);border-style:solid}
   .sub-module.m-review {--m-color:#475569;--m-border:rgba(71,85,105,.42)}
+  .sub-module.m-store {--m-color:#0f172a;--m-border:rgba(15,23,42,.42)}
   .sub-module.m-adlib {--m-color:#475569;--m-border:rgba(71,85,105,.42)}
   .sub-module.m-adlib .sub-module-tag{color:#334155;border-color:rgba(71,85,105,.5);border-style:solid}
   .sub-module.m-meeting {--m-color:#2563eb;--m-border:rgba(37,99,235,.42)}
@@ -12928,11 +12929,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
 
   /* ===== ERP전산팀(erp/) · 시딩 마스터(seeding/) — MD팀 시트 창처럼 가장자리에서 살짝 띄운 둥근 창 (2026-11-20 사용자 "MD팀처럼 erp도 좌/우 여백 조금만,
      erp 디자인과 동일한 서식들도"). 상단 바 아래를 꽉 채우던 iframe 둘레에 오피스 바탕색 여백 + 둥근 테두리. VOC 전산 · MD팀 시트는 이미 이 모양 ===== */
-  #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewReview,#viewCsagent,#viewMeeting,#viewWeekly,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
-  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewReview > .tool-frame,#viewCsagent > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewReview,#viewStore,#viewCsagent,#viewMeeting,#viewWeekly,#viewMileage{background:var(--bg-0);padding:8px clamp(8px,1vw,16px) calc(10px + env(safe-area-inset-bottom))}
+  #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewReview > .tool-frame,#viewStore > .tool-frame,#viewCsagent > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border:1px solid var(--line);border-radius:14px;background:#f3f5f8;box-shadow:0 1px 3px rgba(15,23,42,.05)}
   @media (max-width:720px){
-    #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewReview,#viewCsagent,#viewMeeting,#viewWeekly,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
-    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewReview > .tool-frame,#viewCsagent > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
+    #viewErp,#viewSeeding,#viewFeed,#viewAdlib,#viewReview,#viewStore,#viewCsagent,#viewMeeting,#viewWeekly,#viewMileage{padding:4px 6px calc(6px + env(safe-area-inset-bottom))}
+    #viewErp > .tool-frame,#viewSeeding > .tool-frame,#viewFeed > .tool-frame,#viewAdlib > .tool-frame,#viewReview > .tool-frame,#viewStore > .tool-frame,#viewCsagent > .tool-frame,#viewMeeting > .tool-frame,#viewWeekly > .tool-frame,#viewMileage > .tool-frame{border-radius:12px}
   }
 
   /* ===== 물류팀 다듬기 (2026-11-20 사용자 "모서리 자연스럽게 둥글게 · 텍스트 위치 최적화") — 틀 모서리를 위 출고 전광판(14px)에 맞추고,
@@ -13537,6 +13538,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-icon">⭐</div>
           <div class="sub-module-title">1점 리뷰 관리</div>
           <div class="sub-module-sub">코페리 · 아페티 · 코즈미 쇼핑몰 1점 리뷰 — 글 · 사진 · 작성자 연락처를 한곳에</div>
+        </div>
+        <!-- 직원 할인 스토어 = store/ (2026-11-26 사장님 "직원 할인 스토어 … 전 브랜드 구매 가능(판매중인 제품들) … 재고는 자동으로 erp 차감 … 대한통운 건별접수"). 전 직원 · 주문 관리는 관리자 PIN -->
+        <div class="sub-module m-store" onclick="openStorePage()">
+          <div class="sub-module-icon">🛍️</div>
+          <div class="sub-module-title">직원 할인 스토어</div>
+          <div class="sub-module-sub">전 브랜드 판매중 상품을 직원가로 — 담고 주소만 적으면 재고 차감 · 대한통운 접수까지 자동</div>
         </div>
         <div class="sub-module m-notice" onclick="triggerNotice()">
           <div class="sub-module-icon">🔐</div>
@@ -16877,6 +16884,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   <div class="view view-tool" id="viewFeed" hidden></div>
   <div class="view view-tool" id="viewAdlib" hidden></div>
   <div class="view view-tool" id="viewReview" hidden></div>
+  <div class="view view-tool" id="viewStore" hidden></div>
   <div class="view view-tool" id="viewCsagent" hidden></div>
   <div class="view view-tool" id="viewMeeting" hidden></div>
   <div class="view view-tool" id="viewWeekly" hidden></div>
@@ -23975,8 +23983,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   }
 
   /* ===== 뷰 전환 + 브라우저 history 연동 (좌측 엣지 스와이프 = 뒤로가기) ===== */
-  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewAdlib','viewReview','viewCsagent','viewMeeting','viewWeekly','viewMileage'];
-  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewAdlib:'adlib',viewReview:'review',viewCsagent:'csagent',viewMeeting:'meeting',viewWeekly:'weekly',viewMileage:'mileage'};
+  const VIEW_IDS=['viewHome','viewHr','viewDiary','viewLg','viewNotice','viewExecVault','viewCs','viewMd','viewMarketing','viewDesign','viewVendor','viewStrategy','viewStock','viewSixA','viewCleartype','viewSixStock','viewNamegen','viewTopping','viewBadge','viewInsta','viewPromoCalc','viewBrandReport','viewFixedCosts','viewCeoCal','viewYearEnd','viewStudio','viewMailer','viewModels','viewSns','viewErp','viewSeeding','viewFeed','viewAdlib','viewReview','viewStore','viewCsagent','viewMeeting','viewWeekly','viewMileage'];
+  const VIEW_HASH={viewHome:'',viewHr:'hr',viewDiary:'diary',viewLg:'lg',viewNotice:'notice',viewExecVault:'vault',viewCs:'cs',viewMd:'md',viewMarketing:'mkt',viewDesign:'design',viewVendor:'vendor',viewStrategy:'strategy',viewStock:'stock',viewSixA:'sixA',viewCleartype:'cleartype',viewSixStock:'sixstock',viewNamegen:'namegen',viewTopping:'topping',viewBadge:'badge',viewInsta:'insta',viewPromoCalc:'promo',viewBrandReport:'report',viewFixedCosts:'fx',viewCeoCal:'ceocal',viewYearEnd:'yearend',viewStudio:'studio',viewMailer:'mailer',viewModels:'models',viewSns:'sns',viewErp:'erp',viewSeeding:'seeding',viewFeed:'feed',viewAdlib:'adlib',viewReview:'review',viewStore:'store',viewCsagent:'csagent',viewMeeting:'meeting',viewWeekly:'weekly',viewMileage:'mileage'};
   const HASH_VIEW=Object.fromEntries(Object.entries(VIEW_HASH).map(([k,v])=>[v,k]));
   HASH_VIEW.ably='viewStrategy';  // 옛 에이블리 일일 보고서 주소 (#ably) → 전략팀 플랫폼 탭 · 코페리 에이블리
   if(PAUSED_BRANDS.has('ct')) delete HASH_VIEW.cleartype;  // 잠시 중단 — 옛 주소(#cleartype)로 들어와도 홈으로
@@ -24823,6 +24831,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     adlib:{view:'viewAdlib',path:'adlib/',title:'주얼리 광고 라이브러리',keep:true,bridge:false},
     // 1점 리뷰 관리(review/, 업무용 툴 카드, 2026-11-25) — 코페리 · 아페티 · 코즈미 쇼핑몰 1점 리뷰 + 주문에서 찾은 연락처. 맥미니 review-one → 프록시 /cs/reviews, 연락처는 사무실 인터넷에서만
     review:{view:'viewReview',path:'review/',title:'1점 리뷰 관리',keep:true,bridge:false},
+    // 직원 할인 스토어(store/, 업무용 툴 카드, 2026-11-26) — 전 브랜드 판매중 상품을 직원가로. 맥미니 프록시 /erp/store · 엣지 함수 staff-store · 재고 ERP 차감 · 대한통운 건별 접수
+    store:{view:'viewStore',path:'store/',title:'직원 할인 스토어',keep:true,bridge:false},
     // 에이전트 학습(csagent/, CS팀 카카오톡 상담 → 에이전트 학습 탭의 버튼, 2026-11-25) — 볼 것(수정 · 학습 · 처음 보는 시나리오)만 · 정리된 답. 프록시 /cs/kakao-review · /cs/kakao-book. 시나리오 북 · 시험 답변을 합침
     csagent:{view:'viewCsagent',path:'csagent/',title:'에이전트 학습',keep:true,bridge:false},
     // 마케팅 회의록(meeting/, 업무용 툴 '주간&마케팅 회의록' 카드의 탭, 2026-11-24) — 사람별 세로 칸에 인스타 링크 · 미리보기 · 중복 경고. 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links
@@ -25170,6 +25180,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   function openCsAgentPage(){ openSoloPage('csagent',()=>openToolPage('csagent')); }
   window.openCsAgentPage=openCsAgentPage;
   function openReviewPage(){ openToolPage('review'); }   // 1점 리뷰 관리 (2026-11-25)
+  function openStorePage(){ openToolPage('store'); }   // 직원 할인 스토어 (2026-11-26)
+  window.openStorePage=openStorePage;
   window.openReviewPage=openReviewPage;
   function openAdlibPage(){ openToolPage('adlib'); }   // 주얼리 광고 라이브러리 (2026-11-25)
   /* 마케팅 회의록 — meeting/ (디자인 · 마케팅 · MD팀 사람별 칸 · 인스타 미리보기 · 중복 계정 경고) */
