@@ -6411,11 +6411,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .sub-module.m-metaads[data-ready="0"] .sub-module-tag{color:var(--text-3);border-color:var(--line-2);border-style:dashed}
   /* 2026-11-26 사장님 "한줄로 다 가능하면 한줄로, 브랜드 전부" — PC 는 보이는 브랜드를 모두 한 줄에.
      집행 없는 브랜드도 줄 끝에 흐린 타일로 (아래 흐린 글 줄은 PC 에서 숨김). 휴대폰 · 좁은 화면은 그대로 2칸 */
-  @media(min-width:901px){
-    .sub-modules-metaads .sub-modules{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
-    .sub-modules-metaads .sub-module.m-metaads.is-idle{display:flex!important;order:1;opacity:.5}
-    .sub-modules-metaads .metaads-idle{display:none}
-    .sub-modules-metaads .m-metaads .is-today .mar-v{font-size:26px}
+  .sub-modules-metaads{min-width:0;max-width:100%;box-sizing:border-box}
+  .sub-modules-metaads .sub-modules{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);min-width:0;max-width:100%}
+  .sub-modules-metaads .sub-module.m-metaads.is-idle{display:flex!important;order:1;opacity:.5}
+  .sub-modules-metaads .metaads-idle{display:none}
+  @media(min-width:901px){ .sub-modules-metaads .m-metaads .is-today .mar-v{font-size:26px} }
+  /* 휴대폰 · 좁은 화면: 한 줄 그대로 옆으로 밀어 보기 — 타일 폭은 숫자가 또렷한 크기, 다음 브랜드가 살짝 보여 더 있다는 걸 알게 */
+  @media(max-width:900px){
+    .sub-modules-metaads .sub-modules{grid-auto-columns:minmax(132px,calc((100% - 16px) / 2.35));overflow-x:auto;overscroll-behavior-x:contain;
+      scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+    .sub-modules-metaads .sub-modules::-webkit-scrollbar{display:none}
+    .sub-modules-metaads .sub-module.m-metaads{scroll-snap-align:start}
   }
 
   /* 홈 폴더 — 실시간 브랜드 리포트 (식스샵프로 4 브랜드) */
