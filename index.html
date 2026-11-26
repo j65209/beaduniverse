@@ -9478,6 +9478,77 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     .diary-alert-avatar{width:18px;height:18px;font-size:9.5px}
   }
 
+  /* ===== 업무일지 간결 레이아웃 (2026-11-26 "버튼 최소화 · 텍스트 잘 보이게") =====
+     글이 카드 폭을 다 쓰게: 번호 숨김 · 칸마다 테두리 상자 없앰 · 우선순위/이동/삭제는 .dcs-tools 로 묶어
+     마우스를 올릴 때만 오른쪽 위에 뜬다 (터치 화면은 글을 누르면 뜬다). 우선순위는 왼쪽 띠 색으로만 보인다.
+     요청자 이름 · 저장 표시는 글 아래 줄(.dcs-req-meta). 위 @media 규칙보다 뒤에 둬야 이긴다. */
+  .dcs-sec .dcs-num{display:none}
+  .dcs-sec .dcs-plan-list,.dcs-sec .dcs-req-list,.dcs-sec .dcs-task-list,.dcs-sec .dcs-prev-list{gap:2px}
+  .dcs-sec .dcs-plan,.dcs-sec .dcs-req,.dcs-sec .dcs-task,.dcs-sec .dcs-prev-row{
+    position:relative;display:grid;grid-template-columns:16px minmax(0,1fr) auto;
+    column-gap:10px;row-gap:2px;align-items:start;
+    padding:7px 8px 7px 9px;border:none;border-left:3px solid var(--cat-line,#eae7dc);
+    border-radius:0 8px 8px 0;background:transparent;
+  }
+  .dcs-sec .dcs-task{border-left-color:transparent}
+  .dcs-sec .dcs-plan:hover,.dcs-sec .dcs-req:hover,.dcs-sec .dcs-task:hover,.dcs-sec .dcs-prev-row:hover,
+  .dcs-sec .dcs-plan:focus-within,.dcs-sec .dcs-req:focus-within,.dcs-sec .dcs-task:focus-within{
+    background:var(--cat-soft,#faf7ed);border-left-color:var(--cat,#d6d3d1);
+  }
+  .dcs-sec .dcs-plan.prio-2,.dcs-sec .dcs-req.prio-2{border-left-color:#f59e0b;background:rgba(245,158,11,.07)}
+  .dcs-sec .dcs-plan.prio-1,.dcs-sec .dcs-req.prio-1{border-left-color:#ef4444;background:rgba(239,68,68,.07)}
+  .dcs-sec .dcs-plan.prio-1 .dcs-plan-text,.dcs-sec .dcs-req.prio-1 .dcs-req-text{font-weight:700}
+  /* 체크박스 — 글 첫 줄에 맞춤 */
+  .dcs-sec .dcs-plan-check,.dcs-sec .dcs-req-check,.dcs-sec .dcs-task-check,.dcs-sec .dcs-prev-check{
+    grid-column:1;grid-row:1;margin-top:3px;width:16px;height:16px;
+  }
+  /* 본문 글자 — 크게 · 진하게 · 줄 간격 넉넉히 */
+  .dcs-sec .dcs-plan-text,.dcs-sec .dcs-req-text,.dcs-sec .dcs-task-text{
+    grid-column:2;grid-row:1;font-size:14px;line-height:1.6;color:#1c1917;font-weight:500;
+    padding:0 2px;letter-spacing:-.015em;overflow-wrap:anywhere;
+  }
+  .dcs-sec .dcs-prev-text{grid-column:2;grid-row:1;font-size:13px;line-height:1.6;color:#44403c}
+  .dcs-sec .dcs-plan-text:focus,.dcs-sec .dcs-req-text:focus,.dcs-sec .dcs-task-text:focus{background:transparent}
+  .dcs-sec .dcs-req.done .dcs-req-text,.dcs-sec .dcs-task.done .dcs-task-text{color:#a8a29e}
+  .dcs-sec .dcs-req.done{opacity:1;background:transparent}
+  /* 작성일 — 상자 없이 작은 회색 글씨 */
+  .dcs-sec .dcs-plan-date{
+    grid-column:3;grid-row:1;background:none;padding:0;margin-top:4px;
+    font-size:11px;font-weight:600;color:#a8a29e;
+  }
+  /* 요청: 요청자 · 저장 표시는 글 아래 줄 */
+  .dcs-req-meta{grid-column:2;grid-row:2;display:flex;align-items:center;gap:6px;min-width:0}
+  .dcs-sec .dcs-req-from{
+    font-size:11.5px;font-weight:600;color:var(--cat-ink,#78716c);background:none;
+    padding:0 2px;min-width:0;text-align:left;border:none;border-radius:4px;
+  }
+  .dcs-sec .dcs-req-from:not(:empty)::before{content:'요청 · ';color:#a8a29e;font-weight:500}
+  .dcs-sec .dcs-req-from:focus{background:#fffbeb}
+  .dcs-sec .dcs-req-from:focus::before{content:''}
+  .dcs-sec .dcs-req-status,.dcs-sec .dcs-req-status svg{width:12px;height:12px}
+  /* 이동 · 우선순위 · 삭제 — 마우스 올릴 때만 */
+  .dcs-tools{
+    position:absolute;top:4px;right:4px;z-index:2;
+    display:flex;align-items:center;gap:2px;padding:2px 4px;
+    background:#fff;border:1px solid #eae7dc;border-radius:8px;
+    box-shadow:0 2px 8px rgba(28,25,23,.08);
+    opacity:0;pointer-events:none;transition:opacity .12s ease;
+  }
+  .dcs-sec .dcs-plan:hover .dcs-tools,.dcs-sec .dcs-req:hover .dcs-tools,.dcs-sec .dcs-task:hover .dcs-tools{opacity:1;pointer-events:auto}
+  @media (hover:none){
+    .dcs-sec .dcs-plan:focus-within .dcs-tools,.dcs-sec .dcs-req:focus-within .dcs-tools,.dcs-sec .dcs-task:focus-within .dcs-tools{opacity:1;pointer-events:auto}
+    .dcs-tools{top:auto;bottom:-14px}
+  }
+  .dcs-tools .dcs-move{flex-direction:row;opacity:1;gap:0}
+  .dcs-tools .dcs-move-btn{width:22px;height:22px}
+  .dcs-tools .dcs-move-btn svg{width:12px;height:12px}
+  .dcs-tools .dcs-prio{width:14px;height:14px;margin:0 4px}
+  .dcs-tools .dcs-plan-del,.dcs-tools .dcs-req-del,.dcs-tools .dcs-task-del{opacity:.75;padding:2px 6px}
+  .dcs-sec .dcs-prev-actions{grid-column:3;grid-row:1}
+  @media (max-width:600px){
+    .dcs-sec .dcs-plan-text,.dcs-sec .dcs-req-text,.dcs-sec .dcs-task-text{font-size:13.5px}
+  }
+
   /* ===== 디자인팀 뷰 — 노션 스타일 작업 보드 + 레퍼런스 갤러리 =====
      사장님 요청: 노션과 유사한 편집 UX, 커버 이미지, 상태·우선순위·태그, 이미지 자유 저장 */
   #viewDesign{padding:20px 24px 60px;max-width:1400px;margin:0 auto}
@@ -34473,12 +34544,11 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         <button class="dcs-plan-check" title="완료 시 제거">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
-        ${_diaryPrioHTML(it.priority||0)}
         <div class="dcs-plan-text" contenteditable="true">${_esc(it.text||'')}</div>
         ${dateBadge}
-        ${_diaryMoveHTML()}
-        <button class="dcs-plan-del" title="삭제">✕</button>
+        <div class="dcs-tools">${_diaryPrioHTML(it.priority||0)}${_diaryMoveHTML()}<button class="dcs-plan-del" title="삭제">✕</button></div>
       `;
+      if(it.priority) row.classList.add('prio-' + it.priority);
       const removeItem = ()=>{
         row.classList.add('removing');
         setTimeout(()=>{
@@ -34585,15 +34655,16 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         <button class="dcs-req-check" title="완료">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
-        ${_diaryPrioHTML(r.priority||0)}
         <div class="dcs-req-text" contenteditable="true">${_esc(r.text||'')}</div>
-        <span class="dcs-req-status" data-status="${initialStatus}" title="자동 저장 상태">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        </span>
-        <div class="dcs-req-from" contenteditable="true">${_esc(r.from||'')}</div>
-        ${_diaryMoveHTML()}
-        <button class="dcs-req-del" title="삭제">✕</button>
+        <div class="dcs-req-meta">
+          <div class="dcs-req-from" contenteditable="true">${_esc(r.from||'')}</div>
+          <span class="dcs-req-status" data-status="${initialStatus}" title="자동 저장 상태">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </div>
+        <div class="dcs-tools">${_diaryPrioHTML(r.priority||0)}${_diaryMoveHTML()}<button class="dcs-req-del" title="삭제">✕</button></div>
       `;
+      if(r.priority) row.classList.add('prio-' + r.priority);
       row.querySelector('.dcs-req-check').onclick = ()=>{
         r.done = !r.done;
         row.classList.toggle('done', r.done);
@@ -34695,8 +34766,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
         <div class="dcs-task-text" contenteditable="true">${_esc(t.text||'')}</div>
-        ${_diaryMoveHTML()}
-        <button class="dcs-task-del" title="삭제">✕</button>
+        <div class="dcs-tools">${_diaryMoveHTML()}<button class="dcs-task-del" title="삭제">✕</button></div>
       `;
       row.querySelector('.dcs-task-check').onclick = ()=>{
         t.done = !t.done;
