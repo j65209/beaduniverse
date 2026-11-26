@@ -523,5 +523,5 @@ document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === 
 const live = () => { try { if (window.OfficeLive) window.OfficeLive.on(['po_map'], () => { try { if (_pom.data) pomLoad(true).catch(() => {}); } catch (e) {} }); } catch (e) {} };
 if (document.readyState === 'complete') live(); else addEventListener('load', live, {once: true});
 try { css(); } catch (e) {}
-window.PoMap = {open, off, overlay, btn, undo, canMap, canUndo, rows: loadRows, css, _t: {score, find, suggest, memoQuery, prep, sound, bone, lev, conn, optQuery, vals, loadSold}};
+window.PoMap = {open, off, overlay, btn, undo, canMap, canUndo, rows: loadRows, css, _t: {score, find, suggest, memoQuery, prep, sound, bone, lev, conn, optQuery, vals, loadSold, makeRow, key}};
 })();
