@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <title>인스타 피드 시뮬레이터 · 비드유니버스</title>
-<script src="../boss-guard.js?v=2"></script><script>window.BossGuard||document.write('<script src="../boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
+<script src="../boss-guard.js?v=3"></script><script>window.BossGuard||document.write('<script src="../boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
 <script src="../office-undo.js?v=1" data-skip="rpc/feed_plan_save"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=2">
@@ -393,7 +393,7 @@
   const BUCKET = 'feed-sim';
   // 잠금 — 오피스 index.html 의 PIN_VIEWER · PIN_MASTER 해시 (시딩 마스터와 같음, 바꾸면 같이)
   const PIN_HASH = {
-    ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf: 'viewer',
+    1ca028f07214879e7a13ac5fddab2db2f66149572a62e814e97e7ad4ba286f4c: 'viewer',
     '61bac9d4e564d8096a969a0af7ec131066991620a2807be2b6b889cf8b24193e': 'master',
   };
   const AUTH_VERSION = '4', MASTER_PIN_VER = '1';
@@ -1560,7 +1560,7 @@
   /* ══════════════════════ 잠금 · 시작 ══════════════════════ */
   function isUnlocked() {
     if (window.__feedInOffice) return true;
-    return lsGet('brightbeed_unlocked') === '1' && lsGet('brightbeed_auth_ver') === AUTH_VERSION
+    return lsGet('brightbeed_unlocked') === '1' && (lsGet('brightbeed_role') === 'master' || lsGet('brightbeed_viewer_ver') === '2') && lsGet('brightbeed_auth_ver') === AUTH_VERSION
       && !(lsGet('brightbeed_role') === 'master' && lsGet('brightbeed_master_ver') !== MASTER_PIN_VER);
   }
   async function sha256hex(s) {
@@ -1574,6 +1574,7 @@
     try { role = PIN_HASH[await sha256hex(v)] || null; } catch (err) { role = null; }
     if (!role) { $('lockErr').textContent = '접속 코드가 올바르지 않아요'; $('lockPin').value = ''; $('lockPin').focus(); return; }
     if (role !== 'master' && window.BossGuard) BossGuard.drop();   // 2580 으로는 대표로 안 들어간다
+    if (role !== 'master') lsSet('brightbeed_viewer_ver', '2');   // 보기 PIN 판 (boss-guard.js VIEWER_PIN_VER)
     lsSet('brightbeed_role', role); lsSet('brightbeed_auth_ver', AUTH_VERSION);
     if (role === 'master') lsSet('brightbeed_master_ver', MASTER_PIN_VER);
     lsSet('brightbeed_unlocked', '1');

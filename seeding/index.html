@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
 <title>시딩 마스터 · 비드유니버스</title>
-<script src="../boss-guard.js?v=2"></script><script>window.BossGuard||document.write('<script src="../boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
+<script src="../boss-guard.js?v=3"></script><script>window.BossGuard||document.write('<script src="../boss-guard.js?r='+Date.now()+'"><\/script>')</script><!-- 대표 이름은 대표 PIN 으로만 (boss-guard.js) -->
 <script src="../office-undo.js?v=1" data-skip="rpc/seeding_edit"></script><!-- 어디서든 되돌리기 (office-undo.js) -->
 <script src="../office-grid.js?v=1"></script><!-- 찾기 · 바꾸기 (office-grid.js 의 finder 만 씀) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -651,7 +651,7 @@
   // 잠금 — 혼자 열었을 때(독립 프로그램) 오피스 접속 코드로 연다. 오피스 index.html 의 PIN_VIEWER · PIN_MASTER 를 바꾸면 여기 해시도 같이 바꾼다
   // (node -e "console.log(require('crypto').createHash('sha256').update('새코드').digest('hex'))"). 오피스와 같은 가벼운 잠금이다.
   const PIN_HASH = {
-    ed946f65d2c785d90e827c5ffd879ce3b49c68d4c88013074176a7e73bc58bcf: 'viewer',
+    1ca028f07214879e7a13ac5fddab2db2f66149572a62e814e97e7ad4ba286f4c: 'viewer',
     '61bac9d4e564d8096a969a0af7ec131066991620a2807be2b6b889cf8b24193e': 'master',
   };
   const AUTH_VERSION = '4', MASTER_PIN_VER = '1';   // 오피스 index.html 과 같은 값 (바꾸면 같이)
@@ -996,7 +996,7 @@
   /* ══════════════════════ 잠금 · 편집자 이름 ══════════════════════ */
   function isUnlocked() {
     if (window.__seedInOffice) return true;   // 오피스 안에서는 오피스 잠금을 이미 지났다
-    return lsGet('brightbeed_unlocked') === '1' && lsGet('brightbeed_auth_ver') === AUTH_VERSION
+    return lsGet('brightbeed_unlocked') === '1' && (lsGet('brightbeed_role') === 'master' || lsGet('brightbeed_viewer_ver') === '2') && lsGet('brightbeed_auth_ver') === AUTH_VERSION
       && !(lsGet('brightbeed_role') === 'master' && lsGet('brightbeed_master_ver') !== MASTER_PIN_VER);
   }
   async function sha256hex(s) {
@@ -1010,6 +1010,7 @@
     try { role = PIN_HASH[await sha256hex(v)] || null; } catch (err) { role = null; }
     if (!role) { $('lockErr').textContent = '접속 코드가 올바르지 않아요'; $('lockPin').value = ''; $('lockPin').focus(); return; }
     if (role !== 'master' && window.BossGuard) BossGuard.drop();   // 2580 으로는 대표로 안 들어간다
+    if (role !== 'master') lsSet('brightbeed_viewer_ver', '2');   // 보기 PIN 판 (boss-guard.js VIEWER_PIN_VER)
     lsSet('brightbeed_role', role);
     lsSet('brightbeed_auth_ver', AUTH_VERSION);
     if (role === 'master') lsSet('brightbeed_master_ver', MASTER_PIN_VER);

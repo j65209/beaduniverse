@@ -16,12 +16,19 @@
   if (window.BossGuard) return;
   var BOSS = ['전승훈', '전수빈'];   // index.html STAFF 의 ceo · EXEC_ALLOWED 와 같게
   var ME = 'brightbeed_diary_me', KEY = 'brightbeed_unlocked', ROLE = 'brightbeed_role', FLAG = 'bb_boss_out', TOK = 'bb_boss_tok';
+  /* 보기 PIN 을 바꿀 때 VIEWER_PIN_VER 를 올리면 보기 PIN 기기만 모두 로그아웃 (관리자 PIN 기기는 그대로).
+     2026-11-26 사장님 "뷰어들 핀번호 0017로 변경. 뷰어들 전부 로그아웃. 대표 제외" → '2' */
+  var VVER = 'brightbeed_viewer_ver', VIEWER_PIN_VER = '2';
   var why = '1', srv = '';   // srv = 서버가 지금 내놓은 로그인 표
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function del(k) { try { localStorage.removeItem(k); } catch (e) { /* noop */ } }
   function isBoss(n) { return BOSS.indexOf(String(n == null ? '' : n).trim()) >= 0; }
   function put(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* noop */ } }
+  function oldViewer() { return get(KEY) === '1' && get(ROLE) !== 'master' && get(VVER) !== VIEWER_PIN_VER; }
+  /* 보기 PIN 으로 들어올 때 PIN 화면이 부른다 (권한 · 잠금 해제 값보다 먼저) */
+  function viewerIn() { put(VVER, VIEWER_PIN_VER); }
   function bad() {
+    if (oldViewer()) { why = '3'; return true; }
     if (!isBoss(get(ME))) return false;
     var t = get(TOK);
     if (!t || (srv && t !== 'new' && t !== srv)) { why = '2'; return true; }   // 모두 로그아웃
@@ -34,7 +41,8 @@
   function check() {
     if (!bad()) return false;
     var w = why;
-    del(ME); del(KEY); del(ROLE); del(TOK);
+    if (w === '3') { del(KEY); del(ROLE); }   // 이름은 그대로 — 새 PIN 만 다시 넣으면 된다
+    else { del(ME); del(KEY); del(ROLE); del(TOK); }
     if (bad()) return false;   // 못 지우는 브라우저 — 새로 열기를 되풀이하지 않게
     try { sessionStorage.setItem(FLAG, w); } catch (e) { /* noop */ }
     return true;
@@ -43,10 +51,11 @@
   function note() {
     var w = '';
     try { w = sessionStorage.getItem(FLAG) || ''; if (!w) return ''; sessionStorage.removeItem(FLAG); } catch (e) { return ''; }
+    if (w === '3') return '접속 PIN 이 바뀌었어요.\n새 PIN 으로 다시 들어와 주세요.';
     if (w === '2') return '대표 계정을 모두 로그아웃했어요.\n대표 PIN 으로 다시 들어와 주세요.';
     return '대표 이름은 대표 PIN 으로만 쓸 수 있어요.\n다시 로그인해 주세요.';
   }
-  window.BossGuard = { isBoss: isBoss, bad: bad, drop: drop, check: check, note: note, mark: mark };
+  window.BossGuard = { isBoss: isBoss, bad: bad, drop: drop, check: check, note: note, mark: mark, viewerIn: viewerIn, VIEWER_PIN_VER: VIEWER_PIN_VER };
 
   var again = false;
   function reload() {
