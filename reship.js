@@ -53,20 +53,26 @@
   }
   /* 한 화면 (2026-11-26 사장님 "오늘이나 재배송 목록 저걸 합쳐줘 · 출고된건 내역에서 없애줘") —
      [오늘] · [📦 재배송 목록] 탭을 걷고 표 하나. 나간 건(발송함)은 안 보임. 재배송을 아직 안 정한 문의(확인 필요)는 표 밑 작은 칸 — 복사 · 엑셀에는 안 들어감 */
+  /** 지난 날 "금일 재발송" 약속인데 보냈다는 글이 대화에 없음 (2026-11-26 사장님 "대화내용 분석하던지 아니면 확인 필요로 띄워봐")
+      — 표에서 빼 확인 칸으로. [보냈어요] = 발송함, [아직 안 보냄] = 표로 되돌림 */
+  function stale(r) { var m = (S.marks || {})[r.id] || {}; return r.status === '발송 대기' && r.day && r.day < today() && !m.notYet && !m.sent; }
+  function md(d) { return Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)); }
   function checkRows() {
     var t = today();
-    return rowsOf(t).filter(function (x) { return x.r.status === '확인 필요'; }).map(function (x) { var m = (S.marks || {})[x.r.id]; return m && m.sent ? null : x; }).filter(Boolean);
+    var old = fullRows().filter(stale).map(function (r) { return {stale: 1, r: Object.assign({}, r, {summary: '[출고 확인 필요] ' + md(r.day) + '에 재발송하겠다고 답했지만, 보냈다는 글(출고 · 송장)이 대화에 없어요\n' + (r.summary || '')})}; });
+    return old.concat(rowsOf(t).filter(function (x) { return x.r.status === '확인 필요'; }).map(function (x) { var m = (S.marks || {})[x.r.id]; return m && m.sent ? null : x; }).filter(Boolean));
   }
   function draw() {
     css();
     // 송장번호 · 메모를 쓰는 중이면 다시 그리지 않음 (글자가 날아가지 않게)
     var ae = document.activeElement; if (ae && ae.classList && ae.classList.contains('rs-in')) return;
     var t = listView(), chk = checkRows(), n0 = t.rows.length;
-    var chkHtml = chk.length ? '<div class="rs-sub">재배송 아직 안 정한 문의 · 확인 필요 ' + chk.length + '<small>정해지면 위 표로 올라가요</small></div><div class="rs-list">' + chk.map(function (x, i) {
+    var chkHtml = chk.length ? '<div class="rs-sub">확인 필요 ' + chk.length + '<small>보냈는지 대화로 확인 안 된 지난 약속 · 재배송을 아직 안 정한 문의</small></div><div class="rs-list">' + chk.map(function (x, i) {
       var r = x.r, p = (r.products || []);
       return '<div class="rs-row" tabindex="0" data-i="' + (n0 + i) + '"><span class="rs-br">' + esc(r.label || '') + '</span><span class="rs-kd">' + esc(r.kind) + '</span>'
         + '<span class="rs-pd">' + esc(p.length ? p.join(' / ') : '상품 확인 필요') + '</span><span class="rs-ph">' + (r.photos ? '📷 ' + r.photos : '') + '</span>'
-        + '<span class="rs-st check">확인 필요</span><button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></div>';
+        + (x.stale ? '<span class="rs-st check">출고 확인 · ' + esc(md(r.day)) + ' 약속</span><span class="rs-act"><button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">보냈어요</button><button type="button" class="rs-go rs-notyet" data-id="' + esc(r.id) + '">아직 안 보냄</button>' : '<span class="rs-st check">확인 필요</span><span class="rs-act">')
+        + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></span></div>';
     }).join('') + '</div>' : '';
     BOX.forEach(function (id) {
       var b = document.getElementById(id); if (!b) return;
@@ -94,7 +100,7 @@
   }
   var HEAD = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['goods', '보낼 상품'], ['opt', '옵션'], ['qty', '수량'], ['order', '주문번호'], ['why', '사유'], ['status', '상태'], ['inv', '송장번호'], ['memo', '메모']];
   /** 나갈 것만 — 확인 필요 · 발송함(직원 대화 · [발송함] · 대화 분석) 빼고 */
-  function openRows() { return fullRows().filter(function (r) { return r.status !== '확인 필요' && r.status !== '발송함'; }); }
+  function openRows() { return fullRows().filter(function (r) { return r.status !== '확인 필요' && r.status !== '발송함' && !stale(r); }); }
   function listView() {
     var rows = openRows().sort(function (a, b) { return (a.status === '정보 대기') - (b.status === '정보 대기') || (a.firstAt || 0) - (b.firstAt || 0); });
     var shipMiss = !S.full;
@@ -148,7 +154,7 @@
       var me = ''; try { me = (localStorage.getItem('brightbeed_diary_me') || '').trim().slice(0, 20); } catch (e) { /* noop */ }
       var res = await fetch(base + '/cs/kakao-done', {method: 'POST', headers: {'X-Brightbeed-PIN': ghPin(), 'Content-Type': 'application/json', Accept: 'application/json'}, body: JSON.stringify({pid: r.pid, chatId: r.key.split(':')[1], todo: r.todo || '불량 · 오배송 처리', id: 'none', by: me})});
       var j = await res.json().catch(function () { return {}; });
-      if (!res.ok || !j.ok) throw new Error(j.error || 'HTTP ' + res.status);
+      if ((!res.ok || !j.ok) && res.status !== 409) throw new Error(j.error || 'HTTP ' + res.status);  // 409 = 할 일이 이미 닫힘 — 표시만 적음
       await markSave(id, {sent: Date.now()});
       S.mkErr = '';
     } catch (e) { S.mkErr = '발송함으로 적지 못했어요 — ' + ((e && e.message) || e); }
@@ -205,6 +211,7 @@
     var b = e.target.closest && e.target.closest('[data-rs],.rs-go');
     if (!b) { if (e.target.closest && e.target.closest('.rs-in')) return; var x = rowAt(e.target); if (x) showTip(x.row, x.r); return; }
     if (b.classList.contains('rs-sent')) { hideTip(); sentClick(b.dataset.id); return; }
+    if (b.classList.contains('rs-notyet')) { hideTip(); b.disabled = true; markSave(b.dataset.id, {notYet: Date.now()}).then(function () { S.mkErr = ''; }).catch(function (x) { S.mkErr = '저장하지 못했어요 — ' + ((x && x.message) || x); }).then(draw); return; }
     if (b.dataset.rs === 'copy' || b.dataset.rs === 'csv') {
       if (b.dataset.rs === 'copy') { try { navigator.clipboard.writeText(tsv('\t')).then(function () { b.textContent = '복사했어요'; setTimeout(function () { b.textContent = '표 복사'; }, 1500); }); } catch (x) { /* noop */ } return; }
       var blob = new Blob(['﻿' + tsv(',')], {type: 'text/csv;charset=utf-8'}), u = URL.createObjectURL(blob), a2 = document.createElement('a');
