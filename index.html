@@ -5388,6 +5388,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-ord .kko-trk{margin-top:6px}
   .kko-ord .kko-trk-box{padding:6px 10px;background:#fafafa}
   .kko-trk-box.ret{margin-top:6px;border-left:3px solid #b91c1c}
+  .kko-pck{display:inline-flex;align-items:center;gap:4px;margin-right:4px;cursor:pointer;vertical-align:middle}
+  .kko-pck input{width:16px;height:16px;margin:0}
+  .kko-pck-t{display:flex;margin:6px 2px 0;font-size:12.5px}
+  .kko-pck-no{margin:4px 2px 0;font-size:11.5px;color:var(--ink-3,#888)}
+  .kko-trk-one+.kko-trk-one{margin-top:10px}
+  .kko-pbar{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg-1,#fff);font-size:12.5px}
+  .kko-pbar button{min-height:32px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+  .kko-pbar .kko-pbar-go{background:#111;color:#fff;border-color:#111;font-weight:700}
+  .kko-pbar .err{color:#b91c1c}
   .kko-trk-tag{font-size:11.5px;font-weight:700;color:#b91c1c}
   .kko-trk-h{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap}
   .kko-trk-h b{font-weight:800;color:var(--text-0);font-variant-numeric:tabular-nums}
@@ -14715,7 +14724,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           </select>
           <input id="kkoFindQ" class="kko-fo" type="text" placeholder="주문번호 · 운송장, 또는 이름 (홍길동 1234)" aria-label="주문번호 · 운송장 번호 또는 이름">
           <input id="kkoFindP" class="kko-fo" type="text" inputmode="numeric" maxlength="13" placeholder="뒷 4자리 (없어도 돼요)" aria-label="전화 뒷 4자리">
-          <input id="kkoTrackQ" class="kko-fw" type="text" inputmode="numeric" maxlength="20" placeholder="운송장 번호 (CJ대한통운, 숫자만)" aria-label="운송장 번호">
+          <input id="kkoTrackQ" class="kko-fw" type="text" inputmode="numeric" maxlength="200" placeholder="운송장 번호 (CJ대한통운, 여러 개는 띄어서)" aria-label="운송장 번호">
           <button type="submit" id="kkoFindGo">찾기</button>
         </form>
         <div class="kko-find-out" id="kkoFindOut"></div>
@@ -19142,7 +19151,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const items=(o.items||[]).map(i=>`<li>${_kkoEsc(i.name)}${i.option?` <i>${_kkoEsc(i.option)}</i>`:''} ×${_kkoEsc(i.qty)} — <em>${_kkoEsc(i.statusKo||i.status||'')}</em></li>`).join('');
     // CJ 송장은 '단계 보기' — 이 주문 칸 아래에 택배 처리 단계 (운송장 조회 2026-11-23, kkoTrackIn)
     const cj=s=>/^\d{10,14}$/.test(s.trackingNumber||'') && (s.company==='04' || /CJ|대한통운/i.test(s.companyName||'') || /cjlogistics|carrier=04(?!\d)/.test(s.trackingUrl||''));
-    const ships=(o.shipments||[]).filter(s=>s.trackingNumber).map(s=>`${_kkoEsc(s.companyName||s.company)} ${_kkoEsc(s.trackingNumber)}${cj(s)?` <button type="button" class="kko-trk-btn" aria-expanded="false" onclick="kkoTrackIn(this,'${_kkoEsc(s.trackingNumber)}')">단계 보기</button>`:/^https?:\/\//.test(s.trackingUrl||'')?` <a href="${_kkoEsc(s.trackingUrl)}" target="_blank" rel="noopener">배송 조회 ↗</a>`:''}`).join(' · ');
+    const b0=o.brand||brand;
+    // 11-26 사장님 "선택한 운송장 복수출력" — CJ 송장마다 고르기 칸 (kkoPrintSel)
+    const pck=s=>cj(s) && b0 && o.orderId ? `<label class="kko-pck" title="운송장 출력할 것 고르기"><input type="checkbox" data-b="${_kkoEsc(b0)}" data-o="${_kkoEsc(o.orderId)}" data-w="${_kkoEsc(s.trackingNumber)}" data-d="${_kkoEsc(s.at||'')}" onchange="kkoPrintBar(this)"></label>` : '';
+    const ships=(o.shipments||[]).filter(s=>s.trackingNumber).map(s=>`${pck(s)}${_kkoEsc(s.companyName||s.company)} ${_kkoEsc(s.trackingNumber)}${cj(s)?` <button type="button" class="kko-trk-btn" aria-expanded="false" onclick="kkoTrackIn(this,'${_kkoEsc(s.trackingNumber)}')">단계 보기</button>`:/^https?:\/\//.test(s.trackingUrl||'')?` <a href="${_kkoEsc(s.trackingUrl)}" target="_blank" rel="noopener">배송 조회 ↗</a>`:''}`).join(' · ');
     const meta=[ds, o.orderer, o.p4 ? '뒷번호 '+o.p4 : '', KKO_MARKET[o.market]||o.market, o.total ? Number(o.total).toLocaleString('ko-KR')+'원' : ''].filter(Boolean).map(_kkoEsc).join(' · ');
     const b=o.brand||brand;
     return `<div class="kko-ord"><div class="kko-ord-h">${b ? _kkoBrand(b,o.brandName) : ''}<b>${_kkoEsc(o.orderId)}</b><span>${meta}</span></div>`
@@ -19295,11 +19307,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function kkoTrack(){
     const out=document.getElementById('kkoFindOut'), inp=document.getElementById('kkoTrackQ');
     if(!out || !inp) return;
-    const wbl=inp.value.replace(/[\s-]/g,'');
-    if(!/^\d{10,14}$/.test(wbl)){ out.innerHTML='<div class="kko-find-msg err">운송장 번호(숫자 10~14자리)를 넣어 주세요</div>'; return; }
+    // 여러 개 (띄어쓰기 · 쉼표 · 줄바꿈으로, 10개까지) — 11-26 복수 출력
+    const wbls=[...new Set((inp.value.replace(/-/g,'').match(/\d{10,14}/g)||[]))].slice(0,10);
+    if(!wbls.length){ out.innerHTML='<div class="kko-find-msg err">운송장 번호(숫자 10~14자리)를 넣어 주세요 — 여러 개는 띄어서</div>'; return; }
     out.innerHTML='<div class="kko-find-msg">조회 중…</div>';
-    try{ out.innerHTML=_kkoTrackHtml(await _kkoTrackGet(wbl)); }
-    catch(e){ out.innerHTML=`<div class="kko-find-msg err">${_kkoEsc((e && e.message) || String(e))}</div>`; }
+    const parts=await Promise.all(wbls.map(async w=>{
+      let h='';
+      try{ h=_kkoTrackHtml(await _kkoTrackGet(w)); }catch(e){ h=`<div class="kko-find-msg err">${_kkoEsc(w)} — ${_kkoEsc((e && e.message) || String(e))}</div>`; }
+      // 오피스 택배 접수로 만든 운송장이면 고르기 칸 (접수 기록으로 바로 찍음)
+      let bk=null; try{ const j=await _cjbCall({action:'from_invc',invc_no:w}); if(j && j.ok && j.found && j.id) bk=j; }catch(e){}
+      const ck=bk ? `<label class="kko-pck kko-pck-t"><input type="checkbox" data-id="${Number(bk.id)}" data-w="${_kkoEsc(w)}" onchange="kkoPrintBar(this)"> 출력할 것으로 고르기 <small>(오피스 택배 접수 건)</small></label>`
+        : `<div class="kko-pck-no">이 운송장은 주문 찾기(운송장 번호 · 주문번호)에서 골라 출력할 수 있어요</div>`;
+      return `<div class="kko-trk-one">${h}${ck}</div>`;
+    }));
+    out.innerHTML=parts.join('');
   }
   // 찾은 주문(주문 찾기 결과 · 대화창 위 주문 칸)의 CJ 송장 '단계 보기' — 그 주문 칸 아래에 펼침, 다시 누르면 접음
   async function kkoTrackIn(btn, wbl){
@@ -19312,6 +19333,62 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     ord.appendChild(box); btn.setAttribute('aria-expanded','true');
     try{ box.innerHTML=_kkoTrackHtml(await _kkoTrackGet(wbl), true); }
     catch(e){ box.innerHTML=`<div class="kko-find-msg err">${_kkoEsc((e && e.message) || String(e))}</div>`; }
+  }
+  // ---- 고른 운송장 여러 장 출력 (2026-11-26 사장님 "주문 찾기나 운송장 조회에 선택한 운송장 복수출력 가능하게" · 모든 CJ 운송장) ----
+  // 주문 찾기 CJ 송장 = 식스샵프로 주문 상세(받는 분 · 상품, 프록시 /cs/label — 사무실 인터넷만)로 다시 그림, 운송장 조회의 오피스 접수 건 = 접수 기록(cj labels).
+  // 분류코드는 대한통운 주소정제(cj refine). 모양 · 출력 설정은 CS팀 택배와 같음(_cjbLabelDoc · _cjbPrint).
+  function _kkoPicks(){ return [...document.querySelectorAll('#kkoFindOut .kko-pck input:checked')]; }
+  function kkoPrintBar(){
+    const out=document.getElementById('kkoFindOut'); if(!out) return;
+    const n=_kkoPicks().length;
+    let bar=document.getElementById('kkoPrintBar');
+    if(!n){ if(bar) bar.remove(); return; }
+    if(!bar){ bar=document.createElement('div'); bar.id='kkoPrintBar'; bar.className='kko-pbar'; out.prepend(bar); }
+    bar.innerHTML=`<button type="button" class="kko-pbar-go" onclick="kkoPrintSel()">🖨 선택한 ${n}건 운송장 출력</button><button type="button" onclick="document.querySelectorAll('#kkoFindOut .kko-pck input').forEach(c=>c.checked=true);kkoPrintBar()">모두 고르기</button><button type="button" onclick="document.querySelectorAll('#kkoFindOut .kko-pck input').forEach(c=>c.checked=false);kkoPrintBar()">풀기</button><span id="kkoPrintMsg"></span>`;
+  }
+  async function kkoPrintSel(){
+    const msg=document.getElementById('kkoPrintMsg');
+    const say=(t,err)=>{ if(msg){ msg.textContent=t; msg.className=err ? 'err' : ''; } };
+    const picks=_kkoPicks(); if(!picks.length) return;
+    const ords=[], ids=[];
+    picks.forEach(c=>{ if(c.dataset.id) ids.push(Number(c.dataset.id)); else ords.push({brand:c.dataset.b, orderId:c.dataset.o, wbl:c.dataset.w, at:c.dataset.d||''}); });
+    say(`운송장 ${picks.length}장 준비 중…`);
+    try{
+      const labels=[], skip=[];
+      const st=await _cjbCall({action:'status'}).catch(()=>({}));
+      if(st && st.ok){ _cjb.sender=st.sender||_cjb.sender; if(st.print) _cjb.print=st.print; }
+      if(ords.length){
+        const base=await loadProxyBase(); if(!base) throw new Error('서버 연결 안 됨');
+        const r=await fetch(`${base}/cs/label?${new URLSearchParams({items:JSON.stringify(ords.map(({brand,orderId,wbl})=>({brand,orderId,wbl})))})}`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+        const s=_cjb.sender||{};
+        const ymd=at=>{ const d=new Date(at||Date.now()); return isNaN(d) ? '' : new Date(d.getTime()+9*3600e3).toISOString().slice(0,10).replace(/-/g,''); };
+        const tf=t=>String(t||'').replace(/\D/g,'').replace(/^(02)(\d{3,4})(\d{4})$/,'$1-$2-$3').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
+        (j.labels||[]).forEach(x=>{
+          if(x.err){ skip.push(`${x.wbl} ${x.err}`); return; }
+          const o=ords.find(q=>q.wbl===x.wbl)||{};
+          labels.push({id:0, env:'prod', brand:x.brand, invc_no:x.wbl, cust_use_no:x.orderId, rcpt_ymd:ymd(o.at), rcpt_dv:'01', box_type:(_cjbPrint().box_def||'01'), box_qty:'1', frt_dv:'03', memo:x.memo||'',
+            rcvr:{nm:x.rcvr.nm, tel:tf(x.rcvr.tel), cell:'', zip:x.rcvr.zip, addr:x.rcvr.addr, detail:x.rcvr.detail},
+            sendr:{nm:s.nm||'', tel:s.tel||'', zip:s.zip||'', addr:s.addr||'', detail:s.detail||''}, goods:x.goods||[], clsf:null, print_count:0});
+        });
+        // 분류코드 — 대한통운 주소정제 (주소만 보냄)
+        const addrs=[...new Set(labels.map(l=>`${l.rcvr.addr} ${l.rcvr.detail}`.trim().slice(0,100)))];
+        const ref={};
+        for(let i=0;i<addrs.length;i+=30){ try{ const k=await _cjbCall({action:'refine',addrs:addrs.slice(i,i+30)}); if(k && k.ok) Object.assign(ref,k.clsf||{}); }catch(e){} }
+        labels.forEach(l=>{ const c=ref[`${l.rcvr.addr} ${l.rcvr.detail}`.trim().slice(0,100)]; if(c && c.CLSFCD) l.clsf=c; });
+      }
+      if(ids.length){
+        const j=await _cjbCall({action:'labels',ids,mark:true});
+        if(!j.ok) throw new Error(j.error||'오피스 접수 건 출력 자료를 못 받았어요');
+        (j.labels||[]).forEach(x=>x.skip ? skip.push(x.skip) : labels.push(x));
+      }
+      if(!labels.length) throw new Error(skip[0] || '찍을 운송장이 없어요');
+      await _cjbPrintRefresh();
+      await _cjbPrintFrame(await _cjbLabelDoc(labels,_cjbPrint()));
+      const noCode=labels.filter(l=>!l.clsf).length;
+      say(`🖨 ${labels.length}장 인쇄 창을 열었어요${skip.length ? ` · ${skip.length}장 뺌 (${skip[0]})` : ''}${noCode ? ` · ${noCode}장은 분류코드 없이` : ''}`, !!skip.length);
+    }catch(e){ say((e && e.message) || String(e), true); }
   }
   const KKO_TRK_CLS={done:'ok',check:'bad'};
   function _kkoTrackHtml(j, inner, tag){
