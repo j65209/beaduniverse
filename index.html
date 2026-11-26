@@ -18341,6 +18341,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const dr=_kko.drafts||{}; if(!r || dr.off) return null;
     // (11-26) 직원 호출 방도 막지 않음 — 곧 나갈 답(pending)만 직원 몫이 아닐 때
     const w=(dr.watch||[]).find(x=>x.pid===r.pid && x.chatId===r.chatId);
+    // 11-26 사장님 "사실상 대화가 끝난부분인데 연락오면 다시 띄워주고 안보이게해줘" — 에이전트 뒤에 직원이 이어 답했고 그 직원 글이 마지막이면 끝난 대화로 숨김.
+    // 고객이 다시 쓰면 lastWho 가 customer 가 되어 '답 기다림'으로 돌아옴
+    if(w && r.lastWho==='staff' && (r.lastAt||0)>(w.lastAt||0)+60000) return null;
     if(w) return w;
     const sd=dr.sending||{}, x=_kkoDraft(r.pid,r.chatId);
     if(!_kkoIsStaff(r) && sd.mode && sd.mode!=='off' && (sd.channels||[]).includes(r.pid) && !(sd.kananaOn||[]).includes(r.pid) && x && x.owner==='agent' && x.reply && _kkoWaiting(r)) return {pending:true};
@@ -19679,13 +19682,31 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           + (j.invc_no ? ` · 운송장 <b>${_cjbEsc(j.invc_no)}</b>` : (ret ? ' · 운송장은 기사님이 가져가요 (번호는 집화 뒤 채워져요)' : ''))
           + (j.env==='dev' ? ' · <b>개발 서버 시험</b>이라 실제로는 안 나가요' : '')
           + (j.invc_no && j.id ? ` <button type="button" class="cjb-btn sm" onclick="cjbPrintIds([${Number(j.id)}],'cjbOneOut')">🖨 운송장 출력</button>` : '') + `</div>`;
+        const rsId=!ret && _cjb.reship;
         cjbOneClear(true);
+        // 재배송 장부 줄에서 온 접수 — 그 줄에 송장번호를 바로 적음 (11-26)
+        if(rsId && j.invc_no && window.Reship && Reship.booked) Reship.booked(rsId, j);
         if(j.invc_no && j.id && _cjbPrint().auto) cjbPrintIds([j.id],'cjbOneOut');
       }else out.innerHTML=`<div class="cjb-msg err">${_cjbEsc(j.detail || j.error || '접수 실패')}</div>`;
     }catch(e){ out.innerHTML=`<div class="cjb-msg err">${_cjbEsc((e && e.message) || String(e))} — 접수됐는지 '접수 내역'에서 확인해 주세요</div>`; }
     finally{ _cjb.busy=false; btn.disabled=false; }
   }
+  /* 재배송 장부 [CJ 접수] (2026-11-26 사장님 "운송장번호 입력안하고 cs팀에 건별접수나 파일접수를하고 출력하면 자동으로 송장번호가 기재되면서 송장번호를 고객한테 전달해줘")
+     reship.js 가 그 줄의 받는 분 · 주소 · 상품 · 옵션을 넘김 → 건별 접수 칸을 채우고 _cjb.reship 에 줄 id. 접수되면 Reship.booked 로 송장번호가 그 줄에.
+     출력 · 고객 안내는 reship.js cjSync(함수 cj list 의 printed_at) — 운영 접수만 고객에게 나감 */
+  async function cjbFromReship(x){
+    try{ if(typeof triggerCs==='function' && document.getElementById('viewCs')?.hidden) triggerCs(); }catch(e){ }
+    csTool('one'); await cjbInit(); cjbSetDv('01'); cjbOneClear(true);
+    _cjbSet('cjbCNm',x.nm); _cjbSet('cjbCTel',x.tel); _cjbSet('cjbCZip',String(x.zip||'').replace(/\D/g,'')); _cjbSet('cjbCAddr',x.addr); _cjbSet('cjbCDet',x.detail);
+    _cjbSet('cjbGNm',x.goods); _cjbSet('cjbGOpt',x.opt); _cjbSet('cjbGQty',x.qty||1);
+    if(x.brand && CJB_BRANDS.some(b=>b[0]===x.brand)) _cjbSet('cjbBrand',x.brand);
+    _cjb.reship=x.id;
+    const out=document.getElementById('cjbOneOut');
+    if(out) out.innerHTML=`<div class="cjb-msg">📦 재배송 장부 <b>${_cjbEsc(x.label||'')} ${_cjbEsc(x.kind||'')}</b> 건을 채웠어요 — 확인하고 [접수하기] · 출력하면 송장번호가 장부에 저절로 적혀요</div>`;
+    setTimeout(()=>{ try{ document.getElementById('csTools')?.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('cjbCNm')?.focus({preventScroll:true}); }catch(e){ } },150);
+  }
   function cjbOneClear(keepMsg){
+    _cjb.reship='';
     ['cjbCNm','cjbCTel','cjbCZip','cjbCAddr','cjbCDet','cjbGNm','cjbGOpt','cjbOrd','cjbAmt','cjbOri','cjbMemo','cjbReason'].forEach(id=>{ _cjbSet(id,''); document.getElementById(id)?.classList.remove('bad'); });
     _cjbSet('cjbGQty','1');
     const rm=document.getElementById('cjbRetMsg'); if(rm) rm.innerHTML='';
@@ -20174,6 +20195,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       const noCode=all.filter(x=>!x.clsf).length;
       say(`🖨 운송장 ${all.length}건 인쇄 창을 열었어요${skip.length ? ` · ${skip.length}건은 뺌 (${_cjbEsc(skip[0].skip)})` : ''}${noCode ? ` · <b>${noCode}건은 도착지 분류코드 없이</b> 찍혀요` : ''}`, noCode ? '' : 'ok');
       if(!document.getElementById('cjbPaneList')?.hidden) cjbList(true);
+      // 재배송 장부 — 출력된 송장번호를 줄에 적고 (운영이면) 고객 안내 (11-26)
+      try{ if(window.Reship) setTimeout(()=>Reship.load(true),1500); }catch(e){ }
     }catch(e){ say(_cjbEsc((e && e.message) || String(e)),'err'); }
   }
   // 출력 설정 미리보기 · 견본 — 견본 자료(실제 접수 아님)
@@ -58868,6 +58891,6 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="notif-call.js?v=4" defer></script><!-- 알림 확인 요청 — 사장님이 보내면 [확인] 창 (notif-call.js) -->
 <script src="office-thumb.js?v=1" defer></script><!-- 작은 사진에 마우스 → 크게 (office-thumb.js) -->
 <script src="check-alert.js?v=13" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
-<script src="kko-urgent.js?v=5" defer></script><script src="reship.js?v=5" defer></script><!-- 재배송 · 교환 · 불량 장부 (11-26) --><!-- 카톡 급한 호출 — 희선님 PC 컴퓨터 알림, 해결될 때까지 되풀이 (kko-urgent.js) -->
+<script src="kko-urgent.js?v=5" defer></script><script src="reship.js?v=6" defer></script><!-- 재배송 · 교환 · 불량 장부 (11-26) --><!-- 카톡 급한 호출 — 희선님 PC 컴퓨터 알림, 해결될 때까지 되풀이 (kko-urgent.js) -->
 </body>
 </html>
