@@ -149,7 +149,7 @@
   async function copy(t, msg) { try { await navigator.clipboard.writeText(t); toast(msg); } catch (e) { toast('복사가 막혀 있어요 — 글을 끌어서 복사해 주세요', true); } }
 
   /* ── 자료 · 저장 ── */
-  function pin() { for (const w of [window.parent !== window ? window.parent : null, window.opener]) { try { if (w && typeof w.ghPin === 'function') return w.ghPin(); } catch (e) { /* 다른 출처 */ } } return '2580'; }
+  function pin() { for (const w of [window.parent !== window ? window.parent : null, window.opener]) { try { if (w && typeof w.ghPin === 'function') return w.ghPin(); } catch (e) { /* 다른 출처 */ } } return '0017'; }
   async function api(path, opt) {
     if (!S.base) { const t = await fetch('https://raw.githubusercontent.com/j65209/beaduniverse/main/tunnel.json?cb=' + Date.now(), { cache: 'no-store' }).then(r => r.json()); S.base = String(t.url || '').replace(/\/$/, ''); }
     const r = await fetch(S.base + path, Object.assign({ cache: 'no-store' }, opt, { headers: Object.assign({ 'X-Brightbeed-PIN': pin() }, opt && opt.body ? { 'Content-Type': 'application/json' } : {}) }));
