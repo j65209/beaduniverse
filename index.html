@@ -14797,6 +14797,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         <div class="cjb-tbl-wrap" id="cjbFWrap" hidden><table class="cjb-tbl" id="cjbFTbl"></table></div>
         <div class="cjb-act" id="cjbFAct" hidden>
           <button type="button" class="cjb-btn pri" id="cjbFGo" onclick="cjbFileGo()">선택한 건 접수</button>
+          <button type="button" class="cjb-btn" onclick="cjbFileTest()" title="대한통운에 접수하지 않고 운송장 모양만 찍어 봐요">🖨 시험 출력</button>
           <button type="button" class="cjb-btn" id="cjbFStop" onclick="_cjb.stop=true" hidden>멈추기</button>
           <span class="cjb-sum" id="cjbFProg"></span>
         </div>
@@ -19534,6 +19535,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     ord:['고객주문번호','주문번호'],
     memo:['배송메시지','배송메세지','배송메시지1','배송메세지1','배송시요청사항','배송요청사항','배송메모'],
     box:['박스타입','박스'],
+    bqty:['박스수량','박스개수','택배수량'],   // 11-26 대량출고(26년) 양식
     invc:['운송장번호','송장번호'],
     stat:['상품별주문상태','주문상태'],
     snm:['보내는분','보내는분성명','송하인'],
@@ -19577,7 +19579,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       aoa.slice(hi+1).forEach((r,ix)=>{
         if(!r || !(g(r,'nm') || g(r,'addr'))) return;
         rows.push({ln:hi+2+ix, nm:g(r,'nm'), tel:_cjbFixTel(g(r,'tel')), tel2:_cjbFixTel(g(r,'tel2')), zip:_cjbFixZip(g(r,'zip')), addr:g(r,'addr'), detail:g(r,'detail'),
-          gnm:g(r,'gnm'), gopt:g(r,'gopt'), gqty:parseInt(g(r,'gqty'),10)||1, gcd:g(r,'gcd'), ord:g(r,'ord'), memo:g(r,'memo'), box:g(r,'box'), invc:g(r,'invc').replace(/\D/g,''), stat:g(r,'stat'), snm:g(r,'snm'), stel:_cjbFixTel(g(r,'stel'))});
+          gnm:g(r,'gnm'), gopt:g(r,'gopt'), gqty:parseInt(g(r,'gqty'),10)||1, bqty:Math.min(20,Math.max(1,parseInt(g(r,'bqty'),10)||1)), gcd:g(r,'gcd'), ord:g(r,'ord'), memo:g(r,'memo'), box:g(r,'box'), invc:g(r,'invc').replace(/\D/g,''), stat:g(r,'stat'), snm:g(r,'snm'), stel:_cjbFixTel(g(r,'stel'))});
       });
       if(!rows.length) throw new Error('접수할 줄이 없어요');
       if(rows.length>1000) throw new Error(`줄이 너무 많아요 (${rows.length}줄) — 1,000줄씩 나눠 올려 주세요`);
@@ -19594,26 +19596,73 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     rows.forEach(r=>{
       const key=group && r.ord ? `${r.ord}|${r.nm}|${r.tel}` : `#${r.ln}`;
       let it=byKey.get(key);
-      if(!it){ it={key, lns:[], ord:r.ord, nm:r.nm, tel:r.tel, tel2:r.tel2, zip:r.zip, addr:r.addr, detail:r.detail, memo:r.memo, box:r.box, invc:r.invc, stat:r.stat, snm:r.snm, stel:r.stel, goods:[], state:'', res:null}; byKey.set(key,it); items.push(it); }
+      if(!it){ it={key, lns:[], bqty:r.bqty||1, ord:r.ord, nm:r.nm, tel:r.tel, tel2:r.tel2, zip:r.zip, addr:r.addr, detail:r.detail, memo:r.memo, box:r.box, invc:r.invc, stat:r.stat, snm:r.snm, stel:r.stel, goods:[], state:'', res:null}; byKey.set(key,it); items.push(it); }
       it.lns.push(r.ln);
-      if(r.gnm) it.goods.push({nm:r.gnm, opt:r.gopt, qty:r.gqty, cd:r.gcd});
+      if(r.gnm){
+        // 대량출고 양식은 품목명 칸에 브랜드(6a · aperi …)만 적음 → 브랜드로 알아보고 운송장엔 브랜드 이름
+        const b=_cjbBrandOf(r.gnm);
+        if(b && !it.brand) it.brand=b;
+        it.goods.push({nm:b && _cjbNorm(r.gnm).length<=12 ? (CJB_BRANDS.find(x=>x[0]===b)||[])[1] : r.gnm, opt:r.gopt, qty:r.gqty, cd:r.gcd});
+      }
       if(!it.memo && r.memo) it.memo=r.memo;
     });
     items.forEach(it=>{
       const miss=[!it.nm && '이름', !/^\d{8,12}$/.test(it.tel) && '전화', it.zip.length<5 && '우편번호', !it.addr && '주소', !it.goods.length && '상품명'].filter(Boolean);
       it.err=miss.length ? miss.join(' · ')+' 비었음' : '';
+      it.zipMiss=it.zip.length<5 && !!it.addr;
+      it.terr=!it.nm || !it.addr;   // 시험 출력은 이름 · 주소만 있으면 됨
       it.skip=it.invc ? '운송장 있음' : (/취소|환불|반품|교환|배송\s*완료|배송\s*중/.test(it.stat) ? it.stat : '');
       it.sel=!it.err && !it.skip;
     });
     _cjb.items=items;
     _cjbFilePaint();
   }
+  // 11-26 사장님 "파일접수에 해당 레이아웃(대량출고 26년)으로 파일입력하면 자동으로 출력" — 품목명 칸의 브랜드 낱말
+  const CJB_BRAND_ALIAS={kop:['kop','코페리','coferry'],apt:['apt','apeti','aperi','아페티'],koz:['koz','코즈미','cozmi'],'6a':['6a','식스에이','sixa','6ashop'],yar:['yar','야르'],pp:['pp','프로덕트피알','productpr','프피'],akoi:['akoi','아코이','아코이하우스','akoihaus']};
+  function _cjbBrandOf(t){
+    const n=_cjbNorm(t); if(!n) return '';
+    for(const [b,al] of Object.entries(CJB_BRAND_ALIAS)) if(al.some(a=>n===a || (a.length>=3 && n.startsWith(a)))) return b;
+    return '';
+  }
+  // 우편번호가 없는 줄 — 주소로 찾기 창(다음 우편번호)을 열어 고르면 그 줄에 들어감
+  async function cjbFZip(i){
+    const it=_cjb.items && _cjb.items[i]; if(!it) return;
+    try{ await _cjbLoadPost(); }catch(e){ alert(e.message); return; }
+    new window.daum.Postcode({ oncomplete(d){
+      it.zip=String(d.zonecode||'');
+      const miss=[!it.nm && '이름', !/^\d{8,12}$/.test(it.tel) && '전화', it.zip.length<5 && '우편번호', !it.addr && '주소', !it.goods.length && '상품명'].filter(Boolean);
+      it.err=miss.length ? miss.join(' · ')+' 비었음' : ''; it.zipMiss=it.zip.length<5 && !!it.addr;
+      if(!it.err && !it.skip) it.sel=true;
+      _cjbFilePaint();
+    } }).open({q:String(it.addr||'').replace(/\s*\d+동\s*\d+호.*$/,'').slice(0,60)});
+  }
+  // 시험 출력 — 대한통운에 접수하지 않고 올린 엑셀 그대로 운송장 모양을 찍어 봄 (운송장번호는 0, '시험' 표시)
+  async function cjbFileTest(){
+    const out=document.getElementById('cjbFOut');
+    const say=(h,c)=>{ if(out) out.innerHTML=`<div class="cjb-msg ${c||''}">${h}</div>`; };
+    const its=(_cjb.items||[]).filter(x=>!x.terr && (x.sel || x.err));
+    if(!its.length){ say('찍을 줄이 없어요 (이름 · 주소가 있는 줄만)','err'); return; }
+    const s=_cjb.sender||{}, ymd=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,'');
+    const tf=t=>String(t||'').replace(/^(02)(\d{3,4})(\d{4})$/,'$1-$2-$3').replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3');
+    const labels=[];
+    for(const it of its) for(let k=0;k<(it.bqty||1);k++) labels.push({id:0, env:'dev', brand:_cjbV('cjbFBrand') || it.brand || '', invc_no:'000000000000', cust_use_no:it.ord||'', rcpt_ymd:ymd, rcpt_dv:'01',
+      box_type:_cjbBoxCode(it.box) || _cjbV('cjbFBox') || '01', box_qty:String(it.bqty||1), frt_dv:'03', memo:it.memo||'',
+      rcvr:{nm:it.nm, tel:tf(it.tel), cell:'', zip:it.zip||'', addr:it.addr, detail:it.detail||''},
+      sendr:{nm:s.nm||'', tel:s.tel||'', zip:s.zip||'', addr:s.addr||'', detail:s.detail||''},
+      goods:it.goods.length ? it.goods : [{nm:'',qty:1}], clsf:null, print_count:0});
+    try{
+      await _cjbPrintRefresh();
+      await _cjbPrintFrame(await _cjbLabelDoc(labels,_cjbPrint()));
+      const nz=its.filter(x=>x.zipMiss).length;
+      say(`🖨 시험 운송장 ${labels.length}장 인쇄 창을 열었어요 (대한통운 접수 없음 · 운송장번호 0 · '시험' 표시)${nz ? ` · ${nz}건은 우편번호 없이` : ''}`,'ok');
+    }catch(e){ say(_cjbEsc((e && e.message) || String(e)),'err'); }
+  }
   function _cjbBoxCode(t){ const s=String(t||'').replace(/\s/g,''); return /^0[1-7]$/.test(s) ? s : (CJB_BOX_KO[s] || ''); }
   function _cjbFileRowHtml(it,i){
     const st=it.state==='ok' ? `<span class="cjb-st ok">접수${it.res && it.res.invc_no ? ' '+_cjbEsc(it.res.invc_no) : ''}</span>`
       : it.state==='fail' ? `<span class="cjb-st bad" title="${_cjbEsc(it.res && (it.res.detail||it.res.error))}">실패</span> <small>${_cjbEsc(it.res && (it.res.detail||it.res.error)||'')}</small>`
       : it.state==='busy' ? '<span class="cjb-st wait">보내는 중…</span>'
-      : it.err ? `<span class="cjb-st bad">${_cjbEsc(it.err)}</span>` : it.skip ? `<span class="cjb-st gray">${_cjbEsc(it.skip)}</span>` : '<span class="cjb-st">대기</span>';
+      : it.err ? `<span class="cjb-st bad">${_cjbEsc(it.err)}</span>${it.zipMiss ? ` <button type="button" class="cjb-btn" style="min-height:26px;padding:2px 8px" onclick="cjbFZip(${i})">우편번호 찾기</button>` : ''}` : it.skip ? `<span class="cjb-st gray">${_cjbEsc(it.skip)}</span>` : '<span class="cjb-st">대기</span>';
     const goods=it.goods.map(g=>`${g.nm}${g.opt ? ' / '+g.opt : ''}${g.qty>1 ? ' ×'+g.qty : ''}`).join(', ');
     const dis=it.err || it.state==='ok' || it.state==='busy';
     return `<tr id="cjbFr${i}" class="${it.sel || it.state==='ok' ? '' : 'off'}"><td><input type="checkbox" ${it.sel ? 'checked' : ''} ${dis ? 'disabled' : ''} onchange="_cjb.items[${i}].sel=this.checked;_cjbFileCount()" aria-label="${i+1}번 고르기"></td>`
@@ -19653,10 +19702,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     for(const [it,i] of list){
       if(_cjb.stop) break;
       it.state='busy'; const tr=document.getElementById('cjbFr'+i); if(tr) tr.outerHTML=_cjbFileRowHtml(it,i);
-      const item={ rcpt_dv:'01', prt_st:prt, brand, cust_use_no:it.ord,
+      const item={ rcpt_dv:'01', prt_st:prt, brand:brand || it.brand || '', cust_use_no:it.ord,
         sender:{...s, nm:it.snm || s.nm, tel:it.stel || s.tel},
         rcvr:{nm:it.nm, tel:it.tel, tel2:it.tel2, zip:it.zip, addr:it.addr, detail:it.detail},
-        goods:it.goods, box_type:_cjbBoxCode(it.box) || box, box_qty:1, memo:it.memo };
+        goods:it.goods, box_type:_cjbBoxCode(it.box) || box, box_qty:it.bqty||1, memo:it.memo };
       try{ it.res=await _cjbCall({action:'book',item,kind:'file',batch_id:batch,by:_cjbMe()}); }
       catch(e){ it.res={ok:false,detail:(e && e.message) || String(e)}; }
       it.state=it.res && it.res.ok ? 'ok' : 'fail'; if(it.state==='ok'){ ok++; it.sel=false; } else fail++;
