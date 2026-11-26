@@ -121,7 +121,7 @@
   function daily(j) {
     var now = Date.now(), k = new Date(now + 9 * 3600000), day = k.toISOString().slice(0, 10);
     if (k.getUTCHours() * 60 + k.getUTCMinutes() < 16 * 60 + 30 || ls('kko_reship_daily') === day) return;
-    var rows = (Array.isArray(j.reship) ? j.reship : []).filter(function (r) { return r && (r.day === day || (r.day < day && r.status !== '발송함')); });
+    var rows = (Array.isArray(j.reship) ? j.reship : []).filter(function (r) { return r && r.status !== '확인 필요' && (r.day === day || (r.day < day && r.status !== '발송함')); });
     ls('kko_reship_daily', day);
     if (!rows.length || !('Notification' in window) || Notification.permission !== 'granted') return;
     var n = function (s) { return rows.filter(function (r) { return r.status === s; }).length; };

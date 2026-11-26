@@ -97,9 +97,9 @@
   }
   var HEAD = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['goods', '보낼 상품'], ['opt', '옵션'], ['qty', '수량'], ['order', '주문번호'], ['why', '사유'], ['status', '상태'], ['inv', '송장번호'], ['memo', '메모']];
   function listView() {
-    var rows = fullRows().filter(function (r) { return !S.onlyOpen || r.status !== '발송함'; }).sort(function (a, b) { return (a.status === '발송함') - (b.status === '발송함') || (a.firstAt || 0) - (b.firstAt || 0); });
+    var rows = fullRows().filter(function (r) { return r.status !== '확인 필요' && (!S.onlyOpen || r.status !== '발송함'); }).sort(function (a, b) { return (a.status === '발송함') - (b.status === '발송함') || (a.firstAt || 0) - (b.firstAt || 0); });
     var shipMiss = !S.full;
-    var top = '<div class="rs-head"><span class="rs-title">재배송 목록<small>대한통운 연결 전 — 직원이 손으로 보낼 것 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
+    var top = '<div class="rs-head"><span class="rs-title">재배송 목록<small>대한통운 연결 전 — 직원이 손으로 보낼 것 · 재배송을 아직 안 정한 문의(확인 필요)는 [오늘] 탭에만 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
       + '<span class="rs-nav"><label class="rs-chk"><input type="checkbox" data-rs="open"' + (S.onlyOpen ? ' checked' : '') + '> 안 보낸 것만</label><button type="button" data-rs="copy">표 복사</button><button type="button" data-rs="csv">엑셀 내려받기</button><button type="button" data-rs="re" aria-label="다시 불러오기">↻</button></span></div>'
       + (shipMiss ? '<div class="rs-warn">받는 분 · 연락처 · 주소 · 주문번호는 서버(맥미니 프록시 /cs/kakao-reship) 연결 뒤 사무실 인터넷에서 채워져요. 그 전에는 [대화]로 채팅방을 열어 확인해 주세요.</div>' : (S.full.outside ? '<div class="rs-warn">사무실 밖이라 받는 분 정보는 가렸어요.</div>' : ''))
       + (S.mkErr ? '<div class="rs-warn">' + esc(S.mkErr) + '</div>' : '');
@@ -117,7 +117,7 @@
     return {html: top + body, rows: rows.map(function (r) { return {r: r}; })};
   }
   function tsv(sep) {
-    var rows = fullRows().filter(function (r) { return !S.onlyOpen || r.status !== '발송함'; });
+    var rows = fullRows().filter(function (r) { return r.status !== '확인 필요' && (!S.onlyOpen || r.status !== '발송함'); });
     var q = function (v) { v = String(v == null ? '' : v); return sep === ',' ? '"' + v.replace(/"/g, '""') + '"' : v.replace(/[\t\n]/g, ' '); };
     return [HEAD.map(function (h) { return q(h[1]); }).join(sep)].concat(rows.map(function (r) { var c = cols(r); return HEAD.map(function (h) { return q(c[h[0]]); }).join(sep); })).join('\n');
   }
