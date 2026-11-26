@@ -60,6 +60,8 @@
   .seg button { height: 32px; padding: 0 11px; border: 0; background: transparent; font-weight: 600; font-size: 13px; color: var(--t2); white-space: nowrap }
   .seg button + button { border-left: 1px solid var(--line) }
   .seg button.on { background: var(--ink); color: #fff }
+  .seg button.fav { display: inline-flex; align-items: center; gap: 4px; background: #fff7e0; color: #a16207; font-weight: 800 } .seg button.fav svg { width: 15px; height: 15px; fill: #f59e0b } .seg button.fav em { font-style: normal; font-size: 11px; background: #f59e0b; color: #fff; border-radius: 999px; padding: 0 6px; line-height: 17px; min-width: 17px; text-align: center } .seg button.fav em:empty { display: none }
+  .seg button.fav.on { background: #f59e0b; color: #fff } .seg button.fav.on svg { fill: #fff } .seg button.fav.on em { background: #fff; color: #b45309 }
   .inp { height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: #fff; min-width: 0; outline: none; font-size: 13px }
   .inp:focus { border-color: #4f7fcf; box-shadow: 0 0 0 3px rgba(79, 127, 207, .14) }
   #app { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start }
@@ -98,7 +100,7 @@
   .tag.off { background: rgba(255, 255, 255, .92); color: var(--t2) }
   .kind { position: absolute; left: 8px; bottom: 8px; background: rgba(15, 23, 42, .62); color: #fff; font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px }
   .star { position: absolute; right: 6px; top: 6px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .9); display: flex; align-items: center; justify-content: center; color: var(--t2) }
-  .star svg { width: 18px; height: 18px } .star.on { background: var(--ink); color: #fff } .star.on svg { fill: currentColor }
+  .star svg { width: 18px; height: 18px } .star.on { background: #f59e0b; color: #fff } .star.on svg { fill: currentColor }
   .cbody { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0 }
   .cbody .nm { font-weight: 700; font-size: 13px; display: flex; gap: 6px; align-items: baseline; min-width: 0 } .cbody .nm span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap } .cbody .nm em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--t3); font-weight: 600; flex: none }
   .cbody .tx { font-size: 12.5px; color: var(--t2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word }
@@ -172,7 +174,7 @@
   <main class="main">
     <div class="bhead" id="bhead" hidden></div>
     <div class="tools">
-      <div class="seg scroll" id="viewSeg"><button data-v="win">잘 되는 광고</button><button data-v="promo">세일 소재</button><button data-v="new">새 광고</button><button data-v="old">오래 도는</button><button data-v="star">보관함</button></div>
+      <div class="seg scroll" id="viewSeg"><button data-v="win">잘 되는 광고</button><button data-v="promo">세일 소재</button><button data-v="new">새 광고</button><button data-v="old">오래 도는</button><button data-v="star" class="fav" title="☆ 누른 광고 모아보기 — 꺼진 뒤에도 남아요"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8z"/></svg>즐겨찾기<em id="favN"></em></button></div>
       <div class="seg scroll" id="fmtSeg"><button data-v="">전체</button><button data-v="video">영상</button><button data-v="image">사진</button><button data-v="carousel">여러 장</button></div>
       <div class="seg scroll" id="itemSeg" hidden></div>
       <input class="inp" id="q" placeholder="문구 · 상품 찾기" aria-label="문구 찾기">
@@ -250,7 +252,7 @@
   function toggleStar(a) {
     const on = isStar(a);
     if (on) idsOf(a).filter(i => M(i).star).forEach(i => mark('ad:' + i, { star: false })); else mark('ad:' + a.id, { star: true });
-    toast(on ? '보관함에서 뺐어요' : '보관함에 넣었어요 — 꺼진 뒤에도 남아요');
+    toast(on ? '즐겨찾기에서 뺐어요' : '즐겨찾기에 넣었어요 — 꺼진 뒤에도 남아요'); paintSegs();
   }
 
   /* ── 자료 ── */
@@ -394,7 +396,7 @@
   const why = a => a.e ? `${num(a.d)}일 돌고 꺼짐 (${md(a.e)})` : a.d < 14 ? `${a.d}일째 · 브랜드 안 노출 ${a.r}위` : `${num(a.d)}일째 안 끄고 · 브랜드 안 노출 ${a.r}위`;
   function card(a, i) {
     const m0 = a.m[0] || {}, mm = markOf(a).memo;
-    return `<div class="card" tabindex="0" role="button" data-i="${i}" aria-label="${esc(a.bn)} 광고"><div class="shot"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""><span class="tag${a.e ? ' off' : ''}">${a.e ? '꺼짐' : num(a.d) + '일째'}</span><span class="kind">${KIND[a.f] || ''}${m0.t === 'v' && m0.d ? ' ' + Math.round(m0.d) + '초' : a.f === 'carousel' ? ' ' + a.m.length : ''}${a.sl ? ' · 세일' : ''}</span><button class="star${isStar(a) ? ' on' : ''}" type="button" aria-label="보관" title="보관">${starSvg}</button></div>
+    return `<div class="card" tabindex="0" role="button" data-i="${i}" aria-label="${esc(a.bn)} 광고"><div class="shot"><img loading="lazy" src="${esc(thumb(a))}" data-alt2="${esc(thumb2(a))}" alt=""><span class="tag${a.e ? ' off' : ''}">${a.e ? '꺼짐' : num(a.d) + '일째'}</span><span class="kind">${KIND[a.f] || ''}${m0.t === 'v' && m0.d ? ' ' + Math.round(m0.d) + '초' : a.f === 'carousel' ? ' ' + a.m.length : ''}${a.sl ? ' · 세일' : ''}</span><button class="star${isStar(a) ? ' on' : ''}" type="button" aria-label="즐겨찾기" title="즐겨찾기">${starSvg}</button></div>
       <div class="cbody"><div class="nm"><span>${esc(a.bn)}</span>${a.n > 1 ? `<em>같은 소재 ${a.n}</em>` : ''}</div><div class="tx">${esc(a.b || a.t)}</div><div class="why">${why(a)}</div>${S.view === 'star' && mm ? `<div class="memo">${esc(mm)}</div>` : ''}</div></div>`;
   }
   function paintGrid() {
@@ -403,11 +405,11 @@
     $('cnt').textContent = `${num(l.length)}개`;
     $('more').hidden = l.length <= S.n;
     $('empty').hidden = l.length > 0;
-    $('empty').textContent = S.view === 'promo' ? (S.pid ? '이 브랜드는 지금 세일 소재가 없어요' : '세일 소재가 없어요') : S.view === 'star' ? '보관한 광고가 없어요 — 카드의 ☆ 를 누르면 여기 모이고, 광고가 꺼진 뒤에도 남아요' : S.q ? '찾는 문구가 있는 광고가 없어요' : S.view === 'win' ? '2주 넘게 남은 광고가 아직 없어요 — [새 광고] 를 봐 주세요' : '해당하는 광고가 없어요';
+    $('empty').textContent = S.view === 'promo' ? (S.pid ? '이 브랜드는 지금 세일 소재가 없어요' : '세일 소재가 없어요') : S.view === 'star' ? '즐겨찾기한 광고가 없어요 — 카드의 ☆ 를 누르면 여기 모이고, 광고가 꺼진 뒤에도 남아요' : S.q ? '찾는 문구가 있는 광고가 없어요' : S.view === 'win' ? '2주 넘게 남은 광고가 아직 없어요 — [새 광고] 를 봐 주세요' : '해당하는 광고가 없어요';
   }
   function paintSegs() {
     const set = (id, v) => $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
-    set('rankSeg', S.rank); paintCats(); set('viewSeg', S.view); set('fmtSeg', S.fmt);
+    set('rankSeg', S.rank); paintCats(); set('viewSeg', S.view); set('fmtSeg', S.fmt); $('favN').textContent = S.all ? (S.all.filter(isStar).length || '') : '';
     $('mtabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === document.body.dataset.m));
   }
   function paint(keepN) { if (!keepN) S.n = PAGE; paintSegs(); paintBrands(); paintHead(); paintGrid(); }
@@ -447,7 +449,7 @@
       ${a.b ? `<div class="lb">광고 문구 <button type="button" data-copy>복사</button></div><div class="copy">${esc(a.b)}</div>` : ''}${a.t ? `<div class="lb">제목</div><div class="copy">${esc(a.t)}</div>` : ''}
       ${(a.alt || []).length ? `<div class="lb">같이 쓰는 다른 문구 ${a.alt.length}</div><div class="copy">${a.alt.map(esc).join('\n\n')}</div>` : ''}
       <div class="lb">메모 <span class="st" id="memoSt"></span></div><textarea id="memo" maxlength="2000" placeholder="어떤 점을 참고할지 적어 두기">${esc(mk.memo || '')}</textarea>
-      <div class="acts"><button class="btn pri" data-star type="button">${isStar(a) ? '보관 중 — 빼기' : '☆ 보관'}</button>${link ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(link)}">상품 페이지</a>` : ''}<a class="btn" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/ads/library/?id=${esc(a.id)}">메타에서 보기</a>${S.byPid[a.pid] ? '<button class="btn" data-brand type="button">이 브랜드 전체</button>' : ''}</div></div>`);
+      <div class="acts"><button class="btn pri" data-star type="button">${isStar(a) ? '★ 즐겨찾기 중 — 빼기' : '☆ 즐겨찾기'}</button>${link ? `<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(link)}">상품 페이지</a>` : ''}<a class="btn" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/ads/library/?id=${esc(a.id)}">메타에서 보기</a>${S.byPid[a.pid] ? '<button class="btn" data-brand type="button">이 브랜드 전체</button>' : ''}</div></div>`);
     const view = ov.querySelector('.view');
     const show = k => {
       const m = a.m[k] || {}; view.innerHTML = '';
@@ -459,17 +461,17 @@
     ov.addEventListener('click', async e => {
       const k = e.target.closest('[data-k]'); if (k) return show(+k.dataset.k);
       if (e.target.closest('[data-copy]')) { try { await navigator.clipboard.writeText(a.b); toast('문구를 복사했어요'); } catch (err) { toast('복사가 막혀 있어요 — 글을 끌어서 복사해 주세요', true); } }
-      if (e.target.closest('[data-star]')) { toggleStar(a); e.target.closest('[data-star]').textContent = isStar(a) ? '보관 중 — 빼기' : '☆ 보관'; paintGrid(); }
+      if (e.target.closest('[data-star]')) { toggleStar(a); e.target.closest('[data-star]').textContent = isStar(a) ? '★ 즐겨찾기 중 — 빼기' : '☆ 즐겨찾기'; paintGrid(); }
       if (e.target.closest('[data-brand]')) { closeOv(); pickBrand(a.pid); }
     });
     const ta = ov.querySelector('#memo');
-    ta.addEventListener('input', () => { const p = { memo: ta.value }; if (ta.value.trim() && !isStar(a)) p.star = true; mark(mid, p, 700); if (p.star) { ov.querySelector('[data-star]').textContent = '보관 중 — 빼기'; } });
+    ta.addEventListener('input', () => { const p = { memo: ta.value }; if (ta.value.trim() && !isStar(a)) p.star = true; mark(mid, p, 700); if (p.star) { ov.querySelector('[data-star]').textContent = '★ 즐겨찾기 중 — 빼기'; } });
   }
   function pickBrand(pid) { S.pid = S.pid === pid ? '' : pid; if (S.view === 'star') S.view = 'win'; const b = S.byPid[S.pid]; if (b && S.view === 'win' && !b.ads.some(a => a.w != null && !a.e)) S.view = 'new'; document.body.dataset.m = 'ads'; paint(); window.scrollTo(0, 0); if (b) full(b.pid).then(() => { if (S.pid === b.pid) paintGrid(); }).catch(() => {}); }
 
   function help() {
     overlay(`<h3>숫자 읽는 법</h3><p>메타는 남의 <b>광고비 · 매출 · ROAS 를 공개하지 않아요.</b> 아래 점수는 공개된 것(광고 개수 · 기간 · 노출 순서)으로 브랜드끼리 견준 <b>추정</b>이에요 (0~100, 높을수록 앞).</p>
-      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li>브랜드는 <b>무신사 · 에이블리 · 지그재그 · 아몬즈 · 29CM · EQL · W컨셉 가운데 한 곳이라도 입점이 확인된 패션 · 주얼리 브랜드와, 29CM 리빙 베스트 · 스마트스토어에서 파는 리빙 브랜드</b>만 실어요(직접 넣은 브랜드는 그대로). 주얼리 · 패션 낱말로 찾은 광고주를 입점 명단과 맞추고, 순위권 브랜드는 이름으로도 찾아요. <b>지금 메타 광고 라이브러리에 떠 있는 소재만, 전부</b> 실어요(두 주 동안 다시 못 본 소재는 빼요)</li><li><b>세일 소재</b> — 문구나 <b>사진 속 글자</b>에 할인 · 특가 · 블랙프라이데이 · 00% 가 있는 이미지 · 영상이에요(영상은 첫 장면 글자). 왼쪽에서 브랜드를 누르면 그 브랜드 세일 소재만 보여요</li><li><b>카테고리</b> — 주얼리가 아닌 무신사 · 지그재그 · 에이블리 · 29CM 입점 브랜드도 같이 있어요. 카테고리는 광고 글 · 사진 글자로 저절로 나눈 것이고, 점수는 주얼리와 나머지를 따로 견줘요</li><li><b>좋아요 · 댓글 · 공유</b> — 메타 광고 라이브러리가 광고마다의 숫자를 공개하지 않아 볼 수 없어요. 공개되는 건 브랜드 페이지 좋아요뿐이라 브랜드 머리글에 넣었어요</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>하루 12번 조금씩 모아요(한꺼번에 많이 읽으면 메타가 막아요). 꺼진 광고는 빠지고, ☆ 보관한 것만 보관함에 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
+      <ul><li><b>광고비 추정</b> — 최근 30일 동안 돌린 광고 수 × 날짜 반, 주얼리 낱말을 메타에서 '노출 많은 순'으로 찾았을 때 앞에 나온 정도 반</li><li><b>효율 추정</b> — 30일 넘게 안 끄고 노출 상위에 남은 주력 광고가 많고, 비율이 높고, 상위 광고가 오래된 곳 (잘 안 되는 광고는 보통 빨리 끄니까요). 소재 6개 미만 · 거의 안 쓰는 곳은 점수를 안 매겨요</li><li><b>잘 되는 광고</b> — 오래 돌고(50) 브랜드 안 노출 순위가 높고(35) 같은 소재를 여러 개로 돌리는(15) 광고. 2주 안 된 광고는 '새 광고'로만</li><li>브랜드는 <b>무신사 · 에이블리 · 지그재그 · 아몬즈 · 29CM · EQL · W컨셉 가운데 한 곳이라도 입점이 확인된 패션 · 주얼리 브랜드와, 29CM 리빙 베스트 · 스마트스토어에서 파는 리빙 브랜드</b>만 실어요(직접 넣은 브랜드는 그대로). 주얼리 · 패션 낱말로 찾은 광고주를 입점 명단과 맞추고, 순위권 브랜드는 이름으로도 찾아요. <b>지금 메타 광고 라이브러리에 떠 있는 소재만, 전부</b> 실어요(두 주 동안 다시 못 본 소재는 빼요)</li><li><b>세일 소재</b> — 문구나 <b>사진 속 글자</b>에 할인 · 특가 · 블랙프라이데이 · 00% 가 있는 이미지 · 영상이에요(영상은 첫 장면 글자). 왼쪽에서 브랜드를 누르면 그 브랜드 세일 소재만 보여요</li><li><b>카테고리</b> — 주얼리가 아닌 무신사 · 지그재그 · 에이블리 · 29CM 입점 브랜드도 같이 있어요. 카테고리는 광고 글 · 사진 글자로 저절로 나눈 것이고, 점수는 주얼리와 나머지를 따로 견줘요</li><li><b>좋아요 · 댓글 · 공유</b> — 메타 광고 라이브러리가 광고마다의 숫자를 공개하지 않아 볼 수 없어요. 공개되는 건 브랜드 페이지 좋아요뿐이라 브랜드 머리글에 넣었어요</li><li><b>판매 신호 (29CM)</b> — 광고 추정이 실제 판매와 맞는지 보는 숫자예요. 29CM 여성 · 남성 주얼리 <b>주간 베스트 100위</b>에 든 정도 반, 브랜드 상품 <b>리뷰가 일주일에 늘어난 수</b> 반 (첫 7일은 쌓인 리뷰 수로). 29CM 에 있는 브랜드끼리 견준 0~100 이고, 29CM 에 없는 곳은 '검증 못 함'으로 둬요(0점이 아니에요). 지그재그 · 무신사 · W컨셉 · 에이블리는 자동 수집을 막아 두어 29CM 만 봐요. 매일 새벽 2시 40분</li><li><b>검증 한 마디</b> — 초록 = 광고도 많고 판매도 강함(추정이 맞는 쪽) · 주황 = 광고만 많고 29CM 판매는 약함 · 파랑 = 광고는 적은데 잘 팔림 · 회색 = 중간이거나 검증 못 함. 브랜드를 잘못 이었으면 [연결 바꾸기] · [29CM 아님]</li><li>상품 목록이 자동으로 나오는 카탈로그 광고는 소재에서 뺐어요</li><li>하루 12번 조금씩 모아요(한꺼번에 많이 읽으면 메타가 막아요). 꺼진 광고는 빠지고, ☆ 즐겨찾기한 것만 즐겨찾기 탭에 남아요</li><li>사진 · 문구는 참고용이에요 — 그대로 쓰면 저작권 문제가 생겨요</li></ul>`, true);
   }
   function addDlg() {
     const rows = Object.values(S.marks).filter(m => m.st === 'add' && m.v && m.v.q), hid = Object.values(S.marks).filter(m => m.st === 'hide');
