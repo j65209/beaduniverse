@@ -33992,6 +33992,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       // 업무일지 뷰가 열려있으면 이름 span sync
       const nameEl = document.getElementById('diaryMeName');
       if(nameEl){ nameEl.textContent = name; }
+      if(!document.getElementById('viewDiary')?.hidden && typeof _diaryRenderBoard === 'function') _diaryRenderBoard();   // 내 카드를 맨 앞으로
       if(typeof whtRefreshAccess==='function') whtRefreshAccess();
       if(typeof execRefreshAccess==='function') execRefreshAccess();
       if(typeof renderCredentials==='function') renderCredentials();
@@ -34182,7 +34183,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     });
 
     board.innerHTML = '';
-    _diarySortStaff(visible).forEach(st=>{
+    _diarySortStaff(visible, true).forEach(st=>{
       board.appendChild(_diaryBuildStaffCard(st));
     });
     _diaryUpdateAlert();
@@ -34347,8 +34348,11 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     'vendor': 6,  // 벤더 (color 값이 별도로 있는 경우)
     'ceo':    99, // 대표 → 최하단
   };
-  function _diarySortStaff(list){
+  function _diarySortStaff(list, meFirst){
+    // meFirst: 이 PC 주인(내 이름) 카드는 맨 앞 — 업무일지 카드 보드에서만 (2026-11-26)
+    const me = (meFirst && typeof _diaryGetMe === 'function' && _diaryGetMe()) || '';
     return list.map((st,idx)=>({st,idx})).sort((a,b)=>{
+      if(me && (a.st.name === me) !== (b.st.name === me)) return a.st.name === me ? -1 : 1;
       const oa = _DIARY_TEAM_ORDER[a.st.color] ?? 50;
       const ob = _DIARY_TEAM_ORDER[b.st.color] ?? 50;
       if(oa !== ob) return oa - ob;
