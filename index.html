@@ -5382,6 +5382,17 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-find .kko-find-seg button:hover{background:rgba(255,255,255,.55);color:var(--kko-ink)}
   .kko-find .kko-find-seg button[aria-pressed="true"]{background:#fff;color:var(--kko-ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
   .kko-find[data-mode="order"] .kko-fw,.kko-find[data-mode="wbl"] .kko-fo{display:none}
+  .kko-find[data-mode="ret"] .kko-fo,.kko-find[data-mode="ret"] .kko-fw,.kko-find[data-mode="ret"] #kkoFindGo{display:none}
+  .kko-ret-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;font-size:12.5px}
+  .kko-ret-top button{min-height:30px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer}
+  .kko-ret-top button[aria-pressed="true"]{background:#111;color:#fff;border-color:#111}
+  .kko-ret-top .t{margin-left:auto;color:var(--ink-3,#888)}
+  .kko-ret{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px;font-size:12.5px;background:var(--bg-1,#fff)}
+  .kko-ret-h{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+  .kko-ret-h b{font-weight:700}
+  .kko-ret .st{font-weight:700}
+  .kko-ret .st.done{color:#111}.kko-ret .st.bad{color:#b91c1c}
+  .kko-ret .sub{color:var(--ink-3,#888);margin-top:2px}
   .kko-find #kkoTrackQ{flex:1 1 200px;min-width:0}
   /* 운송장 조회 결과 — 최근 단계가 맨 위 */
   .kko-trk-box{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--bg-1);font-size:12.5px}
@@ -14718,7 +14729,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
            운송장 = 프록시 /cs/track (수집기 cs-track.ts: 대한통운 API → 운영 승인 전이면 CJ 공개 조회). 찾은 주문의 CJ 송장에는 '단계 보기' -->
       <div class="cs-tpane" id="csTFind">
         <form class="kko-find" id="kkoFindForm" data-mode="order" onsubmit="kkoFind(event)" autocomplete="off">
-          <div class="kko-find-top"><span class="kko-find-seg" role="group" aria-label="찾기 종류"><button type="button" data-m="order" aria-pressed="true" onclick="kkoLookMode('order')">주문 찾기</button><button type="button" data-m="wbl" aria-pressed="false" onclick="kkoLookMode('wbl')">운송장 조회</button></span></div>
+          <div class="kko-find-top"><span class="kko-find-seg" role="group" aria-label="찾기 종류"><button type="button" data-m="order" aria-pressed="true" onclick="kkoLookMode('order')">주문 찾기</button><button type="button" data-m="wbl" aria-pressed="false" onclick="kkoLookMode('wbl')">운송장 조회</button><button type="button" data-m="ret" aria-pressed="false" onclick="kkoLookMode('ret')">반품 현황</button></span></div>
           <select id="kkoFindBrand" class="kko-fo" aria-label="브랜드">
             <option value="all">전체 브랜드</option>
             <option value="kop">코페리</option><option value="apt">아페티</option><option value="koz">코즈미</option>
@@ -19279,6 +19290,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   async function kkoFind(ev){
     if(ev) ev.preventDefault();
     if((document.getElementById('kkoFindForm')||{}).dataset?.mode==='wbl') return kkoTrack();
+    if((document.getElementById('kkoFindForm')||{}).dataset?.mode==='ret') return kkoReturns();
     const out=document.getElementById('kkoFindOut');
     const brand=document.getElementById('kkoFindBrand').value;
     let q=document.getElementById('kkoFindQ').value.trim();
@@ -19313,10 +19325,11 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   }  // 주문 찾기 · 운송장 조회 바꾸기 (2026-11-23 사장님 "주문찾기랑 운송장조회 또는 택배 번호 조회도 미리 만들어줘. 대한통운 api 연결할거야 추후에")
   function kkoLookMode(m){
     const f=document.getElementById('kkoFindForm'); if(!f) return;
-    m=m==='wbl' ? 'wbl' : 'order';
+    m=m==='wbl' || m==='ret' ? m : 'order';
     f.dataset.mode=m;
     f.querySelectorAll('.kko-find-seg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.m===m)));
     const go=document.getElementById('kkoFindGo'); if(go) go.textContent=m==='wbl' ? '조회' : '찾기';
+    if(m==='ret'){ kkoReturns(); return; }
     const inp=document.getElementById(m==='wbl' ? 'kkoTrackQ' : 'kkoFindQ'); if(inp) inp.focus({preventScroll:true});
   }
   // 운송장 조회 — 프록시 /cs/track (서버 cs-track.ts: 지금 CJ 공개 조회, 대한통운 API 를 붙이면 그쪽). 단계 · 시각 · 지점만 온다 (이름 · 전화 · 주소 없음)
@@ -19413,6 +19426,36 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const noCode=labels.filter(l=>!l.clsf).length;
       say(`🖨 ${labels.length}장 인쇄 창을 열었어요${skip.length ? ` · ${skip.length}장 뺌 (${skip[0]})` : ''}${noCode ? ` · ${noCode}장은 분류코드 없이` : ''}`, !!skip.length);
     }catch(e){ say((e && e.message) || String(e), true); }
+  }
+  // ---- 반품 운송장 현황 (2026-11-26 사장님 "반품 운송장 현황 빨리 해줘") — 프록시 /cs/returns (맥미니 cs-return-board 10분: 식스샵프로 최근 30일 반품 · 교환 → 회수 운송장 · CJ · 한진 단계)
+  const KKO_RET_F=[['all','전체'],['come','오는 중'],['none','수거 전'],['done','도착'],['nowbl','운송장 없음']];
+  const _kkoRetGroup=r=>r.state==='done' ? 'done' : r.state==='nowbl' ? 'nowbl' : r.state==='none' ? 'none' : 'come';
+  async function kkoReturns(){
+    const out=document.getElementById('kkoFindOut'); if(!out) return;
+    out.innerHTML='<div class="kko-find-msg">반품 현황 불러오는 중…</div>';
+    try{
+      const base=await loadProxyBase(); if(!base) throw new Error('서버 연결 안 됨');
+      const r=await fetch(`${base}/cs/returns`,{headers:{'X-Brightbeed-PIN':ghPin(),'Accept':'application/json'},cache:'no-store'});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      _kko.ret=j; _kkoRetPaint();
+    }catch(e){ out.innerHTML=`<div class="kko-find-msg err">${_kkoEsc((e && e.message) || String(e))}</div>`; }
+  }
+  function kkoRetF(f){ _kko.retF=f; _kkoRetPaint(); }
+  function _kkoRetPaint(){
+    const out=document.getElementById('kkoFindOut'), j=_kko.ret; if(!out || !j) return;
+    const rows=j.rows||[];
+    const f=_kko.retF||'come', n=k=>k==='all' ? rows.length : rows.filter(r=>_kkoRetGroup(r)===k).length;
+    const list=rows.filter(r=>f==='all' || _kkoRetGroup(r)===f);
+    const md=s=>{ const m=/(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2}))?/.exec(String(s||'')); return m ? `${+m[2]}/${+m[3]}${m[4] ? ' '+m[4] : ''}` : ''; };
+    const age=r=>{ const t=Date.parse(r.requestedAt); if(isNaN(t)) return ''; const d=Math.max(0,Math.floor((Date.now()-t)/86400e3)); return d ? `접수 ${d}일 전` : '오늘 접수'; };
+    const cls=r=>r.state==='done' ? 'done' : (r.state==='nowbl' || r.state==='check') ? 'bad' : '';
+    const top=`<div class="kko-ret-top">${KKO_RET_F.map(([k,l])=>`<button type="button" aria-pressed="${f===k}" onclick="kkoRetF('${k}')">${l} ${n(k)}</button>`).join('')}<span class="t">최근 ${_kkoEsc(j.days||30)}일 · ${_kkoEsc(md(j.builtAt) ? (()=>{ const d=new Date(j.builtAt); return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')} 기준`; })() : '')} · <a href="#" onclick="kkoReturns();return false">새로고침</a></span></div>`;
+    const body=list.length ? list.map(r=>`<div class="kko-ret"><div class="kko-ret-h">${_kkoBrand(r.brand,r.brandName)}<b>${_kkoEsc(r.kind)}</b><span>${_kkoEsc(r.nm||'')}</span><span>${_kkoEsc(r.orderId)}</span><span class="st ${cls(r)}">${_kkoEsc(r.stateKo||'')}</span><span>${_kkoEsc(r.claimStatus||'')}</span></div>`
+        + `<div class="sub">${r.wbl ? `${_kkoEsc(r.companyName||'')} ${_kkoEsc(r.wbl)}${r.lastStep ? ` · ${_kkoEsc(md(r.lastAt))} ${_kkoEsc(r.lastStep)}${r.lastPlace ? ' · '+_kkoEsc(r.lastPlace) : ''}` : ''}${/^https:\/\//.test(r.url||'') ? ` · <a href="${_kkoEsc(r.url)}" target="_blank" rel="noopener">택배사 조회 ↗</a>` : ''}` : '회수 운송장이 아직 등록 안 됨 — 수거 접수 확인 필요'} · ${_kkoEsc(age(r))}</div>`
+        + `<div class="sub">${(r.items||[]).map(_kkoEsc).join(' · ')}</div></div>`).join('')
+      : '<div class="kko-find-msg">이 칸에 해당하는 반품 · 교환이 없어요</div>';
+    out.innerHTML=top+body;
   }
   const KKO_TRK_CLS={done:'ok',check:'bad'};
   function _kkoTrackHtml(j, inner, tag){
