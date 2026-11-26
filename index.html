@@ -11568,6 +11568,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   /* 다중일 연결 — 좌/우 마진 음수로 셀 경계 위로 살짝 덮어 시각적으로 이어짐 */
   .leave-cal-bar.cont-l{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:-1px;padding-left:8px}
   .leave-cal-bar.cont-r{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:-1px;padding-right:8px}
+  /* 오전반차 = 칸 앞쪽 반, 오후반차 = 칸 뒤쪽 반 */
+  .leave-cal-bar.half-am,.leave-cal-bar.half-pm{width:50%;padding:0 4px;box-sizing:border-box}
+  .leave-cal-bar.half-am{justify-self:start}
+  .leave-cal-bar.half-pm{justify-self:end}
   /* 이전/다음 달로만 걸친 막대는 흐리게 */
   .leave-cal-bar.out-of-month{opacity:.42}
 
@@ -35543,6 +35547,9 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
         if(seg.contL) cls.push('cont-l');
         if(seg.contR) cls.push('cont-r');
         if(!seg.inMonth) cls.push('out-of-month');
+        // 오전반차 = 칸 앞쪽 반, 오후반차 = 칸 뒤쪽 반 (2026-11-26 사장님)
+        if(span===1 && seg.ev.type==='오전반차') cls.push('half-am');
+        if(span===1 && seg.ev.type==='오후반차') cls.push('half-pm');
         const tip=seg.ev.name+' · '+seg.ev.type+(seg.ev.start!==seg.ev.end?` (${seg.ev.start}~${seg.ev.end})`:'');
         const style=`grid-column:${seg.startCol+1}/span ${span};grid-row:${seg.lane+1}`;
         // 막대 본문: 시작 셀에서만 이름 (연결 막대는 같은 grid 셀에서 한 번만 라벨)
