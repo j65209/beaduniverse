@@ -128,7 +128,8 @@ async function order(b: Row) {
     if (!rows.length || rows.some((r: Row) => !r.b || !r.n)) throw new Oops(`재고 ERP 줄이 없는 상품: ${str(x.name, 40)}`);
     const rate = Number(c.rates[brand] ?? 0);
     const unit = staffPrice(p, rate);
-    return { b: brand, pid: str(x.id, 40), vid: str(x.vid, 40), name: str(x.name, 200), o: str(x.o, 200), img: str(x.img, 600), p, rate, unit, qty, rows };
+    const po = int(x.po);   // 공홈 정가 (보여주기만 — 직원가는 판매가 p 기준)
+    return { b: brand, pid: str(x.id, 40), vid: str(x.vid, 40), name: str(x.name, 200), o: str(x.o, 200), img: str(x.img, 600), p, po: po >= p ? po : null, rate, unit, qty, rows };
   });
   const r = b.rcvr || {};
   const rcvr = { nm: str(r.nm, 40), tel: str(r.tel, 20).replace(/[^\d-]/g, ''), zip: str(r.zip, 10).replace(/\D/g, ''), addr: str(r.addr, 200), detail: str(r.detail, 200) };

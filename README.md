@@ -584,9 +584,9 @@ CS 직원이 매일 적는 구글시트 **비드유니버스 VOC**(링크 보기
 
 | 항목 | 내용 |
 |---|---|
-| 여는 곳 | 홈 업무용 툴 **직원 할인 스토어** (`#store`) · `beaduniverse.kr/office/store/` — **11-26 지금은 관리자 PIN 기기만**(사장님 "직원들 안보이게 우선 세팅"). 직원에게 열 때: index.html `storeCard`(snsRefreshAccess) · TOOL_PAGES store `access` · VIEW_GATES viewStore 를 풀고, store/index.html `STAFF_OPEN = true`, 슈퍼베이스 `tool_news` key 'store' 의 `off_at` 을 null + `created_at=now()` |
+| 여는 곳 | 홈 **관리자 전용** 폴더 **직원 할인 스토어** (`#store`) · `beaduniverse.kr/office/store/` — **11-26 사장님 "관리자 전용 … 절대 직원한테 보이면안돼 대표한테만": 관리자 PIN + 전승훈 · 전수빈만**(execHasAccess — 카드 storeCard · TOOL_PAGES access · VIEW_GATES · store/ isAdmin + STAFF_OPEN=false). 직원에게 열라고 하시기 전까지 그대로, tool_news 'store' 는 off_at 으로 꺼 둠 |
 | 상품 | 맥미니 `sixshop-collector` 재고 연동(`erp/stock-sync.mjs`, 5분)이 식스샵프로 **판매중** 옵션 중 주문과 같은 연결로 재고 ERP 줄에 이어지는 것만 `state/staff-store.json` 으로 → 프록시 `GET /erp/store` 가 재고 ERP 지금 값(상품명 · 옵션 · 남은 재고)을 붙여 줌. 판매중지 · 숨김 · B급 · 배송비 같은 것은 빠짐, 남은 재고 0 은 품절 |
-| 가격 | 공홈 판매가(할인가 + 옵션 차액) × (1 − 브랜드 할인율), 10원 단위 버림. 할인율 · 배송비 · 입금 계좌 = 슈퍼베이스 `app_kv` `staff_store` (화면 주문 관리에서 바꿈) |
+| 가격 | 화면에 **공홈 정가(옵션 정가, po) · 상시할인가(할인가 + 옵션 차액) · 직원가** 셋 다(상품 · 장바구니 · 주문). 직원가 = 상시할인가 × (1 − 브랜드 할인율), 10원 단위 버림. 할인율 · 배송비 · 입금 계좌 = 슈퍼베이스 `app_kv` `staff_store` (화면 주문 관리에서 바꿈) |
 | 주문 | 엣지 함수 `staff-store`(원본 `supabase/functions/staff-store/index.ts`) → 표 `staff_orders`(RLS 정책 없음 — 받는 분 전화 · 주소는 공개 키로 못 읽고, 화면엔 가려서만) · 이력 `staff_orders_history`. 같은 주문을 두 번 눌러도 `client_key` 로 한 번만 |
 | 재고 차감 | 화면이 주문 직후 프록시 `POST /erp/moves` **dest `staff`** → 원장 `erp_moves` ch **'직원 구매'** (취소 되돌림 '직원 구매 취소'). 접수ID = `ms<주문번호>x<n>` 로 정해져 다시 보내도 한 번만. 판매(kind home · pt)가 아니라 보고서 · 리오더 판매 속도엔 안 섞임. 차감이 안 끝난 주문은 그 화면(내 주문 · 주문 관리)을 열 때 다시 |
 | 대한통운 | `staff-store` 가 cj 함수 `book`(보내는 분 = cj_config 기본값, 자체 출력, 메모 = 제품명 … 직원구매, 고객번호 `SS<id>`). **cj_config.env 가 'prod' 일 때만** — 운영 승인 전(dev)엔 '접수 대기'로 두고 pg_cron `staff-store-book`(10분)이 운영으로 바뀌는 대로 저절로 접수. 취소하면 cj `cancel` 도 시도 |

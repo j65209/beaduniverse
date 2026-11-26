@@ -86,6 +86,10 @@
   .br { font-size: 12px; color: var(--t3); display: flex; align-items: center; gap: 6px }
   .nm { font-weight: 650; font-size: 13.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 36px; word-break: break-word }
   .pr { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap } .pr s { color: var(--t3); font-size: 12px } .pr b { font-size: 17px; font-weight: 800; letter-spacing: -.3px; font-variant-numeric: tabular-nums } .pr em { font-style: normal; color: var(--red); font-weight: 800; font-size: 13px }
+  .pz { display: flex; flex-direction: column; gap: 1px; font-size: 12px; color: var(--t3); font-variant-numeric: tabular-nums }
+  .pz div { display: flex; justify-content: space-between; align-items: baseline; gap: 6px } .pz s { color: var(--t3) }
+  .pz .sp { color: var(--text); margin-top: 2px } .pz .sp span { font-weight: 700; font-size: 12.5px } .pz .sp b { font-size: 17px; font-weight: 800; letter-spacing: -.3px } .pz .sp em { font-style: normal; color: var(--red); font-weight: 800; font-size: 12.5px; margin-right: auto; margin-left: 4px }
+  .p3 { font-size: 11.5px; color: var(--t3); font-variant-numeric: tabular-nums } .p3 s { margin-right: 4px }
   .card select { width: 100%; height: 32px }
   .buy { display: flex; gap: 6px; margin-top: auto } .buy .btn { flex: 1 } .qty { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: none } .qty button { width: 28px; height: 30px; border: 0; background: #fff; font-weight: 700 } .qty span { min-width: 26px; text-align: center; line-height: 30px; font-weight: 700; font-variant-numeric: tabular-nums }
   .card.in { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) }
@@ -136,7 +140,7 @@
   @media (max-width: 720px) {
     .top { padding: 6px 8px; gap: 4px } .stamp, .ttl { display: none } .back { padding: 6px 4px } .top-r { gap: 4px } .top-r .btn { font-size: 12.5px; height: 30px } #app { padding: 10px 10px 30px } .top-r .btn { padding: 0 9px } .xl { display: none }
     .tools .q { flex: 1 1 100% } .cnt { margin-left: 0 } .tools .seg { max-width: 100% }
-    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px } .bd { padding: 8px 9px 10px } .nm { font-size: 13px } .pr b { font-size: 15px } .rate { min-width: 92px } .rate .v { font-size: 19px }
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px } .bd { padding: 8px 9px 10px } .nm { font-size: 13px } .pz .sp b { font-size: 15px } .rate { min-width: 92px } .rate .v { font-size: 19px }
     .inp, .form .inp { font-size: 16px } .side { width: 100%; top: auto; height: 92dvh; border-radius: 16px 16px 0 0; transform: translateY(105%) } .side.open { transform: none }
   }
   @media (max-width: 960px) and (min-height: 521px) { html.ios-solo .ios-top { display: block; position: fixed; top: 0; left: 0; right: 0; z-index: 40; height: calc(env(safe-area-inset-top, 0px) + 12px); background: #fff } html.ios-solo body { padding-top: calc(env(safe-area-inset-top, 0px) + 12px) } html.ios-solo .top { top: calc(env(safe-area-inset-top, 0px) + 12px) } }
@@ -213,9 +217,15 @@
   const p2 = v => String(v).padStart(2, '0');
   const when = s => { const d = new Date(s); return `${d.getMonth() + 1}/${d.getDate()} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
   const ME = () => (lsGet('brightbeed_diary_me') || lsGet('seed_me_v1') || lsGet(LS_ME) || '').trim().slice(0, 40);
-  const isAdmin = () => lsGet('brightbeed_role') === 'master';
+  // 대표 전용 (2026-11-26 사장님 "관리자 전용 … 절대 직원한테 보이면안돼 대표한테만") — 관리자 PIN + 오피스 이름 전승훈 · 전수빈 (index.html EXEC_ALLOWED · mileage/ 와 같게)
+  const BOSS = new Set(['전승훈', '전수빈']);
+  const isAdmin = () => lsGet('brightbeed_role') === 'master' && BOSS.has((lsGet('brightbeed_diary_me') || '').trim());
   /** 직원가 = 공홈 판매가 × (1 − 할인율), 10원 단위 버림 (엣지 함수 staffPrice 와 같아야 함) */
   const staff = (p, b) => Math.floor((p * (100 - Math.max(0, Math.min(90, Number(S.cfg.rates[b] || 0))))) / 100 / 10) * 10;
+  /** 공홈 정가 (옵션) — 맥미니 목록의 po, 아직 없으면(옛 목록) 옵션 하나짜리 상품만 상품 정가 */
+  const poOf = (x, v) => v.po || (x.v.length === 1 && x.org && x.org >= v.p ? x.org : null);
+  const priceBox = (po, p, b) => { const r = Number(S.cfg.rates[b] || 0); return `<div class="pz"><div><span>공홈 정가</span>${po ? `<s>${won(po)}</s>` : '<span>—</span>'}</div><div><span>상시할인가</span><s>${won(p)}</s></div><div class="sp"><span>직원가</span>${r ? `<em>-${r}%</em>` : '<em></em>'}<b>${won(staff(p, b))}</b></div></div>`; };
+  const p3 = (po, p, unit) => `<span class="p3">${po && po > p ? `정가 <s>${won(po)}</s>` : ''}상시 <s>${won(p)}</s>직원가 <b style="color:var(--text)">${won(unit)}</b></span>`;
   const S = { items: [], at: 0, erpAt: 0, cfg: { rates: {}, ship: 2000, bank: '', account: '', holder: '', on: true, notice: '' }, cjEnv: 'dev',
     brand: '', cat: '', q: '', sort: lsGet('store_sort') || 'new', n: PAGE, pick: {}, qty: {}, cart: [], view: 'shop', mine: null, all: null, base: '', busy: false, aFilter: 'open' };
   try { S.cart = (JSON.parse(lsGet(LS_CART) || '[]') || []).filter(x => x && x.vid && x.qty > 0); } catch (e) { S.cart = []; }
@@ -268,7 +278,7 @@
   /* ── 전광판 ── */
   function paintBoard() {
     const r = S.cfg.rates || {}, cnt = {}; S.items.forEach(x => { cnt[x.b] = (cnt[x.b] || 0) + 1; });
-    $('board').innerHTML = `<div class="hd"><b>직원 할인 스토어</b><span>공홈 판매가에서 브랜드별 할인 · 판매중 ${S.items.length.toLocaleString()}개</span></div>
+    $('board').innerHTML = `<div class="hd"><b>직원 할인 스토어</b><span>공홈 상시할인가에서 브랜드별 추가 할인 · 판매중 ${S.items.length.toLocaleString()}개</span></div>
       <div class="rates">${['', ...ORDER].map(b => b ? `<button class="rate${S.brand === b ? ' on' : ''}" data-b="${b}" type="button"><span class="k"><i class="dot"></i>${BR[b]} <em style="font-style:normal;opacity:.6">${cnt[b] || 0}</em></span><span class="v">${Number(r[b] || 0)}<small>%</small></span></button>`
         : `<button class="rate${!S.brand ? ' on' : ''}" data-b="" type="button"><span class="k">전 브랜드</span><span class="v" style="font-size:16px;line-height:1.7">${S.items.length.toLocaleString()}<small>개</small></span></button>`).join('')}</div>
       <div class="ship"><b>배송비 ${won(S.cfg.ship)}</b>대한통운 · 주문마다 한 번</div>`;
@@ -311,7 +321,7 @@
       <div class="bd">
         <div class="br"><i class="dot"></i>${BR[x.b]}</div>
         <div class="nm" title="${esc(x.name)}">${esc(x.name)}</div>
-        <div class="pr">${rate ? `<s>${won(v.p)}</s>` : ''}<b>${won(staff(v.p, x.b))}</b></div>
+        ${priceBox(poOf(x, v), v.p, x.b)}
         ${opts}
         <div class="buy"><span class="qty"><button type="button" data-d="-1" aria-label="빼기">−</button><span>${q}</span><button type="button" data-d="1" aria-label="더하기">+</button></span>
           <button class="btn pri" type="button" data-add${S.cfg.on === false || v.av === 0 ? ' disabled' : ''}>${v.av === 0 ? '품절' : inCart ? '더 담기' : '담기'}</button></div>
@@ -383,17 +393,17 @@
   function paintSide() {
     const keep = $('fNm') ? formVal() : null;
     const ls = cartLines(), live = ls.filter(l => !l.gone);
-    let goods = 0, list = 0; live.forEach(l => { goods += staff(l.v.p, l.x.b) * l.c.qty; list += l.v.p * l.c.qty; });
+    let goods = 0, list = 0, org = 0; live.forEach(l => { goods += staff(l.v.p, l.x.b) * l.c.qty; list += l.v.p * l.c.qty; org += (poOf(l.x, l.v) || l.v.p) * l.c.qty; });
     const ship = live.length ? Number(S.cfg.ship || 0) : 0;
     $('sideSub').textContent = live.length ? `${live.reduce((s, l) => s + l.c.qty, 0)}개` : '';
     const f = keep || { buyer: ME(), nm: addr.nm || ME(), tel: addr.tel || '', zip: addr.zip || '', addr: addr.addr || '', detail: addr.detail || '', memo: '', keep: !!addr.zip };
     $('sideBody').innerHTML = !ls.length ? `<div class="empty" style="padding:36px 16px">담은 상품이 없어요<br><span style="font-size:12.5px">상품에서 [담기] 를 눌러 주세요</span></div>` : `
       <div>${ls.map((l, i) => l.gone ? `<div class="line"><span></span><div class="t"><b>판매가 끝났거나 품절된 상품</b><span>빼 주세요</span></div><div class="r"><button class="x0" data-rm="${i}" type="button">빼기</button></div></div>` : `
         <div class="line"><img src="${esc(safe(l.v.img) || safe(l.x.img[0]))}" alt="" loading="lazy" referrerpolicy="no-referrer">
-          <div class="t"><b>${esc(l.x.name)}</b><span><i class="dot"></i> ${BR[l.x.b]}${l.v.o && l.v.o !== '단일' ? ' · ' + esc(l.v.o) : ''} · ${won(staff(l.v.p, l.x.b))}</span>
+          <div class="t"><b>${esc(l.x.name)}</b><span><i class="dot"></i> ${BR[l.x.b]}${l.v.o && l.v.o !== '단일' ? ' · ' + esc(l.v.o) : ''}</span><span>${p3(poOf(l.x, l.v), l.v.p, staff(l.v.p, l.x.b))}</span>
             <span class="qty"><button type="button" data-q="${i}" data-d="-1">−</button><span>${l.c.qty}</span><button type="button" data-q="${i}" data-d="1">+</button></span></div>
           <div class="r"><b>${won(staff(l.v.p, l.x.b) * l.c.qty)}</b>${S.cfg.rates[l.x.b] ? `<s style="font-size:12px;color:var(--t3)">${won(l.v.p * l.c.qty)}</s>` : ''}<button class="x0" data-rm="${i}" type="button">빼기</button></div></div>`).join('')}</div>
-      <div class="sum"><div><span>공홈 판매가</span><s>${won(list)}</s></div><div><span>직원 할인</span><span class="sv">−${won(list - goods)}</span></div><div><span>상품 금액</span><span>${won(goods)}</span></div><div><span>배송비 (대한통운)</span><span>${won(ship)}</span></div><div class="tot"><span>보낼 금액</span><span>${won(goods + ship)}</span></div></div>
+      <div class="sum"><div><span>공홈 정가</span><s>${won(org)}</s></div><div><span>상시할인가</span><s>${won(list)}</s></div><div><span>직원 할인 (상시할인가에서)</span><span class="sv">−${won(list - goods)}</span></div><div><span>상품 금액</span><span>${won(goods)}</span></div><div><span>배송비 (대한통운)</span><span>${won(ship)}</span></div><div class="tot"><span>보낼 금액</span><span>${won(goods + ship)}</span></div></div>
       <div class="form">
         <h4>주문하는 사람</h4>
         <label>이름 (오피스 이름)<input class="inp" id="fBuyer" value="${esc(f.buyer)}" ${ME() ? 'readonly' : ''} placeholder="이름" autocomplete="name"></label>
@@ -451,7 +461,7 @@
       const sig = JSON.stringify(S.cart) + f.nm + f.zip + f.detail;
       const key = send && send.sig === sig && Date.now() - send.at < 30 * 60e3 ? send.key : newKey();     // 응답이 끊겨 다시 눌러도 주문은 한 번
       lsSet(LS_SENT, JSON.stringify({ key, sig, at: Date.now() }));
-      const items = ls.map(l => ({ b: l.x.b, id: l.x.id, vid: l.v.id, name: l.x.name, o: l.v.o && l.v.o !== '단일' ? l.v.o : '', img: safe(l.v.img) || safe(l.x.img[0]), p: l.v.p, qty: l.c.qty, rows: l.v.rows.map(r => ({ b: r.b, n: r.n, o: r.o, c: r.c, q: r.q })) }));
+      const items = ls.map(l => ({ b: l.x.b, id: l.x.id, vid: l.v.id, name: l.x.name, o: l.v.o && l.v.o !== '단일' ? l.v.o : '', img: safe(l.v.img) || safe(l.x.img[0]), p: l.v.p, po: poOf(l.x, l.v) || null, qty: l.c.qty, rows: l.v.rows.map(r => ({ b: r.b, n: r.n, o: r.o, c: r.c, q: r.q })) }));
       const j = await fn({ action: 'order', key, buyer: f.buyer, items, rcvr: { nm: f.nm, tel: f.tel, zip: f.zip, addr: f.addr, detail: f.detail }, memo: f.memo });
       lsDel(LS_SENT); S.cart = []; saveCart(); paintCartN(); S.busy = false; side(false); paintShop();
       done(j.order, j.pay);
@@ -541,9 +551,9 @@
     const sp = o.status === 'cancelled' ? ['mute', '취소됨'] : o.status === 'paid' ? ['ok', '입금 확인'] : ['bad', '입금 대기'];
     return `<div class="ord${o.status === 'cancelled' ? ' cx' : ''}" data-id="${o.id}">
       <div><div class="oh"><b>${esc(o.no)}</b><span>${when(o.created_at)}</span>${admin ? `<span>· 주문 <b style="font-size:13px">${esc(o.buyer)}</b></span>` : ''}<span class="pill ${sp[0]}">${sp[1]}</span></div>
-        <div class="its">${(o.items || []).map(it => `<div class="it"><img src="${esc(safe(it.img))}" alt="" loading="lazy" referrerpolicy="no-referrer"><span><i class="dot"></i> ${esc(BR[it.b] || '')} · ${esc(it.name)}${it.o ? ' · ' + esc(it.o) : ''}</span><i>${won(it.unit)} × ${it.qty}</i></div>`).join('')}</div>
+        <div class="its">${(o.items || []).map(it => `<div class="it"><img src="${esc(safe(it.img))}" alt="" loading="lazy" referrerpolicy="no-referrer"><span><i class="dot"></i> ${esc(BR[it.b] || '')} · ${esc(it.name)}${it.o ? ' · ' + esc(it.o) : ''}</span><i>${p3(it.po, it.p, it.unit)} × ${it.qty}</i></div>`).join('')}</div>
         <div class="to">받는 분 ${esc(o.rcvr_nm)} · ${esc(o.rcvr_tel)} · ${esc(o.rcvr_addr)}${o.memo ? ' · ' + esc(o.memo) : ''}</div></div>
-      <div class="st"><span class="tt">${won(o.total)}</span><span style="color:var(--t3)">상품 ${won(o.goods_total)} + 배송비 ${won(o.ship_fee)}${o.list_total > o.goods_total ? ` · ${won(o.list_total - o.goods_total)} 아낌` : ''}</span>
+      <div class="st"><span class="tt">${won(o.total)}</span><span style="color:var(--t3)">직원가 ${won(o.goods_total)} + 배송비 ${won(o.ship_fee)} · 상시할인가 ${won(o.list_total)}${(() => { const g = (o.items || []).reduce((s, it) => s + (it.po || it.p) * it.qty, 0); return g > o.list_total ? ` · 정가 ${won(g)}` : ''; })()}</span>
         <span><span class="pill ${ek}">${ek === 'ok' ? '✓' : ek === 'bad' ? '!' : '…'}</span> ${esc(et)}</span><span><span class="pill ${ck}">${ck === 'ok' ? '✓' : ck === 'bad' ? '!' : '…'}</span> ${esc(ct)}</span>
         ${o.paid_at ? `<span style="color:var(--t3)">입금 확인 ${when(o.paid_at)}${o.paid_by ? ' · ' + esc(o.paid_by) : ''}</span>` : ''}${o.cancelled_at ? `<span style="color:var(--t3)">취소 ${when(o.cancelled_at)}${o.cancelled_by ? ' · ' + esc(o.cancelled_by) : ''}</span>` : ''}
         <div class="acts">${admin ? adminActs(o) : o.status === 'ordered' ? `<button class="btn" data-acc type="button">송금 계좌 보기</button>` : ''}</div></div></div>`;
@@ -638,10 +648,10 @@
     if (role !== 'master') lsSet('brightbeed_viewer_ver', '2'); lsSet('brightbeed_role', role); lsSet('brightbeed_auth_ver', AUTH_VERSION); if (role === 'master') lsSet('brightbeed_master_ver', MASTER_PIN_VER); lsSet('brightbeed_unlocked', '1');
     $('lock').hidden = true; start();
   });
-  /* 직원에게 열기 전까지 관리자 PIN 기기만 (2026-11-26 사장님 "직원들 안보이게 우선 세팅") — 열 때 STAFF_OPEN = true */
+  /* 대표 전용 — 대표가 아니면 아무것도 안 불러오고 '준비 중'만 (직원에게 열 때 STAFF_OPEN = true) */
   const STAFF_OPEN = false;
   async function start() {
-    if (!STAFF_OPEN && !isAdmin()) { $('stamp').textContent = ''; $('cartBtn').hidden = $('tabShop').hidden = $('tabMine').hidden = true; document.body.insertAdjacentHTML('beforeend', '<div class="empty" style="margin:40px 16px">준비 중인 화면이에요</div>'); return; }
+    if (!STAFF_OPEN && !isAdmin()) { $('stamp').textContent = ''; $('cartBtn').hidden = $('tabShop').hidden = $('tabMine').hidden = true; $('board').hidden = true; document.body.insertAdjacentHTML('beforeend', '<div class="empty" style="margin:40px 16px">준비 중인 화면이에요</div>'); return; }
     $('tabAdmin').hidden = !isAdmin();
     try { await Promise.all([loadItems(false), loadCfg()]); } catch (e) {
       $('stamp').className = 'stamp bad'; $('stamp').style.display = 'block';

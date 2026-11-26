@@ -13645,12 +13645,6 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-title">1점 리뷰 관리</div>
           <div class="sub-module-sub">코페리 · 아페티 · 코즈미 쇼핑몰 1점 리뷰 — 글 · 사진 · 작성자 연락처를 한곳에</div>
         </div>
-        <!-- 직원 할인 스토어 = store/ (2026-11-26 사장님 "직원 할인 스토어 … 전 브랜드 구매 가능(판매중인 제품들) … 재고는 자동으로 erp 차감 … 대한통운 건별접수"). 전 직원 · 주문 관리는 관리자 PIN -->
-        <div class="sub-module m-store" id="storeCard" onclick="openStorePage()" hidden>
-          <div class="sub-module-icon">🛍️</div>
-          <div class="sub-module-title">직원 할인 스토어</div>
-          <div class="sub-module-sub">전 브랜드 판매중 상품을 직원가로 — 담고 주소만 적으면 재고 차감 · 대한통운 접수까지 자동</div>
-        </div>
         <div class="sub-module m-notice" onclick="triggerNotice()">
           <div class="sub-module-icon">🔐</div>
           <div class="sub-module-title">업무용 비밀번호 모음</div>
@@ -13743,6 +13737,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <div class="sub-module-title">마일리지 항공권</div>
           <div class="sub-module-sub">프레스티지 · 일등석 왕복 · 대한항공 + 스카이팀 직항 · 30분마다 자동 · 전승훈 · 전수빈만</div>
           <div class="sub-module-tag">NEW</div>
+        </div>
+        <!-- 직원 할인 스토어 = store/ (2026-11-26). 사장님 "관리자 전용으로 내려줘 … 절대 직원한테 보이면안돼 대표한테만" — 관리자 PIN + 전승훈 · 전수빈 (execHasAccess, 마일리지와 같은 판정) -->
+        <div class="sub-module m-store" id="storeCard" onclick="openStorePage()" hidden>
+          <div class="sub-module-icon">🛍️</div>
+          <div class="sub-module-title">직원 할인 스토어</div>
+          <div class="sub-module-sub">전 브랜드 판매중 상품 직원가 · 재고 ERP 차감 · 대한통운 접수 · 전승훈 · 전수빈만</div>
+          <div class="sub-module-tag">ADMIN</div>
         </div>
         <div class="sub-module m-yearend" id="yearEndCard" onclick="triggerYearEnd()" hidden>
           <div class="sub-module-icon">🎉</div>
@@ -24058,7 +24059,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   const VIEW_GATES={
     viewPromoCalc:{ok:()=>secretOk(), msg:'대표 · 지희선 전용 화면입니다'},
     viewDesign:{ok:()=>designHasAccess(), msg:'디자인팀 전용 화면입니다'},
-    viewStore:{ok:()=>isMaster(), msg:'관리자 전용 화면입니다'},   // 직원 할인 스토어 — 직원에게 열기 전까지
+    viewStore:{ok:()=>execHasAccess(), msg:'대표 전용 화면입니다'},   // 직원 할인 스토어 — 관리자 PIN + 전승훈 · 전수빈만 (11-26)
   };
   function applyView(id){
     const gate=VIEW_GATES[id];
@@ -24897,7 +24898,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     // 1점 리뷰 관리(review/, 업무용 툴 카드, 2026-11-25) — 코페리 · 아페티 · 코즈미 쇼핑몰 1점 리뷰 + 주문에서 찾은 연락처. 맥미니 review-one → 프록시 /cs/reviews, 연락처는 사무실 인터넷에서만
     review:{view:'viewReview',path:'review/',title:'1점 리뷰 관리',keep:true,bridge:false},
     // 직원 할인 스토어(store/, 업무용 툴 카드, 2026-11-26) — 전 브랜드 판매중 상품을 직원가로. 맥미니 프록시 /erp/store · 엣지 함수 staff-store · 재고 ERP 차감 · 대한통운 건별 접수
-    store:{view:'viewStore',path:'store/',title:'직원 할인 스토어',keep:true,bridge:false,access:()=>isMaster()},   // 11-26 사장님 "직원들 안보이게 우선 세팅" — 관리자 PIN 기기만 (열 때 access · storeCard 를 풀면 됨)
+    store:{view:'viewStore',path:'store/',title:'직원 할인 스토어',keep:true,bridge:false,access(){ try{ return execHasAccess(); }catch(e){ return false; } }},   // 11-26 사장님 "관리자 전용으로 … 대표한테만" — 관리자 PIN + 전승훈 · 전수빈
     // 에이전트 학습(csagent/, CS팀 카카오톡 상담 → 에이전트 학습 탭의 버튼, 2026-11-25) — 볼 것(수정 · 학습 · 처음 보는 시나리오)만 · 정리된 답. 프록시 /cs/kakao-review · /cs/kakao-book. 시나리오 북 · 시험 답변을 합침
     csagent:{view:'viewCsagent',path:'csagent/',title:'에이전트 학습',keep:true,bridge:false},
     // 마케팅 회의록(meeting/, 업무용 툴 '주간&마케팅 회의록' 카드의 탭, 2026-11-24) — 사람별 세로 칸에 인스타 링크 · 미리보기 · 중복 경고. 저장 = 슈퍼베이스 mkt_meetings · mkt_meeting_links
@@ -41980,8 +41981,8 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   function snsRefreshAccess(){
     const c=document.getElementById('snsCard');
     if(c) c.hidden=!(isMaster() && execGetMe()===SNS_OWNER);
-    const sc=document.getElementById('storeCard');   // 직원 할인 스토어 — 직원에게 열기 전까지 관리자 PIN 기기만 (11-26)
-    if(sc) sc.hidden=!isMaster();
+    const sc=document.getElementById('storeCard');   // 직원 할인 스토어 — '관리자 전용' 폴더, 관리자 PIN + 전승훈 · 전수빈만 (11-26 사장님 "대표한테만")
+    if(sc) sc.hidden=!execHasAccess();
     if(typeof ueRefreshAccess==='function') ueRefreshAccess();   // 톱바 [✏️ 수정] — 같은 판정 (관리자 PIN + 전승훈)
     if(typeof _refreshModuleCounts==='function') _refreshModuleCounts();
   }
