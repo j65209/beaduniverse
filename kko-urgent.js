@@ -112,7 +112,25 @@
       var calls = j.off ? [] : (Array.isArray(j.openCalls) ? j.openCalls : []).filter(function (c) { return c && c.key; });   // 11-26 처리할 일도
       calls.sort(function (a, b) { return (isTodo(a) - isTodo(b)) || (hot(b) - hot(a)) || (Number(a.since || 0) - Number(b.since || 0)); });
       last = calls; notify(calls); draw(calls);
+      daily(j);
     }).catch(function () { /* 다음 분에 다시 */ });
+  }
+
+  /* 하루 한 번 재배송 · 교환 · 불량 요약 (2026-11-26 사장님 "매일매일 다 건별로 모아줘") — 16:30(KST) 넘어 처음 볼 때, 오늘 칸(지난 날 미발송 포함) 숫자만.
+     누르면 CS팀 장부. 탭이 여럿이어도 날짜를 localStorage 에 적어 한 번만 */
+  function daily(j) {
+    var now = Date.now(), k = new Date(now + 9 * 3600000), day = k.toISOString().slice(0, 10);
+    if (k.getUTCHours() * 60 + k.getUTCMinutes() < 16 * 60 + 30 || ls('kko_reship_daily') === day) return;
+    var rows = (Array.isArray(j.reship) ? j.reship : []).filter(function (r) { return r && (r.day === day || (r.day < day && r.status !== '발송함')); });
+    ls('kko_reship_daily', day);
+    if (!rows.length || !('Notification' in window) || Notification.permission !== 'granted') return;
+    var n = function (s) { return rows.filter(function (r) { return r.status === s; }).length; };
+    var by = {}; rows.forEach(function (r) { if (r.status !== '발송함') by[r.label || r.brand] = (by[r.label || r.brand] || 0) + 1; });
+    var body = '발송 대기 ' + n('발송 대기') + ' · 정보 대기 ' + n('정보 대기') + ' · 발송함 ' + n('발송함') + '\n' + Object.keys(by).map(function (b) { return b + ' ' + by[b]; }).join(' · ');
+    try {
+      var note = new Notification('📦 오늘 나갈 재배송 · 교환 · 불량 ' + rows.length + '건', {body: body, tag: 'kko-reship-' + day, icon: 'assets/icon-192.png?v=2'});
+      note.onclick = function () { note.close(); try { window.focus(); if (typeof triggerCs === 'function') triggerCs(); setTimeout(function () { var b = document.getElementById('rsBoxCs'); if (b) b.scrollIntoView({block: 'start'}); }, 500); } catch (e) { /* noop */ } };
+    } catch (e) { /* noop */ }
   }
 
   window.KkoUrgent = {tick: tick, who: WHO};
