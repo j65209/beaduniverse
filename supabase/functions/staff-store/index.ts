@@ -14,10 +14,17 @@
 //   POST {action:'order', key, buyer, items[], rcvr{nm,tel,zip,addr,detail}, memo}  주문 → 가려진 주문 + 입금 안내
 //   POST {action:'list', buyer?, all?, limit?}                주문 목록 (전화 · 주소 가림)
 //   POST {action:'erp', id, status:'done'|'fail'|'undone', detail?}
-//   POST {action:'pay', id, paid, by}                         입금 확인 / 취소
-//   POST {action:'cancel', id, by}                            주문 취소 (대한통운 접수 취소 시도 — 재고는 화면이 되돌림)
+//   POST {action:'claim', id, buyer}                          직원 [입금 완료] — 'claimed' + 전수빈 대표 화면 알림(notif_calls kind 'store')
+//   POST {action:'pay', id, paid, by}                         대표 [수락] (입금 완료 알린 주문만) / 수락 취소
+//   (2026-11-26 사장님 "입금 대기상태에서도 주문취소 가능하게 · 입금 완료 버튼은 수빈 대표한테 알림 · 확인되면 수락만 누를 수 있게")
+//   POST {action:'cancel', id, by, self?, buyer?}             주문 취소 — self 면 본인 주문 · 수락 전만 (대한통운 취소 시도, 재고는 화면 · 프록시가 되돌림)
 //   POST {action:'rebook', id, by}                            접수 실패 건 다시
-//   POST {action:'book_pending'}                              pg_cron — 운영일 때 대기 주문 접수
+//   POST {action:'book_pending'}                              pg_cron 10분 — 입금 기한 지난 주문 자동 취소 · 운영일 때 대기 주문 접수
+//   POST {action:'quota', buyer}                              내 분기 한도 (쓴 돈 · 남은 돈 · 같은 상품 몇 개)
+//   POST {action:'erp_queue'}                                 맥미니 프록시(1분) — 차감 안 끝난 주문 · 취소됐는데 재고가 빠져 있는 주문
+// 한도 (2026-11-26 사장님 "분기마다 규정 … 너무 많이 사면 안되니까. 한도같은거") — 서버가 막는다:
+//   분기(1~3 · 4~6 · 7~9 · 10~12월, 한국 시각) 1인 직원가 합계 limit_q · 같은 옵션 분기 same_max 개 · 남은 재고 low_stock 개 이하 상품 안 팖
+//   · 입금 대기 pay_hours 시간 지나면 자동 취소(재고는 프록시가 되돌림) · people[이름] = {limit} 또는 {block:true} 사람별 예외. 취소된 주문 · 배송비는 한도에 안 셈
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const URL_ = Deno.env.get('SUPABASE_URL')!;
@@ -33,7 +40,8 @@ const json = (body: unknown, status = 200) =>
 class Oops extends Error {}
 
 const LABEL: Record<string, string> = { '6A': '식스에이', YAR: '야르', PP: '프피', AKOI: '아코이', APT: '아페티', KOP: '코페리', KOZ: '코즈미' };
-const DEF = { rates: { '6A': 50, YAR: 50, APT: 40, KOZ: 40, PP: 30, KOP: 30, AKOI: 30 } as Record<string, number>, ship: 2000, bank: '카카오뱅크', account: '79422161042', holder: '전수빈', on: true, notice: '' };
+const DEF = { rates: { '6A': 50, YAR: 50, APT: 40, KOZ: 40, PP: 30, KOP: 30, AKOI: 30 } as Record<string, number>, ship: 2000, bank: '카카오뱅크', account: '3333113803973', holder: '전수빈', on: true, notice: '',
+  limit_q: 200000, same_max: 3, low_stock: 10, pay_hours: 48, people: {} as Record<string, { limit?: number; block?: boolean }> };
 type Cfg = typeof DEF;
 const str = (v: unknown, n: number) => String(v ?? '').replace(/[\u0000-\u001f]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, n);
 const int = (v: unknown) => { const x = Math.round(Number(v)); return Number.isFinite(x) ? x : NaN; };
@@ -43,7 +51,25 @@ export const staffPrice = (p: number, rate: number) => Math.floor((p * (100 - Ma
 async function cfg(): Promise<Cfg> {
   const { data } = await sb.from('app_kv').select('value').eq('key', 'staff_store').maybeSingle();
   const v = (data?.value ?? {}) as Partial<Cfg>;
-  return { ...DEF, ...v, rates: { ...DEF.rates, ...(v.rates ?? {}) } };
+  return { ...DEF, ...v, rates: { ...DEF.rates, ...(v.rates ?? {}) }, people: { ...(v.people ?? {}) } };
+}
+// ---------- 분기 한도 ----------
+/** 이번 분기 [시작, 끝) — 한국 시각 달력 분기 */
+export function quarterOf(ms = Date.now()) {
+  const k = new Date(ms + 9 * 3600_000), y = k.getUTCFullYear(), q = Math.floor(k.getUTCMonth() / 3);
+  const from = Date.UTC(y, q * 3, 1) - 9 * 3600_000, to = Date.UTC(y, q * 3 + 3, 1) - 9 * 3600_000;
+  return { y, q: q + 1, from, to, label: `${y}년 ${q + 1}분기 (${q * 3 + 1}~${q * 3 + 3}월)` };
+}
+async function quota(c: Cfg, buyer: string) {
+  const Q = quarterOf();
+  const { data } = await sb.from('staff_orders').select('id, goods_total, items, status').eq('buyer', buyer).neq('status', 'cancelled').is('deleted_at', null)
+    .gte('created_at', new Date(Q.from).toISOString()).lt('created_at', new Date(Q.to).toISOString());
+  const used = (data || []).reduce((s, o) => s + (o.goods_total || 0), 0), byVid: Record<string, number> = {};
+  for (const o of data || []) for (const i of (o.items || []) as Row[]) { const k = `${i.b}|${i.vid}`; byVid[k] = (byVid[k] || 0) + (i.qty || 0); }
+  const me = c.people[buyer] || {};
+  const limit = me.limit !== undefined && Number.isFinite(Number(me.limit)) ? Math.max(0, Number(me.limit)) : Math.max(0, Number(c.limit_q) || 0);
+  return { quarter: Q.label, from: new Date(Q.from).toISOString(), to: new Date(Q.to).toISOString(), limit, used, left: Math.max(0, limit - used), byVid,
+    same_max: Number(c.same_max) || 0, low_stock: Number(c.low_stock) || 0, pay_hours: Number(c.pay_hours) || 0, blocked: !!me.block, special: me.limit !== undefined };
 }
 async function cjConf() {
   const { data } = await sb.from('cj_config').select('env, sender').limit(1).maybeSingle();
@@ -66,7 +92,7 @@ function pub(o: Row) {
   return {
     id: o.id, no: orderNo(o), created_at: o.created_at, buyer: o.buyer, items: o.items, goods_total: o.goods_total, list_total: o.list_total, ship_fee: o.ship_fee, total: o.total,
     rcvr_nm: o.rcvr_nm, rcvr_tel: maskTel(o.rcvr_tel), rcvr_addr: maskAddr(o.rcvr_addr), memo: o.memo,
-    status: o.status, paid_at: o.paid_at, paid_by: o.paid_by, cancelled_at: o.cancelled_at, cancelled_by: o.cancelled_by,
+    status: o.status, claimed_at: o.claimed_at, paid_at: o.paid_at, paid_by: o.paid_by, cancelled_at: o.cancelled_at, cancelled_by: o.cancelled_by,
     erp_status: o.erp_status, erp_at: o.erp_at, erp_detail: o.erp_detail,
     cj_status: o.cj_status, cj_invc: o.cj_invc, cj_detail: o.cj_detail, cj_env: o.cj_env, cj_at: o.cj_at,
   };
@@ -138,6 +164,17 @@ async function order(b: Row) {
   if (rcvr.zip.length !== 5 || !rcvr.addr) throw new Oops('주소 찾기로 우편번호 · 주소를 넣어 주세요');
   if (!rcvr.detail) throw new Oops('상세 주소(동 · 호수)를 적어 주세요');
   const goods = items.reduce((s, i) => s + i.unit * i.qty, 0), list = items.reduce((s, i) => s + i.p * i.qty, 0);
+  // 한도 — 분기 금액 · 같은 상품 개수 · 재고 적은 상품 · 사람별 막음
+  const qo = await quota(c, buyer);
+  if (qo.blocked) throw new Oops('지금은 직원 스토어 주문이 막혀 있어요 — 대표님께 문의해 주세요');
+  if (qo.limit && goods > qo.left) throw new Oops(`${qo.quarter} 한도 ${qo.limit.toLocaleString()}원 중 ${qo.left.toLocaleString()}원 남았어요 — 이번 주문 ${goods.toLocaleString()}원`);
+  const add: Record<string, number> = {};
+  for (const i of items) add[`${i.b}|${i.vid}`] = (add[`${i.b}|${i.vid}`] || 0) + i.qty;
+  for (const i of items) {
+    const k = `${i.b}|${i.vid}`, n = (qo.byVid[k] || 0) + add[k];
+    if (qo.same_max && n > qo.same_max) throw new Oops(`${i.name}${i.o ? ` (${i.o})` : ''} — 같은 상품은 분기에 ${qo.same_max}개까지예요 (이번 분기 ${qo.byVid[k] || 0}개 샀어요)`);
+  }
+  for (const x of raw as Row[]) { const av = x.av === null || x.av === undefined || x.av === '' ? null : Number(x.av); if (qo.low_stock && av !== null && Number.isFinite(av) && av <= qo.low_stock) throw new Oops(`${str(x.name, 40)} — 남은 재고가 적어(${qo.low_stock}개 이하) 고객 주문이 먼저예요`); }
   const ship = Math.max(0, int(c.ship) || 0);
   const row = { client_key: key, buyer, items, goods_total: goods, list_total: list, ship_fee: ship, total: goods + ship,
     rcvr_nm: rcvr.nm, rcvr_tel: rcvr.tel, rcvr_zip: rcvr.zip, rcvr_addr: rcvr.addr, rcvr_detail: rcvr.detail, memo: str(b.memo, 300) };
@@ -152,6 +189,26 @@ async function order(b: Row) {
   return { order: pub(now ?? ins), cj: cjr, pay: payInfo(c, ins.total) };
 }
 const payInfo = (c: Cfg, total: number) => ({ bank: c.bank, account: c.account, holder: c.holder, total });
+
+/** 주문 취소 — 대한통운 접수도 취소 시도. 재고는 화면 · 맥미니 프록시(erp_queue)가 되돌린다 */
+async function cancelOrder(id: number, by: string) {
+  const { data: o } = await sb.from('staff_orders').select('*').eq('id', id).maybeSingle();
+  if (!o) throw new Oops('주문을 못 찾았어요');
+  if (o.status === 'cancelled') return { order: pub(o), cj_msg: '' };
+  let cjMsg = '';
+  const patch: Row = { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: by };
+  if (o.cj_status === 'booked' || o.cj_status === 'unknown') {
+    if (!o.cj_id) cjMsg = '대한통운 접수 기록이 없어 취소를 못 했어요 — CS팀 택배 접수 화면에서 확인해 주세요';
+    else {
+      const r = await cj({ action: 'cancel', id: o.cj_id, by: `직원 스토어 · ${by.slice(0, 30)}` }).catch((e) => ({ ok: false, error: String(e) }));
+      if (r.ok) patch.cj_status = 'cancelled';
+      else cjMsg = `대한통운 접수 취소 못 함: ${str((r as Row).error ?? (r as Row).detail ?? '', 160)} — 이미 집화됐을 수 있어요`;
+    }
+  } else if (o.cj_status === 'wait' || o.cj_status === 'failed') patch.cj_status = 'cancelled';
+  if (cjMsg) patch.cj_detail = cjMsg;
+  const { data } = await sb.from('staff_orders').update(patch).eq('id', id).neq('status', 'cancelled').select('*').maybeSingle();
+  return { order: pub(data ?? o), cj_msg: cjMsg };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
@@ -170,12 +227,30 @@ Deno.serve(async (req) => {
         for (const k of Object.keys(LABEL)) if (v.rates && v.rates[k] !== undefined) { const x = int(v.rates[k]); if (x >= 0 && x <= 90) rates[k] = x; }
         const nv = { ...old, rates, ship: Math.max(0, Math.min(20000, int(v.ship ?? old.ship) || 0)),
           bank: str(v.bank ?? old.bank, 30), account: str(v.account ?? old.account, 40), holder: str(v.holder ?? old.holder, 20),
-          on: v.on === undefined ? old.on : !!v.on, notice: str(v.notice ?? old.notice, 200) };
+          on: v.on === undefined ? old.on : !!v.on, notice: str(v.notice ?? old.notice, 200),
+          limit_q: Math.max(0, Math.min(10_000_000, int(v.limit_q ?? old.limit_q) || 0)), same_max: Math.max(0, Math.min(100, int(v.same_max ?? old.same_max) || 0)),
+          low_stock: Math.max(0, Math.min(1000, int(v.low_stock ?? old.low_stock) || 0)), pay_hours: Math.max(0, Math.min(720, int(v.pay_hours ?? old.pay_hours) || 0)),
+          people: v.people && typeof v.people === 'object' ? Object.fromEntries(Object.entries(v.people as Row).slice(0, 100).map(([k, x]: [string, any]) => [str(k, 40),
+            x && x.block ? { block: true } : { limit: Math.max(0, Math.min(10_000_000, int(x?.limit) || 0)) }]).filter(([k]) => k)) : old.people };
         await sb.from('app_kv').upsert({ key: 'staff_store', value: nv, updated_by: str(b.by, 40) || 'store', updated_at: new Date().toISOString() });
         return json({ ok: true, cfg: nv });
       }
       case 'order':
         return json({ ok: true, ...(await order(b)) });
+      case 'quota': {
+        const who = str(b.buyer, 40);
+        if (!who) return json({ ok: true, quota: null });
+        return json({ ok: true, quota: await quota(await cfg(), who) });
+      }
+      case 'erp_queue': {
+        const old = new Date(Date.now() - 60_000).toISOString(), since = new Date(Date.now() - 30 * 86400_000).toISOString();
+        const [a, c2] = await Promise.all([
+          sb.from('staff_orders').select('id, created_at, buyer, items').eq('erp_status', 'wait').neq('status', 'cancelled').is('deleted_at', null).lt('created_at', old).gte('created_at', since).order('id').limit(30),
+          sb.from('staff_orders').select('id, created_at, buyer, items').eq('status', 'cancelled').in('erp_status', ['done', 'wait', 'fail']).gte('created_at', since).order('id').limit(30),
+        ]);
+        const slim = (o: Row) => ({ id: o.id, no: orderNo(o), buyer: o.buyer, items: (o.items || []).map((i: Row) => ({ qty: i.qty, rows: i.rows })) });
+        return json({ ok: true, deduct: (a.data || []).map(slim), undo: (c2.data || []).map(slim) });
+      }
       case 'list': {
         let q = sb.from('staff_orders').select('*').is('deleted_at', null).order('id', { ascending: false }).limit(Math.max(1, Math.min(300, int(b.limit) || 100)));
         if (!b.all) { const who = str(b.buyer, 40); if (!who) return json({ ok: true, orders: [] }); q = q.eq('buyer', who); }
@@ -190,31 +265,34 @@ Deno.serve(async (req) => {
         if (!data) throw new Oops('주문을 못 찾았어요');
         return json({ ok: true, order: pub(data) });
       }
+      case 'claim': {
+        const who = str(b.buyer, 40);
+        const { data } = await sb.from('staff_orders').update({ status: 'claimed', claimed_at: new Date().toISOString() })
+          .eq('id', int(b.id)).eq('buyer', who).eq('status', 'ordered').is('deleted_at', null).select('*').maybeSingle();
+        if (!data) throw new Oops('입금 대기 중인 내 주문만 알릴 수 있어요');
+        const no = orderNo(data);
+        await sb.from('notif_calls').insert({ kind: 'store', ref: `store:${data.id}`, targets: ['전수빈'], until_at: new Date(Date.now() + 7 * 86400_000).toISOString(),
+          title: `직원 스토어 입금 완료 — ${data.buyer}`, body: `${data.buyer} 님이 ${Number(data.total).toLocaleString()}원 입금했다고 알렸어요 (${no}).\n통장 확인 뒤 직원 할인 스토어 → 주문 관리에서 [수락] 을 눌러 주세요.` });
+        return json({ ok: true, order: pub(data) });
+      }
       case 'pay': {
         const paid = !!b.paid;
-        const { data } = await sb.from('staff_orders').update(paid ? { status: 'paid', paid_at: new Date().toISOString(), paid_by: str(b.by, 40) } : { status: 'ordered', paid_at: null, paid_by: null })
-          .eq('id', int(b.id)).neq('status', 'cancelled').select('*').maybeSingle();
-        if (!data) throw new Oops('주문을 못 찾았어요 (취소된 주문일 수 있어요)');
+        const q = sb.from('staff_orders').update(paid ? { status: 'paid', paid_at: new Date().toISOString(), paid_by: str(b.by, 40) } : { status: 'claimed', paid_at: null, paid_by: null })
+          .eq('id', int(b.id)).eq('status', paid ? 'claimed' : 'paid');
+        const { data } = await q.select('*').maybeSingle();
+        if (!data) throw new Oops(paid ? '직원이 [입금 완료] 를 누른 주문만 수락할 수 있어요' : '수락된 주문이 아니에요');
+        if (paid) await sb.from('notif_calls').update({ closed_at: new Date().toISOString() }).eq('ref', `store:${data.id}`).is('closed_at', null);
         return json({ ok: true, order: pub(data) });
       }
       case 'cancel': {
-        const id = int(b.id);
-        const { data: o } = await sb.from('staff_orders').select('*').eq('id', id).maybeSingle();
-        if (!o) throw new Oops('주문을 못 찾았어요');
-        if (o.status === 'cancelled') return json({ ok: true, order: pub(o) });
-        let cjMsg = '';
-        const patch: Row = { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: str(b.by, 40) };
-        if (o.cj_status === 'booked' || o.cj_status === 'unknown') {
-          if (!o.cj_id) cjMsg = '대한통운 접수 기록이 없어 취소를 못 했어요 — CS팀 택배 접수 화면에서 확인해 주세요';
-          else {
-            const r = await cj({ action: 'cancel', id: o.cj_id, by: `직원 스토어 · ${str(b.by, 30)}` }).catch((e) => ({ ok: false, error: String(e) }));
-            if (r.ok) patch.cj_status = 'cancelled';
-            else cjMsg = `대한통운 접수 취소 못 함: ${str(r.error ?? r.detail ?? '', 160)} — 이미 집화됐을 수 있어요`;
-          }
-        } else if (o.cj_status === 'wait' || o.cj_status === 'failed') patch.cj_status = 'cancelled';
-        if (cjMsg) patch.cj_detail = cjMsg;
-        const { data } = await sb.from('staff_orders').update(patch).eq('id', id).select('*').single();
-        return json({ ok: true, order: pub(data!), cj_msg: cjMsg });
+        if (b.self) {
+          const { data: o } = await sb.from('staff_orders').select('buyer, status').eq('id', int(b.id)).maybeSingle();
+          if (!o || o.buyer !== str(b.buyer, 40)) throw new Oops('내 주문만 취소할 수 있어요');
+          if (!['ordered', 'claimed'].includes(o.status)) throw new Oops(o.status === 'paid' ? '입금이 확인된 주문은 대표님께 취소를 요청해 주세요' : '이미 취소된 주문이에요');
+        }
+        const r = await cancelOrder(int(b.id), str(b.by, 40) + (b.self ? ' (본인)' : ''));
+        await sb.from('notif_calls').update({ closed_at: new Date().toISOString() }).eq('ref', `store:${int(b.id)}`).is('closed_at', null);
+        return json({ ok: true, ...r });
       }
       case 'rebook': {
         const r = await book(int(b.id), { by: str(b.by, 40), retry: true });
@@ -226,7 +304,13 @@ Deno.serve(async (req) => {
         // 'booking' 으로 10분 넘게 멈춘 것 = 응답 전에 끊김 → 접수됐는지 모름 (다시 보내지 않음)
         await sb.from('staff_orders').update({ cj_status: 'unknown', cj_detail: '접수 중 끊김 — 접수됐는지 CS팀 택배 접수 내역에서 확인 필요' })
           .eq('cj_status', 'booking').lt('cj_at', new Date(Date.now() - 10 * 60_000).toISOString());
-        if (c.env !== 'prod') return json({ ok: true, env: c.env, booked: 0 });
+        // 입금 기한 지난 주문 — 자동 취소 (재고는 맥미니 프록시가 erp_queue 로 되돌림)
+        const sc = await cfg(), expired: number[] = [];
+        if (Number(sc.pay_hours) > 0) {
+          const { data: ex } = await sb.from('staff_orders').select('id').eq('status', 'ordered').is('deleted_at', null).lt('created_at', new Date(Date.now() - Number(sc.pay_hours) * 3600_000).toISOString()).limit(30);
+          for (const o of ex || []) { try { await cancelOrder(o.id, `입금 기한 ${sc.pay_hours}시간 지남 · 자동`); expired.push(o.id); } catch (e) { console.error('auto cancel', o.id, e); } }
+        }
+        if (c.env !== 'prod') return json({ ok: true, env: c.env, booked: 0, expired });
         const { data } = await sb.from('staff_orders').select('id').eq('cj_status', 'wait').neq('status', 'cancelled').is('deleted_at', null).order('id').limit(20);
         const out = [];
         for (const o of data || []) out.push({ id: o.id, ...(await book(o.id)) });

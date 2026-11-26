@@ -5,6 +5,7 @@
    · 기록 = 창이 뜨면 '봤음', [확인]을 누르면 '확인' (notif_call_mark). 누가 눌렀는지는 서버에서 watch 열쇠로만 읽는다 — 직원 화면에서는 못 본다.
    · kind 'meeting' = 마케팅 회의록 미작성 알림 (2026-11-24 사장님 "수요일 오후2시까지 미작성 인원들 알림뜨게해줘") — 서버가 수요일 10시 · 13시 · 13시 30분 · 14시에
      아직 아무것도 안 넣은 참여자에게만 보낸다(함수 mkt_meeting_nudge, cron mkt-meeting-nudge-*, 그날 연차는 뺌). [회의록 열기] / [확인], 넣으면 저절로 닫힘, 회의록을 열어 둔 화면엔 창을 안 띄움.
+   · kind 'store' = 직원 할인 스토어 [입금 완료] 알림 (2026-11-26, 엣지 함수 staff-store 가 전수빈 앞으로) — [주문 관리 열기] / [확인], 수락 · 취소하면 저절로 닫힘.
    · kind 'ask' = [확인] 창 대신 알림 허용 창(notif-ask.js)을 다시 띄운다 — PC 마다 한 번 (사장님 "알림신청 허용 거부 다시 띄워").
    · 글을 쓰는 중이면 창은 뜨되 글 칸을 빼앗지 않는다. 바깥을 눌러도 안 닫히고, Esc 는 10분 뒤 다시. 휴대폰에서도 뜬다. index.html 이 맨 끝에서 부른다 */
 (function () {
@@ -53,11 +54,11 @@ function css() {
 }
 function draw() {
   if (!call || el || Date.now() < rest) return;
-  const mt = call.kind === 'meeting';
-  if (mt && onMeeting()) return;
+  const mt = call.kind === 'meeting' || call.kind === 'store';
+  if (call.kind === 'meeting' && onMeeting()) return;
   css();
   el = document.createElement('div'); el.id = 'notifCall';
-  el.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="ncT"><h2 id="ncT">${E(call.title)}</h2><p>${E(call.body)}</p>${mt ? '<button type="button" data-n="go">회의록 열기</button>' : ''}<button type="button" data-n="ok"${mt ? ' class="sub"' : ''}>확인</button></div>`;
+  el.innerHTML = `<div role="dialog" aria-modal="true" aria-labelledby="ncT"><h2 id="ncT">${E(call.title)}</h2><p>${E(call.body)}</p>${mt ? `<button type="button" data-n="go">${call.kind === 'store' ? '주문 관리 열기' : '회의록 열기'}</button>` : ''}<button type="button" data-n="ok"${mt ? ' class="sub"' : ''}>확인</button></div>`;
   el.addEventListener('click', e => { const b = e.target.closest('button'); if (b) ok(b.dataset.n === 'go'); });
   document.body.appendChild(el);
   if (!typing()) el.querySelector('button').focus({preventScroll: true});
@@ -66,19 +67,20 @@ function draw() {
 }
 /* 크롬 알림 — 이 PC 에서 한 번. 눌러 들어오면 '알림으로 봄' */
 function ring() {
-  const mt = call.kind === 'meeting', k = 'bb_call_' + call.id; if (ls(k) || perm() !== 'granted') return; ls(k, '1');
+  const mt = call.kind === 'meeting' || call.kind === 'store', k = 'bb_call_' + call.id; if (ls(k) || perm() !== 'granted') return; ls(k, '1');
   try {
     const n = new Notification(call.title, {body: call.body, tag: 'bb-call-' + call.id, icon: 'assets/icon-192.png?v=2', requireInteraction: true});
-    n.onclick = () => { window.focus(); n.close(); via = 'notif'; rest = 0; try { if (window.bbNotifSeen) window.bbNotifSeen(); } catch (e) { /* noop */ } if (mt) { if (call) ok(true); else goMeeting(); } else draw(); };
+    n.onclick = () => { window.focus(); n.close(); via = 'notif'; rest = 0; try { if (window.bbNotifSeen) window.bbNotifSeen(); } catch (e) { /* noop */ } if (mt) { if (call) ok(true); else (call && call.kind === 'store' ? goStore : goMeeting)(); } else draw(); };
   } catch (e) { /* 휴대폰 크롬 등 — 창만 */ }
 }
 function hide() { if (el) { el.remove(); el = null; } }
+function goStore() { ls('store_go', 'admin'); try { if (typeof openStorePage === 'function') { openStorePage(); return; } } catch (e) { /* 아래로 */ } location.hash = 'store'; }
 function goMeeting() { try { if (typeof openMeetingPage === 'function') { openMeetingPage(); return; } } catch (e) { /* 아래로 */ } location.hash = 'meeting'; }
 async function ok(go) {
   if (!call || sending) return; sending = true;
   const b = el && (el.querySelector('[data-n="' + (go ? 'go' : 'ok') + '"]') || el.querySelector('button')); if (b) { b.disabled = true; b.textContent = go ? '여는 중…' : '보내는 중…'; }
   if (go) {   // 회의록부터 열고 기록은 뒤에서
-    const id = call.id; call = null; hide(); goMeeting();
+    const id = call.id, st = call.kind === 'store'; call = null; hide(); (st ? goStore : goMeeting)();
     mark(true, id).then(() => ls('bb_call_ack', id + ' ' + Date.now())).catch(() => { /* 다음 차례에 다시 뜬다 */ });
     setTimeout(() => { sending = false; }, 1500);
     return;
@@ -93,7 +95,7 @@ async function ok(go) {
 document.addEventListener('keydown', e => { if (e.key !== 'Escape' || !el || sending) return; e.stopPropagation(); rest = Date.now() + 10 * 60e3; hide(); }, true);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(pull, 300); });
 addEventListener('storage', e => { if (e.key === 'bb_call_ack') pull(); });
-if (window.OfficeLive) window.OfficeLive.on(['notif_calls', 'mkt_meeting_links'], pull);
+if (window.OfficeLive) window.OfficeLive.on(['notif_calls', 'mkt_meeting_links', 'staff_orders'], pull);
 setInterval(pull, 60e3);
 setTimeout(pull, 2500);
 window.BBNotifCall = {pull, state: () => ({call, via})};
