@@ -14840,7 +14840,12 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
           <button type="button" class="cjb-btn" onclick="document.getElementById('cjbLQ').value='';cjbList()" title="다시 불러오기">↻</button>
           <button type="button" class="cjb-btn pri" onclick="cjbPrintSel()" title="체크한 줄의 운송장을 인쇄 (운송장번호가 있는 건만)">🖨 선택한 운송장 출력</button>
         </div>
-        <div class="cjb-row"><span class="cjb-seg" id="cjbLDv" role="group" aria-label="구분으로 거르기"><button type="button" data-v="" aria-pressed="true" onclick="cjbListDv('')">전체</button><button type="button" data-v="01" aria-pressed="false" onclick="cjbListDv('01')">발송</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbListDv('02')">반품 회수 기록</button></span></div>
+        <div class="cjb-row"><span class="cjb-seg" id="cjbLDv" role="group" aria-label="구분으로 거르기"><button type="button" data-v="" aria-pressed="true" onclick="cjbListDv('')">전체</button><button type="button" data-v="01" aria-pressed="false" onclick="cjbListDv('01')">발송</button><button type="button" data-v="02" aria-pressed="false" onclick="cjbListDv('02')">반품 회수 기록</button></span>
+          <!-- 11-26 사장님 "cs팀안에 대한통운 전산이 있는정도로" — 기간 · 단계별 개수 · 엑셀 (CJ 전산 접수 현황처럼) -->
+          <span class="cjb-seg" id="cjbLPer" role="group" aria-label="접수 기간"><button type="button" data-v="1" aria-pressed="false" onclick="cjbListPer('1')">오늘</button><button type="button" data-v="7" aria-pressed="true" onclick="cjbListPer('7')">7일</button><button type="button" data-v="30" aria-pressed="false" onclick="cjbListPer('30')">30일</button><button type="button" data-v="90" aria-pressed="false" onclick="cjbListPer('90')">90일</button></span>
+          <input class="cjb-in" id="cjbLFrom" type="date" aria-label="접수일 부터" style="width:auto" onchange="cjbListPer('')"> ~ <input class="cjb-in" id="cjbLTo" type="date" aria-label="접수일 까지" style="width:auto" onchange="cjbListPer('')">
+          <button type="button" class="cjb-btn" onclick="cjbListXlsx()" title="지금 보이는 줄을 엑셀로 (전화는 가린 채)">⬇ 엑셀</button></div>
+        <div class="cjb-row"><span class="cjb-seg" id="cjbLStg" role="group" aria-label="단계로 거르기"></span></div>
         <p class="cjb-note">발송(건별 · 파일)은 <b>자체 출력</b>이라 접수하면 운송장번호가 바로 붙고, 체크해서 [운송장 출력]으로 인쇄해요. 자체 출력 건은 CJ 가 취소를 안 받아요 — 안 보내면 운임에서 빠져요. 반품 회수는 기사님이 운송장을 가져가요: 취소는 접수가 CJ 에 반영된 뒤(보통 1분, 길면 10분쯤)부터, 기사님이 집화하면 안 돼요. 운송장번호 · 최근 단계는 <b>30분마다 CJ 에서 가져와</b> 채워요.</p>
         <div class="cjb-out" id="cjbLOut"></div>
         <div class="cjb-tbl-wrap" id="cjbLWrap" hidden><table class="cjb-tbl" id="cjbLTbl"></table></div>
@@ -19939,10 +19944,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const out=document.getElementById('cjbLOut'), wrap=document.getElementById('cjbLWrap'), tbl=document.getElementById('cjbLTbl');
     if(keepMsg!==true) out.innerHTML='<div class="cjb-msg">불러오는 중…</div>';
     try{
-      const j=await _cjbCall({action:'list',limit:200,q:_cjbV('cjbLQ'),dv:_cjb.ldv||''});
+      _cjbPerFill();
+      const j=await _cjbCall({action:'list',limit:1000,q:_cjbV('cjbLQ'),dv:_cjb.ldv||'',from:_cjbV('cjbLFrom'),to:_cjbV('cjbLTo')});
       if(!j.ok) throw new Error(j.error||'못 불러왔어요');
-      const rows=j.rows||[];
-      if(keepMsg!==true) out.innerHTML=rows.length ? '' : '<div class="cjb-msg">접수 기록이 없어요</div>';
+      _cjb.lrows=j.rows||[];
+      _cjbStgDraw();
+      const rows=_cjb.lrows.filter(r=>!_cjb.lstg || _cjbStgOf(r)===_cjb.lstg);
+      if(keepMsg!==true) out.innerHTML=rows.length ? (_cjb.lrows.length>=1000 ? '<div class="cjb-msg">1,000줄까지만 보여요 — 기간을 줄여 주세요</div>' : '') : '<div class="cjb-msg">이 기간에 접수 기록이 없어요</div>';
       wrap.hidden=!rows.length;
       const md=t=>{ const d=new Date(t); if(isNaN(d)) return ''; const k=new Date(d.getTime()+9*3600e3); return `${k.getUTCMonth()+1}/${k.getUTCDate()} ${String(k.getUTCHours()).padStart(2,'0')}:${String(k.getUTCMinutes()).padStart(2,'0')}`; };
       const canPrint=r=>!!r.invc_no && (r.status==='booked' || r.status==='unknown');
@@ -19961,6 +19969,45 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
             + `<td>${_cjbEsc(r.created_by)}</td><td style="white-space:nowrap">${btns}</td></tr>`;
         }).join('') + `</tbody>`;
     }catch(e){ out.innerHTML=`<div class="cjb-msg err">${_cjbEsc((e && e.message) || String(e))}</div>`; wrap.hidden=true; }
+  }
+  // 기간 (11-26) — 처음은 7일. 날짜 칸을 직접 바꾸면 기간 단추는 꺼짐
+  const _cjbYmd=d=>{ const k=new Date(d.getTime()+9*3600e3); return k.toISOString().slice(0,10); };
+  function _cjbPerFill(){
+    if(_cjb.lper===undefined) _cjb.lper='7';
+    if(!_cjb.lper) return;
+    const n=Number(_cjb.lper), now=new Date();
+    _cjbSet('cjbLTo',_cjbYmd(now)); _cjbSet('cjbLFrom',_cjbYmd(new Date(now.getTime()-(n-1)*864e5)));
+  }
+  function cjbListPer(v){ _cjb.lper=v; document.querySelectorAll('#cjbLPer button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v))); cjbList(); }
+  // 단계 (CJ 상품추적 코드: 11 집화 · 41~44 간선 · 82 배송출발 · 91 배송완료) — 30분마다 sync 가 채운 최근 단계로 나눔
+  const CJB_STG=[['','전체'],['wait','집화 전'],['move','이동 중'],['out','배송 출발'],['done','배송 완료'],['bad','실패 · 취소']];
+  function _cjbStgOf(r){
+    if(r.status==='failed' || r.status==='cancelled') return 'bad';
+    const c=String(r.trk_code||'');
+    if(c==='91') return 'done';
+    if(c==='82') return 'out';
+    if(c) return 'move';
+    return 'wait';
+  }
+  function _cjbStgDraw(){
+    const el=document.getElementById('cjbLStg'); if(!el) return;
+    const n={}; (_cjb.lrows||[]).forEach(r=>{ const k=_cjbStgOf(r); n[k]=(n[k]||0)+1; });
+    const cur=_cjb.lstg||'';
+    el.innerHTML=CJB_STG.map(([k,nm])=>`<button type="button" aria-pressed="${k===cur}" onclick="cjbListStg('${k}')">${nm} <b>${k ? (n[k]||0) : (_cjb.lrows||[]).length}</b></button>`).join('');
+  }
+  function cjbListStg(k){ _cjb.lstg=k; cjbList(); }
+  function cjbListXlsx(){
+    if(!window.XLSX){ alert('엑셀 도구를 못 불러왔어요 — 새로고침 후 다시'); return; }
+    const rows=(_cjb.lrows||[]).filter(r=>!_cjb.lstg || _cjbStgOf(r)===_cjb.lstg);
+    if(!rows.length){ alert('내려받을 줄이 없어요'); return; }
+    const kst=t=>{ const d=new Date(t); return isNaN(d) ? '' : new Date(d.getTime()+9*3600e3).toISOString().slice(0,16).replace('T',' '); };
+    const stNm=Object.fromEntries(CJB_STG);
+    const head=['접수 시각','서버','구분','출력','받는분','받는분전화번호','받는분주소','상품명','박스수량','고객주문번호','운송장번호','원 운송장번호','반품 사유','접수 상태','단계','최근 단계','단계 시각','출력 횟수','담당'];
+    const aoa=[head].concat(rows.map(r=>[kst(r.created_at),r.env==='prod' ? '운영' : '시험',r.rcpt_dv==='02' ? '반품 회수' : '발송',r.prt_st==='02' ? '자체 출력' : 'CJ 출력',r.rcvr_nm||'',r.rcvr_tel||'',r.rcvr_addr||'',r.gds_nm||'',r.box_qty||'',r.cust_use_no||'',r.invc_no||'',r.ori_invc_no||'',r.reason||'',(CJB_ST[r.status]||[r.status])[0],stNm[_cjbStgOf(r)]||'',r.trk_name||'',kst(r.trk_at),r.print_count||0,r.created_by||'']));
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=head.map(h=>({wch:/주소/.test(h) ? 40 : /상품/.test(h) ? 28 : 14}));
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'택배 접수 내역');
+    XLSX.writeFile(wb,`CJ_접수내역_${_cjbV('cjbLFrom')||''}_${_cjbV('cjbLTo')||''}.xlsx`);
   }
   // 상세 조회 거르기 — 전체 · 발송 · 반품 회수 기록 (2026-11-24 사장님 "반품접수한건 기록 남게 해주고")
   function cjbListDv(v){ _cjb.ldv=v; document.querySelectorAll('#cjbLDv button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===v))); cjbList(); }

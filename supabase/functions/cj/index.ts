@@ -12,7 +12,7 @@
 //   POST {action:'book', item:{…}, kind?, batch_id?, by?}     예약 접수 (건별 · 파일 한 줄씩)
 //   POST {action:'cancel', id, by?}                예약 취소 (접수 1분쯤 뒤부터 됨 · 자체 출력 · 집화 · CJ 출력 뒤엔 안 됨)
 //   POST {action:'track', invc_no, prod_only?}     운송장 추적 (단계 · 시각 · 지점만, 이름 · 전화는 버림) — 맥미니 cs-track.ts 가 prod_only 로 부름
-//   POST {action:'list', limit?, q?}               최근 접수 기록 (전화는 가림)
+//   POST {action:'list', limit?, q?, dv?, from?, to?}  접수 기록 (전화는 가림, from · to = 접수일 YYYY-MM-DD 한국 시각)
 //   POST {action:'sync'}                           CJ 출력 건 운송장번호 · 최근 단계 채우기 (상품추적 대량) — pg_cron 30분
 //   POST {action:'print_save', print:{…}}          출력 설정 저장 (라벨 크기 · 여백 · 글자 · 바코드 · 가림 · 표시 항목)
 //   POST {action:'refine', addrs:[…]}              주소만 주소정제 (파일접수 시험 출력, 접수 없음)
@@ -378,11 +378,17 @@ async function fromInvc(invcIn: unknown) {
   };
 }
 
-async function list(limit: number, q: string, dv = '') {
+// from · to = 접수일 'YYYY-MM-DD'(한국 시각, 둘 다 포함) — 11-26 상세 조회 기간 고르기. 기간을 주면 1000줄까지
+async function list(limit: number, q: string, dv = '', from = '', to = '') {
+  const ymd = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
+  const f = ymd(from), t = ymd(to);
+  const cap = f || t ? 1000 : 300;
   let qb = sb.from('cj_bookings')
     .select('id,created_at,env,kind,batch_id,brand,rcpt_dv,prt_st,cust_use_no,invc_no,status,result_detail,rcvr_nm,rcvr_tel,rcvr_addr,gds_nm,box_qty,created_by,cancelled_at,printed_at,print_count,trk_code,trk_name,trk_at,reason,ori_invc_no')
-    .order('id', { ascending: false }).limit(Math.max(1, Math.min(300, limit || 100)));
+    .order('id', { ascending: false }).limit(Math.max(1, Math.min(cap, limit || 100)));
   if (dv === '01' || dv === '02') qb = qb.eq('rcpt_dv', dv);
+  if (f) qb = qb.gte('created_at', `${f}T00:00:00+09:00`);
+  if (t) qb = qb.lt('created_at', new Date(Date.parse(`${t}T00:00:00+09:00`) + 864e5).toISOString());
   const s = String(q || '').replace(/[%,()]/g, ' ').trim().slice(0, 40);
   if (s) qb = qb.or(`rcvr_nm.ilike.%${s}%,cust_use_no.ilike.%${s}%,invc_no.ilike.%${s}%,gds_nm.ilike.%${s}%,ori_invc_no.ilike.%${s}%,reason.ilike.%${s}%`);
   const { data, error } = await qb;
@@ -424,7 +430,7 @@ Deno.serve(async (req) => {
         if (body.prod_only && cfg.env !== 'prod') return json({ ok: false, env: cfg.env, error: '대한통운 API 가 아직 개발 서버예요 (운영 승인 전)' });
         return json(await track(cfg, body.invc_no));
       case 'list':
-        return json({ ok: true, env: cfg.env, rows: await list(Number(body.limit), String(body.q || ''), String(body.dv || '')) });
+        return json({ ok: true, env: cfg.env, rows: await list(Number(body.limit), String(body.q || ''), String(body.dv || ''), String(body.from || ''), String(body.to || '')) });
       case 'refine': {
         // 11-26 파일접수 시험 출력 — 접수 없이 주소만 CJ 주소정제(분류코드 · 집배점 · 구역)에 물어봄. 이름 · 전화는 보내지 않음, 30개까지
         const addrs = [...new Set((Array.isArray(body.addrs) ? body.addrs : []).map((a: unknown) => cut(String(a ?? '').trim(), 100)).filter(Boolean))].slice(0, 30);
