@@ -57,6 +57,28 @@
   }
   window.BossGuard = { isBoss: isBoss, bad: bad, drop: drop, check: check, note: note, mark: mark, viewerIn: viewerIn, VIEWER_PIN_VER: VIEWER_PIN_VER };
 
+  /* PIN 을 바꾼 뒤에도 새로고침 안 한 탭이 옛 PIN 을 몇 시간씩 보내 화면이 멈춰 있던 것 (2026-11-26 0017 변경 뒤 사무실 PC 탭) —
+     프록시가 PIN 을 거절(401)하면 두 번 본 뒤(15초 넘게 떨어져) 화면을 한 번 새로 연다. 새 코드가 새 PIN 을 들고 오고,
+     보기 PIN 판이 바뀌었으면 위 check() 가 잠금 화면으로 보낸다. 새로 열어도 또 거절이면 30분 동안 다시 안 연다(되풀이 막기) */
+  (function () {
+    var of = window.fetch; if (!of || of.__bbPin) return;
+    var first = 0, RK = 'bb_pin401_reload';
+    function hasPin(o) { try { var h = o && o.headers; if (!h) return false; return !!(typeof h.get === 'function' ? h.get('X-Brightbeed-PIN') : (h['X-Brightbeed-PIN'] || h['x-brightbeed-pin'])); } catch (e) { return false; } }
+    function on401() {
+      var now = Date.now();
+      if (!first) { first = now; return; }
+      if (now - first < 15000) return;
+      var last = +(get(RK) || 0); if (now - last < 30 * 60e3) return;
+      put(RK, String(now)); reload();
+    }
+    var f = function (i, o) {
+      var p = of.apply(this, arguments);
+      if (hasPin(o)) p.then(function (r) { if (r && r.status === 401) on401(); else if (r && r.ok) first = 0; }, function () { /* noop */ });
+      return p;
+    };
+    f.__bbPin = true; window.fetch = f;
+  })();
+
   var again = false;
   function reload() {
     if (again) return; again = true;
