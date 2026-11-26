@@ -12,7 +12,8 @@
 //   3. 같은 날 같은 옵션을 다른 발주서로 두 번 한 경우 — 맥미니는 두 번째를 '이미 적힘'으로 보고 수량을 안 더한다.
 //      그 두 번째 발주(우리가 이은 것)의 'YYYY-MM-DD N개' 줄 · 발주 수량을 ERP 칸에 더해 적는다 (erp_cell_edit, 이전 값이 같을 때만 · 한 번만).
 //   4. 못 고른 것은 그대로 '확인 필요'(물류팀 상자 · 알림)에 남는다 = 사람에게 묻기. 결과는 app_kv 'po_automap_last'.
-// 수동: POST {key, dry:true} → 쓰지 않고 무엇을 할지만.
+// 수동: POST {key, dry:true} → 쓰지 않고 무엇을 할지만 · {key, audit:true} → 사람이 이은 발주로 판단 대조 (11-26 첫 대조 29건: 같음 19 · 물음 10 · 틀림 0)
+// 예약: pg_cron po-automap-10m (5-59/10, 매 10분)
 // 배포: Supabase MCP deploy_edge_function, 프로젝트 ckyjkxbqsyjoqpuqwoce, verify_jwt=false (열쇠로 확인).
 //   po-map.js 판단을 바꾸면 PO_MAP_REF 를 그 커밋으로 바꿔 다시 배포한다.
 
@@ -117,13 +118,33 @@ async function addSecond(items: any[], dry: boolean, out: any[]) {
   if (changed) await sb.from('app_kv').upsert({ key: 'po_automap_dup', value: { done }, updated_at: new Date().toISOString(), updated_by: WHO });
 }
 
-async function run(dry: boolean, pin: string) {
+/* 점검: 사람이 이미 이은 발주를 '처음 보는 것처럼' 다시 판단해 사람 답과 대조 (쓰지 않음) — POST {key, audit:true} */
+async function audit(P: any, pom: any) {
+  const { data: maps } = await sb.from('po_map').select('sn,targets,skip,who').is('deleted_at', null).eq('skip', false).neq('who', WHO).order('id', { ascending: false }).limit(200);
+  const rows = await P.rows(true);
+  let sold: any[] = [];
+  try { sold = await P._t.loadSold(rows); } catch { /* */ }
+  const all = rows.concat(sold), out: any[] = [];
+  for (const m of maps || []) {
+    const t = (m.targets || []);
+    const it0 = pom.items.find((x: any) => x.sn === m.sn);
+    if (!it0 || t.length !== 1) continue;
+    const it = { ...it0, state: 'unmatched', n: undefined, b: undefined, o: undefined, cands: undefined, how: null, mapLocal: undefined };
+    const d = decide(P, all, it);
+    const human = `${t[0].b}|${clean(t[0].n)}|${clean(t[0].o)}`;
+    out.push({ sn: m.sn, memo: String(it0.memo || '').slice(0, 50), human: `${clean(t[0].n)} · ${clean(t[0].o)}`, auto: d ? `${d.r.n} · ${d.r.o} (${d.why})` : null, same: d ? P._t.key(d.r) === human : null });
+  }
+  return { n: out.length, same: out.filter(x => x.same === true).length, wrong: out.filter(x => x.same === false), asked: out.filter(x => x.same === null).length, out };
+}
+
+async function run(dry: boolean, pin: string, doAudit = false) {
   const base = await proxyBase();
   const r = await fetch(`${base}/erp/po-match?cb=${Date.now()}`, { headers: { 'X-Brightbeed-PIN': pin }, signal: AbortSignal.timeout(60000) });
   if (!r.ok) throw new Error('po-match ' + r.status);
   const pom = await r.json();
   if (!pom || !Array.isArray(pom.items)) throw new Error('po-match 모양');
   const P = await loadPoMap(base, pin, pom);
+  if (doAudit) return await audit(P, pom);
   await P.overlay(pom);                                            // 방금 사람이 이은 것은 빼고
   const since = new Date(Date.now() + 9 * 3600e3 - DAYS * 864e5).toISOString().slice(0, 10);
   const todo = pom.items.filter((it: any) => P.canMap(it) && !it.mapLocal && it.date >= since);
@@ -162,7 +183,7 @@ Deno.serve(async (req: Request) => {
   const { data: cfg } = await sb.from('po_md_config').select('cron_key,proxy_pin').eq('id', 1).single();
   if (!cfg || !key || key !== cfg.cron_key) return json({ error: 'denied' }, 403);
   try {
-    return json(await run(b?.dry === true, String(cfg.proxy_pin || '')));
+    return json(await run(b?.dry === true, String(cfg.proxy_pin || ''), b?.audit === true));
   } catch (e) {
     return json({ error: String((e as Error)?.message || e) }, 500);
   }
