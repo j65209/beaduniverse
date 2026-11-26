@@ -5393,6 +5393,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .kko-ret .st{font-weight:700}
   .kko-ret .st.done{color:#111}.kko-ret .st.bad{color:#b91c1c}
   .kko-ret .sub{color:var(--ink-3,#888);margin-top:2px}
+  .kko-ret .todo{margin-top:4px;font-weight:700;color:#111}.kko-ret .todo.late{color:#b91c1c}
   .kko-find #kkoTrackQ{flex:1 1 200px;min-width:0}
   /* 운송장 조회 결과 — 최근 단계가 맨 위 */
   .kko-trk-box{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--bg-1);font-size:12.5px}
@@ -19443,8 +19444,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     }catch(e){ say((e && e.message) || String(e), true); }
   }
   // ---- 반품 운송장 현황 (2026-11-26 사장님 "반품 운송장 현황 빨리 해줘") — 프록시 /cs/returns (맥미니 cs-return-board 10분: 식스샵프로 최근 30일 반품 · 교환 → 회수 운송장 · CJ · 한진 단계)
-  const KKO_RET_F=[['all','전체'],['come','오는 중'],['none','수거 전'],['done','도착'],['nowbl','운송장 없음']];
+  // 11-26 사장님 "cs 전산 프로그램이라 생각해줘" — 첫 칸 = 할 일 (서버 nextOf: 수거 접수 · 수거 늦음 · 검품 · 환불 · 보류 · 교환 재발송 · 교환 완료), 늦은 것 먼저
+  const KKO_RET_F=[['todo','할 일'],['all','전체'],['come','오는 중'],['none','수거 전'],['done','도착'],['nowbl','운송장 없음']];
   const _kkoRetGroup=r=>r.state==='done' ? 'done' : r.state==='nowbl' ? 'nowbl' : r.state==='none' ? 'none' : 'come';
+  const _kkoRetIn=(r,k)=>k==='all' || (k==='todo' ? !!r.todo : _kkoRetGroup(r)===k);
   async function kkoReturns(){
     const out=document.getElementById('kkoFindOut'); if(!out) return;
     out.innerHTML='<div class="kko-find-msg">반품 현황 불러오는 중…</div>';
@@ -19460,13 +19463,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   function _kkoRetPaint(){
     const out=document.getElementById('kkoFindOut'), j=_kko.ret; if(!out || !j) return;
     const rows=j.rows||[];
-    const f=_kko.retF||'come', n=k=>k==='all' ? rows.length : rows.filter(r=>_kkoRetGroup(r)===k).length;
-    const list=rows.filter(r=>f==='all' || _kkoRetGroup(r)===f);
+    const hasTodo=rows.some(r=>'todo' in r);
+    const f=_kko.retF||(hasTodo ? 'todo' : 'come'), n=k=>rows.filter(r=>_kkoRetIn(r,k)).length;
+    const list=rows.filter(r=>_kkoRetIn(r,f));
+    if(f==='todo') list.sort((a,b)=>(b.late?1:0)-(a.late?1:0) || String(a.requestedAt).localeCompare(String(b.requestedAt)));
     const md=s=>{ const m=/(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2}))?/.exec(String(s||'')); return m ? `${+m[2]}/${+m[3]}${m[4] ? ' '+m[4] : ''}` : ''; };
     const age=r=>{ const t=Date.parse(r.requestedAt); if(isNaN(t)) return ''; const d=Math.max(0,Math.floor((Date.now()-t)/86400e3)); return d ? `접수 ${d}일 전` : '오늘 접수'; };
     const cls=r=>r.state==='done' ? 'done' : (r.state==='nowbl' || r.state==='check') ? 'bad' : '';
-    const top=`<div class="kko-ret-top">${KKO_RET_F.map(([k,l])=>`<button type="button" aria-pressed="${f===k}" onclick="kkoRetF('${k}')">${l} ${n(k)}</button>`).join('')}<span class="t">최근 ${_kkoEsc(j.days||30)}일 · ${_kkoEsc(md(j.builtAt) ? (()=>{ const d=new Date(j.builtAt); return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')} 기준`; })() : '')} · <a href="#" onclick="kkoReturns();return false">새로고침</a></span></div>`;
+    const top=`<div class="kko-ret-top">${KKO_RET_F.filter(([k])=>k!=='todo' || hasTodo).map(([k,l])=>`<button type="button" aria-pressed="${f===k}" onclick="kkoRetF('${k}')">${l} ${n(k)}</button>`).join('')}<span class="t">최근 ${_kkoEsc(j.days||30)}일 · ${_kkoEsc(md(j.builtAt) ? (()=>{ const d=new Date(j.builtAt); return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')} 기준`; })() : '')} · <a href="#" onclick="kkoReturns();return false">새로고침</a></span></div>`;
     const body=list.length ? list.map(r=>`<div class="kko-ret"><div class="kko-ret-h">${_kkoBrand(r.brand,r.brandName)}<b>${_kkoEsc(r.kind)}</b><span>${_kkoEsc(r.nm||'')}</span><span>${_kkoEsc(r.orderId)}</span><span class="st ${cls(r)}">${_kkoEsc(r.stateKo||'')}</span><span>${_kkoEsc(r.claimStatus||'')}</span></div>`
+        + (r.todo ? `<div class="todo${r.late ? ' late' : ''}">${r.late ? '늦음 · ' : ''}${_kkoEsc(r.todoKo||'')}${r.chat && /^https:\/\//.test(r.chat.link||'') ? ` · <a href="${_kkoEsc(r.chat.link)}" target="_blank" rel="noopener">${_kkoEsc(r.chat.what||'카톡 방')} ↗</a>` : ''}</div>` : '')
         + `<div class="sub">${r.wbl ? `${_kkoEsc(r.companyName||'')} ${_kkoEsc(r.wbl)}${r.lastStep ? ` · ${_kkoEsc(md(r.lastAt))} ${_kkoEsc(r.lastStep)}${r.lastPlace ? ' · '+_kkoEsc(r.lastPlace) : ''}` : ''}${/^https:\/\//.test(r.url||'') ? ` · <a href="${_kkoEsc(r.url)}" target="_blank" rel="noopener">택배사 조회 ↗</a>` : ''}` : '회수 운송장이 아직 등록 안 됨 — 수거 접수 확인 필요'} · ${_kkoEsc(age(r))}</div>`
         + `<div class="sub">${(r.items||[]).map(_kkoEsc).join(' · ')}</div></div>`).join('')
       : '<div class="kko-find-msg">이 칸에 해당하는 반품 · 교환이 없어요</div>';
