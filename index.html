@@ -19159,6 +19159,13 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     });
   }
   // 주문 한 건 — 주문 찾기 결과 · 답장 초안에 붙은 주문
+  // 송장 칸이 빈 주문 — 네이버페이 주문 · 이미 나간 주문은 식스샵프로 Open API 가 송장을 안 줘서 빈칸 (11-26 사장님 "식스샵프로 들어가니까 운송장 보이는데") — '아직 없음'이라 하지 않음
+  function _kkoNoShip(o){
+    const gone=(o.items||[]).some(i=>/배송|구매\s*확정|반품|교환/.test(i.statusKo||''));
+    if(/naver/i.test(o.market||'')) return '송장은 식스샵프로 관리자 주문 상세에서 확인 (네이버페이 주문은 여기 안 잡혀요)';
+    if(gone) return '송장을 못 받아 왔어요 — 식스샵프로 관리자 주문 상세에서 확인';
+    return '송장 아직 없음';
+  }
   function _kkoOrderHtml(o, brand){
     const dt=new Date(o.orderedAt), ds=isNaN(dt) ? '' : `${dt.getFullYear()}.${dt.getMonth()+1}.${dt.getDate()}`;
     const items=(o.items||[]).map(i=>`<li>${_kkoEsc(i.name)}${i.option?` <i>${_kkoEsc(i.option)}</i>`:''} ×${_kkoEsc(i.qty)} — <em>${_kkoEsc(i.statusKo||i.status||'')}</em></li>`).join('');
@@ -19171,7 +19178,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const meta=[ds, o.orderer, o.p4 ? '뒷번호 '+o.p4 : '', KKO_MARKET[o.market]||o.market, o.total ? Number(o.total).toLocaleString('ko-KR')+'원' : ''].filter(Boolean).map(_kkoEsc).join(' · ');
     const b=o.brand||brand;
     return `<div class="kko-ord"><div class="kko-ord-h">${b ? _kkoBrand(b,o.brandName) : ''}<b>${_kkoEsc(o.orderId)}</b><span>${meta}</span></div>`
-      + `<ul>${items}</ul><div class="kko-ord-s">${ships ? `송장 ${ships}` : '송장 아직 없음'}</div></div>`;
+      + `<ul>${items}</ul><div class="kko-ord-s">${ships ? `송장 ${ships}` : _kkoNoShip(o)}</div></div>`;
   }
   /* ===== 카카오톡 상담 — 예상 질문 · 답 초안 (2026-11-19 사장님 "이전 대화 학습하고 예상 질문 · 답변 준비 … 만들어줘") =====
      서버 /cs/kakao-faq = sixshop-collector kakao/faq.json (공통 질문 · 답 + 브랜드 정보 facts + 브랜드 전용 + 확인 목록 + 에이전트 원칙).
