@@ -18280,15 +18280,15 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     return x && !(r.lastWho==='staff' && (r.lastAt||0)>x.since) ? x : null;
   }
   // 에이전트 작동중 · 직원 관전 요망 (2026-11-26 가동 — 사장님 "초기단계라 직원이 들여다볼 수 있게: 에이전트가 잘 처리 중인 대화에는 '에이전트 작동중 · 직원 관전 요망' 배지")
-  // = 서버 초안 파일 watch(에이전트가 12시간 안에 고객에게 직접 답한 방, 직원 호출 방 뺌) + 지금 에이전트 답이 준비돼 곧 나갈 방(보내기가 켜진 채널 · 카나나 끈 채널).
-  // 그 뒤 직원이 직접 답했으면 빠짐. 직원 호출이 열린 방은 직원 호출로만 보임
+  // = 서버 초안 파일 watch(에이전트가 12시간 안에 고객에게 직접 답한 방, 11-26부터 직원 호출 방도 넣음) + 지금 에이전트 답이 준비돼 곧 나갈 방(보내기가 켜진 채널 · 카나나 끈 채널).
+  // 11-26 사장님 "에이전트가 답변하고 처리한건 에이전트 작동중 배지 무조건 달리게" — 에이전트가 12시간 안에 보낸 방은 직원 호출 · 직원 답과 상관없이 배지
   function _kkoWatch(r){
     const dr=_kko.drafts||{}; if(!r || dr.off) return null;
-    if(_kkoIsStaff(r)) return null;
+    // (11-26) 직원 호출 방도 막지 않음 — 곧 나갈 답(pending)만 직원 몫이 아닐 때
     const w=(dr.watch||[]).find(x=>x.pid===r.pid && x.chatId===r.chatId);
-    if(w && !(r.lastWho==='staff' && (r.lastAt||0)>w.lastAt)) return w;
+    if(w) return w;
     const sd=dr.sending||{}, x=_kkoDraft(r.pid,r.chatId);
-    if(sd.mode && sd.mode!=='off' && (sd.channels||[]).includes(r.pid) && !(sd.kananaOn||[]).includes(r.pid) && x && x.owner==='agent' && x.reply && _kkoWaiting(r)) return {pending:true};
+    if(!_kkoIsStaff(r) && sd.mode && sd.mode!=='off' && (sd.channels||[]).includes(r.pid) && !(sd.kananaOn||[]).includes(r.pid) && x && x.owner==='agent' && x.reply && _kkoWaiting(r)) return {pending:true};
     return null;
   }
   const KKO_WATCH_BD='<span class="kko-bd agent" title="에이전트가 고객에게 직접 답하고 있어요 — 초기 단계라 직원이 대화를 지켜봐 주세요">에이전트 작동중 · 직원 관전 요망</span>';
@@ -18560,7 +18560,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       return `<button type="button" class="kko-row${r.unread>0?' unread':''}${key===openK?' on':''}" data-k="${_kkoEsc(key)}" onclick="kkoOpenChat(this.dataset.k)" title="${_kkoEsc(tip)}">`
         + `<span class="kko-av reo-b-${_kkoEsc(r.brand)}" aria-hidden="true"><i>${KKO_AV}</i></span>`
         + `<span class="kko-main"><span class="kko-l1"><b>${_kkoEsc(r.nick)}</b><span class="kko-bn">${_kkoEsc(label)}</span></span>`
-        + `<span class="kko-l2">${staff ? '<span class="kko-bd call">직원 호출</span>' : _kkoTodo(r) ? `<span class="kko-bd">${_kkoEsc(_kkoTodo(r).todo)}</span>` : ''}${!staff && _kkoWatch(r) ? KKO_WATCH_BD : ''}${_kkoColBadge(_kkoCol(r))}${mb ? `<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>` : ''}<span class="kko-pv">${_kkoEsc(r.preview||'(사진 · 파일)')}</span></span></span>`
+        + `<span class="kko-l2">${staff ? '<span class="kko-bd call">직원 호출</span>' : _kkoTodo(r) ? `<span class="kko-bd">${_kkoEsc(_kkoTodo(r).todo)}</span>` : ''}${_kkoWatch(r) ? KKO_WATCH_BD : ''}${_kkoColBadge(_kkoCol(r))}${mb ? `<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>` : ''}<span class="kko-pv">${_kkoEsc(r.preview||'(사진 · 파일)')}</span></span></span>`
         + `<span class="kko-side"><span class="kko-tm ${tm.cls}">${_kkoEsc(tm.text)}</span>${r.unread>0 ? `<span class="kko-ur" title="안 읽은 메시지 ${r.unread}">${r.unread>299 ? '300+' : r.unread}</span>` : ''}</span></button>`;
     };
     const head=(cls,label,n)=>`<div class="kko-grp${cls ? ' '+cls : ''}"><span>${label}</span><em>${n}</em></div>`;
@@ -18686,7 +18686,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const top=[], mb=_kkoMediaBadge(r);
       if(_kkoIsStaff(r)) top.push('<span class="kko-bd call">직원 호출</span>');
       else if(x && x.owner==='agent' && x.reply && !_kkoWatch(r)) top.push('<span class="kko-bd ready">답 준비</span>');
-      if(!_kkoIsStaff(r) && _kkoWatch(r)) top.push(KKO_WATCH_BD);
+      if(_kkoWatch(r)) top.push(KKO_WATCH_BD);
       if(_kkoCol(r)) top.push(_kkoColBadge(_kkoCol(r)));
       if(mb) top.push(`<span class="kko-bd img">${KKO_IMG_ICON}${mb}</span>`);
       if(x && x.intentTitle) top.push(`<em>${_kkoEsc(x.intentTitle)}</em>`);
