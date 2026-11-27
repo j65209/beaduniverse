@@ -75,7 +75,7 @@
       if (d < y) { older++; return; }
       if (p.orderId) seen[p.orderId] = 1;
       out.push({r: {id: p.id, key: p.pid && p.chatId ? p.pid + ':' + p.chatId : '', label: p.label || '', kind: p.title || '회수', goods: p.goods || '', nm: p.nick || '', orderId: p.orderId || '', day: d, at: p.at || 0,
-        stop: p.state === 'stop', st: p.state === 'stop' ? '수거 확인 필요' : '수거 요청 대기',
+        stop: p.state === 'stop', st: p.state === 'stop' ? '수거 접수 필요' : '수거 요청 대기', why: String(p.why || '').replace(/^사장님 \d+-\d+:\s*/, '').split(' — ')[0].slice(0, 40),
         summary: '[수거 접수 필요] ' + (p.title || '회수') + ' · 카톡 자동 수거\n' + (p.why ? '확인할 것: ' + p.why + '\n' : '') + '상품: ' + (p.goods || '확인 필요') + (p.orderId ? '\n주문 ' + p.orderId : '')}});
     });
     ((S.ret || {}).rows || []).forEach(function (r) {
@@ -86,7 +86,7 @@
       seen[r.orderId] = 1;
       var ck = r.chat && /^https:\/\//.test(r.chat.link || '') ? r.chat.link : '';
       out.push({r: {id: r.key, key: '', link: ck, label: r.brandName || r.brand || '', kind: r.kind || '반품', goods: (r.items || []).join(' / '), nm: r.nm || '', orderId: r.orderId || '', day: d, at: t,
-        stop: false, st: r.late ? '수거 늦음' : '수거 접수 필요',
+        stop: false, st: r.late ? '수거 늦음' : '수거 접수 필요', why: '식스샵프로 ' + (r.claimStatus || '반품') + ' · 회수 운송장 없음',
         summary: '[수거 접수 필요] ' + (r.kind || '반품') + ' · 식스샵프로 ' + (r.claimStatus || '') + '\n' + (r.todoKo || '회수 운송장 없음') + '\n상품: ' + (r.items || []).join(' · ') + '\n주문 ' + (r.orderId || '')}});
     });
     out.sort(function (a, b) { return (b.r.stop - a.r.stop) || (a.r.at - b.r.at); });
@@ -104,20 +104,10 @@
         + (x.stale ? '<span class="rs-st check">출고 확인 · ' + esc(md(r.day)) + ' 약속</span><span class="rs-act"><button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">보냈어요</button><button type="button" class="rs-go rs-notyet" data-id="' + esc(r.id) + '">아직 안 보냄</button>' : '<span class="rs-st check">확인 필요</span><span class="rs-act">')
         + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></span></div>';
     }).join('') + '</div>' : '';
-    var pk = pickRows(), n1 = n0 + chk.length;
-    var pkHtml = pk.rows.length || pk.older ? '<div class="rs-sub">수거 접수 필요 ' + pk.rows.length + '<small>어제부터 들어온 반품 · 교환 · 오배송 회수 중 대한통운 수거가 아직 안 잡힌 것' + (pk.older ? ' · 그 전 ' + pk.older + '건은 반품 현황' : '') + '</small></div>'
-      + (pk.rows.length ? '<div class="rs-list">' + pk.rows.map(function (x, i) {
-        var r = x.r;
-        return '<div class="rs-row" tabindex="0" data-i="' + (n1 + i) + '"><span class="rs-br">' + esc(r.label || '') + '</span><span class="rs-kd">' + esc(r.kind) + '</span>'
-          + '<span class="rs-pd">' + esc(r.goods || '상품 확인 필요') + '<small>' + esc([r.nm, r.orderId].filter(Boolean).join(' · ')) + '</small></span><span class="rs-ph">' + esc(md(r.day)) + '</span>'
-          + '<span class="rs-st ' + (r.stop ? 'wait' : 'todo') + '">' + esc(r.st) + '</span><span class="rs-act">'
-          + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : ''))
-          + '</span></div>';
-      }).join('') + '</div>' : '') : '';
     BOX.forEach(function (id) {
       var b = document.getElementById(id); if (!b) return;
-      b.innerHTML = t.html + chkHtml + pkHtml;
-      b._rows = t.rows.concat(chk, pk.rows);
+      b.innerHTML = t.html + chkHtml;
+      b._rows = t.rows.concat(chk);
     });
   }
 
@@ -181,12 +171,13 @@
     var rows = openRows().sort(function (a, b) { return (a.status === '정보 대기') - (b.status === '정보 대기') || (a.firstAt || 0) - (b.firstAt || 0); });
     var shipMiss = !S.full;
     var cnt = {}; rows.forEach(function (r) { cnt[r.status] = (cnt[r.status] || 0) + 1; });
+    var pk = pickRows();   // 수거 접수 필요 (11-27 사장님 "나갈 재배송 교환 불량 여기에 넣어줘") — 같은 표 맨 아래
     var top = '<div class="rs-head"><span class="rs-title">나갈 재배송 · 교환 · 불량<small>보낸 건은 안 보여요 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
       + '<span class="rs-nav"><button type="button" data-rs="copy">표 복사</button><button type="button" data-rs="csv">엑셀 내려받기</button><button type="button" data-rs="re" aria-label="다시 불러오기">↻</button></span></div>'
-      + '<div class="rs-cnt">' + ['발송 대기', '정보 대기'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span>' + k + ' ' + cnt[k] + '</span>'; }).join('') + '</div>'
+      + '<div class="rs-cnt">' + ['발송 대기', '정보 대기'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span>' + k + ' ' + cnt[k] + '</span>'; }).join('') + (pk.rows.length ? '<span>수거 접수 필요 ' + pk.rows.length + '</span>' : '') + (pk.older ? '<span title="어제 전에 들어온 수거 접수 필요는 반품 현황에서">그 전 수거 ' + pk.older + '건은 반품 현황</span>' : '') + '</div>'
       + (shipMiss ? '<div class="rs-warn">받는 분 · 연락처 · 주소 · 주문번호는 서버(맥미니 프록시 /cs/kakao-reship) 연결 뒤 사무실 인터넷에서 채워져요. 그 전에는 [대화]로 채팅방을 열어 확인해 주세요.</div>' : (S.full.outside ? '<div class="rs-warn">사무실 밖이라 받는 분 정보는 가렸어요.</div>' : ''))
       + (S.mkErr ? '<div class="rs-warn">' + esc(S.mkErr) + '</div>' : '') + handBox();
-    var body = rows.length ? '<div class="rs-tblw"><table class="rs-tbl"><thead><tr>' + VIEW.map(function (h) { return '<th>' + h[1] + '</th>'; }).join('') + '<th></th></tr></thead><tbody>'
+    var body = rows.length || pk.rows.length ? '<div class="rs-tblw"><table class="rs-tbl"><thead><tr>' + VIEW.map(function (h) { return '<th>' + h[1] + '</th>'; }).join('') + '<th></th></tr></thead><tbody>'
       + rows.map(function (r, i) {
         var c = cols(r), m = r.mark || {};
         return '<tr class="rs-row" tabindex="0" data-i="' + i + '">' + VIEW.map(function (h) {
@@ -200,8 +191,22 @@
           + (r.status === '발송함' ? '' : '<button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">발송함</button>')
           + '<button type="button" class="rs-go rs-hand" data-id="' + esc(r.id) + '" title="표에서 빼고 희선님 PC에 알림">희선님께</button>'
           + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></td></tr>';
+      }).join('') + pk.rows.map(function (x, j) {
+        var r = x.r;
+        return '<tr class="rs-row" tabindex="0" data-i="' + (rows.length + j) + '">' + VIEW.map(function (h) {
+          var k = h[0];
+          if (k === 'day') return '<td class="c-day">' + esc(r.day) + '</td>';
+          if (k === 'brand') return '<td class="c-brand">' + esc(r.label) + '</td>';
+          if (k === 'kind') return '<td class="c-kind">수거</td>';
+          if (k === 'goods') return '<td class="c-goods"><div class="rs-it"><b>' + esc(r.goods || '상품 확인 필요') + '</b><span class="rs-op">회수</span></div></td>';
+          if (k === 'why') return '<td class="c-why">' + esc(r.kind + (r.why ? ' · ' + r.why : '')) + '</td>';
+          if (k === 'nm') return '<td class="c-nm">' + esc(r.nm) + '</td>';
+          if (k === 'order') return '<td class="c-order">' + esc(r.orderId) + '</td>';
+          if (k === 'status') return '<td><span class="rs-st ' + (r.stop ? 'wait' : 'todo') + '">' + esc(r.st) + '</span></td>';
+          return '<td></td>';
+        }).join('') + '<td class="rs-act">' + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : '')) + '</td></tr>';
       }).join('') + '</tbody></table></div>' : '<div class="rs-empty">' + (S.err && !S.drafts ? '불러오지 못했어요 (' + esc(S.err) + ')' : '지금 나갈 건이 없어요') + '</div>';
-    return {html: top + body, rows: rows.map(function (r) { return {r: r}; })};
+    return {html: top + body, rows: rows.map(function (r) { return {r: r}; }).concat(pk.rows)};
   }
   function tsv(sep) {
     var rows = openRows();
