@@ -17555,18 +17555,18 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     document.querySelectorAll('#rcvModalTabs button').forEach(b => b.classList.toggle('on', b.dataset.period === p));
     let rows = _rcvPeriodRows(p);
     const s = _rcvStat(rows);
-    if(!_rcvHome.withOut) rows = rows.filter(r => r.kind === 'in' && !r.dest);
+    if(!_rcvHome.withOut) rows = rows.filter(r => (r.kind === 'in' && !r.dest) || r.direct);   // ERP 직접 고침은 내린 것(출고)도 늘 보임 (11-27 사장님 "다 남겨줘")
     const q = (_rcvHome.q || '').trim().toLowerCase();
     if(q) rows = rows.filter(r => [RCV_BRAND_LABEL[r.brand], r.product, r.option, r.by, r.raw, r.dest ? '지그재그 직진배송 출고' : ''].join(' ').toLowerCase().includes(q));
     document.getElementById('rcvModalSum').textContent =
       `입고 ${_rcvN(s.qty)}개 · ${s.items.length}품목 · ${s.ins.length}건`
       + (s.sent.length ? ` · 직진배송 출고 ${_rcvN(s.sentQty)}개 ${s.sent.length}건` : '')
-      + (s.outs.length ? ` · 차감 ${_rcvN(s.outQty)}개 ${s.outs.length}건` : '')
+      + (s.outs.length ? ` · 출고 ${_rcvN(s.outQty)}개 ${s.outs.length}건` : '')
       + (s.wait.length ? ` · 반영 중 ${s.wait.length}건` : '') + (s.fail.length ? ` · 실패 ${s.fail.length}건` : '')
       + (_rcvHome.at ? ` · ${_rcvHM(_rcvHome.at)} 기준` : (_rcvHome.err ? ` · 불러오지 못함 (${_rcvHome.err})` : ''));
     const list = document.getElementById('rcvModalList');
     if(!rows.length){
-      list.innerHTML = `<div class="rcv-none">${q ? '찾는 기록이 없어요.' : '이 기간 기록이 아직 없어요. [+ 입고 입력] 으로 모아에게 말씀하시면 여기 쌓입니다.'}</div>`;
+      list.innerHTML = `<div class="rcv-none">${q ? '찾는 기록이 없어요.' : '이 기간 기록이 아직 없어요. 재고 ERP 에서 남은 재고를 직접 고치거나 [+ 입고 입력] 으로 모아에게 말씀하시면 여기 쌓입니다.'}</div>`;
       return;
     }
     const W = ['일','월','화','수','목','금','토'];
@@ -17585,7 +17585,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       const stock = r.after != null ? `${r.before == null ? '빈칸' : _rcvN(r.before)} → ${_rcvN(r.after)}` : '';
       html += `<div class="rcv-row">`
         + `<span class="t">${_rcvHM(_rcvAt(r))}</span>`
-        + `<span class="n"><span class="b reo-b-${_rcvEsc(r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}${r.direct ? '<i title="ERP 화면에서 남은 재고를 직접 올린 입고">· ERP에서 직접</i>' : ''}${r.dest ? `<i>· ${r.kind === 'out' ? '지그재그 직진배송 출고' : '직진배송 출고 되돌림'}</i>` : ''}</span>`
+        + `<span class="n"><span class="b reo-b-${_rcvEsc(r.brand)}">${_rcvEsc(RCV_BRAND_LABEL[r.brand] || r.brand)}</span><b>${_rcvEsc(r.product)}</b>${r.option ? `<i>${_rcvEsc(r.option)}</i>` : ''}${r.direct ? `<i title="ERP 화면에서 남은 재고를 직접 ${r.kind === 'out' ? '내림 (출고)' : '올림 (입고)'}">· ERP에서 직접${r.kind === 'out' ? ' 출고' : ''}</i>` : ''}${r.dest ? `<i>· ${r.kind === 'out' ? '지그재그 직진배송 출고' : '직진배송 출고 되돌림'}</i>` : ''}</span>`
         + `<span class="q ${r.kind === 'out' ? 'out' : 'in'}">${r.kind === 'out' ? '−' : '+'}${_rcvN(r.qty)}</span>`
         + `<span class="s" title="남은 재고 (반영 전 → 후)">${stock}</span>`
         + `<span class="w" title="입력자">${_rcvEsc((r.direct ? String(r.by || '').replace(' (ERP 직접)', '') : r.by) || '–')}</span>`
