@@ -21830,11 +21830,27 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
     const par=new Int32Array(n); for(let i=0;i<n;i++) par[i]=i;
     const find=i=>{ while(par[i]!==i){ par[i]=par[par[i]]; i=par[i]; } return i; };
     const uni=(a,b)=>{ a=find(a); b=find(b); if(a!==b) par[b]=a; };
-    const byCode=new Map(), byNorm=new Map();
+    // 코드는 식스샵 재고 SKU 일 때가 있어 다른 상품 주문에 잘못 붙기도 한다 (2026-11-27 야르 Boni Ring 주문에 Kalpa SKU → 둘이 한 줄로 합쳐져 순위가 뜸).
+    // 그래서 같은 코드라도 이름 첫 단어가 다르고, 그 이름이 다른 코드로도 팔린 '제 상품'이면 묶지 않는다 (이름만 바뀐 경우는 그대로 묶음).
+    const byNorm=new Map(), codeRows=new Map(), normCodes=new Map();
+    const fw=s=>_pixBase(s).replace(/^\[[^\]]*\]\s*/g,'').split(' ')[0]||'';
     for(let i=0;i<n;i++){
       const code=String((P[i]&&P[i][0])||''), k=_pixNorm(P[i]&&P[i][1]);
       if(k){ if(byNorm.has(k)) uni(byNorm.get(k),i); else byNorm.set(k,i); }
-      if(code){ if(byCode.has(code)) uni(byCode.get(code),i); else byCode.set(code,i); }
+      if(k){ let s=normCodes.get(k); if(!s){ s=new Set(); normCodes.set(k,s); } s.add(code); }
+      if(code){ let a=codeRows.get(code); if(!a){ a=[]; codeRows.set(code,a); } a.push(i); }
+    }
+    for(const [code, rows] of codeRows){
+      const byFw=new Map();
+      for(const i of rows){ const w=fw(P[i]&&P[i][1]); let g=byFw.get(w); if(!g){ g=[]; byFw.set(w,g); } g.push(i); }
+      const gs=[...byFw.values()], head=gs[0][0];
+      for(const g of gs){
+        for(const i of g) uni(g[0],i);
+        if(g===gs[0]) continue;
+        const own=g.some(i=>{ const s=normCodes.get(_pixNorm(P[i]&&P[i][1])); return s && [...s].some(c=>c!==code); });
+        const headOwn=(()=>{ const s=normCodes.get(_pixNorm(P[head]&&P[head][1])); return s && [...s].some(c=>c!==code); })();
+        if(!(own && headOwn)) uni(head,g[0]);
+      }
     }
     const groups=new Map(), prodOf=new Array(n);
     for(let i=0;i<n;i++){
