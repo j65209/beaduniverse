@@ -568,6 +568,7 @@
   .mapdlg .mrow .tx b{display:block;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mapdlg .mrow .tx small{display:block;font-size:11.5px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mapdlg .mrow .why{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);border-radius:5px;padding:1px 6px;margin-left:6px}
+  .mapdlg .mrow .why.xb,.mapdlg .xb{color:#9d174d;background:#fce7f3;border-radius:5px;padding:1px 6px;font-weight:700}
   .mapdlg .mrow .lq{font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
   .mapdlg .mnone{padding:12px;color:var(--text-4);font-size:12.5px}
   .mapdlg .mfind{margin-top:6px;width:100%;height:36px;padding:0 11px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:13px;outline:0}
@@ -3801,7 +3802,14 @@
   const mapKey = s => String(s || '').toLowerCase().replace(/\[[^\]]*\]/g, ' ').replace(/\bring\b/g, '').replace(/[^a-z0-9가-힣]/g, '');
   const dropLab = s => String(s || '').replace(/^\s*[^:：+\/|]{1,16}[:：]\s*/, '').trim();   // 'Ring: Rose Duo-set' → 'Rose Duo-set'
   const MAP_STOP = new Set(['ring', 'set', 'necklace', 'bracelet', 'option', 'size', 'color', 'type', '세트', '반지', '목걸이', '팔찌', '옵션']);
-  const mapWords = s => new Set((String(s || '').toLowerCase().match(/[a-z0-9]{3,}|[가-힣]{2,}/g) || []).filter(w => !MAP_STOP.has(w)));
+  // 색은 한글 · 영어를 같은 낱말로, 사이즈(S · M · L …)도 낱말로 (2026-11-27 '[size]네이비 M' ↔ 'Mallow EVA Room Shoes_navy · SIZE: 여성용 [M]')
+  const COLOR_KO = {네이비: 'navy', 블루: 'blue', 그레이: 'gray', 회색: 'gray', grey: 'gray', 라벤더: 'lavender', 블랙: 'black', 검정: 'black', 화이트: 'white', 흰색: 'white', 베이지: 'beige', 핑크: 'pink', 레드: 'red', 그린: 'green', 옐로우: 'yellow', 브라운: 'brown', 아이보리: 'ivory', 퍼플: 'purple', 민트: 'mint', 오렌지: 'orange', 실버: 'silver', 골드: 'gold', 카키: 'khaki', 차콜: 'charcoal', 크림: 'cream', 스카이: 'sky'};
+  const mapWords = s => {
+    const t = String(s || '').toLowerCase(), out = new Set((t.match(/[a-z0-9]{3,}|[가-힣]{2,}/g) || []).map(w => COLOR_KO[w] || w).filter(w => !MAP_STOP.has(w)));
+    (t.match(/(?:^|[\s\[(_\-:])(xs|s|m|l|xl|xxl|2xl|free)(?=$|[\s\])_\-,])/g) || []).forEach(x => out.add('size:' + x.replace(/^[^a-z0-9]+/, '')));
+    return out;
+  };
+  const isTagWord = w => /^size:/.test(w) || Object.values(COLOR_KO).includes(w);
   const mapLabel = (n, o) => o ? `${n} · ${o}` : n;
   function mapCols(d) {
     const by = n => d.cols.find(c => norm(c.name) === n) || null;
@@ -3842,6 +3850,43 @@
     });
     return out.sort((a, b) => b.s - a.s || a.r - b.r);
   }
+  /* 브랜드 바뀜 (2026-11-27 사장님 "아코이꺼같은데 프피에있다. 매핑할때 브랜드변경도 체크해줘") — 29cm 프피 주문 'Mallow Shoes' 가 아코이 탭 'Mallow EVA Room Shoes_navy' 줄.
+     ⚠ 줄 매핑 창을 열면 다른 브랜드 재고 탭(ERP 저장소 줄)도 읽어 비슷한 줄을 '다른 브랜드 탭' 칸에 보여 준다. 고르면 그 탭 줄에 판매 · 남은 재고가 적히고,
+     규칙(erp_map)은 targets 에 brand 를 달아 저장 — 맥미니 차감(office.mjs crossFor)이 다음 주문부터 그 탭 줄에서 뺀다. 머리글이 이 탭과 다른 탭 · 시트를 아직 안 끊은 탭은 안 봄 */
+  function crossTabs() {
+    const my = mapBrand(M.gid);
+    return (S.tabs || []).filter(t => t.gid !== M.gid && (t.meta || classify(t.name)).sec === 'stock' && /송장출력/.test(t.name) && cutTab(t.gid) && mapBrand(t.gid) && mapBrand(t.gid) !== my);
+  }
+  async function loadCross() {
+    const gid0 = M.gid, r0 = M.r, mc = M.src.mc, tabs = crossTabs();
+    if (!cutTab(gid0) || !tabs.length) return;
+    M.xload = true; renderMap();
+    const rows = [], got = await Promise.all(tabs.map(t => storeRows(t.gid).catch(() => null)));
+    for (const [i, t] of tabs.entries()) {
+      const list = got[i];
+      if (!list) continue;
+      const head = list.find(x => norm(String(x.v[mc.name.p] || '')) === norm(mc.name.name));
+      if (!head || [mc.opt, mc.stock, mc.cat].some(c => c && norm(String(head.v[c.p] || '')) !== norm(c.name))) continue;   // 칸 차례가 다른 탭은 안 씀
+      const brand = mapBrand(t.gid);
+      list.forEach(x => {
+        const n = String(x.v[mc.name.p] || '').trim();
+        if (x === head || !n || NOT_STOCK.test(String(x.v[mc.cat.p] || ''))) return;
+        rows.push({gid: t.gid, brand, r: x.r, pk: `${t.gid}:${x.r}`, name: n, opt: String(x.v[mc.opt.p] || '').trim(), L: mc.stock ? String(x.v[mc.stock.p] || '') : '', v: x.v});
+      });
+    }
+    if (!M.open || M.gid !== gid0 || M.r !== r0) return;
+    const ws = mapWords(M.src.name + ' ' + dropLab(M.src.opt)), nameWs = [...mapWords(M.src.name)].filter(w => !isTagWord(w));
+    M.xrows = rows;
+    M.xcands = rows.map(x => {
+      const xw = mapWords(x.name + ' ' + x.opt);
+      let k = 0; ws.forEach(w => { if (xw.has(w)) k++; });
+      const named = nameWs.some(w => xw.has(w));   // 색 · 사이즈만 같은 것은 안 봄
+      return named && k >= 3 ? Object.assign({}, x, {s: Math.min(95, 15 * k), why: `${x.brand} 탭 · 브랜드 바뀜?`}) : null;
+    }).filter(Boolean).sort((a, b) => b.s - a.s || a.r - b.r);
+    M.xload = false;
+    renderMap();
+  }
+  const pkOf = p => p.pk || String(p.r);
   function openMap(r) {
     const d = curData();
     if (!d || d.sec !== 'stock' || d.side) return;
@@ -3850,11 +3895,12 @@
     closeEditor();
     const cands = mapCands(d, src), sets = cands.filter(c => c.s === 100), strong = cands.filter(c => c.s >= 90);
     const pre = sets.length >= 2 ? sets : strong.length === 1 ? strong : [];
-    Object.assign(M, {open: true, gid: S.cur, r, src, cands, ask: null, group: null, mode: 'send', q: '', save: true, deduct: src.deduct, cat: '', count: '', busy: false, msg: '', msgKind: '',
+    Object.assign(M, {open: true, gid: S.cur, r, src, cands, ask: null, group: null, mode: 'send', q: '', save: true, deduct: src.deduct, cat: '', count: '', busy: false, msg: '', msgKind: '', xrows: [], xcands: [], xload: false,
       picks: pre.map(c => ({r: c.r, name: c.name, opt: c.opt, L: c.L, per: 1}))});
     $('mscrim').hidden = false;
     $('mapdlg').hidden = false;
     renderMap();
+    loadCross().catch(() => { M.xload = false; if (M.open) renderMap(); });
     const go = $('mapdlg').querySelector('.mgo');
     if (go && !go.disabled) go.focus(); else { const f = $('mapdlg').querySelector('.mfind'); if (f && !narrow.matches) f.focus(); }
   }
@@ -3916,6 +3962,7 @@
       if (top.length === 1) c.pick = top[0];
     });
     const src = {r: 0, mc, name: g[0].in_name, opt: `조합 ${g.length}개`, ch: [], sold: 0, L: '', deduct: 0};
+    Object.assign(M, {xrows: [], xcands: [], xload: false});
     Object.assign(M, {open: true, gid: S.cur, r: 0, src, cands: [], ask: g[0], group: {asks: g, ch, at: Math.max(0, ch.findIndex(c => !c.pick))}, mode: 'send', q: '', save: true, deduct: 0, cat: '', count: '', busy: false, msg: '', msgKind: '', picks: []});
     $('mscrim').hidden = false;
     $('mapdlg').hidden = false;
@@ -3930,6 +3977,7 @@
     const grp = askGroups(S.ask[S.cur] || []).find(g => g.some(x => x.k === k)) || [a];
     if (grp.length > 1) { openAskGroup(d, mc, grp); return; }
     const src = {r: 0, mc, name: a.in_name, opt: a.in_opt, ch: [], sold: 0, L: '', deduct: 0}, ap = askPicks(d, src, a);
+    Object.assign(M, {xrows: [], xcands: [], xload: false});
     Object.assign(M, {open: true, gid: S.cur, r: 0, src, cands: mapCands(d, src), ask: a, group: null, mode: 'send', q: '', save: true, deduct: 0, cat: '', count: '', busy: false,
       msg: ap.miss.length ? `${ap.miss.map(x => `‘${x}’`).join(' · ')} 재고 줄은 못 찾았어요 — 위에서 찾아 더해 주세요` : '', msgKind: 'err', picks: ap.picks});
     $('mscrim').hidden = false;
@@ -4007,7 +4055,7 @@
     $('mapdlg').hidden = true;
     $('mapdlg').innerHTML = '';
   }
-  function mapRowsFor(q) {   // 찾기 — 띄어 쓴 낱말이 모두 들어간 재고 줄 (상품명 · 옵션)
+  function mapRowsFor(q, withX) {   // 찾기 — 띄어 쓴 낱말이 모두 들어간 재고 줄 (상품명 · 옵션)
     const d = curData(), terms = q.toLowerCase().split(/\s+/).filter(Boolean);
     if (!d || !terms.length) return [];
     const mc = M.src.mc, out = [];
@@ -4018,6 +4066,11 @@
       const o = cellT(row, mc.opt).trim(), k = (n + ' ' + o).toLowerCase(), k2 = k.replace(/\s+/g, '');
       if (terms.every(t => k.includes(t) || k2.includes(t))) out.push({r: row.r, name: n, opt: o, L: cellT(row, mc.stock)});
       if (out.length >= 40) break;
+    }
+    if (withX && !M.ask && !M.group) for (const x of M.xrows || []) {   // 다른 브랜드 탭 줄도 (브랜드 바뀜)
+      if (out.length >= 50) break;
+      const k = (x.name + ' ' + x.opt).toLowerCase(), k2 = k.replace(/\s+/g, '');
+      if (terms.every(t => k.includes(t) || k2.includes(t))) out.push(Object.assign({}, x, {why: `${x.brand} 탭`}));
     }
     return out;
   }
@@ -4040,14 +4093,14 @@
     if (!M.picks.length) return '<div>재고 줄을 하나 이상 골라 주세요</div>';
     if (M.ask) return M.picks.map(p => `<b>${esc(mapLabel(p.name, p.opt))}</b> — 주문 1개당 <span class="dn">${p.per}개</span> 빠짐`).concat([`다음 주문부터 <b>${esc(mapLabel(src.name, src.opt))}</b> 은(는) 위 줄에서 자동으로 빠져요 (지금 남은 재고는 안 바뀌어요)`]).map(x => `<div>· ${x}</div>`).join('');
     M.picks.forEach(p => {
-      const row = rowOf(p.r), parts = [];
+      const row = p.gid ? {byP: Object.fromEntries((p.v || []).map((t, i) => [i, {t: String(t == null ? '' : t)}]))} : rowOf(p.r), parts = [];
       src.ch.forEach(x => { const cur = row ? numOf(cellT(row, x.c)) || 0 : 0; parts.push(`${esc(x.c.name)} ${fmt(cur)} → <span class="up">${fmt(cur + x.n * p.per)}</span>`); });
       const L = row ? cellT(row, mc.stock) : '', ln = numOf(L);
       if (M.deduct > 0) parts.push(L === '' ? '남은 재고 빈칸 (아직 안 센 줄이라 안 뺌)' : ln === null ? `남은 재고 '${esc(L)}' (숫자가 아니라 안 뺌)` : `남은 재고 ${fmt(ln)} → <span class="dn">${fmt(ln - M.deduct * p.per)}</span>`);
-      lines.push(`<b>${esc(mapLabel(p.name, p.opt))}</b>${p.per > 1 ? ` ×${p.per}` : ''} — ${parts.join(' · ') || '바뀌는 숫자 없음'}`);
+      lines.push(`${p.gid ? `<span class="dn">[${esc(p.brand)} 탭]</span> ` : ''}<b>${esc(mapLabel(p.name, p.opt))}</b>${p.per > 1 ? ` ×${p.per}` : ''} — ${parts.join(' · ') || '바뀌는 숫자 없음'}`);
     });
     lines.push(`⚠ ${src.r}행 — 비움 (상품명 · 옵션 · 판매 · 남은 재고)`);
-    if (M.save) lines.push(`다음 주문부터 <b>${esc(mapLabel(src.name, src.opt))}</b> 은(는) 위 줄에서 자동으로 빠져요`);
+    if (M.save) lines.push(`다음 주문부터 <b>${esc(mapLabel(src.name, src.opt))}</b> 은(는) 위 줄에서 자동으로 빠져요${M.picks.some(p => p.gid) ? ' (다른 브랜드 탭 줄 포함 — 브랜드 바뀜)' : ''}`);
     return lines.map(x => `<div>· ${x}</div>`).join('');
   }
   function renderMap() {
@@ -4056,9 +4109,9 @@
     const src = M.src, t = tabOf(M.gid), dlg = $('mapdlg');
     const scroll = dlg.querySelector('.mb') ? dlg.querySelector('.mb').scrollTop : 0;
     const focusQ = document.activeElement && document.activeElement.classList.contains('mfind');
-    const picked = new Set(M.picks.map(p => p.r));
-    const rowBtn = c => `<button type="button" class="mrow${picked.has(c.r) ? ' on' : ''}" data-pick="${c.r}"><span class="bx">${picked.has(c.r) ? '✓' : ''}</span>`
-      + `<span class="tx"><b>${esc(c.name)}${c.why ? `<span class="why">${esc(c.why)}</span>` : ''}</b><small>${esc(c.opt || '옵션 없음')} · ${c.r}행</small></span>`
+    const picked = new Set(M.picks.map(pkOf));
+    const rowBtn = c => `<button type="button" class="mrow${picked.has(pkOf(c)) ? ' on' : ''}" data-pick="${esc(pkOf(c))}"><span class="bx">${picked.has(pkOf(c)) ? '✓' : ''}</span>`
+      + `<span class="tx"><b>${esc(c.name)}${c.why ? `<span class="why${c.gid ? ' xb' : ''}">${esc(c.why)}</span>` : ''}</b><small>${esc(c.opt || '옵션 없음')} · ${c.gid ? `${esc(c.brand)} 탭 ` : ''}${c.r}행</small></span>`
       + `<span class="lq">남은 ${c.L === '' ? '빈칸' : esc(c.L)}</span></button>`;
     const facts = M.group ? [M.ask.why] : M.ask ? [M.ask.why, (M.ask.cur || []).length ? `지금은 ${M.ask.cur.map(x => `${mapLabel(x.name, x.opt)} ${x.per}개`).join(' + ')}` : '지금은 어느 줄에서도 안 빠짐'] : [`오늘 판매 ${fmt(src.sold)}개${src.ch.length ? ` (${src.ch.map(x => `${x.c.name} ${fmt(x.n)}`).join(' · ')})` : ''}`, `남은 재고 ${src.L === '' ? '빈칸' : src.L}`];
     let body = `<div class="msrc"><div class="cap">${M.ask ? '매핑 요청' : '재고 줄에 없던 주문 이름'} · ${esc(t ? (t.meta && t.meta.sec === 'stock' ? t.meta.label + ' 재고' : t.name) : '')}${M.ask ? '' : ` ${src.r}행`}</div><div class="nm">${esc(src.name)}</div><div class="op">${esc(src.opt || '옵션 없음')}</div>`
@@ -4073,13 +4126,15 @@
           + `<input class="mfind" type="search" placeholder="다른 줄 찾기 — 상품명 · 옵션 (띄어 쓴 낱말 모두)" value="${esc(M.q)}" autocomplete="off" spellcheck="false">`
           + (M.q.trim() ? `<div class="mlist">${found.length ? found.map(x => gBtn(Object.assign({why: ''}, x))).join('') : '<div class="mnone">맞는 재고 줄이 없어요</div>'}</div>` : '') : '');
     } else if (M.mode === 'send') {
-      const cands = M.cands.filter(c => c.s >= 40).slice(0, 8), found = M.q.trim() ? mapRowsFor(M.q) : [];
-      body += `<div class="msec">추천</div><div class="mlist">${cands.length ? cands.map(rowBtn).join('') : '<div class="mnone">비슷한 줄을 못 찾았어요 — 아래에서 찾아 주세요</div>'}</div>`
+      const cands = M.cands.filter(c => c.s >= 40).slice(0, 8), found = M.q.trim() ? mapRowsFor(M.q, true) : [], xc = M.ask ? [] : (M.xcands || []).slice(0, 6);
+      body += `<div class="msec">추천</div><div class="mlist">${cands.length ? cands.map(rowBtn).join('') : `<div class="mnone">${xc.length ? '이 탭엔 비슷한 줄이 없어요 — 아래 다른 브랜드 탭을 봐 주세요' : '비슷한 줄을 못 찾았어요 — 아래에서 찾아 주세요'}</div>`}</div>`
+        + (M.ask ? '' : M.xload ? '<div class="msec">다른 브랜드 탭 (브랜드 바뀜?)</div><div class="mnone">다른 브랜드 재고 탭에서 찾는 중…</div>'
+          : xc.length ? `<div class="msec">다른 브랜드 탭 (브랜드 바뀜?)</div><div class="mnone">이 이름이 다른 브랜드 재고 탭에 있어요 — 브랜드가 바뀐 상품이면 그 줄을 고르세요. 그 탭 줄에서 빠지고, 다음 주문부터도 그 줄에서 빠져요.</div><div class="mlist">${xc.map(rowBtn).join('')}</div>` : '')
         + `<div class="msec">다른 줄 찾기</div><input class="mfind" type="search" placeholder="상품명 · 옵션 (띄어 쓴 낱말 모두)" value="${esc(M.q)}" autocomplete="off" spellcheck="false">`
         + (M.q.trim() ? `<div class="mlist">${found.length ? found.map(c => rowBtn(Object.assign({why: ''}, c))).join('') : '<div class="mnone">맞는 재고 줄이 없어요</div>'}</div>` : '')
-        + `<div class="msec">고른 줄 · 주문 1개당 개수</div><div class="mlist">${M.picks.length ? M.picks.map(p => `<div class="mpick"><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.opt || '옵션 없음')} · ${p.r}행</small></span>`
-          + `<span class="step"><button type="button" data-per="${p.r}" data-d="-1" aria-label="하나 줄이기">−</button><span>×${p.per}</span><button type="button" data-per="${p.r}" data-d="1" aria-label="하나 늘리기">+</button></span>`
-          + `<button type="button" class="mdel" data-del="${p.r}" aria-label="빼기">✕</button></div>`).join('') : '<div class="mnone">아직 고른 줄이 없어요 — 위에서 누르면 들어가요</div>'}</div>`
+        + `<div class="msec">고른 줄 · 주문 1개당 개수</div><div class="mlist">${M.picks.length ? M.picks.map(p => `<div class="mpick"><span class="tx"><b>${esc(p.name)}</b><small>${esc(p.opt || '옵션 없음')} · ${p.gid ? `<span class="xb">${esc(p.brand)} 탭</span> ` : ''}${p.r}행</small></span>`
+          + `<span class="step"><button type="button" data-per="${esc(pkOf(p))}" data-d="-1" aria-label="하나 줄이기">−</button><span>×${p.per}</span><button type="button" data-per="${esc(pkOf(p))}" data-d="1" aria-label="하나 늘리기">+</button></span>`
+          + `<button type="button" class="mdel" data-del="${esc(pkOf(p))}" aria-label="빼기">✕</button></div>`).join('') : '<div class="mnone">아직 고른 줄이 없어요 — 위에서 누르면 들어가요</div>'}</div>`
         + (M.ask ? '' : `<div class="mfield"><label for="mDed">남은 재고에서 뺄 주문 수</label><input id="mDed" type="number" min="0" step="1" value="${M.deduct}">`
         + `<small>고른 줄마다 이 수 × 개수만큼 남은 재고에서 빠져요. 기본값 = ${src.L !== '' && (numOf(src.L) || 0) < 0 ? `⚠ 줄에서 이미 빠진 ${fmt(-numOf(src.L))}개 (그동안 팔린 것)` : '오늘 판매 (⚠ 줄은 남은 재고가 빈칸이라 어디서도 안 빠졌음)'} — 그 전 날 팔린 것까지 빼려면 늘려 주세요.</small></div>`
         + `<label class="mchk"><input type="checkbox" id="mSave"${M.save ? ' checked' : ''}><span><b>다음 주문부터도 이 줄로 빼기</b> (매핑 저장) — 같은 이름 · 옵션 주문이 오면 자동 차감이 고른 줄에서 뺍니다. 끄면 이번 한 번만 옮겨요.</span></label>`);
@@ -4113,16 +4168,19 @@
     if (b.dataset.gper && M.group) { const c = M.group.ch[+b.dataset.gper]; c.per = Math.max(1, Math.min(20, c.per + (+b.dataset.d))); renderMap(); return; }
     if (b.dataset.mode) { M.mode = b.dataset.mode; M.msg = ''; renderMap(); return; }
     if (b.dataset.pick) {
-      const r = +b.dataset.pick, i = M.picks.findIndex(p => p.r === r);
+      const pk = b.dataset.pick, i = M.picks.findIndex(p => pkOf(p) === pk);
       if (i >= 0) M.picks.splice(i, 1);
-      else {
-        const d = curData(), row = d && d.rows.find(x => x.r === r);
+      else if (pk.includes(':')) {   // 다른 브랜드 탭 줄
+        const x = (M.xrows || []).find(y => y.pk === pk);
+        if (x) M.picks.push({r: x.r, pk, gid: x.gid, brand: x.brand, name: x.name, opt: x.opt, L: x.L, v: x.v, per: 1});
+      } else {
+        const r = +pk, d = curData(), row = d && d.rows.find(x => x.r === r);
         if (row) M.picks.push({r, name: cellT(row, M.src.mc.name).trim(), opt: cellT(row, M.src.mc.opt).trim(), L: cellT(row, M.src.mc.stock), per: 1});
       }
       M.msg = ''; renderMap(); return;
     }
-    if (b.dataset.per) { const p = M.picks.find(x => x.r === +b.dataset.per); if (p) p.per = Math.max(1, Math.min(20, p.per + (+b.dataset.d))); renderMap(); return; }
-    if (b.dataset.del) { M.picks = M.picks.filter(x => x.r !== +b.dataset.del); renderMap(); }
+    if (b.dataset.per) { const p = M.picks.find(x => pkOf(x) === b.dataset.per); if (p) p.per = Math.max(1, Math.min(20, p.per + (+b.dataset.d))); renderMap(); return; }
+    if (b.dataset.del) { M.picks = M.picks.filter(x => pkOf(x) !== b.dataset.del); renderMap(); }
   });
   $('mapdlg').addEventListener('input', e => {
     const el = e.target;
@@ -4135,9 +4193,9 @@
   $('mapdlg').addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('mfind')) {   // 찾기에서 Enter = 첫 결과 고르기
       e.preventDefault();
-      const first = mapRowsFor(M.q).find(c => !M.picks.some(p => p.r === c.r));
+      const first = mapRowsFor(M.q, !M.group).find(c => !M.picks.some(p => pkOf(p) === pkOf(c)));
       if (first && M.group) { const c = M.group.ch[M.group.at]; if (c) { c.pick = first; M.q = ''; const nx = M.group.ch.findIndex(x => !x.pick); if (nx >= 0) M.group.at = nx; renderMap(); } }
-      else if (first) { M.picks.push(Object.assign({per: 1}, first)); M.q = ''; renderMap(); }
+      else if (first) { const f = Object.assign({per: 1}, first); delete f.why; delete f.s; M.picks.push(f); M.q = ''; renderMap(); }
     }
   });
   function setMapMsg(t, kind) { M.msg = t; M.msgKind = kind || ''; renderMap(); }
@@ -4215,7 +4273,18 @@
         w.res.slice(1).forEach((x, i) => { const e = edits[i + 1]; (x && x.ok ? done : fail).push(`${colName(e.c - 1)}${e.r}`); sheetLog(`${colName(e.c - 1)}${e.r}`, e.old, e.v, x && x.ok, x && !x.ok ? x.error : null); });
         Object.assign(touched, w.rows);
       } else {
+        const xFresh = new Map();   // 다른 브랜드 탭 줄 (브랜드 바뀜) — 그 탭 저장소를 새로 읽어 다시 찾는다
+        for (const p of M.picks) if (p.gid && !xFresh.has(p.gid)) {
+          if (!cut || !cutTab(p.gid)) throw new Error(`${p.brand} 탭은 아직 구글시트에 이어져 있어 여기서 못 써요`);
+          xFresh.set(p.gid, await storeRows(p.gid));
+        }
         const tg = M.picks.map(p => {
+          if (p.gid) {
+            const hs = xFresh.get(p.gid).filter(x => !NOT_STOCK.test(vOf(x.v, mc.cat)) && vOf(x.v, mc.name).trim() === p.name && vOf(x.v, mc.opt).trim() === p.opt);
+            const h = hs.length === 1 ? hs[0] : hs.find(x => x.r === p.r);
+            if (!h) throw new Error(`${p.brand} 탭 '${mapLabel(p.name, p.opt)}' 줄을 ${hs.length ? '하나로 못 골랐어요 (같은 줄이 여러 개)' : '못 찾았어요'}`);
+            return Object.assign({}, p, {r: h.r, v: h.v});
+          }
           const hits = fresh.filter(x => x.r !== tv.r && !NOT_STOCK.test(vOf(x.v, mc.cat)) && vOf(x.v, mc.name).trim() === p.name && vOf(x.v, mc.opt).trim() === p.opt);
           const hit = hits.length === 1 ? hits[0] : hits.find(x => x.r === p.r);
           if (!hit) throw new Error(`'${mapLabel(p.name, p.opt)}' 줄을 ${cut ? '' : '시트에서 '}${hits.length ? '하나로 못 골랐어요 (같은 줄이 여러 개)' : '못 찾았어요'}`);
@@ -4224,7 +4293,7 @@
         // 1. 규칙 — 다음 처리부터 두 ERP 가 읽는다 (같은 이름 · 옵션 규칙은 새 것으로 바뀜)
         if (M.save) {
           setMapMsg('매핑 규칙 저장 중…', 'busy');
-          await sbRpc('erp_map_set', {p_brand: brand, p_in_name: src.name, p_in_opt: src.opt, p_targets: tg.map(x => ({name: x.name, opt: x.opt, per: x.per})), p_gid: M.gid, p_r: tv.r, p_who: who});
+          await sbRpc('erp_map_set', {p_brand: brand, p_in_name: src.name, p_in_opt: src.opt, p_targets: tg.map(x => Object.assign({name: x.name, opt: x.opt, per: x.per}, x.gid ? {brand: x.brand} : {})), p_gid: M.gid, p_r: tv.r, p_who: who});
         }
         // 2. ⚠ 줄 비우기 — 먼저 카테고리 · 상품명 · 옵션 (셋 다 그 줄에만 있는 글자라 '그 줄이 맞는지' 확인도 됨 — 상품명 · 옵션이 없어지면 자동 차감이 이 줄로 더는 안 옴).
         //    그다음 판매 · 남은 재고 · 리오더 알림처럼 0 이 아닌 칸만 (0 · FALSE · 수식 칸은 그대로 두어도 빈 줄). 그사이 바뀐 칸은 지금 값을 가져간다
@@ -4267,11 +4336,16 @@
           const cs = [];
           taken.forEach((n, p) => { if (n) cs.push({p, add: n * x.per}); });
           if (ded > 0 && mc.stock) cs.push({p: mc.stock.p, add: -ded * x.per, stock: true});
-          return {x, cells: cs, v: x.v, r: x.r, skipped: []};
+          return {x, cells: cs, v: x.v, r: x.r, gid: x.gid || '', skipped: []};
         });
-        for (let round = 0; round < 4 && want.some(w => w.cells.length); round++) {
+        const xTouched = M.xTouched = {};   // 다른 브랜드 탭에 쓴 줄 → 화면 저장소
+        for (const xg of [...new Set(want.map(w => w.gid))]) {
+        const mine = want.filter(w => w.gid === xg);
+        const wr0 = xg ? (sheet, edits) => mapWriteDb(xg, edits, who).then(w => { Object.assign(xTouched[xg] = xTouched[xg] || {}, w.rows); return Object.assign({}, w, {rows: {}}); }) : mapWrite;
+        const rd0 = xg ? () => storeRows(xg) : readRows;
+        for (let round = 0; round < 4 && mine.some(w => w.cells.length); round++) {
           // 남은 재고 빈칸(아직 안 센 줄) · 숫자 아님 = 안 뺌
-          want.forEach(w => {
+          mine.forEach(w => {
             w.cells = w.cells.filter(cell => {
               if (!cell.stock) return true;
               const cur = vOf(w.v, {p: cell.p});
@@ -4280,9 +4354,9 @@
               return false;
             });
           });
-          const pend = want.filter(w => w.cells.length);
+          const pend = mine.filter(w => w.cells.length);
           if (!pend.length) break;
-          const idW = await mapWrite(t.name, pend.map(w => ({r: w.r, c: mc.name.p + 1, v: vOf(w.v, mc.name), old: vOf(w.v, mc.name)})));
+          const idW = await wr0(t.name, pend.map(w => ({r: w.r, c: mc.name.p + 1, v: vOf(w.v, mc.name), old: vOf(w.v, mc.name)})));
           const ok = pend.filter((w, i) => idW.res[i] && idW.res[i].ok), lost = pend.filter((w, i) => !(idW.res[i] && idW.res[i].ok));
           const edits = [], map = [];
           ok.forEach(w => w.cells.forEach(cell => {
@@ -4291,7 +4365,7 @@
             map.push({w, cell});
           }));
           if (edits.length) {
-            const wr = await mapWrite(t.name, edits);
+            const wr = await wr0(t.name, edits);
             Object.assign(touched, wr.rows);
             wr.res.forEach((x, i) => {
               const {w, cell} = map[i], e = edits[i];
@@ -4305,13 +4379,14 @@
             });
           }
           if (lost.length) {   // 줄이 밀렸음 — 다시 읽어 상품명 · 옵션으로 다시 찾는다
-            fresh = await readRows();
+            fresh = await rd0();
             lost.forEach(w => {
               const hits = fresh.filter(x => !NOT_STOCK.test(vOf(x.v, mc.cat)) && vOf(x.v, mc.name).trim() === w.x.name && vOf(x.v, mc.opt).trim() === w.x.opt);
               if (hits.length === 1) { w.r = hits[0].r; w.v = hits[0].v; }
               else { w.cells.forEach(c => fail.push(`${mapLabel(w.x.name, w.x.opt)} ${c.stock ? '남은 재고' : '판매'}`)); w.cells = []; }
             });
           }
+        }
         }
         want.forEach(w => w.cells.forEach(c => fail.push(`${mapLabel(w.x.name, w.x.opt)} ${c.stock ? '남은 재고' : '판매'} (계속 바뀜)`)));
         M.skipped = want.filter(w => w.skipped.length).map(w => mapLabel(w.x.name, w.x.opt));
@@ -4334,13 +4409,18 @@
           if (old || v.length) ent.rows.set(r, Object.assign({}, old || {r}, {v, src: 'office', edited_by: who || (old && old.edited_by), edited_at: new Date().toISOString()}));
         }
       }
+      Object.entries(M.xTouched || {}).forEach(([xg, rows]) => {   // 다른 브랜드 탭 (브랜드 바뀜) — 저장소엔 이미 칸마다 썼으니 화면만
+        const xe = S.cache.get(xg);
+        if (xe && xe.rows) Object.entries(rows).forEach(([rk, arr]) => { const r = +rk, a = (Array.isArray(arr) ? arr : []).map(x => x == null ? '' : String(x)), old = xe.rows.get(r); xe.rows.set(r, Object.assign({}, old || {r}, {v: a, src: 'office', edited_by: who || (old && old.edited_by), edited_at: new Date().toISOString()})); });
+      });
+      M.xTouched = null;
       M.busy = false;
       const skipped = M.skipped || [];
       M.skipped = null;
       closeMap();
       rerender(S.cur);
       if (S.sel && S.sel.r === src.r) closeDetail();
-      const head = M.mode === 'new' ? `새 상품으로 등록됨 · ${src.name}` : `매핑됨 · ${mapLabel(src.name, src.opt)} → ${M.picks.map(p => mapLabel(p.name, p.opt) + (p.per > 1 ? ` ×${p.per}` : '')).join(' + ')}`;
+      const head = M.mode === 'new' ? `새 상품으로 등록됨 · ${src.name}` : `매핑됨 · ${mapLabel(src.name, src.opt)} → ${M.picks.map(p => (p.gid ? `[${p.brand}] ` : '') + mapLabel(p.name, p.opt) + (p.per > 1 ? ` ×${p.per}` : '')).join(' + ')}`;
       toast(head + (skipped.length ? ` · 남은 재고 빈칸이라 안 뺀 줄: ${skipped.join(', ')}` : '') + (fail.length ? ` · 못 쓴 칸 ${fail.join(', ')} — ${cut ? '그 줄을 확인해 주세요' : '구글시트에서 확인해 주세요'}` : '') + (M.mode === 'send' && M.save ? ' · 다음 주문부터 자동' : ''), !!fail.length);
     } catch (e) {
       M.busy = false;
