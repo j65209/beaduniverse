@@ -19361,6 +19361,8 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
         return `<div class="kko-ord"><div class="kko-ord-h">${o.brand ? _kkoBrand(o.brand,o.brandName) : ''}<b>${_kkoEsc(o.orderNo)}</b><span>${[ds, o.mall, o.p4 ? '뒷번호 '+o.p4 : ''].filter(Boolean).map(_kkoEsc).join(' · ')}</span></div>`
           + `<div class="kko-ord-s">${_kkoEsc(o.mall)} 주문 — ${_kkoEsc(o.status||'')}${o.invoice ? ` · 송장 ${_kkoEsc(o.invoice)}` : ''} (상품 · 상세는 플랫폼에서)</div></div>`; }).join('');
       out.innerHTML=head + res.map(o=>_kkoOrderHtml(o)).join('') + (plat.length ? `<div class="kko-find-msg">플랫폼 주문 ${plat.length}건</div>${platHtml}` : '');
+      // 11-27 사장님 "주문 찾기 하면 운송장 단계보기 자동으로 펼쳐줘" — CJ 송장 단계는 누르지 않아도 바로 (한 번에 8장까지)
+      [...out.querySelectorAll('.kko-trk-btn[aria-expanded="false"]')].slice(0,8).forEach(b=>b.click());
     }catch(e){ out.innerHTML=`<div class="kko-find-msg err">${_kkoEsc((e && e.message) || String(e))}</div>`; }
   }  // 주문 찾기 · 운송장 조회 바꾸기 (2026-11-23 사장님 "주문찾기랑 운송장조회 또는 택배 번호 조회도 미리 만들어줘. 대한통운 api 연결할거야 추후에")
   function kkoLookMode(m){
