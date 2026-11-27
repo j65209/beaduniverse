@@ -7,6 +7,7 @@
 (function () {
   var S = {drafts: null, defects: null, full: null, marks: {}, mkErr: '', at: 0, err: '', loading: false, ret: null, pick: null, lab: {}, labOut: false};
   var BOX = ['rsBoxCs', 'rsBoxLg'];
+  var PKBOX = ['pkBoxCs', 'pkBoxLg'];   // 자동수거 필요 — 재배송 표에서 뺀 따로 카드, CS팀은 사고접수 밑 (11-27 사장님 "자동수거는 따로 빼줘. 사고접수하는것밑에")
   var ST = {'정보 대기': 'wait', '발송 대기': 'todo', '발송함': 'done', '확인 필요': 'check'};
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
   function kst(ms) { return new Date(ms + 9 * 3600000).toISOString().slice(0, 10); }
@@ -34,7 +35,7 @@
       + '.rs-sub{margin:14px 0 2px;font-size:13px;font-weight:700;color:#4a5562}.rs-sub small{font-weight:600;color:#8a94a0;font-size:12px;margin-left:6px}'
       + '@media (max-width:700px){.rs-row{grid-template-columns:52px 46px minmax(0,1fr) auto}.rs-row .rs-ph,.rs-row .rs-go{display:none}}'
       /* 11-27 정돈 — 무채색 + 경고 빨강 하나, 표는 화면 폭 안에(가로 밀기 없음), 긴 글은 2~3줄 */
-      + '#rsBoxCs,#rsBoxLg,#acBoxCs{padding:18px 20px;margin:0 0 16px;border-color:#e3e6eb;box-shadow:0 1px 2px rgba(20,30,50,.04)}'
+      + '#rsBoxCs,#rsBoxLg,#acBoxCs,#pkBoxCs,#pkBoxLg{padding:18px 20px;margin:0 0 16px;border-color:#e3e6eb;box-shadow:0 1px 2px rgba(20,30,50,.04)}'
       + '.rs-head{gap:12px;padding-bottom:10px;border-bottom:1px solid #eef0f3;margin-bottom:10px}.rs-title{font-size:16px;letter-spacing:-.2px}.rs-title small{font-size:12.5px;font-weight:500;color:#9aa3ad;margin-left:8px}'
       + '.rs-nav button{border-color:#e3e6eb;color:#4a5562;padding:4px 10px}.rs-nav button:hover{background:#f6f8fb}'
       + '.rs-cnt{margin:0 0 10px;gap:6px}.rs-cnt span{background:#f3f4f6;color:#374151;font-weight:600;padding:3px 10px}'
@@ -54,7 +55,7 @@
       + '.rs-sub{margin:18px 0 8px;padding-top:12px;border-top:1px dashed #e3e6eb;font-size:13.5px;color:#1f2a37}.rs-list{gap:6px}.rs-list .rs-row{padding:8px 10px;border-color:#eceef2}.rs-list .rs-row:hover{background:#fafbfc}'
       + '.rs-warn{background:#fafbfc;color:#4b5563;border:1px solid #eceef2}.rs-hand-box{background:#fff;border-color:#f5c2bd}'
       + '.ac-ref.need{background:#fff1f0;color:#c0392b}.ac-ref.ok,.ac-ref.re{background:#f3f4f6;color:#374151}'
-      + '@media (max-width:700px){#rsBoxCs,#rsBoxLg{padding:14px}.rs-tblw{overflow:visible;border:0;border-radius:0}.rs-tbl thead{display:none}.rs-tbl,.rs-tbl tbody{display:block;width:100%}.rs-tbl tr.rs-grp{display:block}.rs-tbl tr.rs-grp td{display:block;border-radius:8px;margin:10px 0 6px}.rs-tbl tr.rs-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;border:1px solid #eceef2;border-radius:12px;padding:10px 12px;margin:0 0 8px}.rs-tbl td{display:block;border:0;padding:0;min-width:0!important;max-width:none!important}.rs-tbl td:empty{display:none}.rs-tbl .c-day,.rs-tbl .c-kind{width:auto}.rs-tbl .c-goods,.rs-tbl .c-why,.rs-tbl .c-ship{flex:1 1 100%}.rs-tbl .c-order{flex:1 1 auto}.rs-tbl td.rs-act{position:static;box-shadow:none;background:none;flex:1 1 100%;width:auto;min-width:0;display:flex;flex-wrap:wrap;gap:6px;white-space:normal}.rs-act .rs-go{display:inline-block;width:auto;margin:0}.rs-in{width:140px}}'
+      + '@media (max-width:700px){#rsBoxCs,#rsBoxLg,#pkBoxCs,#pkBoxLg{padding:14px}.rs-tblw{overflow:visible;border:0;border-radius:0}.rs-tbl thead{display:none}.rs-tbl,.rs-tbl tbody{display:block;width:100%}.rs-tbl tr.rs-grp{display:block}.rs-tbl tr.rs-grp td{display:block;border-radius:8px;margin:10px 0 6px}.rs-tbl tr.rs-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;border:1px solid #eceef2;border-radius:12px;padding:10px 12px;margin:0 0 8px}.rs-tbl td{display:block;border:0;padding:0;min-width:0!important;max-width:none!important}.rs-tbl td:empty{display:none}.rs-tbl .c-day,.rs-tbl .c-kind{width:auto}.rs-tbl .c-goods,.rs-tbl .c-why,.rs-tbl .c-ship{flex:1 1 100%}.rs-tbl .c-order{flex:1 1 auto}.rs-tbl td.rs-act{position:static;box-shadow:none;background:none;flex:1 1 100%;width:auto;min-width:0;display:flex;flex-wrap:wrap;gap:6px;white-space:normal}.rs-act .rs-go{display:inline-block;width:auto;margin:0}.rs-in{width:140px}}'
       + '@media (min-width:701px) and (max-width:1500px){.rs-tbl td.rs-act{white-space:normal;width:96px;min-width:96px}.rs-act .rs-go{display:block;width:100%;margin:0 0 4px}.rs-tbl .c-goods{min-width:180px}.rs-tbl .c-ship{min-width:160px}.rs-tbl .c-why{min-width:120px}}';
     document.head.appendChild(st);
   }
@@ -137,6 +138,15 @@
       b.innerHTML = html; b._html = html;
       tw = b.querySelector('.rs-tblw'); if (tw && (st || sl)) { tw.scrollTop = st; tw.scrollLeft = sl; }
     });
+    var pv = pickView();
+    PKBOX.forEach(function (id) {
+      var b = document.getElementById(id); if (!b) return;
+      b._rows = pv.rows; b.hidden = !pv.html;
+      if (b._html === pv.html) return;
+      var tw = b.querySelector('.rs-tblw'), st = tw ? tw.scrollTop : 0, sl = tw ? tw.scrollLeft : 0;
+      b.innerHTML = pv.html; b._html = pv.html;
+      tw = b.querySelector('.rs-tblw'); if (tw && (st || sl)) { tw.scrollTop = st; tw.scrollLeft = sl; }
+    });
   }
 
   /* ===== 📦 재배송 목록 (2026-11-26 사장님 "지금 대한통운 연결이 안되어서 우선 재배송 목록들은 정리해줘. 탭 만들어서") =====
@@ -207,14 +217,13 @@
     var rows = openRows().sort(function (a, b) { return (a.status === '정보 대기') - (b.status === '정보 대기') || (a.firstAt || 0) - (b.firstAt || 0); });
     var shipMiss = !S.full;
     var cnt = {}; rows.forEach(function (r) { cnt[r.status] = (cnt[r.status] || 0) + 1; });
-    var pk = pickRows();   // 수거 접수 필요 (11-27 사장님 "나갈 재배송 교환 불량 여기에 넣어줘") — 같은 표 맨 아래
     var top = '<div class="rs-head"><span class="rs-title">나갈 재배송 · 교환 · 불량<small>보낸 건은 안 보여요 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
       + '<span class="rs-nav"><button type="button" data-rs="copy">표 복사</button><button type="button" data-rs="csv">엑셀 내려받기</button><button type="button" data-rs="re" aria-label="다시 불러오기">↻</button></span></div>'
-      + '<div class="rs-cnt">' + ['발송 대기', '정보 대기'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span>' + k + ' ' + cnt[k] + '</span>'; }).join('') + (pk.rows.length ? '<span>수거 접수 필요 ' + pk.rows.length + '</span>' : '') + (pk.older ? '<span title="어제 전에 들어온 수거 접수 필요는 반품 현황에서">그 전 수거 ' + pk.older + '건은 반품 현황</span>' : '') + '</div>'
+      + '<div class="rs-cnt">' + ['발송 대기', '정보 대기'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span>' + k + ' ' + cnt[k] + '</span>'; }).join('') + '</div>'
       + (shipMiss ? '<div class="rs-warn">받는 분 · 연락처 · 주소 · 주문번호는 서버(맥미니 프록시 /cs/kakao-reship) 연결 뒤 사무실 인터넷에서 채워져요. 그 전에는 [대화]로 채팅방을 열어 확인해 주세요.</div>' : (S.full.outside ? '<div class="rs-warn">사무실 밖이라 받는 분 정보는 가렸어요.</div>' : ''))
       + (S.mkErr ? '<div class="rs-warn">' + esc(S.mkErr) + '</div>' : '') + handBox();
-    // 브랜드별로 묶음 — 재배송 줄과 수거 줄을 같이, 브랜드마다 머리 줄 (11-27)
-    var all = byBrand(rows.map(function (r) { return {led: r}; }).concat(pk.rows.map(function (x) { return {pk: x}; })), function (y) { return y.led ? (y.led.label || y.led.brand) : y.pk.r.label; });
+    // 브랜드별로 묶음, 브랜드마다 머리 줄 (11-27) — 수거 줄은 따로 카드(pickView)
+    var all = byBrand(rows.map(function (r) { return {led: r}; }), function (y) { return y.led.label || y.led.brand; });
     var brOf = function (y) { return y.led ? (y.led.label || y.led.brand) : y.pk.r.label; };
     var nBr = {}; all.forEach(function (y) { var b = brOf(y) || '-'; nBr[b] = (nBr[b] || 0) + 1; });
     var lastBr = null;
@@ -226,6 +235,22 @@
         return grp(y) + ledRow(r, i);
       }).join('') + '</tbody></table></div>' : '<div class="rs-empty">' + (S.err && !S.drafts ? '불러오지 못했어요 (' + esc(S.err) + ')' : '지금 나갈 건이 없어요') + '</div>';
     return {html: top + body, rows: all.map(function (y) { return y.led ? {r: y.led} : y.pk; })};
+  }
+  /* 자동수거 필요 — 따로 카드 (11-27 사장님 "자동수거는 따로 빼줘. 사고접수하는것밑에"). 줄 모양 · 버튼은 재배송 표의 수거 줄(pkRow) 그대로, 건이 없으면 카드를 숨김 */
+  function pickView() {
+    var pk = pickRows();
+    if (!pk.rows.length && !pk.older) return {html: '', rows: []};
+    var stop = pk.rows.filter(function (x) { return x.r.stop; }).length;
+    var top = '<div class="rs-head"><span class="rs-title">자동수거 필요<small>회수 운송장이 잡히면 저절로 빠져요 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
+      + '<span class="rs-nav"><button type="button" data-rs="re" aria-label="다시 불러오기">↻</button></span></div>'
+      + '<div class="rs-cnt">' + (pk.rows.length ? '<span>' + pk.rows.length + '건</span>' : '') + (stop ? '<span>수거 접수 필요 ' + stop + '</span>' : '') + (pk.older ? '<span title="어제 전에 들어온 수거 접수 필요는 반품 현황에서">그 전 수거 ' + pk.older + '건은 반품 현황</span>' : '') + '</div>';
+    var all = byBrand(pk.rows, function (x) { return x.r.label; });
+    var nBr = {}; all.forEach(function (x) { var b = x.r.label || '-'; nBr[b] = (nBr[b] || 0) + 1; });
+    var lastBr = null;
+    var grp = function (x) { var b = x.r.label || '-'; if (b === lastBr) return ''; lastBr = b; return '<tr class="rs-grp"><td colspan="' + (VIEW.length + 1) + '">' + esc(b) + '<small>' + nBr[b] + '건</small></td></tr>'; };
+    var body = all.length ? '<div class="rs-tblw"><table class="rs-tbl"><thead><tr>' + VIEW.map(function (h) { return '<th>' + h[1] + '</th>'; }).join('') + '<th></th></tr></thead><tbody>'
+      + all.map(function (x, i) { return grp(x) + pkRow(x, i); }).join('') + '</tbody></table></div>' : '';
+    return {html: top + body, rows: all};
   }
   function ledRow(r, i) {
         var c = cols(r), m = r.mark || {};
@@ -523,7 +548,7 @@
     t.disabled = true;
     markSave(t.dataset.id, p).then(function () { S.mkErr = ''; }).catch(function (x) { S.mkErr = '저장하지 못했어요 — ' + ((x && x.message) || x); }).then(function () { t.disabled = false; if (S.mkErr) draw(); });
   });
-  function visible() { return BOX.some(function (id) { var b = document.getElementById(id); return b && b.offsetParent; }); }
+  function visible() { return BOX.concat(PKBOX).some(function (id) { var b = document.getElementById(id); return b && b.offsetParent; }); }
   setInterval(function () { if (!document.hidden && visible()) load(false); }, 5000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden && visible()) load(false); });
   window.Reship = {load: load, draw: draw, rows: function () { return openRows(); }, state: S, booked: booked};
