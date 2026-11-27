@@ -18357,6 +18357,28 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!_kkoIsStaff(r) && sd.mode && sd.mode!=='off' && (sd.channels||[]).includes(r.pid) && !(sd.kananaOn||[]).includes(r.pid) && x && x.owner==='agent' && x.reply && _kkoWaiting(r)) return {pending:true};
     return null;
   }
+  /* 끝난 방 숨김 (2026-11-27 사장님 "대화가 끝난것들이나 희선님한테 접수한거나 상단에 재배송 등록하게되면 대화 숨김처리해")
+     ① 우리 마무리 인사로 끝난 방 ② 재배송 장부에서 [희선님께] 넘긴 방 ③ 맨 위 재배송 장부에 오른 방 — 모두 그 뒤 고객이 새로 쓰면 다시 보임.
+     관리자 호출을 누른 방은 그대로 둠 */
+  function _kkoClosingLine(t){
+    const x=String(t||'').trim();
+    if(!x || x.length>90 || /[?？]/.test(x) || /확인|안내|보내 ?드리|발송|배송|재배송|환불|교환|입금|기다려|접수|처리/.test(x)) return false;
+    return /감사합니다/.test(x) && /하루|주말|저녁|밤/.test(x) && /(보내시길|되시길|되세요|보내세요)/.test(x);
+  }
+  function _kkoHideDone(r){
+    if(!r || r.managerCall) return false;
+    const key=r.pid+':'+r.chatId, cust=r.lastWho==='customer';
+    if(r.lastWho==='ai' && _kkoClosingLine(r.preview)) return true;
+    const led=((_kko.drafts||{}).reship||[]).filter(x=>x && x.key===key);
+    if(!led.length) return false;
+    const marks=(window.Reship && Reship.state && Reship.state.marks) || {};
+    for(const x of led){
+      const h=(marks[x.id]||{}).hand;
+      if(h && h.at && (!cust || (r.lastAt||0)<=h.at)) return true;
+    }
+    const first=Math.max(...led.map(x=>x.firstAt||0));
+    return !cust || (r.lastAt||0)<=first;
+  }
   const KKO_WATCH_BD='<span class="kko-bd agent" title="에이전트가 고객에게 직접 답하고 있어요 — 초기 단계라 직원이 대화를 지켜봐 주세요">에이전트 작동중 · 직원 관전 요망</span>';
   function _kkoIsStaff(r){
     if(r.managerCall || _kkoOpenCall(r)) return true;
@@ -18583,7 +18605,7 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     const needs=r=>_kkoIsStaff(r) || _kkoTodo(r) || _kkoWaiting(r), isTodo=r=>!_kkoIsStaff(r) && !!_kkoTodo(r), isWait=r=>!_kkoIsStaff(r) && !_kkoTodo(r) && _kkoWaiting(r);
     if(!['staff','todo','wait','pick','agent'].includes(_kko.only)) _kko.only='';
     const pickTab=_kko.only==='pick', pickRows=_kkoColAll().filter(p=>_kko.brand==='all' || p.brand===_kko.brand).sort((a,b)=>(_kkoColHot(b)-_kkoColHot(a)) || a.at-b.at), pickHot=pickRows.filter(_kkoColHot);
-    const base=_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand);
+    const base=(_kko.brand==='all' ? rows : rows.filter(r=>r.brand===_kko.brand)).filter(r=>!_kkoHideDone(r));
     const since=r=>((_kkoOpenCall(r)||{}).since||r.waitingSince||r.lastAt)||0;
     const staffRows=base.filter(_kkoIsStaff).sort((a,b)=>since(a)-since(b));
     const waitRows=base.filter(isWait).sort((a,b)=>since(a)-since(b));
