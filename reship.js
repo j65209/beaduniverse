@@ -102,7 +102,7 @@
       return '<div class="rs-row" tabindex="0" data-i="' + (n0 + i) + '"><span class="rs-br">' + esc(r.label || '') + '</span><span class="rs-kd">' + esc(r.kind) + '</span>'
         + '<span class="rs-pd">' + esc(p.length ? p.join(' / ') : '상품 확인 필요') + '</span><span class="rs-ph">' + (r.photos ? '📷 ' + r.photos : '') + '</span>'
         + (x.stale ? '<span class="rs-st check">출고 확인 · ' + esc(md(r.day)) + ' 약속</span><span class="rs-act"><button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">보냈어요</button><button type="button" class="rs-go rs-notyet" data-id="' + esc(r.id) + '">아직 안 보냄</button>' : '<span class="rs-st check">확인 필요</span><span class="rs-act">')
-        + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></span></div>';
+        + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '" title="카카오 채널 대화창 열기">대화</button></span></div>';
     }).join('') + '</div>' : '';
     BOX.forEach(function (id) {
       var b = document.getElementById(id); if (!b) return;
@@ -205,7 +205,7 @@
           + (r.ship && r.ship.nm && !m.bk && typeof window.cjbFromReship === 'function' ? '<button type="button" class="rs-go rs-cj" data-id="' + esc(r.id) + '" title="CS 도구 건별 접수 칸에 받는 분 · 주소 · 상품을 채워요 — 접수 · 출력하면 송장번호가 여기 저절로 적혀요">CJ 접수</button>' : '')
           + (r.status === '발송함' ? '' : '<button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">발송함</button>')
           + '<button type="button" class="rs-go rs-hand" data-id="' + esc(r.id) + '" title="표에서 빼고 희선님 PC에 알림">희선님께</button>'
-          + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></td></tr>';
+          + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '" title="카카오 채널 대화창 열기">대화</button></td></tr>';
   }
   /* 수거 줄 (11-27 사장님 "송장번호에 자동수거해야하는 송장번호 넣어주고 자동수거 요청 배지 우측에 · 연락처 주소 우편번호는 기본적으로 다 문의한 사람들") —
      받는 분 · 연락처 · 우편번호 · 주소 = 식스샵프로 주문 상세(프록시 /cs/label, 사무실 인터넷만, 화면 메모리에만 — 저장 안 함).
@@ -230,7 +230,7 @@
           return '<td></td>';
         }).join('') + '<td class="rs-act">'
           + (typeof window.cjbFromPickup === 'function' ? '<button type="button" class="rs-go rs-cj rs-pkreq" data-id="' + esc(r.id) + '" title="CS 도구 건별 접수를 반품 회수로 채워요 — 받는 분 · 주소 · 회수할 송장 · 상품">자동수거 요청</button>' : '')
-          + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : '')) + '</td></tr>';
+          + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '" title="카카오 채널 대화창 열기">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : '')) + '</td></tr>';
   }
   /** 수거 줄 받는 분 정보 — 주문마다 한 번 (실패 · 사무실 밖이면 다시 묻지 않음) */
   async function labLoad(base) {
@@ -299,7 +299,7 @@
     var hs = handRows(); if (!hs.length) return '';
     return '<div class="rs-hand-box"><b>희선님 처리 요청 ' + hs.length + '건</b> — 재배송 표에서 빼 둔 건이에요' + hs.map(function (r) {
       return '<div><b>' + esc(r.label || '') + ' ' + esc(r.kind) + '</b> ' + esc(shortWhy(r)) + ' <span class="rs-op">' + esc((r.products || []).join(' / ').slice(0, 60)) + '</span>'
-        + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button><button type="button" class="rs-go rs-handdone" data-id="' + esc(r.id) + '">처리 끝</button></div>';
+        + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '" title="카카오 채널 대화창 열기">대화</button><button type="button" class="rs-go rs-handdone" data-id="' + esc(r.id) + '">처리 끝</button></div>';
     }).join('') + '</div>';
   }
   var notified = {};
@@ -459,6 +459,13 @@
     if (b.classList.contains('rs-go')) {
       hideTip();
       var key = b.dataset.k;
+      // 11-27 사장님 "대화 누르면 바로 카카오채널 대화장으로 바로 이동" — 파트너센터 채팅방 (PC 새 탭 · 휴대폰은 이 창)
+      var kk = String(key || '').split(':');
+      if (/^_[A-Za-z0-9]+$/.test(kk[0] || '') && /^\d{6,20}$/.test(kk[1] || '')) {
+        var url = 'https://business.kakao.com/' + kk[0] + '/chats/' + kk[1];
+        if (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) location.assign(url); else window.open(url, '_blank', 'noopener');
+        return;
+      }
       try { if (typeof triggerCs === 'function' && document.getElementById('viewCs').hidden) triggerCs(); } catch (x) { /* noop */ }
       setTimeout(function () { try { var k = document.getElementById('kkoBox'); if (k) k.scrollIntoView({behavior: 'smooth', block: 'start'}); if (typeof kkoTab === 'function') kkoTab('chat'); kkoOpenChat(key); } catch (x) { console.warn('재배송 장부 대화 열기', x); } }, 400);
       return;
