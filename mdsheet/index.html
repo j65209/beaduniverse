@@ -520,7 +520,8 @@
   .nav-sec .bd{flex:none;width:7px;height:7px;border-radius:50%}
   .nav-sec .bn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--side-text)}
   .nav-sec em{flex:none;font-style:normal;font-weight:500;font-size:11px;font-variant-numeric:tabular-nums}
-  .nav-grp.off .nav-item:not(.on){display:none}
+  .nav-grp.off .nav-item{display:none}   /* 접으면 보고 있는 탭까지 다 접는다 (11-27 사장님 '접기 오류' — 보던 탭 한 줄이 남아 안 접힌 것처럼 보였다) */
+  .nav-grp.off.cur .nav-sec .bn{color:#4ade80}   /* 접힌 시트 안에 보고 있는 탭이 있으면 시트 이름만 초록 */
   .nav-item.empty .nm{color:var(--side-mute)}
   .nav-item .fv{flex:none;width:18px;text-align:center;font-size:13px;line-height:1;color:var(--side-mute);opacity:0}
   .nav-item:hover .fv,.nav-item .fv.on{opacity:1}
@@ -2613,8 +2614,8 @@
         h += `<div class="nav-gt">${esc(grp || '기타')}</div>`;
       }
       tabs.forEach(t => list.push({key: t.gid, tabs: [t]}));
-      const off = isFolded(b.book) && !tabs.some(t => t.gid === S.cur);
-      h += `<div class="nav-grp${isFolded(b.book) ? ' off' : ''}"><button type="button" class="nav-sec" data-fold="${esc(b.book)}" title="${esc((b.descr || b.title) + (off ? ' — 누르면 펴기' : ' — 누르면 접기'))}">${CHEV}<i class="bd" style="background:${BOOK_COLOR[b.book] || '#64748b'}"></i><span class="bn">${esc(b.title)}</span><em>${tabs.length || ''}</em></button>`;
+      const off = isFolded(b.book), cur = tabs.some(t => t.gid === S.cur);
+      h += `<div class="nav-grp${off ? ' off' : ''}${off && cur ? ' cur' : ''}"><button type="button" class="nav-sec" data-fold="${esc(b.book)}" title="${esc((b.descr || b.title) + (off ? ' — 누르면 펴기' : ' — 누르면 접기'))}">${CHEV}<i class="bd" style="background:${BOOK_COLOR[b.book] || '#64748b'}"></i><span class="bn">${esc(b.title)}</span><em>${tabs.length || ''}</em></button>`;
       tabs.forEach(t => { h += navItem(t, false); });
       h += '</div>';
     }
