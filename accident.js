@@ -14,7 +14,7 @@
     st.textContent = '.ac-shot{position:fixed;inset:0;z-index:9999;background:rgba(15,20,30,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}'
       + '.ac-shot>div{background:#fff;border-radius:12px;max-width:min(1200px,96vw);padding:10px 12px}.ac-shot img{display:block;max-width:100%;height:auto;border:1px solid #eef0f3;border-radius:8px}'
       + '.ac-bar{display:flex;gap:6px;align-items:center;margin:0 0 8px;font-size:13px;font-weight:700}.ac-bar span{margin-right:auto}'
-      + '.ac-err{font-size:11.5px;color:#8a6100}.ac-items{font-size:12.5px;color:#4a5562}.ac-ref{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}.ac-ref.need{background:#fff1f0;color:#c0392b}.ac-ref.ok{background:#e8f5ec;color:#2f7a45}'
+      + '.ac-err{font-size:11.5px;color:#8a6100}.ac-items{font-size:12.5px;color:#4a5562}.ac-ref{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}.ac-ref.need{background:#fff1f0;color:#c0392b}.ac-ref.ok{background:#e8f5ec;color:#2f7a45}.ac-ref.re{background:#eef3fb;color:#3c63a8}'
       + '@media (max-width:700px){#acBoxCs .rs-tblw{overflow:visible;max-height:none;border:0}#acBoxCs .rs-tbl thead{display:none}#acBoxCs .rs-tbl,#acBoxCs .rs-tbl tbody{display:block}#acBoxCs .rs-tbl tr.rs-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;border:1px solid #eef0f3;border-radius:10px;padding:8px 10px;margin-bottom:6px}#acBoxCs .rs-tbl td{border:0;padding:0;min-width:0!important}#acBoxCs .rs-tbl td.c-goods,#acBoxCs .rs-tbl td.ac-ship{flex-basis:100%}#acBoxCs .rs-row .rs-go{display:inline-block}}';
     document.head.appendChild(st);
   }
@@ -27,7 +27,7 @@
     var h = '<div class="rs-head"><span class="rs-title">🚨 택배 사고접수<small>분실 의심 · 식스샵프로 주문 화면 캡처</small></span><span class="rs-nav"><button type="button" data-ac="re">새로고침</button></span></div>';
     if (S.err) h += '<div class="rs-warn">' + esc(S.err) + '</div>';
     if (rows.length) {
-      h += '<div class="rs-tblw"><table class="rs-tbl"><thead><tr><th>접수</th><th>브랜드</th><th>고객</th><th>주문번호</th><th>상품</th><th>운송장 · 마지막 단계</th><th>환불</th><th>캡처</th><th></th></tr></thead><tbody>';
+      h += '<div class="rs-tblw"><table class="rs-tbl"><thead><tr><th>접수</th><th>브랜드</th><th>고객</th><th>주문번호</th><th>상품</th><th>운송장 · 마지막 단계</th><th>처리</th><th>캡처</th><th></th></tr></thead><tbody>';
       rows.forEach(function (r) {
         var items = (r.items || []).map(function (i) { return esc(i.name) + (i.option ? ' (' + esc(i.option) + ')' : '') + ' ' + (i.qty || 1) + '개'; }).join('<br>');
         var cap = r.img ? '<button type="button" class="rs-go rs-cj" data-ac="shot" data-id="' + esc(r.orderId) + '">캡처 보기</button>'
@@ -36,7 +36,7 @@
           + '<td class="c-order"><span class="rs-inv">' + esc(r.orderId || '-') + '</span>' + (r.market === 'naver-pay' ? '<span class="rs-tag">네이버페이</span>' : '') + (r.err ? '<div class="ac-err">' + esc(r.err) + '</div>' : '') + '</td>'
           + '<td class="c-goods ac-items">' + items + '</td>'
           + '<td class="ac-ship">' + (r.inv ? '<span class="rs-inv">' + esc(r.inv) + '</span>' : '-') + '<div class="ac-items">' + esc(r.last || '') + (r.lastAt ? ' · ' + esc(r.lastAt) : '') + '</div></td>'
-          + '<td><span class="ac-ref ' + (r.refund === '완료' ? 'ok' : 'need') + '">' + (r.refund === '완료' ? '환불 완료' : '환불 필요') + '</span></td>'
+          + '<td>' + (r.act === '재배송' ? '<span class="ac-ref re">재배송</span>' : '<span class="ac-ref ' + (r.refund === '완료' ? 'ok' : 'need') + '">' + (r.refund === '완료' ? '환불 완료' : '환불 필요') + '</span>') + '</td>'
           + '<td>' + cap + '</td><td><button type="button" class="rs-go" data-ac="chat" data-k="' + esc(r.key) + '">대화</button></td></tr>';
       });
       h += '</tbody></table></div>';
