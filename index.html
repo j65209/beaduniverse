@@ -18387,6 +18387,10 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(!r || r.managerCall) return false;
     const key=r.pid+':'+r.chatId, cust=r.lastWho==='customer';
     if(r.lastWho==='ai' && _kkoClosingLine(r.preview)) return true;
+    // 대화가 끝난 방은 숨김 (2026-11-27 사장님 "대화 종료된거 왜 숨김 안하냐고") — ① 고객 마지막 글이 마무리 인사(감사합니다 · 넵 · 알겠습니다)
+    // ② 우리(에이전트 · 직원)가 마지막으로 답했고 묻는 말이 아니며 30분 넘게 고객 글이 없음. 고객이 다시 쓰면 저절로 다시 보임
+    if(cust && (r.closing || _kkoBye(r))) return true;
+    if(!cust && (r.lastWho==='ai' || r.lastWho==='staff') && Date.now()-(r.lastAt||0)>30*60000 && !/[?？]|부탁드립니다|남겨 ?주시|보내 ?주시|알려 ?주시|말씀해 ?주시/.test(String(r.preview||''))) return true;
     const led=((_kko.drafts||{}).reship||[]).filter(x=>x && x.key===key);
     if(!led.length) return false;
     const marks=(window.Reship && Reship.state && Reship.state.marks) || {};
