@@ -32,7 +32,30 @@
       + '.rs-inv{font-weight:700;font-variant-numeric:tabular-nums;margin-right:4px}.rs-tag{font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;background:#f1f3f6;color:#4a5562;white-space:nowrap}.rs-tag.ok{background:#e8f5ec;color:#2f7a45}.rs-tag.dev{background:#fff4d6;color:#8a6100}.rs-cj{border-color:#4f7fcf;color:#3c63a8;font-weight:700}'
       + '.rs-hand-box{margin:8px 0;padding:8px 10px;border-radius:10px;background:#fff1f0;border:1px solid #f5c2bd;font-size:13px}.rs-hand-box div{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}.rs-sent{background:#4f7fcf;color:#fff;border-color:#4f7fcf}'
       + '.rs-sub{margin:14px 0 2px;font-size:13px;font-weight:700;color:#4a5562}.rs-sub small{font-weight:600;color:#8a94a0;font-size:12px;margin-left:6px}'
-      + '@media (max-width:700px){.rs-row{grid-template-columns:52px 46px minmax(0,1fr) auto}.rs-row .rs-ph,.rs-row .rs-go{display:none}}';
+      + '@media (max-width:700px){.rs-row{grid-template-columns:52px 46px minmax(0,1fr) auto}.rs-row .rs-ph,.rs-row .rs-go{display:none}}'
+      /* 11-27 정돈 — 무채색 + 경고 빨강 하나, 표는 화면 폭 안에(가로 밀기 없음), 긴 글은 2~3줄 */
+      + '#rsBoxCs,#rsBoxLg,#acBoxCs{padding:18px 20px;margin:0 0 16px;border-color:#e3e6eb;box-shadow:0 1px 2px rgba(20,30,50,.04)}'
+      + '.rs-head{gap:12px;padding-bottom:10px;border-bottom:1px solid #eef0f3;margin-bottom:10px}.rs-title{font-size:16px;letter-spacing:-.2px}.rs-title small{font-size:12.5px;font-weight:500;color:#9aa3ad;margin-left:8px}'
+      + '.rs-nav button{border-color:#e3e6eb;color:#4a5562;padding:4px 10px}.rs-nav button:hover{background:#f6f8fb}'
+      + '.rs-cnt{margin:0 0 10px;gap:6px}.rs-cnt span{background:#f3f4f6;color:#374151;font-weight:600;padding:3px 10px}'
+      + '.rs-tblw{max-height:none;overflow-x:auto;border:1px solid #eceef2;border-radius:12px;margin-top:4px}'
+      + '.rs-tbl{font-size:13px;table-layout:auto}.rs-tbl th{background:#fafbfc;color:#6b7280;font-size:12px;font-weight:600;padding:9px 10px;border-bottom:1px solid #eceef2}'
+      + '.rs-tbl td{padding:10px;border-top:1px solid #f1f3f5;vertical-align:top;line-height:1.45}.rs-tbl tr.rs-row:hover td{background:#fafbfc}'
+      + '.rs-tbl tr.rs-grp td{background:#f6f7f9;font-weight:800;font-size:12.5px;color:#1f2a37;padding:7px 10px;border-top:1px solid #eceef2}.rs-tbl tr.rs-grp small{font-weight:600;color:#9aa3ad;margin-left:6px}'
+      + '.rs-tbl .c-day{color:#6b7280;font-variant-numeric:tabular-nums;width:44px}.rs-tbl .c-kind{width:56px}.rs-kd{background:#f3f4f6;color:#374151;font-weight:700}.rs-kd.pk{background:#fff;border:1px solid #d1d5db}'
+      + '.rs-tbl .c-goods{min-width:220px;max-width:340px}.rs-it b{font-size:13px;font-weight:700}.rs-op{background:#f3f4f6;color:#374151}.rs-tbl .c-why{min-width:150px;max-width:240px;color:#4b5563}'
+      + '.rs-clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.c-why .rs-clamp{-webkit-line-clamp:2}'
+      + '.rs-tbl .c-ship{min-width:190px;max-width:260px}.rs-who{font-weight:700;color:#1f2a37}.rs-who span{font-weight:500;color:#6b7280;margin-left:6px;font-variant-numeric:tabular-nums}.rs-addr{font-size:12px;color:#6b7280;margin-top:2px}.rs-mute{color:#c0c6cd}'
+      + '.rs-tbl .c-order{font-variant-numeric:tabular-nums;color:#4b5563;font-size:12.5px}'
+      + '.rs-st{font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap}.rs-st.todo{background:#1f2a37;color:#fff}.rs-st.wait,.rs-st.check{background:#f3f4f6;color:#4b5563}.rs-st.done{background:#f3f4f6;color:#9aa3ad}'
+      + '.rs-tag{background:#f3f4f6;color:#6b7280}.rs-tag.ok{background:#f3f4f6;color:#374151}.rs-tag.dev{background:#fff1f0;color:#c0392b}'
+      + '.rs-tbl td.rs-act{position:sticky;right:0;background:#fff;box-shadow:-6px 0 8px -8px rgba(20,30,50,.25);display:table-cell;white-space:nowrap}.rs-tbl tr.rs-row:hover td.rs-act{background:#fafbfc}.rs-tbl th:last-child{position:sticky;right:0;background:#fafbfc}'
+      + '.rs-act .rs-go{margin:0 0 4px 4px}.rs-go{border-color:#e3e6eb;color:#374151;padding:3px 9px;font-weight:600}.rs-go:hover{background:#f6f8fb}.rs-cj,.rs-sent{background:#1f2a37;border-color:#1f2a37;color:#fff}.rs-cj:hover,.rs-sent:hover{background:#374151}'
+      + '.rs-sub{margin:18px 0 8px;padding-top:12px;border-top:1px dashed #e3e6eb;font-size:13.5px;color:#1f2a37}.rs-list{gap:6px}.rs-list .rs-row{padding:8px 10px;border-color:#eceef2}.rs-list .rs-row:hover{background:#fafbfc}'
+      + '.rs-warn{background:#fafbfc;color:#4b5563;border:1px solid #eceef2}.rs-hand-box{background:#fff;border-color:#f5c2bd}'
+      + '.ac-ref.need{background:#fff1f0;color:#c0392b}.ac-ref.ok,.ac-ref.re{background:#f3f4f6;color:#374151}'
+      + '@media (max-width:700px){#rsBoxCs,#rsBoxLg{padding:14px}.rs-tblw{overflow:visible;border:0;border-radius:0}.rs-tbl thead{display:none}.rs-tbl,.rs-tbl tbody{display:block;width:100%}.rs-tbl tr.rs-grp{display:block}.rs-tbl tr.rs-grp td{display:block;border-radius:8px;margin:10px 0 6px}.rs-tbl tr.rs-row{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;border:1px solid #eceef2;border-radius:12px;padding:10px 12px;margin:0 0 8px}.rs-tbl td{display:block;border:0;padding:0;min-width:0!important;max-width:none!important}.rs-tbl td:empty{display:none}.rs-tbl .c-day,.rs-tbl .c-kind{width:auto}.rs-tbl .c-goods,.rs-tbl .c-why,.rs-tbl .c-ship{flex:1 1 100%}.rs-tbl .c-order{flex:1 1 auto}.rs-tbl td.rs-act{position:static;box-shadow:none;background:none;flex:1 1 100%;width:auto;min-width:0;display:flex;flex-wrap:wrap;gap:6px;white-space:normal}.rs-act .rs-go{display:inline-block;width:auto;margin:0}.rs-in{width:140px}}'
+      + '@media (min-width:701px) and (max-width:1500px){.rs-tbl td.rs-act{white-space:normal;width:96px;min-width:96px}.rs-act .rs-go{display:block;width:100%;margin:0 0 4px}.rs-tbl .c-goods{min-width:180px}.rs-tbl .c-ship{min-width:160px}.rs-tbl .c-why{min-width:120px}}';
     document.head.appendChild(st);
   }
   /** 그날 줄 — 장부 + 장부에 없는 불량 사진 건 */
@@ -152,7 +175,13 @@
   /* 복사 · 엑셀 칸 (메모 칸은 11-26 사장님 "메모칸은 없애줘"로 뺌) */
   var HEAD = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['why', '사유'], ['goods', '보낼 상품'], ['opt', '옵션'], ['qty', '수량'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['order', '주문번호'], ['status', '상태'], ['inv', '송장번호']];
   /* 화면 칸 — 날짜 · 브랜드 · 구분 · 사유 · 보낼 상품-옵션 순서, 브랜드별로 묶음 (11-27 사장님) · 보낼 상품 · 옵션 · 수량은 한 칸에 크게 (11-26) */
-  var VIEW = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['why', '사유'], ['goods', '보낼 상품 · 옵션'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['order', '주문번호'], ['status', '상태'], ['inv', '송장번호']];
+  /* 11-27 사장님 "레이아웃 깔끔하게 · 가독성 좋게" — 브랜드는 묶음 머리 줄에만, 받는 분 · 연락처 · 우편번호 · 주소는 '받는 곳' 한 칸(복사 · 엑셀은 그대로 따로) */
+  var VIEW = [['day', '날짜'], ['kind', '구분'], ['goods', '보낼 상품 · 옵션'], ['why', '사유'], ['ship', '받는 곳'], ['order', '주문번호'], ['status', '상태'], ['inv', '송장번호']];
+  function dayShow(d) { return /^\d{4}-\d{2}-\d{2}/.test(String(d || '')) ? md(d) : (d || ''); }
+  function shipHtml(nm, tel, zip, addr) {
+    if (!nm && !tel && !addr) return '<td class="c-ship"><span class="rs-mute">—</span></td>';
+    return '<td class="c-ship"><div class="rs-who">' + esc(nm || '') + (tel ? '<span>' + esc(tel) + '</span>' : '') + '</div>' + (addr || zip ? '<div class="rs-addr">' + (zip ? '(' + esc(zip) + ') ' : '') + esc(addr || '') + '</div>' : '') + '</td>';
+  }
   function goodsHtml(c) {
     if (!c.items.length) return '<span class="rs-op">상품 확인 필요</span>';
     return c.items.map(function (i) {
@@ -205,6 +234,10 @@
           if (k === 'inv') return invHtml(r, c);
           if (k === 'goods') return '<td class="c-goods">' + goodsHtml(c) + '</td>';
           if (k === 'status') return '<td><span class="rs-st ' + (ST[c.status] || 'check') + '">' + esc(c.status) + '</span></td>';
+          if (k === 'day') return '<td class="c-day">' + esc(dayShow(c.day)) + '</td>';
+          if (k === 'kind') return '<td class="c-kind"><span class="rs-kd">' + esc(c.kind) + '</span></td>';
+          if (k === 'ship') return shipHtml(c.nm, c.tel, c.zip, c.addr);
+          if (k === 'why') return '<td class="c-why"><div class="rs-clamp">' + esc(c.why) + '</div></td>';
           return '<td class="c-' + k + '">' + esc(c[k]) + '</td>';
         }).join('') + '<td class="rs-act">'
           + (r.ship && r.ship.nm && !m.bk && typeof window.cjbFromReship === 'function' ? '<button type="button" class="rs-go rs-cj" data-id="' + esc(r.id) + '" title="CS 도구 건별 접수 칸에 받는 분 · 주소 · 상품을 채워요 — 접수 · 출력하면 송장번호가 여기 저절로 적혀요">CJ 접수</button>' : '')
@@ -220,11 +253,11 @@
         var r = x.r, v = pkRcv(r) || {};
         return '<tr class="rs-row" tabindex="0" data-i="' + i + '">' + VIEW.map(function (h) {
           var k = h[0];
-          if (k === 'day') return '<td class="c-day">' + esc(r.day) + '</td>';
-          if (k === 'brand') return '<td class="c-brand">' + esc(r.label) + '</td>';
-          if (k === 'kind') return '<td class="c-kind">수거</td>';
-          if (k === 'goods') return '<td class="c-goods"><div class="rs-it"><b>' + esc(r.goods || '상품 확인 필요') + '</b><span class="rs-op">회수</span></div></td>';
-          if (k === 'why') return '<td class="c-why">' + esc(r.kind + (r.why ? ' · ' + r.why : '')) + '</td>';
+          if (k === 'day') return '<td class="c-day">' + esc(dayShow(r.day)) + '</td>';
+          if (k === 'ship') return shipHtml(v.nm || r.nm, v.tel, v.zip, [v.addr, v.detail].filter(Boolean).join(' '));
+          if (k === 'kind') return '<td class="c-kind"><span class="rs-kd pk">수거</span></td>';
+          if (k === 'goods') return '<td class="c-goods"><div class="rs-it rs-clamp" title="' + esc(r.goods || '') + '"><b>' + esc(r.goods || '상품 확인 필요') + '</b></div></td>';
+          if (k === 'why') return '<td class="c-why"><div class="rs-clamp">' + esc(r.kind + (r.why ? ' · ' + r.why : '')) + '</div></td>';
           if (k === 'nm') return '<td class="c-nm">' + esc(v.nm || r.nm) + '</td>';
           if (k === 'tel') return '<td class="c-tel">' + esc(v.tel || '') + '</td>';
           if (k === 'zip') return '<td class="c-zip">' + esc(v.zip || '') + '</td>';
