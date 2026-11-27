@@ -27,7 +27,7 @@
       + '.rs-tip pre{white-space:pre-wrap;font:inherit;margin:0 0 8px}.rs-tip .rs-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px}.rs-tip img{width:100%;border-radius:8px;background:#f1f3f6;aspect-ratio:1/1;object-fit:cover}.rs-tip .rs-note{color:#8a94a0;font-size:12px}'
       + '.rs-tabs{display:flex;gap:4px;margin:-2px 0 10px;border-bottom:1px solid #eef0f3}.rs-tabs button{border:0;background:none;font:inherit;font-size:13.5px;font-weight:700;color:#8a94a0;padding:6px 10px;border-bottom:2px solid transparent;cursor:pointer}.rs-tabs button[aria-selected="true"]{color:#1f2a37;border-bottom-color:#4f7fcf}'
       + '.rs-warn{font-size:12.5px;color:#8a6100;background:#fff8e6;border-radius:8px;padding:6px 10px;margin:8px 0}.rs-chk{font-size:12.5px;display:flex;align-items:center;gap:4px;margin-right:6px}'
-      + '.rs-tblw{overflow:auto;max-height:70vh;margin-top:8px;border:1px solid #eef0f3;border-radius:10px}.rs-tbl{border-collapse:collapse;width:100%;font-size:12.5px;text-align:left}.rs-tbl th{position:sticky;top:0;background:#f6f8fb;font-weight:700;padding:7px 8px;white-space:nowrap;text-align:left}.rs-tbl td{padding:6px 8px;border-top:1px solid #f0f2f5;vertical-align:top;text-align:left}.rs-tbl tr.rs-row{display:table-row;border:0}.rs-tbl .c-day,.rs-tbl .c-brand,.rs-tbl .c-kind,.rs-tbl .c-zip,.rs-tbl .c-tel,.rs-tbl .c-nm,.rs-tbl .c-order,.rs-tbl .rs-st{white-space:nowrap}.rs-tbl .c-addr{min-width:220px}.rs-tbl .c-goods{min-width:180px}.rs-tbl .c-why{min-width:160px;color:#4a5562}.rs-act{white-space:nowrap;display:flex;gap:4px}'
+      + '.rs-tblw{overflow:auto;max-height:70vh;margin-top:8px;border:1px solid #eef0f3;border-radius:10px}.rs-tbl{border-collapse:collapse;width:100%;font-size:12.5px;text-align:left}.rs-tbl th{position:sticky;top:0;background:#f6f8fb;font-weight:700;padding:7px 8px;white-space:nowrap;text-align:left}.rs-tbl td{padding:6px 8px;border-top:1px solid #f0f2f5;vertical-align:top;text-align:left}.rs-tbl tr.rs-row{display:table-row;border:0}.rs-tbl .c-day,.rs-tbl .c-brand,.rs-tbl .c-kind,.rs-tbl .c-zip,.rs-tbl .c-tel,.rs-tbl .c-nm,.rs-tbl .c-order,.rs-tbl .rs-st{white-space:nowrap}.rs-tbl .c-addr{min-width:220px}.rs-tbl .c-goods{min-width:180px}.rs-tbl .c-why{min-width:160px;color:#4a5562}.rs-act{white-space:nowrap;display:flex;gap:4px}.rs-tbl tr.rs-grp td{background:#f6f8fb;font-weight:800;color:#1f2a37;font-size:13px;padding:6px 8px;border-top:2px solid #e3e7ec}.rs-tbl tr.rs-grp small{font-weight:600;color:#6b7580;margin-left:6px}'
       + '.rs-in{width:118px;border:1px solid #dde2e8;border-radius:6px;padding:3px 6px;font:inherit;font-size:12.5px}.rs-tbl .c-goods{min-width:240px}.rs-it{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;padding:2px 0}.rs-it+.rs-it{border-top:1px dashed #e6e9ee;margin-top:3px;padding-top:4px}.rs-it b{font-size:13.5px;color:#1f2a37}.rs-op{font-size:12.5px;font-weight:700;color:#3c63a8;background:#eef3fb;border-radius:6px;padding:1px 7px}.rs-q{font-size:12px;color:#6b7580}.rs-q.many{color:#c0392b;font-weight:800}'
       + '.rs-inv{font-weight:700;font-variant-numeric:tabular-nums;margin-right:4px}.rs-tag{font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;background:#f1f3f6;color:#4a5562;white-space:nowrap}.rs-tag.ok{background:#e8f5ec;color:#2f7a45}.rs-tag.dev{background:#fff4d6;color:#8a6100}.rs-cj{border-color:#4f7fcf;color:#3c63a8;font-weight:700}'
       + '.rs-hand-box{margin:8px 0;padding:8px 10px;border-radius:10px;background:#fff1f0;border:1px solid #f5c2bd;font-size:13px}.rs-hand-box div{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}.rs-sent{background:#4f7fcf;color:#fff;border-color:#4f7fcf}'
@@ -145,9 +145,9 @@
     };
   }
   /* 복사 · 엑셀 칸 (메모 칸은 11-26 사장님 "메모칸은 없애줘"로 뺌) */
-  var HEAD = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['goods', '보낼 상품'], ['opt', '옵션'], ['qty', '수량'], ['order', '주문번호'], ['why', '사유'], ['status', '상태'], ['inv', '송장번호']];
-  /* 화면 칸 — 보낼 상품 · 옵션 · 수량을 한 칸에 크게, 앞쪽에 (11-26 "옵션이나 보낼상품만 잘 보이게") */
-  var VIEW = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['goods', '보낼 상품 · 옵션'], ['why', '사유'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['order', '주문번호'], ['status', '상태'], ['inv', '송장번호']];
+  var HEAD = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['why', '사유'], ['goods', '보낼 상품'], ['opt', '옵션'], ['qty', '수량'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['order', '주문번호'], ['status', '상태'], ['inv', '송장번호']];
+  /* 화면 칸 — 날짜 · 브랜드 · 구분 · 사유 · 보낼 상품-옵션 순서, 브랜드별로 묶음 (11-27 사장님) · 보낼 상품 · 옵션 · 수량은 한 칸에 크게 (11-26) */
+  var VIEW = [['day', '날짜'], ['brand', '브랜드'], ['kind', '구분'], ['why', '사유'], ['goods', '보낼 상품 · 옵션'], ['nm', '받는 분'], ['tel', '연락처'], ['zip', '우편번호'], ['addr', '주소'], ['order', '주문번호'], ['status', '상태'], ['inv', '송장번호']];
   function goodsHtml(c) {
     if (!c.items.length) return '<span class="rs-op">상품 확인 필요</span>';
     return c.items.map(function (i) {
@@ -166,6 +166,8 @@
     return '<td><input class="rs-in" data-f="inv" data-id="' + esc(r.id) + '" value="' + esc(c.inv) + '" placeholder="송장번호" inputmode="numeric" aria-label="송장번호"></td>';
   }
   /** 나갈 것만 — 확인 필요 · 발송함(직원 대화 · [발송함] · 대화 분석) · 희선님께 넘긴 건 빼고 */
+  /** 브랜드별로 묶기 — 브랜드 이름 순, 같은 브랜드 안에서는 원래 순서 (11-27 사장님 "브랜드별로 분류해줘") */
+  function byBrand(list, brandOf) { return list.map(function (x, i) { return {x: x, i: i, b: String(brandOf(x) || '')}; }).sort(function (a, b) { return a.b.localeCompare(b.b, 'ko') || a.i - b.i; }).map(function (y) { return y.x; }); }
   function openRows() { return fullRows().filter(function (r) { return r.status !== '확인 필요' && r.status !== '발송함' && !stale(r) && !(r.mark || {}).hand; }); }
   function listView() {
     var rows = openRows().sort(function (a, b) { return (a.status === '정보 대기') - (b.status === '정보 대기') || (a.firstAt || 0) - (b.firstAt || 0); });
@@ -177,8 +179,21 @@
       + '<div class="rs-cnt">' + ['발송 대기', '정보 대기'].filter(function (k) { return cnt[k]; }).map(function (k) { return '<span>' + k + ' ' + cnt[k] + '</span>'; }).join('') + (pk.rows.length ? '<span>수거 접수 필요 ' + pk.rows.length + '</span>' : '') + (pk.older ? '<span title="어제 전에 들어온 수거 접수 필요는 반품 현황에서">그 전 수거 ' + pk.older + '건은 반품 현황</span>' : '') + '</div>'
       + (shipMiss ? '<div class="rs-warn">받는 분 · 연락처 · 주소 · 주문번호는 서버(맥미니 프록시 /cs/kakao-reship) 연결 뒤 사무실 인터넷에서 채워져요. 그 전에는 [대화]로 채팅방을 열어 확인해 주세요.</div>' : (S.full.outside ? '<div class="rs-warn">사무실 밖이라 받는 분 정보는 가렸어요.</div>' : ''))
       + (S.mkErr ? '<div class="rs-warn">' + esc(S.mkErr) + '</div>' : '') + handBox();
-    var body = rows.length || pk.rows.length ? '<div class="rs-tblw"><table class="rs-tbl"><thead><tr>' + VIEW.map(function (h) { return '<th>' + h[1] + '</th>'; }).join('') + '<th></th></tr></thead><tbody>'
-      + rows.map(function (r, i) {
+    // 브랜드별로 묶음 — 재배송 줄과 수거 줄을 같이, 브랜드마다 머리 줄 (11-27)
+    var all = byBrand(rows.map(function (r) { return {led: r}; }).concat(pk.rows.map(function (x) { return {pk: x}; })), function (y) { return y.led ? (y.led.label || y.led.brand) : y.pk.r.label; });
+    var brOf = function (y) { return y.led ? (y.led.label || y.led.brand) : y.pk.r.label; };
+    var nBr = {}; all.forEach(function (y) { var b = brOf(y) || '-'; nBr[b] = (nBr[b] || 0) + 1; });
+    var lastBr = null;
+    var grp = function (y) { var b = brOf(y) || '-'; if (b === lastBr) return ''; lastBr = b; return '<tr class="rs-grp"><td colspan="' + (VIEW.length + 1) + '">' + esc(b) + '<small>' + nBr[b] + '건</small></td></tr>'; };
+    var body = all.length ? '<div class="rs-tblw"><table class="rs-tbl"><thead><tr>' + VIEW.map(function (h) { return '<th>' + h[1] + '</th>'; }).join('') + '<th></th></tr></thead><tbody>'
+      + all.map(function (y, i) {
+        if (y.pk) return grp(y) + pkRow(y.pk, i);
+        var r = y.led;
+        return grp(y) + ledRow(r, i);
+      }).join('') + '</tbody></table></div>' : '<div class="rs-empty">' + (S.err && !S.drafts ? '불러오지 못했어요 (' + esc(S.err) + ')' : '지금 나갈 건이 없어요') + '</div>';
+    return {html: top + body, rows: all.map(function (y) { return y.led ? {r: y.led} : y.pk; })};
+  }
+  function ledRow(r, i) {
         var c = cols(r), m = r.mark || {};
         return '<tr class="rs-row" tabindex="0" data-i="' + i + '">' + VIEW.map(function (h) {
           var k = h[0];
@@ -191,9 +206,10 @@
           + (r.status === '발송함' ? '' : '<button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">발송함</button>')
           + '<button type="button" class="rs-go rs-hand" data-id="' + esc(r.id) + '" title="표에서 빼고 희선님 PC에 알림">희선님께</button>'
           + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></td></tr>';
-      }).join('') + pk.rows.map(function (x, j) {
+  }
+  function pkRow(x, i) {
         var r = x.r;
-        return '<tr class="rs-row" tabindex="0" data-i="' + (rows.length + j) + '">' + VIEW.map(function (h) {
+        return '<tr class="rs-row" tabindex="0" data-i="' + i + '">' + VIEW.map(function (h) {
           var k = h[0];
           if (k === 'day') return '<td class="c-day">' + esc(r.day) + '</td>';
           if (k === 'brand') return '<td class="c-brand">' + esc(r.label) + '</td>';
@@ -205,11 +221,9 @@
           if (k === 'status') return '<td><span class="rs-st ' + (r.stop ? 'wait' : 'todo') + '">' + esc(r.st) + '</span></td>';
           return '<td></td>';
         }).join('') + '<td class="rs-act">' + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : '')) + '</td></tr>';
-      }).join('') + '</tbody></table></div>' : '<div class="rs-empty">' + (S.err && !S.drafts ? '불러오지 못했어요 (' + esc(S.err) + ')' : '지금 나갈 건이 없어요') + '</div>';
-    return {html: top + body, rows: rows.map(function (r) { return {r: r}; }).concat(pk.rows)};
   }
   function tsv(sep) {
-    var rows = openRows();
+    var rows = byBrand(openRows(), function (r) { return r.label || r.brand; });
     var q = function (v) { v = String(v == null ? '' : v); return sep === ',' ? '"' + v.replace(/"/g, '""') + '"' : v.replace(/[\t\n]/g, ' '); };
     return [HEAD.map(function (h) { return q(h[1]); }).join(sep)].concat(rows.map(function (r) { var c = cols(r); return HEAD.map(function (h) { return q(c[h[0]]); }).join(sep); })).join('\n');
   }
