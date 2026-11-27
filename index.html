@@ -18623,14 +18623,16 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
       + (agentRows.length || _kko.only==='agent' ? pick('agent','에이전트 작동중',agentRows.length,false,'에이전트가 고객에게 직접 답하고 있는 채팅방 (12시간 안) — 초기 단계라 직원이 지켜봐 주세요') : '')
       + pick('wait','답 기다림',waitRows.length,late>0,`고객 글이 마지막인 채팅방 (최근 ${d.windowDays}일, 마무리 인사 · 직원 호출 뺌) — 빨강은 상담 시간 중 ${KKO_LATE_MIN}분 넘게 기다린 곳`, late ? `<small>${KKO_LATE_MIN}분 넘음 ${late}</small>` : '');
     // 채팅 탭 빨간 숫자 = 모든 브랜드의 직원 호출 + 답 기다림
-    if(tabC){ const n=rows.filter(needs).length, h=`채팅${n ? ` <small>${n}</small>` : ''}`; if(tabC.innerHTML!==h) tabC.innerHTML=h; }
+    // 숫자는 모두 같은 기준 — 끝난 대화(_kkoHideDone)는 칩 · 목록처럼 탭 · 브랜드 숫자에서도 뺌 (11-27 사장님 "카카오톡 상담 개수랑 직원호출,처리할일갯수 다르잖아")
+    const live=rows.filter(r=>!_kkoHideDone(r));
+    if(tabC){ const n=live.filter(needs).length, h=`채팅${n ? ` <small>${n}</small>` : ''}`; if(tabC.innerHTML!==h) tabC.innerHTML=h; }
     // 브랜드 — 채널 순서대로, 숫자 = 직원 호출 + 답 기다림
     const ordIdx=b=>{ const i=KKO_ORDER.indexOf(b); return i<0?99:i; };
     const seen=[];
     for(const c of chans){ if(!seen.some(x=>x.brand===c.brand)) seen.push({brand:c.brand,label:KKO_LABEL[c.brand]||c.label}); }
     seen.sort((a,b)=>ordIdx(a.brand)-ordIdx(b.brand));
-    const ncount=b=>rows.filter(r=>r.brand===b && needs(r)).length;
-    brands.innerHTML=`<button type="button" class="${_kko.brand==='all'?'on':''}" onclick="kkoBrand('all')">전체 ${rows.filter(needs).length}</button>`
+    const ncount=b=>live.filter(r=>r.brand===b && needs(r)).length;
+    brands.innerHTML=`<button type="button" class="${_kko.brand==='all'?'on':''}" onclick="kkoBrand('all')">전체 ${live.filter(needs).length}</button>`
       + seen.filter(b=>!(typeof PAUSED_BRANDS!=='undefined' && PAUSED_BRANDS.has(b.brand)) || rows.some(r=>r.brand===b.brand) || _kko.brand===b.brand).map(b=>`<button type="button" class="reo-b-${_kkoEsc(b.brand)}${_kko.brand===b.brand?' on':''}" onclick="kkoBrand('${_kkoEsc(b.brand)}')">${_kkoEsc(b.label)} ${ncount(b.brand)}</button>`).join('')
       + `<button type="button" onclick="kkoToggleCh()" aria-expanded="${_kko.showCh}">채널 ${chans.length}개 ${_kko.showCh?'▴':'▾'}</button>`;
     // 줄 순서 (사장님 11-19 "오래 기다린사람부터 맨위로 · 제일 최근에 연락온사람은 하단으로"): 직원 호출 · 답 기다림 모두 오래 기다린 것부터 —
