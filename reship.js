@@ -5,7 +5,7 @@
    · 줄에 마우스를 올리면(휴대폰은 누르면) 대화 정리 글 + 고객이 보낸 사진이 크게. 사진 · 글은 사무실 인터넷에서만(프록시가 밖이면 비움).
    · 주문번호 · 받는 분 이름 · 연락처 · 주소는 여기 없다 — [대화]로 채팅방을 열거나 주문 찾기에서. 고객 글은 가린 글. */
 (function () {
-  var S = {drafts: null, defects: null, full: null, marks: {}, mkErr: '', at: 0, err: '', loading: false};
+  var S = {drafts: null, defects: null, full: null, marks: {}, mkErr: '', at: 0, err: '', loading: false, ret: null, pick: null};
   var BOX = ['rsBoxCs', 'rsBoxLg'];
   var ST = {'정보 대기': 'wait', '발송 대기': 'todo', '발송함': 'done', '확인 필요': 'check'};
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -64,6 +64,34 @@
     var old = fullRows().filter(stale).map(function (r) { return {stale: 1, r: Object.assign({}, r, {summary: '[출고 확인 필요] ' + md(r.day) + '에 재발송하겠다고 답했지만, 보냈다는 글(출고 · 송장)이 대화에 없어요\n' + (r.summary || '')})}; });
     return old.concat(rowsOf(t).filter(function (x) { return x.r.status === '확인 필요'; }).map(function (x) { var m = (S.marks || {})[x.r.id]; return m && m.sent ? null : x; }).filter(Boolean));
   }
+  /* 수거 접수 필요 (2026-11-27 사장님 "어제부터 자동수거 필요한것도 상단에 띄워줘. 나가야하는거랑 같이")
+     = 반품 현황(/cs/returns, 식스샵프로 반품 · 교환)의 할 일 '수거 접수' + 카톡 자동 수거(/cs/kakao-pickup)의 접수 대기 · 확인 필요.
+     어제(KST) 0시 뒤 들어온 것만, 같은 주문은 한 줄. 수거가 잡히면(회수 운송장 · 접수됨) 저절로 빠짐 */
+  function pickRows() {
+    var y = kst(Date.now() - 86400000), out = [], seen = {}, older = 0;
+    ((S.pick || {}).items || []).forEach(function (p) {
+      if (p.state !== 'wait' && p.state !== 'stop') return;
+      var d = kst(p.at || 0);
+      if (d < y) { older++; return; }
+      if (p.orderId) seen[p.orderId] = 1;
+      out.push({r: {id: p.id, key: p.pid && p.chatId ? p.pid + ':' + p.chatId : '', label: p.label || '', kind: p.title || '회수', goods: p.goods || '', nm: p.nick || '', orderId: p.orderId || '', day: d, at: p.at || 0,
+        stop: p.state === 'stop', st: p.state === 'stop' ? '수거 확인 필요' : '수거 요청 대기',
+        summary: '[수거 접수 필요] ' + (p.title || '회수') + ' · 카톡 자동 수거\n' + (p.why ? '확인할 것: ' + p.why + '\n' : '') + '상품: ' + (p.goods || '확인 필요') + (p.orderId ? '\n주문 ' + p.orderId : '')}});
+    });
+    ((S.ret || {}).rows || []).forEach(function (r) {
+      if (r.todo !== 'book') return;
+      var t = Date.parse(r.requestedAt), d = isNaN(t) ? '' : kst(t);
+      if (!d || d < y) { older++; return; }
+      if (r.orderId && seen[r.orderId]) return;
+      seen[r.orderId] = 1;
+      var ck = r.chat && /^https:\/\//.test(r.chat.link || '') ? r.chat.link : '';
+      out.push({r: {id: r.key, key: '', link: ck, label: r.brandName || r.brand || '', kind: r.kind || '반품', goods: (r.items || []).join(' / '), nm: r.nm || '', orderId: r.orderId || '', day: d, at: t,
+        stop: false, st: r.late ? '수거 늦음' : '수거 접수 필요',
+        summary: '[수거 접수 필요] ' + (r.kind || '반품') + ' · 식스샵프로 ' + (r.claimStatus || '') + '\n' + (r.todoKo || '회수 운송장 없음') + '\n상품: ' + (r.items || []).join(' · ') + '\n주문 ' + (r.orderId || '')}});
+    });
+    out.sort(function (a, b) { return (b.r.stop - a.r.stop) || (a.r.at - b.r.at); });
+    return {rows: out, older: older};
+  }
   function draw() {
     css();
     // 송장번호 · 메모를 쓰는 중이면 다시 그리지 않음 (글자가 날아가지 않게)
@@ -76,10 +104,20 @@
         + (x.stale ? '<span class="rs-st check">출고 확인 · ' + esc(md(r.day)) + ' 약속</span><span class="rs-act"><button type="button" class="rs-go rs-sent" data-id="' + esc(r.id) + '">보냈어요</button><button type="button" class="rs-go rs-notyet" data-id="' + esc(r.id) + '">아직 안 보냄</button>' : '<span class="rs-st check">확인 필요</span><span class="rs-act">')
         + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></span></div>';
     }).join('') + '</div>' : '';
+    var pk = pickRows(), n1 = n0 + chk.length;
+    var pkHtml = pk.rows.length || pk.older ? '<div class="rs-sub">수거 접수 필요 ' + pk.rows.length + '<small>어제부터 들어온 반품 · 교환 · 오배송 회수 중 대한통운 수거가 아직 안 잡힌 것' + (pk.older ? ' · 그 전 ' + pk.older + '건은 반품 현황' : '') + '</small></div>'
+      + (pk.rows.length ? '<div class="rs-list">' + pk.rows.map(function (x, i) {
+        var r = x.r;
+        return '<div class="rs-row" tabindex="0" data-i="' + (n1 + i) + '"><span class="rs-br">' + esc(r.label || '') + '</span><span class="rs-kd">' + esc(r.kind) + '</span>'
+          + '<span class="rs-pd">' + esc(r.goods || '상품 확인 필요') + '<small>' + esc([r.nm, r.orderId].filter(Boolean).join(' · ')) + '</small></span><span class="rs-ph">' + esc(md(r.day)) + '</span>'
+          + '<span class="rs-st ' + (r.stop ? 'wait' : 'todo') + '">' + esc(r.st) + '</span><span class="rs-act">'
+          + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : ''))
+          + '</span></div>';
+      }).join('') + '</div>' : '') : '';
     BOX.forEach(function (id) {
       var b = document.getElementById(id); if (!b) return;
-      b.innerHTML = t.html + chkHtml;
-      b._rows = t.rows.concat(chk);
+      b.innerHTML = t.html + chkHtml + pkHtml;
+      b._rows = t.rows.concat(chk, pk.rows);
     });
   }
 
@@ -304,6 +342,9 @@
       try { var d = await bbKakaoDefects(force); if (d && d.data) S.defects = d.data; } catch (e) { /* 사진 건은 없어도 됨 */ }
       // 받는 분 · 주소가 든 장부 (프록시가 생기면) — 없거나 실패하면 그냥 빈칸
       try { var rf = await fetch(base + '/cs/kakao-reship', {headers: {'X-Brightbeed-PIN': ghPin(), Accept: 'application/json'}, cache: 'no-store'}); var jf = rf.ok ? await rf.json().catch(function () { return null; }) : null; S.full = jf && Array.isArray(jf.rows) ? jf : null; } catch (e) { S.full = null; }
+      // 수거 접수 필요 칸 (11-27) — 반품 현황 · 카톡 자동 수거, 없어도 됨
+      try { var rr = await fetch(base + '/cs/returns', {headers: {'X-Brightbeed-PIN': ghPin(), Accept: 'application/json'}, cache: 'no-store'}); var jr = rr.ok ? await rr.json().catch(function () { return null; }) : null; if (jr && jr.ok) S.ret = jr; } catch (e) { /* noop */ }
+      try { var rp = await fetch(base + '/cs/kakao-pickup', {headers: {'X-Brightbeed-PIN': ghPin(), Accept: 'application/json'}, cache: 'no-store'}); var jp = rp.ok ? await rp.json().catch(function () { return null; }) : null; if (jp && Array.isArray(jp.items)) S.pick = jp; } catch (e) { /* noop */ }
       await marksLoad();
       try { await cjSync(force); } catch (e) { /* CJ 기록은 없어도 됨 */ }
       handNotify();
@@ -341,6 +382,7 @@
   document.addEventListener('focusin', function (e) { var x = rowAt(e.target); if (x) showTip(x.row, x.r); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideTip(); });
   document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('.rs-link')) return;   // 카톡 방 링크는 그대로 열림
     var b = e.target.closest && e.target.closest('[data-rs],.rs-go');
     if (!b) { if (e.target.closest && e.target.closest('.rs-in')) return; var x = rowAt(e.target); if (x) showTip(x.row, x.r); return; }
     if (b.classList.contains('rs-cj')) { hideTip(); cjFill(b.dataset.id); return; }
