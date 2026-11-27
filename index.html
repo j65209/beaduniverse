@@ -10051,6 +10051,9 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
   .tpl-ls.is-clean .ls-no{font-size:22px;font-weight:800;background:#fbfaf8}
   .tpl-ls.is-clean .ls-name{font-size:12.5px;font-weight:700}
   .tpl-ls.is-clean .ls-vendor{font-size:13px;font-weight:800}
+  /* 진행업체 배지 — 투엘 · 콰디 (2026-11-27 사장님 "엠디팀 시트 + 디자인팀 라인시트에 배지", MD 코페리 Product List '업체' 와 같은 색) */
+  .tpl-ls .ls-vendor.vb-tw .tc,.tpl-ls .ls-vendor.vb-kd .tc{display:inline-block;min-width:0;padding:1px 9px;border-radius:6px;font-size:12px;font-weight:800;line-height:20px}
+  .tpl-ls .ls-vendor.vb-tw .tc{background:#e0ecff;color:#1d4ed8}.tpl-ls .ls-vendor.vb-kd .tc{background:#ffedd5;color:#c2410c}
   .tpl-ls.is-clean .ls-note{font-size:12px;line-height:1.55;color:#44403c}
   .tpl-ls.is-clean .ls-head{box-shadow:none;background:transparent;overflow:visible}
   .tpl-ls.is-clean .ls-head .tx{border:0;background:transparent;min-height:0}
@@ -28963,6 +28966,14 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
   //   2026-11-24 사장님 "라인시트에서도 행추가, 열추가 · 자유도 높게" — 칸(열) · 상품 정보 줄(행)을 문서(시즌)마다 정한다.
   //   d.cols = 오른쪽 칸 차례 [{k, off, g, date}] (k = 'x…' 는 새 칸, g 'c' = 컬러 줄마다 한 칸 · 'i' = 상품마다 긴 칸), d.infos = 상품 정보 줄 [{k, off}] ('y…' 새 줄),
   //   d.heads = 바꾼 이름, d.wd = 끌어서 정한 너비(px). 적은 값은 상품에 it['x…'] · it['y…'], 컬러 줄에 colors[j]['x…']. 안 바꾼 시즌은 아무것도 없어 예전 모양 그대로
+  // 진행업체 배지 — 값이 투엘 / 콰디(콰이디)면 칸 안 글자를 배지로. 적는 동안에도 바로 바뀐다 (아래 input 이벤트)
+  const _tplVendorCls = v => { const t = String(v || '').replace(/\s+/g, ''); return t === '투엘' ? ' vb-tw' : (t === '콰디' || t === '콰이디') ? ' vb-kd' : ''; };
+  document.addEventListener('input', e => {
+    const c = e.target && e.target.closest && e.target.closest('.tpl-ls .ls-vendor');
+    if(!c) return;
+    const k = _tplVendorCls(e.target.textContent);
+    c.classList.toggle('vb-tw', k === ' vb-tw'); c.classList.toggle('vb-kd', k === ' vb-kd');
+  }, true);
   const TPL_LS_FIX = [['no', 44, 0, 44], ['bl', 58, 0, 60], ['bv', 100, .9, 108], ['p', 104, 1.5, 130], ['p', 104, 1.5, 130]];   // 번호 · 이름표 · 값 · 사진 · 사진
   const TPL_LS_COLS = [
     {k:'vendor', g:'i', t:'진행업체', w:[84, .8, 90], cls:'ls-vendor'}, {k:'fabric', g:'i', t:'FABRIC', w:[100, 1.1, 112], ml:1},
@@ -29275,7 +29286,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
       // 오른쪽 칸 — 긴 칸(상품마다) · 컬러 줄마다 칸. 안내 글은 비움 (머리글에 이름이 있고, 회색 예시가 진짜 값처럼 보였다)
       vis.forEach((x, n) => {
         const c0 = C.x + n;
-        if(x.g === 'i'){ cells.push(V(2, c0, end, c0 + 1, x.k === 'note' ? nf : x.k, '', x.cls || '', !!x.ml, x.desig)); return; }
+        if(x.g === 'i'){ cells.push(V(2, c0, end, c0 + 1, x.k === 'note' ? nf : x.k, '', (x.cls || '') + (x.k === 'vendor' ? _tplVendorCls(it.vendor) : ''), !!x.ml, x.desig)); return; }
         for(let j = 0; j < R; j++){
           const c = it.colors[j] || {}, wd = x.k === 'a' ? _tplLsWaitDays(c) : null;
           cells.push(X(2 + j, c0, 3 + j, c0 + 1, ce(`${p}colors.${j}.${x.k}`, c[x.k] || '', wd != null ? _tplLsWaitPh(wd) : '') + (ed && x === firstRow ? `<button type="button" class="ls-rm" data-act="ls-rowm" data-i="${i}" data-j="${j}" title="줄 넣기 · 복사 · 옮기기 · 지우기" aria-label="줄 메뉴">⋯</button>` : ''), 'ls-cr' + (wd != null ? ' ' + _tplLsWaitCls(wd) : ''), c, x.k));
@@ -59034,6 +59045,7 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="po-map.js?v=5" defer></script><!-- 발주 매핑하기 (po-map.js) -->
 <script src="stock-out.js?v=1" defer></script><!-- 출고 입력 — 지그재그 직진배송 (stock-out.js) -->
 <script src="stock-blank.js?v=1" defer></script><!-- 재고 미기재 알림 — 김성군 · 지희선 · 대표 2명 (stock-blank.js) -->
+<script src="vendor-map.js?v=1" defer></script><!-- 코페리 업체 매핑 알림 — 박시호 (vendor-map.js, Product List 업체 빈칸 · 라인시트 자동 학습) -->
 <script src="notif-state.js?v=1" defer></script><!-- 알림 승인 상태 (notif-state.js) -->
 <script src="notif-ask.js?v=4" defer></script><!-- 알림 허용 안내 — 전 직원, 허용 안 했거나 보이는지 확인 안 한 PC 에 (notif-ask.js) -->
 <script src="tool-new.js?v=3" defer></script><!-- 업무용 툴 새 도구 표시 — 직원마다 눌러 보기 전까지 (tool-new.js, 슈퍼베이스 tool_news) -->

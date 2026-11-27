@@ -274,6 +274,10 @@
   .pal .cu input{width:34px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:#fff}
   .tbl td.nt,.tbl th.nt{background-image:linear-gradient(225deg,#f59e0b 5px,transparent 5.5px)}   /* 구글시트 메모가 있던 칸 — 오른쪽 위 세모, 마우스를 올리면 글 */
   .tbl .mgt{color:var(--text-4)}
+  /* 업체 배지 (2026-11-27 코페리 Product List '업체' 열 · 투엘 / 콰디) */
+  .vbg{display:inline-block;margin-left:6px;padding:0 6px;border-radius:5px;font-size:11px;font-weight:700;line-height:17px;vertical-align:1px;white-space:nowrap}
+  .vbg:first-child{margin-left:0}
+  .vbg.tw{background:#e0ecff;color:#1d4ed8}.vbg.kd{background:#ffedd5;color:#c2410c}
   .tbl tr.hrow td{opacity:.5}   /* 구글시트에서 숨겨 두었던 줄 (찾기 · '숨긴 줄 보기'로 나왔을 때) */
   .dl dt .dnt{display:block;margin-top:2px;font-size:11px;font-weight:400;color:#b45309;white-space:pre-line}
   /* 2026-11-20 사용자 "일반적인 숫자는 블랙으로 다 변경" — 0 · 마이너스 · 시트 글자색 모두 검정 (품절 · 임박은 줄 색으로) */
@@ -2218,6 +2222,10 @@
     return (s.pill ? `<span class="pill ${s.tone}">${hl(s.pill)}</span>` : '') + (s.sub ? `<span class="pill-sub">${hl(s.sub)}</span>` : '');
   }
   function statusW(t) { const s = statusParts(t, false); return (s.pill ? tw(s.pill, F_BOLD) + 16 : 0) + (s.sub ? tw(s.sub, F_TAG) + (s.pill ? 6 : 0) : 0); }
+  /* 업체 배지 — 코페리 Product List 맨 끝 '업체' 열(투엘 · 콰디). 그 칸과 상품명 칸 옆에 함께 보인다 (2026-11-27 사장님 "엠디팀 시트 + 디자인팀 라인시트에 배지") */
+  const VENDOR_COL = {'coferry:705952769': 49};
+  const vendorKey = t => { const s = String(t || '').replace(/\s+/g, ''); return s === '투엘' ? 'tw' : (s === '콰디' || s === '콰이디') ? 'kd' : ''; };
+  const vendorBadge = t => { const k = vendorKey(t); return k ? `<span class="vbg ${k}">${k === 'tw' ? '투엘' : '콰디'}</span>` : ''; };
   function cellHtml(row, col, pos) {
     const c = row.byP[col.p];
     let cls = col.align + (pos ? pos.cls : '') + (col.key ? ' key' : ''), style = pos ? pos.style : '', inner = '', title = '';
@@ -2239,6 +2247,8 @@
       else if (c.t) {
         const d = fm && fm.nf ? OfficeGrid.fmtText(c.t, fm.nf) : display(col, c);   // 숫자 모양을 정한 칸
         inner = c.href && (secretOk() || !SECRET_LINK_RE.test(c.href)) ? `<a class="lnk" href="${esc(c.href)}" target="_blank" rel="noopener noreferrer">${hl(d)}</a>` : richHtml(S.cur, row.r, col.p, d) || hl(d);
+        if (vendorKey(c.t)) inner = vendorBadge(c.t);   // 업체 칸 = 배지
+        else if (col.key && VENDOR_COL[S.cur] != null && row.byP[VENDOR_COL[S.cur]]) inner += vendorBadge(row.byP[VENDOR_COL[S.cur]].t);   // 상품명 옆에도
         if (col.wrap) inner = `<div class="cl">${inner}</div>`;   // 두 줄까지
         if (d !== c.t || (col.type !== 'num' && (d.length > 12 || (col.wrap && d.length > 5)))) title = c.t;   // 한 줄 보기에서 … 로 잘린 글은 마우스를 올리면 전체
       }
