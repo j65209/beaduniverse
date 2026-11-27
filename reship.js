@@ -248,7 +248,13 @@
   /* 수거 줄 (11-27 사장님 "송장번호에 자동수거해야하는 송장번호 넣어주고 자동수거 요청 배지 우측에 · 연락처 주소 우편번호는 기본적으로 다 문의한 사람들") —
      받는 분 · 연락처 · 우편번호 · 주소 = 식스샵프로 주문 상세(프록시 /cs/label, 사무실 인터넷만, 화면 메모리에만 — 저장 안 함).
      송장번호 칸 = 회수할 택배의 운송장(이중 배송은 처음 보낸 것). [자동수거 요청] = CS 도구 건별 접수를 '반품 회수'로 채움 */
-  function pkRcv(r) { return (r.orderId && S.lab[r.orderId]) || null; }
+  // 받는 분 · 연락처 · 주소 — 운송장 다시 찍기 자료(S.lab) → 없으면 반품 현황이 주문에서 읽은 것(/cs/kakao-reship returns, 사무실 안에서만) (11-27 사장님 "주소 연락처랑 다 왜 안뜨냐고")
+  function pkRcv(r) {
+    if (!r.orderId) return null;
+    var a = S.lab[r.orderId]; if (a) return a;
+    var b = (((S.full || {}).returns) || {})[r.orderId];
+    return b && !b.err && b.nm ? b : null;
+  }
   function pkRow(x, i) {
         var r = x.r, v = pkRcv(r) || {};
         return '<tr class="rs-row" tabindex="0" data-i="' + i + '">' + VIEW.map(function (h) {
