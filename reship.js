@@ -91,16 +91,19 @@
   /* 수거 접수 필요 (2026-11-27 사장님 "어제부터 자동수거 필요한것도 상단에 띄워줘. 나가야하는거랑 같이")
      = 반품 현황(/cs/returns, 식스샵프로 반품 · 교환)의 할 일 '수거 접수' + 카톡 자동 수거(/cs/kakao-pickup)의 접수 대기 · 확인 필요.
      어제(KST) 0시 뒤 들어온 것만, 같은 주문은 한 줄. 수거가 잡히면(회수 운송장 · 접수됨) 저절로 빠짐 */
+  var AFTER = {refund: '환불 요청', exchange: '교환 요청', none: '회수만'};
   function pickRows() {
     var y = kst(Date.now() - 86400000), out = [], seen = {}, older = 0;
     ((S.pick || {}).items || []).forEach(function (p) {
-      if (p.state !== 'wait' && p.state !== 'stop') return;
+      // 고객이 채팅으로 '수거했어요 · 보냈어요' = 수거 완료 → 환불 · 교환 요청 (11-27 사장님), [처리 끝] 전까지 날짜와 상관없이 남김
+      var said = p.state === 'picked' && p.custSaid;
+      if (p.state !== 'wait' && p.state !== 'stop' && !said) return;
       var d = kst(p.at || 0);
-      if (d < y) { older++; return; }
+      if (d < y && !said) { older++; return; }
       if (p.orderId) seen[p.orderId] = 1;
       out.push({r: {id: p.id, pick: 1, brand: p.brand || '', pkind: p.kind || '', wbl: (p.wbls || [])[0] || '', wbls: p.wbls || [], key: p.pid && p.chatId ? p.pid + ':' + p.chatId : '', label: p.label || '', kind: p.title || '회수', goods: p.goods || '', nm: p.nick || '', orderId: p.orderId || '', day: d, at: p.at || 0,
-        stop: p.state === 'stop', st: p.state === 'stop' ? '수거 접수 필요' : '수거 요청 대기', why: String(p.why || '').replace(/^사장님 \d+-\d+:\s*/, '').split(' — ')[0].slice(0, 40) + ((p.wbls || []).length ? ' · 운송장 ' + p.wbls.join(' / ') : ''),
-        summary: '[수거 접수 필요] ' + (p.title || '회수') + ' · 카톡 자동 수거\n' + (p.why ? '확인할 것: ' + p.why + '\n' : '') + '상품: ' + (p.goods || '확인 필요') + (p.orderId ? '\n주문 ' + p.orderId : '') + ((p.wbls || []).length ? '\n보낸 운송장 ' + p.wbls.join(' · ') : '')}});
+        stop: p.state === 'stop', said: !!said, after: p.after || '', st: said ? '수거 완료' : '수거 접수 필요', why: String(p.why || '').replace(/^사장님 \d+-\d+:\s*/, '').split(' — ')[0].slice(0, 40) + ((p.wbls || []).length ? ' · 운송장 ' + p.wbls.join(' / ') : ''),
+        summary: (said ? '[수거 완료 · ' + (AFTER[p.after] || '확인') + '] 고객이 채팅으로 보냈다고 했어요\n' : '[수거 접수 필요] ') + (p.title || '회수') + ' · 카톡 자동 수거\n' + (p.why ? '확인할 것: ' + p.why + '\n' : '') + '상품: ' + (p.goods || '확인 필요') + (p.orderId ? '\n주문 ' + p.orderId : '') + ((p.wbls || []).length ? '\n보낸 운송장 ' + p.wbls.join(' · ') : '')}});
     });
     ((S.ret || {}).rows || []).forEach(function (r) {
       if (r.todo !== 'book') return;
@@ -110,10 +113,10 @@
       seen[r.orderId] = 1;
       var ck = r.chat && /^https:\/\//.test(r.chat.link || '') ? r.chat.link : '';
       out.push({r: {id: r.key, pick: 1, brand: r.brand || '', pkind: r.kind === '교환' ? 'exchange' : 'return', wbl: '', wbls: [], key: '', link: ck, label: r.brandName || r.brand || '', kind: r.kind || '반품', goods: (r.items || []).join(' / '), nm: r.nm || '', orderId: r.orderId || '', day: d, at: t,
-        stop: false, st: r.late ? '수거 늦음' : '수거 접수 필요', why: '식스샵프로 ' + (r.claimStatus || '반품') + ' · 회수 운송장 없음',
+        stop: false, st: '수거 접수 필요', why: (r.late ? '늦음 · ' : '') + '식스샵프로 ' + (r.claimStatus || '반품') + ' · 회수 운송장 없음',
         summary: '[수거 접수 필요] ' + (r.kind || '반품') + ' · 식스샵프로 ' + (r.claimStatus || '') + '\n' + (r.todoKo || '회수 운송장 없음') + '\n상품: ' + (r.items || []).join(' · ') + '\n주문 ' + (r.orderId || '')}});
     });
-    out.sort(function (a, b) { return (b.r.stop - a.r.stop) || (a.r.at - b.r.at); });
+    out.sort(function (a, b) { return (!!b.r.said - !!a.r.said) || (b.r.stop - a.r.stop) || (a.r.at - b.r.at); });
     return {rows: out, older: older};
   }
   function draw() {
@@ -240,10 +243,10 @@
   function pickView() {
     var pk = pickRows();
     if (!pk.rows.length && !pk.older) return {html: '', rows: []};
-    var stop = pk.rows.filter(function (x) { return x.r.stop; }).length;
-    var top = '<div class="rs-head"><span class="rs-title">자동수거 필요<small>회수 운송장이 잡히면 저절로 빠져요 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
+    var stop = pk.rows.filter(function (x) { return !x.r.said; }).length, said = pk.rows.length - stop;
+    var top = '<div class="rs-head"><span class="rs-title">자동수거 필요<small>회수 운송장이 잡히면 저절로 빠져요 · 고객이 채팅으로 보냈다고 하면 수거 완료 · 줄에 마우스를 올리면 대화 · 사진</small></span>'
       + '<span class="rs-nav"><button type="button" data-rs="re" aria-label="다시 불러오기">↻</button></span></div>'
-      + '<div class="rs-cnt">' + (pk.rows.length ? '<span>' + pk.rows.length + '건</span>' : '') + (stop ? '<span>수거 접수 필요 ' + stop + '</span>' : '') + (pk.older ? '<span title="어제 전에 들어온 수거 접수 필요는 반품 현황에서">그 전 수거 ' + pk.older + '건은 반품 현황</span>' : '') + '</div>';
+      + '<div class="rs-cnt">' + (stop ? '<span>수거 접수 필요 ' + stop + '</span>' : '') + (said ? '<span>수거 완료 ' + said + '</span>' : '') + (pk.older ? '<span title="어제 전에 들어온 수거 접수 필요는 반품 현황에서">그 전 수거 ' + pk.older + '건은 반품 현황</span>' : '') + '</div>';
     var all = byBrand(pk.rows, function (x) { return x.r.label; });
     var nBr = {}; all.forEach(function (x) { var b = x.r.label || '-'; nBr[b] = (nBr[b] || 0) + 1; });
     var lastBr = null;
@@ -294,11 +297,12 @@
           if (k === 'zip') return '<td class="c-zip">' + esc(v.zip || '') + '</td>';
           if (k === 'addr') return '<td class="c-addr">' + esc([v.addr, v.detail].filter(Boolean).join(' ')) + '</td>';
           if (k === 'order') return '<td class="c-order">' + esc(r.orderId) + '</td>';
-          if (k === 'status') return '<td><span class="rs-st ' + (r.stop ? 'wait' : 'todo') + '">' + esc(r.st) + '</span></td>';
+          if (k === 'status') return '<td><span class="rs-st ' + (r.said ? 'done' : r.stop ? 'wait' : 'todo') + '">' + esc(r.st) + '</span>' + (r.said ? ' <span class="rs-st todo" title="고객이 채팅으로 보냈다고 했어요 — 물건이 오면 ' + esc(AFTER[r.after] || '확인') + ' 처리">' + esc(AFTER[r.after] || '확인 필요') + '</span>' : '') + '</td>';
           if (k === 'inv') return '<td class="c-inv">' + (r.wbl ? '<span class="rs-inv" title="이 택배를 회수해요">' + esc(r.wbl) + '</span><span class="rs-tag">회수할 송장</span>' : '') + '</td>';
           return '<td></td>';
         }).join('') + '<td class="rs-act">'
-          + (typeof window.cjbFromPickup === 'function' ? '<button type="button" class="rs-go rs-cj rs-pkreq" data-id="' + esc(r.id) + '" title="CS 도구 건별 접수를 반품 회수로 채워요 — 받는 분 · 주소 · 회수할 송장 · 상품">자동수거 요청</button>' : '')
+          + (r.said ? '<button type="button" class="rs-go rs-pkdone" data-id="' + esc(r.id) + '" title="환불 · 교환까지 끝냈으면 표에서 빼요">처리 끝</button>' : '')
+          + (!r.said && typeof window.cjbFromPickup === 'function' ? '<button type="button" class="rs-go rs-cj rs-pkreq" data-id="' + esc(r.id) + '" title="CS 도구 건별 접수를 반품 회수로 채워요 — 받는 분 · 주소 · 회수할 송장 · 상품">자동수거 요청</button>' : '')
           + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '" title="카카오 채널 대화창 열기">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : '')) + '</td></tr>';
   }
   /** 수거 줄 받는 분 정보 — 주문마다 한 번 (실패 · 사무실 밖이면 다시 묻지 않음) */
@@ -313,6 +317,20 @@
       if (j && j.outside) { S.labOut = true; return; }
       ((j && j.labels) || []).forEach(function (x) { if (x && x.rcvr && !x.err) S.lab[x.orderId] = Object.assign({}, x.rcvr, {goods: x.goods || []}); });
     } catch (e) { /* 다음에 다시 */ need.forEach(function (r) { delete S.lab[r.orderId]; }); }
+  }
+  /** 수거 완료(고객이 보냈다고 함) 줄 [처리 끝] — 맥미니 kakao-pickup 에 done (다음 차례에 빠짐, 화면에선 바로 뺌) */
+  async function pkDone(b) {
+    var id = b.dataset.id;
+    if (!window.confirm('환불 · 교환까지 끝냈나요? 표에서 뺄게요')) return;
+    b.disabled = true;
+    try {
+      var base = await loadProxyBase(); if (!base) throw new Error('서버 연결 안 됨');
+      var r = await fetch(base + '/cs/kakao-pickup', {method: 'POST', headers: {'X-Brightbeed-PIN': ghPin(), 'Content-Type': 'application/json', Accept: 'application/json'}, body: JSON.stringify({id: id, act: 'done', by: meName()})});
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      ((S.pick || {}).items || []).forEach(function (p) { if (p.id === id) p.state = 'done'; });
+      S.mkErr = '';
+    } catch (e) { S.mkErr = '처리 끝을 저장하지 못했어요 — ' + ((e && e.message) || e); b.disabled = false; }
+    draw();
   }
   function pkFill(id) {
     var x = pickRows().rows.filter(function (y) { return y.r.id === id; })[0]; if (!x) return;
@@ -504,6 +522,7 @@
     var b = e.target.closest && e.target.closest('[data-rs],.rs-go');
     if (!b) { if (e.target.closest && e.target.closest('.rs-in')) return; var x = rowAt(e.target); if (x) showTip(x.row, x.r); return; }
     if (b.classList.contains('rs-pkreq')) { hideTip(); pkFill(b.dataset.id); return; }
+    if (b.classList.contains('rs-pkdone')) { hideTip(); pkDone(b); return; }
     if (b.classList.contains('rs-cj')) { hideTip(); cjFill(b.dataset.id); return; }
     if (b.classList.contains('rs-hand')) {
       hideTip();
