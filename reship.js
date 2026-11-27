@@ -106,8 +106,13 @@
     }).join('') + '</div>' : '';
     BOX.forEach(function (id) {
       var b = document.getElementById(id); if (!b) return;
-      b.innerHTML = t.html + chkHtml;
+      // 바뀐 게 없으면 다시 그리지 않음 · 그릴 때는 표 안 스크롤 자리를 지킴 — 5초마다 표가 통째로 바뀌어 스크롤이 튀고 버벅이던 것 (11-27 사장님 "cs팀 렉")
+      var html = t.html + chkHtml;
       b._rows = t.rows.concat(chk);
+      if (b._html === html) return;
+      var tw = b.querySelector('.rs-tblw'), st = tw ? tw.scrollTop : 0, sl = tw ? tw.scrollLeft : 0;
+      b.innerHTML = html; b._html = html;
+      tw = b.querySelector('.rs-tblw'); if (tw && (st || sl)) { tw.scrollTop = st; tw.scrollLeft = sl; }
     });
   }
 

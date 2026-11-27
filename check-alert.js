@@ -334,7 +334,7 @@ function go(x) {
     case 'csl': return call(() => openCsAgentPage());
     case 'faq': call(() => triggerCs()); setTimeout(() => call(() => kkoTab('learn')), 500); return scrollTo_('kkoBox', 700);
     case 'cjb': call(() => triggerCs()); setTimeout(() => call(() => cjbTab('list')), 600); return scrollTo_('cjbBox', 700);
-    case 'voc': call(() => triggerCs()); scrollTo_('vocEmbed', 700); return setTimeout(() => { try { const fr = document.querySelector('#vocEmbed iframe'); if (fr && fr.contentWindow.vocGo) fr.contentWindow.vocGo(x.arg); } catch (e) {} }, 2500);
+    case 'voc': call(() => triggerCs()); call(() => csVTab('voc')); scrollTo_('vocEmbed', 700); return setTimeout(() => { try { const fr = document.querySelector('#vocEmbed iframe'); if (fr && fr.contentWindow.vocGo) fr.contentWindow.vocGo(x.arg); } catch (e) {} }, 2500);
     case 'dz': call(() => triggerDesign()); return setTimeout(() => call(() => { const [pid, line] = String(x.arg || '').split('|'); if (pid && window.WL && WL._.openPage) { WL._.openPage(pid, line ? {line} : {}); if (!line) scrollTo_('wl', 100); } }), 1800);
     case 'md': return call(() => triggerMd());
     case 'sns': return call(() => openToolPage('sns'));
