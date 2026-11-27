@@ -9,6 +9,7 @@
      openCalls 의 kind 'todo' (수거 · 반품 · 교환 접수 · 환불 · 입금 확인 · 직원 답변 필요 …) — 처음 한 번 + 안 닫히면 30분마다, 소리 없이.
      본문 = 서버 정리 brief (할 일 · 고객 글(이름 · 전화 가림) · 상품 · 상태 · 더 받을 정보). 대한통운 자동 수거를 켜기 전이라 수거 · 반품 · 교환은 희선님이 이걸 보고 접수.
      호출(빨강 · 주황)은 그대로 3 · 5분마다, 처리할 일은 오른쪽 아래 파란 줄.
+   · 2026-11-27 오른쪽 아래 알약은 CS 알림 대화창(cs-inbox.js)이 대신 그린다 — 여기는 컴퓨터 알림만, 대화창에서 완료 · 삭제한 건은 알림도 멈춤.
    · 받는 사람 = WHO ('나는' 이름). 바꾸려면 이 줄만. 오피스 탭이 하나라도 열려 있어야 뜬다(크롬 알림의 한계). index.html 맨 끝에서 부른다. */
 (function () {
   'use strict';
@@ -51,6 +52,7 @@
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     var at = sent(), now = Date.now(), live = {};
     calls.forEach(function (c) {
+      if (window.CsInbox && window.CsInbox.hidden(c)) return;   // 11-27 CS 알림 대화창에서 완료 · 삭제한 건
       var h = hot(c), td = isTodo(c), k = (td ? 't:' : '') + c.key;
       live[k] = 1;
       if (at[k] && now - at[k] < (td ? AGAIN_TODO : h ? AGAIN_HOT : AGAIN)) return;
@@ -59,7 +61,7 @@
       var body = (c.brief ? [c.brief, mins(c) + '분 전부터'] : [c.topic, c.why, mins(c) + '분째 기다림' + (c.more ? ' · 고객 글 ' + (c.more + 1) + '개' : '')]).filter(Boolean).join('\n').slice(0, 300);
       try {
         var n = new Notification(title, {body: body, tag: 'kko-' + (td ? 'todo-' : 'call-') + c.key, renotify: true, requireInteraction: true, silent: td, icon: 'assets/icon-192.png?v=2'});
-        n.onclick = function () { n.close(); openChat(c); };
+        n.onclick = function () { n.close(); if (window.CsInbox) window.CsInbox.open(); openChat(c); };
         notes[k] = n;
       } catch (e) { /* noop */ }
     });
@@ -77,6 +79,7 @@
     document.head.appendChild(s);
   }
   function draw(calls) {
+    if (window.CsInbox) calls = [];   // 11-27 오른쪽 아래 알약 대신 CS 알림 대화창 (cs-inbox.js)
     if (!calls.length) { if (pill) { pill.remove(); pill = null; } return; }
     css();
     if (!pill) {
