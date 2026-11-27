@@ -5,7 +5,7 @@
    · 줄에 마우스를 올리면(휴대폰은 누르면) 대화 정리 글 + 고객이 보낸 사진이 크게. 사진 · 글은 사무실 인터넷에서만(프록시가 밖이면 비움).
    · 주문번호 · 받는 분 이름 · 연락처 · 주소는 여기 없다 — [대화]로 채팅방을 열거나 주문 찾기에서. 고객 글은 가린 글. */
 (function () {
-  var S = {drafts: null, defects: null, full: null, marks: {}, mkErr: '', at: 0, err: '', loading: false, ret: null, pick: null};
+  var S = {drafts: null, defects: null, full: null, marks: {}, mkErr: '', at: 0, err: '', loading: false, ret: null, pick: null, lab: {}, labOut: false};
   var BOX = ['rsBoxCs', 'rsBoxLg'];
   var ST = {'정보 대기': 'wait', '발송 대기': 'todo', '발송함': 'done', '확인 필요': 'check'};
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -74,7 +74,7 @@
       var d = kst(p.at || 0);
       if (d < y) { older++; return; }
       if (p.orderId) seen[p.orderId] = 1;
-      out.push({r: {id: p.id, key: p.pid && p.chatId ? p.pid + ':' + p.chatId : '', label: p.label || '', kind: p.title || '회수', goods: p.goods || '', nm: p.nick || '', orderId: p.orderId || '', day: d, at: p.at || 0,
+      out.push({r: {id: p.id, pick: 1, brand: p.brand || '', pkind: p.kind || '', wbl: (p.wbls || [])[0] || '', wbls: p.wbls || [], key: p.pid && p.chatId ? p.pid + ':' + p.chatId : '', label: p.label || '', kind: p.title || '회수', goods: p.goods || '', nm: p.nick || '', orderId: p.orderId || '', day: d, at: p.at || 0,
         stop: p.state === 'stop', st: p.state === 'stop' ? '수거 접수 필요' : '수거 요청 대기', why: String(p.why || '').replace(/^사장님 \d+-\d+:\s*/, '').split(' — ')[0].slice(0, 40) + ((p.wbls || []).length ? ' · 운송장 ' + p.wbls.join(' / ') : ''),
         summary: '[수거 접수 필요] ' + (p.title || '회수') + ' · 카톡 자동 수거\n' + (p.why ? '확인할 것: ' + p.why + '\n' : '') + '상품: ' + (p.goods || '확인 필요') + (p.orderId ? '\n주문 ' + p.orderId : '') + ((p.wbls || []).length ? '\n보낸 운송장 ' + p.wbls.join(' · ') : '')}});
     });
@@ -85,7 +85,7 @@
       if (r.orderId && seen[r.orderId]) return;
       seen[r.orderId] = 1;
       var ck = r.chat && /^https:\/\//.test(r.chat.link || '') ? r.chat.link : '';
-      out.push({r: {id: r.key, key: '', link: ck, label: r.brandName || r.brand || '', kind: r.kind || '반품', goods: (r.items || []).join(' / '), nm: r.nm || '', orderId: r.orderId || '', day: d, at: t,
+      out.push({r: {id: r.key, pick: 1, brand: r.brand || '', pkind: r.kind === '교환' ? 'exchange' : 'return', wbl: '', wbls: [], key: '', link: ck, label: r.brandName || r.brand || '', kind: r.kind || '반품', goods: (r.items || []).join(' / '), nm: r.nm || '', orderId: r.orderId || '', day: d, at: t,
         stop: false, st: r.late ? '수거 늦음' : '수거 접수 필요', why: '식스샵프로 ' + (r.claimStatus || '반품') + ' · 회수 운송장 없음',
         summary: '[수거 접수 필요] ' + (r.kind || '반품') + ' · 식스샵프로 ' + (r.claimStatus || '') + '\n' + (r.todoKo || '회수 운송장 없음') + '\n상품: ' + (r.items || []).join(' · ') + '\n주문 ' + (r.orderId || '')}});
     });
@@ -207,8 +207,12 @@
           + '<button type="button" class="rs-go rs-hand" data-id="' + esc(r.id) + '" title="표에서 빼고 희선님 PC에 알림">희선님께</button>'
           + '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button></td></tr>';
   }
+  /* 수거 줄 (11-27 사장님 "송장번호에 자동수거해야하는 송장번호 넣어주고 자동수거 요청 배지 우측에 · 연락처 주소 우편번호는 기본적으로 다 문의한 사람들") —
+     받는 분 · 연락처 · 우편번호 · 주소 = 식스샵프로 주문 상세(프록시 /cs/label, 사무실 인터넷만, 화면 메모리에만 — 저장 안 함).
+     송장번호 칸 = 회수할 택배의 운송장(이중 배송은 처음 보낸 것). [자동수거 요청] = CS 도구 건별 접수를 '반품 회수'로 채움 */
+  function pkRcv(r) { return (r.orderId && S.lab[r.orderId]) || null; }
   function pkRow(x, i) {
-        var r = x.r;
+        var r = x.r, v = pkRcv(r) || {};
         return '<tr class="rs-row" tabindex="0" data-i="' + i + '">' + VIEW.map(function (h) {
           var k = h[0];
           if (k === 'day') return '<td class="c-day">' + esc(r.day) + '</td>';
@@ -216,11 +220,36 @@
           if (k === 'kind') return '<td class="c-kind">수거</td>';
           if (k === 'goods') return '<td class="c-goods"><div class="rs-it"><b>' + esc(r.goods || '상품 확인 필요') + '</b><span class="rs-op">회수</span></div></td>';
           if (k === 'why') return '<td class="c-why">' + esc(r.kind + (r.why ? ' · ' + r.why : '')) + '</td>';
-          if (k === 'nm') return '<td class="c-nm">' + esc(r.nm) + '</td>';
+          if (k === 'nm') return '<td class="c-nm">' + esc(v.nm || r.nm) + '</td>';
+          if (k === 'tel') return '<td class="c-tel">' + esc(v.tel || '') + '</td>';
+          if (k === 'zip') return '<td class="c-zip">' + esc(v.zip || '') + '</td>';
+          if (k === 'addr') return '<td class="c-addr">' + esc([v.addr, v.detail].filter(Boolean).join(' ')) + '</td>';
           if (k === 'order') return '<td class="c-order">' + esc(r.orderId) + '</td>';
           if (k === 'status') return '<td><span class="rs-st ' + (r.stop ? 'wait' : 'todo') + '">' + esc(r.st) + '</span></td>';
+          if (k === 'inv') return '<td class="c-inv">' + (r.wbl ? '<span class="rs-inv" title="이 택배를 회수해요">' + esc(r.wbl) + '</span><span class="rs-tag">회수할 송장</span>' : '') + '</td>';
           return '<td></td>';
-        }).join('') + '<td class="rs-act">' + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : '')) + '</td></tr>';
+        }).join('') + '<td class="rs-act">'
+          + (typeof window.cjbFromPickup === 'function' ? '<button type="button" class="rs-go rs-cj rs-pkreq" data-id="' + esc(r.id) + '" title="CS 도구 건별 접수를 반품 회수로 채워요 — 받는 분 · 주소 · 회수할 송장 · 상품">자동수거 요청</button>' : '')
+          + (r.key ? '<button type="button" class="rs-go" data-k="' + esc(r.key) + '">대화</button>' : (r.link ? '<a class="rs-go rs-link" href="' + esc(r.link) + '" target="_blank" rel="noopener">카톡 방</a>' : '')) + '</td></tr>';
+  }
+  /** 수거 줄 받는 분 정보 — 주문마다 한 번 (실패 · 사무실 밖이면 다시 묻지 않음) */
+  async function labLoad(base) {
+    var need = pickRows().rows.map(function (x) { return x.r; }).filter(function (r) { return r.orderId && r.wbl && r.brand && !(r.orderId in S.lab); });
+    if (!need.length || S.labOut) return;
+    need.forEach(function (r) { S.lab[r.orderId] = null; });
+    try {
+      var q = new URLSearchParams({items: JSON.stringify(need.slice(0, 30).map(function (r) { return {brand: r.brand, orderId: r.orderId, wbl: r.wbl}; }))});
+      var res = await fetch(base + '/cs/label?' + q, {headers: {'X-Brightbeed-PIN': ghPin(), Accept: 'application/json'}, cache: 'no-store'});
+      var j = await res.json().catch(function () { return {}; });
+      if (j && j.outside) { S.labOut = true; return; }
+      ((j && j.labels) || []).forEach(function (x) { if (x && x.rcvr && !x.err) S.lab[x.orderId] = Object.assign({}, x.rcvr, {goods: x.goods || []}); });
+    } catch (e) { /* 다음에 다시 */ need.forEach(function (r) { delete S.lab[r.orderId]; }); }
+  }
+  function pkFill(id) {
+    var x = pickRows().rows.filter(function (y) { return y.r.id === id; })[0]; if (!x) return;
+    var r = x.r, v = pkRcv(r) || {};
+    window.cjbFromPickup({id: r.id, label: r.label, kind: r.kind, pkind: r.pkind, brand: r.brand, nm: v.nm || '', tel: v.tel || '', zip: v.zip || '', addr: v.addr || '', detail: v.detail || '',
+      goods: String(r.goods || '').slice(0, 100), orderId: r.orderId || '', wbl: r.wbl || ''});
   }
   function tsv(sep) {
     var rows = byBrand(openRows(), function (r) { return r.label || r.brand; });
@@ -365,6 +394,7 @@
       try { var rr = await fetch(base + '/cs/returns', {headers: {'X-Brightbeed-PIN': ghPin(), Accept: 'application/json'}, cache: 'no-store'}); var jr = rr.ok ? await rr.json().catch(function () { return null; }) : null; if (jr && jr.ok) S.ret = jr; } catch (e) { /* noop */ }
       try { var rp = await fetch(base + '/cs/kakao-pickup', {headers: {'X-Brightbeed-PIN': ghPin(), Accept: 'application/json'}, cache: 'no-store'}); var jp = rp.ok ? await rp.json().catch(function () { return null; }) : null; if (jp && Array.isArray(jp.items)) S.pick = jp; } catch (e) { /* noop */ }
       await marksLoad();
+      try { await labLoad(base); } catch (e) { /* 받는 분 칸은 없어도 됨 */ }
       try { await cjSync(force); } catch (e) { /* CJ 기록은 없어도 됨 */ }
       handNotify();
     } catch (e) { S.err = (e && e.message) || String(e); }
@@ -404,6 +434,7 @@
     if (e.target.closest && e.target.closest('.rs-link')) return;   // 카톡 방 링크는 그대로 열림
     var b = e.target.closest && e.target.closest('[data-rs],.rs-go');
     if (!b) { if (e.target.closest && e.target.closest('.rs-in')) return; var x = rowAt(e.target); if (x) showTip(x.row, x.r); return; }
+    if (b.classList.contains('rs-pkreq')) { hideTip(); pkFill(b.dataset.id); return; }
     if (b.classList.contains('rs-cj')) { hideTip(); cjFill(b.dataset.id); return; }
     if (b.classList.contains('rs-hand')) {
       hideTip();

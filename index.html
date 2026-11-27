@@ -19744,6 +19744,20 @@ if(/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel
     if(out) out.innerHTML=`<div class="cjb-msg">📦 재배송 장부 <b>${_cjbEsc(x.label||'')} ${_cjbEsc(x.kind||'')}</b> 건을 채웠어요 — 확인하고 [접수하기] · 출력하면 송장번호가 장부에 저절로 적혀요</div>`;
     setTimeout(()=>{ try{ document.getElementById('csTools')?.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('cjbCNm')?.focus({preventScroll:true}); }catch(e){ } },150);
   }
+  /* 재배송 표 수거 줄 [자동수거 요청] (2026-11-27 사장님) — 건별 접수를 '반품 회수'로: 보내는 분 = 문의한 손님(주문 받는 분), 회수할 송장 · 상품 · 주문번호 · 사유 */
+  async function cjbFromPickup(x){
+    try{ if(typeof triggerCs==='function' && document.getElementById('viewCs')?.hidden) triggerCs(); }catch(e){ }
+    csTool('one'); await cjbInit(); cjbSetDv('02'); cjbOneClear(true);
+    _cjbSet('cjbCNm',x.nm); _cjbSet('cjbCTel',x.tel); _cjbSet('cjbCZip',String(x.zip||'').replace(/\D/g,'')); _cjbSet('cjbCAddr',x.addr); _cjbSet('cjbCDet',x.detail);
+    _cjbSet('cjbGNm',x.goods); _cjbSet('cjbGQty',1); _cjbSet('cjbOrd',x.orderId); _cjbSet('cjbOri',x.wbl);
+    _cjbSet('cjbReason', x.pkind==='wrong' ? '오배송 (다른 상품 · 옵션)' : x.pkind==='defect' ? '불량' : x.pkind==='exchange' ? '교환' : x.pkind==='return' ? '단순 변심' : '기타');
+    _cjbSet('cjbMemo', x.pkind==='double' ? '이중 배송 회수' : (x.kind||''));
+    if(x.brand && CJB_BRANDS.some(b=>b[0]===x.brand)) _cjbSet('cjbBrand',x.brand);
+    const out=document.getElementById('cjbOneOut');
+    if(out) out.innerHTML=`<div class="cjb-msg">↩ <b>${_cjbEsc(x.label||'')} ${_cjbEsc(x.kind||'')}</b> 회수를 채웠어요${x.nm ? '' : ' — 받는 분 정보는 사무실 인터넷에서만 채워져요, 빈칸을 채워 주세요'} · 확인하고 [접수하기]</div>`;
+    setTimeout(()=>{ try{ document.getElementById('csTools')?.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('cjbCNm')?.focus({preventScroll:true}); }catch(e){ } },150);
+  }
+  window.cjbFromPickup=cjbFromPickup;
   function cjbOneClear(keepMsg){
     _cjb.reship='';
     ['cjbCNm','cjbCTel','cjbCZip','cjbCAddr','cjbCDet','cjbGNm','cjbGOpt','cjbOrd','cjbAmt','cjbOri','cjbMemo','cjbReason'].forEach(id=>{ _cjbSet(id,''); document.getElementById(id)?.classList.remove('bad'); });
@@ -58972,6 +58986,6 @@ ${pv ? '.pre .pp{visibility:visible}' : ''}
 <script src="notif-call.js?v=4" defer></script><!-- 알림 확인 요청 — 사장님이 보내면 [확인] 창 (notif-call.js) -->
 <script src="office-thumb.js?v=1" defer></script><!-- 작은 사진에 마우스 → 크게 (office-thumb.js) -->
 <script src="check-alert.js?v=13" defer></script><!-- 확인 필요 알림 — 전승훈(재고 쪽) · 카톡 직원 호출 · 이미지 · 불량 사진은 CS팀 (check-alert.js) -->
-<script src="cs-inbox.js?v=1" defer></script><!-- CS 알림 대화창 — 희선님 전용 플로팅 · 대표 보기 (11-27, cs-inbox.js) --><script src="kko-urgent.js?v=6" defer></script><script src="reship.js?v=10" defer></script><script src="accident.js?v=2" defer></script><!-- 택배 사고접수 (11-27) --><!-- 재배송 · 교환 · 불량 장부 (11-26) --><!-- 카톡 급한 호출 — 희선님 PC 컴퓨터 알림, 해결될 때까지 되풀이 (kko-urgent.js) -->
+<script src="cs-inbox.js?v=1" defer></script><!-- CS 알림 대화창 — 희선님 전용 플로팅 · 대표 보기 (11-27, cs-inbox.js) --><script src="kko-urgent.js?v=6" defer></script><script src="reship.js?v=11" defer></script><script src="accident.js?v=2" defer></script><!-- 택배 사고접수 (11-27) --><!-- 재배송 · 교환 · 불량 장부 (11-26) --><!-- 카톡 급한 호출 — 희선님 PC 컴퓨터 알림, 해결될 때까지 되풀이 (kko-urgent.js) -->
 </body>
 </html>
