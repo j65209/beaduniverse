@@ -75,8 +75,8 @@
       if (d < y) { older++; return; }
       if (p.orderId) seen[p.orderId] = 1;
       out.push({r: {id: p.id, key: p.pid && p.chatId ? p.pid + ':' + p.chatId : '', label: p.label || '', kind: p.title || '회수', goods: p.goods || '', nm: p.nick || '', orderId: p.orderId || '', day: d, at: p.at || 0,
-        stop: p.state === 'stop', st: p.state === 'stop' ? '수거 접수 필요' : '수거 요청 대기', why: String(p.why || '').replace(/^사장님 \d+-\d+:\s*/, '').split(' — ')[0].slice(0, 40),
-        summary: '[수거 접수 필요] ' + (p.title || '회수') + ' · 카톡 자동 수거\n' + (p.why ? '확인할 것: ' + p.why + '\n' : '') + '상품: ' + (p.goods || '확인 필요') + (p.orderId ? '\n주문 ' + p.orderId : '')}});
+        stop: p.state === 'stop', st: p.state === 'stop' ? '수거 접수 필요' : '수거 요청 대기', why: String(p.why || '').replace(/^사장님 \d+-\d+:\s*/, '').split(' — ')[0].slice(0, 40) + ((p.wbls || []).length ? ' · 운송장 ' + p.wbls.join(' / ') : ''),
+        summary: '[수거 접수 필요] ' + (p.title || '회수') + ' · 카톡 자동 수거\n' + (p.why ? '확인할 것: ' + p.why + '\n' : '') + '상품: ' + (p.goods || '확인 필요') + (p.orderId ? '\n주문 ' + p.orderId : '') + ((p.wbls || []).length ? '\n보낸 운송장 ' + p.wbls.join(' · ') : '')}});
     });
     ((S.ret || {}).rows || []).forEach(function (r) {
       if (r.todo !== 'book') return;
